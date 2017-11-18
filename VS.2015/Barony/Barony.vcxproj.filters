@@ -446,6 +446,18 @@
     <ClInclude Include="..\..\src\magic\magic.hpp">
       <Filter>Header Files\magic</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\collision.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cppfuncs.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\hash.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\paths.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\src\game.ico">
