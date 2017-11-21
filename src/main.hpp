@@ -651,6 +651,7 @@ void assignActions(map_t* map);
 
 // cursor bitmap definitions
 extern char* cursor_pencil[];
+extern char* cursor_point[];
 extern char* cursor_brush[];
 extern char* cursor_fill[];
 

@@ -50,7 +50,7 @@ extern char message[48];
 extern int messagetime;
 extern char widthtext[4], heighttext[4], nametext[32], authortext[32], skyboxtext[4];
 extern int editproperty;
-extern SDL_Cursor* cursorArrow, *cursorPencil, *cursorBrush, *cursorSelect, *cursorFill;
+extern SDL_Cursor* cursorArrow, *cursorPencil, *cursorPoint, *cursorBrush, *cursorSelect, *cursorFill;
 extern int* palette;
 
 // button definitions
@@ -58,6 +58,7 @@ extern button_t* butX;
 extern button_t* but_;
 extern button_t* butTilePalette;
 extern button_t* butSprite;
+extern button_t* butPencil;
 extern button_t* butPoint;
 extern button_t* butBrush;
 extern button_t* butSelect;
@@ -143,6 +144,7 @@ void buttonExitConfirm(button_t* my);
 void buttonIconify(button_t* my);
 void buttonTilePalette(button_t* my);
 void buttonSprite(button_t* my);
+void buttonPencil(button_t* my);
 void buttonPoint(button_t* my);
 void buttonBrush(button_t* my);
 void buttonSelect(button_t* my);
