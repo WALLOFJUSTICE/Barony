@@ -28,7 +28,7 @@
 
 -------------------------------------------------------------------------------*/
 
-#ifdef HAVE_FMOD
+#ifdef USE_FMOD
 FMOD_CHANNEL* playSoundPlayer(int player, Uint32 snd, int vol)
 {
 	if (no_sound)
@@ -343,6 +343,7 @@ bool minotaurmusicplaying = false;
 bool herxmusicplaying = false;
 bool devilmusicplaying = false;
 bool olddarkmap = false;
+bool sanctummusicplaying = false;
 
 int currenttrack = -1;
 
@@ -370,11 +371,17 @@ void handleLevelMusic()
 			}
 	}
 
+	if ( !strcmp(map.name, "Mages Guild") )
+	{
+		inshop = false; // everywhere is shop!
+	}
+
 	bool devilaround = false;
 	bool activeminotaur = false;
 	bool herxaround = false;
+	bool magisteraround = false;
 	node_t* node;
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.creatures->first; node != nullptr; node = node->next )
 	{
 		Entity* entity = (Entity*)node->element;
 		if ( entity->sprite == 274 )   // herx head
@@ -392,6 +399,11 @@ void handleLevelMusic()
 			activeminotaur = true;
 			break;
 		}
+		else if ( entity->sprite == 646 || entity->sprite == 650 )     // magister body
+		{
+			magisteraround = true;
+			break;
+		}
 	}
 
 	FMOD_BOOL playing = true;
@@ -402,13 +414,11 @@ void handleLevelMusic()
 		currenttrack = rand();
 	}
 
-	if ( (!levelmusicplaying || !playing || olddarkmap != darkmap) && (!combat || !strcmp(map.name, "Hell Boss")) && !inshop && (!activeminotaur || !strcmp(map.name, "Hell Boss")) && !herxaround && !devilaround )
+	if ( (!levelmusicplaying || !playing || olddarkmap != darkmap) && (!combat || !strcmp(map.name, "Hell Boss")) 
+		&& !inshop 
+		&& (!activeminotaur || !strcmp(map.name, "Hell Boss")) && !herxaround && !devilaround && !magisteraround )
 	{
-		if ( darkmap )
-		{
-			playmusic(intermissionmusic, true, true, true);
-		}
-		else if ( !strncmp(map.name, "The Mines", 9) )     // the mines
+		if ( !strncmp(map.name, "The Mines", 9) )     // the mines
 		{
 			if ( !playing )
 			{
@@ -519,7 +529,7 @@ void handleLevelMusic()
 			}
 			playmusic(cavesmusic[currenttrack], false, true, true);
 		}
-		else if ( !strncmp(map.name, "Citadel", 7) )
+		else if ( !strncmp(map.name, "Citadel", 7) || !strncmp(map.name, "Sanctum", 7) )
 		{
 			if ( !playing )
 			{
@@ -531,6 +541,10 @@ void handleLevelMusic()
 				currenttrack = 1;
 			}
 			playmusic(citadelmusic[currenttrack], false, true, true);
+		}
+		else if ( !strcmp(map.name, "Mages Guild") )
+		{
+			playmusic(minesmusic[4], true, true, true);
 		}
 		else
 		{
@@ -582,7 +596,25 @@ void handleLevelMusic()
 		fadein_increment = default_fadein_increment * 5;
 		fadeout_increment = default_fadeout_increment * 5;
 	}
-	else if ( (!combatmusicplaying || !playing) && !herxaround && !activeminotaur && combat && strcmp(map.name, "Hell Boss") )
+	else if ( (!sanctummusicplaying || !playing) && magisteraround )
+	{
+		playmusic(sanctummusic, true, true, true);
+		levelmusicplaying = false;
+		devilmusicplaying = false;
+		herxmusicplaying = false;
+		minotaurmusicplaying = false;
+		combatmusicplaying = false;
+		sanctummusicplaying = true;
+		shopmusicplaying = false;
+		fadein_increment = default_fadein_increment * 2;
+		fadeout_increment = default_fadeout_increment * 2;
+	}
+	else if ( (!combatmusicplaying || !playing) 
+		&& !herxaround 
+		&& !activeminotaur 
+		&& combat 
+		&& strcmp(map.name, "Hell Boss")
+		&& strcmp(map.name, "Sanctum") )
 	{
 		if ( !strncmp(map.name, "The Swamp", 9) || !strncmp(map.name, "The Temple", 10) )   // the swamp
 		{
@@ -639,7 +671,7 @@ void handleLevelMusic()
 	}
 }
 
-#elif defined HAVE_OPENAL
+#elif defined USE_OPENAL
 OPENAL_SOUND* playSoundPlayer(int player, Uint32 snd, int vol)
 {
 	if (no_sound)
@@ -920,6 +952,7 @@ bool minotaurmusicplaying = false;
 bool herxmusicplaying = false;
 bool devilmusicplaying = false;
 bool olddarkmap = false;
+bool sanctummusicplaying = false;
 
 int currenttrack = -1;
 
@@ -950,8 +983,9 @@ void handleLevelMusic()
 	bool devilaround = false;
 	bool activeminotaur = false;
 	bool herxaround = false;
+	bool magisteraround = false;
 	node_t* node;
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.creatures->first; node != NULL; node = node->next )
 	{
 		Entity* entity = (Entity*)node->element;
 		if ( entity->sprite == 274 )   // herx head
@@ -969,6 +1003,11 @@ void handleLevelMusic()
 			activeminotaur = true;
 			break;
 		}
+		else if ( entity->sprite == 646 || entity->sprite == 650 )     // magister body
+		{
+			magisteraround = true;
+			break;
+		}
 	}
 
 	ALboolean playing = true;
@@ -979,13 +1018,12 @@ void handleLevelMusic()
 		currenttrack = rand();
 	}
 
-	if ( (!levelmusicplaying || !playing || olddarkmap != darkmap) && (!combat || !strcmp(map.name, "Hell Boss")) && !inshop && (!activeminotaur || !strcmp(map.name, "Hell Boss")) && !herxaround && !devilaround )
+	if ( (!levelmusicplaying || !playing || olddarkmap != darkmap) 
+		&& (!combat || !strcmp(map.name, "Hell Boss")) 
+		&& !inshop 
+		&& (!activeminotaur || !strcmp(map.name, "Hell Boss")) && !herxaround && !devilaround && !magisteraround )
 	{
-		if ( darkmap )
-		{
-			playmusic(intermissionmusic, true, true, true);
-		}
-		else if ( !strncmp(map.name, "The Mines", 9) )     // the mines
+		if ( !strncmp(map.name, "The Mines", 9) )     // the mines
 		{
 			if ( !playing )
 			{
@@ -1096,7 +1134,7 @@ void handleLevelMusic()
 			}
 			playmusic(cavesmusic[currenttrack], false, true, true);
 		}
-		else if ( !strncmp(map.name, "Citadel", 7) )
+		else if ( !strncmp(map.name, "Citadel", 7) || !strncmp(map.name, "Sanctum", 7) )
 		{
 			if ( !playing )
 			{
@@ -1159,7 +1197,25 @@ void handleLevelMusic()
 		fadein_increment = default_fadein_increment * 5;
 		fadeout_increment = default_fadeout_increment * 5;
 	}
-	else if ( (!combatmusicplaying || !playing) && !herxaround && !activeminotaur && combat && strcmp(map.name, "Hell Boss") )
+	else if ( (!sanctummusicplaying || !playing) && magisteraround )
+	{
+		playmusic(sanctummusic, true, true, true);
+		levelmusicplaying = false;
+		devilmusicplaying = false;
+		herxmusicplaying = false;
+		minotaurmusicplaying = false;
+		combatmusicplaying = false;
+		sanctummusicplaying = true;
+		shopmusicplaying = false;
+		fadein_increment = default_fadein_increment * 2;
+		fadeout_increment = default_fadeout_increment * 2;
+	}
+	else if ( (!combatmusicplaying || !playing) 
+		&& !herxaround 
+		&& !activeminotaur 
+		&& combat 
+		&& strcmp(map.name, "Hell Boss")
+		&& strcmp(map.name, "Sanctum") )
 	{
 		if ( !strncmp(map.name, "The Swamp", 9) || !strncmp(map.name, "The Temple", 10) )   // the swamp
 		{

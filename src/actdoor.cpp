@@ -44,7 +44,7 @@ void actDoor(Entity* my)
 		my->doorStartAng = my->yaw;
 		my->doorHealth = 15 + rand() % 5;
 		my->doorMaxHealth = my->doorHealth;
-		if ( rand() % 20 == 0 )   // 5% chance
+		if ( rand() % 20 == 0 || (!strncmp(map.name, "The Great Castle", 16) && rand() % 2 == 0) )   // 5% chance
 		{
 			my->doorLocked = 1;
 		}
@@ -206,7 +206,7 @@ void actDoor(Entity* my)
 			// don't set impassable if someone's inside, otherwise do
 			node_t* node;
 			bool somebodyinside = false;
-			for ( node = map.entities->first; node != NULL; node = node->next )
+			for ( node = map.entities->first; node != nullptr; node = node->next )
 			{
 				Entity* entity = (Entity*)node->element;
 				if ( entity == my || entity->flags[PASSABLE] || entity->sprite == 1  )

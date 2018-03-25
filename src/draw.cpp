@@ -10,6 +10,8 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "draw.hpp"
+#include "files.hpp"
 #include "hash.hpp"
 #include "entity.hpp"
 #include "player.hpp"
@@ -1069,12 +1071,12 @@ void drawEntities3D(view_t* camera, int mode)
 	Entity* entity;
 	long x, y;
 
-	if ( map.entities->first == NULL )
+	if ( map.entities->first == nullptr )
 	{
 		return;
 	}
 
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
 		if ( entity->flags[INVISIBLE] )
@@ -1098,7 +1100,7 @@ void drawEntities3D(view_t* camera, int mode)
 		y = entity->y / 16;
 		if ( x >= 0 && y >= 0 && x < map.width && y < map.height )
 		{
-			if ( vismap[y + x * map.height] || entity->flags[OVERDRAW] )
+			if ( vismap[y + x * map.height] || entity->flags[OVERDRAW] || entity->monsterEntityRenderAsTelepath == 1 )
 			{
 				if ( entity->flags[SPRITE] == false )
 				{
@@ -1141,13 +1143,13 @@ void drawEntities2D(long camx, long camy)
 	int offsetx = 0;
 	int offsety = 0;
 
-	if ( map.entities->first == NULL )
+	if ( map.entities->first == nullptr )
 	{
 		return;
 	}
 
 	// draw entities
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
 		if ( entity->flags[INVISIBLE] )
@@ -1162,7 +1164,7 @@ void drawEntities2D(long camx, long camy)
 
 		if ( entity->sprite >= 0 && entity->sprite < numsprites )
 		{
-			if ( sprites[entity->sprite] != NULL )
+			if ( sprites[entity->sprite] != nullptr )
 			{
 				if ( entity == selectedEntity )
 				{
@@ -1183,14 +1185,14 @@ void drawEntities2D(long camx, long camy)
 				if ( entity->sprite == 8 && entity->skill[10] > 1 )
 				{
 					// draw the item sprite in the editor layout
-					Item* tmpItem = newItem(static_cast<ItemType>(entity->skill[10] - 2), static_cast<Status>(0), 0, 0, 0, 0, NULL);
-					drawImageScaled(itemSprite(tmpItem), NULL, &pos);
+					Item* tmpItem = newItem(static_cast<ItemType>(entity->skill[10] - 2), static_cast<Status>(0), 0, 0, 0, 0, nullptr);
+					drawImageScaled(itemSprite(tmpItem), nullptr, &pos);
 					free(tmpItem);
 				}
 				else
 				{
 					// draw sprite normally from sprites list
-					drawImageScaled(sprites[entity->sprite], NULL, &pos);
+					drawImageScaled(sprites[entity->sprite], nullptr, &pos);
 				}
 			}
 			else
@@ -1209,7 +1211,7 @@ void drawEntities2D(long camx, long camy)
 					box.y = pos.y + 1;
 					drawRect(&box, SDL_MapRGB(mainsurface->format, 0, 0, 255), 255);
 				}
-				drawImageScaled(sprites[0], NULL, &pos);
+				drawImageScaled(sprites[0], nullptr, &pos);
 			}
 		}
 		else
@@ -1228,12 +1230,12 @@ void drawEntities2D(long camx, long camy)
 				box.y = pos.y + 1;
 				drawRect(&box, SDL_MapRGB(mainsurface->format, 0, 0, 255), 255);
 			}
-			drawImageScaled(sprites[0], NULL, &pos);
+			drawImageScaled(sprites[0], nullptr, &pos);
 		}
 	}
 
 	// draw hover text for entities over the top of sprites.
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
 		if ( entity->flags[INVISIBLE] )
@@ -1248,7 +1250,7 @@ void drawEntities2D(long camx, long camy)
 
 		if ( entity->sprite >= 0 && entity->sprite < numsprites )
 		{
-			if ( sprites[entity->sprite] != NULL )
+			if ( sprites[entity->sprite] != nullptr )
 			{
 				if ( entity == selectedEntity )
 				{
@@ -1997,7 +1999,7 @@ SDL_Rect ttfPrintTextFormatted( TTF_Font* font, int x, int y, char* fmt, ... )
 
 -------------------------------------------------------------------------------*/
 
-void printText( SDL_Surface* font_bmp, int x, int y, char* str )
+void printText( SDL_Surface* font_bmp, int x, int y, const char* str )
 {
 	int c;
 	int numbytes;

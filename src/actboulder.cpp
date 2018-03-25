@@ -146,7 +146,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity)
 					int c;
 					for ( c = 0; c < i; c++ )
 					{
-						Entity* entity = newEntity(-1, 1, map.entities);
+						Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Rock/item entity.
 						entity->flags[INVISIBLE] = true;
 						entity->flags[UPDATENEEDED] = true;
 						entity->x = my->x - 4 + rand() % 8;
@@ -176,10 +176,18 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity)
 					playSoundEntity(my, 67, 128);
 					list_RemoveNode(my->mynode);
 
-					// on sokoban, destroying boulders spawns scorpions
+					// on sokoban, destroying boulders spawns scorpions / insectoids
 					if ( !strcmp(map.name, "Sokoban") )
 					{
-						Entity* monster = summonMonster(SCORPION, ox, oy);
+						Entity* monster = nullptr;
+						if ( rand() % 2 == 0 )
+						{
+							monster = summonMonster(INSECTOID, ox, oy);
+						}
+						else
+						{
+							monster = summonMonster(SCORPION, ox, oy);
+						}
 						if ( monster )
 						{
 							int c;
@@ -189,6 +197,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity)
 								messagePlayerColor(c, color, language[406]);
 							}
 						}
+						boulderSokobanOnDestroy(false);
 					}
 
 					return 1;
@@ -280,6 +289,10 @@ void actBoulder(Entity* my)
 		if ( my->z >= 128 )
 		{
 			list_RemoveNode(my->mynode);
+			if ( multiplayer != CLIENT && !strncmp(map.name, "Sokoban", 7) )
+			{
+				boulderSokobanOnDestroy(true);
+			}
 			return;
 		}
 		if ( !BOULDER_NOGROUND )
@@ -287,7 +300,7 @@ void actBoulder(Entity* my)
 			if ( my->z >= -8 && fabs(my->vel_z) > 2 )
 			{
 				node_t* node;
-				for ( node = map.entities->first; node != NULL; node = node->next )
+				for ( node = map.entities->first; node != nullptr; node = node->next )
 				{
 					Entity* entity = (Entity*)node->element;
 					if ( entity == my )
@@ -390,7 +403,7 @@ void actBoulder(Entity* my)
 			if ( dist && !BOULDER_NOGROUND )
 			{
 				node_t* node;
-				for ( node = map.entities->first; node != NULL; node = node->next )
+				for ( node = map.entities->first; node != nullptr; node = node->next )
 				{
 					Entity* entity = (Entity*)node->element;
 					if ( entity == my )
@@ -569,7 +582,7 @@ void actBoulder(Entity* my)
 				if ( dist && !BOULDER_NOGROUND )
 				{
 					node_t* node;
-					for ( node = map.entities->first; node != NULL; node = node->next )
+					for ( node = map.entities->first; node != nullptr; node = node->next )
 					{
 						Entity* entity = (Entity*)node->element;
 						if ( entity == my )
@@ -674,7 +687,7 @@ void actBoulderTrap(Entity* my)
 				{
 					if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
 					{
-						Entity* entity = newEntity(245, 1, map.entities); // boulder
+						Entity* entity = newEntity(245, 1, map.entities, nullptr); // boulder
 						entity->parent = my->getUID();
 						entity->x = (x << 4) + 8;
 						entity->y = (y << 4) + 8;
@@ -753,7 +766,7 @@ void actBoulderTrapEast(Entity* my)
 			y = ((int)(my->y)) >> 4;
 			if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
 			{
-				Entity* entity = newEntity(245, 1, map.entities); // boulder
+				Entity* entity = newEntity(245, 1, map.entities, nullptr); // boulder
 				entity->parent = my->getUID();
 				entity->x = (x << 4) + 8;
 				entity->y = (y << 4) + 8;
@@ -841,7 +854,7 @@ void actBoulderTrapSouth(Entity* my)
 			y = ((int)(my->y)) >> 4;
 			if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
 			{
-				Entity* entity = newEntity(245, 1, map.entities); // boulder
+				Entity* entity = newEntity(245, 1, map.entities, nullptr); // boulder
 				entity->parent = my->getUID();
 				entity->x = (x << 4) + 8;
 				entity->y = (y << 4) + 8;
@@ -930,7 +943,7 @@ void actBoulderTrapWest(Entity* my)
 			y = ((int)(my->y)) >> 4;
 			if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
 			{
-				Entity* entity = newEntity(245, 1, map.entities); // boulder
+				Entity* entity = newEntity(245, 1, map.entities, nullptr); // boulder
 				entity->parent = my->getUID();
 				entity->x = (x << 4) + 8;
 				entity->y = (y << 4) + 8;
@@ -1018,7 +1031,7 @@ void actBoulderTrapNorth(Entity* my)
 			y = ((int)(my->y)) >> 4;
 			if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
 			{
-				Entity* entity = newEntity(245, 1, map.entities); // boulder
+				Entity* entity = newEntity(245, 1, map.entities, nullptr); // boulder
 				entity->parent = my->getUID();
 				entity->x = (x << 4) + 8;
 				entity->y = (y << 4) + 8;
@@ -1053,6 +1066,98 @@ void actBoulderTrapNorth(Entity* my)
 				// infinite boulders.
 				my->boulderTrapRefireCounter = my->boulderTrapRefireDelay * TICKS_PER_SECOND;
 			}
+		}
+	}
+}
+
+void boulderSokobanOnDestroy(bool pushedOffLedge)
+{
+	if ( multiplayer == CLIENT || strcmp(map.name, "Sokoban") )
+	{
+		return; // return for client and if map not sokoban.
+	}
+
+	int goldToDestroy = 5 + rand() % 4; // 5-8 bags destroy
+	bool bouldersAround = false;
+	node_t* node = nullptr;
+
+	if ( !pushedOffLedge ) // destroy some gold
+	{
+		for ( node_t* node = map.entities->first; node != nullptr; node = node->next )
+		{
+			Entity* entity = (Entity*)node->element;
+			if ( entity )
+			{
+				if ( entity->behavior == &actGoldBag && entity->goldSokoban == 1 && goldToDestroy > 0 )
+				{
+					if ( entity->mynode )
+					{
+						list_RemoveNode(entity->mynode);
+					}
+					--goldToDestroy;
+				}
+			}
+		}
+	}
+
+	for ( node_t* node = map.entities->first; node != nullptr; node = node->next )
+	{
+		Entity* entity = (Entity*)node->element;
+		if ( entity )
+		{
+			if ( !bouldersAround && entity->behavior == &actBoulder )
+			{
+				bouldersAround = true;
+				break;
+			}
+		}
+	}
+
+	if ( !bouldersAround )
+	{
+		int goldCount = 0;
+		Entity* sokobanItemReward = nullptr;
+		for ( node = map.entities->first; node != nullptr; node = node->next )
+		{
+			Entity* entity = (Entity*)node->element;
+			if ( entity )
+			{
+				if ( entity->behavior == &actGoldBag && entity->goldSokoban == 1 )
+				{
+					++goldCount;
+				}
+				if ( entity->behavior == &actItem && entity->itemSokobanReward == 1 ) // artifact gloves.
+				{
+					sokobanItemReward = entity;
+				}
+			}
+		}
+		//messagePlayer(0, "Solved it!");
+		for ( int c = 0; c < MAXPLAYERS; c++ )
+		{
+			Uint32 color = SDL_MapRGB(mainsurface->format, 255, 128, 0);
+			if ( goldCount >= 39 )
+			{
+				playSoundPlayer(c, 393, 128);
+				messagePlayerColor(c, color, language[2969]);
+			}
+			else
+			{
+				playSoundPlayer(c, 395, 128);
+				if ( goldCount < 25 )
+				{
+					messagePlayerColor(c, color, language[2971]); // less than impressed.
+				}
+				else
+				{
+					messagePlayerColor(c, color, language[2970]); // mildly entertained.
+				}
+			}
+		}
+		if ( goldCount >= 25 )
+		{
+			sokobanItemReward->flags[INVISIBLE] = false;
+			serverUpdateEntityFlag(sokobanItemReward, INVISIBLE);
 		}
 	}
 }

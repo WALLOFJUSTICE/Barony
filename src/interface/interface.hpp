@@ -53,7 +53,9 @@ extern int gui_mode;
 extern int selectedItemFromHotbar;
 
 extern SDL_Surface* font12x12_small_bmp;
-extern SDL_Surface* backdrop_bmp;
+extern SDL_Surface* backdrop_minotaur_bmp;
+extern SDL_Surface* backdrop_blessed_bmp;
+extern SDL_Surface* backdrop_cursed_bmp;
 extern SDL_Surface* status_bmp;
 extern SDL_Surface* character_bmp;
 extern SDL_Surface* hunger_bmp;
@@ -76,6 +78,7 @@ extern Item* invitemschest[4];
 extern int inventorycategory;
 extern int itemscroll;
 extern view_t camera_charsheet;
+extern real_t camera_charsheet_offsetyaw;
 
 extern int selected_inventory_slot_x;
 extern int selected_inventory_slot_y;
@@ -119,6 +122,9 @@ damageIndicator_t* newDamageIndicator(double x, double y);
 
 void selectItemMenuSlot(const Item& item, int entry);
 bool autoAddHotbarFilter(const Item& item);
+void quickStackItems();
+void sortInventoryItemsOfType(int categoryInt, bool sortRightToLeft); // sort inventory items matching category. -1 is everything, -2 is only equipped items.
+void autosortInventory();
 extern Uint32 itemMenuItem;
 extern bool itemMenuOpen;
 extern int itemMenuSelected;
@@ -220,6 +226,7 @@ extern int selectedIdentifySlot;
 void selectIdentifySlot(int slot);
 void warpMouseToSelectedIdentifySlot();
 
+void CloseIdentifyGUI();
 void updateIdentifyGUI(); //Updates the identify item GUI.
 void identifyGUIIdentify(Item* item); //Identify the given item.
 int getAppraisalTime(Item* item); // Return time in ticks needed to appraise an item
@@ -253,6 +260,8 @@ void warpMouseToSelectedRemoveCurseSlot();
 bool mouseInBounds(int x1, int x2, int y1, int y2);
 
 void updateCharacterSheet();
+void drawPartySheet();
+void drawSkillsSheet();
 
 //Right sidebar defines.
 #define RIGHTSIDEBAR_X (xres - rightsidebar_titlebar_img->w)
@@ -353,6 +362,8 @@ extern bool auto_hotbar_new_items;
 
 extern bool auto_hotbar_categories[NUM_HOTBAR_CATEGORIES]; // true = enable auto add to hotbar. else don't add.
 
+extern int autosort_inventory_categories[NUM_AUTOSORT_CATEGORIES]; // 0 = disable priority sort, fill rightmost first. greater than 0, fill leftmost using value as priority (0 = lowest priority)
+
 extern bool hotbar_numkey_quick_add; // use number keys to add items to hotbar if mouse in inventory panel.
 
 extern bool disable_messages;
@@ -360,6 +371,8 @@ extern bool disable_messages;
 extern bool right_click_protect;
 
 extern bool auto_appraise_new_items;
+
+extern bool lock_right_sidebar;
 
 const char* getInputName(Uint32 scancode);
 Sint8* inputPressed(Uint32 scancode);
@@ -386,6 +399,9 @@ extern SDL_Surface *con_bmp64;
 extern SDL_Surface *int_bmp64;
 extern SDL_Surface *per_bmp64;
 extern SDL_Surface *chr_bmp64;
+
+extern SDL_Surface *sidebar_lock_bmp;
+extern SDL_Surface *sidebar_unlock_bmp;
 
 void printStatBonus(TTF_Font* outputFont, Sint32 stat, Sint32 statWithModifiers, int x, int y);
 void attackHoverText(Sint32 input[6]);

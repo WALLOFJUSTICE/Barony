@@ -46,12 +46,37 @@ void initGhoul(Entity* my, Stat* myStats)
 			bool lesserMonster = false;
 			if ( !strncmp(myStats->name, "enslaved ghoul", strlen("enslaved ghoul")) )
 			{
-				myStats->HP = 110;
-				myStats->MAXHP = myStats->HP;
-				myStats->OLDHP = myStats->HP;
-				myStats->STR = 13;
-				myStats->DEX = 5;
-				myStats->LVL = 15;
+				if ( !strncmp(map.name, "Bram's Castle", 13) )
+				{
+				}
+				else
+				{
+					myStats->HP = 110;
+					myStats->MAXHP = myStats->HP;
+					myStats->OLDHP = myStats->HP;
+					myStats->STR = 13;
+					myStats->DEX = 5;
+					if ( !strncmp(map.name, "The Haunted Castle", 18) )
+					{
+						myStats->LVL = 10;
+					}
+					else
+					{
+						myStats->LVL = 15;
+					}
+					myStats->PER = 10;
+					if ( rand() % 2 == 0 )
+					{
+						myStats->EFFECTS[EFF_VAMPIRICAURA] = true;
+						myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
+					}
+				}
+			}
+
+			if ( !strncmp(map.name, "Bram's Castle", 13) )
+			{
+				myStats->EFFECTS[EFF_VAMPIRICAURA] = true;
+				myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
@@ -79,6 +104,8 @@ void initGhoul(Entity* my, Stat* myStats)
 				myStats->MAXHP *= 3;
 				myStats->OLDHP = myStats->HP;
 				myStats->LVL = 15;
+				myStats->DEX = 2;
+				myStats->STR = 13;
 				newItem(GEM_GARNET, EXCELLENT, 0, 1, rand(), false, &myStats->inventory);
 				customItemsToGenerate -= 1;
 			}
@@ -97,6 +124,8 @@ void initGhoul(Entity* my, Stat* myStats)
 
 			// count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
+
+			my->setHardcoreStats(*myStats);
 
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
 			switch ( defaultItems )
@@ -127,7 +156,7 @@ void initGhoul(Entity* my, Stat* myStats)
 	}
 
 	// torso
-	Entity* entity = newEntity(247, 0, map.entities);
+	Entity* entity = newEntity(247, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -143,9 +172,10 @@ void initGhoul(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right leg
-	entity = newEntity(251, 0, map.entities);
+	entity = newEntity(251, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -161,9 +191,10 @@ void initGhoul(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left leg
-	entity = newEntity(250, 0, map.entities);
+	entity = newEntity(250, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -179,9 +210,10 @@ void initGhoul(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right arm
-	entity = newEntity(249, 0, map.entities);
+	entity = newEntity(249, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -197,9 +229,10 @@ void initGhoul(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(248, 0, map.entities);
+	entity = newEntity(248, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -215,6 +248,7 @@ void initGhoul(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 }
 
 void actGhoulLimb(Entity* my)

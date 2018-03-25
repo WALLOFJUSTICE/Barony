@@ -330,7 +330,7 @@ void actTrap(Entity* my)
 		my->switchUpdateNeighbors();
 	}
 
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
 		if ( entity->behavior == &actPlayer || entity->behavior == &actItem || entity->behavior == &actMonster || entity->behavior == &actBoulder )
@@ -367,7 +367,7 @@ void actTrapPermanent(Entity* my)
 
 	if ( !strcmp(map.name, "Boss") )
 	{
-		for ( node = map.entities->first; node != NULL; node = node->next )
+		for ( node = map.creatures->first; node != nullptr; node = node->next ) //Only looking at players? Don't search full map.entities.
 		{
 			entity = (Entity*)node->element;
 			if ( entity->behavior == &actPlayer )
@@ -379,6 +379,46 @@ void actTrapPermanent(Entity* my)
 			}
 		}
 	}
+	else if ( !strcmp(map.name, "Sanctum") ) //TODO!!
+	{
+		if ( my->x > 50 * 16 )
+		{
+			// exit gate, act abnormal!
+			bool monsterAlive = false;
+			for ( node = map.creatures->first; node != nullptr; node = node->next )
+			{
+				entity = (Entity*)node->element;
+				if ( entity->behavior == &actMonster && (entity->getRace() == LICH_FIRE || entity->getRace() == LICH_ICE) )
+				{
+					monsterAlive = true;
+				}
+			}
+			if ( !monsterAlive )
+			{
+				// turn on when safe.
+				TRAPPERMANENT_ON = 1;
+			}
+		}
+		else if ( my->x < 27 * 16 )
+		{
+			// entry gates, act normal!
+		}
+		else
+		{
+			// fight trigger plates, wait for players to assemble.
+			for ( node = map.creatures->first; node != nullptr; node = node->next ) //Only looking at players? Don't search full map.entities.
+			{
+				entity = (Entity*)node->element;
+				if ( entity->behavior == &actPlayer )
+				{
+					if ( entity->x < 29 * 16 )   // hardcoded, I know...
+					{
+						return;
+					}
+				}
+			}
+		}
+	}
 
 	if ( TRAPPERMANENT_ON )
 	{
@@ -386,7 +426,7 @@ void actTrapPermanent(Entity* my)
 	}
 	else
 	{
-		for ( node = map.entities->first; node != NULL; node = node->next )
+		for ( node = map.entities->first; node != nullptr; node = node->next )
 		{
 			entity = (Entity*)node->element;
 			if ( entity->behavior == &actPlayer || entity->behavior == &actItem || entity->behavior == &actMonster || entity->behavior == &actBoulder )

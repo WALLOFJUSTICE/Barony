@@ -10,9 +10,11 @@
 -------------------------------------------------------------------------------*/
 #include <sstream>
 #include "../main.hpp"
+#include "../files.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
 #include "../items.hpp"
+#include "../init.hpp"
 #include "../book.hpp"
 #include "../sound.hpp"
 #include "../menu.hpp"
@@ -24,6 +26,8 @@
 
 bool spamming = false;
 bool showfirst = false;
+bool logCheckObstacle = false;
+int logCheckObstacleCount = 0;
 
 /*-------------------------------------------------------------------------------
 
@@ -153,6 +157,27 @@ void consoleCommand(char* command_str)
 			if ( strstr(items[c].name_identified, name) )
 			{
 				dropItem(newItem(static_cast<ItemType>(c), WORN, -2, 1, rand(), false, &stats[clientnum]->inventory), 0);
+				break;
+			}
+		}
+		if ( c == NUMITEMS )
+		{
+			messagePlayer(clientnum, language[278], name);
+		}
+	}
+	else if ( !strncmp(command_str, "/spawnblessed ", 14) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		strcpy(name, command_str + 14);
+		for ( c = 0; c < NUMITEMS; ++c )
+		{
+			if ( strstr(items[c].name_identified, name) )
+			{
+				dropItem(newItem(static_cast<ItemType>(c), WORN, 2, 1, rand(), false, &stats[clientnum]->inventory), 0);
 				break;
 			}
 		}
@@ -312,6 +337,10 @@ void consoleCommand(char* command_str)
 	else if ( !strncmp(command_str, "/spam", 5) )
 	{
 		spamming = !(spamming);
+	}
+	else if ( !strncmp(command_str, "/logobstacle", 12) )
+	{
+		logCheckObstacle = !(logCheckObstacle);
 	}
 	else if ( !strncmp(command_str, "/showfirst", 10) )
 	{
@@ -515,6 +544,11 @@ void consoleCommand(char* command_str)
 		{
 			impulses[IN_USE] = atoi(&command_str[6]);
 			printlog( "Bound IN_USE: %d\n", atoi(&command_str[6]));
+		}
+		else if ( strstr(command_str, "IN_AUTOSORT") )
+		{
+			impulses[IN_AUTOSORT] = atoi(&command_str[6]);
+			printlog("Bound IN_AUTOSORT: %d\n", atoi(&command_str[6]));
 		}
 		else
 		{
@@ -739,6 +773,25 @@ void consoleCommand(char* command_str)
 			messagePlayer(clientnum, language[299]);
 		}
 	}
+	else if ( !strncmp(command_str, "/damage ", 8) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		int amount = atoi(&command_str[8]);
+
+		players[clientnum]->entity->modHP(-amount);
+
+		messagePlayer(clientnum, "Damaging you by %d. New health: %d", amount, stats[clientnum]->HP);
+	}
 	else if (!strncmp(command_str, "/ip ", 4))
 	{
 		if ( command_str[4] != 0 )
@@ -758,6 +811,10 @@ void consoleCommand(char* command_str)
 	else if (!strncmp(command_str, "/noblood", 8))
 	{
 		spawn_blood = (spawn_blood == false);
+	}
+	else if (!strncmp(command_str, "/nolightflicker", 15))
+	{
+		flickerLights = (flickerLights == false);
 	}
 	else if (!strncmp(command_str, "/colorblind", 11))
 	{
@@ -796,7 +853,7 @@ void consoleCommand(char* command_str)
 			net_packet->address.host = net_server.host;
 			net_packet->address.port = net_server.port;
 			net_packet->len = 5;
-			sendPacket(net_sock, -1, net_packet, 0);
+			sendPacketSafe(net_sock, -1, net_packet, 0);
 			//messagePlayer(clientnum, language[299]);
 		}
 	}
@@ -839,6 +896,11 @@ void consoleCommand(char* command_str)
 			//messagePlayer(clientnum, language[299]);
 		}
 	}
+	else if ( !strncmp(command_str, "/jumplevel ", 11) )
+	{
+		skipLevelsOnLoad = atoi((char*)(command_str + 11));
+		consoleCommand("/nextlevel");
+	}
 	else if ( !strncmp(command_str, "/maxout3", 8) )
 	{
 		if ( !(svFlags & SV_FLAG_CHEATS) )
@@ -851,7 +913,7 @@ void consoleCommand(char* command_str)
 		{
 			int c;
 			Stat* myStats = stats[0];
-			skipLevelsOnLoad = 26;
+			skipLevelsOnLoad = 31;
 			for ( c = 0; c < 24; c++ )
 			{
 				consoleCommand("/levelup");
@@ -874,6 +936,53 @@ void consoleCommand(char* command_str)
 			while ( myStats->PROFICIENCIES[PRO_APPRAISAL] < 50 )
 			{
 				consoleCommand("/levelskill 3");
+			}
+		}
+		else
+		{
+			messagePlayer(clientnum, language[299]);
+		}
+	}
+	else if ( !strncmp(command_str, "/maxout4", 8) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer == SINGLE )
+		{
+			int c;
+			Stat* myStats = stats[0];
+			for ( c = 0; c < 35; c++ )
+			{
+				consoleCommand("/levelup");
+			}
+			for ( c = 0; c < NUM_HOTBAR_SLOTS; c++ )
+			{
+				hotbar[c].item = 0;
+			}
+			myStats->weapon = newItem(STEEL_SWORD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(CROSSBOW, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(MAGICSTAFF_LIGHT, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->shield = newItem(STEEL_SHIELD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->helmet = newItem(HAT_HOOD, SERVICABLE, 0, 1, 2, true, &myStats->inventory);
+			myStats->shoes = newItem(STEEL_BOOTS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->breastplate = newItem(STEEL_BREASTPIECE, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->gloves = newItem(GAUNTLETS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->cloak = newItem(CLOAK_BLACK, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			//consoleCommand("/nextlevel");
+			for ( c = 0; c < NUMPROFICIENCIES; c++ )
+			{
+				if ( c != PRO_STEALTH )
+				{
+					while ( stats[clientnum]->PROFICIENCIES[c] < 100 )
+					{
+						//++stats[clientnum]->PROFICIENCIES[c];
+						players[clientnum]->entity->increaseSkill(c);
+					}
+				}
 			}
 		}
 		else
@@ -928,12 +1037,34 @@ void consoleCommand(char* command_str)
 			return;
 		}
 
-		if (multiplayer == SINGLE)
+		if ( multiplayer == SINGLE )
 		{
 			Stat* tempStats = players[clientnum]->entity->getStats();
-			if (tempStats)
+			if ( tempStats )
 			{
 				tempStats->HUNGER = std::max(0, tempStats->HUNGER - 100);
+			}
+		}
+		else
+		{
+			messagePlayer(clientnum, language[299]);
+		}
+	}
+	else if (!strncmp(command_str, "/poison", 7))
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer == SINGLE )
+		{
+			Stat* tempStats = players[clientnum]->entity->getStats();
+			if ( tempStats )
+			{
+				tempStats->EFFECTS[EFF_POISONED] = true;
+				tempStats->EFFECTS_TIMERS[EFF_POISONED] = 600;
 			}
 		}
 		else
@@ -979,9 +1110,41 @@ void consoleCommand(char* command_str)
 	{
 		messagePlayer(clientnum, language[300], list_Size(map.entities));
 	}
+	else if ( !strncmp(command_str, "/nummonsters2", 13) )
+	{
+		messagePlayer(clientnum, language[2353], list_Size(map.creatures));
+	}
 	else if ( !strncmp(command_str, "/nummonsters", 12) )
 	{
 		messagePlayer(clientnum, language[2353], nummonsters);
+	}
+	else if ( !strncmp(command_str, "/verifycreaturelist", strlen("/verifycreaturelist")) )
+	{
+		//Make sure that the number of creatures in the creature list are the real count in the game world.
+		unsigned entcount = 0;
+
+		for ( node_t* node = map.entities->first; node; node = node->next )
+		{
+			if ( node->element )
+			{
+				Entity* ent = static_cast<Entity*>(node->element);
+				if ( ent->behavior == actMonster || ent->behavior == actPlayer )
+				{
+					++entcount;
+				}
+			}
+		}
+
+		messagePlayer(clientnum, "ent count = %d, creatures list size = %d", entcount, list_Size(map.creatures));
+
+		if ( entcount == list_Size(map.creatures) )
+		{
+			messagePlayer(clientnum, "Yes, list is verified correct.");
+		}
+		else
+		{
+			messagePlayer(clientnum, "Nope, much problemo!");
+		}
 	}
 	else if ( !strncmp(command_str, "/loadmodels ", 12) )
 	{
@@ -1098,6 +1261,26 @@ void consoleCommand(char* command_str)
 			entity->vel_y = vel * sin(entity->yaw) * cos(entity->pitch) * .1;
 			entity->vel_z = vel * sin(entity->pitch) * .2;
 			entity->skill[0] = 5 + rand() % 10;
+		}
+	}
+	else if ( !(strncmp(command_str, "/cure", 5)) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		for ( c = 0; c < NUMEFFECTS; c++ )   //This does a whole lot more than just cure ailments.
+		{
+			players[clientnum]->entity->getStats()->EFFECTS[c] = false;
+			players[clientnum]->entity->getStats()->EFFECTS_TIMERS[c] = 0;
 		}
 	}
 	else if (!strncmp(command_str, "/summonall ", 11))
@@ -1266,14 +1449,33 @@ void consoleCommand(char* command_str)
 		auto_hotbar_categories[catIndex] = value;
 		printlog("Hotbar auto add category %d, value %d.", catIndex, value);
 	}
+	else if ( !strncmp(command_str, "/autosortcategory ", 18) )
+	{
+		int catIndex = atoi(&command_str[18]);
+		int value = atoi(&command_str[20]);
+		autosort_inventory_categories[catIndex] = value;
+		printlog("Autosort inventory category %d, priority %d.", catIndex, value);
+	}
 	else if ( !strncmp(command_str, "/quickaddtohotbar", 17) )
 	{
 		hotbar_numkey_quick_add = !hotbar_numkey_quick_add;
+	}
+	else if ( !strncmp(command_str, "/locksidebar", 12) )
+	{
+		lock_right_sidebar = (lock_right_sidebar == false);
+		if ( lock_right_sidebar )
+		{
+			proficienciesPage = 1;
+		}
 	}
 	else if (!strncmp(command_str, "/lang ", 6))
 	{
 		command_str[8] = 0;
 		loadLanguage(command_str + 6);
+	}
+	else if ( !strncmp(command_str, "/mapseed", 8) )
+	{
+		messagePlayer(clientnum, "%d", mapseed);
 	}
 	else if (!strncmp(command_str, "/reloadlang", 11))
 	{
@@ -1383,6 +1585,17 @@ void consoleCommand(char* command_str)
 	{
 		gamepad_menuy_invert = true;
 	}
+	else if ( !strncmp(command_str, "/numgold", 8) )
+	{
+		for ( unsigned i = 0; i < numplayers; ++i )
+		{
+			if ( client_disconnected[i] )
+			{
+				continue;
+			}
+			messagePlayer(clientnum, "Player %d has %d gold.", i, stats[i]->GOLD);
+		}
+	}
 	else if ( !strncmp(command_str, "/gold ", 5) )
 	{
 		if ( !(svFlags & SV_FLAG_CHEATS) )
@@ -1401,6 +1614,64 @@ void consoleCommand(char* command_str)
 		stats[clientnum]->GOLD = std::max(stats[clientnum]->GOLD, 0);
 
 		messagePlayer(clientnum, "Giving %d gold pieces.", amount);
+	}
+	else if ( !strncmp(command_str, "/dropgold", 9) )
+	{
+		int amount = 100;
+		if ( !stats[clientnum] )
+		{
+			return;
+		}
+		else if ( stats[clientnum]->HP <= 0 )
+		{
+			return;
+		}
+		if ( stats[clientnum]->GOLD - amount < 0 )
+		{
+			amount = stats[clientnum]->GOLD;
+		}
+		if ( amount == 0 )
+		{
+			messagePlayer(clientnum, language[2593]);
+			return;
+		}
+		stats[clientnum]->GOLD -= amount;
+		stats[clientnum]->GOLD = std::max(stats[clientnum]->GOLD, 0);
+
+		if ( multiplayer == CLIENT )
+		{
+			//Tell the server we dropped some gold.
+			strcpy((char*)net_packet->data, "DGLD");
+			net_packet->data[4] = clientnum;
+			SDLNet_Write32(amount, &net_packet->data[5]);
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 9;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+		}
+		else
+		{
+			//Drop gold.
+			int x = std::min<int>(std::max(0, (int)(players[clientnum]->entity->x / 16)), map.width - 1);
+			int y = std::min<int>(std::max(0, (int)(players[clientnum]->entity->y / 16)), map.height - 1);
+			if ( map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height] )
+			{
+				entity = newEntity(130, 0, map.entities, nullptr); // 130 = goldbag model
+				entity->sizex = 4;
+				entity->sizey = 4;
+				entity->x = players[clientnum]->entity->x;
+				entity->y = players[clientnum]->entity->y;
+				entity->z = 6;
+				entity->yaw = (rand() % 360) * PI / 180.0;
+				entity->flags[PASSABLE] = true;
+				entity->flags[UPDATENEEDED] = true;
+				entity->behavior = &actGoldBag;
+				entity->goldAmount = amount; // amount
+			}
+			playSoundEntity(players[clientnum]->entity, 242 + rand() % 4, 64);
+		}
+
+		messagePlayer(clientnum, language[2594], amount);
 	}
 	else if (!strncmp(command_str, "/minotaurlevel", 14))
 	{
@@ -1443,7 +1714,7 @@ void consoleCommand(char* command_str)
 				tmpEnt = (Entity*)tmpNode->element;
 				if ( tmpEnt->sprite == 37 )
 				{
-					tmpEnt->skill[0] += TICKS_PER_SECOND * 150;
+					tmpEnt->skill[0] += TICKS_PER_SECOND * 210;
 					return;
 				}
 			}

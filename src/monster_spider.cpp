@@ -93,6 +93,8 @@ void initSpider(Entity* my, Stat* myStats)
 			// count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
 
+			my->setHardcoreStats(*myStats);
+
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
 			switch ( defaultItems )
 			{
@@ -110,7 +112,7 @@ void initSpider(Entity* my, Stat* myStats)
 	}
 
 	// right pedipalp
-	Entity* entity = newEntity(268, 0, map.entities);
+	Entity* entity = newEntity(268, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -126,9 +128,10 @@ void initSpider(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left pedipalp
-	entity = newEntity(268, 0, map.entities);
+	entity = newEntity(268, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -144,12 +147,13 @@ void initSpider(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// eight legs :)
 	for ( c = 0; c < 8; c++ )
 	{
 		// "thigh"
-		entity = newEntity(269, 0, map.entities);
+		entity = newEntity(269, 0, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = my->getUID();
@@ -166,9 +170,10 @@ void initSpider(Entity* my, Stat* myStats)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 		// "shin"
-		entity = newEntity(270, 0, map.entities);
+		entity = newEntity(270, 0, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = my->getUID();
@@ -184,6 +189,7 @@ void initSpider(Entity* my, Stat* myStats)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 	}
 }
 

@@ -12,6 +12,7 @@
 #include "main.hpp"
 #include "editor.hpp"
 #include "entity.hpp"
+#include "files.hpp"
 #include "player.hpp"
 
 button_t* butX;
@@ -77,6 +78,32 @@ button_t* butItemCancel;
 button_t* butItemX;
 
 bool exitFromItemWindow = false;
+
+static void updateMapNames()
+{
+	DIR* dir;
+	struct dirent* ent;
+	mapNames.clear();
+	// file list
+	if ( (dir = openDataDir("maps/")) != NULL )
+	{
+		while ( (ent = readdir(dir)) != NULL )
+		{
+			if ( strstr(ent->d_name, ".lmp") != NULL || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, ".") )
+			{
+				mapNames.push_back(ent->d_name);
+			}
+		}
+		closedir(dir);
+	}
+	else
+	{
+		// could not open directory
+		printlog("failed to open map directory for viewing!\n");
+		return;
+	}
+	std::sort(mapNames.begin(), mapNames.end());
+}
 
 // Corner buttons
 
@@ -427,7 +454,6 @@ void buttonOpen(button_t* my)
 
 	inputstr = filename;
 	cursorflash = ticks;
-	d_names_length = 0;
 	menuVisible = 0;
 	subwindow = 1;
 	openwindow = 1;
@@ -469,51 +495,7 @@ void buttonOpen(button_t* my)
 	button->visible = 1;
 	button->focused = 1;
 
-	// file list
-	if ( (dir = openDataDir("maps/")) != NULL )
-	{
-		while ( (ent = readdir(dir)) != NULL )
-		{
-			if ( strstr(ent->d_name, ".lmp") != NULL || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, ".") )
-			{
-				d_names_length++;
-			}
-		}
-		closedir(dir);
-	}
-	else
-	{
-		// could not open directory
-		printlog("failed to open map directory for viewing!\n");
-		d_names = NULL;
-		d_names_length = 0;
-		return;
-	}
-	if ( d_names_length > 0 )
-	{
-		d_names = (char**) malloc(sizeof(char*)*d_names_length);
-		for ( c = 0; c < d_names_length; c++ )
-		{
-			d_names[c] = (char*) malloc(sizeof(char) * FILENAME_MAX);
-		}
-		c = 0;
-		if ( (dir = openDataDir("maps/")) != NULL )
-		{
-			while ( (ent = readdir(dir)) != NULL )
-			{
-				if ( strstr(ent->d_name, ".lmp") != NULL || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, ".") )
-				{
-					strcpy(d_names[c], ent->d_name);
-					c++;
-				}
-			}
-			closedir(dir);
-		}
-	}
-	else
-	{
-		d_names = NULL;
-	}
+	updateMapNames();
 }
 
 void buttonOpenConfirm(button_t* my)
@@ -534,7 +516,7 @@ void buttonOpenConfirm(button_t* my)
 		strcat(message, " ");
 	}
 	printlog("opening map file '%s'...\n", filename);
-	if (loadMap(filename, &map, map.entities) == -1)
+	if (loadMap(filename, &map, map.entities, map.creatures) == -1)
 	{
 		strcat(message, "Failed to open ");
 		strcat(message, filename);
@@ -593,12 +575,8 @@ void buttonSave(button_t* my)
 void buttonSaveAs(button_t* my)
 {
 	button_t* button;
-	DIR* dir;
-	struct dirent* ent;
-	unsigned long c = 0;
 
 	cursorflash = ticks;
-	d_names_length = 0;
 	menuVisible = 0;
 	subwindow = 1;
 	savewindow = 1;
@@ -640,51 +618,7 @@ void buttonSaveAs(button_t* my)
 	button->visible = 1;
 	button->focused = 1;
 
-	// file list
-	if ( (dir = openDataDir("maps/")) != NULL )
-	{
-		while ( (ent = readdir(dir)) != NULL )
-		{
-			if ( strstr(ent->d_name, ".lmp") != NULL || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, ".") )
-			{
-				d_names_length++;
-			}
-		}
-		closedir(dir);
-	}
-	else
-	{
-		// could not open directory
-		printlog("failed to open map directory for viewing!\n");
-		d_names = NULL;
-		d_names_length = 0;
-		return;
-	}
-	if ( d_names_length > 0 )
-	{
-		d_names = (char**) malloc(sizeof(char*)*d_names_length);
-		for ( c = 0; c < d_names_length; c++ )
-		{
-			d_names[c] = (char*) malloc(sizeof(char) * FILENAME_MAX);
-		}
-		c = 0;
-		if ( (dir = openDataDir("maps/")) != NULL )
-		{
-			while ( (ent = readdir(dir)) != NULL )
-			{
-				if ( strstr(ent->d_name, ".lmp") != NULL || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, ".") )
-				{
-					strcpy(d_names[c], ent->d_name);
-					c++;
-				}
-			}
-			closedir(dir);
-		}
-	}
-	else
-	{
-		d_names = NULL;
-	}
+	updateMapNames();
 }
 
 // Edit menu
@@ -787,7 +721,7 @@ void buttonCycleSprites(button_t* my)
 	Entity* entity = nullptr;
 	Entity* lastEntity = nullptr;
 	bool entityWasSelected = false;
-	for ( node_t* node = map.entities->first; node != NULL; node = node->next )
+	for ( node_t* node = map.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
 		pos.x = entity->x * (TEXTURESIZE / 16) - camx;
@@ -810,7 +744,7 @@ void buttonCycleSprites(button_t* my)
 		lastSelectedEntity = nullptr;
 
 		// create new entity on the list, copying and removing the previous last one.
-		entity = newEntity(lastEntity->sprite, 0, map.entities);
+		entity = newEntity(lastEntity->sprite, 0, map.entities, nullptr);
 		setSpriteAttributes(entity, lastEntity, lastEntity);
 		list_RemoveNode(lastEntity->mynode);
 
@@ -929,7 +863,7 @@ void buttonAttributes(button_t* my)
 	snprintf(skyboxtext, 4, "%d", map.skybox);
 	for ( int z = 0; z < MAPFLAGS; ++z )
 	{
-		if ( z < MAP_FLAG_GENBYTES1 && z > MAP_FLAG_GENBYTES6 )
+		if ( z < MAP_FLAG_GENBYTES1 || z > MAP_FLAG_GENBYTES6 )
 		{
 			snprintf(mapflagtext[z], 4, "%d", map.flags[z]);
 		}
@@ -1329,17 +1263,6 @@ void buttonCloseSubwindow(button_t* my)
 	openwindow = 0;
 	savewindow = 0;
 	editproperty = 0;
-	if ( d_names != NULL )
-	{
-		for ( c = 0; c < d_names_length; c++ )
-			if ( d_names[c] != NULL )
-			{
-				free(d_names[c]);
-				d_names[c] = NULL;
-			}
-		free(d_names);
-		d_names = NULL;
-	}
 	strcpy(filename, oldfilename);
 }
 
@@ -1581,6 +1504,21 @@ void buttonSpriteProperties(button_t* my)
 			suby1 = yres / 2 - 60;
 			suby2 = yres / 2 + 60;
 			strcpy(subtext, "Furniture Properties:");
+			break;
+		case 13:
+			snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity->floorDecorationModel));
+			snprintf(spriteProperties[1], 4, "%d", static_cast<int>(selectedEntity->floorDecorationRotation));
+			snprintf(spriteProperties[2], 5, "%d", static_cast<int>(selectedEntity->floorDecorationHeightOffset));
+			inputstr = spriteProperties[0];
+			cursorflash = ticks;
+			menuVisible = 0;
+			subwindow = 1;
+			newwindow = 15;
+			subx1 = xres / 2 - 200;
+			subx2 = xres / 2 + 200;
+			suby1 = yres / 2 - 85;
+			suby2 = yres / 2 + 85;
+			strcpy(subtext, "Floor Decoration Model Properties:");
 			break;
 		default:
 			strcpy(message, "No properties available for current sprite.");
@@ -2424,6 +2362,11 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				break;
 			case 12: //furniture
 				selectedEntity->furnitureDir = (Sint32)atoi(spriteProperties[0]);
+				break;
+			case 13: //floor decoration
+				selectedEntity->floorDecorationModel = (Sint32)atoi(spriteProperties[0]);
+				selectedEntity->floorDecorationRotation = (Sint32)atoi(spriteProperties[1]);
+				selectedEntity->floorDecorationHeightOffset = (Sint32)atoi(spriteProperties[2]);
 				break;
 			default:
 				break;

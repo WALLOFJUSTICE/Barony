@@ -14,6 +14,7 @@
 #include "main.hpp"
 #include "game.hpp"
 #include "stat.hpp"
+#include "light.hpp"
 #include "monster.hpp"
 
 // entity flags
@@ -50,13 +51,6 @@ class Entity
 	Sint32& circuit_status;	// Use CIRCUIT_OFF and CIRCUIT_ON.
 	Sint32& switch_power;	// Switch/mechanism power status.
 	Sint32& chanceToPutOutFire; // skill[37] - Value between 5 and 10, with 10 being the default starting chance, and 5 being absolute minimum
-	Sint32& char_gonnavomit; //skill[26]
-	Sint32& char_heal; //skill[22]
-	Sint32& char_energize; //skill[23]
-	Sint32& char_torchtime; //skill[25]
-	Sint32& char_poison; //skill[21]
-	Sint32& circuit_status; //Use CIRCUIT_OFF and CIRCUIT_ON. skill[28]
-	Sint32& switch_power; //Switch/mechanism power status. skill[0]
 
 	//Chest skills.
 	//skill[0]
@@ -120,7 +114,7 @@ class Entity
 	static const int SWITCH_POWERED = 1;
 	Uint32 uid;                    // entity uid
 public:
-	Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist);
+	Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist, list_t* creaturelist);
 	~Entity();
 
 
@@ -187,8 +181,14 @@ public:
 	Sint32& monsterPathBoundaryXEnd; //skill[16]
 	Sint32& monsterPathBoundaryYEnd; //skill[17]
 	Sint32& monsterStoreType; //skill[18]
-
+	Sint32& monsterStrafeDirection; //skill[39]
+	Sint32& monsterPathCount; //skill[38]
 	real_t& monsterLookDir; //fskill[4]
+	Sint32& monsterEntityRenderAsTelepath; //skill[41]
+
+	//--PUBLIC PLAYER SKILLS--
+	Sint32& playerLevelEntrySpeech; //skill[18]
+	Sint32& playerAliveTime; //skill[12]
 
 	//--PUBLIC MONSTER ANIMATION SKILLS--
 	Sint32& monsterAnimationLimbDirection;  //skill[20]
@@ -200,7 +200,16 @@ public:
 
 	//--PUBLIC MONSTER LICH SKILLS--
 	Sint32& monsterLichFireMeleeSeq; //skill[34]
-	
+	Sint32& monsterLichFireMeleePrev; //skill[35]
+	Sint32& monsterLichIceCastSeq; //skill[34]
+	Sint32& monsterLichIceCastPrev; //skill[35]
+	Sint32& monsterLichMagicCastCount; //skill[37] count the basic spell attacks in the seq and switch things up if too many in a row.
+	Sint32& monsterLichMeleeSwingCount; //skill[38] count the 'regular' attacks in the seq and switch things up if too many in a row.
+	Sint32& monsterLichBattleState; //skill[27] used to track hp/battle progress
+	Sint32& monsterLichTeleportTimer; //skill[40] used to track conditions to teleport away.
+	Sint32& monsterLichAllyStatus; //skill[18] used to track if allies are alive.
+	Sint32& monsterLichAllyUID; //skill[17] used to track lich ally uid.
+
 	//--PUBLIC POWER CRYSTAL SKILLS--
 	Sint32& crystalTurnReverse; // skill[9] 0 Clockwise, 1 Anti-Clockwise
 	Sint32& crystalNumElectricityNodes; // skill[6] how many nodes to spawn in the facing dir
@@ -287,6 +296,11 @@ public:
 	//--PUBLIC CEILING TILE SKILLS--
 	Sint32& ceilingTileModel; //skill[0]
 
+	//--PUBLIC FLOOR DECORATION MODELS--
+	Sint32& floorDecorationModel; //skill[0]
+	Sint32& floorDecorationRotation; //skill[1]
+	Sint32& floorDecorationHeightOffset; //skill[3] positive numbers will lift the model higher
+
 	//--PUBLIC SPELL TRAP SKILLS--
 	Sint32& spellTrapType; //skill[0]
 	Sint32& spellTrapRefire; //skill[1]
@@ -318,11 +332,27 @@ public:
 	//--PUBLIC ITEM SKILLS--
 	Sint32& itemNotMoving; // skill[18]
 	Sint32& itemNotMovingClient; // skill[19]
+	Sint32& itemSokobanReward; // skill[20]
+
+	//--PUBLIC ACTMAGIC SKILLS (Standard projectiles)--
+	Sint32& actmagicIsVertical; //skill[6]
+	Sint32& actmagicIsOrbiting; //skill[7]
+	Sint32& actmagicOrbitDist; //skill[8]
+	Sint32&	actmagicOrbitVerticalDirection; //skill[9]
+	Sint32&	actmagicOrbitLifetime; //skill[10]
+	real_t actmagicOrbitVerticalSpeed; //fskill[2]
+	real_t actmagicOrbitStartZ; //fskill[3]
+	
+	//--PUBLIC GOLD SKILLS--
+	Sint32& goldAmount; //skill[0]
+	Sint32& goldAmbience; //skill[1]
+	Sint32& goldSokoban; //skill[2]
 
 	void pedestalOrbInit(); // init orb properties
 
 	// a pointer to the entity's location in a list (ie the map list of entities)
 	node_t* mynode;
+	node_t* myCreatureListNode;
 
 	list_t* path; // pathfinding stuff. Most of the code currently stuffs that into children, but the magic code makes use of this variable instead.
 
@@ -456,9 +486,11 @@ public:
 	void actPedestalBase();
 	void actPedestalOrb();
 	void actMidGamePortal();
+	void actExpansionEndGamePortal();
 	void actTeleporter();
 	void actMagicTrapCeiling();
 	bool magicFallingCollision();
+	bool magicOrbitingCollision();
 	void actFurniture();
 	void actPistonCam();
 	void actStalagCeiling();
@@ -534,6 +566,13 @@ public:
 	void incubusTeleportRandom();
 	//Shadow teleport spells.
 	void shadowTeleportToTarget(const Entity* target, int range);
+	//Lich effects
+	void lichFireTeleport();
+	void lichIceTeleport();
+	void lichIceCreateCannon();
+	Entity* lichThrowProjectile(real_t angle);
+	void lichIceSummonMonster(Monster creature);
+	void lichFireSummonMonster(Monster creature);
 	// check for nearby items to add to monster's inventory
 	void monsterAddNearbyItemToInventory(Stat* myStats, int rangeToFind, int maxInventoryItems);
 	// degrade chosen armor piece by 1 on entity, update clients.
@@ -542,8 +581,12 @@ public:
 	bool shouldRetreat(Stat& myStats);
 	// check if monster should retreat or stand still when less than given distance
 	bool backupWithRangedWeapon(Stat& myStats, int dist, int hasrangedweapon);
-	// calc time required for a mana regen tick.
+	// calc time required for a mana regen tick, uses equipped gear as modifiers.
 	int getManaRegenInterval(Stat& myStats); 
+	// calc time required for a hp regen tick, uses equipped gear as modifiers.
+	int getHealthRegenInterval(Stat& myStats);
+	// get mana regen from stats and proficiencies only.
+	int getBaseManaRegen(Stat& myStats);
 	// calc damage/effects for ranged weapons.
 	void setRangedProjectileAttack(Entity& marksman, Stat& myStats);
 	real_t yawDifferenceFromPlayer(int player); // calc targets yaw compared to a player, returns 0 - 2 * PI, where > PI is facing towards player.
@@ -560,8 +603,9 @@ public:
 	/*
 	 * If set on a player, will call serverUpdateEffects() on the player.
 	 * @param guarantee: Causes serverUpdateEffectsForEntity() to use sendPacketSafe() rather than just sendPacket().
+	 * Returns true on successfully setting value.
 	 */
-	void setEffect(int effect, bool value, int duration, bool updateClients, bool guarantee = true);
+	bool setEffect(int effect, bool value, int duration, bool updateClients, bool guarantee = true);
 
 	/*
 	 * @param state: required to let the entity know if it should enter MONSTER_STATE_PATH, MONSTER_STATE_ATTACK, etc.
@@ -644,6 +688,21 @@ public:
 	 * Calculations for reductions is outlined in this function
 	 */
 	void SetEntityOnFire();
+
+	void addToCreatureList(list_t* list);
+	std::vector<Entity*> bodyparts;
+
+	// special magic functions/trickery
+	void castFallingMagicMissile(int spellID, real_t distFromCaster, real_t angleFromCasterDirection, int heightDelay);
+	Entity* castOrbitingMagicMissile(int spellID, real_t distFromCaster, real_t angleFromCasterDirection, int duration);
+	void lichFireSetNextAttack(Stat& myStats);
+	void lichIceSetNextAttack(Stat& myStats);
+
+	void monsterMoveBackwardsAndPath(); // monster tries to move backwards in a cross shaped area if stuck against an entity.
+	bool monsterHasLeader(); // return true if monsterstats->leader_uid is not 0.
+	int getMagicResistance(); // returns the value of magic resistance of a monster.
+	void playerLevelEntrySpeechSecond(); // handle secondary voice lines for post-herx content
+	void setHardcoreStats(Stat& stats); // set monster stats for hardcore mode.
 };
 
 extern list_t entitiesToDelete[MAXPLAYERS];
@@ -681,7 +740,8 @@ list_t* checkTileForEntity(int x, int y); //Don't forget to free the list return
 void getItemsOnTile(int x, int y, list_t** list);
 
 //--- Entity act* functions ---
-
+void actMonster(Entity* my);
+void actPlayer(Entity* my);
 
 /*
  * NOTE: Potion effects
@@ -743,6 +803,9 @@ void actPistonCam(Entity* my);
 
 void actColumn(Entity* my);
 
+//--Floor vegetation--
+void actFloorDecoration(Entity* my);
+
 //---Magic entity functions---
 void actMagiclightBall(Entity* my);
 
@@ -751,9 +814,9 @@ void actAmbientParticleEffectIdle(Entity* my);
 
 //checks if a sprite falls in certain sprite ranges
 
-static const int NUM_ITEM_STRINGS = 219;
-static const int NUM_ITEM_STRINGS_BY_TYPE = 90;
-static const int NUM_EDITOR_SPRITES = 127;
+static const int NUM_ITEM_STRINGS = 220;
+static const int NUM_ITEM_STRINGS_BY_TYPE = 94;
+static const int NUM_EDITOR_SPRITES = 130;
 static const int NUM_EDITOR_TILES = 234;
 
 // furniture types.
@@ -802,3 +865,8 @@ char* playerClassDescription(int classnum);
 //Some testing functions/commands.
 Entity* summonChest(long x, long y);
 
+//Various settings variables regarding entities.
+extern bool flickerLights;
+
+//Boulder functions.
+void boulderSokobanOnDestroy(bool pushedOffLedge);

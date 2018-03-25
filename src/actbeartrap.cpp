@@ -56,7 +56,7 @@ void actBeartrap(Entity* my)
 		{
 			if (inrange[i])
 			{
-				Entity* entity = newEntity(-1, 1, map.entities);
+				Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
 				entity->flags[INVISIBLE] = true;
 				entity->flags[UPDATENEEDED] = true;
 				entity->flags[PASSABLE] = true;
@@ -91,7 +91,7 @@ void actBeartrap(Entity* my)
 
 	// launch beartrap
 	node_t* node;
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.creatures->first; node != nullptr; node = node->next )
 	{
 		Entity* entity = (Entity*)node->element;
 		if ( my->parent == entity->getUID() )
@@ -110,10 +110,8 @@ void actBeartrap(Entity* my)
 				}
 				if ( entityDist(my, entity) < 6.5 )
 				{
-					stat->EFFECTS[EFF_PARALYZED] = true;
-					stat->EFFECTS_TIMERS[EFF_PARALYZED] = 200;
-					stat->EFFECTS[EFF_BLEEDING] = true;
-					stat->EFFECTS_TIMERS[EFF_BLEEDING] = 300;
+					entity->setEffect(EFF_PARALYZED, true, 200, false);
+					entity->setEffect(EFF_BLEEDING, true, 300, false);
 					int damage = 10 + 3 * (BEARTRAP_STATUS + BEARTRAP_BEATITUDE);
 					Stat* trapperStat = nullptr;
 					if ( parent && (trapperStat = parent->getStats()) )
@@ -198,7 +196,7 @@ void actBeartrap(Entity* my)
 					if ( BEARTRAP_STATUS < DECREPIT )
 					{
 						// make first arm
-						entity = newEntity(668, 1, map.entities);
+						entity = newEntity(668, 1, map.entities, nullptr); //Special effect entity.
 						entity->behavior = &actBeartrapLaunched;
 						entity->flags[PASSABLE] = true;
 						entity->flags[UPDATENEEDED] = true;
@@ -210,7 +208,7 @@ void actBeartrap(Entity* my)
 						entity->roll = 0;
 
 						// and then the second
-						entity = newEntity(668, 1, map.entities);
+						entity = newEntity(668, 1, map.entities, nullptr); //Special effect entity.
 						entity->behavior = &actBeartrapLaunched;
 						entity->flags[PASSABLE] = true;
 						entity->flags[UPDATENEEDED] = true;

@@ -19,6 +19,7 @@
 #include "net.hpp"
 #include "collision.hpp"
 #include "player.hpp"
+#include "scores.hpp"
 
 void initLich(Entity* my, Stat* myStats)
 {
@@ -42,6 +43,19 @@ void initLich(Entity* my, Stat* myStats)
 			if ( !myStats->leader_uid )
 			{
 				myStats->leader_uid = 0;
+			}
+
+			if ( myStats->HP == 1000 )
+			{
+				for ( c = 0; c < MAXPLAYERS; ++c )
+				{
+					if ( !client_disconnected[c] )
+					{
+						myStats->MAXHP += 250;
+					}
+				}
+				myStats->HP = myStats->MAXHP;
+				myStats->OLDHP = myStats->HP;
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
@@ -68,6 +82,8 @@ void initLich(Entity* my, Stat* myStats)
 														 // count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
 
+			my->setHardcoreStats(*myStats);
+
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
 			switch ( defaultItems )
 			{
@@ -90,7 +106,7 @@ void initLich(Entity* my, Stat* myStats)
 	}
 
 	// right arm
-	Entity* entity = newEntity(276, 0, map.entities);
+	Entity* entity = newEntity(276, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -106,9 +122,10 @@ void initLich(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(275, 0, map.entities);
+	entity = newEntity(275, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -124,9 +141,10 @@ void initLich(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// head
-	entity = newEntity(277, 0, map.entities);
+	entity = newEntity(277, 0, map.entities, nullptr); //Limb entity.
 	entity->yaw = my->yaw;
 	entity->sizex = 4;
 	entity->sizey = 4;
@@ -143,6 +161,7 @@ void initLich(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 }
 
 void lichDie(Entity* my)
@@ -195,7 +214,7 @@ void lichDie(Entity* my)
 	//playSoundEntity(my, 94, 128);
 	my->removeLightField();
 	// kill all other monsters on the level
-	for ( node = map.entities->first; node != NULL; node = nextnode )
+	for ( node = map.creatures->first; node != nullptr; node = nextnode ) //Only searching for monsters, so don't search full map.entities.
 	{
 		nextnode = node->next;
 		Entity* entity = (Entity*)node->element;
@@ -208,17 +227,26 @@ void lichDie(Entity* my)
 			spawnExplosion(entity->x, entity->y, entity->z);
 			Stat* stats = entity->getStats();
 			if ( stats )
+			{
 				if ( stats->type != HUMAN )
 				{
 					stats->HP = 0;
 				}
+			}
 		}
 	}
 	for ( c = 0; c < MAXPLAYERS; c++ )
 	{
 		playSoundPlayer(c, 153, 128);
 		steamAchievementClient(c, "BARONY_ACH_LICH_HUNTER");
+		if ( completionTime < 20 * 60 * TICKS_PER_SECOND )
+		{
+			//messagePlayer(c, "completion time: %d", completionTime);
+			steamAchievementClient(c, "BARONY_ACH_BOOTS_OF_SPEED");
+		}
+
 	}
+
 	if ( multiplayer == SERVER )
 	{
 		for ( c = 1; c < MAXPLAYERS; c++ )
@@ -388,8 +416,8 @@ void lichAnimate(Entity* my, double dist)
 			{
 				entity->z -= 4.25;
 				node_t* tempNode;
-				Entity* playertotrack = NULL;
-				for ( tempNode = map.entities->first; tempNode != NULL; tempNode = tempNode->next )
+				Entity* playertotrack = nullptr;
+				for ( tempNode = map.creatures->first; tempNode != nullptr; tempNode = tempNode->next ) //Only searching for players, so don't search full map.entities.
 				{
 					Entity* tempEntity = (Entity*)tempNode->element;
 					double lowestdist = 5000;

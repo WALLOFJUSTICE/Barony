@@ -346,6 +346,15 @@ void Entity::actMonsterLimb(bool processLight)
 			light = lightSphereShadow(x / 16, y / 16, carryingLightSource, 50 + 15 * carryingLightSource);
 		}
 	}
+
+	if ( parentEnt && parentEnt->behavior == &actMonster && parentEnt->monsterEntityRenderAsTelepath == 1 )
+	{
+		monsterEntityRenderAsTelepath = 1;
+	}
+	else
+	{
+		monsterEntityRenderAsTelepath = 0;
+	}
 }
 
 void Entity::removeMonsterDeathNodes()
@@ -381,7 +390,7 @@ void Entity::spawnBlood(int bloodSprite)
 		{
 			if ( !checkObstacle(this->x, this->y, this, nullptr) )
 			{
-				Entity* entity = newEntity(bloodSprite, 1, map.entities);
+				Entity* entity = newEntity(bloodSprite, 1, map.entities, nullptr); //Blood/gib entity.
 				entity->x = this->x;
 				entity->y = this->y;
 				entity->z = 8 + (rand() % 20) / 100.0;

@@ -88,6 +88,11 @@ void initVampire(Entity* my, Stat* myStats)
 					}
 				}
 			}
+			else if ( !strncmp(myStats->name, "Bram Kindly", strlen("Bram Kindly")) )
+			{
+				myStats->EFFECTS[EFF_VAMPIRICAURA] = true;
+				myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
+			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
 			setRandomMonsterStats(myStats);
@@ -148,6 +153,8 @@ void initVampire(Entity* my, Stat* myStats)
 
 			// count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
+
+			my->setHardcoreStats(*myStats);
 
 			newItem(SPELLBOOK_VAMPIRIC_AURA, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
 			newItem(SPELLBOOK_DRAIN_SOUL, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
@@ -249,7 +256,7 @@ void initVampire(Entity* my, Stat* myStats)
 	}
 
 	// torso
-	Entity* entity = newEntity(438, 0, map.entities);
+	Entity* entity = newEntity(438, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -265,9 +272,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right leg
-	entity = newEntity(444, 0, map.entities);
+	entity = newEntity(444, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -283,9 +291,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left leg
-	entity = newEntity(443, 0, map.entities);
+	entity = newEntity(443, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -301,9 +310,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right arm
-	entity = newEntity(440, 0, map.entities);
+	entity = newEntity(440, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -319,9 +329,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(439, 0, map.entities);
+	entity = newEntity(439, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -337,9 +348,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// world weapon
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -356,9 +368,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// shield
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -374,9 +387,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// cloak
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -395,9 +409,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// helmet
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -416,9 +431,10 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// mask
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -437,6 +453,7 @@ void initVampire(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	if ( multiplayer == CLIENT )
 	{
@@ -464,6 +481,24 @@ void vampireDie(Entity* my)
 	playSoundEntity(my, 325 + rand() % 4, 128);
 
 	my->removeMonsterDeathNodes();
+
+	node_t* node;
+	Entity* entity = nullptr;
+	if ( multiplayer != CLIENT && !strncmp(map.name, "Bram's Castle", 13) )
+	{
+		for ( node = map.entities->first; node != nullptr; node = node->next )
+		{
+			entity = (Entity*)node->element;
+			if ( entity )
+			{
+				if ( entity->behavior == &actPortal )
+				{
+					entity->flags[INVISIBLE] = false;
+					serverUpdateEntityFlag(entity, INVISIBLE);
+				}
+			}
+		}
+	}
 
 	list_RemoveNode(my->mynode);
 	return;

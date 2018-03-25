@@ -20,6 +20,7 @@
 #include "collision.hpp"
 #include "magic/magic.hpp"
 #include "player.hpp"
+#include "colors.hpp"
 
 void initMinotaur(Entity* my, Stat* myStats)
 {
@@ -59,11 +60,13 @@ void initMinotaur(Entity* my, Stat* myStats)
 			}
 			else if ( currentlevel >= 25 )
 			{
-				myStats->HP += 200;
-				myStats->MAXHP += 200;
-				myStats->STR = 50;
+				myStats->HP += 400;
+				myStats->MAXHP += 400;
+				myStats->STR = 60;
 				myStats->DEX = 20;
 				myStats->CON = 20;
+				myStats->EFFECTS[EFF_VAMPIRICAURA] = true;
+				myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
 			}
 
 
@@ -83,6 +86,8 @@ void initMinotaur(Entity* my, Stat* myStats)
 
 														 // count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
+
+			my->setHardcoreStats(*myStats);
 
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
 
@@ -120,7 +125,7 @@ void initMinotaur(Entity* my, Stat* myStats)
 	}
 
 	// head
-	Entity* entity = newEntity(237, 0, map.entities);
+	Entity* entity = newEntity(237, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -136,9 +141,10 @@ void initMinotaur(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// chest
-	entity = newEntity(238, 0, map.entities);
+	entity = newEntity(238, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -154,9 +160,10 @@ void initMinotaur(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right leg
-	entity = newEntity(243, 0, map.entities);
+	entity = newEntity(243, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -172,9 +179,10 @@ void initMinotaur(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left leg
-	entity = newEntity(242, 0, map.entities);
+	entity = newEntity(242, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -190,9 +198,10 @@ void initMinotaur(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right arm
-	entity = newEntity(241, 0, map.entities);
+	entity = newEntity(241, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -208,9 +217,10 @@ void initMinotaur(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(240, 0, map.entities);
+	entity = newEntity(240, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -226,6 +236,7 @@ void initMinotaur(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 }
 
 void actMinotaurLimb(Entity* my)
@@ -627,7 +638,10 @@ void actMinotaurTimer(Entity* my)
 	node_t* node;
 
 	MINOTAURTIMER_LIFE++;
-	if ( MINOTAURTIMER_LIFE == TICKS_PER_SECOND * 120 && rand() % 5 == 0 )   // two minutes
+	if (( (currentlevel < 25 && MINOTAURTIMER_LIFE == TICKS_PER_SECOND * 120)
+			|| (currentlevel >= 25 && MINOTAURTIMER_LIFE == TICKS_PER_SECOND * 180)
+		)
+		&& rand() % 5 == 0 )   // two minutes if currentlevel < 25, else 3 minutes.
 	{
 		int c;
 		bool spawnedsomebody = false;
@@ -665,7 +679,10 @@ void actMinotaurTimer(Entity* my)
 			}
 		}
 	}
-	else if ( MINOTAURTIMER_LIFE >= TICKS_PER_SECOND * 150 && !MINOTAURTIMER_ACTIVE )     // two and a half minutes
+	else if (( (currentlevel < 25 && MINOTAURTIMER_LIFE >= TICKS_PER_SECOND * 150)
+					|| (currentlevel >= 25 && MINOTAURTIMER_LIFE >= TICKS_PER_SECOND * 210)
+				)
+		&& !MINOTAURTIMER_ACTIVE )     // two and a half minutes if currentlevel < 25, else 3.5 minutes
 	{
 		Entity* monster = summonMonster(MINOTAUR, my->x, my->y);
 		if ( monster )
@@ -685,10 +702,21 @@ void actMinotaurTimer(Entity* my)
 		int c;
 		for ( c = 0; c < MAXPLAYERS; c++ )
 		{
-			playSoundPlayer(c, 120 + rand() % 3, 128);
-			Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 255);
-			messagePlayerColor(c, color, language[1116]);
-			messagePlayerColor(c, color, language[73]);
+			if ( currentlevel < 25 )
+			{
+				playSoundPlayer(c, 120 + rand() % 3, 128);
+				Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 255);
+				messagePlayerColor(c, color, language[1116]);
+				messagePlayerColor(c, color, language[73]);
+			}
+			else
+			{
+				playSoundPlayer(c, 375, 128);
+				playSoundPlayer(c, 379, 128);
+				messagePlayerColor(c, uint32ColorOrange(*mainsurface), language[1116]);
+				messagePlayerColor(c, uint32ColorOrange(*mainsurface), language[73]);
+				messagePlayerColor(c, uint32ColorBaronyBlue(*mainsurface), language[73]);
+			}
 		}
 		list_RemoveNode(my->mynode);
 		return;
@@ -707,7 +735,7 @@ void actMinotaurCeilingBuster(Entity* my)
 		int c;
 		for ( c = 0; c < 2; c++ )
 		{
-			Entity* entity = newEntity(171, 1, map.entities);
+			Entity* entity = newEntity(171, 1, map.entities, nullptr); //Particle entity.
 			entity->x = my->x - 8 + rand() % 17;
 			entity->y = my->y - 8 + rand() % 17;
 			entity->z = 10 + rand() % 3;
@@ -800,7 +828,7 @@ void actMinotaurCeilingBuster(Entity* my)
 					}
 				}
 				node_t* node, *nextnode;
-				for ( node = map.entities->first; node != NULL; node = nextnode )
+				for ( node = map.entities->first; node != nullptr; node = nextnode )
 				{
 					nextnode = node->next;
 					Entity* entity = (Entity*)node->element;
@@ -906,7 +934,7 @@ void actMinotaurCeilingBuster(Entity* my)
 
 void createMinotaurTimer(Entity* entity, map_t* map)
 {
-	Entity* childEntity = newEntity(37, 0, map->entities);
+	Entity* childEntity = newEntity(37, 0, map->entities, nullptr); //Timer entity.
 	childEntity->sizex = 2;
 	childEntity->sizey = 2;
 	childEntity->x = entity->x;

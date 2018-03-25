@@ -31,6 +31,8 @@
 #define TORCH_FLICKER my->skill[1]
 #define TORCH_FIRE my->skill[3]
 
+bool flickerLights = true;
+
 void actTorch(Entity* my)
 {
 	int i;
@@ -49,14 +51,14 @@ void actTorch(Entity* my)
 	entity->flags[GENIUS] = false;
 	entity->setUID(-3);
 
-	// check wall
-	if ( !checkObstacle( my->x - cos(my->yaw) * 8, my->y - sin(my->yaw) * 8, my, NULL ) )
+	// check wall behind me. (e.g mined or destroyed then remove torch)
+	int checkx = my->x - cos(my->yaw) * 8;
+	checkx = checkx >> 4;
+	int checky = my->y - sin(my->yaw) * 8;
+	checky = checky >> 4;
+	if ( !map.tiles[OBSTACLELAYER + checky * MAPLAYERS + checkx * MAPLAYERS * map.height] )   // wall
 	{
-		if ( my->light != NULL )
-		{
-			list_RemoveNode(my->light->node);
-		}
-		my->light = NULL;
+		my->removeLightField();
 		list_RemoveNode(my->mynode);
 		return;
 	}
@@ -67,7 +69,11 @@ void actTorch(Entity* my)
 		my->light = lightSphereShadow(my->x / 16, my->y / 16, 7, 192);
 		TORCH_LIGHTING = 1;
 	}
-	TORCH_FLICKER--;
+	if ( flickerLights )
+	{
+		//Torches will never flicker if this setting is disabled.
+		TORCH_FLICKER--;
+	}
 	if (TORCH_FLICKER <= 0)
 	{
 		TORCH_LIGHTING = (TORCH_LIGHTING == 1) + 1;
@@ -129,8 +135,12 @@ void actCrystalShard(Entity* my)
 	entity->flags[GENIUS] = false;
 	entity->setUID(-3);
 
-	// check wall
-	if ( !checkObstacle(my->x - cos(my->yaw) * 8, my->y - sin(my->yaw) * 8, my, NULL) )
+	// check wall behind me. (e.g mined or destroyed then remove torch)
+	int checkx = my->x - cos(my->yaw) * 8;
+	checkx = checkx >> 4;
+	int checky = my->y - sin(my->yaw) * 8;
+	checky = checky >> 4;
+	if ( !map.tiles[OBSTACLELAYER + checky * MAPLAYERS + checkx * MAPLAYERS * map.height] )   // wall
 	{
 		my->removeLightField();
 		list_RemoveNode(my->mynode);
@@ -143,7 +153,12 @@ void actCrystalShard(Entity* my)
 		my->light = lightSphereShadow(my->x / 16, my->y / 16, 5, 128);
 		TORCH_LIGHTING = 1;
 	}
-	TORCH_FLICKER--;
+
+	if ( flickerLights )
+	{
+		//Crystal shards will never flicker if this setting is disabled.
+		TORCH_FLICKER--;
+	}
 	if ( TORCH_FLICKER <= 0 )
 	{
 		TORCH_LIGHTING = (TORCH_LIGHTING == 1) + 1;

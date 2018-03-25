@@ -117,9 +117,9 @@ void castSpellInit(Uint32 caster_uid, spell_t* spell)
 	}
 
 	// Calculate the cost of the Spell for Singleplayer
-	if ( spell->ID == SPELL_MAGICMISSILE && skillCapstoneUnlocked(player, PRO_SPELLCASTING) )
+	if ( spell->ID == SPELL_FORCEBOLT && skillCapstoneUnlocked(player, PRO_SPELLCASTING) )
 	{
-		// Reaching Spellcasting capstone makes Magic Missile free
+		// Reaching Spellcasting capstone makes forcebolt free
 		magiccost = 0;
 	}
 	else
@@ -219,14 +219,22 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 		}*/
 		if ( multiplayer == SINGLE )
 		{
-			magiccost = cast_animation.mana_left;
+			if ( spell->ID == SPELL_FORCEBOLT && skillCapstoneUnlocked(player, PRO_SPELLCASTING) )
+			{
+				magiccost = 0;
+			}
+			else
+			{
+				magiccost = cast_animation.mana_left;
+			}
+
 			caster->drainMP(magiccost);
 		}
 		else // Calculate the cost of the Spell for Multiplayer
 		{
-			if ( spell->ID == SPELL_MAGICMISSILE && skillCapstoneUnlocked(player, PRO_SPELLCASTING) )
+			if ( spell->ID == SPELL_FORCEBOLT && skillCapstoneUnlocked(player, PRO_SPELLCASTING) )
 			{
-				// Reaching Spellcasting capstone makes Magic Missile free
+				// Reaching Spellcasting capstone makes Forcebolt free
 				magiccost = 0;
 			}
 			else
@@ -384,7 +392,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 		}
 		else if (!strcmp(element->name, spellElement_light.name))
 		{
-			entity = newEntity(175, 1, map.entities); // black magic ball
+			entity = newEntity(175, 1, map.entities, nullptr); // black magic ball
 			entity->parent = caster->getUID();
 			entity->x = caster->x;
 			entity->y = caster->y;
@@ -569,7 +577,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					if (i != 0)
 					{
 						//Tell the client to uncurse an item.
-						strcpy((char*)net_packet->data, "RCUR"); //TODO: Send a different packet, to pop open the remove curse GUI.
+						strcpy((char*)net_packet->data, "CRCU");
 						net_packet->address.host = net_clients[i - 1].host;
 						net_packet->address.port = net_clients[i - 1].port;
 						net_packet->len = 4;
@@ -582,6 +590,12 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						gui_mode = GUI_MODE_INVENTORY; //Reset the GUI to the inventory.
 						removecursegui_active = true;
 						identifygui_active = false;
+
+						if ( identifygui_active )
+						{
+							CloseIdentifyGUI();
+						}
+
 						if ( openedChest[i] )
 						{
 							openedChest[i]->closeChest();
@@ -630,7 +644,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					spell_changeHealth(players[i]->entity, amount);
 					playSoundEntity(caster, 168, 128);
 
-					for (node = map.entities->first; node->next; node = node->next)
+					for ( node = map.creatures->first; node; node = node->next )
 					{
 						entity = (Entity*)(node->element);
 						if ( !entity ||  entity == caster )
@@ -642,7 +656,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							continue;
 						}
 
-						if (entityDist(entity, caster) <= HEAL_RADIUS && entity->checkFriend(caster))
+						if ( entityDist(entity, caster) <= HEAL_RADIUS && entity->checkFriend(caster) )
 						{
 							spell_changeHealth(entity, amount);
 							playSoundEntity(entity, 168, 128);
@@ -667,8 +681,15 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					int c = 0;
 					for (c = 0; c < NUMEFFECTS; ++c)   //This does a whole lot more than just cure ailments.
 					{
-						stats[i]->EFFECTS[c] = false;
-						stats[i]->EFFECTS_TIMERS[c] = 0;
+						if ( c == EFF_LEVITATING && stats[i]->EFFECTS[EFF_LEVITATING] )
+						{
+							// don't unlevitate
+						}
+						else
+						{
+							stats[i]->EFFECTS[c] = false;
+							stats[i]->EFFECTS_TIMERS[c] = 0;
+						}
 					}
 					if ( players[i]->entity->flags[BURNING] )
 					{
@@ -678,7 +699,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					serverUpdateEffects(player);
 					playSoundEntity(entity, 168, 128);
 
-					for (node = map.entities->first; node->next; node = node->next)
+					for ( node = map.creatures->first; node->next; node = node->next )
 					{
 						entity = (Entity*)(node->element);
 						if ( !entity || entity == caster )
@@ -726,13 +747,15 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			{
 				if ( caster == players[i]->entity )
 				{
+					//caster->lichIceCreateCannon();
+					//caster->castOrbitingMagicMissile(SPELL_FIREBALL, 8.0, 0.0, 500);
 					//spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
 					//createParticle1(caster, i);
 					//createParticleDropRising(caster);
 				}
 			}
-			createParticleDropRising(caster, 593, 1.0);
-			serverSpawnMiscParticles(caster, PARTICLE_EFFECT_SHADOW_INVIS, 593);
+			//createParticleDropRising(caster, 593, 1.0);
+			//serverSpawnMiscParticles(caster, PARTICLE_EFFECT_SHADOW_INVIS, 593);
 
 			//createParticleSapCenter(caster, caster->x + 64 * cos(caster->yaw), caster->y + 64 * sin(caster->yaw), 172, 172);
 			playSoundEntity(caster, 167, 128);
@@ -783,9 +806,9 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			//Also refactor the duration determining code.
 		}
 
-		if (propulsion == PROPULSION_MISSILE)
+		if ( propulsion == PROPULSION_MISSILE )
 		{
-			entity = newEntity(168, 1, map.entities); // red magic ball
+			entity = newEntity(168, 1, map.entities, nullptr); // red magic ball
 			entity->parent = caster->getUID();
 			entity->x = caster->x;
 			entity->y = caster->y;
@@ -797,7 +820,6 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			entity->flags[PASSABLE] = true;
 			entity->flags[BRIGHT] = true;
 			entity->behavior = &actMagicMissile;
-
 			double missile_speed = 4 * (element->mana / static_cast<double>(element->overload_multiplier)); //TODO: Factor in base mana cost?
 			entity->vel_x = cos(entity->yaw) * (missile_speed);
 			entity->vel_y = sin(entity->yaw) * (missile_speed);
@@ -877,7 +899,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				traveltime = 20;
 			}
 
-			entity = newEntity(168, 1, map.entities); // red magic ball
+			entity = newEntity(168, 1, map.entities, nullptr); // red magic ball
 			entity->parent = caster->getUID();
 			entity->x = caster->x;
 			entity->y = caster->y;
@@ -914,7 +936,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 			result = entity;
 
-			Entity* entity1 = newEntity(168, 1, map.entities); // red magic ball
+			Entity* entity1 = newEntity(168, 1, map.entities, nullptr); // red magic ball
 			entity1->parent = caster->getUID();
 			entity1->x = caster->x;
 			entity1->y = caster->y;
@@ -940,7 +962,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			node->deconstructor = &spellDeconstructor;
 			node->size = sizeof(spell_t);
 
-			Entity* entity2 = newEntity(168, 1, map.entities); // red magic ball
+			Entity* entity2 = newEntity(168, 1, map.entities, nullptr); // red magic ball
 			entity2->parent = caster->getUID();
 			entity2->x = caster->x;
 			entity2->y = caster->y;

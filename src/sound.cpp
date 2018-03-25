@@ -10,12 +10,13 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "files.hpp"
 //#include "game.hpp"
 #include "sound.hpp"
 
-#ifdef HAVE_FMOD
+#ifdef USE_FMOD
 #include <fmod_errors.h>
-#elif defined HAVE_OPENAL
+#elif defined USE_OPENAL
 #ifdef USE_TREMOR
 #include <tremor/ivorbisfile.h>
 #else
@@ -25,7 +26,7 @@
 #endif
 #endif
 
-#ifdef HAVE_FMOD
+#ifdef USE_FMOD
 FMOD_SYSTEM* fmod_system = NULL;
 
 FMOD_RESULT fmod_result;
@@ -42,7 +43,7 @@ FMOD_SOUND** labyrinthmusic = NULL;
 FMOD_SOUND** ruinsmusic = NULL;
 FMOD_SOUND** underworldmusic = NULL;
 FMOD_SOUND** hellmusic = NULL;
-FMOD_SOUND* intromusic = NULL;
+FMOD_SOUND** intromusic = NULL;
 FMOD_SOUND* intermissionmusic = NULL;
 FMOD_SOUND* minetownmusic = NULL;
 FMOD_SOUND* splashmusic = NULL;
@@ -55,6 +56,7 @@ FMOD_SOUND* templemusic = NULL;
 FMOD_SOUND* endgamemusic = NULL;
 FMOD_SOUND* devilmusic = NULL;
 FMOD_SOUND* escapemusic = NULL;
+FMOD_SOUND* sanctummusic = NULL;
 FMOD_SOUND* introductionmusic = NULL;
 FMOD_SOUND** cavesmusic = NULL;
 FMOD_SOUND** citadelmusic = NULL;
@@ -186,7 +188,7 @@ void sound_update()
 }
 #define SOUND
 
-#elif defined HAVE_OPENAL
+#elif defined USE_OPENAL
 
 struct OPENAL_BUFFER {
 	ALuint id;
@@ -379,7 +381,7 @@ OPENAL_BUFFER** labyrinthmusic = NULL;
 OPENAL_BUFFER** ruinsmusic = NULL;
 OPENAL_BUFFER** underworldmusic = NULL;
 OPENAL_BUFFER** hellmusic = NULL;
-OPENAL_BUFFER* intromusic = NULL;
+OPENAL_BUFFER** intromusic = NULL;
 OPENAL_BUFFER* intermissionmusic = NULL;
 OPENAL_BUFFER* minetownmusic = NULL;
 OPENAL_BUFFER* splashmusic = NULL;
@@ -392,6 +394,7 @@ OPENAL_BUFFER* templemusic = NULL;
 OPENAL_BUFFER* endgamemusic = NULL;
 OPENAL_BUFFER* devilmusic = NULL;
 OPENAL_BUFFER* escapemusic = NULL;
+OPENAL_BUFFER* sanctummusic = NULL;
 OPENAL_BUFFER* introductionmusic = NULL;
 OPENAL_BUFFER** cavesmusic = NULL;
 OPENAL_BUFFER** citadelmusic = NULL;

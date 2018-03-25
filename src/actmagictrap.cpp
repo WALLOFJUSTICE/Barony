@@ -145,12 +145,13 @@ void Entity::actMagicTrapCeiling()
 		{
 			entity->x = x;
 			entity->y = y;
-			entity->z = ceilingModel->z - 5;
+			entity->z = ceilingModel->z - 2;
 			double missile_speed = 4 * ((double)(((spellElement_t*)(getSpellFromID(spellTrapType)->elements.first->element))->mana) / ((spellElement_t*)(getSpellFromID(spellTrapType)->elements.first->element))->overload_multiplier);
 			entity->vel_x = 0.0;
 			entity->vel_y = 0.0;
 			entity->vel_z = 0.5 * (missile_speed);
 			entity->pitch = PI / 2;
+			entity->actmagicIsVertical = MAGIC_ISVERTICAL_Z;
 		}
 	}
 }
@@ -207,7 +208,10 @@ void actMagicTrap(Entity* my)
 	}
 
 	// eliminate traps that have been destroyed.
-	if ( !checkObstacle(my->x, my->y, my, NULL) )
+	// check wall inside me.
+	int checkx = static_cast<int>(my->x) >> 4;
+	int checky = static_cast<int>(my->y) >> 4;
+	if ( !map.tiles[OBSTACLELAYER + checky * MAPLAYERS + checkx * MAPLAYERS * map.height] )   // wall
 	{
 		my->removeLightField();
 		list_RemoveNode(my->mynode);

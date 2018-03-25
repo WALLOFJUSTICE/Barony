@@ -1050,7 +1050,7 @@ void dropItem(Item* item, int player)
 		{
 			closeBookGUI();
 		}
-		entity = newEntity(-1, 1, map.entities);
+		entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
 		entity->flags[INVISIBLE] = true;
 		entity->flags[UPDATENEEDED] = true;
 		entity->x = players[player]->entity->x;
@@ -1124,7 +1124,7 @@ Entity* dropItemMonster(Item* item, Entity* monster, Stat* monsterStats, Sint16 
 	{
 		if ( item->appearance == MONSTER_ITEM_UNDROPPABLE_APPEARANCE )
 		{
-			if ( monsterStats->type == SHADOW )
+			if ( monsterStats->type == SHADOW || monsterStats->type == AUTOMATON )
 			{
 				itemDroppable = false;
 			}
@@ -1134,7 +1134,7 @@ Entity* dropItemMonster(Item* item, Entity* monster, Stat* monsterStats, Sint16 
 				|| monsterStats->type == INSECTOID
 				|| monsterStats->type == INCUBUS
 				|| monsterStats->type == VAMPIRE)
-				&& itemCategory(item) == SPELLBOOK )
+				&& (itemCategory(item) == SPELLBOOK || itemCategory(item) == MAGICSTAFF) )
 			{
 				// monsters with special spell attacks won't drop their book.
 				itemDroppable = false;
@@ -1179,7 +1179,7 @@ Entity* dropItemMonster(Item* item, Entity* monster, Stat* monsterStats, Sint16 
 	if ( itemDroppable )
 	{
 		//TODO: Spawn multiple entities for count...
-		entity = newEntity(-1, 1, map.entities);
+		entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
 		entity->flags[INVISIBLE] = true;
 		entity->flags[UPDATENEEDED] = true;
 		entity->x = monster->x;
@@ -1289,6 +1289,7 @@ void equipItem(Item* item, Item** slot, int player)
 
 	if ( itemCompare(*slot, item, true) )
 	{
+		// if items are different... (excluding the quantity of both item nodes)
 		if ( *slot != NULL )
 		{
 			if (!(*slot)->canUnequip())
@@ -1365,15 +1366,29 @@ void equipItem(Item* item, Item** slot, int player)
 	}
 	else
 	{
+		// if items are the same... (excluding the quantity of both item nodes)
 		if ( *slot != NULL )
 		{
-			if (!(*slot)->canUnequip())
+			if ( (*slot)->count == item->count ) // if quantity is the same then it's the same item, can unequip
 			{
-				if ( player == clientnum )
+				if (!(*slot)->canUnequip())
 				{
-					messagePlayer(player, language[1089], (*slot)->getName());
+					if ( player == clientnum )
+					{
+						messagePlayer(player, language[1089], (*slot)->getName());
+					}
+					(*slot)->identified = true;
+					return;
 				}
-				(*slot)->identified = true;
+			}
+			else
+			{
+				// This lets the server know when a client "equipped" a new item in their slot but actually just updated the count.
+				// Otherwise if this count check were not here, server would think that equipping 2 rocks after only holding 1 rock is
+				// the same as unequipping the slot since they are the same item, barring the quantity. So the client would appear to
+				// the server as empty handed, while the client holds 2 rocks, and when thrown on client end, the server never sees the item
+				// and the client "throws" nothing, but actually loses their thrown items into nothingness. This fixes that issue.
+				(*slot)->count = item->count; // update quantity. 
 				return;
 			}
 		}
@@ -1666,6 +1681,7 @@ void useItem(Item* item, int player)
 		case STEEL_HELM:
 		case CRYSTAL_HELM:
 		case ARTIFACT_HELM:
+		case HAT_FEZ:
 			equipItem(item, &stats[player]->helmet, player);
 			break;
 		case AMULET_SEXCHANGE:
@@ -2020,6 +2036,21 @@ void useItem(Item* item, int player)
 	{
 		switch ( item->type )
 		{
+			case ARTIFACT_BREASTPIECE:
+				messagePlayer(player, language[2972]);
+				break;
+			case ARTIFACT_HELM:
+				messagePlayer(player, language[2973]);
+				break;
+			case ARTIFACT_BOOTS:
+				messagePlayer(player, language[2974]);
+				break;
+			case ARTIFACT_CLOAK:
+				messagePlayer(player, language[2975]);
+				break;
+			case ARTIFACT_GLOVES:
+				messagePlayer(player, language[2976]);
+				break;
 			case AMULET_LIFESAVING:
 				messagePlayer(player, language[2478]);
 				break;
@@ -2125,6 +2156,17 @@ void useItem(Item* item, int player)
 					messagePlayer(player, language[2381]);
 				}
 				break;
+			case VAMPIRE_DOUBLET:
+				messagePlayer(player, language[2597]);
+				break;
+			case TOOL_BLINDFOLD:
+				break;
+			case TOOL_BLINDFOLD_FOCUS:
+				messagePlayer(player, language[2907]);
+				break;
+			case TOOL_BLINDFOLD_TELEPATHY:
+				messagePlayer(player, language[2908]);
+				break;
 			default:
 				break;
 		}
@@ -2148,6 +2190,11 @@ Item* itemPickup(int player, Item* item)
 	Item* item2;
 	node_t* node;
 
+	if ( stats[player]->PROFICIENCIES[PRO_APPRAISAL] >= CAPSTONE_UNLOCK_LEVEL[PRO_APPRAISAL] )
+	{
+		item->identified = true;
+	}
+
 	if ( player != 0 && multiplayer == SERVER )
 	{
 		// send the client info on the item it just picked up
@@ -2168,19 +2215,28 @@ Item* itemPickup(int player, Item* item)
 		for ( node = stats[player]->inventory.first; node != NULL; node = node->next )
 		{
 			item2 = (Item*) node->element;
-			if ( stats[player]->PROFICIENCIES[PRO_APPRAISAL] >= CAPSTONE_UNLOCK_LEVEL[PRO_APPRAISAL] )
-			{
-				item->identified = true;
-			}
 			if (!itemCompare(item, item2, false))
 			{
-				if ( (!itemIsEquipped(item2, player) && itemCategory(item2) != ARMOR)
-					|| itemCategory(item2) == THROWN 
-					|| itemCategory(item2) == GEM
-					|| itemCategory(item2) == TOOL )
+				// if items are the same, check to see if they should stack
+				if ( item2->shouldItemStack(player) )
 				{
-					// don't stack if equipped, or item is armor.
 					item2->count += item->count;
+					if ( multiplayer == CLIENT && player == clientnum && itemIsEquipped(item2, clientnum) )
+					{
+						// if incrementing qty and holding item, then send "equip" for server to update their count of your held item.
+						strcpy((char*)net_packet->data, "EQUI"); 
+						SDLNet_Write32((Uint32)item2->type, &net_packet->data[4]);
+						SDLNet_Write32((Uint32)item2->status, &net_packet->data[8]);
+						SDLNet_Write32((Uint32)item2->beatitude, &net_packet->data[12]);
+						SDLNet_Write32((Uint32)item2->count, &net_packet->data[16]);
+						SDLNet_Write32((Uint32)item2->appearance, &net_packet->data[20]);
+						net_packet->data[24] = item2->identified;
+						net_packet->data[25] = clientnum;
+						net_packet->address.host = net_server.host;
+						net_packet->address.port = net_server.port;
+						net_packet->len = 26;
+						sendPacketSafe(net_sock, -1, net_packet, 0);
+					}
 					return item2;
 				}
 			}
@@ -2419,19 +2475,19 @@ Sint32 Item::weaponGetAttack() const
 	}
 	else if ( type == CRYSTAL_SWORD )
 	{
-		attack += 7;
+		attack += 10;
 	}
 	else if ( type == CRYSTAL_SPEAR )
 	{
-		attack += 7;
+		attack += 10;
 	}
 	else if ( type == CRYSTAL_BATTLEAXE )
 	{
-		attack += 7;
+		attack += 10;
 	}
 	else if ( type == CRYSTAL_MACE )
 	{
-		attack += 7;
+		attack += 10;
 	}
 	else if ( type == BRONZE_TOMAHAWK )
 	{
@@ -2668,7 +2724,14 @@ int Item::buyValue(int player)
 	}
 
 	// cursed and status bonuses
-	value *= 1.f + beatitude / 20.f;
+	if ( beatitude > 0 )
+	{
+		value *= 1.f * beatitude * 3; // 3x multiplier for blessed gear.
+	}
+	else
+	{
+		value *= 1.f + beatitude / 2.f;
+	}
 	value *= ((int)status + 5) / 10.f;
 
 	// trading bonus
@@ -2890,6 +2953,10 @@ void createCustomInventory(Stat* stats, int itemLimit)
 				if ( itemStatus == 0 )
 				{
 					itemStatus = static_cast<Status>(DECREPIT + rand() % 4);
+				}
+				else if ( itemStatus > BROKEN )
+				{
+					itemStatus = static_cast<Status>(itemStatus - 1); // reserved '0' for random, so '1' is decrepit... etc to '5' being excellent.
 				}
 				itemBless = stats->EDITOR_ITEMS[itemSlots[i] + 2];
 				if ( itemBless == 10 )
@@ -3317,5 +3384,30 @@ bool Item::isThisABetterArmor(const Item& newArmor, const Item* armorAlreadyHave
 		return true;
 	}
 
+	return false;
+}
+
+bool Item::shouldItemStack(int player)
+{
+	if ( player >= 0 )
+	{
+		if ( (!itemIsEquipped(this, player)
+				&& itemCategory(this) != ARMOR
+				&& itemCategory(this) != WEAPON
+				&& itemCategory(this) != MAGICSTAFF
+				&& itemCategory(this) != RING
+				&& itemCategory(this) != AMULET
+				&& itemCategory(this) != SPELLBOOK
+				&& this->type != TOOL_PICKAXE)
+			|| itemCategory(this) == THROWN
+			|| itemCategory(this) == GEM
+			|| (itemCategory(this) == TOOL && this->type != TOOL_PICKAXE)
+			)
+		{
+			// THROWN, GEM, TOOLS should stack when equipped.
+			// otherwise most equippables should not stack.
+			return true;
+		}
+	}
 	return false;
 }

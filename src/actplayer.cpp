@@ -24,6 +24,7 @@
 #include "net.hpp"
 #include "collision.hpp"
 #include "player.hpp"
+#include "colors.hpp"
 
 bool smoothmouse = false;
 bool settings_smoothmouse = false;
@@ -186,7 +187,14 @@ void actPlayer(Entity* my)
 	{
 		return;
 	}
-
+	if ( logCheckObstacle )
+	{
+		if ( ticks % 50 == 0 )
+		{
+			messagePlayer(0, "checkObstacle() calls/sec: %d", logCheckObstacleCount);
+			logCheckObstacleCount = 0;
+		}
+	}
 	if ( spamming )
 	{
 		for (int i = 0; i < 1; ++i)
@@ -262,7 +270,7 @@ void actPlayer(Entity* my)
 				my->flags[UPDATENEEDED] = false;
 			}
 
-			entity = newEntity(-1, 1, map.entities);
+			entity = newEntity(-1, 1, map.entities, nullptr); //HUD entity.
 			entity->flags[PASSABLE] = true;
 			entity->flags[OVERDRAW] = true;
 			entity->flags[NOUPDATE] = true;
@@ -273,11 +281,12 @@ void actPlayer(Entity* my)
 			node->element = entity;
 			node->deconstructor = &emptyDeconstructor;
 			node->size = sizeof(Entity*);
+			my->bodyparts.push_back(entity);
 
 			// magic hands
 
 			//Left hand.
-			entity = newEntity(-1, 1, map.entities);
+			entity = newEntity(-1, 1, map.entities, nullptr); //HUD entity.
 			entity->flags[PASSABLE] = true;
 			entity->flags[OVERDRAW] = true;
 			entity->flags[NOUPDATE] = true;
@@ -286,7 +295,7 @@ void actPlayer(Entity* my)
 			entity->focalz = -4;
 			magicLeftHand = entity;
 			//Right hand.
-			entity = newEntity(-1, 1, map.entities);
+			entity = newEntity(-1, 1, map.entities, nullptr); //HUD entity.
 			entity->flags[PASSABLE] = true;
 			entity->flags[OVERDRAW] = true;
 			entity->flags[NOUPDATE] = true;
@@ -294,14 +303,16 @@ void actPlayer(Entity* my)
 			entity->behavior = &actRightHandMagic;
 			entity->focalz = -4;
 			magicRightHand = entity;
+			my->bodyparts.push_back(entity);
 
 			// hud shield
-			entity = newEntity(-1, 1, map.entities);
+			entity = newEntity(-1, 1, map.entities, nullptr); //HUD entity.
 			entity->flags[PASSABLE] = true;
 			entity->flags[OVERDRAW] = true;
 			entity->flags[NOUPDATE] = true;
 			entity->flags[INVISIBLE] = true;
 			entity->behavior = &actHudShield;
+			my->bodyparts.push_back(entity);
 		}
 		else
 		{
@@ -316,7 +327,7 @@ void actPlayer(Entity* my)
 		}
 
 		// torso
-		entity = newEntity(106 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities);
+		entity = newEntity(106 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = PLAYER_NUM;
@@ -332,9 +343,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// right leg
-		entity = newEntity(107 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities);
+		entity = newEntity(107 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = PLAYER_NUM;
@@ -350,9 +362,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// left leg
-		entity = newEntity(108 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities);
+		entity = newEntity(108 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = PLAYER_NUM;
@@ -368,9 +381,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// right arm
-		entity = newEntity(109 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities);
+		entity = newEntity(109 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = PLAYER_NUM;
@@ -386,9 +400,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// left arm
-		entity = newEntity(110 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities);
+		entity = newEntity(110 + 12 * stats[PLAYER_NUM]->sex, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = PLAYER_NUM;
@@ -404,9 +419,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// world weapon
-		entity = newEntity(-1, 1, map.entities);
+		entity = newEntity(-1, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = PLAYER_NUM;
@@ -423,9 +439,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// shield
-		entity = newEntity(-1, 1, map.entities);
+		entity = newEntity(-1, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->skill[2] = PLAYER_NUM;
@@ -443,9 +460,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// cloak
-		entity = newEntity(-1, 1, map.entities);
+		entity = newEntity(-1, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->scalex = 1.01;
@@ -465,9 +483,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// helmet
-		entity = newEntity(-1, 1, map.entities);
+		entity = newEntity(-1, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->scalex = 1.01;
@@ -487,9 +506,10 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 
 		// mask
-		entity = newEntity(-1, 1, map.entities);
+		entity = newEntity(-1, 1, map.entities, nullptr); //Limb entity.
 		entity->sizex = 4;
 		entity->sizey = 4;
 		entity->scalex = .99;
@@ -509,8 +529,11 @@ void actPlayer(Entity* my)
 		node->element = entity;
 		node->deconstructor = &emptyDeconstructor;
 		node->size = sizeof(Entity*);
+		my->bodyparts.push_back(entity);
 	}
 	Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 255);
+	int blueSpeechVolume = 100;
+	int orangeSpeechVolume = 128;
 
 	if ( !intro )
 	{
@@ -521,7 +544,7 @@ void actPlayer(Entity* my)
 			if ( !strcmp(map.name, "Boss") && !my->skill[29] )
 			{
 				bool foundherx = false;
-				for ( node = map.entities->first; node != NULL; node = node->next )
+				for ( node = map.creatures->first; node != nullptr; node = node->next ) //Herx is in the creature list, so only search that.
 				{
 					Entity* entity = (Entity*)node->element;
 					if ( entity->sprite == 274 )
@@ -550,6 +573,7 @@ void actPlayer(Entity* my)
 				if ( PLAYER_ALIVETIME == 300 )
 				{
 					// five seconds in, herx chimes in (maybe)
+					my->playerLevelEntrySpeech = 0;
 					if ( currentlevel == 0 && !secretlevel )
 					{
 						int speech = rand() % 3;
@@ -585,12 +609,141 @@ void actPlayer(Entity* my)
 						messagePlayerColor(clientnum, color, language[537]);
 						messagePlayerColor(clientnum, color, language[87 + speech]);
 					}
+					else if ( currentlevel == 26 && !secretlevel )
+					{
+						int speech = 1 + rand() % 3;
+						switch ( speech )
+						{
+							case 1:
+								playSound(341, blueSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2615]);
+								break;
+							case 2:
+								playSound(343, orangeSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2617]);
+								break;
+							case 3:
+								playSound(346, orangeSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2620]);
+								break;
+						}
+						my->playerLevelEntrySpeech = speech;
+					}
+					else if ( currentlevel == 28 && !secretlevel )
+					{
+						int speech = 1 + rand() % 3;
+						switch ( speech )
+						{
+							case 1:
+								playSound(349, blueSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2629]);
+								break;
+							case 2:
+								playSound(352, orangeSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2632]);
+								break;
+							case 3:
+								playSound(354, blueSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2634]);
+								break;
+						}
+						my->playerLevelEntrySpeech = speech;
+					}
+					else if ( currentlevel == 30 && !secretlevel )
+					{
+						int speech = 1;
+						switch ( speech )
+						{
+							case 1:
+								playSound(356, blueSpeechVolume - 16);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2636]);
+								break;
+						}
+						my->playerLevelEntrySpeech = speech;
+					}
+					else if ( currentlevel == 31 && !secretlevel )
+					{
+						int speech = 1;
+						switch ( speech )
+						{
+							case 1:
+								playSound(358, blueSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2638]);
+								break;
+						}
+						my->playerLevelEntrySpeech = speech;
+					}
+					else if ( currentlevel == 33 && !secretlevel )
+					{
+						int speech = 1 + rand() % 2;
+						switch ( speech )
+						{
+							case 1:
+								playSound(360, orangeSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2640]);
+								break;
+							case 2:
+								playSound(362, blueSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2642]);
+								break;
+						}
+						my->playerLevelEntrySpeech = speech;
+					}
+					else if ( currentlevel == 35 && !secretlevel )
+					{
+						int speech = 1;
+						switch ( speech )
+						{
+							case 1:
+								playSound(364, orangeSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[537]);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2644]);
+								break;
+						}
+						my->playerLevelEntrySpeech = speech;
+					}
 					else if ( minotaurlevel )
 					{
-						int speech = rand() % 3;
-						playSound(123 + speech, 128);
-						messagePlayerColor(clientnum, color, language[537]);
-						messagePlayerColor(clientnum, color, language[74 + speech]);
+						if ( currentlevel < 25 )
+						{
+							int speech = rand() % 3;
+							playSound(123 + speech, 128);
+							messagePlayerColor(clientnum, color, language[537]);
+							messagePlayerColor(clientnum, color, language[74 + speech]);
+						}
+						else
+						{
+							int speech = 1 + rand() % 3;
+							switch ( speech )
+							{
+								case 1:
+									playSound(366, blueSpeechVolume);
+									messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+									messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2623]);
+									break;
+								case 2:
+									playSound(368, orangeSpeechVolume);
+									messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[537]);
+									messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2625]);
+									break;
+								case 3:
+									playSound(370, blueSpeechVolume);
+									messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[537]);
+									messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2627]);
+									break;
+							}
+							my->playerLevelEntrySpeech = speech;
+						}
 					}
 				}
 				else if ( PLAYER_ALIVETIME == 480 )
@@ -601,12 +754,16 @@ void actPlayer(Entity* my)
 						playSound(120 + rand() % 3, 128);
 						messagePlayerColor(clientnum, color, language[73]);
 					}
-					else if ( minotaurlevel )
+					else if ( minotaurlevel && currentlevel < 25 )
 					{
 						int speech = rand() % 3;
 						playSound(129 + speech, 128);
 						messagePlayerColor(clientnum, color, language[80 + speech]);
 					}
+				}
+				else if ( my->playerLevelEntrySpeech > 0 )
+				{
+					my->playerLevelEntrySpeechSecond();
 				}
 			}
 
@@ -654,6 +811,46 @@ void actPlayer(Entity* my)
 				messagePlayer(clientnum, language[570], tempItem->description());
 				appraisal_item = 0;
 				appraisal_timer = 0;
+
+				// update inventory by trying to stack the newly identified item.
+				for ( node = stats[PLAYER_NUM]->inventory.first; node != NULL; node = node->next )
+				{
+					Item* item2 = (Item*)node->element;
+					if ( item2 && item2 != tempItem && !itemCompare(tempItem, item2, false) )
+					{
+						// if items are the same, check to see if they should stack
+						if ( item2->shouldItemStack(PLAYER_NUM) )
+						{
+							item2->count += tempItem->count;
+							if ( multiplayer == CLIENT && itemIsEquipped(item2, clientnum) )
+							{
+								// if incrementing qty and holding item, then send "equip" for server to update their count of your held item.
+								strcpy((char*)net_packet->data, "EQUI");
+								SDLNet_Write32((Uint32)item2->type, &net_packet->data[4]);
+								SDLNet_Write32((Uint32)item2->status, &net_packet->data[8]);
+								SDLNet_Write32((Uint32)item2->beatitude, &net_packet->data[12]);
+								SDLNet_Write32((Uint32)item2->count, &net_packet->data[16]);
+								SDLNet_Write32((Uint32)item2->appearance, &net_packet->data[20]);
+								net_packet->data[24] = item2->identified;
+								net_packet->data[25] = PLAYER_NUM;
+								net_packet->address.host = net_server.host;
+								net_packet->address.port = net_server.port;
+								net_packet->len = 26;
+								sendPacketSafe(net_sock, -1, net_packet, 0);
+							}
+							if ( tempItem->node )
+							{
+								list_RemoveNode(tempItem->node);
+							}
+							else
+							{
+								free(tempItem);
+								tempItem = nullptr;
+							}
+							break;
+						}
+					}
+				}
 			}
 			else
 			{
@@ -690,7 +887,7 @@ void actPlayer(Entity* my)
 					}
 
 					//Attempt a level up.
-					if ( items[tempItem->type].value > 0 && stats[PLAYER_NUM] )
+					if ( tempItem && items[tempItem->type].value > 0 && stats[PLAYER_NUM] )
 					{
 						if ( tempItem->identified )
 						{
@@ -732,6 +929,49 @@ void actPlayer(Entity* my)
 						else if ( rand() % 7 == 0 )
 						{
 							my->increaseSkill(PRO_APPRAISAL);
+						}
+					}
+
+					if ( success )
+					{
+						// update inventory by trying to stack the newly identified item.
+						for ( node = stats[PLAYER_NUM]->inventory.first; node != NULL; node = node->next )
+						{
+							Item* item2 = (Item*)node->element;
+							if ( item2 && item2 != tempItem && !itemCompare(tempItem, item2, false) )
+							{
+								// if items are the same, check to see if they should stack
+								if ( item2->shouldItemStack(PLAYER_NUM) )
+								{
+									item2->count += tempItem->count;
+									if ( multiplayer == CLIENT && itemIsEquipped(item2, clientnum) )
+									{
+										// if incrementing qty and holding item, then send "equip" for server to update their count of your held item.
+										strcpy((char*)net_packet->data, "EQUI");
+										SDLNet_Write32((Uint32)item2->type, &net_packet->data[4]);
+										SDLNet_Write32((Uint32)item2->status, &net_packet->data[8]);
+										SDLNet_Write32((Uint32)item2->beatitude, &net_packet->data[12]);
+										SDLNet_Write32((Uint32)item2->count, &net_packet->data[16]);
+										SDLNet_Write32((Uint32)item2->appearance, &net_packet->data[20]);
+										net_packet->data[24] = item2->identified;
+										net_packet->data[25] = PLAYER_NUM;
+										net_packet->address.host = net_server.host;
+										net_packet->address.port = net_server.port;
+										net_packet->len = 26;
+										sendPacketSafe(net_sock, -1, net_packet, 0);
+									}
+									if ( tempItem->node )
+									{
+										list_RemoveNode(tempItem->node);
+									}
+									else
+									{
+										free(tempItem);
+										tempItem = nullptr;
+									}
+									break;
+								}
+							}
 						}
 					}
 
@@ -1189,15 +1429,15 @@ void actPlayer(Entity* my)
 				{
 					if ( stats[PLAYER_NUM]->shield->type == TOOL_TORCH )
 					{
-						PLAYER_TORCH = 7 + my->getPER() / 3;
+						PLAYER_TORCH = 7 + my->getPER() / 3 + (stats[PLAYER_NUM]->defending) * 1;
 					}
 					else if ( stats[PLAYER_NUM]->shield->type == TOOL_LANTERN )
 					{
-						PLAYER_TORCH = 10 + my->getPER() / 3;
+						PLAYER_TORCH = 10 + my->getPER() / 3 + (stats[PLAYER_NUM]->defending) * 1;
 					}
 					else if ( stats[PLAYER_NUM]->shield->type == TOOL_CRYSTALSHARD )
 					{
-						PLAYER_TORCH = 5 + my->getPER() / 3;
+						PLAYER_TORCH = 5 + my->getPER() / 3 + (stats[PLAYER_NUM]->defending) * 2;
 					}
 					else if ( !PLAYER_DEBUGCAM )
 					{
@@ -1330,7 +1570,7 @@ void actPlayer(Entity* my)
 							y = std::min(std::max<unsigned int>(0, my->y / 16), map.height - 1);
 							if ( map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height] )
 							{
-								entity = newEntity(160, 1, map.entities);
+								entity = newEntity(160, 1, map.entities, nullptr); //Limb entity.
 								entity->x = my->x;
 								entity->y = my->y;
 								entity->z = 8.0 + (rand() % 20) / 100.0;
@@ -1361,11 +1601,12 @@ void actPlayer(Entity* my)
 							continue;
 						}
 						char whatever[256];
-						snprintf(whatever, 255, "%s %s", stats[PLAYER_NUM]->name, stats[PLAYER_NUM]->obituary);
+						snprintf(whatever, 255, "%s %s", stats[PLAYER_NUM]->name, stats[PLAYER_NUM]->obituary); //Potential snprintf of 256 bytes into 255 byte destination
 						messagePlayer(c, whatever);
 					}
 					Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
 					messagePlayerColor(PLAYER_NUM, color, language[577]);
+
 					/* //TODO: Eventually.
 					{
 						strcpy((char *)net_packet->data,"UDIE");
@@ -1378,7 +1619,7 @@ void actPlayer(Entity* my)
 					if ( clientnum == PLAYER_NUM )
 					{
 						// deathcam
-						entity = newEntity(-1, 1, map.entities);
+						entity = newEntity(-1, 1, map.entities, nullptr); //Deathcam entity.
 						entity->x = my->x;
 						entity->y = my->y;
 						entity->z = -2;
@@ -1390,7 +1631,7 @@ void actPlayer(Entity* my)
 						entity->pitch = PI / 8;
 						node_t* nextnode;
 
-						deleteSaveGame(); // stops save scumming c:
+						deleteMultiplayerSaveGames(); //Will only delete save games if was last player alive.
 
 						closeBookGUI();
 
@@ -1413,7 +1654,7 @@ void actPlayer(Entity* my)
 							int c = item->count;
 							for (c = item->count; c > 0; c--)
 							{
-								entity = newEntity(-1, 1, map.entities);
+								entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
 								entity->flags[INVISIBLE] = true;
 								entity->flags[UPDATENEEDED] = true;
 								entity->x = my->x;
@@ -1457,6 +1698,15 @@ void actPlayer(Entity* my)
 							stats[0]->amulet = NULL;
 							stats[0]->ring = NULL;
 							stats[0]->mask = NULL;
+						}
+
+						for ( node_t* mapNode = map.creatures->first; mapNode != nullptr; mapNode = mapNode->next )
+						{
+							Entity* mapCreature = (Entity*)mapNode->element;
+							if ( mapCreature )
+							{
+								mapCreature->monsterEntityRenderAsTelepath = 0; // do a final pass to undo any telepath rendering.
+							}
 						}
 					}
 					else
@@ -1554,6 +1804,8 @@ void actPlayer(Entity* my)
 							}
 						}
 						list_FreeAll(&stats[PLAYER_NUM]->inventory);
+
+						deleteMultiplayerSaveGames(); //Will only delete save games if was last player alive.
 					}
 
 					if ( multiplayer != SINGLE )
@@ -1649,10 +1901,14 @@ void actPlayer(Entity* my)
 				}
 			}
 
-			real_t speedFactor = std::min((my->getDEX() * 0.2 + 14) * weightratio, 25 * 0.5 + 10);
+			real_t speedFactor = std::min((my->getDEX() * 0.1 + 15.5) * weightratio, 25 * 0.5 + 10);
 			if ( my->getDEX() <= 5 )
 			{
 				speedFactor = std::min((my->getDEX() + 10) * weightratio, 25 * 0.5 + 10);
+			}
+			else if ( my->getDEX() <= 15 )
+			{
+				speedFactor = std::min((my->getDEX() * 0.2 + 14) * weightratio, 25 * 0.5 + 10);
 			}
 			PLAYER_VELX += y_force * cos(my->yaw) * .045 * speedFactor / (1 + (stats[PLAYER_NUM]->defending || stats[PLAYER_NUM]->sneaking == 1));
 			PLAYER_VELY += y_force * sin(my->yaw) * .045 * speedFactor / (1 + (stats[PLAYER_NUM]->defending || stats[PLAYER_NUM]->sneaking == 1));
@@ -1662,7 +1918,7 @@ void actPlayer(Entity* my)
 		PLAYER_VELX *= .75;
 		PLAYER_VELY *= .75;
 
-		for ( node = map.entities->first; node != NULL; node = node->next )
+		for ( node = map.creatures->first; node != nullptr; node = node->next ) //Since looking for players only, don't search full entity list. Best idea would be to directly example players[] though.
 		{
 			Entity* entity = (Entity*)node->element;
 			if ( entity == my )
@@ -1884,9 +2140,10 @@ void actPlayer(Entity* my)
 			SDLNet_Write16((Sint16)(PLAYER_VELY * 128), &net_packet->data[12]);
 			SDLNet_Write16((Sint16)(my->yaw * 128), &net_packet->data[14]);
 			SDLNet_Write16((Sint16)(my->pitch * 128), &net_packet->data[16]);
+			net_packet->data[18] = secretlevel;
 			net_packet->address.host = net_server.host;
 			net_packet->address.port = net_server.port;
-			net_packet->len = 18;
+			net_packet->len = 19;
 			sendPacket(net_sock, -1, net_packet, 0);
 		}
 
@@ -1963,6 +2220,26 @@ void actPlayer(Entity* my)
 	if ( PLAYER_NUM != clientnum && multiplayer == CLIENT )
 	{
 		dist = sqrt(PLAYER_VELX * PLAYER_VELX + PLAYER_VELY * PLAYER_VELY);
+	}
+
+	if ( PLAYER_NUM == clientnum && ticks % 65 == 0 )
+	{
+		for ( node_t* mapNode = map.creatures->first; mapNode != nullptr; mapNode = mapNode->next )
+		{
+			Entity* mapCreature = (Entity*)mapNode->element;
+			if ( mapCreature )
+			{
+				if ( stats[PLAYER_NUM]->EFFECTS[EFF_TELEPATH] )
+				{
+					// periodically set the telepath rendering flag.
+					mapCreature->monsterEntityRenderAsTelepath = 1;
+				}
+				else
+				{
+					mapCreature->monsterEntityRenderAsTelepath = 0;
+				}
+			}
+		}
 	}
 
 	// move bodyparts
@@ -3021,6 +3298,15 @@ void actPlayerLimb(Entity* my)
 		}
 	}
 
+	if ( parent && parent->monsterEntityRenderAsTelepath == 1 )
+	{
+		my->monsterEntityRenderAsTelepath = 1;
+	}
+	else
+	{
+		my->monsterEntityRenderAsTelepath = 0;
+	}
+
 	if (multiplayer != CLIENT)
 	{
 		return;
@@ -3063,5 +3349,213 @@ void actPlayerLimb(Entity* my)
 		{
 			players[my->skill[2]]->entity->skill[1] = 0;
 		}
+	}
+
+}
+
+void Entity::playerLevelEntrySpeechSecond()
+{
+	int timeDiff = playerAliveTime - 300;
+	int orangeSpeechVolume = 128;
+	int blueSpeechVolume = 112;
+	if ( timeDiff > 0 && playerLevelEntrySpeech > 0 && !secretlevel )
+	{
+		switch ( currentlevel )
+		{
+			case 26:
+				switch ( playerLevelEntrySpeech )
+				{
+					case 1:
+						if ( timeDiff == 200 )
+						{
+							playSound(342, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2616]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					case 2:
+						if ( timeDiff == 200 )
+						{
+							playSound(344, blueSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2618]);
+						}
+						else if ( timeDiff == 350 )
+						{
+							playSound(345, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2619]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					case 3:
+						if ( timeDiff == 200 )
+						{
+							playSound(347, blueSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2621]);
+						}
+						else if ( timeDiff == 350 )
+						{
+							playSound(348, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2622]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					default:
+						break;
+				}
+				break;
+			case 28:
+				switch ( playerLevelEntrySpeech )
+				{
+					case 1:
+						if ( timeDiff == 200 )
+						{
+							playSound(350, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2630]);
+						}
+						else if ( timeDiff == 350 )
+						{
+							playSound(351, blueSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2631]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					case 2:
+						if ( timeDiff == 350 )
+						{
+							playSound(353, blueSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2633]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					case 3:
+						if ( timeDiff == 200 )
+						{
+							playSound(355, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2635]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					default:
+						break;
+				}
+				break;
+			case 30:
+				switch ( playerLevelEntrySpeech )
+				{
+					case 1:
+						if ( timeDiff == 350 )
+						{
+							playSound(357, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2637]);
+						}
+						else if ( timeDiff == 500 )
+						{
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2652]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					default:
+						break;
+				}
+				break;
+			case 31:
+				switch ( playerLevelEntrySpeech )
+				{
+					case 1:
+						if ( timeDiff == 350 )
+						{
+							playSound(359, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2639]);
+						}
+						else if ( timeDiff == 510 )
+						{
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2653]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					default:
+						break;
+				}
+				break;
+			case 33:
+				switch ( playerLevelEntrySpeech )
+				{
+					case 1:
+						if ( timeDiff == 200 )
+						{
+							playSound(361, blueSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2641]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					case 2:
+						if ( timeDiff == 350 )
+						{
+							playSound(363, orangeSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2643]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					default:
+						break;
+				}
+				break;
+			case 35:
+				switch ( playerLevelEntrySpeech )
+				{
+					case 1:
+						if ( timeDiff == 310 )
+						{
+							playSound(365, blueSpeechVolume);
+							messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2645]);
+							playerLevelEntrySpeech = 0;
+						}
+						break;
+					default:
+						break;
+				}
+				break;
+			case 27:
+			case 29:
+			case 32:
+			case 34:
+				if ( minotaurlevel )
+				{
+					switch ( playerLevelEntrySpeech )
+					{
+						case 1:
+							if ( timeDiff == 200 )
+							{
+								playSound(367, orangeSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2624]);
+								playerLevelEntrySpeech = 0;
+							}
+							break;
+						case 2:
+							if ( timeDiff == 200 )
+							{
+								playSound(369, blueSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorBaronyBlue(*mainsurface), language[2626]);
+								playerLevelEntrySpeech = 0;
+							}
+							break;
+						case 3:
+							if ( timeDiff == 200 )
+							{
+								playSound(371, orangeSpeechVolume);
+								messagePlayerColor(clientnum, uint32ColorOrange(*mainsurface), language[2628]);
+								playerLevelEntrySpeech = 0;
+							}
+							break;
+						default:
+							break;
+					}
+					break;
+				}
+				break;
+			default:
+				break;
+		}
+
 	}
 }

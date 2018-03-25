@@ -10,12 +10,14 @@
 -------------------------------------------------------------------------------*/
 
 #include "../main.hpp"
+#include "../draw.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
 #include "../items.hpp"
 #include "../shops.hpp"
 #include "../player.hpp"
 #include "interface.hpp"
+#include "../colors.hpp"	
 
 void rebuildShopInventory()
 {
@@ -391,7 +393,12 @@ void updateShopWindow()
 			{
 				strcat(tempstr, " ...");
 			}
-			ttfPrintText(ttf8, x + 12 + 36, y3, tempstr);
+			Uint32 color = uint32ColorWhite(*mainsurface);
+			if ( item->beatitude > 0 && stats[clientnum]->PROFICIENCIES[PRO_APPRAISAL] >= SKILL_LEVEL_EXPERT )
+			{
+				color = uint32ColorGreen(*mainsurface);
+			}
+			ttfPrintTextColor(ttf8, x + 12 + 36, y3, color, true, tempstr);
 			ttfPrintTextFormatted(ttf8, x + 12 + 348, y3, "%7dG", item->buyValue(clientnum));
 			pos.x = x + 12 + 16;
 			pos.y = y + 17 + 18 * (c - shopitemscroll - 1);

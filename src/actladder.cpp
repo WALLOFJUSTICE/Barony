@@ -91,6 +91,10 @@ void actLadder(Entity* my)
 								}
 								break;
 						}
+						if ( strncmp(map.name, "Underworld", 10) )
+						{
+							skipLevelsOnLoad = -1; // don't skip a regular level anymore. still skip if in underworld.
+						}
 					}
 					if (LADDER_SECRET)
 					{
@@ -141,13 +145,24 @@ void actPortal(Entity* my)
 	{
 		my->portalInit = 1;
 		my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 255);
+		if ( !strncmp(map.name, "Cockatrice Lair", 15) )
+		{
+			my->flags[INVISIBLE] = true;
+		}
+		else if ( !strncmp(map.name, "Bram's Castle", 13) )
+		{
+			my->flags[INVISIBLE] = true;
+		}
 	}
 
 	my->portalAmbience--;
 	if ( my->portalAmbience <= 0 )
 	{
 		my->portalAmbience = TICKS_PER_SECOND * 2;
-		playSoundEntityLocal( my, 154, 128 );
+		if ( !my->flags[INVISIBLE] )
+		{
+			playSoundEntityLocal( my, 154, 128 );
+		}
 	}
 
 	my->yaw += 0.01; // rotate slowly on my axis
@@ -197,10 +212,10 @@ void actPortal(Entity* my)
 					{
 						case 9:
 						{
-							;
+							; //lol
 							bool visiblegrave = false;
 							node_t* node;
-							for ( node = map.entities->first; node != NULL; node = node->next )
+							for ( node = map.entities->first; node != nullptr; node = node->next )
 							{
 								Entity* entity = (Entity*)node->element;
 								if ( entity->sprite == 224 && !entity->flags[INVISIBLE] )
@@ -210,18 +225,26 @@ void actPortal(Entity* my)
 								}
 							}
 							if ( visiblegrave )
-								for ( c = 0; c < MAXPLAYERS; c++ )
+							{
+								for ( c = 0; c < MAXPLAYERS; ++c )
 								{
 									steamAchievementClient(c, "BARONY_ACH_ROBBING_THE_CRADLE");
 								}
+							}
 							break;
 						}
 						case 14:
-							for ( c = 0; c < MAXPLAYERS; c++ )
+							for ( c = 0; c < MAXPLAYERS; ++c )
 							{
 								steamAchievementClient(c, "BARONY_ACH_THESEUS_LEGACY");
 							}
 							break;
+						default:
+							break;
+					}
+					if ( strncmp(map.name, "Underworld", 10) )
+					{
+						skipLevelsOnLoad = -1; // don't skip a regular level anymore. still skip if in underworld.
 					}
 				}
 				if ( !my->portalNotSecret )
@@ -244,8 +267,15 @@ void actWinningPortal(Entity* my)
 	{
 		if ( my->flags[INVISIBLE] )
 		{
+			if ( !strncmp(map.name, "Boss", 4) )
+			{
+				if ( !(svFlags & SV_FLAG_CLASSIC) )
+				{
+					return; // classic mode disabled.
+				}
+			}
 			node_t* node;
-			for ( node = map.entities->first; node != NULL; node = node->next )
+			for ( node = map.creatures->first; node != nullptr; node = node->next )
 			{
 				Entity* entity = (Entity*)node->element;
 				if ( entity->behavior == &actMonster )
@@ -280,6 +310,18 @@ void actWinningPortal(Entity* my)
 			{
 				// hell map doesn't need signal.
 				my->flags[INVISIBLE] = false;
+			}
+		}
+		else
+		{
+			if ( !strncmp(map.name, "Boss", 4) )
+			{
+				if ( !(svFlags & SV_FLAG_CLASSIC) )
+				{
+					my->flags[INVISIBLE] = true; // classic mode disabled, hide.
+					serverUpdateEntityFlag(my, INVISIBLE);
+					my->portalFireAnimation = 0;
+				}
 			}
 		}
 	}
@@ -366,6 +408,146 @@ void actWinningPortal(Entity* my)
 	}
 }
 
+void actExpansionEndGamePortal(Entity* my)
+{
+	if ( !my )
+	{
+		return;
+	}
+
+	my->actExpansionEndGamePortal();
+}
+
+void Entity::actExpansionEndGamePortal()
+{
+	int playercount = 0;
+	double dist;
+	int i, c;
+
+	if ( multiplayer != CLIENT )
+	{
+		if ( flags[INVISIBLE] )
+		{
+			node_t* node;
+			for ( node = map.creatures->first; node != nullptr; node = node->next )
+			{
+				Entity* entity = (Entity*)node->element;
+				if ( entity )
+				{
+					if ( entity->behavior == &actMonster )
+					{
+						Stat* stats = entity->getStats();
+						if ( stats )
+						{
+							if ( stats->type == LICH_FIRE || stats->type == LICH_ICE )
+							{
+								return;
+							}
+						}
+					}
+				}
+			}
+			if ( circuit_status != 0 )
+			{
+				if ( circuit_status == CIRCUIT_ON )
+				{
+					// powered on.
+					if ( !portalFireAnimation )
+					{
+						Entity* timer = createParticleTimer(this, 100, 174);
+						timer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SPAWN_PORTAL;
+						timer->particleTimerCountdownSprite = 174;
+						timer->particleTimerEndAction = PARTICLE_EFFECT_PORTAL_SPAWN;
+						serverSpawnMiscParticles(this, PARTICLE_EFFECT_PORTAL_SPAWN, 174);
+						portalFireAnimation = 1;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if ( flags[INVISIBLE] )
+		{
+			return;
+		}
+	}
+
+	if ( !portalInit )
+	{
+		portalInit = 1;
+		light = lightSphereShadow(x / 16, y / 16, 3, 255);
+	}
+
+	portalAmbience--;
+	if ( portalAmbience <= 0 )
+	{
+		portalAmbience = TICKS_PER_SECOND * 2;
+		playSoundEntityLocal(this, 154, 128);
+	}
+
+	yaw += 0.01; // rotate slowly on my axis
+	sprite = 614 + (this->ticks / 20) % 4; // animate
+
+	if ( multiplayer == CLIENT )
+	{
+		return;
+	}
+
+	// step through portal
+	for ( i = 0; i < MAXPLAYERS; i++ )
+	{
+		if ( (i == 0 && selectedEntity == this) || (client_selected[i] == this) )
+		{
+			if ( inrange[i] )
+			{
+				for ( c = 0; c < MAXPLAYERS; c++ )
+				{
+					if ( client_disconnected[c] || players[c] == nullptr || players[c]->entity == nullptr )
+					{
+						continue;
+					}
+					else
+					{
+						playercount++;
+					}
+					dist = sqrt(pow(x - players[c]->entity->x, 2) + pow(y - players[c]->entity->y, 2));
+					if ( dist > TOUCHRANGE )
+					{
+						messagePlayer(i, language[509]);
+						return;
+					}
+				}
+				victory = portalVictoryType;
+				if ( multiplayer == SERVER )
+				{
+					for ( c = 0; c < MAXPLAYERS; c++ )
+					{
+						if ( client_disconnected[c] == true )
+						{
+							continue;
+						}
+						strcpy((char*)net_packet->data, "WING");
+						net_packet->data[4] = victory;
+						net_packet->address.host = net_clients[c - 1].host;
+						net_packet->address.port = net_clients[c - 1].port;
+						net_packet->len = 8;
+						sendPacketSafe(net_sock, -1, net_packet, c - 1);
+					}
+				}
+				subwindow = 0;
+				introstage = 5; // prepares win game sequence
+				fadeout = true;
+				if ( !intro )
+				{
+					pauseGame(2, false);
+				}
+				return;
+			}
+		}
+	}
+}
+
 void actMidGamePortal(Entity* my)
 {
 	if ( !my )
@@ -386,18 +568,28 @@ void Entity::actMidGamePortal()
 	{
 		if ( flags[INVISIBLE] )
 		{
+			if ( !strncmp(map.name, "Boss", 4) )
+			{
+				if ( (svFlags & SV_FLAG_CLASSIC) )
+				{
+					return; // classic mode enabled, don't process.
+				}
+			}
 			node_t* node;
-			for ( node = map.entities->first; node != NULL; node = node->next )
+			for ( node = map.creatures->first; node != nullptr; node = node->next )
 			{
 				Entity* entity = (Entity*)node->element;
-				if ( entity->behavior == &actMonster )
+				if ( entity )
 				{
-					Stat* stats = entity->getStats();
-					if ( stats )
+					if ( entity->behavior == &actMonster )
 					{
-						if ( stats->type == LICH )
+						Stat* stats = entity->getStats();
+						if ( stats )
 						{
-							return;
+							if ( stats->type == LICH )
+							{
+								return;
+							}
 						}
 					}
 				}
@@ -416,6 +608,18 @@ void Entity::actMidGamePortal()
 						serverSpawnMiscParticles(this, PARTICLE_EFFECT_PORTAL_SPAWN, 174);
 						portalFireAnimation = 1;
 					}
+				}
+			}
+		}
+		else
+		{
+			if ( !strncmp(map.name, "Boss", 4) )
+			{
+				if ( (svFlags & SV_FLAG_CLASSIC) )
+				{
+					flags[INVISIBLE] = true; // classic mode enabled, hide.
+					serverUpdateEntityFlag(this, INVISIBLE);
+					portalFireAnimation = 0;
 				}
 			}
 		}

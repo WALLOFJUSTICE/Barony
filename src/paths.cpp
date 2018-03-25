@@ -18,6 +18,7 @@
 #include "paths.hpp"
 #include "items.hpp"
 #include "net.hpp"
+#include "magic/magic.hpp"
 
 int* pathMapFlying = NULL;
 int* pathMapGrounded = NULL;
@@ -145,7 +146,7 @@ int pathCheckObstacle(long x, long y, Entity* my, Entity* target)
 	}
 
 	node_t* node;
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
 		Entity* entity = (Entity*)node->element;
 		if ( entity->sprite == 14 
@@ -239,14 +240,22 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 		}
 	}
 
-	for ( entityNode = map.entities->first; entityNode != NULL; entityNode = entityNode->next )
+	for ( entityNode = map.entities->first; entityNode != nullptr; entityNode = entityNode->next )
 	{
 		Entity* entity = (Entity*)entityNode->element;
 		if ( entity->flags[PASSABLE] )
 		{
-			continue;
+			if ( entity->behavior == &actSpearTrap 
+				&& (my->getRace() == HUMAN || my->monsterHasLeader() == true) )
+			{
+				// humans/followers know better than that!
+			}
+			else
+			{
+				continue;
+			}
 		}
-		if ( entity->behavior == &actDoorFrame || entity->behavior == &actDoor )
+		if ( entity->behavior == &actDoorFrame || entity->behavior == &actDoor || entity->behavior == &actMagicMissile )
 		{
 			continue;
 		}
@@ -254,7 +263,7 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 		{
 			continue;
 		}
-		if ( !my->checkEnemy(target) )
+		if ( entity->behavior == &actMonster && !my->checkEnemy(entity) )
 		{
 			continue;
 		}
@@ -285,8 +294,8 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 	pathnode->g = 0;
 	pathnode->h = heuristic(x1, y1, x2, y2);
 	heapAdd(binaryheap, pathnode, &heaplength);
-
-	while ( openList->first != NULL )
+	int tries = 0;
+	while ( openList->first != NULL && tries < 10000 )
 	{
 		/*pathnode = (pathnode_t *)openList->first->element;
 		for( node=openList->first; node!=NULL; node=node->next ) {
@@ -441,7 +450,9 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 				}
 			}
 		}
+		++tries;
 	}
+	//messagePlayer(0, "tries %d", tries);
 	list_FreeAll(openList);
 	list_FreeAll(closedList);
 	free(openList);

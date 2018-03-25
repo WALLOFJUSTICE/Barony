@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------*/
 
 #include "../main.hpp"
+#include "../draw.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
 #include "../items.hpp"
@@ -18,9 +19,7 @@
 #include "interface.hpp"
 #include "../sound.hpp"
 
-void drawSkillsSheet();
 void statsHoverText(Stat* tmpStat);
-void drawPartySheet();
 
 /*-------------------------------------------------------------------------------
 
@@ -66,11 +65,11 @@ void updateCharacterSheet()
 		//TODO: These two NOT PLAYERSWAP
 		//camera.x=players[clientnum]->x/16.0+.5*cos(players[clientnum]->yaw)-.4*sin(players[clientnum]->yaw);
 		//camera.y=players[clientnum]->y/16.0+.5*sin(players[clientnum]->yaw)+.4*cos(players[clientnum]->yaw);
-		camera_charsheet.x = players[clientnum]->entity->x / 16.0 + .65;
-		camera_charsheet.y = players[clientnum]->entity->y / 16.0 + .65;
+		camera_charsheet.x = players[clientnum]->entity->x / 16.0 + (.92 * cos(camera_charsheet_offsetyaw));
+		camera_charsheet.y = players[clientnum]->entity->y / 16.0 + (.92 * sin(camera_charsheet_offsetyaw));
 		camera_charsheet.z = players[clientnum]->entity->z * 2;
 		//camera.ang=atan2(players[clientnum]->y/16.0-camera.y,players[clientnum]->x/16.0-camera.x); //TODO: _NOT_ PLAYERSWAP
-		camera_charsheet.ang = 5 * PI / 4;
+		camera_charsheet.ang = (camera_charsheet_offsetyaw - PI); //5 * PI / 4;
 		camera_charsheet.vang = PI / 20;
 		camera_charsheet.winx = 8;
 		camera_charsheet.winy = 8;
@@ -133,6 +132,43 @@ void updateCharacterSheet()
 				}
 			}
 		}
+
+		SDL_Rect rotateBtn;
+		rotateBtn.w = 16;
+		rotateBtn.h = 16;
+		rotateBtn.x = camera_charsheet.winx + camera_charsheet.winw - rotateBtn.w;
+		rotateBtn.y = camera_charsheet.winy + camera_charsheet.winh - rotateBtn.h;
+		drawWindow(rotateBtn.x, rotateBtn.y, rotateBtn.x + rotateBtn.w, rotateBtn.y + rotateBtn.h);
+		if ( mousestatus[SDL_BUTTON_LEFT] && !shootmode )
+		{
+			if ( mouseInBounds(rotateBtn.x, rotateBtn.x + rotateBtn.w, rotateBtn.y, rotateBtn.y + rotateBtn.h) )
+			{
+				camera_charsheet_offsetyaw += 0.05;
+				if ( camera_charsheet_offsetyaw > 2 * PI )
+				{
+					camera_charsheet_offsetyaw -= 2 * PI;
+				}
+				drawDepressed(rotateBtn.x, rotateBtn.y, rotateBtn.x + rotateBtn.w, rotateBtn.y + rotateBtn.h);
+			}
+		}
+		ttfPrintText(ttf12, rotateBtn.x + 2, rotateBtn.y + 2, ">");
+
+		rotateBtn.x = camera_charsheet.winx + camera_charsheet.winw - rotateBtn.w * 2 - 4;
+		rotateBtn.y = camera_charsheet.winy + camera_charsheet.winh - rotateBtn.h;
+		drawWindow(rotateBtn.x, rotateBtn.y, rotateBtn.x + rotateBtn.w, rotateBtn.y + rotateBtn.h);
+		if ( mousestatus[SDL_BUTTON_LEFT] && !shootmode )
+		{
+			if ( mouseInBounds(rotateBtn.x, rotateBtn.x + rotateBtn.w, rotateBtn.y, rotateBtn.y + rotateBtn.h) )
+			{
+				camera_charsheet_offsetyaw -= 0.05;
+				if ( camera_charsheet_offsetyaw < 0.f )
+				{
+					camera_charsheet_offsetyaw += 2 * PI;
+				}
+				drawDepressed(rotateBtn.x, rotateBtn.y, rotateBtn.x + rotateBtn.w, rotateBtn.y + rotateBtn.h);
+			}
+		}
+		ttfPrintText(ttf12, rotateBtn.x, rotateBtn.y + 2, "<");
 	}
 	fov = ofov;
 
@@ -195,6 +231,28 @@ void updateCharacterSheet()
 	}
 	statsHoverText(stats[clientnum]);
 	attackHoverText(attackInfo);
+
+	// gold hover text.
+	SDL_Rect src;
+	src.x = mousex + 16;
+	src.y = mousey + 16;
+	src.h = TTF12_HEIGHT + 4;
+	src.w = ( longestline(language[2968]) + strlen(getInputName(impulses[IN_USE])) ) * TTF12_WIDTH + 4;
+	if ( mouseInBounds(pos.x + 4, pos.x + pos.w, 370, 370 + TTF12_HEIGHT) )
+	{
+		drawTooltip(&src);
+		ttfPrintTextFormatted(ttf12, src.x + 4, src.y + 4, language[2968], getInputName(impulses[IN_USE]));
+		if ( *inputPressed(impulses[IN_USE]) )
+		{
+			consoleCommand("/dropgold");
+			*inputPressed(impulses[IN_USE]) = 0;
+		}
+		else if ( *inputPressed(joyimpulses[INJOY_GAME_USE]) )
+		{
+			consoleCommand("/dropgold");
+			*inputPressed(joyimpulses[INJOY_GAME_USE]) = 0;
+		}
+	}
 }
 
 void drawSkillsSheet()
@@ -215,7 +273,7 @@ void drawSkillsSheet()
 	button.y = pos.y;
 	button.h = attributesright_bmp->h;
 
-	if ( mousestatus[SDL_BUTTON_LEFT] )
+	if ( mousestatus[SDL_BUTTON_LEFT] && !shootmode )
 	{
 		if ( omousex >= button.x && omousex <= button.x + button.w
 			&& omousey >= button.y && omousey <= button.y + button.h )
@@ -240,6 +298,31 @@ void drawSkillsSheet()
 	else
 	{
 		drawImage(attributesrightunclicked_bmp, nullptr, &button);
+	}
+
+	SDL_Rect lockbtn = button;
+	lockbtn.h = 24;
+	lockbtn.w = 24;
+	lockbtn.x -= 32;
+	lockbtn.y += 2;
+	if ( lock_right_sidebar )
+	{
+		drawImageScaled(sidebar_lock_bmp, nullptr, &lockbtn);
+	}
+	else
+	{
+		drawImageScaled(sidebar_unlock_bmp, nullptr, &lockbtn);
+	}
+
+	if ( mousestatus[SDL_BUTTON_LEFT] && !shootmode )
+	{
+		if ( omousex >= lockbtn.x && omousex <= lockbtn.x + lockbtn.w
+			&& omousey >= lockbtn.y && omousey <= lockbtn.y + lockbtn.h )
+		{
+			playSound(139, 64);
+			lock_right_sidebar = !lock_right_sidebar;
+			mousestatus[SDL_BUTTON_LEFT] = 0;
+		}
 	}
 
 	pos.y += TTF12_HEIGHT * 2 + 8;
@@ -322,7 +405,7 @@ void drawPartySheet()
 	button.y = pos.y;
 	button.h = attributesright_bmp->h;
 
-	if ( mousestatus[SDL_BUTTON_LEFT] )
+	if ( mousestatus[SDL_BUTTON_LEFT] && !shootmode )
 	{
 		if ( omousex >= button.x && omousex <= button.x + button.w
 			&& omousey >= button.y && omousey <= button.y + button.h )
@@ -347,6 +430,31 @@ void drawPartySheet()
 	else
 	{
 		drawImage(attributesrightunclicked_bmp, nullptr, &button);
+	}
+
+	SDL_Rect lockbtn = button;
+	lockbtn.h = 24;
+	lockbtn.w = 24;
+	lockbtn.x -= 32;
+	lockbtn.y += 2;
+	if ( lock_right_sidebar )
+	{
+		drawImageScaled(sidebar_lock_bmp, nullptr, &lockbtn);
+	}
+	else
+	{
+		drawImageScaled(sidebar_unlock_bmp, nullptr, &lockbtn);
+	}
+
+	if ( mousestatus[SDL_BUTTON_LEFT] && !shootmode )
+	{
+		if ( omousex >= lockbtn.x && omousex <= lockbtn.x + lockbtn.w
+			&& omousey >= lockbtn.y && omousey <= lockbtn.y + lockbtn.h )
+		{
+			playSound(139, 64);
+			lock_right_sidebar = !lock_right_sidebar;
+			mousestatus[SDL_BUTTON_LEFT] = 0;
+		}
 	}
 
 	pos.y += TTF12_HEIGHT * 2 + 4;
@@ -433,36 +541,38 @@ void statsHoverText(Stat* tmpStat)
 		"charisma: "
 	};
 
-	char tooltipText[6][3][128] =
+	char tooltipText[6][4][128] =
 	{
 		{
-			"base:  %2d",
-			"bonus: %2d",
+			"base:  %2d ",
+			"bonus: %2d ",
 			""
 		},
 		{
-			"base:  %2d",
-			"bonus: %2d",
+			"base:  %2d ",
+			"bonus: %2d ",
 			""
 		},
 		{
-			"base:  %2d",
-			"bonus: %2d",
+			"base:  %2d ",
+			"bonus: %2d ",
+			"HP regen rate: 1 / %2.1fs",
 			""
 		},
 		{
-			"base:  %2d",
-			"bonus: %2d",
-			"MP regen rate: 1 / %2.1fs"
+			"base:  %2d ",
+			"bonus: %2d ",
+			"MP regen rate: 1 / %2.1fs",
+			"magic resistance: %2.1f%% "
 		},
 		{
-			"base:  %2d",
-			"bonus: %2d",
+			"base:  %2d ",
+			"bonus: %2d ",
 			""
 		},
 		{
-			"base:  %2d",
-			"bonus: %2d",
+			"base:  %2d ",
+			"bonus: %2d ",
 			""
 		}
 	};
@@ -494,13 +604,13 @@ void statsHoverText(Stat* tmpStat)
 					statBonus = statGetDEX(tmpStat) - statBase;
 					break;
 				case 2:
-					numInfoLines = 2;
+					numInfoLines = 3;
 					tmp_bmp = con_bmp64;
 					statBase = tmpStat->CON;
 					statBonus = statGetCON(tmpStat) - statBase;
 					break;
 				case 3:
-					numInfoLines = 3;
+					numInfoLines = 4;
 					tmp_bmp = int_bmp64;
 					statBase = tmpStat->INT;
 					statBonus = statGetINT(tmpStat) - statBase;
@@ -570,16 +680,72 @@ void statsHoverText(Stat* tmpStat)
 					}
 					else if ( j == 2 )
 					{
-						Entity* tmp = nullptr;
-						if ( players[clientnum] && players[clientnum]->entity )
+						if ( i == 3 )
 						{
-							tmp = players[clientnum]->entity;
-							real_t regen = (static_cast<real_t>(tmp->getManaRegenInterval(*tmpStat)) / TICKS_PER_SECOND);
-							snprintf(buf, longestline(tooltipText[i][j]), tooltipText[i][j], regen);
+							Entity* tmp = nullptr;
+							if ( players[clientnum] && players[clientnum]->entity )
+							{
+								tmp = players[clientnum]->entity;
+								real_t regen = (static_cast<real_t>(tmp->getManaRegenInterval(*tmpStat)) / TICKS_PER_SECOND);
+								snprintf(buf, longestline(tooltipText[i][j]), tooltipText[i][j], regen);
+								if ( regen < static_cast<real_t>(tmp->getBaseManaRegen(*tmpStat)) / TICKS_PER_SECOND)
+								{
+									color = uint32ColorGreen(*mainsurface);
+								}
+							}
+							else
+							{
+								snprintf(buf, longestline(tooltipText[i][j]), tooltipText[i][j], 0.f);
+							}
 						}
-						else
+						else if ( i == 2 )
 						{
-							strcpy(buf, "");
+							Entity* tmp = nullptr;
+							if ( players[clientnum] && players[clientnum]->entity )
+							{
+								tmp = players[clientnum]->entity;
+								real_t regen = (static_cast<real_t>(tmp->getHealthRegenInterval(*tmpStat)) / TICKS_PER_SECOND);
+								if ( regen < 0 )
+								{
+									regen = 0.f;
+									color = uint32ColorRed(*mainsurface);
+									snprintf(buf, longestline("HP regen rate: 0 / %2.1fs"), "HP regen rate: 0 / %2.1fs", (static_cast<real_t>(HEAL_TIME) / TICKS_PER_SECOND));
+								}
+								else if ( regen < HEAL_TIME / TICKS_PER_SECOND )
+								{
+									color = uint32ColorGreen(*mainsurface);
+								}
+								if ( regen > 0.f )
+								{
+									snprintf(buf, longestline(tooltipText[i][j]), tooltipText[i][j], regen);
+								}
+							}
+							else
+							{
+								snprintf(buf, longestline(tooltipText[i][j]), tooltipText[i][j], 0.f);
+							}
+						}
+					}
+					else if ( j == 3 )
+					{
+						if ( i == 3 )
+						{
+							Entity* tmp = nullptr;
+							real_t resistance = 0.f;
+							if ( players[clientnum] && players[clientnum]->entity )
+							{
+								tmp = players[clientnum]->entity;
+								real_t resistance = 100 - 100 / (tmp->getMagicResistance() + 1);
+								snprintf(buf, longestline(tooltipText[i][j]), tooltipText[i][j], resistance);
+								if ( resistance > 0.f )
+								{
+									color = uint32ColorGreen(*mainsurface);
+								}
+							}
+							else
+							{
+								snprintf(buf, longestline(tooltipText[i][j]), tooltipText[i][j], 0);
+							}
 						}
 					}
 					ttfPrintTextColor(ttf12, infoText_x, infoText_y, color, false, buf);

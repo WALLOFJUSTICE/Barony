@@ -11,6 +11,8 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "draw.hpp"
+#include "files.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "interface/interface.hpp"
@@ -305,8 +307,8 @@ int initGame()
 	createBooks();
 	setupSpells();
 
-	randomPlayerNamesMale = getLinesFromFile(datadir + PLAYERNAMES_MALE_FILE);
-	randomPlayerNamesFemale = getLinesFromFile(datadir + PLAYERNAMES_FEMALE_FILE);
+	randomPlayerNamesMale = getLinesFromDataFile(PLAYERNAMES_MALE_FILE);
+	randomPlayerNamesFemale = getLinesFromDataFile(PLAYERNAMES_FEMALE_FILE);
 	loadItemLists();
 
 	// print a loading message
@@ -316,9 +318,9 @@ int initGame()
 
 	GO_SwapBuffers(screen);
 
-#ifdef HAVE_FMOD
+#ifdef USE_FMOD
 	FMOD_ChannelGroup_SetVolume(music_group, musvolume / 128.f);
-#elif defined HAVE_OPENAL
+#elif defined USE_OPENAL
 	OPENAL_ChannelGroup_SetVolume(music_group, musvolume / 128.f);
 #endif
 	removedEntities.first = NULL;
@@ -332,6 +334,8 @@ int initGame()
 	}
 	topscores.first = NULL;
 	topscores.last = NULL;
+	topscoresMultiplayer.first = NULL;
+	topscoresMultiplayer.last = NULL;
 	messages.first = NULL;
 	messages.last = NULL;
 	chestInv.first = NULL;
@@ -378,7 +382,7 @@ int initGame()
 
 	// load music
 #ifdef SOUND
-#ifdef HAVE_OPENAL
+#ifdef USE_OPENAL
 #define FMOD_ChannelGroup_SetVolume OPENAL_ChannelGroup_SetVolume
 #define fmod_system 0
 #define FMOD_SOFTWARE 0
@@ -388,7 +392,6 @@ int fmod_result;
 #endif
 
 	FMOD_ChannelGroup_SetVolume(music_group, musvolume / 128.f);
-	fmod_result = FMOD_System_CreateStream(fmod_system, "music/intro.ogg", FMOD_SOFTWARE, NULL, &intromusic);
 	fmod_result = FMOD_System_CreateStream(fmod_system, "music/introduction.ogg", FMOD_SOFTWARE, NULL, &introductionmusic);
 	fmod_result = FMOD_System_CreateStream(fmod_system, "music/intermission.ogg", FMOD_SOFTWARE, NULL, &intermissionmusic);
 	fmod_result = FMOD_System_CreateStream(fmod_system, "music/minetown.ogg", FMOD_SOFTWARE, NULL, &minetownmusic);
@@ -400,6 +403,7 @@ int fmod_result;
 	fmod_result = FMOD_System_CreateStream(fmod_system, "music/endgame.ogg", FMOD_SOFTWARE, NULL, &endgamemusic);
 	fmod_result = FMOD_System_CreateStream(fmod_system, "music/escape.ogg", FMOD_SOFTWARE, NULL, &escapemusic);
 	fmod_result = FMOD_System_CreateStream(fmod_system, "music/devil.ogg", FMOD_SOFTWARE, NULL, &devilmusic);
+	fmod_result = FMOD_System_CreateStream(fmod_system, "music/sanctum.ogg", FMOD_SOFTWARE, NULL, &sanctummusic);
 	//fmod_result = FMOD_System_CreateStream(fmod_system, "music/story.ogg", FMOD_SOFTWARE, NULL, &storymusic);
 
 	if ( NUMMINESMUSIC > 0 )
@@ -483,7 +487,23 @@ int fmod_result;
 			fmod_result = FMOD_System_CreateStream(fmod_system, tempstr, FMOD_SOFTWARE, NULL, &citadelmusic[c]);
 		}
 	}
-#ifdef HAVE_OPENAL
+	if ( NUMINTROMUSIC > 0 )
+	{
+		intromusic = (FMOD_SOUND**)malloc(sizeof(FMOD_SOUND*)*NUMINTROMUSIC);
+		for ( c = 0; c < NUMINTROMUSIC; c++ )
+		{
+			if ( c == 0 )
+			{
+				strcpy(tempstr, "music/intro.ogg");
+			}
+			else
+			{
+				snprintf(tempstr, 1000, "music/intro%02d.ogg", c);
+			}
+			fmod_result = FMOD_System_CreateStream(fmod_system, tempstr, FMOD_SOFTWARE, NULL, &intromusic[c]);
+		}
+	}
+#ifdef USE_OPENAL
 #undef FMOD_ChannelGroup_SetVolume
 #undef fmod_system
 #undef FMOD_SOFTWARE
@@ -506,7 +526,8 @@ int fmod_result;
 	cursor_bmp = loadImage("images/system/cursor.png");
 	cross_bmp = loadImage("images/system/cross.png");
 
-	loadAllScores();
+	loadAllScores(SCORESFILE);
+	loadAllScores(SCORESFILE_MULTIPLAYER);
 	if (!loadInterfaceResources())
 	{
 		printlog("Failed to load interface resources.\n");
@@ -596,8 +617,10 @@ void deinitGame()
 		}
 	}
 
-	saveAllScores();
+	saveAllScores(SCORESFILE);
+	saveAllScores(SCORESFILE_MULTIPLAYER);
 	list_FreeAll(&topscores);
+	list_FreeAll(&topscoresMultiplayer);
 	deleteAllNotificationMessages();
 	list_FreeAll(&removedEntities);
 	if (title_bmp != NULL)
@@ -656,6 +679,10 @@ void deinitGame()
 		}
 	}
 	list_FreeAll(map.entities);
+	if ( map.creatures )
+	{
+		list_FreeAll(map.creatures); //TODO: Need to do this?
+	}
 	list_FreeAll(&messages);
 	if (multiplayer == SINGLE)
 	{
@@ -681,13 +708,12 @@ void deinitGame()
 		list_FreeAll(&safePacketsReceived[c]);
 	}
 #ifdef SOUND
-#ifdef HAVE_OPENAL
+#ifdef USE_OPENAL
 #define FMOD_Channel_Stop OPENAL_Channel_Stop
 #define FMOD_Sound_Release OPENAL_Sound_Release
 #endif
 	FMOD_Channel_Stop(music_channel);
 	FMOD_Channel_Stop(music_channel2);
-	FMOD_Sound_Release(intromusic);
 	FMOD_Sound_Release(introductionmusic);
 	FMOD_Sound_Release(intermissionmusic);
 	FMOD_Sound_Release(minetownmusic);
@@ -699,6 +725,7 @@ void deinitGame()
 	FMOD_Sound_Release(endgamemusic);
 	FMOD_Sound_Release(escapemusic);
 	FMOD_Sound_Release(devilmusic);
+	FMOD_Sound_Release(sanctummusic);
 	for ( c = 0; c < NUMMINESMUSIC; c++ )
 	{
 		FMOD_Sound_Release(minesmusic[c]);
@@ -771,7 +798,15 @@ void deinitGame()
 	{
 		free(citadelmusic);
 	}
-#ifdef HAVE_OPENAL
+	for ( c = 0; c < NUMINTROMUSIC; c++ )
+	{
+		FMOD_Sound_Release(intromusic[c]);
+	}
+	if ( intromusic )
+	{
+		free(intromusic);
+	}
+#ifdef USE_OPENAL
 #undef FMOD_Channel_Stop
 #undef FMOD_Sound_Release
 #endif

@@ -96,6 +96,17 @@ void initScarab(Entity* my, Stat* myStats)
 														 // count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
 
+			my->setHardcoreStats(*myStats);
+
+			int playerCount = 0;
+			for ( c = 0; c < MAXPLAYERS; ++c )
+			{
+				if ( !client_disconnected[c] )
+				{
+					++playerCount;
+				}
+			}
+
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
 			switch ( defaultItems )
 			{
@@ -105,7 +116,7 @@ void initScarab(Entity* my, Stat* myStats)
 				case 3:
 				case 2:
 				case 1:
-					if ( rand() % 2 )
+					if ( rand() % 2 || playerCount > 1 )
 					{
 						if ( rand() % 3 > 0 )
 						{
@@ -140,6 +151,10 @@ void initScarab(Entity* my, Stat* myStats)
 							}
 							newItem(gem, static_cast<Status>(DECREPIT + rand()%2), (rand()%4 == 0), 1, rand(), false, &myStats->inventory);
 						}
+						if ( playerCount > 2 )
+						{
+							newItem(FOOD_TOMALLEY, static_cast<Status>(DECREPIT + rand() % 4), 0, 1 + rand() % 2, rand(), false, &myStats->inventory);
+						}
 					}
 					break;
 				default:
@@ -149,7 +164,7 @@ void initScarab(Entity* my, Stat* myStats)
 	}
 
 	// right wing
-	Entity* entity = newEntity(483, 0, map.entities);
+	Entity* entity = newEntity(483, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 5;
 	entity->sizey = 11;
 	entity->skill[2] = my->getUID();
@@ -165,9 +180,10 @@ void initScarab(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left wing
-	entity = newEntity(484, 0, map.entities);
+	entity = newEntity(484, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 5;
 	entity->sizey = 11;
 	entity->skill[2] = my->getUID();
@@ -183,6 +199,7 @@ void initScarab(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 }
 
 void scarabAnimate(Entity* my, Stat* myStats, double dist)

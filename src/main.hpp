@@ -33,6 +33,8 @@ using std::string; //Instead of including an entire namespace, please explicitly
 
 extern bool spamming;
 extern bool showfirst;
+extern bool logCheckObstacle;
+extern int logCheckObstacleCount;
 
 #include <dirent.h>
 #include <stdlib.h>
@@ -42,11 +44,13 @@ extern bool showfirst;
 #include <fcntl.h>
 #ifndef WINDOWS
 #include <unistd.h>
+#include <limits.h>
 #endif
 #include <string.h>
 #include <ctype.h>
 #ifdef WINDOWS
 #define GL_GLEXT_PROTOTYPES
+#define PATH_MAX 1024
 #include <windows.h>
 #undef min
 #undef max
@@ -163,7 +167,8 @@ extern bool stop;
 #define IN_DEFEND 13
 #define IN_ATTACK 14
 #define IN_USE 15
-#define NUMIMPULSES 16
+#define IN_AUTOSORT 16
+#define NUMIMPULSES 17
 
 //Joystick/gamepad impulses
 //TODO: Split bindings into three subcategories: Bifunctional, Game Exclusive, Menu Exclusive.
@@ -218,6 +223,8 @@ static const unsigned UNBOUND_JOYBINDING = 399;
 
 static const int NUM_HOTBAR_CATEGORIES = 12; // number of filters for auto add hotbar items
 
+static const int NUM_AUTOSORT_CATEGORIES = 12; // number of categories for autosort
+
 // since SDL2 gets rid of these and we're too lazy to fix them...
 #define SDL_BUTTON_WHEELUP 4
 #define SDL_BUTTON_WHEELDOWN 5
@@ -268,6 +275,7 @@ typedef struct map_t
 	Sint32* tiles;
 	std::unordered_map<Sint32, node_t*> entities_map;
 	list_t* entities;
+	list_t* creatures; //A list of Entity* pointers.
 
 	Entity* getEntityWithUID(Uint32 uid);
 } map_t;
@@ -304,18 +312,6 @@ static const int MAP_FLAG_GENADJACENTROOMS = 15;
 #define MFLAG_DISABLETELEPORT ((map.flags[MAP_FLAG_GENBYTES3] >> 16) & 0xFF) // second leftmost byte
 #define MFLAG_DISABLELEVITATION ((map.flags[MAP_FLAG_GENBYTES3] >> 8) & 0xFF) // third leftmost byte
 #define MFLAG_GENADJACENTROOMS ((map.flags[MAP_FLAG_GENBYTES3] >> 0) & 0xFF) // fourth leftmost byte
-
-// light structure
-typedef struct light_t
-{
-	Sint32 x, y;
-	Sint32 radius;
-	Sint32 intensity;
-	Sint32* tiles;
-
-	// a pointer to the light's location in a list
-	node_t* node;
-} light_t;
 
 // delete entity structure
 typedef struct deleteent_t
@@ -562,17 +558,6 @@ int longestline(char* str);
 int concatedStringLength(char* str, ...);
 void printlog(const char* str, ...);
 
-// function prototypes for init.c:
-int initApp(char* title, int fullscreen);
-int deinitApp();
-bool initVideo();
-bool changeVideoMode();
-void generatePolyModels(int start, int end, bool forceCacheRebuild);
-void generateVBOs(int start, int end);
-int loadLanguage(char* lang);
-int reloadLanguage();
-void freeLanguages();
-
 // function prototypes for list.c:
 void list_FreeAll(list_t* list);
 void list_RemoveNode(node_t* node);
@@ -597,10 +582,6 @@ list_t* list_CopyNew(list_t* srclist);
 Uint32 list_Index(node_t* node);
 node_t* list_Node(list_t* list, int index);
 
-// function prototypes for light.c:
-light_t* lightSphereShadow(Sint32 x, Sint32 y, Sint32 radius, Sint32 intensity);
-light_t* lightSphere(Sint32 x, Sint32 y, Sint32 radius, Sint32 intensity);
-
 // function prototypes for objects.c:
 void defaultDeconstructor(void* data);
 void emptyDeconstructor(void* data);
@@ -609,57 +590,10 @@ void lightDeconstructor(void* data);
 void mapDeconstructor(void* data);
 void stringDeconstructor(void* data);
 void listDeconstructor(void* data);
-Entity* newEntity(Sint32 sprite, Uint32 pos, list_t* entlist);
+Entity* newEntity(Sint32 sprite, Uint32 pos, list_t* entlist, list_t* creaturelist);
 button_t* newButton(void);
-light_t* newLight(Sint32 x, Sint32 y, Sint32 radius, Sint32 intensity);
 string_t* newString(list_t* list, Uint32 color, char* content, ...);
 pathnode_t* newPathnode(list_t* list, Sint32 x, Sint32 y, pathnode_t* parent, Sint8 pos);
-
-// function prototypes for draw.c:
-#define FLIP_VERTICAL 1
-#define FLIP_HORIZONTAL 2
-SDL_Surface* flipSurface(SDL_Surface* surface, int flags);
-void drawCircle(int x, int y, real_t radius, Uint32 color, Uint8 alpha);
-void drawArc(int x, int y, real_t radius, real_t angle1, real_t angle2, Uint32 color, Uint8 alpha);
-void drawLine(int x1, int y1, int x2, int y2, Uint32 color, Uint8 alpha);
-int drawRect(SDL_Rect* src, Uint32 color, Uint8 alpha);
-int drawBox(SDL_Rect* src, Uint32 color, Uint8 alpha);
-void drawGear(Sint16 x, Sint16 y, real_t size, Sint32 rotation);
-void drawImage(SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos);
-void drawImageScaled(SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos);
-void drawImageAlpha(SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, Uint8 alpha);
-void drawImageColor(SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, Uint32 color);
-void drawImageFancy(SDL_Surface* image, Uint32 color, real_t angle, SDL_Rect* src, SDL_Rect* pos);
-void drawImageRotatedAlpha(SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, real_t angle, Uint8 alpha);
-SDL_Surface* scaleSurface(SDL_Surface* Surface, Uint16 Width, Uint16 Height);
-void drawSky3D(view_t* camera, SDL_Surface* tex);
-void drawLayer(long camx, long camy, int z, map_t* map);
-void drawBackground(long camx, long camy);
-void drawForeground(long camx, long camy);
-void drawClearBuffers();
-void raycast(view_t* camera, int mode);
-void drawFloors(view_t* camera);
-void drawSky(SDL_Surface* srfc);
-void drawVoxel(view_t* camera, Entity* entity);
-void drawEntities3D(view_t* camera, int mode);
-void drawPalette(voxel_t* model);
-void drawEntities2D(long camx, long camy);
-void drawGrid(long camx, long camy);
-void drawEditormap(long camx, long camy);
-void drawWindow(int x1, int y1, int x2, int y2);
-void drawDepressed(int x1, int y1, int x2, int y2);
-void drawWindowFancy(int x1, int y1, int x2, int y2);
-SDL_Rect ttfPrintTextColor( TTF_Font* font, int x, int y, Uint32 color, bool outline, const char* str );
-SDL_Rect ttfPrintText( TTF_Font* font, int x, int y, const char* str );
-SDL_Rect ttfPrintTextFormattedColor( TTF_Font* font, int x, int y, Uint32 color, char* fmt, ... );
-SDL_Rect ttfPrintTextFormatted( TTF_Font* font, int x, int y, char* fmt, ... );
-void printTextFormatted( SDL_Surface* font_bmp, int x, int y, char* fmt, ... );
-void printTextFormattedAlpha(SDL_Surface* font_bmp, int x, int y, Uint8 alpha, char* fmt, ...);
-void printTextFormattedColor(SDL_Surface* font_bmp, int x, int y, Uint32 color, char* fmt, ...);
-void printTextFormattedFancy(SDL_Surface* font_bmp, int x, int y, Uint32 color, real_t angle, real_t scale, char* fmt, ...);
-void printText( SDL_Surface* font_bmp, int x, int y, char* str );
-void drawSprite(view_t* camera, Entity* entity);
-void drawTooltip(SDL_Rect* src);
 
 // function prototypes for opengl.c:
 #define REALCOLORS 0
@@ -669,14 +603,6 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode);
 void glDrawSprite(view_t* camera, Entity* entity, int mode);
 real_t getLightAt(int x, int y);
 void glDrawWorld(view_t* camera, int mode);
-
-// function prototypes for files.c:
-void glLoadTexture(SDL_Surface* image, int texnum);
-SDL_Surface* loadImage(char* filename);
-voxel_t* loadVoxel(char* filename2);
-int loadMap(char* filename, map_t* destmap, list_t* entlist);
-int loadConfig(char* filename);
-int saveMap(char* filename);
 
 // function prototypes for cursors.c:
 SDL_Cursor* newCursor(char* image[]);
@@ -693,9 +619,6 @@ extern char* cursor_fill[];
 
 GLuint create_shader(const char* filename, GLenum type);
 
-char* readFile(char* filename);
-std::list<std::string> directoryContents(const char* directory);
-
 extern bool no_sound; //False means sound initialized properly. True means sound failed to initialize.
 extern bool initialized; //So that messagePlayer doesn't explode before the game is initialized. //TODO: Does the editor need this set too and stuff?
 
@@ -707,10 +630,4 @@ extern GLuint fbo_ren;
 #endif
 void GO_SwapBuffers(SDL_Window* screen);
 unsigned int GO_GetPixelU32(int x, int y);
-extern char datadir[1024];
-FILE *openDataFile(const char *const filename, const char * const mode);
-DIR * openDataDir(const char *const);
-bool dataPathExists(const char *const);
-bool completePath(char *dest, const char * const path);
-
 static const Uint32 cacheLimit = 8096;

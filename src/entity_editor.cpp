@@ -13,7 +13,7 @@
 
 
 
-Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist) :
+Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist, list_t* creaturelist) :
 	char_gonnavomit(skill[26]),
 	char_heal(skill[22]),
 	char_energize(skill[23]),
@@ -59,6 +59,9 @@ Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist) :
 	monsterLookTime(skill[4]),
 	monsterMoveTime(skill[6]),
 	monsterLookDir(fskill[4]),
+	monsterEntityRenderAsTelepath(skill[41]),
+	playerLevelEntrySpeech(skill[18]),
+	playerAliveTime(skill[12]),
 	monsterAttack(skill[8]),
 	monsterAttackTime(skill[9]),
 	monsterArmbended(skill[10]),
@@ -66,16 +69,28 @@ Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist) :
 	monsterShadowInitialMimic(skill[34]),
 	monsterShadowDontChangeName(skill[35]),
 	monsterLichFireMeleeSeq(skill[34]),
+	monsterLichFireMeleePrev(skill[35]),
+	monsterLichIceCastSeq(skill[34]),
+	monsterLichIceCastPrev(skill[35]),
+	monsterLichMagicCastCount(skill[37]),
+	monsterLichMeleeSwingCount(skill[38]),
+	monsterLichBattleState(skill[27]),
+	monsterLichTeleportTimer(skill[40]),
+	monsterLichAllyStatus(skill[18]),
+	monsterLichAllyUID(skill[17]),
 	monsterPathBoundaryXStart(skill[14]),
 	monsterPathBoundaryYStart(skill[15]),
 	monsterPathBoundaryXEnd(skill[16]),
 	monsterPathBoundaryYEnd(skill[17]),
 	monsterStoreType(skill[18]),
+	monsterStrafeDirection(skill[39]),
+	monsterPathCount(skill[38]),
 	particleDuration(skill[0]),
 	particleShrink(skill[1]),
 	monsterHitTime(skill[7]),
 	itemNotMoving(skill[18]),
 	itemNotMovingClient(skill[19]),
+	itemSokobanReward(skill[20]),
 	gateInit(skill[1]),
 	gateStatus(skill[3]),
 	gateRattle(skill[4]),
@@ -141,6 +156,9 @@ Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist) :
 	spellTrapCounter(skill[8]),
 	spellTrapReset(skill[9]),
 	ceilingTileModel(skill[0]),
+	floorDecorationModel(skill[0]),
+	floorDecorationRotation(skill[1]),
+	floorDecorationHeightOffset(skill[3]),
 	furnitureType(skill[0]),
 	furnitureInit(skill[1]),
 	furnitureDir(skill[3]),
@@ -151,7 +169,17 @@ Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist) :
 	pistonCamRotateSpeed(fskill[0]),
 	arrowPower(skill[3]),
 	arrowPoisonTime(skill[4]),
-	arrowArmorPierce(skill[5])
+	arrowArmorPierce(skill[5]),
+	actmagicIsVertical(skill[6]),
+	actmagicIsOrbiting(skill[7]),
+	actmagicOrbitDist(skill[8]),
+	actmagicOrbitVerticalDirection(skill[9]),
+	actmagicOrbitLifetime(skill[10]),
+	actmagicOrbitVerticalSpeed(fskill[2]),
+	actmagicOrbitStartZ(fskill[3]),
+	goldAmount(skill[0]),
+	goldAmbience(skill[1]),
+	goldSokoban(skill[2])
 {
 	int c;
 	// add the entity to the entity list
@@ -166,6 +194,8 @@ Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist) :
 	mynode->element = this;
 	mynode->deconstructor = &entityDeconstructor;
 	mynode->size = sizeof(Entity);
+
+	myCreatureListNode = nullptr;
 
 	// now reset all of my data elements
 	lastupdate = 0;
@@ -262,8 +292,23 @@ Stat* Entity::getStats() const
 	return nullptr;
 }
 
+void Entity::addToCreatureList(list_t *list)
+{
+	return;
+}
+
 bool Entity::isInvisible() const
 {
 	//Dummy function.
 	return false;
+}
+
+void actMonster(Entity* my)
+{
+	return;
+}
+
+void actPlayer(Entity* my)
+{
+	return;
 }

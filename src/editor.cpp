@@ -10,11 +10,14 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "draw.hpp"
 #include "editor.hpp"
 #include "entity.hpp"
 #include "items.hpp"
 #include "player.hpp"
 #include "interface/interface.hpp"
+#include "files.hpp"
+#include "init.hpp"
 
 #define EDITOR
 
@@ -40,6 +43,7 @@ void mainLogic(void);
 std::vector<Entity*> groupedEntities;
 bool moveSelectionNegativeX = false;
 bool moveSelectionNegativeY = false;
+std::vector<std::string> mapNames;
 
 map_t copymap;
 
@@ -179,6 +183,13 @@ char spellTrapPropertyNames[5][38] =
 char furniturePropertyNames[1][19] =
 {
 	"Direction (-1 - 7)"
+};
+
+char floorDecorationPropertyNames[3][59] =
+{
+	"Model texture to use (0-999)",
+	"Direction (-1 - 7)",
+	"Height Offset (Qtrs of a voxel, +ive is higher)"
 };
 
 int recentUsedTiles[9][9] = { 0 };
@@ -775,17 +786,17 @@ void editFill(int x, int y, int layer, int type)
 
 #define MAXUNDOS 10
 
-node_t* undospot = NULL;
-node_t* redospot = NULL;
+node_t* undospot = nullptr;
+node_t* redospot = nullptr;
 list_t undolist;
 void makeUndo()
 {
 	node_t* node, *nextnode;
 
 	// eliminate any undo nodes beyond the one we are currently on
-	if ( undospot != NULL )
+	if ( undospot != nullptr )
 	{
-		for ( node = undospot->next; node != NULL; node = nextnode )
+		for ( node = undospot->next; node != nullptr; node = nextnode )
 		{
 			nextnode = node->next;
 			list_RemoveNode(node);
@@ -813,11 +824,12 @@ void makeUndo()
 	undomap->tiles = (Sint32*) malloc(sizeof(Sint32) * undomap->width * undomap->height * MAPLAYERS);
 	memcpy(undomap->tiles, map.tiles, sizeof(Sint32)*undomap->width * undomap->height * MAPLAYERS);
 	undomap->entities = (list_t*) malloc(sizeof(list_t));
-	undomap->entities->first = NULL;
-	undomap->entities->last = NULL;
-	for ( node = map.entities->first; node != NULL; node = node->next )
+	undomap->entities->first = nullptr;
+	undomap->entities->last = nullptr;
+	undomap->creatures = nullptr;
+	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
-		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, undomap->entities);
+		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, undomap->entities, nullptr);
 
 		setSpriteAttributes(entity, (Entity*)node->element, (Entity*)node->element);
 	}
@@ -831,14 +843,14 @@ void makeUndo()
 		list_RemoveNode(undolist.first);
 	}
 	undospot = node;
-	redospot = NULL;
+	redospot = nullptr;
 }
 
 void clearUndos()
 {
 	list_FreeAll(&undolist);
-	undospot = NULL;
-	redospot = NULL;
+	undospot = nullptr;
+	redospot = nullptr;
 }
 
 /*-------------------------------------------------------------------------------
@@ -872,7 +884,7 @@ void undo()
 	list_FreeAll(map.entities);
 	for ( node = undomap->entities->first; node != NULL; node = node->next )
 	{
-		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, map.entities);
+		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, map.entities, nullptr);
 
 		setSpriteAttributes(entity, (Entity*)node->element, (Entity*)node->element);
 	}
@@ -905,7 +917,7 @@ void redo()
 	list_FreeAll(map.entities);
 	for ( node = undomap->entities->first; node != NULL; node = node->next )
 	{
-		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, map.entities);
+		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, map.entities, nullptr);
 
 		setSpriteAttributes(entity, (Entity*)node->element, (Entity*)node->element);
 	}
@@ -923,7 +935,9 @@ void redo()
 void processCommandLine(int argc, char** argv)
 {
 	int c = 0;
-	strcpy(datadir, "./");
+	size_t datadirsz = std::min(sizeof(datadir) - 1, strlen(BASE_DATA_DIR));
+	strncpy(datadir, BASE_DATA_DIR, datadirsz);
+	datadir[datadirsz] = '\0';
 	if ( argc > 1 )
 	{
 		for ( c = 1; c < argc; c++ )
@@ -937,7 +951,9 @@ void processCommandLine(int argc, char** argv)
 				}
 				else if (!strncmp(argv[c], "-datadir=", 9))
 				{
-					strcpy(datadir, argv[c] + 9);
+					datadirsz = std::min(sizeof(datadir) - 1, strlen(argv[c] + 9));
+					strncpy(datadir, argv[c] + 9, datadirsz);
+					datadir[datadirsz] = '\0';
 				}
 			}
 		}
@@ -1239,11 +1255,11 @@ int main(int argc, char** argv)
 	int x2, y2;
 	//char action[32];
 	int oslidery = 0;
-	light_t* light = NULL;
+	light_t* light = nullptr;
 	bool savedundo = false;
 	smoothlighting = true;
 
-	Stat* spriteStats = NULL;
+	Stat* spriteStats = nullptr;
 
 	processCommandLine(argc, argv);
 
@@ -1258,18 +1274,28 @@ int main(int argc, char** argv)
 	if ( (x = initApp("Barony Editor", fullscreen)) )
 	{
 		printlog("Critical error: %d\n", x);
+#ifdef STEAMWORKS
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Uh oh",
-		                         "Barony Editor has encountered a critical error and cannot start.\n\n"
-		                         "Please check the log.txt file in the game directory for additional info,\n"
-		                         "or contact us through our website at http://www.baronygame.com/ for support.",
-		                         screen);
+								"Barony has encountered a critical error and cannot start.\n\n"
+								"Please check the log.txt file in the game directory for additional info\n"
+								"and verify Steam is running. Alternatively, contact us through our website\n"
+								"at http://www.baronygame.com/ for support.",
+								screen);
+#else
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Uh oh",
+								"Barony has encountered a critical error and cannot start.\n\n"
+								"Please check the log.txt file in the game directory for additional info,\n"
+								"or contact us through our website at http://www.baronygame.com/ for support.",
+								screen);
+#endif
 		deinitApp();
 		exit(x);
 	}
-	copymap.tiles = NULL;
-	copymap.entities = NULL;
-	undolist.first = NULL;
-	undolist.last = NULL;
+	copymap.tiles = nullptr;
+	copymap.entities = nullptr;
+	copymap.creatures = nullptr;
+	undolist.first = nullptr;
+	undolist.last = nullptr;
 
 	// Load Cursors
 	cursorArrow = SDL_GetCursor();
@@ -1281,14 +1307,15 @@ int main(int argc, char** argv)
 
 	// instatiate a timer
 	timer = SDL_AddTimer(1000 / TICKS_PER_SECOND, timerCallback, NULL);
-	srand(time(NULL));
+	srand(time(nullptr));
 
 	// create an empty map
 	map.width = 32;
 	map.height = 24;
 	map.entities = (list_t*) malloc(sizeof(list_t));
-	map.entities->first = NULL;
-	map.entities->last = NULL;
+	map.creatures = nullptr;
+	map.entities->first = nullptr;
+	map.entities->last = nullptr;
 	map.tiles = (int*) malloc(sizeof(int) * map.width * map.height * MAPLAYERS);
 	strcpy(map.name, "");
 	strcpy(map.author, "");
@@ -1665,7 +1692,7 @@ int main(int argc, char** argv)
 
 	if ( loadingmap )
 	{
-		if ( loadMap(maptoload, &map, map.entities) == -1 )
+		if ( loadMap(maptoload, &map, map.entities, map.creatures) == -1 )
 		{
 			strcat(message, "Failed to open ");
 			strcat(message, maptoload);
@@ -1826,7 +1853,7 @@ int main(int argc, char** argv)
 									}
 									duplicatedSprite = true;
 								}
-								selectedEntity = newEntity(entity->sprite, 0, map.entities);
+								selectedEntity = newEntity(entity->sprite, 0, map.entities, nullptr);
 								
 								setSpriteAttributes(selectedEntity, entity, lastSelectedEntity);
 
@@ -1863,7 +1890,7 @@ int main(int argc, char** argv)
 									{
 										makeUndo();
 									}
-									selectedEntity = newEntity(entity->sprite, 0, map.entities);
+									selectedEntity = newEntity(entity->sprite, 0, map.entities, nullptr);
 									lastSelectedEntity = selectedEntity;
 
 									setSpriteAttributes(selectedEntity, entity, entity);
@@ -2359,23 +2386,23 @@ int main(int argc, char** argv)
 				}
 
 				// open and save windows
-				if ( (openwindow || savewindow) && d_names != NULL )
+				if ( (openwindow || savewindow) && !mapNames.empty() )
 				{
 					drawDepressed(subx1 + 4, suby1 + 20, subx2 - 20, suby2 - 52);
 					drawDepressed(subx2 - 20, suby1 + 20, subx2 - 4, suby2 - 52);
-					slidersize = std::min<int>(((suby2 - 53) - (suby1 + 21)), ((suby2 - 53) - (suby1 + 21)) / ((real_t)d_names_length / 20)); //TODO: Why are int and real_t being compared?
+					slidersize = std::min<int>(((suby2 - 53) - (suby1 + 21)), ((suby2 - 53) - (suby1 + 21)) / ((real_t)mapNames.size() / 20)); //TODO: Why are int and real_t being compared?
 					slidery = std::min(std::max(suby1 + 21, slidery), suby2 - 53 - slidersize);
 					drawWindowFancy(subx2 - 19, slidery, subx2 - 5, slidery + slidersize);
 
 					// directory list offset from slider
-					y2 = ((real_t)(slidery - suby1 - 20) / ((suby2 - 52) - (suby1 + 20))) * d_names_length;
+					y2 = ((real_t)(slidery - suby1 - 20) / ((suby2 - 52) - (suby1 + 20))) * mapNames.size();
 					if ( scroll )
 					{
 						slidery -= 8 * scroll;
 						slidery = std::min(std::max(suby1 + 21, slidery), suby2 - 53 - slidersize);
-						y2 = ((real_t)(slidery - suby1 - 20) / ((suby2 - 52) - (suby1 + 20))) * d_names_length;
-						selectedFile = std::min<long unsigned int>(std::max(y2, selectedFile), std::min<long unsigned int>(d_names_length - 1, y2 + 19)); //TODO: Why are long unsigned int and int being compared? TWICE. On the same line.
-						strcpy(filename, d_names[selectedFile]);
+						y2 = ((real_t)(slidery - suby1 - 20) / ((suby2 - 52) - (suby1 + 20))) * mapNames.size();
+						selectedFile = std::min<long unsigned int>(std::max(y2, selectedFile), std::min<long unsigned int>(mapNames.size() - 1, y2 + 19)); //TODO: Why are long unsigned int and int being compared? TWICE. On the same line.
+						strcpy(filename, mapNames[selectedFile].c_str());
 						inputstr = filename;
 						scroll = 0;
 					}
@@ -2383,10 +2410,10 @@ int main(int argc, char** argv)
 					{
 						slidery = oslidery + mousey - omousey;
 						slidery = std::min(std::max(suby1 + 21, slidery), suby2 - 53 - slidersize);
-						y2 = ((real_t)(slidery - suby1 - 20) / ((suby2 - 52) - (suby1 + 20))) * d_names_length;
+						y2 = ((real_t)(slidery - suby1 - 20) / ((suby2 - 52) - (suby1 + 20))) * mapNames.size();
 						mclick = 1;
-						selectedFile = std::min<long unsigned int>(std::max(y2, selectedFile), std::min<long unsigned int>(d_names_length - 1, y2 + 19)); //TODO: Why are long unsigned int and int being compared? TWICE. On the same line.
-						strcpy(filename, d_names[selectedFile]);
+						selectedFile = std::min<long unsigned int>(std::max(y2, selectedFile), std::min<long unsigned int>(mapNames.size() - 1, y2 + 19)); //TODO: Why are long unsigned int and int being compared? TWICE. On the same line.
+						strcpy(filename, mapNames[selectedFile].c_str());
 						inputstr = filename;
 					}
 					else
@@ -2400,8 +2427,8 @@ int main(int argc, char** argv)
 						if ( omousex >= subx1 + 8 && omousex < subx2 - 24 && omousey >= suby1 + 24 && omousey < suby2 - 56 )
 						{
 							selectedFile = y2 + ((omousey - suby1 - 24) >> 3);
-							selectedFile = std::min<long unsigned int>(std::max(y2, selectedFile), std::min<long unsigned int>(d_names_length - 1, y2 + 19)); //TODO: Why are long unsigned int and int being compared? TWICE. On the same line.
-							strcpy(filename, d_names[selectedFile]);
+							selectedFile = std::min<long unsigned int>(std::max(y2, selectedFile), std::min<long unsigned int>(mapNames.size() - 1, y2 + 19)); //TODO: Why are long unsigned int and int being compared? TWICE. On the same line.
+							strcpy(filename, mapNames[selectedFile].c_str());
 							inputstr = filename;
 						}
 					}
@@ -2414,10 +2441,10 @@ int main(int argc, char** argv)
 					// print all the files within the directory
 					x = subx1 + 8;
 					y = suby1 + 24;
-					c = std::min<long unsigned int>(d_names_length, 20 + y2); //TODO: Why are long unsigned int and int being compared?
+					c = std::min<long unsigned int>(mapNames.size(), 20 + y2); //TODO: Why are long unsigned int and int being compared?
 					for (z = y2; z < c; z++)
 					{
-						printText(font8x8_bmp, x, y, d_names[z]);
+						printText(font8x8_bmp, x, y, mapNames[z].c_str());
 						y += 8;
 					}
 
@@ -3063,6 +3090,50 @@ int main(int argc, char** argv)
 										printTextFormattedColor(font8x8_bmp, pad_x1, pad_y1, color, tmpPropertyName);
 										// print left text
 										printText(font8x8_bmp, pad_x1 + pad_x2, pad_y1, spriteProperties[i + 12]);
+										if ( i == 13 && spriteStats->type == SHOPKEEPER )
+										{
+											char shopTypeText[32] = "";
+											color = SDL_MapRGB(mainsurface->format, 0, 255, 0);
+											switch ( atoi(spriteProperties[25]) )
+											{
+												case 1:
+													strcpy(shopTypeText, "Arms and Armor");
+													break;
+												case 2:
+													strcpy(shopTypeText, "Hats and Helmets");
+													break;
+												case 3:
+													strcpy(shopTypeText, "Jewelry");
+													break;
+												case 4:
+													strcpy(shopTypeText, "Bookstore");
+													break;
+												case 5:
+													strcpy(shopTypeText, "Apothecary");
+													break;
+												case 6:
+													strcpy(shopTypeText, "Magistaffs");
+													break;
+												case 7:
+													strcpy(shopTypeText, "Food Store");
+													break;
+												case 8:
+													strcpy(shopTypeText, "Hardware Store");
+													break;
+												case 9:
+													strcpy(shopTypeText, "Lighting Store");
+													break;
+												case 10:
+													strcpy(shopTypeText, "General Store");
+													break;
+												default:
+													strcpy(shopTypeText, "Default Random Store");
+													color = SDL_MapRGB(mainsurface->format, 255, 255, 255);
+													break;
+											}
+											printTextFormattedColor(font8x8_bmp, pad_x1 + pad_x2 + pad_x3 + 8, pad_y1, color, shopTypeText);
+											color = SDL_MapRGB(mainsurface->format, 255, 255, 255);
+										}
 									}
 								}
 							}
@@ -4974,11 +5045,11 @@ int main(int argc, char** argv)
 										char tmpStr[32] = "";
 										if ( propertyInt == 0 )
 										{
-											strcpy(tmpStr, "false - must re-trigger power to fire");
+											strcpy(tmpStr, "must re-trigger power to fire");
 										}
 										else if ( propertyInt == 1 )
 										{
-											strcpy(tmpStr, "true - continous fire on first power up");
+											strcpy(tmpStr, "continous fire first power up");
 										}
 										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
 									}
@@ -5155,6 +5226,127 @@ int main(int argc, char** argv)
 
 							// set the maximum length allowed for user input
 							inputlen = 2;
+							propertyPageCursorFlash(spacing);
+						}
+					}
+				}
+				if ( newwindow == 15 )
+				{
+					if ( selectedEntity != nullptr )
+					{
+						int numProperties = sizeof(floorDecorationPropertyNames) / sizeof(floorDecorationPropertyNames[0]); //find number of entries in property list
+						const int lenProperties = sizeof(floorDecorationPropertyNames[0]) / sizeof(char); //find length of entry in property list
+						int spacing = 36; // 36 px between each item in the list.
+						int inputFieldHeader_y = suby1 + 28; // 28 px spacing from subwindow start.
+						int inputField_x = subx1 + 8; // 8px spacing from subwindow start.
+						int inputField_y = inputFieldHeader_y + 16;
+						int inputFieldWidth = 64; // width of the text field
+						int inputFieldFeedback_x = inputField_x + inputFieldWidth + 8;
+						char tmpPropertyName[lenProperties] = "";
+						Uint32 color = SDL_MapRGB(mainsurface->format, 0, 255, 0);
+						Uint32 colorRandom = SDL_MapRGB(mainsurface->format, 0, 168, 255);
+						Uint32 colorError = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+
+						for ( int i = 0; i < numProperties; i++ )
+						{
+							int propertyInt = atoi(spriteProperties[i]);
+
+							strcpy(tmpPropertyName, floorDecorationPropertyNames[i]);
+							inputFieldHeader_y = suby1 + 28 + i * spacing;
+							inputField_y = inputFieldHeader_y + 16;
+							// box outlines then text
+							drawDepressed(inputField_x - 4, inputField_y - 4, inputField_x - 4 + inputFieldWidth, inputField_y + 16 - 4);
+							// print values on top of boxes
+							printText(font8x8_bmp, inputField_x, suby1 + 44 + i * spacing, spriteProperties[i]);
+							printText(font8x8_bmp, inputField_x, inputFieldHeader_y, tmpPropertyName);
+
+							if ( errorArr[i] != 1 )
+							{
+								if ( i == 0 )
+								{
+									if ( propertyInt > 999 || propertyInt < 0 )
+									{
+										propertyPageError(i, 0); // reset to default 0.
+									}
+								}
+								else if ( i == 1 )
+								{
+									if ( propertyInt > 7 || propertyInt < -1 )
+									{
+										propertyPageError(i, 0); // reset to default 0.
+									}
+									else
+									{
+										char tmpStr[32] = "";
+										switch ( propertyInt )
+										{
+											case -1:
+												strcpy(tmpStr, "random");
+												break;
+											case 0:
+												strcpy(tmpStr, "East");
+												break;
+											case 1:
+												strcpy(tmpStr, "Southeast");
+												break;
+											case 2:
+												strcpy(tmpStr, "South");
+												break;
+											case 3:
+												strcpy(tmpStr, "Southwest");
+												break;
+											case 4:
+												strcpy(tmpStr, "West");
+												break;
+											case 5:
+												strcpy(tmpStr, "Northwest");
+												break;
+											case 6:
+												strcpy(tmpStr, "North");
+												break;
+											case 7:
+												strcpy(tmpStr, "Northeast");
+												break;
+											default:
+												break;
+										}
+										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
+									}
+								}
+								else if ( i == 2 )
+								{
+									if ( propertyInt > 999 || propertyInt < -999 )
+									{
+										propertyPageError(i, 0); // reset to default 0.
+									}
+								}
+								else
+								{
+									// enter other row entries here
+								}
+							}
+
+							if ( errorMessage )
+							{
+								if ( errorArr[i] == 1 )
+								{
+									printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, colorError, "Invalid ID!");
+								}
+							}
+						}
+
+						propertyPageTextAndInput(numProperties, inputFieldWidth);
+
+						if ( editproperty < numProperties )   // edit
+						{
+							if ( !SDL_IsTextInputActive() )
+							{
+								SDL_StartTextInput();
+								inputstr = spriteProperties[0];
+							}
+
+							// set the maximum length allowed for user input
+							inputlen = 4;
 							propertyPageCursorFlash(spacing);
 						}
 					}
@@ -5809,7 +6001,7 @@ int main(int argc, char** argv)
 				// create a new object
 				if (palette[mousey + mousex * yres] >= 0)
 				{
-					entity = newEntity(palette[mousey + mousex * yres], 0, map.entities);
+					entity = newEntity(palette[mousey + mousex * yres], 0, map.entities, nullptr);
 					selectedEntity = entity;
 					lastSelectedEntity = selectedEntity;
 					setSpriteAttributes(selectedEntity, nullptr, nullptr);

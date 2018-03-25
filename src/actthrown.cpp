@@ -67,7 +67,7 @@ void actThrown(Entity* my)
 				else
 				{
 					node_t* node;
-					for ( node = map.entities->first; node != NULL; node = node->next )
+					for ( node = map.creatures->first; node != nullptr; node = node->next ) //Since searching for players and monsters, don't search full map.entities.
 					{
 						Entity* entity = (Entity*)node->element;
 						if ( entity->behavior == &actPlayer || entity->behavior == &actMonster )
@@ -84,7 +84,7 @@ void actThrown(Entity* my)
 			else
 			{
 				node_t* node;
-				for ( node = map.entities->first; node != NULL; node = node->next )
+				for ( node = map.creatures->first; node != nullptr; node = node->next ) //Monsters and players? Creature list, not entity list.
 				{
 					Entity* entity = (Entity*)node->element;
 					if ( entity->behavior == &actPlayer || entity->behavior == &actMonster )
@@ -117,6 +117,13 @@ void actThrown(Entity* my)
 		return;
 	}
 
+	Entity* parent = uidToEntity(my->parent);
+	bool specialMonster = false;
+	if ( parent && parent->getRace() == LICH_ICE )
+	{
+		specialMonster = true;
+	}
+
 	// gravity
 	if ( my->z < 7.5 - models[my->sprite]->sizey * .25 )
 	{
@@ -124,7 +131,14 @@ void actThrown(Entity* my)
 		if ( cat == THROWN )
 		{
 			// todo: adjust falling rates for thrown items if need be
-			THROWN_VELZ += 0.03;
+			if ( specialMonster )
+			{
+				THROWN_VELZ += 0.01;
+			}
+			else
+			{
+				THROWN_VELZ += 0.03;
+			}
 			my->z += THROWN_VELZ;
 			if ( item->type == BRONZE_TOMAHAWK || item->type == IRON_DAGGER )
 			{
@@ -133,7 +147,14 @@ void actThrown(Entity* my)
 			}
 			else
 			{
-				my->roll += 0.01;
+				if ( specialMonster )
+				{
+					my->roll += 0.003;
+				}
+				else
+				{
+					my->roll += 0.01;
+				}
 				my->yaw += 0.5;
 			}
 		}
@@ -158,9 +179,15 @@ void actThrown(Entity* my)
 					list_RemoveNode(my->mynode);
 					return;
 				}
+				else if ( specialMonster )
+				{
+					free(item);
+					list_RemoveNode(my->mynode);
+					return;
+				}
 				else
 				{
-					Entity* entity = newEntity(-1, 1, map.entities);
+					Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
 					entity->flags[INVISIBLE] = true;
 					entity->flags[UPDATENEEDED] = true;
 					entity->flags[PASSABLE] = true;
@@ -326,8 +353,26 @@ void actThrown(Entity* my)
 						switch ( item->type )
 						{
 							case POTION_WATER:
-								item_PotionWater(item, hit.entity);
 								usedpotion = true;
+								if ( item->beatitude > 0
+									 && hit.entity->behavior == &actMonster
+									 && (hit.entity->getRace() == GHOUL ||
+										 hit.entity->getRace() == LICH || //TODO: Won't work on liches.
+										 hit.entity->getRace() == LICH_FIRE ||
+										 hit.entity->getRace() == LICH_ICE ||
+										 hit.entity->getRace() == SHADOW ||
+										 hit.entity->getRace() == SKELETON ||
+										 hit.entity->getRace() == VAMPIRE) )
+								{
+									//Blessed water damages undead more.
+									int damage = -(20 * item->beatitude);
+									hit.entity->modHP(damage);
+									consumeItem(item);
+								}
+								else
+								{
+									item_PotionWater(item, hit.entity);
+								}
 								break;
 							case POTION_BOOZE:
 								item_PotionBooze(item, hit.entity);
@@ -482,7 +527,7 @@ void actThrown(Entity* my)
 					// alert other monsters too
 					Entity* ohitentity = hit.entity;
 					node_t* node;
-					for ( node = map.entities->first; node != nullptr; node = node->next )
+					for ( node = map.creatures->first; node != nullptr; node = node->next ) //Searching for monsters? Creature list, not entity list.
 					{
 						Entity* entity = (Entity*)node->element;
 						if ( entity && entity->behavior == &actMonster && entity != ohitentity )
@@ -564,7 +609,7 @@ void actThrown(Entity* my)
 		}
 		else
 		{
-			Entity* entity = newEntity(-1, 1, map.entities);
+			Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
 			entity->flags[INVISIBLE] = true;
 			entity->flags[UPDATENEEDED] = true;
 			entity->flags[PASSABLE] = true;

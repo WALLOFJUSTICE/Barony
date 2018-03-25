@@ -10,16 +10,19 @@
 -------------------------------------------------------------------------------*/
 
 #include "main.hpp"
+#include "draw.hpp"
 #include "game.hpp"
 #include "stat.hpp"
 #include "messages.hpp"
 #include "entity.hpp"
+#include "files.hpp"
 #include "menu.hpp"
 #include "classdescriptions.hpp"
 #include "interface/interface.hpp"
 #include "magic/magic.hpp"
 #include "sound.hpp"
 #include "items.hpp"
+#include "init.hpp"
 #include "shops.hpp"
 #include "monster.hpp"
 #include "scores.hpp"
@@ -117,6 +120,10 @@ void gameLogic(void)
 	if ( thirdendmoviestage > 0 )
 	{
 		thirdendmovietime++;
+	}
+	if ( fourthendmoviestage > 0 )
+	{
+		fourthendmovietime++;
 	}
 
 #ifdef SOUND
@@ -222,12 +229,12 @@ void gameLogic(void)
 	if ( !(ticks % 4) )
 	{
 		j = 0;
-		for ( node = safePacketsSent.first; node != NULL; node = nextnode )
+		for ( node = safePacketsSent.first; node != nullptr; node = nextnode )
 		{
 			nextnode = node->next;
 
 			packetsend_t* packet = (packetsend_t*)node->element;
-			sendPacket(packet->sock, packet->channel, packet->packet, packet->hostnum);
+			sendPacket(packet->sock, packet->channel, packet->packet, packet->hostnum, true);
 			packet->tries++;
 			if ( packet->tries >= MAXTRIES )
 			{
@@ -244,7 +251,7 @@ void gameLogic(void)
 	// spawn flame particles on burning objects
 	if ( !gamePaused || (multiplayer && !client_disconnected[0]) )
 	{
-		for ( node = map.entities->first; node != NULL; node = node->next )
+		for ( node = map.entities->first; node != nullptr; node = node->next )
 		{
 			entity = (Entity*)node->element;
 			if ( entity->flags[BURNING] )
@@ -255,7 +262,7 @@ void gameLogic(void)
 					continue;
 				}
 				j = 1 + rand() % 4;
-				for ( c = 0; c < j; c++ )
+				for ( c = 0; c < j; ++c )
 				{
 					Entity* flame = spawnFlame(entity, SPRITE_FLAME);
 					flame->x += rand() % (entity->sizex * 2 + 1) - entity->sizex;
@@ -318,20 +325,20 @@ void gameLogic(void)
 		x = clientnum;
 		multiplayer = SINGLE;
 		clientnum = 0;
-		for ( node = map.entities->first; node != NULL; node = nextnode )
+		for ( node = map.entities->first; node != nullptr; node = nextnode )
 		{
 			nextnode = node->next;
 			entity = (Entity*)node->element;
 			if ( entity && !entity->ranbehavior )
 			{
 				entity->ticks++;
-				if ( entity->behavior != NULL )
+				if ( entity->behavior != nullptr )
 				{
 					(*entity->behavior)(entity);
-					if ( entitiesdeleted.first != NULL )
+					if ( entitiesdeleted.first != nullptr )
 					{
 						entitydeletedself = false;
-						for ( node2 = entitiesdeleted.first; node2 != NULL; node2 = node2->next )
+						for ( node2 = entitiesdeleted.first; node2 != nullptr; node2 = node2->next )
 						{
 							if ( entity == (Entity*)node2->element )
 							{
@@ -354,7 +361,7 @@ void gameLogic(void)
 				}
 			}
 		}
-		for ( node = map.entities->first; node != NULL; node = node->next )
+		for ( node = map.entities->first; node != nullptr; node = node->next )
 		{
 			entity = (Entity*)node->element;
 			entity->ranbehavior = false;
@@ -465,9 +472,9 @@ void gameLogic(void)
 										if ( ticks % 40 == (y + x * map.height) % 40 && rand() % 3 == 0 )
 										{
 											int c, j = 1 + rand() % 2;
-											for ( c = 0; c < j; c++ )
+											for ( c = 0; c < j; ++c )
 											{
-												Entity* entity = newEntity(42, 1, map.entities);
+												Entity* entity = newEntity(42, 1, map.entities, nullptr); //Gib entity.
 												entity->behavior = &actGib;
 												entity->x = x * 16 + rand() % 16;
 												entity->y = y * 16 + rand() % 16;
@@ -489,7 +496,7 @@ void gameLogic(void)
 												entity->roll = (rand() % 360) * PI / 180.0;
 												if ( multiplayer != CLIENT )
 												{
-													entity_uids--;
+													--entity_uids;
 												}
 												entity->setUID(-3);
 											}
@@ -522,17 +529,12 @@ void gameLogic(void)
 					}
 				}
 			}
-			if ( conductPenniless )
-			{
-				if ( stats[clientnum]->GOLD > 0 )
-				{
-					conductPenniless = false;
-				}
-			}
+
+			updatePlayerConductsInMainLoop();
 
 			//if( TICKS_PER_SECOND )
 			//generatePathMaps();
-			for ( node = map.entities->first; node != NULL; node = nextnode )
+			for ( node = map.entities->first; node != nullptr; node = nextnode )
 			{
 				nextnode = node->next;
 				entity = (Entity*)node->element;
@@ -540,18 +542,18 @@ void gameLogic(void)
 				{
 					if ( !gamePaused || (multiplayer && !client_disconnected[0]) )
 					{
-						entity->ticks++;
+						++entity->ticks;
 					}
-					if ( entity->behavior != NULL )
+					if ( entity->behavior != nullptr )
 					{
 						if ( !gamePaused || (multiplayer && !client_disconnected[0]) )
 						{
 							(*entity->behavior)(entity);
 						}
-						if ( entitiesdeleted.first != NULL )
+						if ( entitiesdeleted.first != nullptr )
 						{
 							entitydeletedself = false;
-							for ( node2 = entitiesdeleted.first; node2 != NULL; node2 = node2->next )
+							for ( node2 = entitiesdeleted.first; node2 != nullptr; node2 = node2->next )
 							{
 								if ( entity == (Entity*)node2->element )
 								{
@@ -576,25 +578,25 @@ void gameLogic(void)
 
 				if ( loadnextlevel == true )
 				{
-					for ( node = map.entities->first; node != NULL; node = node->next )
+					for ( node = map.entities->first; node != nullptr; node = node->next )
 					{
 						entity = (Entity*)node->element;
 						entity->flags[NOUPDATE] = true;
 					}
 
 					// hack to fix these things from breaking everything...
-					hudarm = NULL;
-					hudweapon = NULL;
-					magicLeftHand = NULL;
-					magicRightHand = NULL;
+					hudarm = nullptr;
+					hudweapon = nullptr;
+					magicLeftHand = nullptr;
+					magicRightHand = nullptr;
 
 					// stop all sounds
-#ifdef HAVE_FMOD
+#ifdef USE_FMOD
 					if ( sound_group )
 					{
 						FMOD_ChannelGroup_Stop(sound_group);
 					}
-#elif defined HAVE_OPENAL
+#elif defined USE_OPENAL
 					if ( sound_group )
 					{
 						OPENAL_ChannelGroup_Stop(sound_group);
@@ -617,13 +619,13 @@ void gameLogic(void)
 
 					// copy followers list
 					list_t tempFollowers[MAXPLAYERS];
-					for ( c = 0; c < MAXPLAYERS; c++ )
+					for ( c = 0; c < MAXPLAYERS; ++c )
 					{
-						tempFollowers[c].first = NULL;
-						tempFollowers[c].last = NULL;
+						tempFollowers[c].first = nullptr;
+						tempFollowers[c].last = nullptr;
 
 						node_t* node;
-						for ( node = stats[c]->FOLLOWERS.first; node != NULL; node = node->next )
+						for ( node = stats[c]->FOLLOWERS.first; node != nullptr; node = node->next )
 						{
 							Entity* follower = uidToEntity(*((Uint32*)node->element));
 							if ( follower )
@@ -672,12 +674,16 @@ void gameLogic(void)
 					}
 					else
 					{
+						if ( skipLevelsOnLoad < 0 )
+						{
+							currentlevel += skipLevelsOnLoad;
+						}
 						++currentlevel;
 					}
 					skipLevelsOnLoad = 0;
 					if ( multiplayer == SERVER )
 					{
-						for ( c = 1; c < MAXPLAYERS; c++ )
+						for ( c = 1; c < MAXPLAYERS; ++c )
 						{
 							if ( client_disconnected[c] == true )
 							{
@@ -731,11 +737,33 @@ void gameLogic(void)
 							{
 								break;
 							}
-						result = loadMap(tempstr, &map, map.entities);
+						result = loadMap(tempstr, &map, map.entities, map.creatures);
 					}
 					fclose(fp);
 					assignActions(&map);
 					generatePathMaps();
+
+					if ( !strncmp(map.name, "Mages Guild", 11) )
+					{
+						for ( c = 0; c < MAXPLAYERS; ++c )
+						{
+							if ( players[c] && players[c]->entity )
+							{
+								players[c]->entity->modHP(999);
+								players[c]->entity->modMP(999);
+								if ( stats[c] && stats[c]->HUNGER < 1450 )
+								{
+									stats[c]->HUNGER = 1450;
+									serverUpdateHunger(c);
+								}
+							}
+						}
+						messagePlayer(clientnum, language[2599]);
+
+						// undo shopkeeper grudge
+						swornenemies[SHOPKEEPER][HUMAN] = false;
+						monsterally[SHOPKEEPER][HUMAN] = true;
+					}
 
 					// (special) unlock temple achievement
 					if ( secretlevel && currentlevel == 8 )
@@ -856,7 +884,7 @@ void gameLogic(void)
 					break;
 				}
 			}
-			for ( node = map.entities->first; node != NULL; node = node->next )
+			for ( node = map.entities->first; node != nullptr; node = node->next )
 			{
 				entity = (Entity*)node->element;
 				entity->ranbehavior = false;
@@ -888,10 +916,10 @@ void gameLogic(void)
 				// send entity info to clients
 				if ( ticks % (TICKS_PER_SECOND / 8) == 0 )
 				{
-					for ( node = map.entities->first; node != NULL; node = node->next )
+					for ( node = map.entities->first; node != nullptr; node = node->next )
 					{
 						entity = (Entity*)node->element;
-						for ( c = 1; c < MAXPLAYERS; c++ )
+						for ( c = 1; c < MAXPLAYERS; ++c )
 						{
 							if ( !client_disconnected[c] )
 							{
@@ -1050,7 +1078,7 @@ void gameLogic(void)
 		else if ( multiplayer == CLIENT )
 		{
 			// keep alives
-			if ( multiplayer == CLIENT )
+			if ( multiplayer == CLIENT ) //lol
 			{
 				if ( ticks % (TICKS_PER_SECOND * 1) == 0 )
 				{
@@ -1183,7 +1211,7 @@ void gameLogic(void)
 											int c, j = 1 + rand() % 2;
 											for ( c = 0; c < j; c++ )
 											{
-												Entity* entity = newEntity(42, 1, map.entities);
+												Entity* entity = newEntity(42, 1, map.entities, nullptr); //Gib entity.
 												entity->behavior = &actGib;
 												entity->x = x * 16 + rand() % 16;
 												entity->y = y * 16 + rand() % 16;
@@ -1217,13 +1245,8 @@ void gameLogic(void)
 					}
 				}
 			}
-			if ( conductPenniless )
-			{
-				if ( stats[clientnum]->GOLD > 0 )
-				{
-					conductPenniless = false;
-				}
-			}
+
+			updatePlayerConductsInMainLoop();
 
 			// ask for entity delete update
 			if ( ticks % 4 == 0 && list_Size(map.entities) )
@@ -1249,7 +1272,7 @@ void gameLogic(void)
 			}
 
 			// run entity actions
-			for ( node = map.entities->first; node != NULL; node = nextnode )
+			for ( node = map.entities->first; node != nullptr; node = nextnode )
 			{
 				nextnode = node->next;
 				entity = (Entity*)node->element;
@@ -1312,37 +1335,14 @@ void gameLogic(void)
 										}
 										clipMove(&entity->x, &entity->y, entity->vel_x, entity->vel_y, entity);
 										clipMove(&entity->new_x, &entity->new_y, entity->vel_x, entity->vel_y, entity);
-										if ( entity->behavior == &actPlayer )
+										if ( entity->behavior == &actPlayer || entity->behavior == &actMonster )
 										{
-											node_t* node2;
-											for ( node2 = map.entities->first; node2 != NULL; node2 = node2->next )
+											for (Entity *bodypart : entity->bodyparts)
 											{
-												Entity* bodypart = (Entity*)node2->element;
-												if ( bodypart->behavior == &actPlayerLimb )
-												{
-													if ( bodypart->skill[2] == entity->skill[2] )
-													{
-														bodypart->x += entity->x - ox;
-														bodypart->y += entity->y - oy;
-														bodypart->new_x += entity->new_x - onewx;
-														bodypart->new_y += entity->new_y - onewy;
-													}
-												}
-											}
-										}
-										if ( entity->behavior == &actMonster )
-										{
-											node_t* node2;
-											for ( node2 = map.entities->first; node2 != NULL; node2 = node2->next )
-											{
-												Entity* bodypart = (Entity*)node2->element;
-												if ( bodypart->skill[2] == entity->getUID() && bodypart->parent == entity->getUID() )
-												{
-													bodypart->x += entity->x - ox;
-													bodypart->y += entity->y - oy;
-													bodypart->new_x += entity->new_x - onewx;
-													bodypart->new_y += entity->new_y - onewy;
-												}
+												bodypart->x += entity->x - ox;
+												bodypart->y += entity->y - oy;
+												bodypart->new_x += entity->new_x - onewx;
+												bodypart->new_y += entity->new_y - onewy;
 											}
 										}
 									}
@@ -1410,7 +1410,7 @@ void gameLogic(void)
 					}
 				}
 			}
-			for ( node = map.entities->first; node != NULL; node = node->next )
+			for ( node = map.entities->first; node != nullptr; node = node->next )
 			{
 				entity = (Entity*)node->element;
 				entity->ranbehavior = false;
@@ -2154,7 +2154,7 @@ bool frameRateLimit( Uint32 maxFrameRate )
 	main
 
 	Initializes game resources, harbors main game loop, and cleans up
-	afterwords
+	afterwards
 
 -------------------------------------------------------------------------------*/
 
@@ -2220,7 +2220,9 @@ int main(int argc, char** argv)
 		//SDL_Surface *sky_bmp;
 		light_t* light;
 
-		strcpy(datadir, "./");
+		size_t datadirsz = std::min(sizeof(datadir) - 1, strlen(BASE_DATA_DIR));
+		strncpy(datadir, BASE_DATA_DIR, datadirsz);
+		datadir[datadirsz] = '\0';
 		// read command line arguments
 		if ( argc > 1 )
 		{
@@ -2260,7 +2262,9 @@ int main(int argc, char** argv)
 					}
 					else if (!strncmp(argv[c], "-datadir=", 9))
 					{
-						strcpy(datadir, argv[c] + 9);
+						datadirsz = std::min(sizeof(datadir) - 1, strlen(argv[c] + 9));
+						strncpy(datadir, argv[c] + 9, datadirsz);
+						datadir[datadirsz] = '\0';
 					}
 				}
 			}
@@ -2290,11 +2294,20 @@ int main(int argc, char** argv)
 		if ( (c = initApp("Barony", fullscreen)) )
 		{
 			printlog("Critical error: %d\n", c);
+#ifdef STEAMWORKS
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Uh oh",
-			                         "Barony has encountered a critical error and cannot start.\n\n"
-			                         "Please check the log.txt file in the game directory for additional info,\n"
-			                         "or contact us through our website at http://www.baronygame.com/ for support.",
-			                         screen);
+									"Barony has encountered a critical error and cannot start.\n\n"
+									"Please check the log.txt file in the game directory for additional info\n"
+									"and verify Steam is running. Alternatively, contact us through our website\n"
+									"at http://www.baronygame.com/ for support.",
+				screen);
+#else
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Uh oh",
+									"Barony has encountered a critical error and cannot start.\n\n"
+									"Please check the log.txt file in the game directory for additional info,\n"
+									"or contact us through our website at http://www.baronygame.com/ for support.",
+									screen);
+#endif
 			deinitApp();
 			exit(c);
 		}
@@ -2324,10 +2337,16 @@ int main(int argc, char** argv)
 		initialized = true;
 
 		// initialize map
-		map.tiles = NULL;
+		map.tiles = nullptr;
 		map.entities = (list_t*) malloc(sizeof(list_t));
-		map.entities->first = NULL;
-		map.entities->last = NULL;
+		map.entities->first = nullptr;
+		map.entities->last = nullptr;
+		map.creatures = new list_t;
+		map.creatures->first = nullptr;
+		map.creatures->last = nullptr;
+
+		// initialize player conducts
+		setDefaultPlayerConducts();
 
 		// instantiate a timer
 		timer = SDL_AddTimer(1000 / TICKS_PER_SECOND, timerCallback, NULL);
@@ -2399,35 +2418,18 @@ int main(int argc, char** argv)
 						fadeout = false;
 						fadefinished = false;
 #else
-						switch ( rand() % 4 )
+						int menuMapType = 0;
+						switch ( rand() % 4 ) // STEAM VERSION INTRO
 						{
 							case 0:
-								loadMap("mainmenu1", &map, map.entities);
-								camera.x = 8;
-								camera.y = 4.5;
-								camera.z = 0;
-								camera.ang = 0.6;
-								break;
 							case 1:
-								loadMap("mainmenu2", &map, map.entities);
-								camera.x = 7;
-								camera.y = 4;
-								camera.z = -4;
-								camera.ang = 1.0;
-								break;
 							case 2:
-								loadMap("mainmenu3", &map, map.entities);
-								camera.x = 5;
-								camera.y = 3;
-								camera.z = 0;
-								camera.ang = 1.0;
+								menuMapType = loadMainMenuMap(true, false);
 								break;
 							case 3:
-								loadMap("mainmenu4", &map, map.entities);
-								camera.x = 6;
-								camera.y = 14.5;
-								camera.z = -24;
-								camera.ang = 5.0;
+								menuMapType = loadMainMenuMap(false, false);
+								break;
+							default:
 								break;
 						}
 						numplayers = 0;
@@ -2439,7 +2441,7 @@ int main(int argc, char** argv)
 						if ( !skipintro && !strcmp(classtoquickstart, "") )
 						{
 							introstage = 6;
-#if defined(HAVE_FMOD) || defined(HAVE_OPENAL)
+#if defined(USE_FMOD) || defined(USE_OPENAL)
 							playmusic(introductionmusic, true, false, false);
 #endif
 						}
@@ -2448,8 +2450,15 @@ int main(int argc, char** argv)
 							introstage = 1;
 							fadeout = false;
 							fadefinished = false;
-#if defined(HAVE_FMOD) || defined(HAVE_OPENAL)
-							playmusic(intromusic, true, false, false);
+#if defined(USE_FMOD) || defined(USE_OPENAL)
+							if ( menuMapType == 1 )
+							{
+								playmusic(intromusic[2], true, false, false);
+							}
+							else
+							{
+								playmusic(intromusic[1], true, false, false);
+							}
 #endif
 						}
 #endif
@@ -2479,38 +2488,21 @@ int main(int argc, char** argv)
 					old_sdl_ticks = SDL_GetTicks();
 					indev_timer += time_passed;
 
+					int menuMapType = 0;
 					//if( (*inputPressed(joyimpulses[INJOY_MENU_NEXT]) || *inputPressed(joyimpulses[INJOY_MENU_CANCEL]) || *inputPressed(joyimpulses[INJOY_BACK]) || keystatus[SDL_SCANCODE_ESCAPE] || keystatus[SDL_SCANCODE_SPACE] || keystatus[SDL_SCANCODE_RETURN] || mousestatus[SDL_BUTTON_LEFT] || indev_timer >= indev_displaytime) && !fadeout) {
 					if ( (*inputPressed(joyimpulses[INJOY_MENU_NEXT]) || *inputPressed(joyimpulses[INJOY_MENU_CANCEL]) || keystatus[SDL_SCANCODE_ESCAPE] || keystatus[SDL_SCANCODE_SPACE] || keystatus[SDL_SCANCODE_RETURN] || mousestatus[SDL_BUTTON_LEFT] || indev_timer >= indev_displaytime) && !fadeout)
 					{
-						switch ( rand() % 4 )
+						switch ( rand() % 4 ) // DRM FREE VERSION INTRO
 						{
 							case 0:
-								loadMap("mainmenu1", &map, map.entities);
-								camera.x = 8;
-								camera.y = 4.5;
-								camera.z = 0;
-								camera.ang = 0.6;
-								break;
 							case 1:
-								loadMap("mainmenu2", &map, map.entities);
-								camera.x = 7;
-								camera.y = 4;
-								camera.z = -4;
-								camera.ang = 1.0;
-								break;
 							case 2:
-								loadMap("mainmenu3", &map, map.entities);
-								camera.x = 5;
-								camera.y = 3;
-								camera.z = 0;
-								camera.ang = 1.0;
+								menuMapType = loadMainMenuMap(true, false);
 								break;
 							case 3:
-								loadMap("mainmenu4", &map, map.entities);
-								camera.x = 6;
-								camera.y = 14.5;
-								camera.z = -24;
-								camera.ang = 5.0;
+								menuMapType = loadMainMenuMap(false, false);
+								break;
+							default:
 								break;
 						}
 						numplayers = 0;
@@ -2535,7 +2527,14 @@ int main(int argc, char** argv)
 							fadeout = false;
 							fadefinished = false;
 #ifdef MUSIC
-							playmusic(intromusic, true, false, false);
+							if ( menuMapType == 1 )
+							{
+								playmusic(intromusic[2], true, false, false);
+							}
+							else
+							{
+								playmusic(intromusic[1], true, false, false);
+							}
 #endif
 						}
 					}
@@ -2583,14 +2582,13 @@ int main(int argc, char** argv)
 						//TODO: Replace all of this with centralized startGameRoutine().
 						// setup game
 						shootmode = true;
-
 						// make some messages
 						startMessages();
 
 						// load dungeon
 						mapseed = rand(); //Use prng if decide to make a quickstart for MP...
 						lastEntityUIDs = entity_uids;
-						for ( node = map.entities->first; node != NULL; node = node->next )
+						for ( node = map.entities->first; node != nullptr; node = node->next )
 						{
 							entity = (Entity*)node->element;
 							entity->flags[NOUPDATE] = true;
@@ -2605,28 +2603,49 @@ int main(int argc, char** argv)
 							{
 								fp = openDataFile(SECRETLEVELSFILE, "r");
 							}
+							currentlevel = startfloor;
+							if ( startfloor )
+							{
+								for ( int i = 0; i < currentlevel; ++i )
+								{
+									while ( fgetc(fp) != '\n' )
+									{
+										if ( feof(fp) )
+										{
+											break;
+										}
+									}
+								}
+							}
 							fscanf(fp, "%s", tempstr);
 							while ( fgetc(fp) != ' ' ) if ( feof(fp) )
+							{
 								{
 									break;
 								}
+							}
 							if ( !strcmp(tempstr, "gen:") )
 							{
 								fscanf(fp, "%s", tempstr);
 								while ( fgetc(fp) != '\n' ) if ( feof(fp) )
+								{
 									{
 										break;
 									}
+								}
 								generateDungeon(tempstr, rand());
 							}
 							else if ( !strcmp(tempstr, "map:") )
 							{
 								fscanf(fp, "%s", tempstr);
-								while ( fgetc(fp) != '\n' ) if ( feof(fp) )
+								while ( fgetc(fp) != '\n' )
+								{
+									if ( feof(fp) )
 									{
 										break;
 									}
-								loadMap(tempstr, &map, map.entities);
+								}
+								loadMap(tempstr, &map, map.entities, map.creatures);
 							}
 							fclose(fp);
 						}
@@ -2634,7 +2653,7 @@ int main(int argc, char** argv)
 						{
 							if ( genmap == false )
 							{
-								loadMap(maptoload, &map, map.entities);
+								loadMap(maptoload, &map, map.entities, map.creatures);
 							}
 							else
 							{
@@ -2757,7 +2776,8 @@ int main(int argc, char** argv)
 				drawClearBuffers();
 				camera.ang += camera_shakex2;
 				camera.vang += camera_shakey2 / 200.0;
-				if (players[clientnum] == nullptr || players[clientnum]->entity == nullptr || !players[clientnum]->entity->isBlind())
+				if (players[clientnum] == nullptr || players[clientnum]->entity == nullptr || !players[clientnum]->entity->isBlind()
+					|| (stats[clientnum] && stats[clientnum]->EFFECTS[EFF_TELEPATH]) )
 				{
 					// drunkenness spinning
 					double cosspin = cos(ticks % 360 * PI / 180.f) * 0.25;
@@ -2773,9 +2793,24 @@ int main(int argc, char** argv)
 						camera.ang += cosspin * drunkextend;
 						camera.vang += sinspin * drunkextend;
 					}
-					raycast(&camera, REALCOLORS);
 
-					glDrawWorld(&camera, REALCOLORS);
+					if ( players[clientnum] && players[clientnum]->entity )
+					{
+						if ( stats[clientnum] && stats[clientnum]->EFFECTS[EFF_TELEPATH] )
+						{
+							// don't draw world with telepath blindfold.
+						}
+						else
+						{
+							raycast(&camera, REALCOLORS);
+							glDrawWorld(&camera, REALCOLORS);
+						}
+					}
+					else
+					{
+						raycast(&camera, REALCOLORS);
+						glDrawWorld(&camera, REALCOLORS);
+					}
 					//drawFloors(&camera);
 					drawEntities3D(&camera, REALCOLORS);
 					if (shaking && players[clientnum] && players[clientnum]->entity && !gamePaused)
@@ -2796,12 +2831,6 @@ int main(int argc, char** argv)
 
 				if ( !gamePaused )
 				{
-					// status bar
-					if ( !nohud )
-					{
-						drawStatus();
-					}
-
 					// interface
 					if ( (*inputPressed(impulses[IN_STATUS]) || *inputPressed(joyimpulses[INJOY_STATUS])) )
 					{
@@ -3067,10 +3096,25 @@ int main(int argc, char** argv)
 						{
 							SDL_SetRelativeMouseMode(SDL_TRUE);
 						}
+
+						if ( lock_right_sidebar )
+						{
+							if ( proficienciesPage == 1 )
+							{
+								drawPartySheet();
+							}
+							else
+							{
+								drawSkillsSheet();
+							}
+						}
 					}
+
+					// Draw the static HUD elements
 					if ( !nohud )
 					{
-						drawMinimap();
+						drawMinimap(); // Draw the Minimap
+						drawStatus(); // Draw the Status Bar (Hotbar, Hungry/Minotaur Icons, Tooltips, etc.)
 					}
 
 					drawSustainedSpells();

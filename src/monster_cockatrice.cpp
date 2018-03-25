@@ -29,14 +29,14 @@ void initCockatrice(Entity* my, Stat* myStats)
 
 	if ( multiplayer != CLIENT )
 	{
-		MONSTER_SPOTSND = 79;
+		/*MONSTER_SPOTSND = 79;
 		MONSTER_SPOTVAR = 1;
 		MONSTER_IDLESND = -1;
-		MONSTER_IDLEVAR = 1;
-		/*MONSTER_SPOTSND = 198;
+		MONSTER_IDLEVAR = 1;*/
+		MONSTER_SPOTSND = 385;
 		MONSTER_SPOTVAR = 3;
-		MONSTER_IDLESND = 201;
-		MONSTER_IDLEVAR = 3;*/
+		MONSTER_IDLESND = 382;
+		MONSTER_IDLEVAR = 2;
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
@@ -77,6 +77,8 @@ void initCockatrice(Entity* my, Stat* myStats)
 
 														 // count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
+
+			my->setHardcoreStats(*myStats);
 
 			// always give special spell to cockatrice, undroppable.
 			newItem(SPELLBOOK_STONEBLOOD, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
@@ -142,7 +144,7 @@ void initCockatrice(Entity* my, Stat* myStats)
 	}
 
 	// torso
-	Entity* entity = newEntity(414, 0, map.entities);
+	Entity* entity = newEntity(414, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->focaly = 1;
@@ -159,9 +161,10 @@ void initCockatrice(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right leg
-	entity = newEntity(416, 0, map.entities);
+	entity = newEntity(416, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -177,9 +180,10 @@ void initCockatrice(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left leg
-	entity = newEntity(415, 0, map.entities);
+	entity = newEntity(415, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -195,9 +199,10 @@ void initCockatrice(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right arm
-	entity = newEntity(418, 0, map.entities);
+	entity = newEntity(418, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -213,9 +218,10 @@ void initCockatrice(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(417, 0, map.entities);
+	entity = newEntity(417, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -231,9 +237,10 @@ void initCockatrice(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right wing
-	entity = newEntity(420, 0, map.entities);
+	entity = newEntity(420, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -249,9 +256,10 @@ void initCockatrice(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left wing
-	entity = newEntity(419, 0, map.entities);
+	entity = newEntity(419, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -267,6 +275,7 @@ void initCockatrice(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 }
 
 void actCockatriceLimb(Entity* my)
@@ -285,9 +294,33 @@ void cockatriceDie(Entity* my)
 
 	my->spawnBlood();
 
-	playSoundEntity(my, 28, 128);
+	//playSoundEntity(my, 28, 128);
+	playSoundEntity(my, 388 + rand() % 2, 128);
 
 	my->removeMonsterDeathNodes();
+
+	node_t* node;
+	Entity* entity = nullptr;
+	if ( multiplayer != CLIENT && !strncmp(map.name, "Cockatrice Lair", 15) )
+	{
+		for ( node = map.entities->first; node != nullptr; )
+		{
+			entity = (Entity*)node->element;
+			node = node->next;
+			if ( entity )
+			{
+				if ( entity->behavior == &actMagicTrap )
+				{
+					list_RemoveNode(entity->mynode);
+				}
+				else if ( entity->behavior == &actPortal )
+				{
+					entity->flags[INVISIBLE] = false;
+					serverUpdateEntityFlag(entity, INVISIBLE);
+				}
+			}
+		}
+	}
 
 	list_RemoveNode(my->mynode);
 	return;
@@ -537,7 +570,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						// init rotations
 						entity->pitch = 0;
 						entity->roll = 0;
-						playSoundEntityLocal(my, 79, 128);
+						playSoundEntityLocal(my, 383, 128);
 						createParticleDot(my);
 						if ( multiplayer != CLIENT )
 						{
@@ -621,7 +654,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->pitch = 0;
 						entity->roll = 0;
 						// set overshoot for z axis animation
-						playSoundEntityLocal(my, 79, 128);
+						playSoundEntityLocal(my, 383, 128);
 						createParticleDot(my);
 						if ( multiplayer != CLIENT )
 						{

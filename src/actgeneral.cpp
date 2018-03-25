@@ -156,6 +156,11 @@ void actFurniture(Entity* my)
 		return;
 	}
 
+	if ( !my->flags[BURNABLE] )
+	{
+		my->flags[BURNABLE] = true;
+	}
+
 	my->actFurniture();
 }
 
@@ -212,8 +217,8 @@ void Entity::actFurniture()
 					serverSpawnGibForClient(entity);
 				}
 				playSoundEntity(this, 176, 128);
-				Entity* entity;
-				if ( (entity = uidToEntity(parent)) != NULL )
+				Entity* entity = uidToEntity(parent);
+				if ( entity != NULL )
 				{
 					entity->itemNotMoving = 0; // drop the item that was on the table
 					entity->itemNotMovingClient = 0; // clear the client item gravity flag
@@ -371,6 +376,10 @@ void actColumn(Entity* my)
 	{
 		return;
 	}
+	if ( my->flags[BLOCKSIGHT] ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
+	}
 	my->actColumn();
 }
 
@@ -384,6 +393,14 @@ void actCeilingTile(Entity* my)
 	if ( !my )
 	{
 		return;
+	}
+	if ( !my->flags[PASSABLE] )
+	{
+		my->flags[PASSABLE] = true;
+	}
+	if ( my->flags[BLOCKSIGHT] )
+	{
+		my->flags[BLOCKSIGHT] = false;
 	}
 }
 
@@ -462,5 +479,17 @@ void Entity::actPistonCam()
 			pistonCamRotateSpeed *= rand() % 2 == 0 ? -1 : 1;
 			pistonCamDir = 0; // down
 		}
+	}
+}
+
+void actFloorDecoration(Entity* my)
+{
+	if ( !my )
+	{
+		return;
+	}
+	if ( !my->flags[PASSABLE] )
+	{
+		my->flags[PASSABLE] = true;
 	}
 }

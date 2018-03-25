@@ -50,9 +50,34 @@ void initGoatman(Entity* my, Stat* myStats)
 	{
 		if ( myStats != nullptr )
 		{
+			bool minion = false;
 			if ( !myStats->leader_uid )
 			{
 				myStats->leader_uid = 0;
+			}
+
+			if ( my->parent != 0 )
+			{
+				minion = true;
+			}
+
+			if ( !strncmp(myStats->name, "lesser goatman", strlen("lesser goatman")) )
+			{
+				myStats->MAXHP = 150;
+				myStats->HP = myStats->MAXHP;
+				myStats->OLDHP = myStats->HP;
+				myStats->RANDOM_MAXHP = 20;
+				myStats->RANDOM_HP = myStats->RANDOM_MAXHP;
+				//stats->RANDOM_MAXMP = 20;
+				//stats->RANDOM_MP = stats->RANDOM_MAXMP;
+				myStats->STR = 15;
+				myStats->DEX = 5;
+				myStats->CON = 5;
+				myStats->INT = -1;
+				myStats->PER = 0;
+				myStats->RANDOM_PER = 5;
+				myStats->CHR = -1;
+				myStats->LVL = 20;
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
@@ -61,10 +86,17 @@ void initGoatman(Entity* my, Stat* myStats)
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
+
 			// boss variants
 			if ( rand() % 50 == 0 && !my->flags[USERFLAG2] )
 			{
 				strcpy(myStats->name, "Gharbad");
+				myStats->STR += 10;
+				myStats->DEX += 2;
+				myStats->MAXHP += 75;
+				myStats->HP = myStats->MAXHP;
+				myStats->OLDHP = myStats->MAXHP;
+				myStats->CHR = -1;
 				boss = BOSS_GHARBAD;
 				//TODO: Boss stats
 
@@ -114,14 +146,33 @@ void initGoatman(Entity* my, Stat* myStats)
 			// count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
 
+			my->setHardcoreStats(*myStats);
+
 			bool isShaman = false;
-			if ( rand() % 2 && boss == 0 )
+			if ( rand() % 2 && boss == 0 && !minion )
 			{
 				isShaman = true;
+				if ( rand() % 2 == 0 )
+				{
+					Entity* entity = summonMonster(GOATMAN, my->x, my->y);
+					if ( entity )
+					{
+						entity->parent = my->getUID();
+					}
+					if ( rand() % 5 == 0 )
+					{
+						// summon second ally randomly.
+						entity = summonMonster(GOATMAN, my->x, my->y);
+						if ( entity )
+						{
+							entity->parent = my->getUID();
+						}
+					}
+				}
 			}
 			else
 			{
-				myStats->DEX += 3; // more speed for brawlers.
+				myStats->DEX += 1; // more speed for brawlers.
 			}
 			
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
@@ -269,26 +320,26 @@ void initGoatman(Entity* my, Stat* myStats)
 				// give weapon
 				if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 				{
-					switch ( rand() % 20 )
+					switch ( rand() % 12 )
 					{
 						case 0:
 						case 1:
 						case 2:
 						case 3:
 						case 4:
-							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(rand() % 3 + DECREPIT), -1 + rand() % 3, 1, rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(rand() % 2 + SERVICABLE), -1 + rand() % 3, 1, rand(), false, nullptr);
 							break;
 						case 5:
 						case 6:
 						case 7:
 						case 8:
-							myStats->weapon = newItem(MAGICSTAFF_FIRE, static_cast<Status>(rand() % 3 + DECREPIT), -1 + rand() % 3, 1, rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_FIRE, static_cast<Status>(rand() % 2 + SERVICABLE), -1 + rand() % 3, 1, rand(), false, nullptr);
 							break;
 						case 9:
 							switch ( rand() % 4 )
 							{
 								case 0:
-									myStats->weapon = newItem(SPELLBOOK_SLOW, static_cast<Status>(rand() % 3 + DECREPIT), -1 + rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
+									myStats->weapon = newItem(SPELLBOOK_SLOW, static_cast<Status>(rand() % 2 + DECREPIT), -1 + rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
 									break;
 								case 1:
 									myStats->weapon = newItem(SPELLBOOK_FIREBALL, static_cast<Status>(rand() % 3 + DECREPIT), -1 + rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
@@ -434,7 +485,7 @@ void initGoatman(Entity* my, Stat* myStats)
 	}
 
 	// torso
-	Entity* entity = newEntity(466, 0, map.entities);
+	Entity* entity = newEntity(466, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -453,9 +504,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right leg
-	entity = newEntity(465, 0, map.entities);
+	entity = newEntity(465, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -471,9 +523,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left leg
-	entity = newEntity(464, 0, map.entities);
+	entity = newEntity(464, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -489,9 +542,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// right arm
-	entity = newEntity(461, 0, map.entities);
+	entity = newEntity(461, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -507,9 +561,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(459, 0, map.entities);
+	entity = newEntity(459, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -525,9 +580,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// world weapon
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -544,9 +600,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// shield
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -562,9 +619,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// cloak
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -580,9 +638,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// helmet
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -601,9 +660,10 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	// mask
-	entity = newEntity(-1, 0, map.entities);
+	entity = newEntity(-1, 0, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -619,6 +679,7 @@ void initGoatman(Entity* my, Stat* myStats)
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
 
 	if ( multiplayer == CLIENT || MONSTER_INIT )
 	{

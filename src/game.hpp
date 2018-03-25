@@ -15,7 +15,7 @@
 #include <random>
 
 // REMEMBER TO CHANGE THIS WITH EVERY NEW OFFICIAL VERSION!!!
-#define VERSION "v3.0.0"
+#define VERSION "v3.1.1"
 #define GAME_CODE
 
 //#define MAX_FPS_LIMIT 60 //TODO: Make this configurable.
@@ -131,7 +131,6 @@ void actFurniture(Entity* my);
 void actMCaxe(Entity* my);
 void actDoorFrame(Entity* my);
 void actDeathCam(Entity* my);
-void actPlayer(Entity* my);
 void actPlayerLimb(Entity* my);
 void actTorch(Entity* my);
 void actCrystalShard(Entity* my);
@@ -140,7 +139,6 @@ void actHudWeapon(Entity* my);
 void actHudShield(Entity* my);
 void actItem(Entity* my);
 void actGoldBag(Entity* my);
-void actMonster(Entity* my);
 void actGib(Entity* my);
 Entity* spawnGib(Entity* parentent);
 Entity* spawnGibClient(Sint16 x, Sint16 y, Sint16 z, Sint16 sprite);
@@ -181,6 +179,7 @@ void actPedestalOrb(Entity* my);
 void actMidGamePortal(Entity* my);
 void actTeleporter(Entity* my);
 void actMagicTrapCeiling(Entity* my);
+void actExpansionEndGamePortal(Entity* my);
 
 void startMessages();
 
