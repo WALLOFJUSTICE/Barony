@@ -1406,7 +1406,7 @@ void Entity::lichIceCreateCannon()
 
 Entity* Entity::lichThrowProjectile(real_t angle)
 {
-	Entity* projectile = newEntity(items[STEEL_CHAKRAM].index, 1, map.entities, nullptr); // thrown item
+	Entity* projectile = newEntity(items[STEEL_CHAKRAM]->index, 1, map.entities, nullptr); // thrown item
 	projectile->parent = uid;
 	projectile->x = x;
 	projectile->y = y;

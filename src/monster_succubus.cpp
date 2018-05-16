@@ -643,21 +643,21 @@ void succubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				entity->x -= 2.5 * cos(my->yaw + PI / 2) + .20 * cos(my->yaw);
 				entity->y -= 2.5 * sin(my->yaw + PI / 2) + .20 * sin(my->yaw);
 				entity->z += 2.5;
-				if ( entity->sprite == items[TOOL_TORCH].index )
+				if ( entity->sprite == items[TOOL_TORCH]->index )
 				{
 					entity2 = spawnFlame(entity, SPRITE_FLAME);
 					entity2->x += 2 * cos(my->yaw);
 					entity2->y += 2 * sin(my->yaw);
 					entity2->z -= 2;
 				}
-				else if ( entity->sprite == items[TOOL_CRYSTALSHARD].index )
+				else if ( entity->sprite == items[TOOL_CRYSTALSHARD]->index )
 				{
 					entity2 = spawnFlame(entity, SPRITE_CRYSTALFLAME);
 					entity2->x += 2 * cos(my->yaw);
 					entity2->y += 2 * sin(my->yaw);
 					entity2->z -= 2;
 				}
-				else if ( entity->sprite == items[TOOL_LANTERN].index )
+				else if ( entity->sprite == items[TOOL_LANTERN]->index )
 				{
 					entity->z += 2;
 					entity2 = spawnFlame(entity, SPRITE_FLAME);
@@ -674,7 +674,7 @@ void succubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	if ( shieldNode )
 	{
 		Entity* shieldEntity = (Entity*)shieldNode->element;
-		if ( shieldEntity->sprite != items[TOOL_TORCH].index && shieldEntity->sprite != items[TOOL_LANTERN].index && shieldEntity->sprite != items[TOOL_CRYSTALSHARD].index )
+		if ( shieldEntity->sprite != items[TOOL_TORCH]->index && shieldEntity->sprite != items[TOOL_LANTERN]->index && shieldEntity->sprite != items[TOOL_CRYSTALSHARD]->index )
 		{
 			shieldEntity->yaw -= PI / 6;
 		}

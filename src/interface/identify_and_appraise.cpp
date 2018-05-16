@@ -409,7 +409,7 @@ int getAppraisalTime(Item* item)
 	int appraisal_time;
 	if ( item->type != GEM_GLASS )
 	{
-		appraisal_time = (items[item->type].value * 60) / (stats[clientnum]->PROFICIENCIES[PRO_APPRAISAL] + 1);    // time in ticks until item is appraised
+		appraisal_time = (items[item->type]->value * 60) / (stats[clientnum]->PROFICIENCIES[PRO_APPRAISAL] + 1);    // time in ticks until item is appraised
 		int playerCount = 0;
 		for ( int i = 0; i < MAXPLAYERS; ++i )
 		{

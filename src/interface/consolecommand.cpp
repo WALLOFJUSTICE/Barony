@@ -159,7 +159,7 @@ void consoleCommand(char* command_str)
 		strcpy(name, command_str + 11);
 		for ( c = 0; c < NUMITEMS; c++ )
 		{
-			if ( strstr(items[c].name_identified, name) )
+			if ( strstr(items[c]->name_identified, name) )
 			{
 				dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, 1, rand(), true, &stats[clientnum]->inventory), 0);
 				break;
@@ -180,7 +180,7 @@ void consoleCommand(char* command_str)
 		strcpy(name, command_str + 13);
 		for ( c = 0; c < NUMITEMS; c++ )
 		{
-			if ( strstr(items[c].name_identified, name) )
+			if ( strstr(items[c]->name_identified, name) )
 			{
 				dropItem(newItem(static_cast<ItemType>(c), WORN, -2, 1, rand(), false, &stats[clientnum]->inventory), 0);
 				break;
@@ -201,7 +201,7 @@ void consoleCommand(char* command_str)
 		strcpy(name, command_str + 14);
 		for ( c = 0; c < NUMITEMS; ++c )
 		{
-			if ( strstr(items[c].name_identified, name) )
+			if ( strstr(items[c]->name_identified, name) )
 			{
 				dropItem(newItem(static_cast<ItemType>(c), WORN, 2, 1, rand(), false, &stats[clientnum]->inventory), 0);
 				break;

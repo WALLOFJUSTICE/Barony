@@ -216,7 +216,7 @@ void updateCharacterSheet()
 	for ( node = stats[clientnum]->inventory.first; node != NULL; node = node->next )
 	{
 		item = (Item*)node->element;
-		weight += items[item->type].weight * item->count;
+		weight += items[item->type]->weight * item->count;
 	}
 	weight += stats[clientnum]->GOLD / 100;
 	ttfPrintTextFormatted(ttf12, 8, 382, language[372], weight);

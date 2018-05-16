@@ -2286,43 +2286,43 @@ void actMonster(Entity* my)
 	Sint32 weight = 0;
 	if ( myStats->helmet != NULL )
 	{
-		weight += items[myStats->helmet->type].weight * myStats->helmet->count;
+		weight += items[myStats->helmet->type]->weight * myStats->helmet->count;
 	}
 	if ( myStats->breastplate != NULL )
 	{
-		weight += items[myStats->breastplate->type].weight * myStats->breastplate->count;
+		weight += items[myStats->breastplate->type]->weight * myStats->breastplate->count;
 	}
 	if ( myStats->gloves != NULL )
 	{
-		weight += items[myStats->gloves->type].weight * myStats->gloves->count;
+		weight += items[myStats->gloves->type]->weight * myStats->gloves->count;
 	}
 	if ( myStats->shoes != NULL )
 	{
-		weight += items[myStats->shoes->type].weight * myStats->shoes->count;
+		weight += items[myStats->shoes->type]->weight * myStats->shoes->count;
 	}
 	if ( myStats->shield != NULL )
 	{
-		weight += items[myStats->shield->type].weight * myStats->shield->count;
+		weight += items[myStats->shield->type]->weight * myStats->shield->count;
 	}
 	if ( myStats->weapon != NULL )
 	{
-		weight += items[myStats->weapon->type].weight * myStats->weapon->count;
+		weight += items[myStats->weapon->type]->weight * myStats->weapon->count;
 	}
 	if ( myStats->cloak != NULL )
 	{
-		weight += items[myStats->cloak->type].weight * myStats->cloak->count;
+		weight += items[myStats->cloak->type]->weight * myStats->cloak->count;
 	}
 	if ( myStats->amulet != NULL )
 	{
-		weight += items[myStats->amulet->type].weight * myStats->amulet->count;
+		weight += items[myStats->amulet->type]->weight * myStats->amulet->count;
 	}
 	if ( myStats->ring != NULL )
 	{
-		weight += items[myStats->ring->type].weight * myStats->ring->count;
+		weight += items[myStats->ring->type]->weight * myStats->ring->count;
 	}
 	if ( myStats->mask != NULL )
 	{
-		weight += items[myStats->mask->type].weight * myStats->mask->count;
+		weight += items[myStats->mask->type]->weight * myStats->mask->count;
 	}
 	weight += myStats->GOLD / 100;
 	weight /= 2; // on monsters weight shouldn't matter so much

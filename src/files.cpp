@@ -1550,9 +1550,9 @@ bool physfsSearchItemSpritesToUpdate()
 {
 	for ( int c = 0; c < NUMITEMS; ++c )
 	{
-		for ( int x = 0; x < list_Size(&items[c].images); x++ )
+		for ( int x = 0; x < list_Size(&items[c]->images); x++ )
 		{
-			node_t* node = list_Node(&items[c].images, x);
+			node_t* node = list_Node(&items[c]->images, x);
 			string_t* string = (string_t*)node->element;
 			std::string itemImgDir;
 			if ( PHYSFS_getRealDir(string->data) != NULL )
@@ -1576,9 +1576,9 @@ void physfsReloadItemSprites(bool reloadAll)
 		bool reloadImg = reloadAll;
 		if ( !reloadAll )
 		{
-			for ( int x = 0; x < list_Size(&items[c].images); x++ )
+			for ( int x = 0; x < list_Size(&items[c]->images); x++ )
 			{
-				node_t* node = list_Node(&items[c].images, x);
+				node_t* node = list_Node(&items[c]->images, x);
 				string_t* string = (string_t*)node->element;
 				std::string itemImgDir;
 				if ( PHYSFS_getRealDir(string->data) != NULL )
@@ -1594,9 +1594,9 @@ void physfsReloadItemSprites(bool reloadAll)
 		if ( reloadImg )
 		{
 			// free the image data.
-			//list_FreeAll(&items[c].images);
+			//list_FreeAll(&items[c]->images);
 			node_t* node, *nextnode;
-			for ( node = items[c].surfaces.first; node != NULL; node = nextnode )
+			for ( node = items[c]->surfaces.first; node != NULL; node = nextnode )
 			{
 				nextnode = node->next;
 				SDL_Surface** surface = (SDL_Surface**)node->element;
@@ -1608,18 +1608,18 @@ void physfsReloadItemSprites(bool reloadAll)
 					}
 				}
 			}
-			list_FreeAll(&items[c].surfaces);
+			list_FreeAll(&items[c]->surfaces);
 
 			// now reload the image data.
-			for ( int x = 0; x < list_Size(&items[c].images); x++ )
+			for ( int x = 0; x < list_Size(&items[c]->images); x++ )
 			{
 				SDL_Surface** surface = (SDL_Surface**)malloc(sizeof(SDL_Surface*));
-				node_t* node = list_AddNodeLast(&items[c].surfaces);
+				node_t* node = list_AddNodeLast(&items[c]->surfaces);
 				node->element = surface;
 				node->deconstructor = &defaultDeconstructor;
 				node->size = sizeof(SDL_Surface*);
 
-				node_t* node2 = list_Node(&items[c].images, x);
+				node_t* node2 = list_Node(&items[c]->images, x);
 				string_t* string = (string_t*)node2->element;
 				std::string itemImgDir;
 				if ( PHYSFS_getRealDir(string->data) != NULL )

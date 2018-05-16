@@ -239,7 +239,7 @@ typedef enum ItemType
 	TUNIC,
 	HAT_FEZ
 } ItemType;
-const int NUMITEMS = 217;
+extern int NUMITEMS;
 
 //NOTE: If you change this, make sure to update NUMCATEGORIES in game.h to reflect the total number of categories. Not doing that will make bad things happen.
 typedef enum Category
@@ -380,8 +380,11 @@ public:
 	list_t surfaces;            // item image surfaces (inventory)
 	Category category;          // item category
 	int level;					// item level for random generation
+	ItemGeneric();
+	~ItemGeneric();
 };
-extern ItemGeneric items[NUMITEMS];
+//extern ItemGeneric items[NUMITEMS];
+extern std::vector<ItemGeneric*> items;
 
 //----------Item usage functions----------
 void item_PotionWater(Item*& item, Entity* entity);

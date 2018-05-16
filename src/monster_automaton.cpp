@@ -1141,21 +1141,21 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				entity->x -= 2.5 * cos(my->yaw + PI / 2) + .20 * cos(my->yaw);
 				entity->y -= 2.5 * sin(my->yaw + PI / 2) + .20 * sin(my->yaw);
 				entity->z += 2.5;
-				if ( entity->sprite == items[TOOL_TORCH].index )
+				if ( entity->sprite == items[TOOL_TORCH]->index )
 				{
 					entity2 = spawnFlame(entity, SPRITE_FLAME);
 					entity2->x += 2 * cos(my->yaw);
 					entity2->y += 2 * sin(my->yaw);
 					entity2->z -= 2;
 				}
-				else if ( entity->sprite == items[TOOL_CRYSTALSHARD].index )
+				else if ( entity->sprite == items[TOOL_CRYSTALSHARD]->index )
 				{
 					entity2 = spawnFlame(entity, SPRITE_CRYSTALFLAME);
 					entity2->x += 2 * cos(my->yaw);
 					entity2->y += 2 * sin(my->yaw);
 					entity2->z -= 2;
 				}
-				else if ( entity->sprite == items[TOOL_LANTERN].index )
+				else if ( entity->sprite == items[TOOL_LANTERN]->index )
 				{
 					entity->z += 2;
 					entity2 = spawnFlame(entity, SPRITE_FLAME);
@@ -1474,12 +1474,12 @@ void Entity::automatonRecycleItem()
 
 	//messagePlayer(0, "made it past");
 
-	int maxGoldValue = ((items[item1->type].value + items[item2->type].value) * 2) / 3;
+	int maxGoldValue = ((items[item1->type]->value + items[item2->type]->value) * 2) / 3;
 	if ( rand() % 2 == 0 )
 	{
-		maxGoldValue = ((items[item1->type].value + items[item2->type].value) * 1) / 2;
+		maxGoldValue = ((items[item1->type]->value + items[item2->type]->value) * 1) / 2;
 	}
-	int minGoldValue = ((items[item1->type].value + items[item2->type].value) * 1) / 3;
+	int minGoldValue = ((items[item1->type]->value + items[item2->type]->value) * 1) / 3;
 	ItemType type;
 	// generate a weapon/armor piece and add it into the inventory.
 	switch ( rand() % 10 )

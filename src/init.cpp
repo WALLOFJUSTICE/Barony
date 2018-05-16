@@ -824,20 +824,20 @@ int loadLanguage(char* lang)
 	printlog( "successfully loaded language file '%s'\n", langFilepath.c_str());
 
 	// update item internal language entries.
-	for ( int c = 0; c < NUMITEMS; ++c )
+	/*for ( int c = 0; c < NUMITEMS; ++c )
 	{
 		if ( c > ARTIFACT_BOW )
 		{
 			int newItems = c - ARTIFACT_BOW - 1;
-			items[c].name_identified = language[2200 + newItems * 2];
-			items[c].name_unidentified = language[2201 + newItems * 2];
+			items[c]->name_identified = language[2200 + newItems * 2];
+			items[c]->name_unidentified = language[2201 + newItems * 2];
 		}
 		else
 		{
-			items[c].name_identified = language[1545 + c * 2];
-			items[c].name_unidentified = language[1546 + c * 2];
+			items[c]->name_identified = language[1545 + c * 2];
+			items[c]->name_unidentified = language[1546 + c * 2];
 		}
-	}
+	}*/
 	return 0;
 }
 
@@ -2558,7 +2558,7 @@ bool loadItemLists()
 			strncpy(tmp, sub.c_str(), sub.length());
 			tmp[sub.length()] = '\0';
 			//printlog("%s", tmp);
-			items[itemIndex].level = atoi(tmp);
+			items[itemIndex]->level = atoi(tmp);
 			++itemIndex;
 		}
 	}
@@ -2566,7 +2566,7 @@ bool loadItemLists()
 	printlog("successfully loaded global item list '%s' \n", filename);
 	/*for ( c = 0; c < NUMITEMS; ++c )
 	{
-		printlog("%s level: %d", items[c].name_identified, items[c].level);
+		printlog("%s level: %d", items[c]->name_identified, items[c]->level);
 	}*/
 	return true;
 }

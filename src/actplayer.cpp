@@ -865,7 +865,7 @@ void actPlayer(Entity* my)
 					{
 						if ( tempItem->type != GEM_GLASS )
 						{
-							success = (stats[PLAYER_NUM]->PROFICIENCIES[PRO_APPRAISAL] + my->getPER() * 5 >= items[tempItem->type].value / 10);
+							success = (stats[PLAYER_NUM]->PROFICIENCIES[PRO_APPRAISAL] + my->getPER() * 5 >= items[tempItem->type]->value / 10);
 						}
 						else
 						{
@@ -891,27 +891,27 @@ void actPlayer(Entity* my)
 					}
 
 					//Attempt a level up.
-					if ( tempItem && items[tempItem->type].value > 0 && stats[PLAYER_NUM] )
+					if ( tempItem && items[tempItem->type]->value > 0 && stats[PLAYER_NUM] )
 					{
 						if ( tempItem->identified )
 						{
 							int appraisalEaseOfDifficulty = 0;
-							if ( items[tempItem->type].value < 100 )
+							if ( items[tempItem->type]->value < 100 )
 							{
 								// easy junk items
 								appraisalEaseOfDifficulty = 2;
 							}
-							else if ( items[tempItem->type].value < 200 )
+							else if ( items[tempItem->type]->value < 200 )
 							{
 								// medium
 								appraisalEaseOfDifficulty = 1;
 							}
-							else if ( items[tempItem->type].value < 300 )
+							else if ( items[tempItem->type]->value < 300 )
 							{
 								// medium
 								appraisalEaseOfDifficulty = 0;
 							}
-							else if ( items[tempItem->type].value < 400 )
+							else if ( items[tempItem->type]->value < 400 )
 							{
 								// hardest
 								appraisalEaseOfDifficulty = -1;
@@ -1854,7 +1854,7 @@ void actPlayer(Entity* my)
 			if ( item != NULL )
 				if ( item->type >= 0 && item->type < NUMITEMS )
 				{
-					weight += items[item->type].weight * item->count;
+					weight += items[item->type]->weight * item->count;
 				}
 		}
 		weight += stats[PLAYER_NUM]->GOLD / 100;
@@ -2875,28 +2875,28 @@ void actPlayer(Entity* my)
 				}
 				if ( weaponarm != NULL )
 				{
-					if ( entity->sprite == items[SHORTBOW].index )
+					if ( entity->sprite == items[SHORTBOW]->index )
 					{
 						entity->x = weaponarm->x - .5 * cos(weaponarm->yaw);
 						entity->y = weaponarm->y - .5 * sin(weaponarm->yaw);
 						entity->z = weaponarm->z + 1;
 						entity->pitch = weaponarm->pitch + .25;
 					}
-					else if ( entity->sprite == items[CROSSBOW].index )
+					else if ( entity->sprite == items[CROSSBOW]->index )
 					{
 						entity->x = weaponarm->x;
 						entity->y = weaponarm->y;
 						entity->z = weaponarm->z + 1;
 						entity->pitch = weaponarm->pitch;
 					}
-					else if ( entity->sprite == items[ARTIFACT_BOW].index )
+					else if ( entity->sprite == items[ARTIFACT_BOW]->index )
 					{
 						entity->x = weaponarm->x - .5 * cos(weaponarm->yaw);
 						entity->y = weaponarm->y - .5 * sin(weaponarm->yaw);
 						entity->z = weaponarm->z + 1;
 						entity->pitch = weaponarm->pitch + .25;
 					}
-					else if ( entity->sprite == items[TOOL_LOCKPICK].index )
+					else if ( entity->sprite == items[TOOL_LOCKPICK]->index )
 					{
 						entity->x = weaponarm->x + 1.5 * cos(weaponarm->yaw);
 						entity->y = weaponarm->y + 1.5 * sin(weaponarm->yaw);
@@ -2919,7 +2919,7 @@ void actPlayer(Entity* my)
 					if ( !PLAYER_ARMBENDED )
 					{
 						entity->focalx = limbs[HUMAN][6][0]; // 1.5
-						if ( entity->sprite == items[CROSSBOW].index )
+						if ( entity->sprite == items[CROSSBOW]->index )
 						{
 							entity->focalx += 2;
 						}
@@ -2993,7 +2993,7 @@ void actPlayer(Entity* my)
 				entity->yaw = shieldarm->yaw;
 				entity->roll = 0;
 				entity->pitch = 0;
-				if ( entity->sprite == items[TOOL_TORCH].index )
+				if ( entity->sprite == items[TOOL_TORCH]->index )
 				{
 					entity2 = spawnFlame(entity, SPRITE_FLAME);
 					if ( PLAYER_NUM == clientnum )
@@ -3012,7 +3012,7 @@ void actPlayer(Entity* my)
 						entity2->setUID(-3);
 					}
 				}
-				else if ( entity->sprite == items[TOOL_CRYSTALSHARD].index )
+				else if ( entity->sprite == items[TOOL_CRYSTALSHARD]->index )
 				{
 					entity2 = spawnFlame(entity, SPRITE_CRYSTALFLAME);
 					if ( PLAYER_NUM == clientnum )
@@ -3031,7 +3031,7 @@ void actPlayer(Entity* my)
 						entity2->setUID(-3);
 					}
 				}
-				else if ( entity->sprite == items[TOOL_LANTERN].index )
+				else if ( entity->sprite == items[TOOL_LANTERN]->index )
 				{
 					entity->z += 2;
 					entity2 = spawnFlame(entity, SPRITE_FLAME);
@@ -3053,7 +3053,7 @@ void actPlayer(Entity* my)
 				}
 				if ( PLAYER_SHIELDYAW > PI / 32 )
 				{
-					if ( entity->sprite != items[TOOL_TORCH].index && entity->sprite != items[TOOL_LANTERN].index && entity->sprite != items[TOOL_CRYSTALSHARD].index )
+					if ( entity->sprite != items[TOOL_TORCH]->index && entity->sprite != items[TOOL_LANTERN]->index && entity->sprite != items[TOOL_CRYSTALSHARD]->index )
 					{
 						// shield, so rotate a little.
 						entity->roll += PI / 64;
@@ -3240,7 +3240,7 @@ void actPlayer(Entity* my)
 	if ( shieldNode )
 	{
 		Entity* shieldEntity = (Entity*)shieldNode->element;
-		if ( shieldEntity->sprite != items[TOOL_TORCH].index && shieldEntity->sprite != items[TOOL_LANTERN].index && shieldEntity->sprite != items[TOOL_CRYSTALSHARD].index )
+		if ( shieldEntity->sprite != items[TOOL_TORCH]->index && shieldEntity->sprite != items[TOOL_LANTERN]->index && shieldEntity->sprite != items[TOOL_CRYSTALSHARD]->index )
 		{
 			shieldEntity->yaw -= PI / 6;
 		}

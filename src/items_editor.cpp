@@ -96,7 +96,7 @@ Category itemCategory(const Item* item)
 	{
 		return GEM;
 	}
-	return items[item->type].category;
+	return items[item->type]->category;
 }
 
 /*-------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ Sint32 itemModel(Item* item)
 	{
 		return 0;
 	}
-	return items[item->type].index + item->appearance % items[item->type].variations;
+	return items[item->type]->index + item->appearance % items[item->type]->variations;
 }
 
 /*-------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ Sint32 itemModelFirstperson(Item* item)
 	{
 		return 0;
 	}
-	return items[item->type].fpindex + item->appearance % items[item->type].variations;
+	return items[item->type]->fpindex + item->appearance % items[item->type]->variations;
 }
 
 /*-------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ SDL_Surface* itemSprite(Item* item)
 	{
 		return NULL;
 	}
-		node_t* node = list_Node(&items[item->type].surfaces, item->appearance % items[item->type].variations);
+		node_t* node = list_Node(&items[item->type]->surfaces, item->appearance % items[item->type]->variations);
 		if ( !node )
 		{
 			return NULL;
@@ -185,19 +185,19 @@ int loadItems()
 	fp = openDataFile("items/items.txt", "r");
 	for ( c = 0; !feof(fp); c++ )
 	{
-		items[c].name_identified = language[1545 + c * 2];
-		items[c].name_unidentified = language[1546 + c * 2];
-		fscanf(fp, "%d", &items[c].index);
+		items[c]->name_identified = language[1545 + c * 2];
+		items[c]->name_unidentified = language[1546 + c * 2];
+		fscanf(fp, "%d", &items[c]->index);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 		{
 			break;
 		}
-		fscanf(fp, "%d", &items[c].fpindex);
+		fscanf(fp, "%d", &items[c]->fpindex);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 		{
 			break;
 		}
-		fscanf(fp, "%d", &items[c].variations);
+		fscanf(fp, "%d", &items[c]->variations);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 		{
 			break;
@@ -209,75 +209,75 @@ int loadItems()
 		}
 		if ( !strcmp(name, "WEAPON") )
 		{
-			items[c].category = WEAPON;
+			items[c]->category = WEAPON;
 		}
 		else if ( !strcmp(name, "ARMOR") )
 		{
-			items[c].category = ARMOR;
+			items[c]->category = ARMOR;
 		}
 		else if ( !strcmp(name, "AMULET") )
 		{
-			items[c].category = AMULET;
+			items[c]->category = AMULET;
 		}
 		else if ( !strcmp(name, "POTION") )
 		{
-			items[c].category = POTION;
+			items[c]->category = POTION;
 		}
 		else if ( !strcmp(name, "SCROLL") )
 		{
-			items[c].category = SCROLL;
+			items[c]->category = SCROLL;
 		}
 		else if ( !strcmp(name, "MAGICSTAFF") )
 		{
-			items[c].category = MAGICSTAFF;
+			items[c]->category = MAGICSTAFF;
 		}
 		else if ( !strcmp(name, "RING") )
 		{
-			items[c].category = RING;
+			items[c]->category = RING;
 		}
 		else if ( !strcmp(name, "SPELLBOOK") )
 		{
-			items[c].category = SPELLBOOK;
+			items[c]->category = SPELLBOOK;
 		}
 		else if ( !strcmp(name, "TOOL") )
 		{
-			items[c].category = TOOL;
+			items[c]->category = TOOL;
 		}
 		else if ( !strcmp(name, "FOOD") )
 		{
-			items[c].category = FOOD;
+			items[c]->category = FOOD;
 		}
 		else if ( !strcmp(name, "BOOK") )
 		{
-			items[c].category = BOOK;
+			items[c]->category = BOOK;
 		}
 		else if ( !strcmp(name, "SPELL_CAT") )
 		{
-			items[c].category = SPELL_CAT;
+			items[c]->category = SPELL_CAT;
 		}
 		else
 		{
-			items[c].category = GEM;
+			items[c]->category = GEM;
 		}
-		fscanf(fp, "%d", &items[c].weight);
+		fscanf(fp, "%d", &items[c]->weight);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 		{
 			break;
 		}
-		fscanf(fp, "%d", &items[c].value);
+		fscanf(fp, "%d", &items[c]->value);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 		{
 			break;
 		}
-		items[c].images.first = NULL;
-		items[c].images.last = NULL;
+		items[c]->images.first = NULL;
+		items[c]->images.last = NULL;
 		while ( 1 )
 		{
 			string_t* string = (string_t*)malloc(sizeof(string_t));
 			string->data = (char*)malloc(sizeof(char) * 64);
 			string->lines = 1;
 
-			node_t* node = list_AddNodeLast(&items[c].images);
+			node_t* node = list_AddNodeLast(&items[c]->images);
 			node->element = string;
 			node->deconstructor = &stringDeconstructor;
 			node->size = sizeof(string_t);
@@ -304,17 +304,17 @@ int loadItems()
 	}
 	for ( c = 0; c < NUMITEMS; c++ )
 	{
-		items[c].surfaces.first = NULL;
-		items[c].surfaces.last = NULL;
-		for ( x = 0; x < list_Size(&items[c].images); x++ )
+		items[c]->surfaces.first = NULL;
+		items[c]->surfaces.last = NULL;
+		for ( x = 0; x < list_Size(&items[c]->images); x++ )
 		{
 			SDL_Surface** surface = (SDL_Surface**)malloc(sizeof(SDL_Surface*));
-			node_t* node = list_AddNodeLast(&items[c].surfaces);
+			node_t* node = list_AddNodeLast(&items[c]->surfaces);
 			node->element = surface;
 			node->deconstructor = &defaultDeconstructor;
 			node->size = sizeof(SDL_Surface*);
 
-			node_t* node2 = list_Node(&items[c].images, x);
+			node_t* node2 = list_Node(&items[c]->images, x);
 			string_t* string = (string_t*)node2->element;
 			*surface = loadImage(string->data);
 		}

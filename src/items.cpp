@@ -26,7 +26,19 @@
 #include "player.hpp"
 
 Uint32 itemuids = 1;
-ItemGeneric items[NUMITEMS];
+//ItemGeneric items[NUMITEMS];
+std::vector<ItemGeneric*> items;
+int NUMITEMS = 0;
+
+ItemGeneric::ItemGeneric()
+{
+
+}
+
+//Destructor
+ItemGeneric::~ItemGeneric()
+{
+}
 
 /*-------------------------------------------------------------------------------
 
@@ -272,7 +284,7 @@ Item* uidToItem(Uint32 uid)
 ItemType itemCurve(Category cat)
 {
 	int numitems = NUMITEMS - ( NUMITEMS - ((int)ARTIFACT_SWORD) );
-	bool chances[NUMITEMS];
+	bool chances[250];
 	int c;
 
 	if ( cat < 0 || cat >= NUMCATEGORIES )
@@ -287,10 +299,10 @@ ItemType itemCurve(Category cat)
 	Uint32 numoftype = 0;
 	for ( c = 0; c < numitems; c++ )
 	{
-		if ( items[c].category == cat )
+		if ( items[c]->category == cat )
 		{
-			highestvalue = std::max<Uint32>(highestvalue, items[c].value); //TODO: Why are Uint32 and int being compared?
-			lowestvalue = std::min<Uint32>(lowestvalue, items[c].value); //TODO: Why are Uint32 and int being compared?
+			highestvalue = std::max<Uint32>(highestvalue, items[c]->value); //TODO: Why are Uint32 and int being compared?
+			lowestvalue = std::min<Uint32>(lowestvalue, items[c]->value); //TODO: Why are Uint32 and int being compared?
 			numoftype++;
 		}
 	}
@@ -306,7 +318,7 @@ ItemType itemCurve(Category cat)
 		for ( c = 0; c < numitems; c++ )
 		{
 			chances[c] = false;
-			if ( items[c].category == cat )
+			if ( items[c]->category == cat )
 			{
 				chances[c] = true;
 			}
@@ -318,7 +330,7 @@ ItemType itemCurve(Category cat)
 		for ( c = 0; c < numitems; c++ )
 		{
 			chances[c] = false;
-			if ( items[c].category == cat )
+			if ( items[c]->category == cat )
 			{
 				switch ( (ItemType)c )
 				{
@@ -351,7 +363,7 @@ ItemType itemCurve(Category cat)
 		for ( c = 0; c < numitems; c++ )
 		{
 			chances[c] = false;
-			if ( items[c].category == cat && items[c].value <= acceptablehigh )
+			if ( items[c]->category == cat && items[c]->value <= acceptablehigh )
 			{
 				chances[c] = true;
 			}
@@ -385,7 +397,7 @@ ItemType itemCurve(Category cat)
 	int pick = prng_get_uint() % numleft;
 	for ( c = 0; c < numitems; c++ )
 	{
-		if ( items[c].category == cat )
+		if ( items[c]->category == cat )
 		{
 			if ( chances[c] == true )
 			{
@@ -416,7 +428,7 @@ dungeon level and defined level of the item
 ItemType itemLevelCurve(Category cat, int minLevel, int maxLevel)
 {
 	int numitems = NUMITEMS;
-	bool chances[NUMITEMS];
+	bool chances[250];
 	int c;
 
 	if ( cat < 0 || cat >= NUMCATEGORIES )
@@ -429,9 +441,9 @@ ItemType itemLevelCurve(Category cat, int minLevel, int maxLevel)
 	for ( c = 0; c < numitems; ++c )
 	{
 		chances[c] = false;
-		if ( items[c].category == cat )
+		if ( items[c]->category == cat )
 		{
-			if ( items[c].level != -1 && (items[c].level >= minLevel && items[c].level <= maxLevel) )
+			if ( items[c]->level != -1 && (items[c]->level >= minLevel && items[c]->level <= maxLevel) )
 			{
 				chances[c] = true;
 				numoftype++;
@@ -491,13 +503,13 @@ ItemType itemLevelCurve(Category cat, int minLevel, int maxLevel)
 	int pick = prng_get_uint() % numleft;
 	for ( c = 0; c < numitems; c++ )
 	{
-		if ( items[c].category == cat )
+		if ( items[c]->category == cat )
 		{
 			if ( chances[c] == true )
 			{
 				if ( pick == 0 )
 				{
-					//messagePlayer(0, "Chose item: %s of %d items.", items[c].name_identified ,numleft);
+					//messagePlayer(0, "Chose item: %s of %d items.", items[c]->name_identified ,numleft);
 					return static_cast<ItemType>(c);
 				}
 				else
@@ -544,7 +556,7 @@ char* Item::description()
 				}
 				else
 				{
-					snprintf(tempstr, 1024, language[992 + status], language[974 + items[type].index + appearance % items[type].variations - 50], beatitude);
+					snprintf(tempstr, 1024, language[992 + status], language[974 + items[type]->index + appearance % items[type]->variations - 50], beatitude);
 				}
 			}
 			else if ( itemCategory(this) == SCROLL || itemCategory(this) == SPELLBOOK || itemCategory(this) == BOOK )
@@ -572,7 +584,7 @@ char* Item::description()
 				}
 				else
 				{
-					snprintf(&tempstr[c], 1024 - c, "%s", items[type].name_identified);
+					snprintf(&tempstr[c], 1024 - c, "%s", items[type]->name_identified);
 				}
 			}
 			else
@@ -599,7 +611,7 @@ char* Item::description()
 				}
 				else
 				{
-					snprintf(tempstr, 1024, language[1018 + status], count, language[974 + items[type].index + appearance % items[type].variations - 50], beatitude);
+					snprintf(tempstr, 1024, language[1018 + status], count, language[974 + items[type]->index + appearance % items[type]->variations - 50], beatitude);
 				}
 			}
 			else if ( itemCategory(this) == SCROLL || itemCategory(this) == SPELLBOOK || itemCategory(this) == BOOK )
@@ -627,7 +639,7 @@ char* Item::description()
 				}
 				else
 				{
-					snprintf(&tempstr[c], 1024 - c, "%s", items[type].name_identified);
+					snprintf(&tempstr[c], 1024 - c, "%s", items[type]->name_identified);
 				}
 			}
 			else
@@ -657,7 +669,7 @@ char* Item::description()
 				}
 				else
 				{
-					snprintf(tempstr, 1024, language[1044 + status], language[974 + items[type].index + appearance % items[type].variations - 50]);
+					snprintf(tempstr, 1024, language[1044 + status], language[974 + items[type]->index + appearance % items[type]->variations - 50]);
 				}
 			}
 			else if ( itemCategory(this) == SCROLL || itemCategory(this) == SPELLBOOK || itemCategory(this) == BOOK )
@@ -681,7 +693,7 @@ char* Item::description()
 			{
 				if ( itemCategory(this) == SCROLL )
 				{
-					snprintf(&tempstr[c], 1024 - c, language[1059], items[type].name_unidentified, scroll_label[appearance % NUMLABELS]);
+					snprintf(&tempstr[c], 1024 - c, language[1059], items[type]->name_unidentified, scroll_label[appearance % NUMLABELS]);
 				}
 				else
 				{
@@ -691,7 +703,7 @@ char* Item::description()
 					}
 					else
 					{
-						snprintf(&tempstr[c], 1024 - c, "%s", items[type].name_unidentified);
+						snprintf(&tempstr[c], 1024 - c, "%s", items[type]->name_unidentified);
 					}
 				}
 			}
@@ -719,7 +731,7 @@ char* Item::description()
 				}
 				else
 				{
-					snprintf(tempstr, 1024, language[1070 + status], count, language[974 + items[type].index + appearance % items[type].variations - 50]);
+					snprintf(tempstr, 1024, language[1070 + status], count, language[974 + items[type]->index + appearance % items[type]->variations - 50]);
 				}
 			}
 			else if ( itemCategory(this) == SCROLL || itemCategory(this) == SPELLBOOK || itemCategory(this) == BOOK )
@@ -743,7 +755,7 @@ char* Item::description()
 			{
 				if ( itemCategory(this) == SCROLL )
 				{
-					snprintf(&tempstr[c], 1024 - c, language[1085], count, items[type].name_unidentified, scroll_label[appearance % NUMLABELS]);
+					snprintf(&tempstr[c], 1024 - c, language[1085], count, items[type]->name_unidentified, scroll_label[appearance % NUMLABELS]);
 				}
 				else
 				{
@@ -753,7 +765,7 @@ char* Item::description()
 					}
 					else
 					{
-						snprintf(&tempstr[c], 1024 - c, "%s", items[type].name_unidentified);
+						snprintf(&tempstr[c], 1024 - c, "%s", items[type]->name_unidentified);
 					}
 				}
 			}
@@ -780,7 +792,7 @@ Category itemCategory(const Item* item)
 	{
 		return GEM;
 	}
-	return items[item->type].category;
+	return items[item->type]->category;
 }
 
 /*-------------------------------------------------------------------------------
@@ -803,14 +815,14 @@ char* Item::getName()
 			}
 			else
 			{
-				strcpy(tempstr, items[type].name_identified);
+				strcpy(tempstr, items[type]->name_identified);
 			}
 		}
 		else
 		{
 			if ( itemCategory(this) == SCROLL )
 			{
-				snprintf(tempstr, sizeof(tempstr), language[1059], items[type].name_unidentified, scroll_label[appearance % NUMLABELS]);
+				snprintf(tempstr, sizeof(tempstr), language[1059], items[type]->name_unidentified, scroll_label[appearance % NUMLABELS]);
 			}
 			else if ( itemCategory(this) == BOOK )
 			{
@@ -818,7 +830,7 @@ char* Item::getName()
 			}
 			else
 			{
-				strcpy(tempstr, items[type].name_unidentified);
+				strcpy(tempstr, items[type]->name_unidentified);
 			}
 		}
 	}
@@ -843,7 +855,7 @@ Sint32 itemModel(Item* item)
 	{
 		return 0;
 	}
-	return items[item->type].index + item->appearance % items[item->type].variations;
+	return items[item->type]->index + item->appearance % items[item->type]->variations;
 }
 
 /*-------------------------------------------------------------------------------
@@ -860,7 +872,7 @@ Sint32 itemModelFirstperson(Item* item)
 	{
 		return 0;
 	}
-	return items[item->type].fpindex + item->appearance % items[item->type].variations;
+	return items[item->type]->fpindex + item->appearance % items[item->type]->variations;
 }
 
 /*-------------------------------------------------------------------------------
@@ -882,7 +894,7 @@ SDL_Surface* itemSprite(Item* item)
 		spell_t* spell = getSpellFromItem(item);
 		if (spell)
 		{
-			node_t* node = list_Node(&items[item->type].surfaces, spell->ID);
+			node_t* node = list_Node(&items[item->type]->surfaces, spell->ID);
 			if ( !node )
 			{
 				return NULL;
@@ -893,7 +905,7 @@ SDL_Surface* itemSprite(Item* item)
 	}
 	else
 	{
-		node_t* node = list_Node(&items[item->type].surfaces, item->appearance % items[item->type].variations);
+		node_t* node = list_Node(&items[item->type]->surfaces, item->appearance % items[item->type]->variations);
 		if ( !node )
 		{
 			return NULL;
@@ -951,14 +963,14 @@ int itemCompare(const Item* item1, const Item* item2, bool checkAppearance)
 	{
 		return 1;
 	}
-	model1 = items[item1->type].index + item1->appearance % items[item1->type].variations;
-	model2 = items[item2->type].index + item2->appearance % items[item2->type].variations;
+	model1 = items[item1->type]->index + item1->appearance % items[item1->type]->variations;
+	model2 = items[item2->type]->index + item2->appearance % items[item2->type]->variations;
 	//messagePlayer(0, "item1- %d, item2 - %d", model1, model2);
 	if ( model1 != model2 )
 	{
 		return 1;
 	}
-	else if ( item1->type == SCROLL_MAIL || item1->type == READABLE_BOOK || items[item1->type].category == SPELL_CAT )
+	else if ( item1->type == SCROLL_MAIL || item1->type == READABLE_BOOK || items[item1->type]->category == SPELL_CAT )
 	{
 		return 1; // these items do not stack
 	}
@@ -2755,7 +2767,7 @@ bool Item::canUnequip()
 
 int Item::buyValue(int player)
 {
-	int value = items[type].value; // base value
+	int value = items[type]->value; // base value
 
 	// identified bonus
 	if ( identified )
@@ -2793,7 +2805,7 @@ int Item::buyValue(int player)
 
 	// result
 	value = std::max(1, value);
-	return std::max(value, items[type].value);
+	return std::max(value, items[type]->value);
 }
 
 /*-------------------------------------------------------------------------------
@@ -2806,7 +2818,7 @@ int Item::buyValue(int player)
 
 int Item::sellValue(int player)
 {
-	int value = items[type].value; // base value
+	int value = items[type]->value; // base value
 
 	// identified bonus
 	if ( identified )
@@ -2817,7 +2829,7 @@ int Item::sellValue(int player)
 	{
 		if ( itemCategory(this) == GEM )
 		{
-			value = items[GEM_GLASS].value;
+			value = items[GEM_GLASS]->value;
 		}
 		else
 		{
@@ -2837,7 +2849,7 @@ int Item::sellValue(int player)
 
 	// result
 	value = std::max(1, value);
-	return std::min(value, items[type].value);
+	return std::min(value, items[type]->value);
 }
 
 /*-------------------------------------------------------------------------------
@@ -3349,7 +3361,7 @@ ItemType itemTypeWithinGoldValue(Category cat, int minValue, int maxValue)
 {
 	int numitems = NUMITEMS;
 	int numoftype = 0;
-	bool chances[NUMITEMS] = { false };
+	bool chances[250] = { false };
 	bool pickAnyCategory = false;
 	int c;
 
@@ -3367,9 +3379,9 @@ ItemType itemTypeWithinGoldValue(Category cat, int minValue, int maxValue)
 	// find highest value of items in category
 	for ( c = 0; c < NUMITEMS; ++c )
 	{
-		if ( items[c].category == cat || (pickAnyCategory && items[c].category != SPELL_CAT) )
+		if ( items[c]->category == cat || (pickAnyCategory && items[c]->category != SPELL_CAT) )
 		{
-			if ( items[c].value >= minValue && items[c].value <= maxValue && items[c].level != -1 )
+			if ( items[c]->value >= minValue && items[c]->value <= maxValue && items[c]->level != -1 )
 			{
 				// chance true for an item if it's not forbidden from the global item list.
 				chances[c] = true;

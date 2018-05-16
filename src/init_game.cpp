@@ -158,28 +158,29 @@ int initGame()
 	fp = openDataFile(itemsDirectory.c_str(), "r");
 	for ( c = 0; !feof(fp); ++c )
 	{
+		items.push_back(new ItemGeneric());
 		if ( c > ARTIFACT_BOW )
 		{
 			newItems = c - ARTIFACT_BOW - 1;
-			items[c].name_identified = language[2200 + newItems * 2];
-			items[c].name_unidentified = language[2201 + newItems * 2];
+			items[c]->name_identified = language[2200 + newItems * 2];
+			items[c]->name_unidentified = language[2201 + newItems * 2];
 		}
 		else
 		{
-			items[c].name_identified = language[1545 + c * 2];
-			items[c].name_unidentified = language[1546 + c * 2];
+			items[c]->name_identified = language[1545 + c * 2];
+			items[c]->name_unidentified = language[1546 + c * 2];
 		}
-		fscanf(fp, "%d", &items[c].index);
+		fscanf(fp, "%d", &items[c]->index);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 			{
 				break;
 			}
-		fscanf(fp, "%d", &items[c].fpindex);
+		fscanf(fp, "%d", &items[c]->fpindex);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 			{
 				break;
 			}
-		fscanf(fp, "%d", &items[c].variations);
+		fscanf(fp, "%d", &items[c]->variations);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 			{
 				break;
@@ -191,79 +192,79 @@ int initGame()
 			}
 		if ( !strcmp(name, "WEAPON") )
 		{
-			items[c].category = WEAPON;
+			items[c]->category = WEAPON;
 		}
 		else if ( !strcmp(name, "ARMOR") )
 		{
-			items[c].category = ARMOR;
+			items[c]->category = ARMOR;
 		}
 		else if ( !strcmp(name, "AMULET") )
 		{
-			items[c].category = AMULET;
+			items[c]->category = AMULET;
 		}
 		else if ( !strcmp(name, "POTION") )
 		{
-			items[c].category = POTION;
+			items[c]->category = POTION;
 		}
 		else if ( !strcmp(name, "SCROLL") )
 		{
-			items[c].category = SCROLL;
+			items[c]->category = SCROLL;
 		}
 		else if ( !strcmp(name, "MAGICSTAFF") )
 		{
-			items[c].category = MAGICSTAFF;
+			items[c]->category = MAGICSTAFF;
 		}
 		else if ( !strcmp(name, "RING") )
 		{
-			items[c].category = RING;
+			items[c]->category = RING;
 		}
 		else if ( !strcmp(name, "SPELLBOOK") )
 		{
-			items[c].category = SPELLBOOK;
+			items[c]->category = SPELLBOOK;
 		}
 		else if ( !strcmp(name, "TOOL") )
 		{
-			items[c].category = TOOL;
+			items[c]->category = TOOL;
 		}
 		else if ( !strcmp(name, "FOOD") )
 		{
-			items[c].category = FOOD;
+			items[c]->category = FOOD;
 		}
 		else if ( !strcmp(name, "BOOK") )
 		{
-			items[c].category = BOOK;
+			items[c]->category = BOOK;
 		}
 		else if ( !strcmp(name, "THROWN") )
 		{
-			items[c].category = THROWN;
+			items[c]->category = THROWN;
 		}
 		else if ( !strcmp(name, "SPELL_CAT") )
 		{
-			items[c].category = SPELL_CAT;
+			items[c]->category = SPELL_CAT;
 		}
 		else
 		{
-			items[c].category = GEM;
+			items[c]->category = GEM;
 		}
-		fscanf(fp, "%d", &items[c].weight);
+		fscanf(fp, "%d", &items[c]->weight);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 			{
 				break;
 			}
-		fscanf(fp, "%d", &items[c].value);
+		fscanf(fp, "%d", &items[c]->value);
 		while ( fgetc(fp) != '\n' ) if ( feof(fp) )
 			{
 				break;
 			}
-		items[c].images.first = NULL;
-		items[c].images.last = NULL;
+		items[c]->images.first = NULL;
+		items[c]->images.last = NULL;
 		while ( 1 )
 		{
 			string_t* string = (string_t*) malloc(sizeof(string_t));
 			string->data = (char*) malloc(sizeof(char) * 64);
 			string->lines = 1;
 
-			node_t* node = list_AddNodeLast(&items[c].images);
+			node_t* node = list_AddNodeLast(&items[c]->images);
 			node->element = string;
 			node->deconstructor = &stringDeconstructor;
 			node->size = sizeof(string_t);
@@ -288,19 +289,22 @@ int initGame()
 			string->data[x] = 0;
 		}
 	}
+
+	NUMITEMS = c;
+
 	for ( c = 0; c < NUMITEMS; c++ )
 	{
-		items[c].surfaces.first = NULL;
-		items[c].surfaces.last = NULL;
-		for ( x = 0; x < list_Size(&items[c].images); x++ )
+		items[c]->surfaces.first = NULL;
+		items[c]->surfaces.last = NULL;
+		for ( x = 0; x < list_Size(&items[c]->images); x++ )
 		{
 			SDL_Surface** surface = (SDL_Surface**) malloc(sizeof(SDL_Surface*));
-			node_t* node = list_AddNodeLast(&items[c].surfaces);
+			node_t* node = list_AddNodeLast(&items[c]->surfaces);
 			node->element = surface;
 			node->deconstructor = &defaultDeconstructor;
 			node->size = sizeof(SDL_Surface*);
 
-			node_t* node2 = list_Node(&items[c].images, x);
+			node_t* node2 = list_Node(&items[c]->images, x);
 			string_t* string = (string_t*)node2->element;
 			*surface = loadImage(string->data);
 		}
@@ -818,9 +822,9 @@ void deinitGame()
 	printlog( "freeing item data...\n");
 	for ( c = 0; c < NUMITEMS; c++ )
 	{
-		list_FreeAll(&items[c].images);
+		list_FreeAll(&items[c]->images);
 		node_t* node, *nextnode;
-		for ( node = items[c].surfaces.first; node != NULL; node = nextnode )
+		for ( node = items[c]->surfaces.first; node != NULL; node = nextnode )
 		{
 			nextnode = node->next;
 			SDL_Surface** surface = (SDL_Surface**)node->element;
@@ -830,7 +834,7 @@ void deinitGame()
 					SDL_FreeSurface(*surface);
 				}
 		}
-		list_FreeAll(&items[c].surfaces);
+		list_FreeAll(&items[c]->surfaces);
 	}
 
 	freeSpells();

@@ -8844,21 +8844,21 @@ void Entity::handleHumanoidWeaponLimb(Entity* weaponLimb, Entity* weaponArmLimb)
 
 	if ( weaponLimb->flags[INVISIBLE] == false ) //TODO: isInvisible()?
 	{
-		if ( weaponLimb->sprite == items[SHORTBOW].index )
+		if ( weaponLimb->sprite == items[SHORTBOW]->index )
 		{
 			weaponLimb->x = weaponArmLimb->x - .5 * cos(weaponArmLimb->yaw);
 			weaponLimb->y = weaponArmLimb->y - .5 * sin(weaponArmLimb->yaw);
 			weaponLimb->z = weaponArmLimb->z + 1;
 			weaponLimb->pitch = weaponArmLimb->pitch + .25;
 		}
-		else if ( weaponLimb->sprite == items[ARTIFACT_BOW].index )
+		else if ( weaponLimb->sprite == items[ARTIFACT_BOW]->index )
 		{
 			weaponLimb->x = weaponArmLimb->x - 1.5 * cos(weaponArmLimb->yaw);
 			weaponLimb->y = weaponArmLimb->y - 1.5 * sin(weaponArmLimb->yaw);
 			weaponLimb->z = weaponArmLimb->z + 2;
 			weaponLimb->pitch = weaponArmLimb->pitch + .25;
 		}
-		else if ( weaponLimb->sprite == items[CROSSBOW].index )
+		else if ( weaponLimb->sprite == items[CROSSBOW]->index )
 		{
 			weaponLimb->x = weaponArmLimb->x;
 			weaponLimb->y = weaponArmLimb->y;
@@ -8944,7 +8944,7 @@ void Entity::handleHumanoidWeaponLimb(Entity* weaponLimb, Entity* weaponArmLimb)
 	if ( !this->monsterArmbended )
 	{
 		weaponLimb->focalx = limbs[monsterType][6][0]; // 2.5
-		if ( weaponLimb->sprite == items[CROSSBOW].index )
+		if ( weaponLimb->sprite == items[CROSSBOW]->index )
 		{
 			weaponLimb->focalx += 2;
 		}
@@ -10796,9 +10796,9 @@ Adjusts helmet offsets for all monsters, depending on the type of headwear.
 void Entity::setHelmetLimbOffset(Entity* helm)
 {
 	int monster = getMonsterTypeFromSprite();
-	if ( helm->sprite != items[STEEL_HELM].index )
+	if ( helm->sprite != items[STEEL_HELM]->index )
 	{
-		if ( helm->sprite == items[HAT_PHRYGIAN].index )
+		if ( helm->sprite == items[HAT_PHRYGIAN]->index )
 		{
 			switch ( monster )
 			{
@@ -10828,7 +10828,7 @@ void Entity::setHelmetLimbOffset(Entity* helm)
 			}
 			helm->roll = PI / 2;
 		}
-		else if ( helm->sprite >= items[HAT_HOOD].index && helm->sprite < items[HAT_HOOD].index + items[HAT_HOOD].variations )
+		else if ( helm->sprite >= items[HAT_HOOD]->index && helm->sprite < items[HAT_HOOD]->index + items[HAT_HOOD]->variations )
 		{
 			switch ( monster )
 			{
@@ -10858,7 +10858,7 @@ void Entity::setHelmetLimbOffset(Entity* helm)
 			}
 			helm->roll = PI / 2;
 		}
-		else if ( helm->sprite == items[HAT_WIZARD].index || helm->sprite == items[HAT_JESTER].index )
+		else if ( helm->sprite == items[HAT_WIZARD]->index || helm->sprite == items[HAT_JESTER]->index )
 		{
 			switch ( monster )
 			{
@@ -10888,7 +10888,7 @@ void Entity::setHelmetLimbOffset(Entity* helm)
 			}
 			helm->roll = PI / 2;
 		}
-		else if ( helm->sprite == items[HAT_FEZ].index )
+		else if ( helm->sprite == items[HAT_FEZ]->index )
 		{
 			switch ( monster )
 			{

@@ -816,7 +816,7 @@ void actMinotaurCeilingBuster(Entity* my)
 							entity->flags[INVISIBLE] = false;
 							entity->flags[NOUPDATE] = true;
 							entity->flags[UPDATENEEDED] = false;
-							entity->sprite = items[GEM_ROCK].index;
+							entity->sprite = items[GEM_ROCK]->index;
 							entity->yaw = rand() % 360 * PI / 180;
 							entity->pitch = rand() % 360 * PI / 180;
 							entity->roll = rand() % 360 * PI / 180;
@@ -858,7 +858,7 @@ void actMinotaurCeilingBuster(Entity* my)
 									entity->flags[INVISIBLE] = false;
 									entity->flags[NOUPDATE] = true;
 									entity->flags[UPDATENEEDED] = false;
-									entity->sprite = items[GEM_ROCK].index;
+									entity->sprite = items[GEM_ROCK]->index;
 									entity->yaw = rand() % 360 * PI / 180;
 									entity->pitch = rand() % 360 * PI / 180;
 									entity->roll = rand() % 360 * PI / 180;
@@ -913,7 +913,7 @@ void actMinotaurCeilingBuster(Entity* my)
 									childEntity->flags[INVISIBLE] = false;
 									childEntity->flags[NOUPDATE] = true;
 									childEntity->flags[UPDATENEEDED] = false;
-									childEntity->sprite = items[GEM_ROCK].index;
+									childEntity->sprite = items[GEM_ROCK]->index;
 									childEntity->yaw = rand() % 360 * PI / 180;
 									childEntity->pitch = rand() % 360 * PI / 180;
 									childEntity->roll = rand() % 360 * PI / 180;

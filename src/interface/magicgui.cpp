@@ -211,7 +211,7 @@ void drawSustainedSpells()
 	{
 		//Alright, so, the list should be right-aligned.
 		//Meaning, it draws alongside the right side of the screen.
-		node_t* node = list_Node(&items[SPELL_ITEM].surfaces, 1); //Use any old sprite icon as a reference to calculate the position.
+		node_t* node = list_Node(&items[SPELL_ITEM]->surfaces, 1); //Use any old sprite icon as a reference to calculate the position.
 		if (!node)
 		{
 			return;
@@ -232,7 +232,7 @@ void drawSustainedSpells()
 			break;
 		}
 		//Grab the sprite/
-		node_t* node = list_Node(&items[SPELL_ITEM].surfaces, spell->ID);
+		node_t* node = list_Node(&items[SPELL_ITEM]->surfaces, spell->ID);
 		if (!node)
 		{
 			break;

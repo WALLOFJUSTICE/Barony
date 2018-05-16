@@ -151,7 +151,7 @@ void buyItemFromShop(Item* item)
 
 	if ( stats[clientnum]->GOLD >= item->buyValue(clientnum) )
 	{
-		if ( items[item->type].value * 1.5 >= item->buyValue(clientnum) )
+		if ( items[item->type]->value * 1.5 >= item->buyValue(clientnum) )
 		{
 			shopspeech = language[200 + rand() % 3];
 		}
@@ -307,7 +307,7 @@ void sellItemToShop(Item* item)
 		return;
 	}
 
-	if ( items[item->type].value * .75 <= item->sellValue(clientnum) )
+	if ( items[item->type]->value * .75 <= item->sellValue(clientnum) )
 	{
 		shopspeech = language[209 + rand() % 3];
 	}

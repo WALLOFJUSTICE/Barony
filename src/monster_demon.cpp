@@ -649,7 +649,7 @@ void actDemonCeilingBuster(Entity* my)
 							entity->flags[INVISIBLE] = false;
 							entity->flags[NOUPDATE] = true;
 							entity->flags[UPDATENEEDED] = false;
-							entity->sprite = items[GEM_ROCK].index;
+							entity->sprite = items[GEM_ROCK]->index;
 							entity->yaw = rand() % 360 * PI / 180;
 							entity->pitch = rand() % 360 * PI / 180;
 							entity->roll = rand() % 360 * PI / 180;
