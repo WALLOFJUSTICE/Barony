@@ -144,7 +144,9 @@ extern bool gamemods_disableSteamAchievements;
 extern std::vector<std::pair<std::string, std::string>> gamemods_mountedFilepaths;
 extern bool gamemods_modelsListRequiresReload;
 extern bool gamemods_soundListRequiresReload;
+extern bool gamemods_modPreload;
 #ifdef STEAMWORKS
+void gamemodsPreloadMod(int fileID);
 void gamemodsWindowUploadInit(bool creatingNewItem);
 void gamemodsSubscribedItemsInit();
 void gamemodsDrawWorkshopItemTagToggle(std::string tagname, int x, int y);
