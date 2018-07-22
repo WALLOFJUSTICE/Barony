@@ -25,13 +25,23 @@ typedef struct damageIndicator_t
 } damageIndicator_t;
 extern list_t damageIndicators;
 
-#define STATUS_BAR_Y_OFFSET status_bmp->h
-#define STATUS_X (xres / 2 - status_bmp->w / 2)
+#define STATUS_BAR_Y_OFFSET (status_bmp->h * uiscale_chatlog)
+#define INVENTORY_SLOTSIZE (40 * uiscale_inventory)
+#define STATUS_X (xres / 2 - status_bmp->w * uiscale_chatlog / 2)
 #define STATUS_Y (yres - STATUS_BAR_Y_OFFSET)
+#define HOTBAR_START_X ((xres / 2) - (5 * hotbar_img->w * uiscale_hotbar))
+extern bool hide_statusbar;
+extern real_t uiscale_chatlog;
+extern real_t uiscale_playerbars;
+extern bool uiscale_charactersheet;
+extern bool uiscale_skillspage;
+extern real_t uiscale_hotbar;
+extern real_t uiscale_inventory;
 
 extern char enemy_name[128];
 extern Sint32 enemy_hp, enemy_maxhp;
 extern Uint32 enemy_timer;
+extern Uint32 enemy_bar_color[MAXPLAYERS];
 
 #ifndef SHOPWINDOW_SIZE
 #define SHOPWINDOW_SIZE
@@ -53,7 +63,9 @@ extern int gui_mode;
 extern int selectedItemFromHotbar;
 
 extern SDL_Surface* font12x12_small_bmp;
-extern SDL_Surface* backdrop_bmp;
+extern SDL_Surface* backdrop_minotaur_bmp;
+extern SDL_Surface* backdrop_blessed_bmp;
+extern SDL_Surface* backdrop_cursed_bmp;
 extern SDL_Surface* status_bmp;
 extern SDL_Surface* character_bmp;
 extern SDL_Surface* hunger_bmp;
@@ -64,16 +76,19 @@ extern SDL_Surface* attributesleft_bmp, *attributesleftunclicked_bmp;
 extern SDL_Surface* attributesright_bmp, *attributesrightunclicked_bmp;
 extern SDL_Surface* button_bmp, *smallbutton_bmp, *invup_bmp, *invdown_bmp;
 extern SDL_Surface* inventory_bmp, *inventoryoption_bmp, *inventoryoptionChest_bmp, *equipped_bmp;
+extern SDL_Surface* itembroken_bmp;
 //extern SDL_Surface *category_bmp[NUMCATEGORIES];
 extern SDL_Surface* shopkeeper_bmp;
 extern SDL_Surface* damage_bmp;
 extern int textscroll;
 extern int attributespage;
+extern int proficienciesPage;
 extern Item* invitems[4];
 extern Item* invitemschest[4];
 extern int inventorycategory;
 extern int itemscroll;
 extern view_t camera_charsheet;
+extern real_t camera_charsheet_offsetyaw;
 
 extern int selected_inventory_slot_x;
 extern int selected_inventory_slot_y;
@@ -116,6 +131,12 @@ void updateEnemyBar(Entity* source, Entity* target, char* name, Sint32 hp, Sint3
 damageIndicator_t* newDamageIndicator(double x, double y);
 
 void selectItemMenuSlot(const Item& item, int entry);
+bool autoAddHotbarFilter(const Item& item);
+void quickStackItems();
+void sortInventoryItemsOfType(int categoryInt, bool sortRightToLeft); // sort inventory items matching category. -1 is everything, -2 is only equipped items.
+void autosortInventory();
+bool mouseInsidePlayerInventory();
+bool mouseInsidePlayerHotbar();
 extern Uint32 itemMenuItem;
 extern bool itemMenuOpen;
 extern int itemMenuSelected;
@@ -217,6 +238,7 @@ extern int selectedIdentifySlot;
 void selectIdentifySlot(int slot);
 void warpMouseToSelectedIdentifySlot();
 
+void CloseIdentifyGUI();
 void updateIdentifyGUI(); //Updates the identify item GUI.
 void identifyGUIIdentify(Item* item); //Identify the given item.
 int getAppraisalTime(Item* item); // Return time in ticks needed to appraise an item
@@ -233,7 +255,6 @@ extern int removecursescroll;
 static const int NUM_REMOVE_CURSE_GUI_ITEMS = 4;
 extern Item* removecurse_items[NUM_REMOVE_CURSE_GUI_ITEMS];
 //extern SDL_Surface *removecurseGUI_img; //Nah, just use the identify GUI's image. It works well enough. No need to double the resources.
-
 void closeRemoveCurseGUI();
 void updateRemoveCurseGUI(); //Updates the remove curse GUI.
 void removecurseGUIRemoveCurse(Item* item); //Uncurse the given item.
@@ -243,6 +264,28 @@ extern int selectedRemoveCurseSlot;
 void selectRemoveCurseSlot(int slot);
 void warpMouseToSelectedRemoveCurseSlot();
 
+//Copy scroll GUI definitions.
+#define COPYSCROLL_GUI_X (((xres / 2) - (inventoryChest_bmp->w / 2)) + removecursegui_offset_x)
+#define COPYSCROLL_GUI_Y (((yres / 2) - (inventoryChest_bmp->h / 2)) + removecursegui_offset_y)
+extern bool copyscrollgui_active;
+extern int copyscrollgui_offset_x;
+extern int copyscrollgui_offset_y;
+extern bool dragging_copyscrollGUI; //The copy scroll GUI is being dragged.
+extern int copyscroll;
+static const int NUM_COPY_SCROLL_GUI_ITEMS = 4;
+extern Item* copyscroll_items[NUM_COPY_SCROLL_GUI_ITEMS];
+//extern SDL_Surface *removecurseGUI_img; //Nah, just use the identify GUI's image. It works well enough. No need to double the resources.
+void closeCopyScrollGUI();
+void updateCopyScrollGUI(int player); //Updates the copy scroll GUI.
+void copyscrollGUICopyScroll(Item* item, int player); //Copy the scroll
+//void updateCopyScrollGUI(); //Updates the copy scroll GUI.
+//void copyscrollGUICopyScroll(Item* item); //Copy the scroll
+
+//Gamepad-support related stuff.
+extern int selectedCopyScrollSlot;
+void selectCopyScrollSlot(int slot);
+void warpMouseToSelectedCopyScrollSlot();
+
 
 /*
  * Returns true if the mouse is in the specified bounds, with x1 and y1 specifying the top left corner, and x2 and y2 specifying the bottom right corner.
@@ -250,6 +293,8 @@ void warpMouseToSelectedRemoveCurseSlot();
 bool mouseInBounds(int x1, int x2, int y1, int y2);
 
 void updateCharacterSheet();
+void drawPartySheet();
+void drawSkillsSheet();
 
 //Right sidebar defines.
 #define RIGHTSIDEBAR_X (xres - rightsidebar_titlebar_img->w)
@@ -348,11 +393,21 @@ void warpMouseToSelectedHotbarSlot();
  */
 extern bool auto_hotbar_new_items;
 
+extern bool auto_hotbar_categories[NUM_HOTBAR_CATEGORIES]; // true = enable auto add to hotbar. else don't add.
+
+extern int autosort_inventory_categories[NUM_AUTOSORT_CATEGORIES]; // 0 = disable priority sort, fill rightmost first. greater than 0, fill leftmost using value as priority (0 = lowest priority)
+
+extern bool hotbar_numkey_quick_add; // use number keys to add items to hotbar if mouse in inventory panel.
+
 extern bool disable_messages;
 
 extern bool right_click_protect;
 
 extern bool auto_appraise_new_items;
+
+extern bool lock_right_sidebar;
+
+extern bool show_game_timer_always;
 
 const char* getInputName(Uint32 scancode);
 Sint8* inputPressed(Uint32 scancode);
@@ -367,3 +422,42 @@ inline bool hotbarGamepadControlEnabled()
 	return ( !openedChest[clientnum] && gui_mode != GUI_MODE_SHOP && !identifygui_active && !removecursegui_active );
 }
 
+extern SDL_Surface *str_bmp64u;
+extern SDL_Surface *dex_bmp64u;
+extern SDL_Surface *con_bmp64u;
+extern SDL_Surface *int_bmp64u;
+extern SDL_Surface *per_bmp64u;
+extern SDL_Surface *chr_bmp64u;
+extern SDL_Surface *str_bmp64;
+extern SDL_Surface *dex_bmp64;
+extern SDL_Surface *con_bmp64;
+extern SDL_Surface *int_bmp64;
+extern SDL_Surface *per_bmp64;
+extern SDL_Surface *chr_bmp64;
+
+extern SDL_Surface *sidebar_lock_bmp;
+extern SDL_Surface *sidebar_unlock_bmp;
+
+void printStatBonus(TTF_Font* outputFont, Sint32 stat, Sint32 statWithModifiers, int x, int y);
+void attackHoverText(Sint32 input[6]);
+Sint32 displayAttackPower(Sint32 output[6]);
+
+class MinimapPing
+{
+public:
+	Sint32 tickStart;
+	Uint8 player;
+	Uint8 x;
+	Uint8 y;
+	MinimapPing(Sint32 tickStart, Uint8 player, Uint8 x, Uint8 y) :
+		tickStart(tickStart),
+		player(player),
+		x(x),
+		y(y) {}
+};
+
+extern std::vector<MinimapPing> minimapPings;
+void minimapPingAdd(MinimapPing newPing);
+extern int minimapPingGimpTimer;
+
+extern std::vector<std::pair<SDL_Surface**, std::string>> systemResourceImages;

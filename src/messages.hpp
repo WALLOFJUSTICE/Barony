@@ -31,7 +31,7 @@
 //Number of pixels from the left edge of the screen the messages are.
 #define MESSAGE_X_OFFSET 5
 //The location the newest message is displayed (in other words, the bottom of the message list -- they're drawn from oldest to newest, top down).
-#define MESSAGE_Y_OFFSET (yres-STATUS_BAR_Y_OFFSET-MESSAGE_FONT_SIZE-80)
+#define MESSAGE_Y_OFFSET (yres-STATUS_BAR_Y_OFFSET-MESSAGE_FONT_SIZE-20-(60 * uiscale_playerbars * uiscale_playerbars))
 
 /*
  * Right, so this is how it's going to work:
@@ -64,15 +64,7 @@ typedef struct Message
 	 * To ensure everything always works right. I guess. Maybe not necessary. Whatever. There are much bigger problems to worry about.
 	 */
 	Sint16 alpha;
-
-	//Its neighbors.
-	//struct Message* next;
-	//struct Message* previous;
-	node_t* node; //Its node in the message list.
 } Message;
-
-//extern Message *notification_messages;
-extern list_t notification_messages;
 
 /*
  * Adds a message to the list of messages.

@@ -8,12 +8,13 @@
 	See LICENSE for details.
 
 -------------------------------------------------------------------------------*/
-
 #include <sstream>
 #include "../main.hpp"
+#include "../files.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
 #include "../items.hpp"
+#include "../init.hpp"
 #include "../book.hpp"
 #include "../sound.hpp"
 #include "../menu.hpp"
@@ -22,6 +23,12 @@
 #include "../paths.hpp"
 #include "../player.hpp"
 #include "interface.hpp"
+#include "../scores.hpp"
+
+bool spamming = false;
+bool showfirst = false;
+bool logCheckObstacle = false;
+int logCheckObstacleCount = 0;
 
 /*-------------------------------------------------------------------------------
 
@@ -37,6 +44,7 @@ void consoleCommand(char* command_str)
 	Entity* entity;
 	char name[64];
 	int c;
+	bool invalidcommand = false;
 
 	if ( !command_str )
 	{
@@ -60,10 +68,23 @@ void consoleCommand(char* command_str)
 			pingtime = SDL_GetTicks();
 		}
 	}
+	else if ( !strncmp(command_str, "/usemodelcache", 14) )
+	{
+		useModelCache = true;
+	}
+	else if ( !strncmp(command_str, "/disablemodelcache", 14) )
+	{
+		useModelCache = false;
+	}
 	else if (!strncmp(command_str, "/fov", 4))
 	{
 		fov = atoi(&command_str[5]);
 		fov = std::min(std::max<Uint32>(40, fov), 100u);
+	}
+	else if ( !strncmp(command_str, "/fps", 4) )
+	{
+		fpsLimit = atoi(&command_str[5]);
+		fpsLimit = std::min(std::max<Uint32>(60, fpsLimit), 144u);
 	}
 	else if (!strncmp(command_str, "/svflags ", 9))
 	{
@@ -104,6 +125,31 @@ void consoleCommand(char* command_str)
 		lastname = (string)name;
 		lastname = lastname.substr(0, lastname.size() - 1);
 	}
+	else if ( !strncmp(command_str, "/lastcharacter ", 15) )
+	{
+		int loadedValues = 0;
+		for ( c = 0; c < strlen(command_str); ++c )
+		{
+			if ( command_str[c] == ' ' )
+			{
+				switch ( loadedValues )
+				{
+					case 0:
+						lastCreatedCharacterSex = atoi(&command_str[c + 1]);
+						break;
+					case 1:
+						lastCreatedCharacterClass = atoi(&command_str[c + 1]);
+						break;
+					case 2:
+						lastCreatedCharacterAppearance = atoi(&command_str[c + 1]);
+						break;
+					default:
+						break;
+				}
+				++loadedValues;
+			}
+		}
+	}
 	else if ( !strncmp(command_str, "/spawnitem ", 11) )
 	{
 		if ( !(svFlags & SV_FLAG_CHEATS) )
@@ -138,6 +184,27 @@ void consoleCommand(char* command_str)
 			if ( strstr(items[c].name_identified, name) )
 			{
 				dropItem(newItem(static_cast<ItemType>(c), WORN, -2, 1, rand(), false, &stats[clientnum]->inventory), 0);
+				break;
+			}
+		}
+		if ( c == NUMITEMS )
+		{
+			messagePlayer(clientnum, language[278], name);
+		}
+	}
+	else if ( !strncmp(command_str, "/spawnblessed ", 14) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		strcpy(name, command_str + 14);
+		for ( c = 0; c < NUMITEMS; ++c )
+		{
+			if ( strstr(items[c].name_identified, name) )
+			{
+				dropItem(newItem(static_cast<ItemType>(c), WORN, 2, 1, rand(), false, &stats[clientnum]->inventory), 0);
 				break;
 			}
 		}
@@ -293,6 +360,18 @@ void consoleCommand(char* command_str)
 				messagePlayer(clientnum, language[292]);
 			}
 		}
+	}
+	else if ( !strncmp(command_str, "/spam", 5) )
+	{
+		spamming = !(spamming);
+	}
+	else if ( !strncmp(command_str, "/logobstacle", 12) )
+	{
+		logCheckObstacle = !(logCheckObstacle);
+	}
+	else if ( !strncmp(command_str, "/showfirst", 10) )
+	{
+		showfirst = !(showfirst);
 	}
 	else if ( !strncmp(command_str, "/buddha", 7) )
 	{
@@ -492,6 +571,21 @@ void consoleCommand(char* command_str)
 		{
 			impulses[IN_USE] = atoi(&command_str[6]);
 			printlog( "Bound IN_USE: %d\n", atoi(&command_str[6]));
+		}
+		else if ( strstr(command_str, "IN_AUTOSORT") )
+		{
+			impulses[IN_AUTOSORT] = atoi(&command_str[6]);
+			printlog("Bound IN_AUTOSORT: %d\n", atoi(&command_str[6]));
+		}
+		else if ( strstr(command_str, "IN_MINIMAPSCALE") )
+		{
+			impulses[IN_MINIMAPSCALE] = atoi(&command_str[6]);
+			printlog("Bound IN_MINIMAPSCALE: %d\n", atoi(&command_str[6]));
+		}
+		else if ( strstr(command_str, "IN_TOGGLECHATLOG") )
+		{
+			impulses[IN_TOGGLECHATLOG] = atoi(&command_str[6]);
+			printlog("Bound IN_TOGGLECHATLOG: %d\n", atoi(&command_str[6]));
 		}
 		else
 		{
@@ -716,6 +810,25 @@ void consoleCommand(char* command_str)
 			messagePlayer(clientnum, language[299]);
 		}
 	}
+	else if ( !strncmp(command_str, "/damage ", 8) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		int amount = atoi(&command_str[8]);
+
+		players[clientnum]->entity->modHP(-amount);
+
+		messagePlayer(clientnum, "Damaging you by %d. New health: %d", amount, stats[clientnum]->HP);
+	}
 	else if (!strncmp(command_str, "/ip ", 4))
 	{
 		if ( command_str[4] != 0 )
@@ -735,6 +848,18 @@ void consoleCommand(char* command_str)
 	else if (!strncmp(command_str, "/noblood", 8))
 	{
 		spawn_blood = (spawn_blood == false);
+	}
+	else if (!strncmp(command_str, "/nolightflicker", 15))
+	{
+		flickerLights = (flickerLights == false);
+	}
+	else if ( !strncmp(command_str, "/vsync", 6) )
+	{
+		verticalSync = (verticalSync == false);
+	}
+	else if ( !strncmp(command_str, "/muteping", 9) )
+	{
+		minimapPingMute = (minimapPingMute == false);
 	}
 	else if (!strncmp(command_str, "/colorblind", 11))
 	{
@@ -758,11 +883,156 @@ void consoleCommand(char* command_str)
 			return;
 		}
 
-		if (multiplayer == SINGLE)
+		if (multiplayer != CLIENT)
 		{
 			if (players[clientnum] && players[clientnum]->entity)
 			{
 				players[clientnum]->entity->getStats()->EXP += 100;
+			}
+		}
+		else if ( multiplayer == CLIENT )
+		{
+			// request level up
+			strcpy((char*)net_packet->data, "CLVL");
+			net_packet->data[4] = clientnum;
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 5;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+			//messagePlayer(clientnum, language[299]);
+		}
+	}
+	else if ( !strncmp(command_str, "/maxout2", 8) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer != CLIENT )
+		{
+			int c;
+			Stat* myStats = stats[0];
+			for ( c = 0; c < 24; c++ )
+			{
+				consoleCommand("/levelup");
+			}
+			for ( c = 0; c < NUM_HOTBAR_SLOTS; c++ )
+			{
+				hotbar[c].item = 0;
+			}
+			myStats->weapon = newItem(STEEL_SWORD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(CROSSBOW, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(MAGICSTAFF_LIGHT, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->shield = newItem(STEEL_SHIELD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->helmet = newItem(HAT_HOOD, SERVICABLE, 0, 1, 2, true, &myStats->inventory);
+			myStats->shoes = newItem(STEEL_BOOTS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->breastplate = newItem(STEEL_BREASTPIECE, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->gloves = newItem(GAUNTLETS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->cloak = newItem(CLOAK_BLACK, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+		}
+		else
+		{
+			for ( int c = 0; c < 24; c++ )
+			{
+				consoleCommand("/levelup");
+			}
+			//messagePlayer(clientnum, language[299]);
+		}
+	}
+	else if ( !strncmp(command_str, "/jumplevel ", 11) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		skipLevelsOnLoad = atoi((char*)(command_str + 11));
+		consoleCommand("/nextlevel");
+	}
+	else if ( !strncmp(command_str, "/maxout3", 8) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer == SINGLE )
+		{
+			int c;
+			Stat* myStats = stats[0];
+			skipLevelsOnLoad = 31;
+			for ( c = 0; c < 24; c++ )
+			{
+				consoleCommand("/levelup");
+			}
+			for ( c = 0; c < NUM_HOTBAR_SLOTS; c++ )
+			{
+				hotbar[c].item = 0;
+			}
+			myStats->weapon = newItem(STEEL_SWORD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(CROSSBOW, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(MAGICSTAFF_LIGHT, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->shield = newItem(STEEL_SHIELD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->helmet = newItem(HAT_HOOD, SERVICABLE, 0, 1, 2, true, &myStats->inventory);
+			myStats->shoes = newItem(STEEL_BOOTS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->breastplate = newItem(STEEL_BREASTPIECE, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->gloves = newItem(GAUNTLETS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->cloak = newItem(CLOAK_BLACK, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			consoleCommand("/levelskill 9");
+			//consoleCommand("/nextlevel");
+			while ( myStats->PROFICIENCIES[PRO_APPRAISAL] < 50 )
+			{
+				consoleCommand("/levelskill 3");
+			}
+		}
+		else
+		{
+			messagePlayer(clientnum, language[299]);
+		}
+	}
+	else if ( !strncmp(command_str, "/maxout4", 8) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer == SINGLE )
+		{
+			int c;
+			Stat* myStats = stats[0];
+			for ( c = 0; c < 35; c++ )
+			{
+				consoleCommand("/levelup");
+			}
+			for ( c = 0; c < NUM_HOTBAR_SLOTS; c++ )
+			{
+				hotbar[c].item = 0;
+			}
+			myStats->weapon = newItem(STEEL_SWORD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(CROSSBOW, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			newItem(MAGICSTAFF_LIGHT, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->shield = newItem(STEEL_SHIELD, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->helmet = newItem(HAT_HOOD, SERVICABLE, 0, 1, 2, true, &myStats->inventory);
+			myStats->shoes = newItem(STEEL_BOOTS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->breastplate = newItem(STEEL_BREASTPIECE, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->gloves = newItem(GAUNTLETS, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			myStats->cloak = newItem(CLOAK_BLACK, SERVICABLE, 0, 1, rand(), true, &myStats->inventory);
+			//consoleCommand("/nextlevel");
+			for ( c = 0; c < NUMPROFICIENCIES; c++ )
+			{
+				if ( c != PRO_STEALTH )
+				{
+					while ( stats[clientnum]->PROFICIENCIES[c] < 100 )
+					{
+						//++stats[clientnum]->PROFICIENCIES[c];
+						players[clientnum]->entity->increaseSkill(c);
+					}
+				}
 			}
 		}
 		else
@@ -796,7 +1066,12 @@ void consoleCommand(char* command_str)
 			consoleCommand("/spawnitem magicstaff of lightning");
 			for ( c = 0; c < NUMPROFICIENCIES; c++ )
 			{
-				stats[clientnum]->PROFICIENCIES[c] = 100;
+				//for ( int j = 0; j < 100; ++j )
+				while ( stats[clientnum]->PROFICIENCIES[c] < 100 )
+				{
+					//++stats[clientnum]->PROFICIENCIES[c];
+					players[clientnum]->entity->increaseSkill(c);
+				}
 			}
 		}
 		else
@@ -812,12 +1087,34 @@ void consoleCommand(char* command_str)
 			return;
 		}
 
-		if (multiplayer == SINGLE)
+		if ( multiplayer == SINGLE )
 		{
 			Stat* tempStats = players[clientnum]->entity->getStats();
-			if (tempStats)
+			if ( tempStats )
 			{
 				tempStats->HUNGER = std::max(0, tempStats->HUNGER - 100);
+			}
+		}
+		else
+		{
+			messagePlayer(clientnum, language[299]);
+		}
+	}
+	else if (!strncmp(command_str, "/poison", 7))
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer == SINGLE )
+		{
+			Stat* tempStats = players[clientnum]->entity->getStats();
+			if ( tempStats )
+			{
+				tempStats->EFFECTS[EFF_POISONED] = true;
+				tempStats->EFFECTS_TIMERS[EFF_POISONED] = 600;
 			}
 		}
 		else
@@ -863,6 +1160,120 @@ void consoleCommand(char* command_str)
 	{
 		messagePlayer(clientnum, language[300], list_Size(map.entities));
 	}
+	else if ( !strncmp(command_str, "/nummonsters2", 13) )
+	{
+		messagePlayer(clientnum, language[2353], list_Size(map.creatures));
+	}
+	else if ( !strncmp(command_str, "/nummonsters", 12) )
+	{
+		messagePlayer(clientnum, language[2353], nummonsters);
+	}
+	else if ( !strncmp(command_str, "/verifycreaturelist", strlen("/verifycreaturelist")) )
+	{
+		//Make sure that the number of creatures in the creature list are the real count in the game world.
+		unsigned entcount = 0;
+
+		for ( node_t* node = map.entities->first; node; node = node->next )
+		{
+			if ( node->element )
+			{
+				Entity* ent = static_cast<Entity*>(node->element);
+				if ( ent->behavior == actMonster || ent->behavior == actPlayer )
+				{
+					++entcount;
+				}
+			}
+		}
+
+		messagePlayer(clientnum, "ent count = %d, creatures list size = %d", entcount, list_Size(map.creatures));
+
+		if ( entcount == list_Size(map.creatures) )
+		{
+			messagePlayer(clientnum, "Yes, list is verified correct.");
+		}
+		else
+		{
+			messagePlayer(clientnum, "Nope, much problemo!");
+		}
+	}
+	else if ( !strncmp(command_str, "/loadmodels ", 12) )
+	{
+		char name2[128];
+		char buf[16] = "";
+		int startIndex = 0;
+		int endIndex = nummodels;
+		int i = 0;
+		strcpy(name, command_str + 12);
+		for ( c = 0; name[c] != '\0'; c++ )
+		{
+			if ( name[c] == ' ' && startIndex == 0 )
+			{
+				startIndex = atoi(buf);
+				strcpy(buf, "");
+				i = 0;
+				continue;
+			}
+			buf[i] = name[c];
+			i++;
+		}
+
+		if ( startIndex != 0 )
+		{
+			endIndex = atoi(buf);
+			if ( endIndex > nummodels || endIndex < startIndex )
+			{
+				endIndex = nummodels;
+			}
+		}
+
+		std::string modelsDirectory = PHYSFS_getRealDir("models/models.txt");
+		modelsDirectory.append(PHYSFS_getDirSeparator()).append("models/models.txt");
+		FILE *fp = openDataFile(modelsDirectory.c_str(), "r");
+		for ( c = 0; !feof(fp); c++ )
+		{
+			fscanf(fp, "%s", name2);
+			while ( fgetc(fp) != '\n' ) if ( feof(fp) )
+			{
+				break;
+			}
+			if ( c >= startIndex && c < endIndex )
+			{
+				if ( models[c] != NULL )
+				{
+					if ( models[c]->data )
+					{
+						free(models[c]->data);
+					}
+					free(models[c]);
+					if ( polymodels[c].faces )
+					{
+						free(polymodels[c].faces);
+					}
+					if ( polymodels[c].vbo )
+					{
+						SDL_glDeleteBuffers(1, &polymodels[c].vbo);
+					}
+					if ( polymodels[c].colors )
+					{
+						SDL_glDeleteBuffers(1, &polymodels[c].colors);
+					}
+					if ( polymodels[c].va )
+					{
+						SDL_glDeleteVertexArrays(1, &polymodels[c].va);
+					}
+					if ( polymodels[c].colors_shifted )
+					{
+						SDL_glDeleteBuffers(1, &polymodels[c].colors_shifted);
+					}
+				}
+				models[c] = loadVoxel(name2);
+			}
+		}
+		fclose(fp);
+		//messagePlayer(clientnum, language[2354]);
+		messagePlayer(clientnum, language[2355], startIndex, endIndex);
+		generatePolyModels(startIndex, endIndex, true);
+	}
 	else if (!strncmp(command_str, "/killmonsters", 13))
 	{
 		if ( !(svFlags & SV_FLAG_CHEATS) )
@@ -907,30 +1318,105 @@ void consoleCommand(char* command_str)
 		int* potato = NULL;
 		(*potato) = 322; //Crash the game!
 	}
-	else if (!strncmp(command_str, "/flames", 7))
+	else if ( !(strncmp(command_str, "/flames", 7)) )
 	{
-		//Why would you ever do this?
 		if ( !(svFlags & SV_FLAG_CHEATS) )
 		{
 			messagePlayer(clientnum, language[277]);
 			return;
 		}
+
 		if ( multiplayer != SINGLE )
 		{
 			messagePlayer(clientnum, language[299]);
 			return;
 		}
 
-		players[clientnum]->entity->flags[BURNING] = true;
+		// Attempt to set the Player on fire
+		players[clientnum]->entity->SetEntityOnFire();
+
 		for ( c = 0; c < 100; c++ )
 		{
-			entity = spawnFlame(players[clientnum]->entity);
+			entity = spawnFlame(players[clientnum]->entity, SPRITE_FLAME);
 			entity->sprite = 16;
 			double vel = rand() % 10;
 			entity->vel_x = vel * cos(entity->yaw) * cos(entity->pitch) * .1;
 			entity->vel_y = vel * sin(entity->yaw) * cos(entity->pitch) * .1;
 			entity->vel_z = vel * sin(entity->pitch) * .2;
 			entity->skill[0] = 5 + rand() % 10;
+		}
+	}
+	else if ( !(strncmp(command_str, "/cure", 5)) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		for ( c = 0; c < NUMEFFECTS; c++ )   //This does a whole lot more than just cure ailments.
+		{
+			players[clientnum]->entity->getStats()->EFFECTS[c] = false;
+			players[clientnum]->entity->getStats()->EFFECTS_TIMERS[c] = 0;
+		}
+	}
+	else if (!strncmp(command_str, "/summonall ", 11))
+	{
+		if (!(svFlags & SV_FLAG_CHEATS))
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if (multiplayer == CLIENT)
+		{
+			messagePlayer(clientnum, language[284]);
+		}
+		else if (players[clientnum] && players[clientnum]->entity)
+		{
+			strcpy(name, command_str + 11);
+			int i, creature;
+			bool found = false;
+
+			for (i = 1; i < NUMMONSTERS; ++i)   //Start at 1 because 0 is a nothing.
+			{
+				if ( i < KOBOLD ) //Search original monsters
+				{
+					if ( strstr(language[90 + i], name) )
+					{
+						creature = i;
+						found = true;
+						break;
+					}
+				}
+				else if ( i >= KOBOLD ) //Search additional monsters
+				{
+					if ( strstr(language[2000 + (i - KOBOLD)], name) )
+					{
+						creature = i;
+						found = true;
+						break;
+					}
+				}
+
+			}
+
+			if (found)
+			{
+				playSoundEntity(players[clientnum]->entity, 153, 64);
+
+				//Spawn monster
+				summonManyMonster(static_cast<Monster>(creature));
+			}
+			else
+			{
+				messagePlayer(clientnum, language[304], name);
+			}
 		}
 	}
 	else if (!strncmp(command_str, "/summon ", 8))
@@ -952,12 +1438,25 @@ void consoleCommand(char* command_str)
 
 			for (i = 1; i < NUMMONSTERS; ++i)   //Start at 1 because 0 is a nothing.
 			{
-				if (strstr(language[90 + i], name))
+				if ( i < KOBOLD ) //Search original monsters
 				{
-					creature = i;
-					found = true;
-					break;
+					if ( strstr(language[90 + i], name) )
+					{
+						creature = i;
+						found = true;
+						break;
+					}
 				}
+				else if ( i >= KOBOLD ) //Search additional monsters
+				{
+					if ( strstr(language[2000 + (i - KOBOLD)], name) )
+					{
+						creature = i;
+						found = true;
+						break;
+					}
+				}
+
 			}
 
 			if (found)
@@ -968,17 +1467,50 @@ void consoleCommand(char* command_str)
 				Entity* monster = summonMonster(static_cast<Monster>(creature), players[clientnum]->entity->x + 32 * cos(players[clientnum]->entity->yaw), players[clientnum]->entity->y + 32 * sin(players[clientnum]->entity->yaw));
 				if (monster)
 				{
-					messagePlayer(clientnum, language[302], language[90 + creature]);
+					if ( i < KOBOLD )
+					{
+						messagePlayer(clientnum, language[302], language[90 + creature]);
+					}
+					else if ( i >= KOBOLD )
+					{
+						messagePlayer(clientnum, language[302], language[2000 + (creature-21)]);
+					}
 				}
 				else
 				{
-					messagePlayer(clientnum, language[303], language[90 + creature]);
+					if ( i < KOBOLD )
+					{
+						messagePlayer(clientnum, language[303], language[90 + creature]);
+					}
+					else if ( i >= KOBOLD )
+					{
+						messagePlayer(clientnum, language[303], language[2000 + (creature - KOBOLD)]);
+					}
 				}
 			}
 			else
 			{
 				messagePlayer(clientnum, language[304], name);
 			}
+		}
+	}
+	else if (!strncmp(command_str, "/summonchest", 12)) //MAGIC TEST FUNCTION WE NEEDED LONG AGO.
+	{
+		if (!(svFlags & SV_FLAG_CHEATS))
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if (multiplayer == CLIENT)
+		{
+			messagePlayer(clientnum, language[284]);
+		}
+		else if (players[clientnum] && players[clientnum]->entity)
+		{
+			playSoundEntity(players[clientnum]->entity, 153, 64);
+
+			//Spawn monster
+			Entity* chest = summonChest(players[clientnum]->entity->x + 32 * cos(players[clientnum]->entity->yaw), players[clientnum]->entity->y + 32 * sin(players[clientnum]->entity->yaw));
 		}
 	}
 	else if (!strncmp(command_str, "/broadcast", 10))
@@ -993,10 +1525,44 @@ void consoleCommand(char* command_str)
 	{
 		auto_hotbar_new_items = (auto_hotbar_new_items == false);
 	}
+	else if ( !strncmp(command_str, "/hotbarenablecategory ", 22) )
+	{
+		int catIndex = atoi(&command_str[22]);
+		int value = atoi(&command_str[24]);
+		auto_hotbar_categories[catIndex] = value;
+		printlog("Hotbar auto add category %d, value %d.", catIndex, value);
+	}
+	else if ( !strncmp(command_str, "/autosortcategory ", 18) )
+	{
+		int catIndex = atoi(&command_str[18]);
+		int value = atoi(&command_str[20]);
+		autosort_inventory_categories[catIndex] = value;
+		printlog("Autosort inventory category %d, priority %d.", catIndex, value);
+	}
+	else if ( !strncmp(command_str, "/quickaddtohotbar", 17) )
+	{
+		hotbar_numkey_quick_add = !hotbar_numkey_quick_add;
+	}
+	else if ( !strncmp(command_str, "/locksidebar", 12) )
+	{
+		lock_right_sidebar = (lock_right_sidebar == false);
+		if ( lock_right_sidebar )
+		{
+			proficienciesPage = 1;
+		}
+	}
+	else if ( !strncmp(command_str, "/showgametimer", 14) )
+	{
+		show_game_timer_always = (show_game_timer_always == false);
+	}
 	else if (!strncmp(command_str, "/lang ", 6))
 	{
 		command_str[8] = 0;
 		loadLanguage(command_str + 6);
+	}
+	else if ( !strncmp(command_str, "/mapseed", 8) )
+	{
+		messagePlayer(clientnum, "%d", mapseed);
 	}
 	else if (!strncmp(command_str, "/reloadlang", 11))
 	{
@@ -1106,6 +1672,17 @@ void consoleCommand(char* command_str)
 	{
 		gamepad_menuy_invert = true;
 	}
+	else if ( !strncmp(command_str, "/numgold", 8) )
+	{
+		for ( unsigned i = 0; i < numplayers; ++i )
+		{
+			if ( client_disconnected[i] )
+			{
+				continue;
+			}
+			messagePlayer(clientnum, "Player %d has %d gold.", i, stats[i]->GOLD);
+		}
+	}
 	else if ( !strncmp(command_str, "/gold ", 5) )
 	{
 		if ( !(svFlags & SV_FLAG_CHEATS) )
@@ -1124,6 +1701,64 @@ void consoleCommand(char* command_str)
 		stats[clientnum]->GOLD = std::max(stats[clientnum]->GOLD, 0);
 
 		messagePlayer(clientnum, "Giving %d gold pieces.", amount);
+	}
+	else if ( !strncmp(command_str, "/dropgold", 9) )
+	{
+		int amount = 100;
+		if ( !stats[clientnum] )
+		{
+			return;
+		}
+		else if ( stats[clientnum]->HP <= 0 )
+		{
+			return;
+		}
+		if ( stats[clientnum]->GOLD - amount < 0 )
+		{
+			amount = stats[clientnum]->GOLD;
+		}
+		if ( amount == 0 )
+		{
+			messagePlayer(clientnum, language[2593]);
+			return;
+		}
+		stats[clientnum]->GOLD -= amount;
+		stats[clientnum]->GOLD = std::max(stats[clientnum]->GOLD, 0);
+
+		if ( multiplayer == CLIENT )
+		{
+			//Tell the server we dropped some gold.
+			strcpy((char*)net_packet->data, "DGLD");
+			net_packet->data[4] = clientnum;
+			SDLNet_Write32(amount, &net_packet->data[5]);
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 9;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+		}
+		else
+		{
+			//Drop gold.
+			int x = std::min<int>(std::max(0, (int)(players[clientnum]->entity->x / 16)), map.width - 1);
+			int y = std::min<int>(std::max(0, (int)(players[clientnum]->entity->y / 16)), map.height - 1);
+			if ( map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height] )
+			{
+				entity = newEntity(130, 0, map.entities, nullptr); // 130 = goldbag model
+				entity->sizex = 4;
+				entity->sizey = 4;
+				entity->x = players[clientnum]->entity->x;
+				entity->y = players[clientnum]->entity->y;
+				entity->z = 6;
+				entity->yaw = (rand() % 360) * PI / 180.0;
+				entity->flags[PASSABLE] = true;
+				entity->flags[UPDATENEEDED] = true;
+				entity->behavior = &actGoldBag;
+				entity->goldAmount = amount; // amount
+			}
+			playSoundEntity(players[clientnum]->entity, 242 + rand() % 4, 64);
+		}
+
+		messagePlayer(clientnum, language[2594], amount);
 	}
 	else if (!strncmp(command_str, "/minotaurlevel", 14))
 	{
@@ -1144,8 +1779,345 @@ void consoleCommand(char* command_str)
 			createMinotaurTimer(players[0]->entity, &map);
 		}
 	}
+	else if ( !strncmp(command_str, "/minotaurnow", 12) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		if ( minotaurlevel )
+		{
+			node_t *tmpNode = NULL;
+			Entity *tmpEnt = NULL;
+			for ( tmpNode = map.entities->first; tmpNode != NULL; tmpNode = tmpNode->next )
+			{
+				tmpEnt = (Entity*)tmpNode->element;
+				if ( tmpEnt->sprite == 37 )
+				{
+					tmpEnt->skill[0] += TICKS_PER_SECOND * 210;
+					return;
+				}
+			}
+		}
+	}
+	else if ( !strncmp(command_str, "/levelskill ", 12) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		int skill = atoi(&command_str[12]);
+		if ( skill >= NUMPROFICIENCIES )
+		{
+			messagePlayer(clientnum, language[2451]); //Skill out of range.
+		}
+		else
+		{
+			for ( int i = 0; i < 10; ++i )
+			{
+				players[clientnum]->entity->increaseSkill(skill);
+			}
+		}
+	}
+	else if ( !strncmp(command_str, "/maplevel", 9) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		messagePlayer(clientnum, language[412]);
+		printlog("Made it this far...");
+
+		mapLevel(clientnum);
+	}
+	else if ( !strncmp(command_str, "/drunky", 7) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		if ( !players[clientnum]->entity->getStats()->EFFECTS[EFF_DRUNK] )
+		{
+			players[clientnum]->entity->getStats()->EFFECTS[EFF_DRUNK] = true;
+			players[clientnum]->entity->getStats()->EFFECTS_TIMERS[EFF_DRUNK] = -1;
+		}
+		else
+		{
+			players[clientnum]->entity->getStats()->EFFECTS[EFF_DRUNK] = false;
+			players[clientnum]->entity->getStats()->EFFECTS_TIMERS[EFF_DRUNK] = 0;
+		}
+	}
+	else if ( !strncmp(command_str, "/maxskill ", 9) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		int skill = atoi(&command_str[12]);
+		if ( skill >= NUMPROFICIENCIES )
+		{
+			messagePlayer(clientnum, language[2451]); //Skill out of range.
+		}
+		else
+		{
+			for ( int i = players[clientnum]->entity->getStats()->PROFICIENCIES[skill]; i < 100; ++i )
+			{
+				players[clientnum]->entity->increaseSkill(skill);
+			}
+		}
+	}
+	else if ( !strncmp(command_str, "/reloadlimbs", 12) )
+	{
+		int x;
+		FILE* fp;
+		bool success = true;
+
+		messagePlayer(clientnum, "Reloading limb offsets from limbs.txt files...");
+
+		for ( c = 1; c < NUMMONSTERS; c++ )
+		{
+			// initialize all offsets to zero
+			for ( x = 0; x < 20; x++ )
+			{
+				limbs[c][x][0] = 0;
+				limbs[c][x][1] = 0;
+				limbs[c][x][2] = 0;
+			}
+
+			// open file
+			char filename[256];
+			strcpy(filename, "models/creatures/");
+			strcat(filename, monstertypename[c]);
+			strcat(filename, "/limbs.txt");
+			if ( (fp = openDataFile(filename, "r")) == NULL )
+			{
+				continue;
+			}
+
+			// read file
+			int line;
+			for ( line = 1; feof(fp) == 0; line++ )
+			{
+				char data[256];
+				int limb = 20;
+				int dummy;
+
+				// read line from file
+				fgets(data, 256, fp);
+
+				// skip blank and comment lines
+				if ( data[0] == '\n' || data[0] == '\r' || data[0] == '#' )
+				{
+					continue;
+				}
+
+				// process line
+				if ( sscanf(data, "%d", &limb) != 1 || limb >= 20 || limb < 0 )
+				{
+					messagePlayer(clientnum, "warning: syntax error in '%s':%d\n invalid limb index!", filename, line);
+					printlog("warning: syntax error in '%s':%d\n invalid limb index!\n", filename, line);
+					success = false;
+					continue;
+				}
+				if ( sscanf(data, "%d %f %f %f\n", &dummy, &limbs[c][limb][0], &limbs[c][limb][1], &limbs[c][limb][2]) != 4 )
+				{
+					messagePlayer(clientnum, "warning: syntax error in '%s':%d\n invalid limb offsets!", filename, line);
+					printlog("warning: syntax error in '%s':%d\n invalid limb offsets!\n", filename, line);
+					success = false;
+					continue;
+				}
+			}
+
+			// close file
+			fclose(fp);
+		}
+		if ( success )
+		{
+			messagePlayer(clientnum, "Successfully reloaded all limbs.txt!");
+		}
+	}
+	else if ( !strncmp(command_str, "/animspeed ", 10) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		int speed = atoi(&command_str[11]);
+		monsterGlobalAnimationMultiplier = speed;
+		messagePlayer(clientnum, "Changed animation speed multiplier to %f.", speed / 10.0);
+	}
+	else if ( !strncmp(command_str, "/atkspeed ", 9) )
+	{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, language[277]);
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, language[299]);
+			return;
+		}
+
+		int speed = atoi(&command_str[10]);
+		monsterGlobalAttackTimeMultiplier = speed;
+		messagePlayer(clientnum, "Changed attack speed multiplier to %d.", speed);
+	}
+	else if ( !strncmp(command_str, "/brawlermode", 12) )
+	{
+		achievementBrawlerMode = !achievementBrawlerMode;
+		if ( achievementBrawlerMode )
+		{
+			messagePlayer(clientnum, language[2995]);
+		}
+		else
+		{
+			messagePlayer(clientnum, language[2996]);
+		}
+	}
+	else if ( !strncmp(command_str, "/loadmod ", 9) )
+	{
+		std::string cmd = command_str;
+		std::size_t dirfind = cmd.find("dir:");
+		std::size_t namefind = cmd.find("name:");
+		std::string modname;
+		std::size_t fileidFind = cmd.find("fileid:");
+		if ( dirfind != std::string::npos && namefind != std::string::npos && fileidFind == std::string::npos )
+		{
+			std::string directory = cmd.substr(dirfind + 4, namefind - (dirfind + 5));
+			modname = cmd.substr(namefind + 5);
+			modname = modname.substr(0, modname.length() - 1);
+			printlog("[Mods]: Adding mod \"%s\" in path \"%s\"", directory.c_str(), modname.c_str());
+			gamemods_mountedFilepaths.push_back(std::make_pair(directory, modname));
+			gamemods_modelsListRequiresReload = true;
+			gamemods_soundListRequiresReload = true;
+		}
+		if ( dirfind != std::string::npos && namefind != std::string::npos && fileidFind != std::string::npos )
+		{
+#ifdef STEAMWORKS
+			std::string directory = cmd.substr(dirfind + 4, namefind - (dirfind + 5));
+			modname = cmd.substr(namefind + 5, fileidFind - (namefind + 6));
+			printlog("[Mods]: Adding mod \"%s\" in path \"%s\"", directory.c_str(), modname.c_str());
+			gamemods_mountedFilepaths.push_back(std::make_pair(directory, modname));
+			gamemods_modelsListRequiresReload = true;
+			gamemods_soundListRequiresReload = true;
+
+			uint64 id = atoi(cmd.substr(fileidFind + 7).c_str());
+			gamemods_workshopLoadedFileIDMap.push_back(std::make_pair(modname, id));
+			printlog("[Mods]: Steam Workshop mod file ID added for previous entry:%lld", id);
+#endif
+		}
+	}
 	else
 	{
-		messagePlayer(clientnum, language[305], command_str);
+		invalidcommand = true;
+	}
+
+	if ( invalidcommand ) // starting new if else block to get around compiler >128 statement limit.
+	{
+		if ( !strncmp(command_str, "/minimaptransparencyfg", 22) )
+		{
+			minimapTransparencyForeground = atoi(&command_str[23]);
+			minimapTransparencyForeground = std::min(std::max<int>(0, minimapTransparencyForeground), 100);
+
+		}
+		else if ( !strncmp(command_str, "/minimaptransparencybg", 22) )
+		{
+			minimapTransparencyBackground = atoi(&command_str[23]);
+			minimapTransparencyBackground = std::min(std::max<int>(0, minimapTransparencyBackground), 100);
+
+		}
+		else if ( !strncmp(command_str, "/minimapscale", 13) )
+		{
+			minimapScale = atoi(&command_str[14]);
+			minimapScale = std::min(std::max<int>(2, minimapScale), 16);
+		}
+		else if ( !strncmp(command_str, "/minimapobjectzoom", 18) )
+		{
+			minimapObjectZoom = atoi(&command_str[19]);
+			minimapObjectZoom = std::min(std::max<int>(0, minimapObjectZoom), 4);
+		}
+		else if ( !strncmp(command_str, "/uiscale_inv", 12) )
+		{
+			std::stringstream ss;
+			ss << command_str + 13;
+			ss >> uiscale_inventory;
+		}
+		else if ( !strncmp(command_str, "/uiscale_hotbar", 15) )
+		{
+			std::stringstream ss;
+			ss << command_str + 16;
+			ss >> uiscale_hotbar;
+		}
+		else if ( !strncmp(command_str, "/uiscale_chatbox", 16) )
+		{
+			std::stringstream ss;
+			ss << command_str + 17;
+			ss >> uiscale_chatlog;
+		}
+		else if ( !strncmp(command_str, "/uiscale_playerbars", 19) )
+		{
+			std::stringstream ss;
+			ss << command_str + 20;
+			ss >> uiscale_playerbars;
+		}
+		else if ( !strncmp(command_str, "/uiscale_charsheet", 18) )
+		{
+			uiscale_charactersheet = !uiscale_charactersheet;
+		}
+		else if ( !strncmp(command_str, "/uiscale_skillsheet", 19) )
+		{
+			uiscale_skillspage = !uiscale_skillspage;
+		}
+		else if ( !strncmp(command_str, "/hidestatusbar", 14) )
+		{
+			hide_statusbar = !hide_statusbar;
+		}
+		else
+		{
+			messagePlayer(clientnum, language[305], command_str);
+		}
 	}
 }

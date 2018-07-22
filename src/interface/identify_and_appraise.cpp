@@ -10,12 +10,14 @@
 -------------------------------------------------------------------------------*/
 
 #include "../main.hpp"
+#include "../draw.hpp"
 #include "../game.hpp"
 #include "../stat.hpp"
 #include "../items.hpp"
 #include "../net.hpp"
 #include "../player.hpp"
 #include "interface.hpp"
+#include "../scores.hpp"
 
 //Identify GUI definitions.
 bool identifygui_active = false;
@@ -76,6 +78,12 @@ void rebuildIdentifyGUIInventory()
 			}
 		}
 	}
+}
+
+void CloseIdentifyGUI()
+{
+	identifygui_active = false;
+	selectedIdentifySlot = -1;
 }
 
 void updateIdentifyGUI()
@@ -360,17 +368,35 @@ void identifyGUIIdentify(Item* item)
 	else
 	{
 		//Appraising.
-		messagePlayer(clientnum, language[321], item->description());
 
-		//Tick the timer in act player.
-		//Once the timer hits zero, roll to see if the item is identified.
-		//If it is identified, identify it and print out a message for the player.
+		//If appraisal skill >= LEGENDARY, then auto-complete appraisal. Else, do the normal routine.
+		if ( stats[clientnum]->PROFICIENCIES[PRO_APPRAISAL] >= CAPSTONE_UNLOCK_LEVEL[PRO_APPRAISAL] )
+		{
+			item->identified = true;
+			messagePlayer(clientnum, language[320], item->description());
+			if (appraisal_timer > 0 && appraisal_item && appraisal_item == item->uid)
+			{
+				appraisal_timer = 0;
+				appraisal_item = 0;
+			}
+			if ( item->type == GEM_GLASS )
+			{
+				steamStatisticUpdate(STEAM_STAT_RHINESTONE_COWBOY, STEAM_STAT_INT, 1);
+			}
+		}
+		else
+		{
+			messagePlayer(clientnum, language[321], item->description());
 
-		identifygui_appraising = false;
-		appraisal_timer = getAppraisalTime(item);
-		appraisal_timermax = appraisal_timer;
-		appraisal_item = item->uid;
-		//printlog( "DEBUGGING: Appraisal timer = %i.\n", appraisal_timer);
+			//Tick the timer in act player.
+			//Once the timer hits zero, roll to see if the item is identified.
+			//If it is identified, identify it and print out a message for the player.
+
+			identifygui_appraising = false;
+			appraisal_timer = getAppraisalTime(item);
+			appraisal_timermax = appraisal_timer;
+			appraisal_item = item->uid;
+		}
 	}
 	identifygui_active = false;
 
@@ -384,10 +410,43 @@ int getAppraisalTime(Item* item)
 	if ( item->type != GEM_GLASS )
 	{
 		appraisal_time = (items[item->type].value * 60) / (stats[clientnum]->PROFICIENCIES[PRO_APPRAISAL] + 1);    // time in ticks until item is appraised
+		int playerCount = 0;
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( !client_disconnected[i] )
+			{
+				++playerCount;
+			}
+		}
+		if ( playerCount == 3 )
+		{
+			appraisal_time /= 1.25;
+		}
+		else if ( playerCount == 4 )
+		{
+			appraisal_time /= 1.5;
+		}
+		//messagePlayer(clientnum, "time: %d", appraisal_time);
 	}
 	else
 	{
 		appraisal_time = (1000 * 60) / (stats[clientnum]->PROFICIENCIES[PRO_APPRAISAL] + 1);    // time in ticks until item is appraised+-
+		int playerCount = 0;
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( !client_disconnected[i] )
+			{
+				++playerCount;
+			}
+		}
+		if ( playerCount == 3 )
+		{
+			appraisal_time /= 1.15;
+		}
+		else if ( playerCount == 4 )
+		{
+			appraisal_time /= 1.25;
+		}
 	}
 	appraisal_time = std::min(std::max(1, appraisal_time), 36000);
 	return appraisal_time;

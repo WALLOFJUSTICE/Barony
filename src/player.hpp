@@ -18,6 +18,7 @@ extern int current_player; //This may not be necessary. Consider this: Each Play
 
 //TODO: Move these into each and every individual player.
 extern Entity* selectedEntity;
+extern Entity* lastSelectedEntity;
 extern Sint32 mousex, mousey;
 extern Sint32 omousex, omousey;
 extern Sint32 mousexrel, mouseyrel;
@@ -180,6 +181,7 @@ public:
 
 void initIdentifyGUIControllerCode();
 void initRemoveCurseGUIControllerCode();
+void initCopyScrollGUIControllerCode();
 
 extern Player** players;
 //In the process of switching from the old entity player array, all of the old uses of player need to be hunted down and then corrected to account for the new array.
