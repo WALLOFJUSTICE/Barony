@@ -138,7 +138,7 @@ int initApp(char* title, int fullscreen)
 	g_SteamLeaderboards = new CSteamLeaderboards();
 	g_SteamWorkshop = new CSteamWorkshop();
 	g_SteamStatistics = new CSteamStatistics(g_SteamStats, NUM_STEAM_STATISTICS);
-	//gamemodsPreloadMod(1387678409);
+	gamemodsWorkshopPreloadMod(1387678409);
 #endif
 
 	window_title = title;

@@ -11498,7 +11498,7 @@ void gamemodsWindowClearVariables()
 	gamemods_subscribedItemsStatus = 0;
 }
 
-void gamemodsPreloadMod(int fileID)
+void gamemodsWorkshopPreloadMod(int fileID)
 {
 	char fullpath[PATH_MAX] = "";
 	useModelCache = false;
