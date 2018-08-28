@@ -12,6 +12,8 @@
 #pragma once
 
 #include <queue>
+#include <thread>
+#include <mutex>
 
 #define DEFAULT_PORT 57165
 #define LOBBY_CHATBOX_LENGTH 62
@@ -82,12 +84,12 @@ public:
 
 class NetHandler
 {
-	SDL_Thread* steam_packet_thread;
+	std::thread steam_packet_thread;
 	bool continue_multithreading_steam_packets;
 
 	std::queue<SteamPacketWrapper* > game_packets;
 
-	SDL_mutex* game_packets_lock;
+	std::mutex game_packets_lock;
 public:
 	NetHandler();
 	~NetHandler();
@@ -106,7 +108,7 @@ public:
 	 */
 	SteamPacketWrapper* getGamePacket();
 
-	SDL_mutex* continue_multithreading_steam_packets_lock;
+	std::mutex continue_multithreading_steam_packets_lock;
 } extern* net_handler;
 
 int steamPacketThread(void* data);

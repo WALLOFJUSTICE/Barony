@@ -4388,10 +4388,7 @@ int& SteamPacketWrapper::len()
 
 NetHandler::NetHandler()
 {
-	steam_packet_thread = nullptr;
 	continue_multithreading_steam_packets = false;
-	game_packets_lock = SDL_CreateMutex();
-	continue_multithreading_steam_packets_lock = SDL_CreateMutex();
 }
 
 NetHandler::~NetHandler()
@@ -4399,13 +4396,15 @@ NetHandler::~NetHandler()
 	//First, must join with the worker thread.
 	printlog("Waiting for steam_packet_thread to finish...");
 	stopMultithreadedPacketHandling();
-	SDL_WaitThread(steam_packet_thread, NULL); //Wait for the thread to finish.
+	//SDL_WaitThread(steam_packet_thread, NULL); //Wait for the thread to finish.
+	if ( steam_packet_thread.joinable() )
+	{
+		steam_packet_thread.join();
+	}
 	printlog("Done.\n");
 
-	SDL_DestroyMutex(game_packets_lock);
-	game_packets_lock = nullptr;
-	SDL_DestroyMutex(continue_multithreading_steam_packets_lock);
-	continue_multithreading_steam_packets_lock = nullptr;
+	//game_packets_lock = nullptr;
+	//continue_multithreading_steam_packets_lock = nullptr;
 
 	//Free up packet memory.
 	while (!game_packets.empty())
@@ -4422,7 +4421,7 @@ void NetHandler::initializeMultithreadedPacketHandling()
 
 	printlog("Initializing multithreaded packet handling.");
 
-	steam_packet_thread = SDL_CreateThread(steamPacketThread, "steamPacketThread", static_cast<void* >(this));
+	steam_packet_thread = std::thread(steamPacketThread, static_cast<void*>(this));
 	continue_multithreading_steam_packets = true;
 
 #endif
@@ -4430,9 +4429,8 @@ void NetHandler::initializeMultithreadedPacketHandling()
 
 void NetHandler::stopMultithreadedPacketHandling()
 {
-	SDL_LockMutex(continue_multithreading_steam_packets_lock); //NOTE: Will block.
+	std::lock_guard<std::mutex> guard(continue_multithreading_steam_packets_lock); //NOTE: Will block.
 	continue_multithreading_steam_packets = false;
-	SDL_UnlockMutex(continue_multithreading_steam_packets_lock);
 }
 
 bool NetHandler::getContinueMultithreadingSteamPackets()
@@ -4443,21 +4441,19 @@ bool NetHandler::getContinueMultithreadingSteamPackets()
 
 void NetHandler::addGamePacket(SteamPacketWrapper* packet)
 {
-	SDL_LockMutex(game_packets_lock);
+	std::lock_guard<std::mutex> guard(game_packets_lock);
 	game_packets.push(packet);
-	SDL_UnlockMutex(game_packets_lock);
 }
 
 SteamPacketWrapper* NetHandler::getGamePacket()
 {
 	SteamPacketWrapper* packet = nullptr;
-	SDL_LockMutex(game_packets_lock);
+	std::lock_guard<std::mutex> guard(game_packets_lock);
 	if (!game_packets.empty())
 	{
 		packet = game_packets.front();
 		game_packets.pop();
 	}
-	SDL_UnlockMutex(game_packets_lock);
 	return packet;
 }
 
@@ -4479,6 +4475,8 @@ int steamPacketThread(void* data)
 	CSteamID mySteamID = SteamUser()->GetSteamID();
 	bool run = true;
 	std::queue<SteamPacketWrapper* > packets; //TODO: Expose to game? Use lock-free packets?
+	std::unique_lock<std::mutex> guard(handler.continue_multithreading_steam_packets_lock);
+	guard.unlock();
 
 	while (run)   //1. Check if thread is supposed to be running.
 	{
@@ -4520,9 +4518,9 @@ int steamPacketThread(void* data)
 			handler.addGamePacket(packet);
 		}
 
-		SDL_LockMutex(handler.continue_multithreading_steam_packets_lock);
+		guard.lock();
 		run = handler.getContinueMultithreadingSteamPackets();
-		SDL_UnlockMutex(handler.continue_multithreading_steam_packets_lock);
+		guard.unlock();
 	}
 
 #endif
