@@ -254,9 +254,34 @@ typedef enum ItemType
 	CLOAK_SILVER,
 	HAT_HOOD_SILVER,
 	HAT_HOOD_RED,
-	SILVER_DOUBLET
+	SILVER_DOUBLET,
+	SPELLBOOK_REVERT_FORM,
+	SPELLBOOK_RAT_FORM,
+	SPELLBOOK_SPIDER_FORM,
+	SPELLBOOK_TROLL_FORM,
+	SPELLBOOK_IMP_FORM,
+	SPELLBOOK_SPRAY_WEB,
+	SPELLBOOK_POISON,
+	SPELLBOOK_SPEED,
+	SPELLBOOK_FEAR,
+	SPELLBOOK_STRIKE,
+	SPELLBOOK_DETECT_FOOD,
+	SPELLBOOK_WEAKNESS,
+	MASK_SHAMAN,
+	SPELLBOOK_AMPLIFY_MAGIC,
+	SPELLBOOK_SHADOW_TAG,
+	SPELLBOOK_TELEPULL,
+	SPELLBOOK_DEMON_ILLU,
+	SPELLBOOK_4,
+	SPELLBOOK_5,
+	TOOL_WHIP,
+	SPELLBOOK_6,
+	SPELLBOOK_7,
+	SPELLBOOK_8,
+	SPELLBOOK_9,
+	SPELLBOOK_10
 } ItemType;
-const int NUMITEMS = 232;
+const int NUMITEMS = 257;
 
 //NOTE: If you change this, make sure to update NUMCATEGORIES in game.h to reflect the total number of categories. Not doing that will make bad things happen.
 typedef enum Category
@@ -354,6 +379,7 @@ public:
 	bool canUnequip(Stat* wielder = nullptr); //Returns true if the item can be unequipped (not cursed), false if it can't (cursed).
 	int buyValue(int player);
 	int sellValue(int player);
+	bool usableWhileShapeshifted(Stat* wielder = nullptr) const;
 
 	void apply(int player, Entity* entity);
 
@@ -466,6 +492,7 @@ void equipItem(Item* item, Item** slot, int player);
 Item* itemPickup(int player, Item* item);
 bool itemIsEquipped(const Item* item, int player);
 bool shouldInvertEquipmentBeatitude(Stat* wielder);
+bool isItemEquippableInShieldSlot(Item* item);
 
 extern const real_t potionDamageSkillMultipliers[6];
 extern const real_t thrownDamageSkillMultipliers[6];

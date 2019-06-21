@@ -1915,6 +1915,7 @@ void useItem(Item* item, int player, Entity* usedBy)
 		case HAT_FEZ:
 		case HAT_HOOD_RED:
 		case HAT_HOOD_SILVER:
+		case MASK_SHAMAN:
 			equipItem(item, &stats[player]->helmet, player);
 			break;
 		case AMULET_SEXCHANGE:
@@ -2153,6 +2154,24 @@ void useItem(Item* item, int player, Entity* usedBy)
 		case SPELLBOOK_DRAIN_SOUL:
 		case SPELLBOOK_VAMPIRIC_AURA:
 		case SPELLBOOK_CHARM_MONSTER:
+		case SPELLBOOK_REVERT_FORM:
+		case SPELLBOOK_RAT_FORM:
+		case SPELLBOOK_SPIDER_FORM:
+		case SPELLBOOK_TROLL_FORM:
+		case SPELLBOOK_IMP_FORM:
+		case SPELLBOOK_SPRAY_WEB:
+		case SPELLBOOK_POISON:
+		case SPELLBOOK_SPEED:
+		case SPELLBOOK_FEAR:
+		case SPELLBOOK_STRIKE:
+		case SPELLBOOK_DETECT_FOOD:
+		case SPELLBOOK_WEAKNESS:
+		case SPELLBOOK_AMPLIFY_MAGIC:
+		case SPELLBOOK_SHADOW_TAG:
+		case SPELLBOOK_TELEPULL:
+		case SPELLBOOK_DEMON_ILLU:
+		case SPELLBOOK_4:
+		case SPELLBOOK_5:
 			item_Spellbook(item, player);
 			break;
 		case GEM_ROCK:
@@ -2176,6 +2195,7 @@ void useItem(Item* item, int player, Entity* usedBy)
 			equipItem(item, &stats[player]->weapon, player);
 			break;
 		case TOOL_PICKAXE:
+		case TOOL_WHIP:
 			equipItem(item, &stats[player]->weapon, player);
 			break;
 		case TOOL_TINOPENER:
@@ -2258,7 +2278,7 @@ void useItem(Item* item, int player, Entity* usedBy)
 			spell_t* spell = getSpellFromItem(item);
 			if (spell)
 			{
-				equipSpell(spell, player);
+				equipSpell(spell, player, item);
 			}
 			break;
 		}
@@ -2697,6 +2717,16 @@ Sint32 Item::weaponGetAttack(Stat* wielder) const
 	Sint32 attack = beatitude;
 	if ( wielder )
 	{
+		if ( wielder->type == TROLL || wielder->type == RAT || wielder->type == SPIDER || wielder->type == CREATURE_IMP )
+		{
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				if ( wielder == stats[i] ) // is a player stat pointer.
+				{
+					return 0; // players that are these monsters do not benefit from weapons
+				}
+			}
+		}
 		if ( shouldInvertEquipmentBeatitude(wielder) )
 		{
 			attack = abs(beatitude);
@@ -2986,6 +3016,24 @@ Sint32 Item::armorGetAC(Stat* wielder) const
 		armor += 3;
 	}
 	//armor *= (double)(item->status/5.0);
+
+	if ( wielder )
+	{
+		if ( wielder->type == TROLL || wielder->type == RAT || wielder->type == SPIDER || wielder->type == CREATURE_IMP )
+		{
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				if ( wielder == stats[i] ) // is a player stat pointer.
+				{
+					if ( itemCategory(this) == RING || itemCategory(this) == AMULET )
+					{
+						return armor;
+					}
+					return 0; // players that are these monsters do not benefit from non rings/amulets
+				}
+			}
+		}
+	}
 
 	return armor;
 }
@@ -3785,6 +3833,74 @@ bool shouldInvertEquipmentBeatitude(Stat* wielder)
 	if ( wielder->type == SUCCUBUS || wielder->type == INCUBUS )
 	{
 		return true;
+	}
+	return false;
+}
+
+bool isItemEquippableInShieldSlot(Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+
+	switch ( item->type )
+	{
+		case WOODEN_SHIELD:
+		case BRONZE_SHIELD:
+		case IRON_SHIELD:
+		case STEEL_SHIELD:
+		case STEEL_SHIELD_RESISTANCE:
+		case MIRROR_SHIELD:
+		case CRYSTAL_SHIELD:
+		case TOOL_TORCH:
+		case TOOL_LANTERN:
+		case TOOL_CRYSTALSHARD:
+			return true;
+			break;
+		default:
+			break;
+	}
+	return false;
+}
+
+bool Item::usableWhileShapeshifted(Stat* wielder) const
+{
+	if ( !wielder )
+	{
+		return true;
+	}
+	switch ( itemCategory(this) )
+	{
+		case WEAPON:
+		case ARMOR:
+		case GEM:
+		case THROWN:
+		case TOOL:
+		case BOOK:
+		case SCROLL:
+			return false;
+			break;
+		case MAGICSTAFF:
+		case SPELLBOOK:
+			if ( wielder->type == CREATURE_IMP )
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+			break;
+		case POTION:
+		case AMULET:
+		case RING:
+		case FOOD:
+		case SPELL_CAT:
+			return true;
+			break;
+		default:
+			break;
 	}
 	return false;
 }

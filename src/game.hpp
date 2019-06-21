@@ -21,7 +21,7 @@
 #endif
 
 // REMEMBER TO CHANGE THIS WITH EVERY NEW OFFICIAL VERSION!!!
-#define VERSION "v3.2.3"
+#define VERSION "v3.2.4"
 #define GAME_CODE
 
 //#define MAX_FPS_LIMIT 60 //TODO: Make this configurable.
@@ -104,7 +104,7 @@ extern Uint32 timesync;
 extern real_t fps;
 extern bool shootmode;
 #define NUMCLASSES 21
-#define NUMRACES 10
+#define NUMRACES 13
 #define NUMPLAYABLERACES 9
 extern char address[64];
 extern bool loadnextlevel;
@@ -141,9 +141,11 @@ enum PlayerClasses : int
 	CLASS_BREWER,
 	CLASS_UNDEF1,
 	CLASS_UNDEF2,
-	CLASS_UNDEF3,
+	CLASS_SHAMAN,
 	CLASS_UNDEF4
 };
+
+static const int CLASS_SHAMAN_NUM_STARTING_SPELLS = 15;
 
 enum PlayerRaces : int
 {
@@ -156,7 +158,10 @@ enum PlayerRaces : int
 	RACE_INCUBUS,
 	RACE_GOBLIN,
 	RACE_INSECTOID,
-	RACE_RAT
+	RACE_RAT,
+	RACE_TROLL,
+	RACE_SPIDER,
+	RACE_IMP
 };
 
 enum ESteamStatTypes
@@ -233,10 +238,11 @@ void actCrystalShard(Entity* my);
 void actDoor(Entity* my);
 void actHudWeapon(Entity* my);
 void actHudShield(Entity* my);
+void actHudAdditional(Entity* my);
 void actItem(Entity* my);
 void actGoldBag(Entity* my);
 void actGib(Entity* my);
-Entity* spawnGib(Entity* parentent);
+Entity* spawnGib(Entity* parentent, int customGibSprite = -1);
 Entity* spawnGibClient(Sint16 x, Sint16 y, Sint16 z, Sint16 sprite);
 void serverSpawnGibForClient(Entity* gib);
 void actLadder(Entity* my);
@@ -292,6 +298,8 @@ extern bool gameloopFreezeEntities;
 
 // function prototypes for charclass.c:
 void initClass(int player);
+void initShapeshiftHotbar();
+void deinitShapeshiftHotbar();
 
 extern char last_ip[64];
 extern char last_port[64];
@@ -338,6 +346,7 @@ void loadRandomNames();
 extern int monsterEmoteGimpTimer;
 extern int selectedEntityGimpTimer;
 void mapLevel(int player);
+void mapFoodOnLevel(int player);
 
 class TileEntityListHandler
 {

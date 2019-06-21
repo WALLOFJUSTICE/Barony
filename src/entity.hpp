@@ -197,10 +197,13 @@ public:
 	Sint32& monsterAllySpecialCooldown; //skill[49]
 	Sint32& monsterAllySummonRank; //skill[50]
 	real_t& monsterKnockbackVelocity; //fskill[9]
-	Sint32& monsterKnockbackUID; //skill[52]
+	Sint32& monsterKnockbackUID; //skill[51]
+	Sint32& creatureWebbedSlowCount; //skill[52]
+	Sint32& monsterFearfulOfUid; //skill[53]
 
 	//--EFFECTS--
 	Sint32& effectPolymorph; // skill[50]
+	Sint32& effectShapeshift; // skill[53]
 
 	//--PUBLIC GENERAL ENTITY STUFF--
 	Sint32& interactedByMonster; //skill[47] for use with monsterAllyInteractTarget
@@ -356,6 +359,8 @@ public:
 	Sint32& itemSokobanReward; // skill[20]
 	Sint32& itemOriginalOwner; // skill[21]
 	Sint32& itemStolen; // skill[22]
+	Sint32& itemShowOnMap; //skill[23]
+	Sint32& itemDelayMonsterPickingUp; //skill[24]
 
 	//--PUBLIC ACTMAGIC SKILLS (Standard projectiles)--
 	Sint32& actmagicIsVertical; //skill[6]
@@ -375,7 +380,9 @@ public:
 	Sint32& actmagicOrbitHitTargetUID1; // skill[15]
 	Sint32& actmagicOrbitHitTargetUID2; // skill[16]
 	Sint32& actmagicOrbitHitTargetUID3; // skill[17]
-	Sint32& actmagicOrbitHitTargetUID4; // skill[17]
+	Sint32& actmagicOrbitHitTargetUID4; // skill[18]
+	Sint32& actmagicProjectileArc; // skill[19]
+	Sint32& actmagicOrbitCastFromSpell; // skill[20]
 	
 	//--PUBLIC GOLD SKILLS--
 	Sint32& goldAmount; //skill[0]
@@ -453,7 +460,7 @@ public:
 	void handleEffectsClient();
 
 	void effectTimes();
-	void increaseSkill(int skill);
+	void increaseSkill(int skill, bool notify = true);
 
 	Stat* getStats() const;
 
@@ -484,7 +491,7 @@ public:
 	bool teleport(int x, int y);
 	bool teleportRandom();
 	// teleport entity to a target, within a radius dist (range in whole tile lengths)
-	bool teleportAroundEntity(const Entity* target, int dist);
+	bool teleportAroundEntity(const Entity* target, int dist, int effectType = 0);
 	// teleport entity to fixed position with appropriate sounds, for actTeleporter.
 	bool teleporterMove(int x, int y, int type);
 
@@ -707,6 +714,11 @@ public:
 			return;
 		}
 
+		if ( myStats->EFFECTS[EFF_FEAR] )
+		{
+			return; // don't change weapons while feared.
+		}
+
 		switch ( myStats->type )
 		{
 			case GOATMAN:
@@ -799,7 +811,7 @@ public:
 	void handleNPCInteractDialogue(Stat& myStats, AllyNPCChatter event); // monster text for interactions.
 	void playerStatIncrease(int playerClass, int chosenStats[3]);
 	bool playerRequiresBloodToSustain(); // vampire type or accursed class
-	bool isBossMonsterOrBossMap(); // return true if boss map (hell boss, boss etc or shopkeeper/shadow/other boss
+	bool isBossMonster(); // return true if boss map (hell boss, boss etc or shopkeeper/shadow/other boss
 	void handleKnockbackDamage(Stat& myStats, Entity* knockedInto); // handle knockback damage from getting hit into other things.
 };
 
@@ -840,6 +852,8 @@ void getItemsOnTile(int x, int y, list_t** list);
 //--- Entity act* functions ---
 void actMonster(Entity* my);
 void actPlayer(Entity* my);
+void playerAnimateRat(Entity* my);
+void playerAnimateSpider(Entity* my);
 
 /*
  * NOTE: Potion effects
@@ -914,8 +928,8 @@ void actTextSource(Entity* my);
 
 //checks if a sprite falls in certain sprite ranges
 
-static const int NUM_ITEM_STRINGS = 235;
-static const int NUM_ITEM_STRINGS_BY_TYPE = 100;
+static const int NUM_ITEM_STRINGS = 260;
+static const int NUM_ITEM_STRINGS_BY_TYPE = 124;
 static const int NUM_EDITOR_SPRITES = 134;
 static const int NUM_EDITOR_TILES = 300;
 

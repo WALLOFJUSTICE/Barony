@@ -55,6 +55,22 @@ void freeSpells()
 	list_FreeAll(&spell_drainSoul.elements);
 	list_FreeAll(&spell_vampiricAura.elements);
 	list_FreeAll(&spell_charmMonster.elements);
+	list_FreeAll(&spell_revertForm.elements);
+	list_FreeAll(&spell_ratForm.elements);
+	list_FreeAll(&spell_spiderForm.elements);
+	list_FreeAll(&spell_trollForm.elements);
+	list_FreeAll(&spell_impForm.elements);
+	list_FreeAll(&spell_sprayWeb.elements);
+	list_FreeAll(&spell_poison.elements);
+	list_FreeAll(&spell_speed.elements);
+	list_FreeAll(&spell_fear.elements);
+	list_FreeAll(&spell_strike.elements);
+	list_FreeAll(&spell_detectFood.elements);
+	list_FreeAll(&spell_weakness.elements);
+	list_FreeAll(&spell_amplifyMagic.elements);
+	list_FreeAll(&spell_shadowTag.elements);
+	list_FreeAll(&spell_telePull.elements);
+	list_FreeAll(&spell_demonIllusion.elements);
 }
 
 void spell_magicMap(int player)
@@ -77,6 +93,27 @@ void spell_magicMap(int player)
 
 	messagePlayer(player, language[412]);
 	mapLevel(player);
+}
+
+void spell_detectFoodEffectOnMap(int player)
+{
+	if ( players[player] == nullptr || players[player]->entity == nullptr )
+	{
+		return;
+	}
+
+	if ( multiplayer == SERVER && player > 0 )
+	{
+		//Tell the client to map the food.
+		strcpy((char*)net_packet->data, "MFOD");
+		net_packet->address.host = net_clients[player - 1].host;
+		net_packet->address.port = net_clients[player - 1].port;
+		net_packet->len = 4;
+		sendPacketSafe(net_sock, -1, net_packet, player - 1);
+		return;
+	}
+
+	mapFoodOnLevel(player);
 }
 
 void spell_summonFamiliar(int player)
@@ -486,6 +523,309 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int re
 	else
 	{
 		spawnMagicEffectParticles(my.x, my.y, my.z, my.sprite);
+	}
+}
+
+void spellEffectPoison(Entity& my, spellElement_t& element, Entity* parent, int resistance)
+{
+	playSoundEntity(&my, 173, 128);
+	if ( hit.entity )
+	{
+		int damage = element.damage;
+		//damage += ((element->mana - element->base_mana) / static_cast<double>(element->overload_multiplier)) * element->damage;
+
+		if ( hit.entity->behavior == &actMonster || hit.entity->behavior == &actPlayer )
+		{
+			Entity* parent = uidToEntity(my.parent);
+			if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+			{
+				// test for friendly fire
+				if ( parent && parent->checkFriend(hit.entity) )
+				{
+					return;
+				}
+			}
+			playSoundEntity(hit.entity, 249, 64);
+
+			Stat* hitstats = hit.entity->getStats();
+			if ( !hitstats )
+			{
+				return;
+			}
+			bool hasamulet = false;
+			if ( hitstats->amulet && hitstats->amulet->type == AMULET_POISONRESISTANCE )
+			{
+				resistance += 2;
+				hasamulet = true;
+			}
+			damage /= (1 + (int)resistance);
+			damage *= damagetables[hitstats->type][5];
+			hit.entity->modHP(-damage);
+
+			// write the obituary
+			if ( parent )
+			{
+				parent->killedByMonsterObituary(hit.entity);
+			}
+
+			if ( !hasamulet )
+			{
+				hit.entity->setEffect(EFF_POISONED, true, 600, true); // 12 seconds.
+				hitstats->poisonKiller = my.parent;
+			}
+
+			if ( hit.entity->behavior == &actPlayer )
+			{
+				serverUpdateEffects(hit.entity->skill[2]);
+			}
+			// hit messages
+			if ( parent )
+			{
+				Uint32 color = SDL_MapRGB(mainsurface->format, 0, 255, 0);
+				if ( parent->behavior == &actPlayer )
+				{
+					messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, language[3427], language[3426], MSG_COMBAT);
+				}
+			}
+
+			// update enemy bar for attacker
+			if ( !strcmp(hitstats->name, "") )
+			{
+				if ( hitstats->type < KOBOLD ) //Original monster count
+				{
+					updateEnemyBar(parent, hit.entity, language[90 + hitstats->type], hitstats->HP, hitstats->MAXHP);
+				}
+				else if ( hitstats->type >= KOBOLD ) //New monsters
+				{
+					updateEnemyBar(parent, hit.entity, language[2000 + (hitstats->type - KOBOLD)], hitstats->HP, hitstats->MAXHP);
+				}
+			}
+			else
+			{
+				updateEnemyBar(parent, hit.entity, hitstats->name, hitstats->HP, hitstats->MAXHP);
+			}
+
+			if ( hitstats->HP <= 0 && parent )
+			{
+				parent->awardXP(hit.entity, true, true);
+			}
+
+			Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+
+			int player = -1;
+			if ( hit.entity->behavior == &actPlayer )
+			{
+				player = hit.entity->skill[2];
+			}
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, color, language[3438]);
+			}
+		}
+		else if ( hit.entity->behavior == &actDoor )
+		{
+			hit.entity->doorHandleDamageMagic(damage, my, parent);
+		}
+		spawnMagicEffectParticles(hit.entity->x, hit.entity->y, hit.entity->z, my.sprite);
+	}
+	else
+	{
+		spawnMagicEffectParticles(my.x, my.y, my.z, my.sprite);
+	}
+}
+
+bool spellEffectFear(Entity* my, spellElement_t& element, Entity* forceParent, Entity* target, int resistance)
+{
+	if ( !target )
+	{
+		//spawnMagicEffectParticles(my.x, my.y, my.z, 863);
+		return false;
+	}
+	//int damage = element.damage;
+	//damage += ((element->mana - element->base_mana) / static_cast<double>(element->overload_multiplier)) * element->damage;
+
+	if ( target->behavior == &actMonster || target->behavior == &actPlayer )
+	{
+		Entity* parent = forceParent;
+		if ( my && !parent )
+		{
+			parent = uidToEntity(my->parent);
+		}
+		if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+		{
+			// test for friendly fire
+			if ( parent && parent->checkFriend(target) )
+			{
+				return false;
+			}
+		}
+
+		Stat* hitstats = target->getStats();
+		if ( !hitstats )
+		{
+			return false;
+		}
+
+		int duration = 400; // 8 seconds
+		duration = std::max(150, duration - TICKS_PER_SECOND * (hitstats->CON / 5)); // 3-8 seconds, depending on CON.
+		duration /= (1 + resistance);
+		if ( target->setEffect(EFF_FEAR, true, duration, true) )
+		{
+			playSoundEntity(target, 168, 128); // Healing.ogg
+			Uint32 color = 0;
+			if ( parent )
+			{
+				// update enemy bar for attacker
+				if ( !strcmp(hitstats->name, "") )
+				{
+					if ( hitstats->type < KOBOLD ) //Original monster count
+					{
+						updateEnemyBar(parent, target, language[90 + hitstats->type], hitstats->HP, hitstats->MAXHP);
+					}
+					else if ( hitstats->type >= KOBOLD ) //New monsters
+					{
+						updateEnemyBar(parent, target, language[2000 + (hitstats->type - KOBOLD)], hitstats->HP, hitstats->MAXHP);
+					}
+				}
+				else
+				{
+					updateEnemyBar(parent, target, hitstats->name, hitstats->HP, hitstats->MAXHP);
+				}
+				target->monsterAcquireAttackTarget(*parent, MONSTER_STATE_PATH);
+				target->monsterFearfulOfUid = parent->getUID();
+			}
+		}
+		else
+		{
+			// no effect.
+			if ( parent )
+			{
+				Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+				if ( parent->behavior == &actPlayer )
+				{
+					messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, language[2905], language[2906], MSG_COMBAT);
+				}
+			}
+			return false;
+		}
+
+		// hit messages
+		if ( parent )
+		{
+			Uint32 color = SDL_MapRGB(mainsurface->format, 0, 255, 0);
+			if ( parent->behavior == &actPlayer )
+			{
+				messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, language[3434], language[3435], MSG_COMBAT);
+			}
+		}
+
+		Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+
+		int player = -1;
+		if ( target->behavior == &actPlayer )
+		{
+			player = target->skill[2];
+		}
+		if ( player >= 0 )
+		{
+			messagePlayerColor(player, color, language[3436]);
+		}
+	}
+	spawnMagicEffectParticles(target->x, target->y, target->z, 863);
+	return true;
+}
+
+void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, int resistance)
+{
+	if ( hit.entity )
+	{
+		//int damage = element.damage;
+		//damage += ((element->mana - element->base_mana) / static_cast<double>(element->overload_multiplier)) * element->damage;
+
+		if ( hit.entity->behavior == &actMonster || hit.entity->behavior == &actPlayer )
+		{
+			Entity* parent = uidToEntity(my.parent);
+			if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+			{
+				// test for friendly fire
+				if ( parent && parent->checkFriend(hit.entity) )
+				{
+					return;
+				}
+			}
+
+			Stat* hitstats = hit.entity->getStats();
+			if ( !hitstats )
+			{
+				return;
+			}		
+
+			bool spawnParticles = true;
+			if ( hitstats->EFFECTS[EFF_WEBBED] )
+			{
+				spawnParticles = false;
+			}
+			int previousDuration = hitstats->EFFECTS_TIMERS[EFF_WEBBED];
+			int duration = 400;
+			duration /= (1 + resistance);
+			if ( hit.entity->setEffect(EFF_WEBBED, true, 400, true) ) // 8 seconds.
+			{
+				if ( duration - previousDuration > 10 )
+				{
+					playSoundEntity(hit.entity, 396 + rand() % 3, 64); // play sound only if not recently webbed. (triple shot makes many noise)
+				}
+				hit.entity->creatureWebbedSlowCount = std::min(3, hit.entity->creatureWebbedSlowCount + 1);
+				if ( hit.entity->behavior == &actPlayer )
+				{
+					serverUpdateEntitySkill(hit.entity, 52); // update player.
+				}
+				if ( spawnParticles )
+				{
+					createParticleAestheticOrbit(hit.entity, 863, 400, PARTICLE_EFFECT_SPELL_WEB_ORBIT);
+					serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_SPELL_WEB_ORBIT, 863);
+				}
+			}
+			else
+			{
+				// no effect.
+				if ( parent )
+				{
+					Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+					if ( parent->behavior == &actPlayer )
+					{
+						messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, language[2905], language[2906], MSG_COMBAT);
+					}
+				}
+				return;
+			}
+
+			// hit messages
+			if ( parent )
+			{
+				Uint32 color = SDL_MapRGB(mainsurface->format, 0, 255, 0);
+				if ( parent->behavior == &actPlayer )
+				{
+					messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, language[3430], language[3429], MSG_COMBAT);
+				}
+			}
+
+			Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+
+			int player = -1;
+			if ( hit.entity->behavior == &actPlayer )
+			{
+				player = hit.entity->skill[2];
+			}
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, color, language[3431]);
+			}
+		}
+		spawnMagicEffectParticles(hit.entity->x, hit.entity->y, hit.entity->z, 863);
+	}
+	else
+	{
+		spawnMagicEffectParticles(my.x, my.y, my.z, 863);
 	}
 }
 
@@ -1859,4 +2199,205 @@ Entity* spellEffectPolymorph(Entity* target, Stat* targetStats, Entity* parent)
 	}
 
 	return nullptr;
+}
+
+int spellEffectTeleportPull(Entity* my, spellElement_t& element, Entity* parent, Entity* target, int resistance)
+{
+	if ( !parent )
+	{
+		return 0;
+	}
+	if ( target )
+	{
+		playSoundEntity(target, 173, 128);
+		//int damage = element.damage;
+		//damage += ((element->mana - element->base_mana) / static_cast<double>(element->overload_multiplier)) * element->damage;
+
+		if ( target->behavior == &actMonster || target->behavior == &actPlayer )
+		{
+			if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+			{
+				// test for friendly fire
+				if ( parent && parent->checkFriend(target) )
+				{
+					return 0;
+				}
+			}
+			//playSoundEntity(target, 249, 64);
+
+			Stat* hitstats = target->getStats();
+			if ( !hitstats )
+			{
+				return 0;
+			}
+
+			if ( parent )
+			{
+				if ( target->behavior == &actPlayer )
+				{
+					if ( MFLAG_DISABLETELEPORT )
+					{
+						// can't teleport here.
+						Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 255);
+						messagePlayerColor(target->skill[2], color, language[2381]);
+						if ( parent->behavior == &actPlayer )
+						{
+							messagePlayerColor(parent->skill[2], color, language[3452]);
+						}
+						return 0;
+					}
+				}
+				if ( target->behavior == &actMonster && target->isBossMonster() )
+				{
+					if ( parent->behavior == &actPlayer )
+					{
+						Uint32 color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+						messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, language[2905], language[2906], MSG_COMBAT);
+					}
+					return 0;
+				}
+
+				// try find a teleport location in front of the caster.
+				int tx = static_cast<int>(std::floor(parent->x + 32 * cos(parent->yaw))) >> 4;
+				int ty = static_cast<int>(std::floor(parent->y + 32 * sin(parent->yaw))) >> 4;
+				int dist = 2;
+				bool foundLocation = false;
+				if ( !checkObstacle((tx << 4) + 8, (ty << 4) + 8, target, NULL) )
+				{
+					foundLocation = true;
+				}
+				if ( !foundLocation )
+				{
+					int numlocations = 0;
+					for ( int iy = std::max(1, ty - dist); iy < std::min(ty + dist, static_cast<int>(map.height)); ++iy )
+					{
+						for ( int ix = std::max(1, tx - dist); ix < std::min(tx + dist, static_cast<int>(map.width)); ++ix )
+						{
+							if ( !checkObstacle((ix << 4) + 8, (iy << 4) + 8, target, NULL) )
+							{
+								numlocations++;
+							}
+						}
+					}
+					if ( numlocations == 0 )
+					{
+						if ( parent->behavior == &actPlayer )
+						{
+							// no room to teleport!
+							messagePlayer(parent->skill[2], language[3453]);
+						}
+						return 0;
+					}
+					int pickedlocation = rand() % numlocations;
+					numlocations = 0;
+					for ( int iy = std::max(0, ty - dist); !foundLocation && iy < std::min(ty + dist, static_cast<int>(map.height)); ++iy )
+					{
+						for ( int ix = std::max(0, tx - dist); ix < std::min(tx + dist, static_cast<int>(map.width)); ++ix )
+						{
+							if ( !checkObstacle((ix << 4) + 8, (iy << 4) + 8, target, NULL) )
+							{
+								if ( numlocations == pickedlocation )
+								{
+									foundLocation = true;
+									tx = ix;
+									ty = iy;
+									break;
+								}
+								numlocations++;
+							}
+						}
+						if ( foundLocation )
+						{
+							break;
+						}
+					}
+				}
+
+				if ( !foundLocation )
+				{
+					if ( parent->behavior == &actPlayer )
+					{
+						// no room to teleport!
+						messagePlayer(parent->skill[2], language[3453]);
+					}
+					return 0;
+				}
+
+				// this timer is the entity spawn location.
+				Entity* locationTimer = createParticleTimer(parent, 40, 593); 
+				locationTimer->x = tx * 16.0 + 8;
+				locationTimer->y = ty * 16.0 + 8;
+				locationTimer->z = 0;
+				locationTimer->particleTimerCountdownAction = PARTICLE_EFFECT_TELEPORT_PULL_TARGET_LOCATION;
+				locationTimer->particleTimerCountdownSprite = 593;
+				locationTimer->particleTimerTarget = static_cast<Sint32>(target->getUID()); // get the target to teleport around.
+				locationTimer->particleTimerEndAction = PARTICLE_EFFECT_TELEPORT_PULL; // teleport behavior of timer.
+				locationTimer->particleTimerEndSprite = 593; // sprite to use for end of timer function.
+				locationTimer->flags[PASSABLE] = false; // so this location is reserved for teleporting the entity.
+				locationTimer->sizex = 4;
+				locationTimer->sizey = 4;
+				if ( !locationTimer->myTileListNode )
+				{
+					locationTimer->setUID(-2);
+					TileEntityList.addEntity(*locationTimer);
+					locationTimer->setUID(-3);
+				}
+
+				// set a coundown to spawn particles on the monster.
+				Entity* spellTimer = createParticleTimer(target, 40, 593);
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SHOOT_PARTICLES;
+				spellTimer->particleTimerCountdownSprite = 593;
+				spellTimer->particleTimerTarget = static_cast<Sint32>(parent->getUID()); // get the target to teleport around.
+
+
+				if ( multiplayer == SERVER )
+				{
+					serverSpawnMiscParticles(target, PARTICLE_EFFECT_TELEPORT_PULL, 593);
+					serverSpawnMiscParticlesAtLocation(tx, ty, 0, PARTICLE_EFFECT_TELEPORT_PULL_TARGET_LOCATION, 593);
+				}
+
+				Uint32 color = SDL_MapRGB(mainsurface->format, 0, 255, 0);
+				if ( parent->behavior == &actPlayer )
+				{
+					// play a sound for the player to confirm the hit.
+					playSoundPlayer(parent->skill[2], 251, 128);
+				}
+
+				// update enemy bar for attacker
+				if ( !strcmp(hitstats->name, "") )
+				{
+					if ( hitstats->type < KOBOLD ) //Original monster count
+					{
+						updateEnemyBar(parent, target, language[90 + hitstats->type], hitstats->HP, hitstats->MAXHP);
+					}
+					else if ( hitstats->type >= KOBOLD ) //New monsters
+					{
+						updateEnemyBar(parent, target, language[2000 + (hitstats->type - KOBOLD)], hitstats->HP, hitstats->MAXHP);
+					}
+				}
+				else
+				{
+					updateEnemyBar(parent, target, hitstats->name, hitstats->HP, hitstats->MAXHP);
+				}
+
+
+				color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
+				int player = -1;
+				if ( target->behavior == &actPlayer )
+				{
+					player = target->skill[2];
+				}
+			}
+			return 1;
+		}
+		if ( my )
+		{
+			spawnMagicEffectParticles(target->x, target->y, target->z, my->sprite);
+		}
+	}
+	else if ( my )
+	{
+		spawnMagicEffectParticles(my->x, my->y, my->z, my->sprite);
+	}
+	return 0;
 }

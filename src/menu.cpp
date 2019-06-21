@@ -7582,6 +7582,13 @@ void handleMainMenu(bool mode)
 			loading = true;
 			darkmap = false;
 			selected_spell = NULL;
+			selected_spell_last_appearance = -1;
+			deinitShapeshiftHotbar();
+			for ( c = 0; c < NUM_HOTBAR_ALTERNATES; ++c )
+			{
+				selected_spell_alternate[c] = NULL;
+				hotbarShapeshiftInit[c] = false;
+			}
 			shootmode = true;
 			currentlevel = startfloor;
 			secretlevel = false;
@@ -7713,6 +7720,12 @@ void handleMainMenu(bool mode)
 							{
 								players[c]->entity->effectPolymorph = stats[c]->playerPolymorphStorage;
 								serverUpdateEntitySkill(players[c]->entity, 50); // update visual polymorph effect for clients.
+								serverUpdateEffects(c);
+							}
+							if ( stats[c] && stats[c]->EFFECTS[EFF_SHAPESHIFT] && stats[c]->playerShapeshiftStorage != NOTHING )
+							{
+								players[c]->entity->effectShapeshift = stats[c]->playerShapeshiftStorage;
+								serverUpdateEntitySkill(players[c]->entity, 53); // update visual shapeshift effect for clients.
 								serverUpdateEffects(c);
 							}
 							if ( stats[c] && stats[c]->EFFECTS[EFF_VAMPIRICAURA] && stats[c]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
@@ -8221,7 +8234,14 @@ void handleMainMenu(bool mode)
 			clientnum = 0;
 			introstage = 1;
 			intro = true;
+			deinitShapeshiftHotbar();
+			for ( c = 0; c < NUM_HOTBAR_ALTERNATES; ++c )
+			{
+				selected_spell_alternate[c] = NULL;
+				hotbarShapeshiftInit[c] = false;
+			}
 			selected_spell = NULL; //So you don't start off with a spell when the game restarts.
+			selected_spell_last_appearance = -1;
 			client_classes[0] = 0;
 			spellcastingAnimationManager_deactivate(&cast_animation);
 			SDL_StopTextInput();

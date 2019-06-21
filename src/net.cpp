@@ -797,6 +797,8 @@ void serverUpdateEffects(int player)
 	net_packet->data[9] = 0;
 	net_packet->data[10] = 0;
 	net_packet->data[11] = 0;
+	net_packet->data[12] = 0;
+	net_packet->data[13] = 0;
 	for (j = 0; j < NUMEFFECTS; j++)
 	{
 		if ( stats[player]->EFFECTS[j] == true )
@@ -806,12 +808,12 @@ void serverUpdateEffects(int player)
 		if ( stats[player]->EFFECTS_TIMERS[j] < TICKS_PER_SECOND * 5 && stats[player]->EFFECTS_TIMERS[j] > 0 )
 		{
 			// use these bits to denote if duration is low.
-			net_packet->data[8 + j / 8] |= power(2, j - (j / 8) * 8);
+			net_packet->data[9 + j / 8] |= power(2, j - (j / 8) * 8);
 		}
 	}
 	net_packet->address.host = net_clients[player - 1].host;
 	net_packet->address.port = net_clients[player - 1].port;
-	net_packet->len = 12;
+	net_packet->len = 14;
 	sendPacketSafe(net_sock, -1, net_packet, player - 1);
 }
 
@@ -2272,7 +2274,7 @@ void clientHandlePacket()
 			if ( net_packet->data[4 + c / 8]&power(2, c - (c / 8) * 8) )
 			{
 				stats[clientnum]->EFFECTS[c] = true;
-				if ( net_packet->data[8 + c / 8] & power(2, c - (c / 8) * 8) ) // use these bits to denote if duration is low.
+				if ( net_packet->data[9 + c / 8] & power(2, c - (c / 8) * 8) ) // use these bits to denote if duration is low.
 				{
 					stats[clientnum]->EFFECTS_TIMERS[c] = 1;
 				}
@@ -2697,7 +2699,14 @@ void clientHandlePacket()
 					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SHOOT_PARTICLES;
 					spellTimer->particleTimerCountdownSprite = sprite;
 				}
-				break;
+					break;
+				case PARTICLE_EFFECT_TELEPORT_PULL:
+				{
+					Entity* spellTimer = createParticleTimer(entity, 40, sprite);
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SHOOT_PARTICLES;
+					spellTimer->particleTimerCountdownSprite = sprite;
+				}
+					break;
 				case PARTICLE_EFFECT_ERUPT:
 					createParticleErupt(entity, sprite);
 					break;
@@ -2709,6 +2718,9 @@ void clientHandlePacket()
 					break;
 				case PARTICLE_EFFECT_CHARM_MONSTER:
 					createParticleCharmMonster(entity);
+					break;
+				case PARTICLE_EFFECT_SPELL_WEB_ORBIT:
+					createParticleAestheticOrbit(entity, 863, 400, PARTICLE_EFFECT_SPELL_WEB_ORBIT);
 					break;
 				case PARTICLE_EFFECT_PORTAL_SPAWN:
 				{
@@ -2766,6 +2778,19 @@ void clientHandlePacket()
 				spellTimer->x = particle_x * 16.0 + 8;
 				spellTimer->y = particle_y * 16.0 + 8;
 				spellTimer->z = particle_z;
+			}
+				break;
+			case PARTICLE_EFFECT_TELEPORT_PULL_TARGET_LOCATION:
+			{
+				Entity* spellTimer = createParticleTimer(nullptr, 40, 593);
+				spellTimer->particleTimerCountdownAction = PARTICLE_EFFECT_TELEPORT_PULL_TARGET_LOCATION;
+				spellTimer->particleTimerCountdownSprite = 593;
+				spellTimer->x = particle_x * 16.0 + 8;
+				spellTimer->y = particle_y * 16.0 + 8;
+				spellTimer->z = particle_z;
+				spellTimer->flags[PASSABLE] = false;
+				spellTimer->sizex = 4;
+				spellTimer->sizey = 4;
 			}
 				break;
 			default:
@@ -3364,6 +3389,12 @@ void clientHandlePacket()
 	else if (!strncmp((char*)net_packet->data, "MMAP", 4))
 	{
 		spell_magicMap(clientnum);
+		return;
+	}
+
+	else if ( !strncmp((char*)net_packet->data, "MFOD", 4) )
+	{
+		mapFoodOnLevel(clientnum);
 		return;
 	}
 
@@ -4108,6 +4139,14 @@ void serverHandlePacket()
 	{
 		item = newItem(static_cast<ItemType>(SDLNet_Read32(&net_packet->data[4])), static_cast<Status>(SDLNet_Read32(&net_packet->data[8])), SDLNet_Read32(&net_packet->data[12]), SDLNet_Read32(&net_packet->data[16]), SDLNet_Read32(&net_packet->data[20]), net_packet->data[24], &stats[net_packet->data[25]]->inventory);
 		equipItem(item, &stats[net_packet->data[25]]->weapon, net_packet->data[25]);
+		return;
+	}
+
+	// equip item (as a shield)
+	else if ( !strncmp((char*)net_packet->data, "EQUS", 4) )
+	{
+		item = newItem(static_cast<ItemType>(SDLNet_Read32(&net_packet->data[4])), static_cast<Status>(SDLNet_Read32(&net_packet->data[8])), SDLNet_Read32(&net_packet->data[12]), SDLNet_Read32(&net_packet->data[16]), SDLNet_Read32(&net_packet->data[20]), net_packet->data[24], &stats[net_packet->data[25]]->inventory);
+		equipItem(item, &stats[net_packet->data[25]]->shield, net_packet->data[25]);
 		return;
 	}
 

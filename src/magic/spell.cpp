@@ -23,6 +23,8 @@
 list_t spellList;
 list_t channeledSpells[4];
 spell_t* selected_spell = NULL;
+spell_t* selected_spell_alternate[NUM_HOTBAR_ALTERNATES] = { NULL, NULL, NULL, NULL, NULL };
+int selected_spell_last_appearance = -1;
 
 spellElement_t spellElement_unintelligible;
 spellElement_t spellElement_missile;
@@ -57,6 +59,18 @@ spellElement_t spellElement_stealWeapon;
 spellElement_t spellElement_drainSoul;
 spellElement_t spellElement_vampiricAura;
 spellElement_t spellElement_charmMonster;
+spellElement_t spellElement_shapeshift;
+spellElement_t spellElement_sprayWeb;
+spellElement_t spellElement_poison;
+spellElement_t spellElement_speed;
+spellElement_t spellElement_fear;
+spellElement_t spellElement_strike;
+spellElement_t spellElement_detectFood;
+spellElement_t spellElement_weakness;
+spellElement_t spellElement_amplifyMagic;
+spellElement_t spellElement_shadowTag;
+spellElement_t spellElement_telePull;
+spellElement_t spellElement_demonIllusion;
 
 spell_t spell_forcebolt;
 spell_t spell_magicmissile;
@@ -90,6 +104,22 @@ spell_t spell_stealWeapon;
 spell_t spell_drainSoul;
 spell_t spell_vampiricAura;
 spell_t spell_charmMonster;
+spell_t spell_revertForm;
+spell_t spell_ratForm;
+spell_t spell_spiderForm;
+spell_t spell_trollForm;
+spell_t spell_impForm;
+spell_t spell_sprayWeb;
+spell_t spell_poison;
+spell_t spell_speed;
+spell_t spell_fear;
+spell_t spell_strike;
+spell_t spell_detectFood;
+spell_t spell_weakness;
+spell_t spell_amplifyMagic;
+spell_t spell_shadowTag;
+spell_t spell_telePull;
+spell_t spell_demonIllusion;
 
 bool addSpell(int spell, int player, bool ignoreSkill)
 {
@@ -198,14 +228,118 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 		case SPELL_CHARM_MONSTER:
 			new_spell = copySpell(&spell_charmMonster);
 			break;
+		case SPELL_REVERT_FORM:
+			new_spell = copySpell(&spell_revertForm);
+			break;
+		case SPELL_RAT_FORM:
+			new_spell = copySpell(&spell_ratForm);
+			break;
+		case SPELL_SPIDER_FORM:
+			new_spell = copySpell(&spell_spiderForm);
+			break;
+		case SPELL_TROLL_FORM:
+			new_spell = copySpell(&spell_trollForm);
+			break;
+		case SPELL_IMP_FORM:
+			new_spell = copySpell(&spell_impForm);
+			break;
+		case SPELL_SPRAY_WEB:
+			new_spell = copySpell(&spell_sprayWeb);
+			break;
+		case SPELL_POISON:
+			new_spell = copySpell(&spell_poison);
+			break;
+		case SPELL_SPEED:
+			new_spell = copySpell(&spell_speed);
+			break;
+		case SPELL_FEAR:
+			new_spell = copySpell(&spell_fear);
+			break;
+		case SPELL_STRIKE:
+			new_spell = copySpell(&spell_strike);
+			break;
+		case SPELL_DETECT_FOOD:
+			new_spell = copySpell(&spell_detectFood);
+			break;
+		case SPELL_WEAKNESS:
+			new_spell = copySpell(&spell_weakness);
+			break;
+		case SPELL_AMPLIFY_MAGIC:
+			new_spell = copySpell(&spell_amplifyMagic);
+			break;
+		case SPELL_SHADOW_TAG:
+			new_spell = copySpell(&spell_shadowTag);
+			break;
+		case SPELL_TELEPULL:
+			new_spell = copySpell(&spell_telePull);
+			break;
+		case SPELL_DEMON_ILLUSION:
+			new_spell = copySpell(&spell_demonIllusion);
+			break;
+		case SPELL_4:
+		case SPELL_5:
+		case SPELL_6:
+		case SPELL_7:
+		case SPELL_8:
+		case SPELL_9:
+		case SPELL_10:
+			new_spell = copySpell(&spell_weakness);
+			break;
 		default:
 			return false;
 	}
 	if ( spellInList(&spellList, new_spell) )
 	{
-		messagePlayer(player, language[439], new_spell->name);
-		spellDeconstructor((void*)new_spell);
-		return false;
+		// check inventory for shapeshift spells
+		bool foundShapeshiftSpell = false;
+		bool foundNormalSpell = false;
+		if ( !ignoreSkill ) // learning the proper way, not being forced at character creation or debug.
+		{
+			for ( node = stats[player]->inventory.first; node != NULL; node = node->next )
+			{
+				Item* item = (Item*)node->element;
+				if ( item->type == SPELL_ITEM )
+				{
+					if ( item->appearance >= 1000 )
+					{
+						if ( item->appearance - 1000 == spell )
+						{
+							foundShapeshiftSpell = true;
+						}
+					}
+					else
+					{
+						if ( item->appearance == spell )
+						{
+							foundNormalSpell = true;
+						}
+					}
+				}
+				if ( foundNormalSpell && foundShapeshiftSpell )
+				{
+					// found both varieties, no point searching rest of inventory.
+					break;
+				}
+			}
+			if ( !foundNormalSpell )
+			{
+				// can learn. proceed.
+			}
+			else if ( foundNormalSpell )
+			{
+				// can't learn, already have it.
+				messagePlayer(player, language[439], new_spell->name);
+				spellDeconstructor((void*)new_spell);
+				return false;
+			}
+		}
+		else
+		{
+			// can't learn, already have it.
+			messagePlayer(player, language[439], new_spell->name);
+			spellDeconstructor((void*)new_spell);
+			return false;
+		}
 	}
 	int skillLVL = stats[player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[player], players[player]->entity);
 	if ( stats[player]->PROFICIENCIES[PRO_MAGIC] >= 100 )
@@ -450,12 +584,13 @@ bool spellElement_isChanneled(spellElement_t* spellElement)
 	return false;
 }
 
-void equipSpell(spell_t* spell, int playernum)
+void equipSpell(spell_t* spell, int playernum, Item* spellItem)
 {
 	if ( playernum == clientnum )
 	{
 		selected_spell = spell;
 		messagePlayer(playernum, language[442], spell->name);
+		selected_spell_last_appearance = spellItem->appearance; // to keep track of shapeshift/normal spells.
 	}
 }
 
@@ -561,6 +696,63 @@ spell_t* getSpellFromID(int ID)
 		case SPELL_CHARM_MONSTER:
 			spell = &spell_charmMonster;
 			break;
+		case SPELL_REVERT_FORM:
+			spell = &spell_revertForm;
+			break;
+		case SPELL_RAT_FORM:
+			spell = &spell_ratForm;
+			break;
+		case SPELL_SPIDER_FORM:
+			spell = &spell_spiderForm;
+			break;
+		case SPELL_TROLL_FORM:
+			spell = &spell_trollForm;
+			break;
+		case SPELL_IMP_FORM:
+			spell = &spell_impForm;
+			break;
+		case SPELL_SPRAY_WEB:
+			spell = &spell_sprayWeb;
+			break;
+		case SPELL_POISON:
+			spell = &spell_poison;
+			break;
+		case SPELL_SPEED:
+			spell = &spell_speed;
+			break;
+		case SPELL_FEAR:
+			spell = &spell_fear;
+			break;
+		case SPELL_STRIKE:
+			spell = &spell_strike;
+			break;
+		case SPELL_DETECT_FOOD:
+			spell = &spell_detectFood;
+			break;
+		case SPELL_WEAKNESS:
+			spell = &spell_weakness;
+			break;
+		case SPELL_AMPLIFY_MAGIC:
+			spell = &spell_amplifyMagic;
+			break;
+		case SPELL_SHADOW_TAG:
+			spell = &spell_shadowTag;
+			break;
+		case SPELL_TELEPULL:
+			spell = &spell_telePull;
+			break;
+		case SPELL_DEMON_ILLUSION:
+			spell = &spell_demonIllusion;
+			break;
+		case SPELL_4:
+		case SPELL_5:
+		case SPELL_6:
+		case SPELL_7:
+		case SPELL_8:
+		case SPELL_9:
+		case SPELL_10:
+			spell = &spell_weakness;
+			break;
 		default:
 			break;
 	}
@@ -568,11 +760,9 @@ spell_t* getSpellFromID(int ID)
 	return spell;
 }
 
-Item* getSpellbookFromSpellID(int spellID)
+int getSpellbookFromSpellID(int spellID)
 {
-	Item *spellbook = nullptr;
-
-	int itemType = -1;
+	ItemType itemType = WOODEN_SHIELD;
 	switch (spellID)
 	{
 		case SPELL_FORCEBOLT:
@@ -668,16 +858,80 @@ Item* getSpellbookFromSpellID(int spellID)
 		case SPELL_CHARM_MONSTER:
 			itemType = SPELLBOOK_CHARM_MONSTER;
 			break;
+		case SPELL_REVERT_FORM:
+			itemType = SPELLBOOK_REVERT_FORM;
+			break;
+		case SPELL_RAT_FORM:
+			itemType = SPELLBOOK_RAT_FORM;
+			break;
+		case SPELL_SPIDER_FORM:
+			itemType = SPELLBOOK_SPIDER_FORM;
+			break;
+		case SPELL_TROLL_FORM:
+			itemType = SPELLBOOK_TROLL_FORM;
+			break;
+		case SPELL_IMP_FORM:
+			itemType = SPELLBOOK_IMP_FORM;
+			break;
+		case SPELL_SPRAY_WEB:
+			itemType = SPELLBOOK_SPRAY_WEB;
+			break;
+		case SPELL_POISON:
+			itemType = SPELLBOOK_POISON;
+			break;
+		case SPELL_SPEED:
+			itemType = SPELLBOOK_SPEED;
+			break;
+		case SPELL_FEAR:
+			itemType = SPELLBOOK_FEAR;
+			break;
+		case SPELL_STRIKE:
+			itemType = SPELLBOOK_STRIKE;
+			break;
+		case SPELL_DETECT_FOOD:
+			itemType = SPELLBOOK_DETECT_FOOD;
+			break;
+		case SPELL_WEAKNESS:
+			itemType = SPELLBOOK_WEAKNESS;
+			break;
+		case SPELL_AMPLIFY_MAGIC:
+			itemType = SPELLBOOK_AMPLIFY_MAGIC;
+			break;
+		case SPELL_SHADOW_TAG:
+			itemType = SPELLBOOK_SHADOW_TAG;
+			break;
+		case SPELL_TELEPULL:
+			itemType = SPELLBOOK_TELEPULL;
+			break;
+		case SPELL_DEMON_ILLUSION:
+			itemType = SPELLBOOK_DEMON_ILLU;
+			break;
+		case SPELL_4:
+			itemType = SPELLBOOK_4;
+			break;
+		case SPELL_5:
+			itemType = SPELLBOOK_5;
+			break;
+		case SPELL_6:
+			itemType = SPELLBOOK_6;
+			break;
+		case SPELL_7:
+			itemType = SPELLBOOK_7;
+			break;
+		case SPELL_8:
+			itemType = SPELLBOOK_8;
+			break;
+		case SPELL_9:
+			itemType = SPELLBOOK_9;
+			break;
+		case SPELL_10:
+			itemType = SPELLBOOK_10;
+			break;
 		default:
 			break;
 	}
 
-	if ( itemType > 0 )
-	{
-		spellbook = newItem(static_cast<ItemType>(itemType), static_cast<Status>(DECREPIT), 0, 1, rand(), true, nullptr);
-	}
-
-	return spellbook;
+	return itemType;
 }
 
 int getSpellIDFromSpellbook(int spellbookType)
@@ -744,6 +998,52 @@ int getSpellIDFromSpellbook(int spellbookType)
 			return spell_vampiricAura.ID;
 		case SPELLBOOK_CHARM_MONSTER:
 			return spell_charmMonster.ID;
+		case SPELLBOOK_REVERT_FORM:
+			return spell_revertForm.ID;
+		case SPELLBOOK_RAT_FORM:
+			return spell_ratForm.ID;
+		case SPELLBOOK_SPIDER_FORM:
+			return spell_spiderForm.ID;
+		case SPELLBOOK_TROLL_FORM:
+			return spell_trollForm.ID;
+		case SPELLBOOK_IMP_FORM:
+			return spell_impForm.ID;
+		case SPELLBOOK_SPRAY_WEB:
+			return spell_sprayWeb.ID;
+		case SPELLBOOK_POISON:
+			return spell_poison.ID;
+		case SPELLBOOK_SPEED:
+			return spell_speed.ID;
+		case SPELLBOOK_FEAR:
+			return spell_fear.ID;
+		case SPELLBOOK_STRIKE:
+			return spell_strike.ID;
+		case SPELLBOOK_DETECT_FOOD:
+			return spell_detectFood.ID;
+		case SPELLBOOK_WEAKNESS:
+			return spell_weakness.ID;
+		case SPELLBOOK_AMPLIFY_MAGIC:
+			return spell_amplifyMagic.ID;
+		case SPELLBOOK_SHADOW_TAG:
+			return spell_shadowTag.ID;
+		case SPELLBOOK_TELEPULL:
+			return spell_telePull.ID;
+		case SPELLBOOK_DEMON_ILLU:
+			return spell_demonIllusion.ID;
+		case SPELL_4:
+			return spell_weakness.ID;
+		case SPELL_5:
+			return spell_weakness.ID;
+		case SPELL_6:
+			return spell_weakness.ID;
+		case SPELL_7:
+			return spell_weakness.ID;
+		case SPELL_8:
+			return spell_weakness.ID;
+		case SPELL_9:
+			return spell_weakness.ID;
+		case SPELL_10:
+			return spell_weakness.ID;
 		default:
 			return SPELL_NONE;
 	}
@@ -829,19 +1129,89 @@ void spell_changeHealth(Entity* entity, int amount, bool overdrewFromHP)
 
 spell_t* getSpellFromItem(Item* item)
 {
-	spell_t* spell = NULL;
-	node_t* node = NULL;
-	for (node = spellList.first; node; node = node->next)
+	spell_t* spell = nullptr;
+	node_t* node = nullptr;
+	if ( !item )
 	{
-		if (node->element)
+		return nullptr;
+	}
+	for ( node = spellList.first; node; node = node->next )
+	{
+		if ( node->element )
 		{
 			spell = (spell_t*) node->element;
-			if (spell->ID == item->appearance)
+			Uint32 appearance = item->appearance;
+			if ( item->type == SPELL_ITEM && item->appearance >= 1000 )
+			{
+				appearance -= 1000; // hack for normally uncontrollable spells.
+			}
+			if ( spell->ID == appearance )
 			{
 				return spell;    //Found the spell.
 			}
 		}
 	}
 
-	return NULL;
+	return nullptr;
+}
+
+int canUseShapeshiftSpellInCurrentForm(Item& item)
+{
+	if ( itemCategory(&item) != SPELL_CAT )
+	{
+		return -1;
+	}
+	if ( item.appearance < 1000 )
+	{
+		return -1;
+	}
+	if ( !stats[clientnum] )
+	{
+		return -1;
+	}
+	spell_t* spell = getSpellFromItem(&item);
+	if ( !spell )
+	{
+		return -1;
+	}
+	if ( !stats[clientnum]->EFFECTS[EFF_SHAPESHIFT] )
+	{
+		return 0;
+	}
+	switch ( spell->ID )
+	{
+		case SPELL_SPEED:
+		case SPELL_DETECT_FOOD:
+			if ( stats[clientnum]->type == RAT )
+			{
+				return 1;
+			}
+			break;
+		case SPELL_POISON:
+		case SPELL_SPRAY_WEB:
+			if ( stats[clientnum]->type == SPIDER )
+			{
+				return 1;
+			}
+			break;
+		case SPELL_STRIKE:
+		case SPELL_FEAR:
+			if ( stats[clientnum]->type == TROLL )
+			{
+				return 1;
+			}
+			break;
+		case SPELL_LIGHTNING:
+		case SPELL_CONFUSE:
+		case SPELL_WEAKNESS:
+		case SPELL_AMPLIFY_MAGIC:
+			if ( stats[clientnum]->type == CREATURE_IMP )
+			{
+				return 1;
+			}
+			break;
+		default:
+			break;
+	}
+	return 0;
 }

@@ -142,7 +142,7 @@ void updateEnemyBarStatusEffectColor(int player, const Entity &target, const Sta
 	{
 		enemy_bar_color[player] = SDL_MapRGB(mainsurface->format, 112, 112, 0);
 	}
-	else if ( targetStats.EFFECTS[EFF_CONFUSED] )
+	else if ( targetStats.EFFECTS[EFF_CONFUSED] || targetStats.EFFECTS[EFF_DISORIENTED] )
 	{
 		enemy_bar_color[player] = SDL_MapRGB(mainsurface->format, 92, 0, 92);
 	}
@@ -800,6 +800,18 @@ void drawStatus()
 			}
 
 			drawImageScaled(itemSprite(item), NULL, &pos);
+
+			bool disableItemUsage = false;
+			if ( players[clientnum] && players[clientnum]->entity && players[clientnum]->entity->effectShapeshift != NOTHING )
+			{
+				// shape shifted, disable some items
+				if ( !item->usableWhileShapeshifted(stats[clientnum]) )
+				{
+					disableItemUsage = true;
+					drawRect(&highlightBox, SDL_MapRGB(mainsurface->format, 64, 64, 64), 144);
+				}
+			}
+
 			if ( stats[clientnum]->HP > 0 )
 			{
 				if ( !shootmode && mouseInBounds(pos.x, pos.x + hotbar_img->w * uiscale_hotbar, pos.y, pos.y + hotbar_img->h * uiscale_hotbar) )
@@ -850,6 +862,8 @@ void drawStatus()
 						mousestatus[SDL_BUTTON_RIGHT] = 0;
 						*inputPressed(joyimpulses[INJOY_MENU_USE]) = 0;
 						bool badpotion = false;
+						bool learnedSpell = false;
+
 						if ( itemCategory(item) == POTION && item->identified )
 						{
 							badpotion = isPotionBad(*item); //So that you wield empty potions be default.
@@ -857,6 +871,10 @@ void drawStatus()
 						if ( item->type == POTION_EMPTY )
 						{
 							badpotion = true;
+						}
+						if ( itemCategory(item) == SPELLBOOK && item->identified )
+						{
+							learnedSpell = playerLearnedSpellbook(item);
 						}
 
 						if ( keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT] )
@@ -871,44 +889,103 @@ void drawStatus()
 						}
 						else
 						{
-							if ( itemCategory(item) == POTION 
+							if ( (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK)
 								&& (keystatus[SDL_SCANCODE_LALT] || keystatus[SDL_SCANCODE_RALT]) )
 							{
 								badpotion = true;
+								learnedSpell = true;
 							}
-							if ( !badpotion )
+
+							if ( itemCategory(item) == SPELLBOOK && stats[clientnum] && stats[clientnum]->type == GOBLIN )
 							{
-								useItem(item, clientnum);
+								learnedSpell = true; // goblinos can't learn spells but always equip books.
 							}
-							else
+
+							if ( !badpotion && !learnedSpell )
 							{
-								if ( multiplayer == CLIENT )
+								if ( !(isItemEquippableInShieldSlot(item) && cast_animation.active_spellbook) )
 								{
-									if ( swapWeaponGimpTimer > 0
-										&& (itemCategory(item) == POTION || itemCategory(item) == GEM || itemCategory(item) == THROWN) )
+									if ( !disableItemUsage )
 									{
-										// don't send to host as we're not allowed to "use" or equip these items. 
-										// will return false in equipItem.
+										useItem(item, clientnum);
 									}
 									else
 									{
-										strcpy((char*)net_packet->data, "EQUI");
-										SDLNet_Write32((Uint32)item->type, &net_packet->data[4]);
-										SDLNet_Write32((Uint32)item->status, &net_packet->data[8]);
-										SDLNet_Write32((Uint32)item->beatitude, &net_packet->data[12]);
-										SDLNet_Write32((Uint32)item->count, &net_packet->data[16]);
-										SDLNet_Write32((Uint32)item->appearance, &net_packet->data[20]);
-										net_packet->data[24] = item->identified;
-										net_packet->data[25] = clientnum;
-										net_packet->address.host = net_server.host;
-										net_packet->address.port = net_server.port;
-										net_packet->len = 26;
-										sendPacketSafe(net_sock, -1, net_packet, 0);
+										messagePlayer(clientnum, language[3432]); // unable to use in current form message.
 									}
 								}
-								equipItem(item, &stats[clientnum]->weapon, clientnum);
+							}
+							else
+							{
+								if ( !disableItemUsage )
+								{
+									if ( multiplayer == CLIENT )
+									{
+										if ( swapWeaponGimpTimer > 0
+											&& (itemCategory(item) == POTION || itemCategory(item) == GEM || itemCategory(item) == THROWN) )
+										{
+											// don't send to host as we're not allowed to "use" or equip these items. 
+											// will return false in equipItem.
+										}
+										else
+										{
+											if ( itemCategory(item) == SPELLBOOK )
+											{
+												if ( !cast_animation.active_spellbook )
+												{
+													strcpy((char*)net_packet->data, "EQUS");
+													SDLNet_Write32((Uint32)item->type, &net_packet->data[4]);
+													SDLNet_Write32((Uint32)item->status, &net_packet->data[8]);
+													SDLNet_Write32((Uint32)item->beatitude, &net_packet->data[12]);
+													SDLNet_Write32((Uint32)item->count, &net_packet->data[16]);
+													SDLNet_Write32((Uint32)item->appearance, &net_packet->data[20]);
+													net_packet->data[24] = item->identified;
+													net_packet->data[25] = clientnum;
+													net_packet->address.host = net_server.host;
+													net_packet->address.port = net_server.port;
+													net_packet->len = 26;
+													sendPacketSafe(net_sock, -1, net_packet, 0);
+												}
+											}
+											else
+											{
+												strcpy((char*)net_packet->data, "EQUI");
+												SDLNet_Write32((Uint32)item->type, &net_packet->data[4]);
+												SDLNet_Write32((Uint32)item->status, &net_packet->data[8]);
+												SDLNet_Write32((Uint32)item->beatitude, &net_packet->data[12]);
+												SDLNet_Write32((Uint32)item->count, &net_packet->data[16]);
+												SDLNet_Write32((Uint32)item->appearance, &net_packet->data[20]);
+												net_packet->data[24] = item->identified;
+												net_packet->data[25] = clientnum;
+												net_packet->address.host = net_server.host;
+												net_packet->address.port = net_server.port;
+												net_packet->len = 26;
+												sendPacketSafe(net_sock, -1, net_packet, 0);
+											}
+										}
+									}
+									if ( itemCategory(item) == SPELLBOOK )
+									{
+										if ( !cast_animation.active_spellbook )
+										{
+											equipItem(item, &stats[clientnum]->shield, clientnum);
+										}
+									}
+									else
+									{
+										equipItem(item, &stats[clientnum]->weapon, clientnum);
+									}
+								}
+								else
+								{
+									messagePlayer(clientnum, language[3432]); // unable to use in current form message.
+								}
 							}
 							used = true;
+							if ( disableItemUsage )
+							{
+								used = false;
+							}
 						}
 					}
 				}
@@ -953,7 +1030,8 @@ void drawStatus()
 				else
 				{
 					spell_t* spell = getSpellFromItem(item);
-					if ( selected_spell == spell )
+					if ( selected_spell == spell 
+						&& (selected_spell_last_appearance == item->appearance || selected_spell_last_appearance == -1 ) )
 					{
 						drawImageScaled(equipped_bmp, NULL, &src);
 					}
@@ -988,7 +1066,7 @@ void drawStatus()
 					if ( itemCategory(item) == SPELL_CAT )
 					{
 						spell_t* spell = getSpellFromItem(item);
-						drawSpellTooltip(spell);
+						drawSpellTooltip(spell, item);
 					}
 					else
 					{
@@ -1062,6 +1140,16 @@ void drawStatus()
 						{
 							if ( itemCategory(item) == WEAPON )
 							{
+								Monster tmpRace = stats[clientnum]->type;
+								if ( stats[clientnum]->type == TROLL
+									|| stats[clientnum]->type == RAT
+									|| stats[clientnum]->type == SPIDER
+									|| stats[clientnum]->type == CREATURE_IMP )
+								{
+									// these monsters have 0 bonus from weapons, but want the tooltip to say the normal amount.
+									stats[clientnum]->type = HUMAN;
+								}
+
 								if ( item->weaponGetAttack(stats[clientnum]) >= 0 )
 								{
 									color = SDL_MapRGB(mainsurface->format, 0, 255, 255);
@@ -1070,10 +1158,26 @@ void drawStatus()
 								{
 									color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
 								}
+								if ( stats[clientnum]->type != tmpRace )
+								{
+									color = SDL_MapRGB(mainsurface->format, 127, 127, 127); // grey out the text if monster doesn't benefit.
+								}
+
 								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, language[315], item->weaponGetAttack(stats[clientnum]));
+								stats[clientnum]->type = tmpRace;
 							}
 							else if ( itemCategory(item) == ARMOR )
 							{
+								Monster tmpRace = stats[clientnum]->type;
+								if ( stats[clientnum]->type == TROLL
+									|| stats[clientnum]->type == RAT
+									|| stats[clientnum]->type == SPIDER
+									|| stats[clientnum]->type == CREATURE_IMP )
+								{
+									// these monsters have 0 bonus from armor, but want the tooltip to say the normal amount.
+									stats[clientnum]->type = HUMAN;
+								}
+
 								if ( item->armorGetAC(stats[clientnum]) >= 0 )
 								{
 									color = SDL_MapRGB(mainsurface->format, 0, 255, 255);
@@ -1082,7 +1186,13 @@ void drawStatus()
 								{
 									color = SDL_MapRGB(mainsurface->format, 255, 0, 0);
 								}
+								if ( stats[clientnum]->type != tmpRace )
+								{
+									color = SDL_MapRGB(mainsurface->format, 127, 127, 127); // grey out the text if monster doesn't benefit.
+								}
+
 								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, language[316], item->armorGetAC(stats[clientnum]));
+								stats[clientnum]->type = tmpRace;
 							}
 						}
 					}
@@ -1346,6 +1456,7 @@ void drawStatus()
 		if ( item )
 		{
 			bool badpotion = false;
+			bool learnedSpell = false;
 			if ( itemCategory(item) == POTION && item->identified )
 			{
 				badpotion = isPotionBad(*item);
@@ -1354,43 +1465,117 @@ void drawStatus()
 			{
 				badpotion = true; //So that you wield empty potions be default.
 			}
+			if ( itemCategory(item) == SPELLBOOK && item->identified )
+			{
+				learnedSpell = playerLearnedSpellbook(item);
+			}
 
-			if ( (keystatus[SDL_SCANCODE_LALT] || keystatus[SDL_SCANCODE_RALT]) && itemCategory(item) == POTION )
+			if ( (keystatus[SDL_SCANCODE_LALT] || keystatus[SDL_SCANCODE_RALT]) 
+				&& (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK) )
 			{
 				badpotion = true;
+				learnedSpell = true;
 			}
 
-			if ( !badpotion )
+			if ( itemCategory(item) == SPELLBOOK && stats[clientnum] && stats[clientnum]->type == GOBLIN )
 			{
-				useItem(item, clientnum);
+				learnedSpell = true; // goblinos can't learn spells but always equip books.
 			}
-			else
+
+			bool disableItemUsage = false;
+			if ( players[clientnum] && players[clientnum]->entity )
 			{
-				if ( multiplayer == CLIENT )
+				if ( players[clientnum]->entity->effectShapeshift != NOTHING )
 				{
-					if ( swapWeaponGimpTimer > 0
-						&& (itemCategory(item) == POTION || itemCategory(item) == GEM || itemCategory(item) == THROWN) )
+					if ( !item->usableWhileShapeshifted(stats[clientnum]) )
 					{
-						// don't send to host as we're not allowed to "use" or equip these items. 
-						// will return false in equipItem.
+						disableItemUsage = true;
+					}
+				}
+				else
+				{
+					if ( itemCategory(item) == SPELL_CAT && item->appearance >= 1000 )
+					{
+						if ( canUseShapeshiftSpellInCurrentForm(*item) != 1 )
+						{
+							disableItemUsage = true;
+						}
+					}
+				}
+			}
+
+			if ( !disableItemUsage )
+			{
+				if ( !badpotion && !learnedSpell )
+				{
+					if ( !(isItemEquippableInShieldSlot(item) && cast_animation.active_spellbook) )
+					{
+						useItem(item, clientnum);
+					}
+				}
+				else
+				{
+					if ( multiplayer == CLIENT )
+					{
+						if ( swapWeaponGimpTimer > 0
+							&& (itemCategory(item) == POTION || itemCategory(item) == GEM || itemCategory(item) == THROWN) )
+						{
+							// don't send to host as we're not allowed to "use" or equip these items. 
+							// will return false in equipItem.
+						}
+						else
+						{
+							if ( itemCategory(item) == SPELLBOOK )
+							{
+								if ( !cast_animation.active_spellbook )
+								{
+									strcpy((char*)net_packet->data, "EQUS");
+									SDLNet_Write32((Uint32)item->type, &net_packet->data[4]);
+									SDLNet_Write32((Uint32)item->status, &net_packet->data[8]);
+									SDLNet_Write32((Uint32)item->beatitude, &net_packet->data[12]);
+									SDLNet_Write32((Uint32)item->count, &net_packet->data[16]);
+									SDLNet_Write32((Uint32)item->appearance, &net_packet->data[20]);
+									net_packet->data[24] = item->identified;
+									net_packet->data[25] = clientnum;
+									net_packet->address.host = net_server.host;
+									net_packet->address.port = net_server.port;
+									net_packet->len = 26;
+									sendPacketSafe(net_sock, -1, net_packet, 0);
+								}
+							}
+							else
+							{
+								strcpy((char*)net_packet->data, "EQUI");
+								SDLNet_Write32((Uint32)item->type, &net_packet->data[4]);
+								SDLNet_Write32((Uint32)item->status, &net_packet->data[8]);
+								SDLNet_Write32((Uint32)item->beatitude, &net_packet->data[12]);
+								SDLNet_Write32((Uint32)item->count, &net_packet->data[16]);
+								SDLNet_Write32((Uint32)item->appearance, &net_packet->data[20]);
+								net_packet->data[24] = item->identified;
+								net_packet->data[25] = clientnum;
+								net_packet->address.host = net_server.host;
+								net_packet->address.port = net_server.port;
+								net_packet->len = 26;
+								sendPacketSafe(net_sock, -1, net_packet, 0);
+							}
+						}
+					}
+					if ( itemCategory(item) == SPELLBOOK )
+					{
+						if ( !cast_animation.active_spellbook )
+						{
+							equipItem(item, &stats[clientnum]->shield, clientnum);
+						}
 					}
 					else
 					{
-						strcpy((char*)net_packet->data, "EQUI");
-						SDLNet_Write32((Uint32)item->type, &net_packet->data[4]);
-						SDLNet_Write32((Uint32)item->status, &net_packet->data[8]);
-						SDLNet_Write32((Uint32)item->beatitude, &net_packet->data[12]);
-						SDLNet_Write32((Uint32)item->count, &net_packet->data[16]);
-						SDLNet_Write32((Uint32)item->appearance, &net_packet->data[20]);
-						net_packet->data[24] = item->identified;
-						net_packet->data[25] = clientnum;
-						net_packet->address.host = net_server.host;
-						net_packet->address.port = net_server.port;
-						net_packet->len = 26;
-						sendPacketSafe(net_sock, -1, net_packet, 0);
+						equipItem(item, &stats[clientnum]->weapon, clientnum);
 					}
 				}
-				equipItem(item, &stats[clientnum]->weapon, clientnum);
+			}
+			else
+			{
+				messagePlayer(clientnum, language[3432]); // unable to use in current form message.
 			}
 		}
 	}
@@ -1461,7 +1646,7 @@ void drawStatus()
 	}
 }
 
-void drawSpellTooltip(spell_t* spell)
+void drawSpellTooltip(spell_t* spell, Item* item)
 {
 	SDL_Rect src;
 	src.x = mousex + 16;
@@ -1638,6 +1823,40 @@ void drawSpellTooltip(spell_t* spell)
 				break;
 		}
 		char tempstr[64] = "";
+		char spellNameString[128] = "";
+		if ( item && item->appearance >= 1000 )
+		{
+			// shapeshift spells, append the form name here.
+			switch ( spell->ID )
+			{
+				case SPELL_SPEED:
+				case SPELL_DETECT_FOOD:
+					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3408]);
+					break;
+				case SPELL_POISON:
+				case SPELL_SPRAY_WEB:
+					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3409]);
+					break;
+				case SPELL_STRIKE:
+				case SPELL_FEAR:
+					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3410]);
+					break;
+				case SPELL_LIGHTNING:
+				case SPELL_CONFUSE:
+				case SPELL_WEAKNESS:
+				case SPELL_AMPLIFY_MAGIC:
+					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3411]);
+					break;
+				default:
+					strncpy(spellNameString, spell->name, 127);
+					break;
+			}
+		}
+		else
+		{
+			strncpy(spellNameString, spell->name, 127);
+		}
+
 		if ( spell->ID == SPELL_DOMINATE )
 		{
 			snprintf(tempstr, 63, language[2977], getCostOfSpell(spell));
@@ -1675,7 +1894,7 @@ void drawSpellTooltip(spell_t* spell)
 		}
 		else
 		{
-			src.w = std::max(longestline(spell->name), longestline(tempstr)) * TTF12_WIDTH + 8;
+			src.w = std::max(longestline(spellNameString), longestline(tempstr)) * TTF12_WIDTH + 8;
 		}
 
 		int furthestX = xres;
@@ -1713,7 +1932,7 @@ void drawSpellTooltip(spell_t* spell)
 		}
 		drawTooltip(&src);
 		ttfPrintTextFormatted(ttf12, src.x + 4, src.y + 4, "%s\n%s\n%s",
-			spell->name, tempstr, spellType);
+			spellNameString, tempstr, spellType);
 		Uint32 effectColor = uint32ColorLightBlue(*mainsurface);
 		ttfPrintTextFormattedColor(ttf12, src.x + 4, src.y + 4, effectColor,
 			"\n\n\n%s", spellEffectText);

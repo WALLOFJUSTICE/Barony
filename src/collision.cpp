@@ -242,7 +242,9 @@ Entity* entityClicked(bool* clickedOnGUI)
 		}
 	}
 
-	if ( !uidToEntity(uidnum) && !mute_player_monster_sounds )
+	Entity* entity = uidToEntity(uidnum);
+
+	if ( !entity && !mute_player_monster_sounds )
 	{
 		if ( players[clientnum] && players[clientnum]->entity && monsterEmoteGimpTimer == 0 )
 		{
@@ -327,7 +329,7 @@ Entity* entityClicked(bool* clickedOnGUI)
 	// pixel processing (opengl only)
 	if ( softwaremode == false)
 	{
-		return uidToEntity(uidnum);
+		return entity;
 	}
 	else
 	{
@@ -573,6 +575,10 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 		{
 			entity = (Entity*)node->element;
 			if ( entity == my || entity->flags[PASSABLE] || my->parent == entity->getUID() )
+			{
+				continue;
+			}
+			if ( entity->behavior == &actParticleTimer && static_cast<Uint32>(entity->particleTimerTarget) == my->getUID() )
 			{
 				continue;
 			}
@@ -901,6 +907,10 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 		{
 			Entity* entity = (Entity*)node->element;
 			if ( (entity != target && target != nullptr) || entity->flags[PASSABLE] || entity == my || (entities && !entity->flags[BLOCKSIGHT]) )
+			{
+				continue;
+			}
+			if ( entity->behavior == &actParticleTimer )
 			{
 				continue;
 			}
@@ -1375,6 +1385,10 @@ int checkObstacle(long x, long y, Entity* my, Entity* target)
 				{
 					entity = (Entity*)node->element;
 					if ( entity->flags[PASSABLE] || entity == my || entity == target || entity->behavior == &actDoor )
+					{
+						continue;
+					}
+					if ( entity->behavior == &actParticleTimer && static_cast<Uint32>(entity->particleTimerTarget) == my->getUID() )
 					{
 						continue;
 					}

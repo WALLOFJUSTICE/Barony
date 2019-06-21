@@ -21,7 +21,7 @@
 
 /*-------------------------------------------------------------------------------
 
-	renderMagicGUI
+	renderMagicGUI - DEPRECATED, called from updateRightSidebar()
 
 	draws all the magic related gui stuff
 
@@ -121,7 +121,7 @@ void renderMagicGUI(int winx, int winy, int winw, int winh)
 
 /*-------------------------------------------------------------------------------
 
-	updateMagicGUI
+	updateMagicGUI - DEPRECATED, called from updateRightSidebar()
 
 	Handles all buttons and such.
 	If the spell list is open, it "equips" spells the player clicks on.
@@ -181,7 +181,7 @@ void updateMagicGUI()
 						spell_t* spell = (spell_t*)node->element;
 						if (spell)
 						{
-							equipSpell(spell, clientnum);
+							//equipSpell(spell, clientnum);
 							//selected_spell = spell;
 						}
 					}
@@ -259,6 +259,29 @@ void drawSustainedSpells()
 				case EFF_PACIFY:
 					effectImageNode = list_Node(&items[SPELL_ITEM].surfaces, SPELL_CHARM_MONSTER);
 					tooltipText = language[3388];
+					break;
+				case EFF_SHAPESHIFT:
+					if ( players[clientnum] && players[clientnum]->entity )
+					{
+						switch ( players[clientnum]->entity->effectShapeshift )
+						{
+							case RAT:
+								effectImageNode = list_Node(&items[SPELL_ITEM].surfaces, SPELL_RAT_FORM);
+								break;
+							case TROLL:
+								effectImageNode = list_Node(&items[SPELL_ITEM].surfaces, SPELL_TROLL_FORM);
+								break;
+							case SPIDER:
+								effectImageNode = list_Node(&items[SPELL_ITEM].surfaces, SPELL_SPIDER_FORM);
+								break;
+							case CREATURE_IMP:
+								effectImageNode = list_Node(&items[SPELL_ITEM].surfaces, SPELL_IMP_FORM);
+								break;
+							default:
+								break;
+						}
+						tooltipText = language[3433];
+					}
 					break;
 				case EFF_VAMPIRICAURA:
 				{

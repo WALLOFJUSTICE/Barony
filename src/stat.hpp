@@ -52,7 +52,12 @@ static const int EFF_POLYMORPH = 25;
 static const int EFF_KNOCKBACK = 26;
 static const int EFF_WITHDRAWAL = 27;
 static const int EFF_POTION_STR = 28;
-static const int NUMEFFECTS = 32;
+static const int EFF_SHAPESHIFT = 29;
+static const int EFF_WEBBED = 30;
+static const int EFF_FEAR = 31;
+static const int EFF_MAGICAMPLIFY = 32;
+static const int EFF_DISORIENTED = 33;
+static const int NUMEFFECTS = 40;
 
 // stats
 static const int STAT_STR = 0;
@@ -204,6 +209,7 @@ public:
 	Sint32& playerSummon2STRDEXCONINT; // MISC_FLAGS[10]
 	Sint32& playerSummon2PERCHR; // MISC_FLAGS[11]
 	Sint32& monsterIsCharmed; // MISC_FLAGS[12]
+	Sint32& playerShapeshiftStorage; // MISC_FLAGS[13]
 
 	// group think
 	Uint32 leader_uid;

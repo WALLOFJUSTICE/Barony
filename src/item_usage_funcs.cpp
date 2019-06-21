@@ -121,13 +121,24 @@ bool item_PotionWater(Item*& item, Entity* entity, Entity* usedBy)
 		{
 			if ( stats && stats->EFFECTS[EFF_POLYMORPH] )
 			{
-				entity->setEffect(EFF_POLYMORPH, false, 0, true);
-				entity->effectPolymorph = 0;
-				serverUpdateEntitySkill(entity, 50);
+				if ( stats->EFFECTS[EFF_POLYMORPH] )
+				{
+					entity->setEffect(EFF_POLYMORPH, false, 0, true);
+					entity->effectPolymorph = 0;
+					serverUpdateEntitySkill(entity, 50);
 
-				messagePlayer(player, language[3192]);
-				messagePlayer(player, language[3185]);
+					messagePlayer(player, language[3192]);
+					messagePlayer(player, language[3185]);
+				}
+				/*if ( stats->EFFECTS[EFF_SHAPESHIFT] )
+				{
+					entity->setEffect(EFF_SHAPESHIFT, false, 0, true);
+					entity->effectShapeshift = 0;
+					serverUpdateEntitySkill(entity, 53);
 
+					messagePlayer(player, language[3418]);
+					messagePlayer(player, language[3417]);
+				}*/
 				playSoundEntity(entity, 400, 92);
 				createParticleDropRising(entity, 593, 1.f);
 				serverSpawnMiscParticles(entity, PARTICLE_EFFECT_RISING_DROP, 593);
@@ -917,7 +928,7 @@ bool item_PotionBlindness(Item*& item, Entity* entity, Entity* usedBy)
 		return true;
 	}
 
-	if ( entity->behavior == &actMonster && !entity->isBossMonsterOrBossMap() )
+	if ( entity->behavior == &actMonster && !entity->isBossMonster() )
 	{
 		entity->monsterReleaseAttackTarget();
 	}
@@ -1004,7 +1015,7 @@ bool item_PotionInvisibility(Item*& item, Entity* entity, Entity* usedBy)
 			Entity* creature = (Entity*)node->element;
 			if ( creature && creature->behavior == &actMonster && creature->monsterTarget == entity->getUID() )
 			{
-				if ( !creature->isBossMonsterOrBossMap() )
+				if ( !creature->isBossMonster() )
 				{
 					//Abort if invalid creature (boss, shopkeep, etc).
 					real_t dist = entityDist(entity, creature);
@@ -4321,6 +4332,20 @@ void item_Spellbook(Item*& item, int player)
 		return;
 	}
 
+	if ( players[player] && players[player]->entity )
+	{
+		if ( players[player]->entity->effectShapeshift != NOTHING )
+		{
+			messagePlayer(player, language[3445]);
+			return;
+		}
+		else if ( stats[player] && stats[player]->type == GOBLIN )
+		{
+			messagePlayer(player, language[3444]);
+			return;
+		}
+	}
+
 	conductIlliterate = false;
 
 	if ( item->beatitude < 0 && !shouldInvertEquipmentBeatitude(stats[player]) )
@@ -4328,31 +4353,114 @@ void item_Spellbook(Item*& item, int player)
 		messagePlayer(clientnum, language[971]);
 		if ( list_Size(&spellList) > 0 )
 		{
-			messagePlayer(clientnum, language[972]);
-
 			// randomly delete a spell
 			int spellToDelete = rand() % list_Size(&spellList);
 			node = list_Node(&spellList, spellToDelete);
 			spell_t* spell = (spell_t*)node->element;
-			if ( spell == selected_spell )
-			{
-				selected_spell = NULL;
-			}
 			int spellID = spell->ID;
-			list_RemoveNode(node);
+			bool deleted = false;
+			bool rerollSpell = false;
 
 			// delete its accompanying spell item(s)
-			for ( node = stats[player]->inventory.first; node != NULL; node = nextnode )
+
+			if ( client_classes[clientnum] == CLASS_SHAMAN )
 			{
-				nextnode = node->next;
-				Item* item = (Item*)node->element;
-				if ( item->type == SPELL_ITEM )
+				// don't forget your racial spells otherwise borked.
+				// special roll checking.
+				if ( list_Size(&spellList) <= CLASS_SHAMAN_NUM_STARTING_SPELLS )
 				{
-					if ( item->appearance == spellID )
+					// no spells to delete. return early.
+					messagePlayer(clientnum, language[973]);
+					consumeItem(item, player);
+					return;
+				}
+				spellToDelete = rand() % (list_Size(&spellList) - CLASS_SHAMAN_NUM_STARTING_SPELLS);
+				spellToDelete += CLASS_SHAMAN_NUM_STARTING_SPELLS; // e.g 16 spells is 0 + 15, 15th index.
+				node = list_Node(&spellList, spellToDelete);
+				spell = (spell_t*)node->element;
+				spellID = spell->ID;
+			}
+
+			for ( node_t* node2 = stats[player]->inventory.first; node2 != NULL; node2 = nextnode )
+			{
+				nextnode = node2->next;
+				Item* itemInventory = (Item*)node2->element;
+				if ( itemInventory && itemInventory->type == SPELL_ITEM )
+				{
+					if ( rerollSpell )
 					{
-						list_RemoveNode(node);
+						// Unused. But if ever shapeshift form spells get added to general classes then will need this checking.
+						//if ( itemInventory->appearance < 1000 )
+						//{
+						//	// can delete non-shapeshift spells. let's delete this one.
+						//	spell = getSpellFromItem(itemInventory);
+						//	if ( spell )
+						//	{
+						//		spellID = spell->ID;
+						//		if ( spellID == SPELL_RAT_FORM || spellID == SPELL_SPIDER_FORM
+						//			|| spellID == SPELL_TROLL_FORM || spellID == SPELL_IMP_FORM
+						//			|| spellID == SPELL_REVERT_FORM )
+						//		{
+						//			continue;
+						//		}
+						//		// find the node in spellList for the ID
+						//		spellToDelete = 0;
+						//		for ( node_t* tmpNode = spellList.first; tmpNode != nullptr; tmpNode = tmpNode->next )
+						//		{
+						//			if ( tmpNode->element )
+						//			{
+						//				spell_t* tmpSpell = (spell_t*)tmpNode->element;
+						//				if ( tmpSpell && tmpSpell->ID == spellID )
+						//				{
+						//					// found the node in the list, delete this one.
+						//					node = list_Node(&spellList, spellToDelete);
+						//					list_RemoveNode(node2); // delete inventory spell.
+						//					deleted = true;
+						//					break;
+						//				}
+						//			}
+						//			++spellToDelete;
+						//		}
+						//		if ( deleted )
+						//		{
+						//			break;
+						//		}
+						//	}
+						//}
+					}
+					else if ( itemInventory->appearance == spellID )
+					{
+						list_RemoveNode(node2); // delete inventory spell.
+						deleted = true;
+						break;
 					}
 				}
+			}
+
+			//messagePlayer(0, "%d, %d %d", rerollSpell, spellToDelete, deleted);
+
+			if ( !deleted )
+			{
+				// maybe we've got an inventory full of shapeshift spells?
+				messagePlayer(clientnum, language[973]);
+				consumeItem(item, player);
+				return;
+			}
+			else if ( deleted )
+			{
+				messagePlayer(clientnum, language[972]);
+				if ( spell == selected_spell )
+				{
+					selected_spell = nullptr;
+				}
+				for ( int i = 0; i < NUM_HOTBAR_ALTERNATES; ++i )
+				{
+					if ( selected_spell_alternate[i] == spell )
+					{
+						selected_spell_alternate[i] = nullptr;
+					}
+				}
+				list_RemoveNode(node);
 			}
 		}
 		else
@@ -4456,6 +4564,75 @@ void item_Spellbook(Item*& item, int player)
 				break;
 			case SPELLBOOK_CHARM_MONSTER:
 				learned = addSpell(SPELL_CHARM_MONSTER, player);
+				break;
+			case SPELLBOOK_REVERT_FORM:
+				learned = addSpell(SPELL_REVERT_FORM, player);
+				break;
+			case SPELLBOOK_RAT_FORM:
+				learned = addSpell(SPELL_RAT_FORM, player);
+				break;
+			case SPELLBOOK_SPIDER_FORM:
+				learned = addSpell(SPELL_SPIDER_FORM, player);
+				break;
+			case SPELLBOOK_TROLL_FORM:
+				learned = addSpell(SPELL_TROLL_FORM, player);
+				break;
+			case SPELLBOOK_IMP_FORM:
+				learned = addSpell(SPELL_IMP_FORM, player);
+				break;
+			case SPELLBOOK_SPRAY_WEB:
+				learned = addSpell(SPELL_SPRAY_WEB, player);
+				break;
+			case SPELLBOOK_POISON:
+				learned = addSpell(SPELL_POISON, player);
+				break;
+			case SPELLBOOK_SPEED:
+				learned = addSpell(SPELL_SPEED, player);
+				break;
+			case SPELLBOOK_FEAR:
+				learned = addSpell(SPELL_FEAR, player);
+				break;
+			case SPELLBOOK_STRIKE:
+				learned = addSpell(SPELL_STRIKE, player);
+				break;
+			case SPELLBOOK_DETECT_FOOD:
+				learned = addSpell(SPELL_DETECT_FOOD, player);
+				break;
+			case SPELLBOOK_WEAKNESS:
+				learned = addSpell(SPELL_WEAKNESS, player);
+				break;
+			case SPELLBOOK_AMPLIFY_MAGIC:
+				learned = addSpell(SPELL_AMPLIFY_MAGIC, player);
+				break;
+			case SPELLBOOK_SHADOW_TAG:
+				learned = addSpell(SPELL_SHADOW_TAG, player);
+				break;
+			case SPELLBOOK_TELEPULL:
+				learned = addSpell(SPELL_TELEPULL, player);
+				break;
+			case SPELLBOOK_DEMON_ILLU:
+				learned = addSpell(SPELL_DEMON_ILLUSION, player);
+				break;
+			case SPELLBOOK_4:
+				learned = addSpell(SPELL_4, player);
+				break;
+			case SPELLBOOK_5:
+				learned = addSpell(SPELL_5, player);
+				break;
+			case SPELLBOOK_6:
+				learned = addSpell(SPELL_6, player);
+				break;
+			case SPELLBOOK_7:
+				learned = addSpell(SPELL_7, player);
+				break;
+			case SPELLBOOK_8:
+				learned = addSpell(SPELL_8, player);
+				break;
+			case SPELLBOOK_9:
+				learned = addSpell(SPELL_9, player);
+				break;
+			case SPELLBOOK_10:
+				learned = addSpell(SPELL_10, player);
 				break;
 			default:
 				learned = addSpell(SPELL_FORCEBOLT, player);

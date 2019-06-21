@@ -37,6 +37,7 @@ extern bool showfirst;
 extern bool logCheckObstacle;
 extern int logCheckObstacleCount;
 extern bool logCheckMainLoopTimers;
+extern bool autoLimbReload;
 
 #include <dirent.h>
 #include <stdlib.h>
@@ -509,7 +510,7 @@ extern int minotaurlevel;
 #define DIRECTCLIENT 4
 
 // language stuff
-#define NUMLANGENTRIES 3450
+#define NUMLANGENTRIES 3550
 extern char languageCode[32];
 extern char** language;
 
