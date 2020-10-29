@@ -53,6 +53,8 @@ void drawMinimap()
 		}
 	}
 
+	ttfPrintTextFormatted(ttf16, 12, 12, "%.2f %.2f %.2f", debugDouble1, debugDouble2, debugDouble3);
+
 	node_t* node;
 	Uint32 color;
 	int x, y, i;

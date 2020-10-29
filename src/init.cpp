@@ -58,6 +58,11 @@ GLuint fbo_trn = 0;
 GLuint fbo_ren = 0;
 #endif
 
+GLuint fbo_fbo = 0;
+GLuint fbo_tex = 0;
+GLuint fbo_trn = 0;
+GLuint fbo_ren = 0;
+
 FILE* logfile = nullptr;
 bool steam_init = false;
 
@@ -317,6 +322,54 @@ int initApp(char const * const title, int fullscreen)
 		{
 			noextensions = true;
 		}
+		else if ( (SDL_glBlendFuncSeparate = (PFNGLBLENDFUNCSEPARATEPROC)SDL_GL_GetProcAddress("glBlendFuncSeparate")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glBlendEquationSeparate = (PFNGLBLENDEQUATIONSEPARATEPROC)SDL_GL_GetProcAddress("glBlendEquationSeparate")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glBindRenderbuffer = (PFNGLBINDRENDERBUFFERPROC)SDL_GL_GetProcAddress("glBindRenderbuffer")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glRenderbufferStorage = (PFNGLRENDERBUFFERSTORAGEPROC)SDL_GL_GetProcAddress("glRenderbufferStorage")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glGenRenderbuffers = (PFNGLGENRENDERBUFFERSPROC)SDL_GL_GetProcAddress("glGenRenderbuffers")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)SDL_GL_GetProcAddress("glFramebufferTexture2D")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glFramebufferRenderbuffer = (PFNGLFRAMEBUFFERRENDERBUFFERPROC)SDL_GL_GetProcAddress("glFramebufferRenderbuffer")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)SDL_GL_GetProcAddress("glBindFramebuffer")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)SDL_GL_GetProcAddress("glGenFramebuffersEXT")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glBlitFramebuffer = (PFNGLBLITFRAMEBUFFERPROC)SDL_GL_GetProcAddress("glBlitFramebuffer")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)SDL_GL_GetProcAddress("glDeleteFramebuffers")) == NULL )
+		{
+			noextensions = true;
+		}
+		else if ( (SDL_glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)SDL_GL_GetProcAddress("glCheckFramebufferStatus")) == NULL )
+		{
+			noextensions = true;
+		}
 /*
 // Unused
 		else if ( (SDL_glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)SDL_GL_GetProcAddress("glEnableVertexAttribArray")) == NULL )
@@ -359,6 +412,62 @@ int initApp(char const * const title, int fullscreen)
 	glGenTextures(MAXTEXTURES, texid);
 	//SDL_glGenVertexArrays(MAXBUFFERS, vaoid);
 	//SDL_glGenBuffers(MAXBUFFERS, vboid);
+
+	// frame buffers
+	FrameBuffers.initFBOs();
+	//SDL_glGenFramebuffers(1, &fbo_fbo);
+	//SDL_glBindFramebuffer(GL_FRAMEBUFFER, fbo_fbo);
+	//
+	//// fbo textures
+	//glGenTextures(1, &fbo_tex);
+	//glBindTexture(GL_TEXTURE_2D, fbo_tex);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, xres, yres, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//// attach the texture to the fbo
+	//SDL_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
+	//
+	//glGenTextures(1, &fbo_trn);
+	//glBindTexture(GL_TEXTURE_2D, fbo_trn);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, xres, yres, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	//SDL_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fbo_trn, 0);
+	
+	// depth render buffers
+	//SDL_glGenRenderbuffers(1, &fbo_ren);
+	//SDL_glBindRenderbuffer(GL_RENDERBUFFER, fbo_ren);
+	//SDL_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, xres, yres);
+	//SDL_glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	//SDL_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo_ren);
+	//glDrawBuffer(GL_NONE);
+	//glReadBuffer(GL_NONE);
+	//SDL_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER_EXT, fbo_ren);
+	
+	//glGenTextures(1, &fbo_ren);
+	//glBindTexture(GL_TEXTURE_2D, fbo_ren);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, xres, yres, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_BYTE, NULL);
+	//SDL_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fbo_ren, 0);
+
+
+	// color buffer
+	/*glGenTextures(1, &fbo_trn);
+	glBindTexture(GL_TEXTURE_2D, fbo_trn);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, xres, yres, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);*/
+
+	// attach it to currently bound framebuffer object
+	//SDL_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_trn, 0);
+
+	//
+	//glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	//
+	//// bind the default frame buffer
+	//glBindTexture(GL_TEXTURE_2D, 0);
+	//SDL_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glBindFramebuffer(GL_FRAMEBUFFER, fbo_fbo);
 
 	// load windows icon
 #ifndef _MSC_VER
@@ -2287,6 +2396,7 @@ int deinitApp()
 		glDeleteTextures(MAXTEXTURES, texid);
 		free(texid);
 	}
+	FrameBuffers.deleteFBOs();
 
 	// delete opengl buffers
 	/*SDL_glDeleteBuffers(MAXBUFFERS,vboid);
@@ -2692,6 +2802,8 @@ bool changeVideoMode()
 	// delete old texture names (they're going away anyway)
 	glDeleteTextures(MAXTEXTURES, texid);
 
+	FrameBuffers.deleteFBOs();
+
 	// delete vertex data
 	if ( !disablevbos )
 	{
@@ -2743,6 +2855,8 @@ bool changeVideoMode()
 	{
 		glLoadTexture(allsurfaces[c], c);
 	}
+
+	FrameBuffers.initFBOs();
 
 	// regenerate vbos
 	if ( !disablevbos )

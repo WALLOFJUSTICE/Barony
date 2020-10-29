@@ -38,6 +38,9 @@ int monsterEmoteGimpTimer = 0;
 int selectedEntityGimpTimer = 0;
 bool insectoidLevitating[MAXPLAYERS] = { false, false, false, false };
 bool partymode = false;
+real_t debugDouble1 = 1.f;
+real_t debugDouble2 = 1.f;
+real_t debugDouble3 = 1.f;
 
 /*-------------------------------------------------------------------------------
 
@@ -1921,6 +1924,37 @@ void actPlayer(Entity* my)
 			{
 				stats[PLAYER_NUM]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = 0;
 			}
+		}
+	}
+
+	if ( keystatus[SDL_SCANCODE_RSHIFT] )
+	{
+		if ( keystatus[SDL_SCANCODE_F1] )
+		{
+			debugDouble1 = std::max(debugDouble1 - 0.01, 0.0);
+		}
+		if ( keystatus[SDL_SCANCODE_F2] )
+		{
+			debugDouble2 = std::max(debugDouble2 - 0.01, 0.0);
+		}
+		if ( keystatus[SDL_SCANCODE_F3] )
+		{
+			debugDouble3 = std::max(debugDouble3 - 0.01, 0.0);
+		}
+	}
+	else
+	{
+		if ( keystatus[SDL_SCANCODE_F1] )
+		{
+			debugDouble1 = std::min(debugDouble1 + 0.01, 1.0);
+		}
+		if ( keystatus[SDL_SCANCODE_F2] )
+		{
+			debugDouble2 = std::min(debugDouble2 + 0.01, 1.0);
+		}
+		if ( keystatus[SDL_SCANCODE_F3] )
+		{
+			debugDouble3 = std::min(debugDouble3 + 0.01, 1.0);
 		}
 	}
 

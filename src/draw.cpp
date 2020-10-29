@@ -18,6 +18,8 @@
 #include "editor.hpp"
 #include "items.hpp"
 
+CustomFrameBuffers FrameBuffers;
+
 /*-------------------------------------------------------------------------------
 
 	getPixel
@@ -1151,6 +1153,12 @@ void drawClearBuffers()
 		}
 	}
 
+	for ( int i = 0; i < FrameBuffers.kNumFBOs; ++i )
+	{
+		FrameBuffers.bindAndClearBufferFBO(i);
+	}
+	FrameBuffers.unbindFBOs();
+
 	// clear the screen
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	drawRect(NULL, 0, 255);
@@ -1368,6 +1376,10 @@ void drawEntities3D(view_t* camera, int mode)
 	glEnable(GL_SCISSOR_TEST);
 	glScissor(camera->winx, yres - camera->winh - camera->winy, camera->winw, camera->winh);
 
+	std::vector<Entity*> drawEntitiesOpaque;
+	//std::map<real_t, std::vector<Entity*>> drawPlayers;
+	std::map<real_t, std::vector<Entity*>> drawMonsters;
+
 	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
@@ -1388,6 +1400,46 @@ void drawEntities3D(view_t* camera, int mode)
 					continue;
 				}
 		}
+		real_t cDist = pow(camera->x - entity->x, 2) + pow(camera->y - entity->y, 2);
+		if ( entity->behavior == &actPlayer || entity->behavior == &actPlayerLimb )
+		{
+			if ( entity->behavior == &actPlayerLimb )
+			{
+				continue;
+			}
+			std::vector<Entity*> v = { entity };
+			drawMonsters.insert(std::make_pair(cDist, v));
+			for ( Entity *bodypart : entity->bodyparts )
+			{
+				if ( !bodypart->flags[OVERDRAW] )
+				{
+					drawMonsters[cDist].push_back(bodypart);
+				}
+			}
+		}
+		else if ( entity->behavior == &actMonster || entity->behavior == &actSkeletonLimb )
+		{
+			if ( entity->behavior == &actSkeletonLimb )
+			{
+				continue;
+			}
+			std::vector<Entity*> v = { entity };
+			drawMonsters.insert(std::make_pair(cDist, v));
+			for ( Entity *bodypart : entity->bodyparts )
+			{
+				drawMonsters[cDist].push_back(bodypart);
+			}
+		}
+		else
+		{
+			drawEntitiesOpaque.push_back(entity);
+		}
+	}
+
+	for ( auto it = drawEntitiesOpaque.begin(); it != drawEntitiesOpaque.end(); ++it )
+	{
+		Entity* entity = *it;
+		//entity = (Entity*)node->element;
 		x = entity->x / 16;
 		y = entity->y / 16;
 		if ( x >= 0 && y >= 0 && x < map.width && y < map.height )
@@ -1428,6 +1480,111 @@ void drawEntities3D(view_t* camera, int mode)
 		}
 	}
 
+	for ( auto entList = drawMonsters.rbegin(); entList != drawMonsters.rend(); ++entList )
+	{
+		FrameBuffers.bindAndClearBufferFBO(1);
+		FrameBuffers.blitDepthBuffer(FrameBuffers.DEFAULT_FBO, FrameBuffers.fbos[1].fbo);
+
+		for ( auto it = entList->second.begin(); it != entList->second.end(); ++it )
+		{
+			Entity* entity = *it;
+			x = entity->x / 16;
+			y = entity->y / 16;
+			if ( x >= 0 && y >= 0 && x < map.width && y < map.height )
+			{
+				if ( vismap[y + x * map.height] || entity->flags[OVERDRAW] || entity->monsterEntityRenderAsTelepath == 1 )
+				{
+					if ( entity->flags[SPRITE] == false )
+					{
+						glDrawVoxel(camera, entity, REALCOLORS);
+					}
+					else
+					{
+						if ( entity->behavior == &actSpriteNametag )
+						{
+							int playersTag = playerEntityMatchesUid(entity->parent);
+							if ( playersTag >= 0 )
+							{
+								glDrawSpriteFromImage(camera, entity, stats[playersTag]->name, mode);
+							}
+						}
+						else
+						{
+							glDrawSprite(camera, entity, mode);
+						}
+					}
+				}
+			}
+			else
+			{
+				if ( entity->flags[SPRITE] == false )
+				{
+					glDrawVoxel(camera, entity, mode);
+				}
+				else
+				{
+					glDrawSprite(camera, entity, mode);
+				}
+			}
+		}
+		FrameBuffers.drawTextureQuad(*camera, FrameBuffers.DEFAULT_FBO, FrameBuffers.fbos[1].colorTexture);
+	}
+
+
+	/*for ( auto entList : drawPlayers )
+	{
+		FrameBuffers.bindAndClearBufferFBO(0);
+		FrameBuffers.blitDepthBuffer(FrameBuffers.DEFAULT_FBO, FrameBuffers.fbos[0].fbo);
+
+		for ( auto it = entList.second.begin(); it != entList.second.end(); ++it )
+		{
+			Entity* entity = *it;
+			x = entity->x / 16;
+			y = entity->y / 16;
+			if ( x >= 0 && y >= 0 && x < map.width && y < map.height )
+			{
+				if ( vismap[y + x * map.height] || entity->flags[OVERDRAW] || entity->monsterEntityRenderAsTelepath == 1 )
+				{
+					if ( entity->flags[SPRITE] == false )
+					{
+						glDrawVoxel(camera, entity, REALCOLORS);
+					}
+					else
+					{
+						if ( entity->behavior == &actSpriteNametag )
+						{
+							int playersTag = playerEntityMatchesUid(entity->parent);
+							if ( playersTag >= 0 )
+							{
+								glDrawSpriteFromImage(camera, entity, stats[playersTag]->name, mode);
+							}
+						}
+						else
+						{
+							glDrawSprite(camera, entity, mode);
+						}
+					}
+				}
+			}
+			else
+			{
+				if ( entity->flags[SPRITE] == false )
+				{
+					glDrawVoxel(camera, entity, mode);
+				}
+				else
+				{
+					glDrawSprite(camera, entity, mode);
+				}
+			}
+		}
+		FrameBuffers.drawTextureQuad(*camera, FrameBuffers.DEFAULT_FBO, FrameBuffers.fbos[0].colorTexture);
+	}*/
+
+	FrameBuffers.unbindFBOs();
+	FrameBuffers.unbindTextures();
+
+	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_SCISSOR_TEST);
 	glScissor(0, 0, xres, yres);
 }
@@ -2688,4 +2845,79 @@ void drawTooltip(SDL_Rect* src, Uint32 optionalColor)
 	drawLine(src->x, src->y + src->h, src->x + src->w, src->y + src->h, color, 255);
 	drawLine(src->x, src->y, src->x, src->y + src->h, color, 255);
 	drawLine(src->x + src->w, src->y, src->x + src->w, src->y + src->h, color, 255);
+}
+
+void CustomFrameBuffers::blitDepthBuffer(GLuint srcFBO, GLuint destFBO)
+{
+	// blit the depth buffer onto the fbo
+	SDL_glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFBO);
+	SDL_glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destFBO);
+	SDL_glBlitFramebuffer(0, 0, xres, yres, 0, 0, xres, yres, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	SDL_glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+}
+
+void CustomFrameBuffers::drawTextureQuad(view_t& camera, GLuint destFBO, GLuint tex)
+{
+	SDL_glBindFramebuffer(GL_FRAMEBUFFER, destFBO);
+
+	glDisable(GL_DEPTH_TEST);
+
+	// update projection
+	glViewport(camera.winx, yres - camera.winh - camera.winy, camera.winw, camera.winh);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, camera.winw, 0, camera.winh, -1, 1);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	SDL_Rect pos;
+	pos.x = 0;
+	pos.y = 0;
+	pos.w = xres;
+	pos.h = yres;
+
+	// draw a textured quad
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glColor4f(1, 1, 1, 1 * debugDouble2);
+	glPushMatrix();
+
+	glBegin(GL_QUADS);
+	glTexCoord2f(1 - 0.f, 0.f);
+	glVertex2f(pos.x + pos.w, yres - pos.y - pos.h);
+	glTexCoord2f(1 - 0.f, 1.f);
+	glVertex2f(pos.x + pos.w, yres - pos.y);
+	glTexCoord2f(1 - 1.f, 1.f);
+	glVertex2f(pos.x, yres - pos.y);
+	glTexCoord2f(1 - 1.f, 0.f);
+	glVertex2f(pos.x, yres - pos.y - pos.h);
+	glEnd();
+
+	glPopMatrix();
+}
+
+void CustomFrameBuffers::deleteFBOs()
+{
+	for ( int i = 0; i < kNumFBOs; ++i )
+	{
+		if ( fbos[i].colorTexture != 0 )
+		{
+			glDeleteTextures(1, &fbos[i].colorTexture);
+			fbos[i].colorTexture = 0;
+		}
+		if ( fbos[i].depthTexture != 0 )
+		{
+			glDeleteTextures(1, &fbos[i].depthTexture);
+			fbos[i].depthTexture = 0;
+		}
+		if ( fbos[i].fbo != 0 )
+		{
+			SDL_glDeleteFramebuffers(1, &fbos[i].fbo);
+			fbos[i].fbo = 0;
+		}
+		fbos[i].isInit = false;
+	}
 }

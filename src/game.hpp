@@ -346,6 +346,9 @@ extern int monsterEmoteGimpTimer;
 extern int selectedEntityGimpTimer;
 void mapLevel(int player);
 void mapFoodOnLevel(int player);
+extern real_t debugDouble1;
+extern real_t debugDouble2;
+extern real_t debugDouble3;
 
 class TileEntityListHandler
 {

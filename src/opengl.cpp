@@ -13,6 +13,7 @@
 #include "draw.hpp"
 #include "entity.hpp"
 #include "files.hpp"
+#include <memory>
 
 #ifdef WINDOWS
 PFNGLGENBUFFERSPROC SDL_glGenBuffers;
@@ -24,6 +25,18 @@ PFNGLBINDVERTEXARRAYPROC SDL_glBindVertexArray;
 PFNGLDELETEVERTEXARRAYSPROC SDL_glDeleteVertexArrays;
 PFNGLENABLEVERTEXATTRIBARRAYPROC SDL_glEnableVertexAttribArray;
 PFNGLVERTEXATTRIBPOINTERPROC SDL_glVertexAttribPointer;
+PFNGLBLENDFUNCSEPARATEPROC SDL_glBlendFuncSeparate;
+PFNGLBLENDEQUATIONSEPARATEPROC SDL_glBlendEquationSeparate;
+PFNGLBINDRENDERBUFFERPROC SDL_glBindRenderbuffer;
+PFNGLRENDERBUFFERSTORAGEPROC SDL_glRenderbufferStorage;
+PFNGLGENRENDERBUFFERSPROC SDL_glGenRenderbuffers;
+PFNGLFRAMEBUFFERTEXTURE2DPROC SDL_glFramebufferTexture2D;
+PFNGLFRAMEBUFFERRENDERBUFFERPROC SDL_glFramebufferRenderbuffer;
+PFNGLBINDFRAMEBUFFERPROC SDL_glBindFramebuffer;
+PFNGLGENFRAMEBUFFERSPROC SDL_glGenFramebuffers;
+PFNGLBLITFRAMEBUFFERPROC SDL_glBlitFramebuffer;
+PFNGLDELETEFRAMEBUFFERSPROC SDL_glDeleteFramebuffers;
+PFNGLCHECKFRAMEBUFFERSTATUSPROC SDL_glCheckFramebufferStatus;
 #endif
 
 /*-------------------------------------------------------------------------------
@@ -110,7 +123,7 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode)
 	glLoadIdentity();
 	glViewport(camera->winx, yres - camera->winh - camera->winy, camera->winw, camera->winh);
 	gluPerspective(fov, (real_t)camera->winw / (real_t)camera->winh, CLIPNEAR, CLIPFAR * 2);
-	glEnable( GL_DEPTH_TEST );
+	glEnable(GL_DEPTH_TEST);
 	if ( !entity->flags[OVERDRAW] )
 	{
 		rotx = camera->vang * 180 / PI; // get x rotation
@@ -142,6 +155,7 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode)
 	if ( mode == REALCOLORS )
 	{
 		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 	else
 	{
@@ -381,29 +395,74 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode)
 		else
 		{
 			SDL_glBindVertexArray(polymodels[modelindex].va);
-			SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].vbo);
+
+			/*if ( entity->behavior == &actPlayer || entity->behavior == &actPlayerLimb )
+			{
+				GLfloat m[16];
+				glGetFloatv(GL_MODELVIEW_MATRIX, m);
+				std::unique_ptr<GLfloat[]> colors(new GLfloat[12 * polymodels[modelindex].numfaces]);
+				for ( int i = 0; i < polymodels[modelindex].numfaces; i++ )
+				{
+					const polytriangle_t *face = &polymodels[modelindex].faces[i];
+					for ( int vert_index = 0; vert_index < 3; vert_index++ )
+					{
+						glVertex3f(face->vertex[0].x, -face->vertex[0].z, face->vertex[0].y);
+						glVertex3f(face->vertex[1].x, -face->vertex[1].z, face->vertex[1].y);
+						glVertex3f(face->vertex[2].x, -face->vertex[2].z, face->vertex[2].y);
+					}
+				}
+			}
+			else
+			{
+			}*/
+				SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].vbo);
+
 			glVertexPointer( 3, GL_FLOAT, 0, (char*) NULL );  // Set The Vertex Pointer To The Vertex Buffer
 			glEnableClientState(GL_VERTEX_ARRAY); // enable the vertex array on the client side
+
 			if ( mode == REALCOLORS )
 			{
-				glEnableClientState(GL_COLOR_ARRAY); // enable the color array on the client side
-				if ( entity->flags[USERFLAG2] )
+				//if ( *entity->behavior == &actPlayer || entity->behavior == &actPlayerLimb )
+				//{
+				//	glEnableClientState(GL_COLOR_ARRAY); // enable the color array on the client side
+				//	std::unique_ptr<GLfloat[]> colors(new GLfloat[12 * polymodels[modelindex].numfaces]);
+				//	for ( int i = 0; i < polymodels[modelindex].numfaces; i++ )
+				//	{
+				//		const polytriangle_t *face = &polymodels[modelindex].faces[i];
+				//		for ( int vert_index = 0; vert_index < 3; vert_index++ )
+				//		{
+				//			int data_index = i * 12 + vert_index * 4;
+				//			colors[data_index] = face->r / 255.f;
+				//			colors[data_index + 1] = face->g / 255.f;
+				//			colors[data_index + 2] = face->b / 255.f;
+				//			colors[data_index + 3] = debugDouble1;
+				//		}
+				//	}
+				//	SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
+				//	SDL_glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 12 * polymodels[modelindex].numfaces, colors.get(), GL_STATIC_DRAW);
+				//	glColorPointer(4, GL_FLOAT, 0, 0);
+				//}
+				//else
 				{
-					if ( entity->behavior == &actMonster && (entity->isPlayerHeadSprite() 
-						|| entity->sprite == 467 || !monsterChangesColorWhenAlly(nullptr, entity)) )
+					glEnableClientState(GL_COLOR_ARRAY); // enable the color array on the client side
+					if ( entity->flags[USERFLAG2] )
 					{
-						SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
+						if ( entity->behavior == &actMonster && (entity->isPlayerHeadSprite() 
+							|| entity->sprite == 467 || !monsterChangesColorWhenAlly(nullptr, entity)) )
+						{
+							SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
+						}
+						else
+						{
+							SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors_shifted);
+						}
 					}
 					else
 					{
-						SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors_shifted);
+						SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
 					}
+					glColorPointer(3, GL_FLOAT, 0, 0);
 				}
-				else
-				{
-					SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
-				}
-				glColorPointer(3, GL_FLOAT, 0, 0);
 				GLfloat params_col[4] = {static_cast<GLfloat>(s), static_cast<GLfloat>(s), static_cast<GLfloat>(s), 1.f};
 				glEnable(GL_LIGHTING);
 				glEnable(GL_COLOR_MATERIAL);

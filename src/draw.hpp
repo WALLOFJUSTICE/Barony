@@ -106,3 +106,110 @@ public:
 private:
 	GLuint texid = 0;
 };
+
+class CustomFrameBuffers
+{
+public:
+	static const int kNumFBOs = 30;
+	static const int DEFAULT_FBO = 0;
+	static std::string getFrameBufferStatusString(GLenum status)
+	{
+		switch ( status )
+		{
+			case GL_FRAMEBUFFER_COMPLETE:
+				return std::string("no error");
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+				return std::string("[ERROR] Framebuffer incomplete: Attachment is NOT complete.");
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+				return std::string("[ERROR] Framebuffer incomplete: No image is attached to FBO.");
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+				return std::string("[ERROR] Framebuffer incomplete: Draw buffer.");
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+				return std::string("[ERROR] Framebuffer incomplete: Read buffer.");
+			case GL_FRAMEBUFFER_UNSUPPORTED:
+				return std::string("[ERROR] Framebuffer incomplete: Unsupported by FBO implementation.");
+			default:
+				return std::string("[ERROR] Framebuffer incomplete: Unknown error.");
+		}
+	}
+	class FrameBuffer
+	{
+	public:
+		bool isInit = false;
+		GLuint fbo = 0;
+		GLuint colorTexture = 0;
+		GLuint depthTexture = 0;
+		void init()
+		{
+			if ( isInit )
+			{
+				return;
+			}
+			isInit = true;
+			// frame buffer
+			SDL_glGenFramebuffers(1, &fbo);
+			SDL_glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+			// fbo color texture
+			glGenTextures(1, &colorTexture);
+			glBindTexture(GL_TEXTURE_2D, colorTexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, xres, yres, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			// attach the texture to the fbo
+			SDL_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture, 0);
+
+			// fbo depth texture
+			glGenTextures(1, &depthTexture);
+			glBindTexture(GL_TEXTURE_2D, depthTexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, xres, yres, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			// attach the texture to the fbo
+			SDL_glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture, 0);
+
+			GLenum status = SDL_glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			std::string str = getFrameBufferStatusString(status);
+			printlog("[OPENGL]: FrameBuffer init: %s", str.c_str());
+		}
+	};
+	void unbindFBOs()
+	{
+		SDL_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+	void unbindTextures()
+	{
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	FrameBuffer fbos[kNumFBOs];
+	void initFBOs()
+	{
+		for ( int i = 0; i < kNumFBOs; ++i )
+		{
+			fbos[i].init();
+		}
+
+		unbindFBOs();
+		unbindTextures();
+	}
+
+	void deleteFBOs();
+
+	void bindAndClearBufferFBO(int fboId)
+	{
+		if ( fboId < 0 || fboId >= kNumFBOs )
+		{
+			return;
+		}
+
+		// bind to render fbo
+		SDL_glBindFramebuffer(GL_FRAMEBUFFER, fbos[fboId].fbo);
+
+		// clear buffer
+		glClearColor(0.f, 0.f, 0.f, 0.f); // set's the background color of the plane (i.e black + invis)
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
+	void blitDepthBuffer(GLuint srcFBO, GLuint destFBO);
+	void drawTextureQuad(view_t& camera, GLuint destFBO, GLuint tex);
+};
+extern CustomFrameBuffers FrameBuffers;
