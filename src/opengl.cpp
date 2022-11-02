@@ -23,21 +23,21 @@
 #include "ui/MainMenu.hpp"
 
 #ifdef WINDOWS
-PFNGLGENBUFFERSPROC SDL_glGenBuffers;
-PFNGLBINDBUFFERPROC SDL_glBindBuffer;
-PFNGLBUFFERDATAPROC SDL_glBufferData;
-PFNGLDELETEBUFFERSPROC SDL_glDeleteBuffers;
-PFNGLGENVERTEXARRAYSPROC SDL_glGenVertexArrays;
-PFNGLBINDVERTEXARRAYPROC SDL_glBindVertexArray;
-PFNGLDELETEVERTEXARRAYSPROC SDL_glDeleteVertexArrays;
-PFNGLENABLEVERTEXATTRIBARRAYPROC SDL_glEnableVertexAttribArray;
-PFNGLVERTEXATTRIBPOINTERPROC SDL_glVertexAttribPointer;
-PFNGLGENFRAMEBUFFERSPROC SDL_glGenFramebuffers;
-PFNGLDELETEFRAMEBUFFERSPROC SDL_glDeleteFramebuffers;
-PFNGLBINDFRAMEBUFFERPROC SDL_glBindFramebuffer;
-PFNGLFRAMEBUFFERTEXTURE2DPROC SDL_glFramebufferTexture2D;
-PFNGLDRAWBUFFERSPROC SDL_glDrawBuffers;
-PFNGLBLENDFUNCSEPARATEPROC SDL_glBlendFuncSeparate;
+//PFNGLGENBUFFERSPROC glGenBuffers;
+//PFNGLBINDBUFFERPROC glBindBuffer;
+//PFNGLBUFFERDATAPROC glBufferData;
+//PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+//PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
+//PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
+//PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
+//PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+//PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
+//PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;
+//PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers;
+//PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
+//PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
+//PFNGLDRAWBUFFERSPROC glDrawBuffers;
+//PFNGLBLENDFUNCSEPARATEPROC glBlendFuncSeparate;
 #endif
 
 void perspectiveGL(GLdouble fovY, GLdouble aspect, GLdouble zNear, GLdouble zFar)
@@ -815,8 +815,8 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode)
 		}
 		else
 		{
-			SDL_glBindVertexArray(polymodels[modelindex].va);
-			SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].vbo);
+			glBindVertexArray(polymodels[modelindex].va);
+			glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].vbo);
 			glVertexPointer( 3, GL_FLOAT, 0, (char*) NULL );  // Set The Vertex Pointer To The Vertex Buffer
 			glEnableClientState(GL_VERTEX_ARRAY); // enable the vertex array on the client side
 			if ( mode == REALCOLORS )
@@ -829,22 +829,22 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode)
 					{
 						if ( doGrayScale )
 						{
-							SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].grayscale_colors);
+							glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].grayscale_colors);
 						}
 						else
 						{
-							SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
+							glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
 						}
 					}
 					else
 					{
 						if ( doGrayScale )
 						{
-							SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].grayscale_colors_shifted);
+							glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].grayscale_colors_shifted);
 						}
 						else
 						{
-							SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors_shifted);
+							glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors_shifted);
 						}
 					}
 				}
@@ -852,11 +852,11 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode)
 				{
 					if ( doGrayScale )
 					{
-						SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].grayscale_colors);
+						glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].grayscale_colors);
 					}
 					else
 					{
-						SDL_glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
+						glBindBuffer(GL_ARRAY_BUFFER, polymodels[modelindex].colors);
 					}
 				}
 				glColorPointer(3, GL_FLOAT, 0, 0);

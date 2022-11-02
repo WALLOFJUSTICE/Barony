@@ -135,7 +135,11 @@ extern bool autoLimbReload;
 #else // APPLE
  #ifndef NINTENDO
   #define GL_GLEXT_PROTOTYPES
-  #include <GL/gl.h>
+#ifdef WINDOWS
+  #include <GL/glew.h>
+#else
+	#include <GL/gl.h>
+#endif
   #include <GL/glu.h>
  #endif
  #include <GL/glext.h>
@@ -201,37 +205,37 @@ class Item;
 //enum Status;
 
 #ifdef WINDOWS
-extern PFNGLGENBUFFERSPROC SDL_glGenBuffers;
-extern PFNGLBINDBUFFERPROC SDL_glBindBuffer;
-extern PFNGLBUFFERDATAPROC SDL_glBufferData;
-extern PFNGLDELETEBUFFERSPROC SDL_glDeleteBuffers;
-extern PFNGLGENVERTEXARRAYSPROC SDL_glGenVertexArrays;
-extern PFNGLBINDVERTEXARRAYPROC SDL_glBindVertexArray;
-extern PFNGLDELETEVERTEXARRAYSPROC SDL_glDeleteVertexArrays;
-extern PFNGLENABLEVERTEXATTRIBARRAYPROC SDL_glEnableVertexAttribArray;
-extern PFNGLVERTEXATTRIBPOINTERPROC SDL_glVertexAttribPointer;
-extern PFNGLGENFRAMEBUFFERSPROC SDL_glGenFramebuffers;
-extern PFNGLDELETEFRAMEBUFFERSPROC SDL_glDeleteFramebuffers;
-extern PFNGLBINDFRAMEBUFFERPROC SDL_glBindFramebuffer;
-extern PFNGLFRAMEBUFFERTEXTURE2DPROC SDL_glFramebufferTexture2D;
-extern PFNGLDRAWBUFFERSPROC SDL_glDrawBuffers;
-extern PFNGLBLENDFUNCSEPARATEPROC SDL_glBlendFuncSeparate;
+//extern PFNGLGENBUFFERSPROC glGenBuffers;
+//extern PFNGLBINDBUFFERPROC glBindBuffer;
+//extern PFNGLBUFFERDATAPROC glBufferData;
+//extern PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+//extern PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
+//extern PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
+//extern PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
+//extern PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+//extern PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
+//extern PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;
+//extern PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers;
+//extern PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
+//extern PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
+//extern PFNGLDRAWBUFFERSPROC glDrawBuffers;
+//extern PFNGLBLENDFUNCSEPARATEPROC glBlendFuncSeparate;
 #else
-#define SDL_glGenBuffers glGenBuffers
-#define SDL_glBindBuffer glBindBuffer
-#define SDL_glBufferData glBufferData
-#define SDL_glDeleteBuffers glDeleteBuffers
-#define SDL_glGenVertexArrays glGenVertexArrays
-#define SDL_glBindVertexArray glBindVertexArray
-#define SDL_glDeleteVertexArrays glDeleteVertexArrays
-#define SDL_glEnableVertexAttribArray glEnableVertexAttribArray
-#define SDL_glVertexAttribPointer glVertexAttribPointer
-#define SDL_glGenFramebuffers glGenFramebuffers
-#define SDL_glDeleteFramebuffers glDeleteFramebuffers
-#define SDL_glBindFramebuffer glBindFramebuffer
-#define SDL_glFramebufferTexture2D glFramebufferTexture2D
-#define SDL_glDrawBuffers glDrawBuffers
-#define SDL_glBlendFuncSeparate glBlendFuncSeparate
+#define glGenBuffers glGenBuffers
+#define glBindBuffer glBindBuffer
+#define glBufferData glBufferData
+#define glDeleteBuffers glDeleteBuffers
+#define glGenVertexArrays glGenVertexArrays
+#define glBindVertexArray glBindVertexArray
+#define glDeleteVertexArrays glDeleteVertexArrays
+#define glEnableVertexAttribArray glEnableVertexAttribArray
+#define glVertexAttribPointer glVertexAttribPointer
+#define glGenFramebuffers glGenFramebuffers
+#define glDeleteFramebuffers glDeleteFramebuffers
+#define glBindFramebuffer glBindFramebuffer
+#define glFramebufferTexture2D glFramebufferTexture2D
+#define glDrawBuffers glDrawBuffers
+#define glBlendFuncSeparate glBlendFuncSeparate
 #endif
 
 #define AVERAGEFRAMES 32
