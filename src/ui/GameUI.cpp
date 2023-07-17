@@ -3557,7 +3557,7 @@ void createHotbar(const int player)
 		createPlayerInventorySlotFrameElements(itemSlot);
 		itemSlot->setSize(slot->getSize());
 
-		char numStr[4];
+		char numStr[32];
 		if ( i + 1 == 10 )
 		{
 			snprintf(numStr, sizeof(numStr), "%d", 0);
@@ -3566,7 +3566,7 @@ void createHotbar(const int player)
 		{
 			snprintf(numStr, sizeof(numStr), "%d", i + 1);
 		}
-		auto text = slot->addField("slot num text", 4);
+		auto text = slot->addField("slot num text", 32);
 		text->setText(numStr);
 		text->setSize(SDL_Rect{ 0, -4, slotPos.w, slotPos.h });
 		text->setFont(font);
@@ -3643,7 +3643,7 @@ void createHotbar(const int player)
 		0xFFFFFFFF, "", "hotbar cancel glyph");
 	cancelPromptGlyph->disabled = true;
 
-	auto text = highlightFrame->addField("slot num text", 4);
+	auto text = highlightFrame->addField("slot num text", 32);
 	text->setText("");
 	text->setSize(SDL_Rect{ 0, -4, slotPos.w, slotPos.h });
 	text->setFont(font);
@@ -3716,6 +3716,7 @@ void createUINavigation(const int player)
 		statusButton->setColor(makeColor(255, 255, 255, 255));
 		statusButton->setHighlightColor(makeColor(255, 255, 255, 255));
 		statusButton->setCallback([](Button& button) {
+			Player::soundActivate();
 			if ( players[button.getOwner()]->hud.compactLayoutMode != Player::HUD_t::COMPACT_LAYOUT_CHARSHEET )
 			{
 				players[button.getOwner()]->inventoryUI.slideOutPercent = 1.0;
@@ -3750,6 +3751,10 @@ void createUINavigation(const int player)
 		itemsButton->setColor(makeColor(255, 255, 255, 255));
 		itemsButton->setHighlightColor(makeColor(255, 255, 255, 255));
 		itemsButton->setCallback([](Button& button) {
+			if ( players[button.getOwner()]->hud.compactLayoutMode != Player::HUD_t::COMPACT_LAYOUT_INVENTORY )
+			{
+				Player::soundActivate();
+			}
 			players[button.getOwner()]->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
 			if ( inputs.getVirtualMouse(button.getOwner())->draw_cursor )
 			{
@@ -3964,7 +3969,14 @@ void Player::HUD_t::updateUINavigation()
 		else if ( player.GUI.activeModule == Player::GUI_t::MODULE_CHARACTERSHEET )
 		{
 			auto selectedElement = player.characterSheet.selectedElement;
-			if ( selectedElement >= Player::CharacterSheet_t::SHEET_STR && selectedElement <= Player::CharacterSheet_t::SHEET_WGT )
+			if ( selectedElement >= Player::CharacterSheet_t::SHEET_STR 
+				&& selectedElement <= Player::CharacterSheet_t::SHEET_WGT )
+			{
+				additionalTxt->setDisabled(false);
+				additionalTxt->setText(language[4111]);
+			}
+			else if ( selectedElement == Player::CharacterSheet_t::SHEET_CHAR_RACE_SEX
+				|| selectedElement == Player::CharacterSheet_t::SHEET_CHAR_CLASS )
 			{
 				additionalTxt->setDisabled(false);
 				additionalTxt->setText(language[4111]);
@@ -4410,7 +4422,7 @@ void Player::HUD_t::updateUINavigation()
 				}
 			}
 			if ( GenericGUI[player.playernum].isGUIOpen() || player.GUI.isDropdownActive()
-				|| player.minimap.mapWindow || player.messageZone.logWindow )
+				|| player.minimap.mapWindow || player.messageZone.logWindow || player.hud.statusFxFocusedWindowActive )
 			{
 				button->setDisabled(true);
 				continue;
@@ -4424,7 +4436,8 @@ void Player::HUD_t::updateUINavigation()
 				&& (!player.bUseCompactGUIHeight() && !player.bUseCompactGUIWidth())
 				&& !GenericGUI[player.playernum].isGUIOpen()
 				&& !player.minimap.mapWindow
-				&& !player.messageZone.logWindow )
+				&& !player.messageZone.logWindow
+				&& !player.hud.statusFxFocusedWindowActive )
 			{
 				if ( player.inventory_mode == INVENTORY_MODE_ITEM )
 				{
@@ -5353,226 +5366,627 @@ void Player::HUD_t::updateStatusEffectTooltip()
 	StatusEffectQueue[player.playernum].createStatusEffectTooltip();
 }
 
+void Player::HUD_t::closeStatusFxWindow()
+{
+	bool wasActive = statusFxFocusedWindowActive;
+	statusFxFocusedWindowActive = false;
+
+	StatusEffectQueue[player.playernum].focusedWindowAnim = 0.0;
+	if ( statusEffectFocusedWindow )
+	{
+		statusEffectFocusedWindow->setDisabled(true);
+	}
+	if ( StatusEffectQueue[player.playernum].statusEffectFrame )
+	{
+		StatusEffectQueue[player.playernum].statusEffectFrame->setDisabled(false);
+	}
+
+	if ( wasActive )
+	{
+		player.GUI.returnToPreviousActiveModule();
+	}
+}
+
 void Player::HUD_t::updateStatusEffectFocusedWindow()
 {
-	return;
-	Frame* fxFrame = nullptr;
 	if ( !statusEffectFocusedWindow )
 	{
 		char name[32];
 		snprintf(name, sizeof(name), "player statusfx window %d", player.playernum);
 		statusEffectFocusedWindow = gameUIFrame[player.playernum]->addFrame(name);
-		Frame* frame = statusEffectFocusedWindow;
-		frame->setHollow(false);
-		frame->setDisabled(true);
-		frame->setInheritParentFrameOpacity(true);
-		frame->setBorder(0);
-		frame->setOwner(player.playernum);
-		frame->setSize(SDL_Rect{ 0, 0, 0, 0 });
+		statusEffectFocusedWindow->setHollow(false);
+		statusEffectFocusedWindow->setBorder(0);
+		statusEffectFocusedWindow->setOwner(player.playernum);
+		statusEffectFocusedWindow->setSize(SDL_Rect{ 0, 0, 0, 0 });
+		statusEffectFocusedWindow->setDisabled(true);
 
+		/*auto img = statusEffectFocusedWindow->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, 
+			"*#images/ui/HUD/statusfx/background_panel.png", "background");
+		img->disabled = false;*/
+
+		auto backgroundFrame = statusEffectFocusedWindow->addFrame("background frame");
 		{
-			Uint32 color = makeColor(255, 255, 255, 255);
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_Blue_00.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_Blue_00.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_Blue_00.png", skillsheetEffectBackgroundImages[TOP].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_L_00.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_R_00.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				makeColor(22, 24, 29, 255), "images/system/white.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BL_00.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BR_00.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
-			frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_B_00.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
-			imageSetWidthHeight9x9(frame, skillsheetEffectBackgroundImages);
-
-			auto heading_txt = frame->addField("heading txt", 128);
+			auto heading_txt = backgroundFrame->addField("heading txt", 128);
 			heading_txt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
-			heading_txt->setText("Status Effects");
+			heading_txt->setText(language[4345]);
 			heading_txt->setColor(makeColor(255, 255, 255, 255));
 			heading_txt->setVJustify(Field::justify_t::CENTER);
-			heading_txt->setHJustify(Field::justify_t::LEFT);
-			/*
-			auto desc_txt = tooltipFrame->addField("desc txt", 1024);
-			desc_txt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
-			desc_txt->setText("");
-			desc_txt->setColor(makeColor(0, 192, 255, 255));
-			desc_txt->setVJustify(Field::justify_t::LEFT);
-			desc_txt->setHJustify(Field::justify_t::LEFT);*/
+			heading_txt->setHJustify(Field::justify_t::CENTER);
+			heading_txt->setSize(SDL_Rect{ 16, 2, 256, 30 });
+			heading_txt->setColor(hudColors.characterSheetNeutral);
+
+			backgroundFrame->addImage(SDL_Rect{ 24, 0, 0, 30 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_T03.png", skillsheetEffectBackgroundImages[TOP].c_str());
+			backgroundFrame->addImage(SDL_Rect{ 0, 0, 24, 30 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_TL03.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+			backgroundFrame->addImage(SDL_Rect{ 0, 0, 24, 30 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_TR03.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+			backgroundFrame->addImage(SDL_Rect{ 24, 30, 0, 12 },
+				makeColor(22, 24, 29, 255), 
+							"*#images/ui/Inventory/tooltips/HoverFxMenu_C03.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
+			auto ml = backgroundFrame->addImage(SDL_Rect{ 0, 30, 24, 12 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_L03.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
+			ml->tiled = true;
+			auto mr = backgroundFrame->addImage(SDL_Rect{ 0, 30, 24, 12 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_R03.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
+			mr->tiled = true;
+
+			backgroundFrame->addImage(SDL_Rect{ 24, 96, 0, 14 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_B03.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
+			backgroundFrame->addImage(SDL_Rect{ 0, 96, 24, 14 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_BL03.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
+			backgroundFrame->addImage(SDL_Rect{ 0, 96, 24, 14 },
+				0xFFFFFFFF, "*#images/ui/Inventory/tooltips/HoverFxMenu_BR03.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
+
+			auto dismiss = backgroundFrame->addButton("dismiss button");
+			dismiss->setSize(SDL_Rect{ 0, 0, 90, 34 });
+			dismiss->setColor(makeColor(255, 255, 255, 255));
+			dismiss->setHighlightColor(makeColor(255, 255, 255, 255));
+			dismiss->setBackground("*#images/ui/Inventory/chests/Button_TakeAll_00.png");
+			dismiss->setBackgroundHighlighted("*#images/ui/Inventory/chests/Button_TakeAllHigh_00.png");
+			dismiss->setBackgroundActivated("*#images/ui/Inventory/chests/Button_TakeAllPress_00.png");
+			dismiss->setText("Dismiss");
+			dismiss->setFont(smallfont_outline);
+			dismiss->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			dismiss->setDisabled(true);
+			dismiss->setHideGlyphs(true);
+			dismiss->setHideKeyboardGlyphs(true);
+			dismiss->setMenuConfirmControlType(0);
+			dismiss->setHideSelectors(true);
+			dismiss->setOntop(true);
+			dismiss->setCallback([](Button& button) {
+				players[button.getOwner()]->hud.closeStatusFxWindow();
+				Player::soundCancel();
+			});
+
+			auto noEffectTxt = backgroundFrame->addField("no effect txt", 128);
+			noEffectTxt->setFont(smallfont_outline);
+			noEffectTxt->setText(language[4346]);
+			noEffectTxt->setDisabled(true);
+			noEffectTxt->setColor(makeColor(255, 255, 255, 255));
+			noEffectTxt->setVJustify(Field::justify_t::CENTER);
+			noEffectTxt->setHJustify(Field::justify_t::CENTER);
 		}
 
-		auto automatonBgFrame = frame->addFrame("automaton bg");
-		automatonBgFrame->setSize(SDL_Rect{ 0, 0, 64, 64 });
-		automatonBgFrame->setDisabled(true);
-		automatonBgFrame->addImage(SDL_Rect{ 0, 0, 64, 64 }, 0xFFFFFFFF, "", "flame");
+		auto automatonHungerFrame = statusEffectFocusedWindow->addFrame("automaton hunger notification");
+		automatonHungerFrame->setHollow(true);
+		automatonHungerFrame->setDisabled(true);
+		automatonHungerFrame->setSize(SDL_Rect{ 0, 0, 64, 64 });
+		auto automaton_flame_img = automatonHungerFrame->addImage(SDL_Rect{ 0, 0, 64, 64 }, 0xFFFFFFFF, "images/system/Hunger_boiler_fire.png", "flame");
 
-		fxFrame = frame->addFrame("effects");
+		auto notif_frame = statusEffectFocusedWindow->addFrame("notification frame");
+		notif_frame->setHollow(true);
+		notif_frame->setDisabled(true);
+		notif_frame->setSize(SDL_Rect{ 0, 0, 0, 0 });
+		auto notif = notif_frame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "notification img");
+		notif->disabled = true;
+		auto notif_txt = notif_frame->addField("notification txt", 128);
+		//notif_txt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+		notif_txt->setFont("fonts/pixelmix.ttf#16#2");
+		notif_txt->setText("");
+		notif_txt->setDisabled(true);
+		notif_txt->setColor(makeColor(255, 255, 255, 255));
+		notif_txt->setVJustify(Field::justify_t::CENTER);
+		notif_txt->setHJustify(Field::justify_t::CENTER);
+
+		auto innerFrame = statusEffectFocusedWindow->addFrame("effects");
+		innerFrame->setHollow(true);
 	}
-	else
+
+	auto& animBackground = StatusEffectQueue[player.playernum].focusedWindowAnim;
+	if ( player.shootmode
+		|| player.inventory_mode != INVENTORY_MODE_ITEM
+		|| (player.inventoryUI.bCompactView && compactLayoutMode != COMPACT_LAYOUT_INVENTORY) )
 	{
-		fxFrame = statusEffectFocusedWindow->findFrame("effects");
+		closeStatusFxWindow();
+		return;
 	}
-
-	bool rebuildWindow = false;
-	if ( keystatus[SDLK_g] )
+	/*if ( enableDebugKeys && keystatus[SDLK_g] )
 	{
-		keystatus[SDLK_g] = 0;
-		if ( statusEffectFocusedWindow->isDisabled() )
-		{
-			statusEffectFocusedWindow->setDisabled(false);
-			rebuildWindow = true;
-		}
-		else
-		{
-			statusEffectFocusedWindow->setDisabled(true);
-		}
-	}
-
-	if ( rebuildWindow && StatusEffectQueue[player.playernum].statusEffectFrame )
+		statusFxFocusedWindowActive = true;
+	}*/
+	statusEffectFocusedWindow->setDisabled(true);
+	if ( StatusEffectQueue[player.playernum].statusEffectFrame && statusFxFocusedWindowActive )
 	{
 		statusEffectFocusedWindow->setDisabled(false);
-		auto& effectQueue = StatusEffectQueue[player.playernum].effectQueue;
-		auto statusFx = StatusEffectQueue[player.playernum].statusEffectFrame->findFrame("effects");
+		StatusEffectQueue[player.playernum].statusEffectFrame->setDisabled(true);
 
-		statusEffectFocusedWindow->setSize(statusFx->getSize());
-		fxFrame->setSize(statusFx->getSize());
+		Frame* srcFrame = StatusEffectQueue[player.playernum].statusEffectFrame;
+		Frame* destFrame = statusEffectFocusedWindow;
+		destFrame->setSize(SDL_Rect{ player.camera_virtualx1(),
+				player.camera_virtualy1(),
+				player.camera_virtualWidth(),
+				player.camera_virtualHeight() });
 
-		int numFrameImages = fxFrame->getImages().size();
-		while ( effectQueue.size() > numFrameImages )
+		const int offsetH = 6;
+
+		SDL_Rect destPos = destFrame->getSize();
+		destPos.h += offsetH;
+		destFrame->setSize(destPos);
+
+
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+		real_t setpointDiffX = fpsScale * std::max(.1, (1.0 - animBackground)) / (2.5);
+
+		animBackground += setpointDiffX;
+		animBackground = std::min(1.0, animBackground);
+
+		size_t f = 0;
+		for ( auto srcf : srcFrame->getFrames() )
 		{
-			auto img = fxFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "inner img");
-			img->disabled = true;
-			numFrameImages = fxFrame->getImages().size();
-		}
-		while ( effectQueue.size() < numFrameImages )
-		{
-			fxFrame->getImages().erase(fxFrame->getImages().begin());
-			numFrameImages = fxFrame->getImages().size();
-		}
-		auto& frameImages = fxFrame->getImages();
-		for ( auto img : frameImages )
-		{
-			img->disabled = true;
-		}
-
-		auto automatonHungerFrame = statusEffectFocusedWindow->findFrame("automaton bg");
-		automatonHungerFrame->setDisabled(true);
-		auto frameImagesIterator = frameImages.begin();
-		size_t index = 0;
-		SDL_Rect windowSizeLimitMin{ 0, 0, 0, 0 };
-		SDL_Rect windowSizeLimitMax{ 0, 0, 0, 0 };
-		for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); )
-		{
-			auto& q = (*it);
-			Frame::image_t* frameImg = nullptr;
-			if ( frameImagesIterator != frameImages.end() )
+			Frame* destf = destFrame->getFrames()[f];
+			if ( !strcmp(destf->getName(), "background frame") )
 			{
-				frameImg = *frameImagesIterator;
+				++f;
+				destf = destFrame->getFrames()[f];
 			}
 
-			StatusEffectQueue[player.playernum].updateEntryImage(q, frameImg);
-			frameImg->pos.x = q.animateSetpointX;
-			frameImg->pos.y = q.animateSetpointY;
-			frameImg->disabled = false;
+			SDL_Rect srcSize = srcf->getSize();
+			srcSize.x += srcFrame->getSize().x;
+			srcSize.y += srcFrame->getSize().y;
+			destf->setSize(srcSize);
+			destf->setDisabled(srcf->isDisabled());
 
-			if ( windowSizeLimitMin.x == 0 && index == 0 )
+			if ( !strcmp(srcf->getName(), "effects") )
 			{
-				windowSizeLimitMin.x = frameImg->pos.x;
-			}
-			else
-			{
-				windowSizeLimitMin.x = std::min(frameImg->pos.x, windowSizeLimitMin.x);
-			}
-			if ( windowSizeLimitMin.y == 0 && index == 0 )
-			{
-				windowSizeLimitMin.y = frameImg->pos.y;
-			}
-			else
-			{
-				windowSizeLimitMin.y = std::min(frameImg->pos.y, windowSizeLimitMin.y);
-			}
-			windowSizeLimitMax.x = std::max(frameImg->pos.x + frameImg->pos.w, windowSizeLimitMax.x);
-			windowSizeLimitMax.y = std::max(frameImg->pos.y + frameImg->pos.h, windowSizeLimitMax.y);
-
-			{
-				SDL_Rect size = statusEffectFocusedWindow->getAbsoluteSize();
-				int mouseDetectionPadding = 2;
-				size.x += frameImg->pos.x - (mouseDetectionPadding);
-				size.y += frameImg->pos.y - (mouseDetectionPadding);
-				size.w = frameImg->pos.w + (mouseDetectionPadding * 2);
-				size.h = frameImg->pos.h + (mouseDetectionPadding * 2);
-
-				bool tooltipShowing = false;
-				if ( rectContainsPoint(size, mousex, mousey) )
+				int numFrameImages = srcf->getImages().size();
+				while ( destf->getImages().size() < numFrameImages )
 				{
-					if ( players[player.playernum]->GUI.activeModule == Player::GUI_t::MODULE_STATUS_EFFECTS )
-					{
-					}
-					tooltipShowing = StatusEffectQueue[player.playernum].doStatusEffectTooltip(q, size);
-					players[player.playernum]->GUI.activateModule(Player::GUI_t::MODULE_STATUS_EFFECTS);
-					players[player.playernum]->hud.setCursorDisabled(false);
-					players[player.playernum]->hud.updateCursorAnimation(size.x - 1 + mouseDetectionPadding, size.y - 1 + mouseDetectionPadding,
-						frameImg->pos.w, frameImg->pos.h, inputs.getVirtualMouse(player.playernum)->draw_cursor);
+					auto img = destf->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "inner img");
+					img->disabled = true;
+				}
+				while ( destf->getImages().size() > numFrameImages )
+				{
+					destf->getImages().erase(destf->getImages().begin());
+					numFrameImages = destf->getImages().size();
 				}
 			}
 
-			if ( q.effect == StatusEffectQueue_t::kEffectAutomatonHunger )
+			size_t i = 0;
+			for ( auto srcImg : srcf->getImages() )
 			{
-				auto srcFrame = StatusEffectQueue[player.playernum].statusEffectFrame->findFrame("automaton hunger notification");
-				automatonHungerFrame->setDisabled(srcFrame->isDisabled());
-
-				SDL_Rect pos = srcFrame->getSize();
-				pos.x = q.animateSetpointX;
-				pos.y = q.animateSetpointY;
-
-				int heightDiff = q.getEffectSpriteNormalHeight() - pos.h;
-				pos.y += heightDiff;
-
-				automatonHungerFrame->setSize(pos);
-
-				auto flameImg = automatonHungerFrame->findImage("flame");
-				auto srcImg = srcFrame->findImage("flame");
-				flameImg->pos = SDL_Rect{ 0, -heightDiff, q.getEffectSpriteNormalWidth(), q.getEffectSpriteNormalHeight() };
-				flameImg->path = srcImg->path;
+				auto destImg = destf->getImages()[i];
+				destImg->pos = srcImg->pos;
+				destImg->path = srcImg->path;
+				destImg->disabled = srcImg->disabled;
+				++i;
 			}
 
-			++it;
-			if ( frameImagesIterator != frameImages.end() )
+			size_t t = 0;
+			for ( auto srcTxt : srcf->getFields() )
 			{
-				++frameImagesIterator;
+				auto destTxt = destf->getFields()[t];
+				destTxt->setText(srcTxt->getText());
+				destTxt->setSize(srcTxt->getSize());
+				destTxt->setDisabled(srcTxt->isDisabled());
+				++t;
 			}
-			++index;
+			++f;
 		}
 
-		// rearrange icons to fit size
+		auto& effectQueue = StatusEffectQueue[player.playernum].effectQueue;
+		auto bgFrame = destFrame->findFrame("background frame");
+		SDL_Rect bgPos{ 0, 0, 
+			std::max(126, StatusEffectQueue[player.playernum].effectsBoundingBox.w), 
+			std::max(32, StatusEffectQueue[player.playernum].effectsBoundingBox.y - 
+				StatusEffectQueue[player.playernum].effectsBoundingBox.h)};
+		if ( effectQueue.size() == 0 )
 		{
-			int borderX = 16;
-			int borderY = 32;
-			int bodyW = windowSizeLimitMax.x - windowSizeLimitMin.x;
-			int bodyH = windowSizeLimitMax.y - windowSizeLimitMin.y;
-			fxFrame->setSize(SDL_Rect{ borderX, borderY, bodyW, bodyH });
-			for ( auto img : frameImages )
+			bgPos.w = std::max(bgPos.w, 126 + 18);
+			bgPos.h = std::max(bgPos.h, 32 + 24);
+		}
+		{
+			bgPos.h += 42;
+			bgPos.w += 28;
+			int startx = std::max(4, player.hud.hpFrame->getSize().x - 4);
+			bgPos.x = -(bgPos.w) + (bgPos.w + startx) * animBackground;
+			//bgPos.x = startx;
+			bgFrame->setInheritParentFrameOpacity(false);
+			bgFrame->setOpacity(animBackground * 100.0);
+			bgFrame->setSize(bgPos);
+
+			int maxHeight = bgPos.h;
+			int interimHeight = 0;
 			{
-				img->pos.x -= (windowSizeLimitMin.x);
-				img->pos.y -= (windowSizeLimitMin.y);
+				auto tl = bgFrame->findImage(skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+				auto tmid = bgFrame->findImage(skillsheetEffectBackgroundImages[TOP].c_str());
+				tmid->pos.w = bgPos.w - tl->pos.w * 2;
+				auto tr = bgFrame->findImage(skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+				tr->pos.x = tmid->pos.x + tmid->pos.w;
+
+				interimHeight = tmid->pos.y + tmid->pos.h;
+				bgPos.w = tr->pos.x + tr->pos.w;
 			}
+			{
+				const int middleOffsetY = 12;
+				auto ml = bgFrame->findImage(skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
+				ml->pos.h = maxHeight - interimHeight - middleOffsetY;
+				auto mmid = bgFrame->findImage(skillsheetEffectBackgroundImages[MIDDLE].c_str());
+				mmid->pos.h = ml->pos.h;
+				mmid->pos.w = bgPos.w - (ml->pos.w) * 2;
+				mmid->color = hudColors.itemContextMenuOptionImg;
+				auto mr = bgFrame->findImage(skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
+				mr->pos.h = ml->pos.h;
+				mr->pos.x = mmid->pos.x + mmid->pos.w;
 
-			SDL_Rect windowPos{ 0, 0, borderX * 2 + bodyW, borderY + bodyH + 16 };
-			statusEffectFocusedWindow->setSize(windowPos);
-			imageResizeToContainer9x9(statusEffectFocusedWindow, SDL_Rect{ 0, 0, windowPos.w, windowPos.h },
-				skillsheetEffectBackgroundImages);
+				interimHeight = mmid->pos.y + mmid->pos.h;
+			}
+			{
+				auto bl = bgFrame->findImage(skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
+				bl->pos.y = interimHeight;
+				auto bmid = bgFrame->findImage(skillsheetEffectBackgroundImages[BOTTOM].c_str());
+				bmid->pos.y = interimHeight;
+				bmid->pos.w = bgPos.w - bl->pos.w * 2;
+				auto br = bgFrame->findImage(skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
+				br->pos.y = interimHeight;
+				br->pos.x = bmid->pos.x + bmid->pos.w;
 
-			auto heading_txt = statusEffectFocusedWindow->findField("heading txt");
-			heading_txt->setSize(SDL_Rect{4, 4, windowPos.w - 4 * 2, 24});
+				bgPos.h = br->pos.y + br->pos.h;
+			}
+			bgPos.y = srcFrame->getSize().y + (srcFrame->getSize().h - bgPos.h + offsetH);
+			bgPos.y += 4;
+			bgFrame->setSize(bgPos);
 		}
 
+		auto dismiss = bgFrame->findButton("dismiss button");
+		dismiss->setDisabled(true);
+		auto noEffectTxt = bgFrame->findField("no effect txt");
+		noEffectTxt->setDisabled(true);
+		if ( effectQueue.size() == 0 )
+		{
+			dismiss->setDisabled(false);
+			noEffectTxt->setDisabled(false);
+		}
+		if ( inputs.getVirtualMouse(player.playernum)->draw_cursor )
+		{
+			if ( Input::inputs[player.playernum].binaryToggle("MenuLeftClick") )
+			{
+				Input::inputs[player.playernum].consumeBinaryToggle("MenuLeftClick");
+				if ( !bgFrame->capturesMouse() )
+				{
+					closeStatusFxWindow();
+					Player::soundCancel();
+					return;
+				}
+			}
+		}
+		else
+		{
+			if ( StatusEffectQueue[player.playernum].statusEffectTooltipFrame )
+			{
+				SDL_Rect tooltipPos = StatusEffectQueue[player.playernum].statusEffectTooltipFrame->getSize();
+
+				SDL_Rect tooltipAbsoluteSize = StatusEffectQueue[player.playernum].statusEffectTooltipFrame->getAbsoluteSize();
+				SDL_Rect bgAbsoluteSize = bgFrame->getAbsoluteSize();
+
+				int positionDiffX = tooltipAbsoluteSize.x;
+				positionDiffX -= (bgAbsoluteSize.x + bgAbsoluteSize.w + 4);
+				int positionDiffY = tooltipAbsoluteSize.y;
+				positionDiffY -= (bgAbsoluteSize.y);
+
+				tooltipPos.x = std::max(tooltipPos.x, tooltipPos.x - positionDiffX);
+				tooltipPos.y -= positionDiffY;
+				int overflow = tooltipPos.y + tooltipPos.h - player.camera_virtualy2();
+				if ( overflow > 0 )
+				{
+					tooltipPos.y -= overflow;
+				}
+
+				StatusEffectQueue[player.playernum].statusEffectTooltipFrame->setSize(tooltipPos);
+			}
+		}
+
+		if ( inputs.hasController(player.playernum) )
+		{
+			if ( Input::inputs[player.playernum].binaryToggle("MenuCancel")
+				|| Input::inputs[player.playernum].binaryToggle("MenuConfirm") )
+			{
+				Input::inputs[player.playernum].consumeBinaryToggle("MenuCancel");
+				Input::inputs[player.playernum].consumeBinaryToggle("MenuConfirm");
+				closeStatusFxWindow();
+				Player::soundCancel();
+				return;
+			}
+		}
+
+		if ( player.GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_STATUS_EFFECTS) )
+		{
+			if ( (dismiss->isHighlighted() || !inputs.getVirtualMouse(player.playernum)->draw_cursor )
+				&& !dismiss->isDisabled() && animBackground >= 0.99 )
+			{
+				player.GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_STATUS_EFFECTS);
+				if ( player.GUI.activeModule != Player::GUI_t::MODULE_STATUS_EFFECTS )
+				{
+					player.GUI.activateModule(Player::GUI_t::MODULE_STATUS_EFFECTS);
+				}
+				SDL_Rect pos = dismiss->getAbsoluteSize();
+				// make sure to adjust absolute size to camera viewport
+				pos.x -= player.camera_virtualx1();
+				pos.y -= player.camera_virtualy1();
+				
+				player.hud.setCursorDisabled(false);
+				player.hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player.playernum)->draw_cursor);
+			}
+		}
+
+		{
+			SDL_Rect btnSize = dismiss->getSize();
+			dismiss->setSize(SDL_Rect{ bgPos.w / 2 - btnSize.w / 2,
+				bgPos.h - btnSize.h - 8, btnSize.w, btnSize.h });
+			SDL_Rect txtSize = noEffectTxt->getSize();
+			txtSize.w = bgPos.w;
+			txtSize.h = 24;
+			txtSize.x = 0;
+			txtSize.y = btnSize.y - 24;
+			if ( txtSize.y % 2 == 1 )
+			{
+				txtSize.y--;
+			}
+
+			auto heading_txt = bgFrame->findField("heading txt");
+			SDL_Rect headerTxtSize = heading_txt->getSize();
+			headerTxtSize.w = bgPos.w;
+			headerTxtSize.x = 0;
+			heading_txt->setSize(headerTxtSize);
+
+			noEffectTxt->setSize(txtSize);
+			dismiss->setInvisible(dismiss->isDisabled());
+		}
 	}
+	else
+	{
+		closeStatusFxWindow();
+		return;
+	}
+
+	if ( player.hud.hudFrame && player.hud.hudFrame->isDisabled() )
+	{
+		closeStatusFxWindow();
+		return;
+	}
+	return;
+	//Frame* fxFrame = nullptr;
+	//if ( !statusEffectFocusedWindow )
+	//{
+	//	char name[32];
+	//	snprintf(name, sizeof(name), "player statusfx window %d", player.playernum);
+	//	statusEffectFocusedWindow = gameUIFrame[player.playernum]->addFrame(name);
+	//	Frame* frame = statusEffectFocusedWindow;
+	//	frame->setHollow(false);
+	//	frame->setDisabled(true);
+	//	frame->setInheritParentFrameOpacity(true);
+	//	frame->setBorder(0);
+	//	frame->setOwner(player.playernum);
+	//	frame->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+	//	{
+	//		Uint32 color = makeColor(255, 255, 255, 255);
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_TL03.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_TR03.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_T03.png", skillsheetEffectBackgroundImages[TOP].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_L03.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_R03.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			makeColor(22, 24, 29, 255), "*#images/ui/Inventory/tooltips/HoverItemMenu_C03.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_BL03.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_BR03.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
+	//		frame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+	//			color, "*#images/ui/Inventory/tooltips/HoverItemMenu_B03.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
+	//		imageSetWidthHeight9x9(frame, skillsheetEffectBackgroundImages);
+
+	//		auto heading_txt = frame->addField("heading txt", 128);
+	//		heading_txt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+	//		heading_txt->setText("Status Effects");
+	//		heading_txt->setColor(makeColor(255, 255, 255, 255));
+	//		heading_txt->setVJustify(Field::justify_t::CENTER);
+	//		heading_txt->setHJustify(Field::justify_t::LEFT);
+	//		/*
+	//		auto desc_txt = tooltipFrame->addField("desc txt", 1024);
+	//		desc_txt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+	//		desc_txt->setText("");
+	//		desc_txt->setColor(makeColor(0, 192, 255, 255));
+	//		desc_txt->setVJustify(Field::justify_t::LEFT);
+	//		desc_txt->setHJustify(Field::justify_t::LEFT);*/
+	//	}
+
+	//	auto automatonBgFrame = frame->addFrame("automaton bg");
+	//	automatonBgFrame->setSize(SDL_Rect{ 0, 0, 64, 64 });
+	//	automatonBgFrame->setDisabled(true);
+	//	automatonBgFrame->addImage(SDL_Rect{ 0, 0, 64, 64 }, 0xFFFFFFFF, "", "flame");
+
+	//	fxFrame = frame->addFrame("effects");
+	//}
+	//else
+	//{
+	//	fxFrame = statusEffectFocusedWindow->findFrame("effects");
+	//}
+
+	//bool rebuildWindow = true;
+	//if ( keystatus[SDLK_g] )
+	//{
+	//	keystatus[SDLK_g] = 0;
+	//	if ( statusEffectFocusedWindow->isDisabled() )
+	//	{
+	//		statusEffectFocusedWindow->setDisabled(false);
+	//		rebuildWindow = true;
+	//	}
+	//	else
+	//	{
+	//		statusEffectFocusedWindow->setDisabled(true);
+	//	}
+	//}
+
+	//if ( rebuildWindow && StatusEffectQueue[player.playernum].statusEffectFrame )
+	//{
+	//	statusEffectFocusedWindow->setDisabled(false);
+	//	auto& effectQueue = StatusEffectQueue[player.playernum].effectQueue;
+	//	auto& notificationQueue = StatusEffectQueue[player.playernum].notificationQueue;
+	//	auto statusFx = StatusEffectQueue[player.playernum].statusEffectFrame->findFrame("effects");
+
+	//	statusEffectFocusedWindow->setSize(statusFx->getSize());
+	//	fxFrame->setSize(statusFx->getSize());
+
+	//	int numFrameImages = fxFrame->getImages().size();
+	//	while ( effectQueue.size() > numFrameImages )
+	//	{
+	//		auto img = fxFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "inner img");
+	//		img->disabled = true;
+	//		numFrameImages = fxFrame->getImages().size();
+	//	}
+	//	while ( effectQueue.size() < numFrameImages )
+	//	{
+	//		fxFrame->getImages().erase(fxFrame->getImages().begin());
+	//		numFrameImages = fxFrame->getImages().size();
+	//	}
+	//	auto& frameImages = fxFrame->getImages();
+	//	for ( auto img : frameImages )
+	//	{
+	//		img->disabled = true;
+	//	}
+
+	//	auto automatonHungerFrame = statusEffectFocusedWindow->findFrame("automaton bg");
+	//	auto flameImg = automatonHungerFrame->findImage("flame");
+	//	automatonHungerFrame->setDisabled(true);
+	//	auto frameImagesIterator = frameImages.begin();
+	//	auto srcFrameImagesIterator = statusFx->getImages().begin();
+	//	size_t index = 0;
+	//	SDL_Rect windowSizeLimitMin{ 0, 0, 0, 0 };
+	//	SDL_Rect windowSizeLimitMax{ 0, 0, 0, 0 };
+	//	for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); )
+	//	{
+	//		auto& q = (*it);
+	//		Frame::image_t* frameImg = nullptr;
+	//		Frame::image_t* srcFrameImg = nullptr;
+	//		if ( frameImagesIterator != frameImages.end() )
+	//		{
+	//			frameImg = *frameImagesIterator;
+	//		}
+	//		if ( srcFrameImagesIterator != statusFx->getImages().end() )
+	//		{
+	//			srcFrameImg = *srcFrameImagesIterator;
+	//		}
+
+	//		bool existsInNotifications = false;
+	//		for ( auto it2 = notificationQueue.begin(); it2 != notificationQueue.end(); ++it2 )
+	//		{
+	//			if ( (*it2).effect == q.effect )
+	//			{
+	//				existsInNotifications = true;
+	//				break;
+	//			}
+	//		}
+
+	//		StatusEffectQueue[player.playernum].updateEntryImage(q, frameImg);
+	//		frameImg->pos.x = q.animateSetpointX;
+	//		frameImg->pos.y = q.animateSetpointY;
+	//		frameImg->disabled = (srcFrameImg && !existsInNotifications) ? srcFrameImg->disabled : false;
+
+	//		if ( windowSizeLimitMin.x == 0 && index == 0 )
+	//		{
+	//			windowSizeLimitMin.x = frameImg->pos.x;
+	//		}
+	//		else
+	//		{
+	//			windowSizeLimitMin.x = std::min(frameImg->pos.x, windowSizeLimitMin.x);
+	//		}
+	//		if ( windowSizeLimitMin.y == 0 && index == 0 )
+	//		{
+	//			windowSizeLimitMin.y = frameImg->pos.y;
+	//		}
+	//		else
+	//		{
+	//			windowSizeLimitMin.y = std::min(frameImg->pos.y, windowSizeLimitMin.y);
+	//		}
+	//		windowSizeLimitMax.x = std::max(frameImg->pos.x + frameImg->pos.w, windowSizeLimitMax.x);
+	//		windowSizeLimitMax.y = std::max(frameImg->pos.y + frameImg->pos.h, windowSizeLimitMax.y);
+
+	//		if ( q.effect == StatusEffectQueue_t::kEffectAutomatonHunger )
+	//		{
+	//			auto srcFrame = StatusEffectQueue[player.playernum].statusEffectFrame->findFrame("automaton hunger notification");
+	//			automatonHungerFrame->setDisabled(srcFrame->isDisabled());
+
+	//			SDL_Rect pos = srcFrame->getSize();
+	//			pos.x = q.animateSetpointX;
+	//			pos.y = q.animateSetpointY;
+
+	//			int heightDiff = q.getEffectSpriteNormalHeight() - pos.h;
+	//			pos.y += heightDiff;
+
+	//			automatonHungerFrame->setSize(pos);
+
+	//			auto srcImg = srcFrame->findImage("flame");
+	//			flameImg->pos = SDL_Rect{ 0, -heightDiff, q.getEffectSpriteNormalWidth(), q.getEffectSpriteNormalHeight() };
+	//			flameImg->path = srcImg->path;
+	//			flameImg->disabled = !existsInNotifications ? srcImg->disabled : false;
+	//		}
+
+	//		++it;
+	//		if ( frameImagesIterator != frameImages.end() )
+	//		{
+	//			++frameImagesIterator;
+	//		}
+	//		if ( srcFrameImagesIterator != statusFx->getImages().end() )
+	//		{
+	//			++srcFrameImagesIterator;
+	//		}
+	//		++index;
+	//	}
+
+	//	// rearrange icons to fit size
+	//	{
+	//		int borderX = 16;
+	//		int borderY = 32;
+	//		int bodyW = windowSizeLimitMax.x - windowSizeLimitMin.x;
+	//		int bodyH = windowSizeLimitMax.y - windowSizeLimitMin.y;
+	//		fxFrame->setSize(SDL_Rect{ borderX, borderY, bodyW, bodyH });
+	//		for ( auto img : frameImages )
+	//		{
+	//			img->pos.x -= (windowSizeLimitMin.x);
+	//			img->pos.y -= (windowSizeLimitMin.y);
+	//		}
+	//		SDL_Rect automatonHungerFramePos = automatonHungerFrame->getSize();
+	//		automatonHungerFramePos.x += borderX;
+	//		automatonHungerFramePos.y += borderY;
+	//		automatonHungerFramePos.x -= (windowSizeLimitMin.x);
+	//		automatonHungerFramePos.y -= (windowSizeLimitMin.y);
+	//		automatonHungerFrame->setSize(automatonHungerFramePos);
+
+	//		SDL_Rect windowPos{ 0, 0, borderX * 2 + bodyW, borderY + bodyH + 16 };
+	//		statusEffectFocusedWindow->setSize(windowPos);
+	//		imageResizeToContainer9x9(statusEffectFocusedWindow, SDL_Rect{ 0, 0, windowPos.w, windowPos.h },
+	//			skillsheetEffectBackgroundImages);
+
+	//		auto heading_txt = statusEffectFocusedWindow->findField("heading txt");
+	//		heading_txt->setSize(SDL_Rect{4, 4, windowPos.w - 4 * 2, 24});
+	//	}
+	//}
 }
 
 void StatusEffectQueue_t::animateStatusEffectTooltip(bool showTooltip)
@@ -5587,12 +6001,19 @@ void StatusEffectQueue_t::animateStatusEffectTooltip(bool showTooltip)
 		const real_t fpsScale = getFPSScale(144.0);
 		if ( tooltipOpacitySetpoint == 0 )
 		{
-			if ( ticks - tooltipDeselectedTick > 5 )
+			if ( !inputs.getVirtualMouse(player)->draw_cursor )
 			{
-				real_t factor = 10.0;
-				real_t setpointDiff = fpsScale * std::max(.05, (tooltipOpacityAnimate)) / (factor);
-				tooltipOpacityAnimate -= setpointDiff;
-				tooltipOpacityAnimate = std::max(0.0, tooltipOpacityAnimate);
+				tooltipOpacityAnimate = 0.0;
+			}
+			else
+			{
+				if ( ticks - tooltipDeselectedTick > 5 )
+				{
+					real_t factor = 10.0;
+					real_t setpointDiff = fpsScale * std::max(.05, (tooltipOpacityAnimate)) / (factor);
+					tooltipOpacityAnimate -= setpointDiff;
+					tooltipOpacityAnimate = std::max(0.0, tooltipOpacityAnimate);
+				}
 			}
 		}
 		else
@@ -5921,8 +6342,9 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 	SDL_Rect tooltipPos;
 	tooltipPos.w = tooltipInnerWidth + padx * 2;
 	tooltipPos.h = tooltipHeader->getSize().y + tooltipHeader->getSize().h + pady2 + descPos.h + 8;
-	tooltipPos.x = pos.x + pos.w / 2;
+	tooltipPos.x = pos.x + pos.w;
 	tooltipPos.y = pos.y - tooltipPos.h - 8;
+	tooltipPos.y = std::max(0, tooltipPos.y);
 	tooltipFrame->setSize(tooltipPos);
 	imageResizeToContainer9x9(tooltipFrame, SDL_Rect{0, 0, tooltipPos.w, tooltipPos.h}, skillsheetEffectBackgroundImages);
 	tooltipShowingEffectID = entry.effect;
@@ -5950,7 +6372,242 @@ const int StatusEffectQueue_t::kEffectWaterWalking = -18;
 const int StatusEffectQueue_t::kEffectLifesaving = -19;
 const int StatusEffectQueue_t::kEffectPush = -20;
 const int StatusEffectQueue_t::kEffectSneak = -21;
+const int StatusEffectQueue_t::kEffectDrunkGoatman = -22;
 const int StatusEffectQueue_t::kSpellEffectOffset = 10000;
+
+Frame* StatusEffectQueue_t::getStatusEffectFrame()
+{
+	return statusEffectFrame;
+}
+
+void StatusEffectQueue_t::handleNavigation(std::map<int, StatusEffectQueueEntry_t*>& grid, 
+	bool& tooltipShowing, const bool hungerEffectInEffectQueue)
+{
+	if ( !inputs.hasController(player) 
+		|| inputs.getVirtualMouse(player)->draw_cursor 
+		|| players[player]->shootmode )
+	{
+		return;
+	}
+
+	if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_STATUS_EFFECTS
+		&& players[player]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY )
+	{
+		
+	}
+
+	if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_STATUS_EFFECTS )
+	{
+		return;
+	}
+
+	if ( effectQueue.size() == 0 )
+	{
+		return;
+	}
+
+
+	StatusEffectQueueEntry_t::Dir_t inputDirection = StatusEffectQueueEntry_t::Dir_t::NONE;
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveUp") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::UP;
+	}
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveUpAnalog") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::UP;
+	}
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveDown") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::DOWN;
+	}
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveDownAnalog") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::DOWN;
+	}
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveLeft") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::LEFT;
+	}
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveLeftAnalog") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::LEFT;
+	}
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveRight") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::RIGHT;
+	}
+	if ( Input::inputs[player].consumeBinaryToggle("InventoryMoveRightAnalog") )
+	{
+		inputDirection = StatusEffectQueueEntry_t::Dir_t::RIGHT;
+	}
+
+	selectedElement = std::max(0, selectedElement);
+	selectedElement = std::min(selectedElement, (int)(effectQueue.size() - 1));
+
+	StatusEffectQueueEntry_t* selectedEntry = nullptr;
+
+	int miny = 10;
+	int maxy = 0;
+	std::vector<int>minx;
+	std::vector<int>maxx;
+	for ( int i = 0; i < 32; ++i )
+	{
+		maxx.push_back(0);
+		minx.push_back(32);
+	}
+	for ( auto& slot : grid )
+	{
+		int x = slot.first % 10000;
+		int y = slot.first / 10000;
+
+		miny = std::min(y, miny);
+		maxy = std::max(y, maxy);
+		minx[y] = std::min(x, minx[y]);
+		maxx[y] = std::max(x, maxx[y]);
+	}
+
+	// clear navigation graph
+	for ( auto& q : effectQueue )
+	{
+		q.navigation.clear();
+	}
+
+	for ( auto& slot : grid )
+	{
+		int x = slot.first % 10000;
+		int y = slot.first / 10000;
+
+		if ( slot.second->index == (size_t)selectedElement )
+		{
+			selectedEntry = slot.second;
+		}
+
+		if ( grid.find((x + 1) + y * 10000) != grid.end() )
+		{
+			auto dest = grid[(x + 1) + y * 10000];
+			slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::RIGHT] = dest->index;
+		}
+		else
+		{
+			if ( hungerEffectInEffectQueue )
+			{
+				auto dest = grid[0 + 0 * 10000];
+				slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::RIGHT] = dest->index;
+			}
+			else
+			{
+				auto dest = grid[(minx[y]) + y * 10000];
+				slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::RIGHT] = dest->index;
+			}
+		}
+		if ( grid.find((x - 1) + y * 10000) != grid.end() )
+		{
+			auto dest = grid[(x - 1) + y * 10000];
+			slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::LEFT] = dest->index;
+		}
+		else
+		{
+			if ( hungerEffectInEffectQueue && !(x == 0 && y == 0) )
+			{
+				auto dest = grid[0 + 0 * 10000];
+				slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::LEFT] = dest->index;
+			}
+			else
+			{
+				auto dest = grid[maxx[y] + y * 10000];
+				slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::LEFT] = dest->index;
+			}
+		}
+		if ( grid.find(x + (y + 1) * 10000) != grid.end() )
+		{
+			auto dest = grid[x + (y + 1) * 10000];
+			slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::UP] = dest->index;
+		}
+		else
+		{
+			int destx = std::min(std::max(x, minx[0]), maxx[0]);
+			auto dest = grid[destx + (0) * 10000];
+			slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::UP] = dest->index;
+		}
+		if ( grid.find(x + (y - 1) * 10000) != grid.end() )
+		{
+			auto dest = grid[x + (y - 1) * 10000];
+			slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::DOWN] = dest->index;
+		}
+		else
+		{
+			int desty = maxy;
+			while ( desty > 0 )
+			{
+				if ( grid.find(x + (desty) * 10000) != grid.end() )
+				{
+					auto dest = grid[x + (desty) * 10000];
+					slot.second->navigation[StatusEffectQueueEntry_t::Dir_t::DOWN] = dest->index;
+					break;
+				}
+				--desty;
+			}
+		}
+	}
+
+	if ( selectedEntry && inputDirection != StatusEffectQueueEntry_t::Dir_t::NONE )
+	{
+		auto findIndex = selectedEntry->navigation.find(inputDirection);
+		if ( findIndex != selectedEntry->navigation.end() )
+		{
+			selectedElement = (*findIndex).second;
+			Player::soundMovement();
+		}
+	}
+
+	auto innerFrame = statusEffectFrame->findFrame("effects");
+	auto& frameImages = innerFrame->getImages();
+	auto frameImagesIterator = frameImages.begin();
+	for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); )
+	{
+		auto& q = (*it);
+
+		Frame::image_t* frameImg = nullptr;
+		if ( frameImagesIterator != frameImages.end() )
+		{
+			frameImg = *frameImagesIterator;
+		}
+
+		if ( q.index == selectedElement )
+		{
+			SDL_Rect size = statusEffectFrame->getAbsoluteSize();
+			int mouseDetectionPadding = 2;
+
+			SDL_Rect frameImgPos = frameImg->pos;
+			bool oldDisabled = frameImg->disabled;
+			updateEntryImage(q, frameImg);
+			frameImg->disabled = oldDisabled;
+			frameImgPos.x = q.animateSetpointX;
+			frameImgPos.y = q.animateSetpointY;
+
+			size.x += frameImgPos.x - (mouseDetectionPadding);
+			size.y += frameImgPos.y - (mouseDetectionPadding);
+			size.w = frameImgPos.w + (mouseDetectionPadding * 2);
+			size.h = frameImgPos.h + (mouseDetectionPadding * 2);
+			tooltipShowing = doStatusEffectTooltip(q, size);
+			players[player]->hud.setCursorDisabled(false);
+
+			// make sure to adjust absolute size to camera viewport
+			size.x -= players[player]->camera_virtualx1();
+			size.y -= players[player]->camera_virtualy1();
+
+			players[player]->hud.updateCursorAnimation(size.x - 1 + mouseDetectionPadding, size.y - 1 + mouseDetectionPadding,
+				frameImgPos.w, frameImgPos.h, inputs.getVirtualMouse(player)->draw_cursor);
+			break;
+		}
+
+		++it;
+		if ( frameImagesIterator != frameImages.end() )
+		{
+			++frameImagesIterator;
+		}
+	}
+}
 
 void StatusEffectQueue_t::updateAllQueuedEffects()
 {
@@ -6077,6 +6734,10 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					effectsToSkipAnim.insert(i);
 				}
 			}
+			else if ( i == EFF_DRUNK && stats[player]->type == GOATMAN )
+			{
+				effectActive = false;
+			}
 
 		    if ( effectActive )
 		    {
@@ -6122,7 +6783,7 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 	bool inshop = false;
 
 	std::map<int, bool> miscEffects;
-	for ( int i = kEffectBurning; i >= kEffectSneak; --i )
+	for ( int i = kEffectBurning; i >= kEffectDrunkGoatman; --i )
 	{
 		miscEffects[i] = false;
 	}
@@ -6143,6 +6804,10 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 				|| (stats[player]->type == GOATMAN && stats[player]->EFFECTS[EFF_DRUNK])) )
 			{
 				miscEffects[kEffectFreeAction] = true;
+			}
+			if ( stats[player]->type == GOATMAN && stats[player]->EFFECTS[EFF_DRUNK] )
+			{
+				miscEffects[kEffectDrunkGoatman] = true;
 			}
 			if ( stats[player]->shoes && stats[player]->shoes->type == ARTIFACT_BOOTS )
 			{
@@ -6171,7 +6836,8 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					miscEffects[kEffectSlowDigestion] = true;
 				}
 			}
-			if ( stats[player]->amulet && stats[player]->amulet->type == AMULET_STRANGULATION )
+			if ( stats[player]->amulet && stats[player]->amulet->type == AMULET_STRANGULATION
+				&& stats[player]->type != SKELETON )
 			{
 				miscEffects[kEffectStrangulation] = true;
 			}
@@ -6259,7 +6925,7 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 		}
 	}
 
-	for ( int i = kEffectBurning; i >= kEffectSneak; --i )
+	for ( int i = kEffectBurning; i >= kEffectDrunkGoatman; --i )
 	{
 		if ( miscEffects[i] == false )
 		{
@@ -6302,6 +6968,7 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 		|| effectSet.find(kEffectBloodHunger) != effectSet.end()
 		|| effectSet.find(kEffectAutomatonHunger) != effectSet.end());
 
+	Frame* statusEffectFrame = getStatusEffectFrame();
 	auto automatonHungerFrame = statusEffectFrame->findFrame("automaton hunger notification");
 	automatonHungerFrame->setDisabled(true);
 	auto automatonFlameImg = automatonHungerFrame->findImage("flame");
@@ -6580,20 +7247,58 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 		&& !players[player]->skillSheet.bSkillSheetOpen
 		&& !players[player]->bookGUI.bBookOpen
 		&& !players[player]->signGUI.bSignOpen
-		&& !(players[player]->bUseCompactGUIHeight() && players[player]->hud.compactLayoutMode == Player::HUD_t::COMPACT_LAYOUT_CHARSHEET)
+		&& !(players[player]->bUseCompactGUIHeight() && !players[player]->hud.statusFxFocusedWindowActive)
 		&& !inputs.getUIInteraction(player)->selectedItem && !players[player]->GUI.isDropdownActive() )
 	{
-		bFrameCapturesMouse = statusEffectFrame->capturesMouse();
+		if ( bFrameCapturesMouse = statusEffectFrame->capturesMouse() )
+		{
+			if ( !players[player]->hud.statusFxFocusedWindowActive )
+			{
+				if ( (playerInventoryFrames[player].backpackFrame
+					&& !playerInventoryFrames[player].backpackFrame->isDisabled() 
+					&& playerInventoryFrames[player].backpackFrame->capturesMouse())
+					|| (playerInventoryFrames[player].invSlotsFrame
+						&& playerInventoryFrames[player].invSlotsFrame->capturesMouse()) )
+				{
+					bFrameCapturesMouse = false;
+				}
+			}
+		}
 	}
 	bool tooltipShowing = false;
-	bool bStatusEffectModuleActive = players[player]->GUI.activeModule == Player::GUI_t::MODULE_STATUS_EFFECTS;
 	Sint32 mousex = (inputs.getMouse(player, Inputs::X) / (float)xres) * (float)Frame::virtualScreenX;
 	Sint32 mousey = (inputs.getMouse(player, Inputs::Y) / (float)yres) * (float)Frame::virtualScreenY;
 	bool lowDurationFlash = !((ticks % 50) - (ticks % 25));
 
+	if ( bCompactWidth != players[player]->bUseCompactGUIWidth() )
+	{
+		requiresAnimUpdate = true;
+	}
+	if ( bCompactHeight != players[player]->bUseCompactGUIHeight() )
+	{
+		requiresAnimUpdate = true;
+	}
+	bCompactWidth = players[player]->bUseCompactGUIWidth();
+	bCompactHeight = players[player]->bUseCompactGUIHeight();
+	effectsPerRow = 4;
+	if ( bCompactWidth )
+	{
+		effectsPerRow = 3;
+	}
+
+	int gridx = 1;
+	int gridy = 0;
+	std::map<int, StatusEffectQueueEntry_t*> grid;
+	size_t index = 0;
+	bool hungerEffectInEffectQueue = false;
+	bool moduleActive = players[player]->GUI.activeModule == Player::GUI_t::MODULE_STATUS_EFFECTS;
+	effectsBoundingBox = SDL_Rect{ 0, 0, 0, 0 };
 	for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); )
 	{
 		auto& q = (*it);
+
+		q.index = index;
+		++index;
 
 		Frame::image_t* frameImg = nullptr;
 		if ( frameImagesIterator != frameImages.end() )
@@ -6640,6 +7345,11 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					}
 					players[player]->GUI.activateModule(Player::GUI_t::MODULE_STATUS_EFFECTS);
 					players[player]->hud.setCursorDisabled(false);
+
+					// make sure to adjust absolute size to camera viewport
+					size.x -= players[player]->camera_virtualx1();
+					size.y -= players[player]->camera_virtualy1();
+
 					players[player]->hud.updateCursorAnimation(size.x - 1 + mouseDetectionPadding, size.y - 1 + mouseDetectionPadding, 
 						frameImg->pos.w, frameImg->pos.h, inputs.getVirtualMouse(player)->draw_cursor);
 				}
@@ -6656,6 +7366,17 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 		{
 			animatePosX = 0;
 			animatePosY = 4 + statusEffectFrame->getSize().h - q.getEffectSpriteNormalHeight();
+		}
+
+		effectsBoundingBox.y = std::max(effectsBoundingBox.y, animatePosY + q.getEffectSpriteNormalHeight());
+		effectsBoundingBox.w = std::max(effectsBoundingBox.w, animatePosX + q.getEffectSpriteNormalWidth());
+		if ( effectsBoundingBox.h == 0 )
+		{
+			effectsBoundingBox.h = animatePosY;
+		}
+		else
+		{
+			effectsBoundingBox.h = std::min(effectsBoundingBox.h, animatePosY);
 		}
 
 		// low duration flash
@@ -6754,10 +7475,21 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 		}
 
 		q.animate();
+
 		if ( q.effect == kEffectBread || q.effect == kEffectBloodHunger || q.effect == kEffectAutomatonHunger )
 		{
+			assert(grid.find(0 + 0 * 10000) == grid.end());
+			grid[0 + 0 * 10000] = &q;
+
+			hungerEffectInEffectQueue = true;
 			continue; // don't advance position as this is fixed
 		}
+
+		assert(grid.find(gridx + gridy * 10000) == grid.end());
+		grid[gridx + gridy * 10000] = &q;
+
+
+		++gridx;
 		movex += spacing;
 		++numEffectsOnLine;
 		if ( numEffectsOnLine >= effectsPerRow )
@@ -6765,8 +7497,12 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 			numEffectsOnLine = 0;
 			movex = startrowx;
 			movey -= spacing;
+			gridx = 1;
+			++gridy;
 		}
 	}
+
+	handleNavigation(grid, tooltipShowing, hungerEffectInEffectQueue);
 
 	if ( stats[player] && stats[player]->type == AUTOMATON && !automatonHungerFrame->isDisabled() )
 	{
@@ -6809,9 +7545,9 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 
 	animateStatusEffectTooltip(tooltipShowing);
 
-	if ( bStatusEffectModuleActive )
+	if ( moduleActive && inputs.getVirtualMouse(player)->draw_cursor )
 	{
-		if ( !tooltipShowing )
+		if ( !tooltipShowing /*&& !players[player]->hud.statusFxFocusedWindowActive*/ )
 		{
 			players[player]->GUI.activateModule(Player::GUI_t::MODULE_NONE);
 		}
@@ -6940,7 +7676,8 @@ void StatusEffectQueue_t::updateEntryImage(StatusEffectQueueEntry_t& entry, Fram
 void updateStatusEffectQueue(const int player)
 {
 	auto& statusEffectQueue = StatusEffectQueue[player];
-	if ( !statusEffectQueue.statusEffectFrame )
+	Frame* statusEffectFrame = statusEffectQueue.getStatusEffectFrame();
+	if ( !statusEffectFrame )
 	{
 		return;
 	}
@@ -6953,9 +7690,14 @@ void updateStatusEffectQueue(const int player)
 	mainFramePos.x = hud_t.hpFrame->getSize().x;
 	mainFramePos.y = hud_t.hpFrame->getSize().y - mainFramePos.h;
 	mainFramePos.w -= mainFramePos.x;
-	statusEffectQueue.statusEffectFrame->setSize(mainFramePos);
-	auto innerFrame = statusEffectQueue.statusEffectFrame->findFrame("effects");
-	innerFrame->setSize(SDL_Rect{ 0, 0, statusEffectQueue.statusEffectFrame->getSize().w, statusEffectQueue.statusEffectFrame->getSize().h });
+	if ( players[player]->hud.statusFxFocusedWindowActive )
+	{
+		mainFramePos.x += 8 * statusEffectQueue.focusedWindowAnim;
+		mainFramePos.y -= 8 * statusEffectQueue.focusedWindowAnim;
+	}
+	statusEffectFrame->setSize(mainFramePos);
+	auto innerFrame = statusEffectFrame->findFrame("effects");
+	innerFrame->setSize(SDL_Rect{ 0, 0, statusEffectFrame->getSize().w, statusEffectFrame->getSize().h });
 
 	const int hungerEffectID = ((stats[player] && stats[player]->type == AUTOMATON) ? StatusEffectQueue_t::kEffectAutomatonHunger
 		: (playerRequiresBloodToSustain(player) ? StatusEffectQueue_t::kEffectBloodHunger : StatusEffectQueue_t::kEffectBread));
@@ -7136,7 +7878,7 @@ void updateStatusEffectQueue(const int player)
 
 					// fall back if notificationTargetPosition doesn't have an effect to go to.
 					statusEffectQueue.notificationQueue.back().notificationTargetPosition.x = 0;
-					statusEffectQueue.notificationQueue.back().notificationTargetPosition.y = statusEffectQueue.statusEffectFrame->getSize().h
+					statusEffectQueue.notificationQueue.back().notificationTargetPosition.y = statusEffectFrame->getSize().h
 						- statusEffectQueue.notificationQueue.back().notificationTargetPosition.h;
 					statusEffectQueue.requiresAnimUpdate = true;
 					entry->customVariable = hungerStateToSet;
@@ -7172,6 +7914,198 @@ void updateStatusEffectQueue(const int player)
 	}
 
 	statusEffectQueue.updateAllQueuedEffects();
+}
+
+void Player::Inventory_t::updateInventoryMiscTooltip()
+{
+	if ( !frame )
+	{
+		return;
+	}
+	if ( !miscTooltipFrame )
+	{
+		auto tooltipFrame = frame->addFrame("misc tooltip");
+		miscTooltipFrame = tooltipFrame;
+		tooltipFrame->setSize(SDL_Rect{ 212, 0, 200, 200 });
+		tooltipFrame->setHollow(true);
+		tooltipFrame->setInheritParentFrameOpacity(false);
+		tooltipFrame->setDisabled(true);
+		Uint32 color = makeColor(255, 255, 255, 255);
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_00.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_00.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_00.png", skillsheetEffectBackgroundImages[TOP].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_L_00.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_R_00.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			makeColor(22, 24, 29, 255), "images/system/white.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BL_00.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BR_00.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
+		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_B_00.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
+		imageSetWidthHeight9x9(tooltipFrame, skillsheetEffectBackgroundImages);
+		imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, 200, 200 }, skillsheetEffectBackgroundImages);
+		auto txt = tooltipFrame->addField("tooltip text", 1024);
+		const char* tooltipFont = "fonts/pixel_maz_multiline.ttf#16#2";
+		txt->setFont(tooltipFont);
+		txt->setColor(makeColor(188, 154, 114, 255));
+	}
+
+	auto tooltipFrame = miscTooltipFrame;
+	if ( tooltipFrame->isDisabled() )
+	{
+		miscTooltipOpacitySetpoint = 0;
+		miscTooltipOpacityAnimate = 1.0;
+	}
+
+	if ( static_cast<int>(tooltipFrame->getOpacity()) != miscTooltipOpacitySetpoint )
+	{
+		const real_t fpsScale = getFPSScale(144.0);
+		if ( miscTooltipOpacitySetpoint == 0 )
+		{
+			if ( ticks - miscTooltipDeselectedTick > 5 )
+			{
+				real_t factor = 10.0;
+				real_t setpointDiff = fpsScale * std::max(.05, (miscTooltipOpacityAnimate)) / (factor);
+				miscTooltipOpacityAnimate -= setpointDiff;
+				miscTooltipOpacityAnimate = std::max(0.0, miscTooltipOpacityAnimate);
+			}
+		}
+		else
+		{
+			real_t setpointDiff = fpsScale * std::max(.05, (1.0 - miscTooltipOpacityAnimate)) / (1);
+			miscTooltipOpacityAnimate += setpointDiff;
+			miscTooltipOpacityAnimate = std::min(1.0, miscTooltipOpacityAnimate);
+		}
+		tooltipFrame->setOpacity(miscTooltipOpacityAnimate * 100);
+	}
+	else
+	{
+		tooltipFrame->setOpacity(miscTooltipOpacitySetpoint);
+	}
+
+	Button* autosortBtn = nullptr;
+	if ( player.shootmode )
+	{
+		miscTooltipOpacitySetpoint = 0;
+		miscTooltipOpacityAnimate = 0.0;
+		return;
+	}
+	if ( !playerInventoryFrames[player.playernum].autosortFrame )
+	{
+		return;
+	}
+	else
+	{
+		autosortBtn = playerInventoryFrames[player.playernum].autosortFrame->findButton("autosort button");
+		if ( !autosortBtn || !autosortBtn->isHighlighted() || !autosortBtn->isSelected() || autosortBtn->isDisabled() )
+		{
+			return;
+		}
+	}
+
+	miscTooltipOpacitySetpoint = 0;
+	miscTooltipOpacityAnimate = 1.0;
+	tooltipFrame->setDisabled(false);
+	tooltipFrame->setOpacity(100.0);
+	miscTooltipDeselectedTick = ticks;
+
+	Uint32 defaultColor = hudColors.characterSheetNeutral;
+	auto txt = tooltipFrame->findField("tooltip text");
+	txt->setColor(defaultColor);
+
+	if ( true )
+	{
+		const int maxWidth = 200;
+		const int padx = 16;
+		const int pady1 = 8;
+		const int pady2 = 8;
+		const int padyMid = 4;
+		const int padxMid = 4;
+		SDL_Rect tooltipPos = SDL_Rect{ 400, 0, maxWidth, 100 };
+		bool usingMouse = !inputs.getVirtualMouse(player.playernum)->lastMovementFromController;
+		bool updateTxt = false;
+		if ( player.bUseCompactGUIHeight() )
+		{
+			if ( strcmp(player.characterSheet.getHoverTextString("autosort_button_mouse_compact").c_str(), txt->getText()) )
+			{
+				txt->setText(player.characterSheet.getHoverTextString("autosort_button_mouse_compact").c_str());
+				updateTxt = true;
+			}
+		}
+		else
+		{
+			if ( strcmp(player.characterSheet.getHoverTextString("autosort_button_mouse").c_str(), txt->getText()) )
+			{
+				txt->setText(player.characterSheet.getHoverTextString("autosort_button_mouse").c_str());
+				updateTxt = true;
+			}
+		}
+
+		SDL_Rect txtPos = SDL_Rect{ padx, pady1, maxWidth - padx * 2, 80 };
+		txt->setSize(txtPos);
+		Font* actualFont = Font::get(txt->getFont());
+		int txtHeight = txt->getNumTextLines() * actualFont->height(true);
+		txtPos.h = txtHeight + padyMid;
+		auto txtGet = Text::get(txt->getLongestLine().c_str(), txt->getFont(),
+			txt->getTextColor(), txt->getOutlineColor());
+		txtPos.w = txtGet->getWidth();
+		txt->setSize(txtPos);
+
+		tooltipPos.w = txtPos.w + padx * 2;
+		tooltipPos.h = pady1 + txtPos.h + pady2;
+
+		if ( updateTxt )
+		{
+			txt->reflowTextToFit(0);
+		}
+
+		int tooltipCoordX = 0;
+		PanelJustify_t justify = paperDollPanelJustify;
+		auto inventoryBgFrame = playerInventoryFrames[player.playernum].inventoryBgFrame;
+		if ( !bCompactView )
+		{
+			Frame::image_t* invBaseImg = invBaseImg = playerInventoryFrames[player.playernum].defaultInvImg;
+
+			if ( justify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipCoordX = inventoryBgFrame->getSize().x + 8;
+				tooltipCoordX += invBaseImg->pos.w;
+			}
+			else
+			{
+				tooltipCoordX = inventoryBgFrame->getSize().x - 8;
+				tooltipCoordX += invBaseImg->pos.x;
+				tooltipCoordX -= tooltipPos.w;
+			}
+		}
+		else
+		{
+			Frame::image_t* compactImg = compactImg = playerInventoryFrames[player.playernum].compactCharImg;
+			if ( justify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipCoordX = inventoryBgFrame->getSize().x + 8;
+				tooltipCoordX += compactImg->pos.w;
+			}
+			else
+			{
+				tooltipCoordX = inventoryBgFrame->getSize().x - 8;
+				tooltipCoordX += compactImg->pos.x;
+				tooltipCoordX -= tooltipPos.w;
+			}
+		}
+		tooltipPos.x = tooltipCoordX;
+		tooltipPos.y = autosortBtn->getSize().y;
+		tooltipFrame->setSize(tooltipPos);
+		imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, tooltipPos.w, tooltipPos.h },
+			skillsheetEffectBackgroundImages);
+	}
 }
 
 void createWorldTooltipPrompts(const int player)
@@ -7224,6 +8158,50 @@ void createWorldTooltipPrompts(const int player)
 	auto cursor = worldTooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
 		0xFFFFFFFF, "images/system/white.png", "cursor img");
 	cursor->disabled = true;
+}
+
+const char* Player::HUD_t::getCrosshairPath()
+{
+	switch ( playerSettings[player.playernum].shootmodeCrosshair )
+	{
+		case 0:
+		default:
+			return "*#images/ui/Crosshairs/cross.png";
+			break;
+		case 1:
+			return "*#images/ui/Crosshairs/cursor_thicc.png";
+			break;
+		case 2:
+			return "*#images/ui/Crosshairs/cursor_plusA.png";
+			break;
+		case 3:
+			return "*#images/ui/Crosshairs/cursor_plusB.png";
+			break;
+		case 4:
+			return "*#images/ui/Crosshairs/cursor_crosshair.png";
+			break;
+		case 5:
+			return "*#images/ui/Crosshairs/cursor_xB.png";
+			break;
+		case 6:
+			return "*#images/ui/Crosshairs/cursor_carrot.png";
+			break;
+		case 7:
+			return "*#images/ui/Crosshairs/cursor_circleB.png";
+			break;
+		case 8:
+			return "*#images/ui/Crosshairs/cursor_dotsB.png";
+			break;
+		case 9:
+			return "*#images/ui/Crosshairs/cursor_dotsC.png";
+			break;
+		case 10:
+			return "*#images/ui/Crosshairs/cursor_smiley.png";
+			break;
+		case 11:
+			return "*#images/ui/Crosshairs/cursor_nethack.png";
+			break;
+	}
 }
 
 void Player::HUD_t::updateWorldTooltipPrompts()
@@ -7295,7 +8273,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 		bool forceBlankInteractText = false;
 		if ( !player.worldUI.isEnabled() )
 		{
-			cursor->path = "images/system/cursor.png";
+			cursor->path = "#*images/ui/Crosshairs/cursor_xB.png";
 			if ( auto imgGet = Image::get(cursor->path.c_str()) )
 			{
 				cursor->disabled = false;
@@ -7312,7 +8290,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 		{
 			if ( followerMenu.optionSelected == ALLY_CMD_MOVETO_SELECT )
 			{
-				cursor->path = "images/system/cursor.png";
+				cursor->path = "#*images/ui/Crosshairs/cursor_xB.png";
 				if ( auto imgGet = Image::get(cursor->path.c_str()) )
 				{
 					cursor->disabled = false;
@@ -7350,7 +8328,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 				{
 					forceBlankInteractText = true;
 
-					cursor->path = "*#images/system/cross.png";
+					cursor->path = getCrosshairPath();
 					if ( auto imgGet = Image::get(cursor->path.c_str()) )
 					{
 						cursor->disabled = false;
@@ -7358,7 +8336,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 						promptPos.y -= (int)imgGet->getHeight() / 2;
 						SDL_Rect cursorPos{ 0, 0, (int)imgGet->getWidth(), (int)imgGet->getHeight() };
 						cursor->pos = cursorPos;
-						cursor->color = makeColor(255, 255, 255, 128);
+						cursor->color = makeColor(255, 255, 255, 255 * playerSettings[player.playernum].shootmodeCrosshairOpacity / 100.f);
 					}
 
 					textPos.x = cursor->pos.x + cursor->pos.w / 2;
@@ -7392,7 +8370,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 						promptPos.y -= (int)imgGet->getHeight() / 2;
 						SDL_Rect cursorPos{ 0, 0, (int)imgGet->getWidth(), (int)imgGet->getHeight() };
 						cursor->pos = cursorPos;
-						cursor->color = makeColor(255, 255, 255, 128);
+						cursor->color = makeColor(255, 255, 255, 255 * playerSettings[player.playernum].shootmodeCrosshairOpacity / 100.f);
 					}
 				}
 			}
@@ -7580,7 +8558,11 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 	}
 	else
 	{
-		if ( player.worldUI.bTooltipInView )
+		if ( !player.entity )
+		{
+			cursor->disabled = true;
+		}
+		else if ( player.worldUI.bTooltipInView )
 		{
 			cursor->path = "images/system/selectedcursor.png";
 			if ( auto imgGet = Image::get(cursor->path.c_str()) )
@@ -7590,7 +8572,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 				promptPos.y -= (int)imgGet->getHeight() / 2;
 				SDL_Rect cursorPos{ 0, 0, (int)imgGet->getWidth(), (int)imgGet->getHeight() };
 				cursor->pos = cursorPos;
-				cursor->color = makeColor(255, 255, 255, 128);
+				cursor->color = makeColor(255, 255, 255, 255 * playerSettings[player.playernum].shootmodeCrosshairOpacity / 100.f);
 			}
 
 			textPos.x += 40;
@@ -7682,7 +8664,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 			}
 			else
 			{
-				cursor->path = "*#images/system/cross.png";
+				cursor->path = getCrosshairPath();
 			}
 			if ( auto imgGet = Image::get(cursor->path.c_str()) )
 			{
@@ -7691,7 +8673,7 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 				promptPos.y -= (int)imgGet->getHeight() / 2;
 				SDL_Rect cursorPos{ 0, 0, (int)imgGet->getWidth(), (int)imgGet->getHeight() };
 				cursor->pos = cursorPos;
-				cursor->color = makeColor(255, 255, 255, 128);
+				cursor->color = makeColor(255, 255, 255, 255 * playerSettings[player.playernum].shootmodeCrosshairOpacity / 100.f);
 			}
 
 			if ( usingTinkeringKit )
@@ -7720,7 +8702,6 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 					}
 
 					// skip cursor here, no tooltip in view
-					//drawImageAlpha(selected_cursor_bmp, NULL, &pos, 128);
 					textPos.x += 40;
 					textPos.y += 20;
 
@@ -9313,6 +10294,7 @@ void openMapWindow(int player) {
 		{
 			players[player]->GUI.returnToPreviousActiveModule();
 		}
+		Player::soundCancel();
         return;
     }
 
@@ -9328,6 +10310,8 @@ void openMapWindow(int player) {
 		players[player]->openStatusScreen(GUI_MODE_INVENTORY,
 			players[player]->inventory_mode, Player::GUI_t::MODULE_MAP); // Reset the GUI to the inventory.
 	}
+
+	Player::soundActivate();
 
     auto& otherWindow = players[player]->messageZone.logWindow;
     if (otherWindow) {
@@ -9578,6 +10562,7 @@ void openMapWindow(int player) {
 				{
 					players[player]->GUI.returnToPreviousActiveModule();
 				}
+				Player::soundCancel();
             }
         }
 
@@ -9658,6 +10643,7 @@ void openMapWindow(int player) {
         if (players[player]->gui_mode == GUI_MODE_NONE) {
             players[player]->shootmode = true;
         }
+		Player::soundCancel();
         });
 }
 
@@ -9777,6 +10763,7 @@ void openLogWindow(int player) {
 		{
 			players[player]->GUI.returnToPreviousActiveModule();
 		}
+		Player::soundCancel();
         return;
     }
 
@@ -9791,6 +10778,8 @@ void openLogWindow(int player) {
 		players[player]->openStatusScreen(GUI_MODE_INVENTORY,
 			players[player]->inventory_mode, Player::GUI_t::MODULE_LOG); // Reset the GUI to the inventory.
 	}
+
+	Player::soundActivate();
 
     auto& otherWindow = players[player]->minimap.mapWindow;
     if (otherWindow) {
@@ -10052,6 +11041,7 @@ void openLogWindow(int player) {
 		if ( Input::inputs[player].consumeBinaryToggle("LogClose") ) {
 			Input::inputs[player].consumeBindingsSharedWithBinding("LogClose");
 			if ( players[player]->messageZone.logWindow ) {
+				Player::soundCancel();
 				players[player]->messageZone.logWindow->removeSelf();
 				players[player]->messageZone.logWindow = nullptr;
 				if ( players[player]->gui_mode == GUI_MODE_NONE ) {
@@ -10193,6 +11183,7 @@ void openLogWindow(int player) {
 		{
 			players[player]->GUI.returnToPreviousActiveModule();
 		}
+		Player::soundCancel();
         });
 	close_button->setDrawCallback([](const Widget& widget, SDL_Rect rect)
 	{
@@ -10414,33 +11405,33 @@ void Player::CharacterSheet_t::createCharacterSheet()
 			SDL_Rect buttonFramePos{ leftAlignX + 9, 6, 196, 82 };
 			auto buttonFrame = sheetFrame->addFrame("log map buttons");
 			buttonFrame->setSize(buttonFramePos);
-			buttonFrame->setDrawCallback([](const Widget& widget, SDL_Rect pos){
+			buttonFrame->setDrawCallback([](const Widget& widget, SDL_Rect pos) {
 				auto frame = (Frame*)(&widget);
-				std::vector<const char*> buttons = {
-					"map button",
-					"log button"
-				};
-				for ( auto button : buttons )
+			std::vector<const char*> buttons = {
+				"map button",
+				"log button"
+			};
+			for ( auto button : buttons )
+			{
+				if ( auto b = frame->findButton(button) )
 				{
-					if ( auto b = frame->findButton(button) )
+					if ( players[frame->getOwner()]->characterSheet.sheetDisplayType == CHARSHEET_DISPLAY_NORMAL )
 					{
-						if ( players[frame->getOwner()]->characterSheet.sheetDisplayType == CHARSHEET_DISPLAY_NORMAL )
-						{
-							b->setBackgroundHighlighted("*#images/ui/CharSheet/HUD_CharSheet_ButtonHigh_00.png");
-							b->setBackground("*#images/ui/CharSheet/HUD_CharSheet_Button_00.png");
-							b->setBackgroundActivated("*#images/ui/CharSheet/HUD_CharSheet_ButtonPress_00.png");
-						}
-						else
-						{
-							b->setBackgroundHighlighted("*#images/ui/CharSheet/HUD_CharSheet_ButtonHighCompact_00.png");
-							b->setBackground("*#images/ui/CharSheet/HUD_CharSheet_ButtonCompact_00.png");
-							b->setBackgroundActivated("*#images/ui/CharSheet/HUD_CharSheet_ButtonCompactPress_00.png");
-						}
+						b->setBackgroundHighlighted("*#images/ui/CharSheet/HUD_CharSheet_ButtonHigh_00.png");
+						b->setBackground("*#images/ui/CharSheet/HUD_CharSheet_Button_00.png");
+						b->setBackgroundActivated("*#images/ui/CharSheet/HUD_CharSheet_ButtonPress_00.png");
+					}
+					else
+					{
+						b->setBackgroundHighlighted("*#images/ui/CharSheet/HUD_CharSheet_ButtonHighCompact_00.png");
+						b->setBackground("*#images/ui/CharSheet/HUD_CharSheet_ButtonCompact_00.png");
+						b->setBackgroundActivated("*#images/ui/CharSheet/HUD_CharSheet_ButtonCompactPress_00.png");
 					}
 				}
-			});
+			}
+				});
 
-			SDL_Rect buttonPos{0, 0, buttonFramePos.w, 40};
+			SDL_Rect buttonPos{ 0, 0, buttonFramePos.w, 40 };
 			auto mapButton = buttonFrame->addButton("map button");
 			mapButton->setText(language[4069]);
 			mapButton->setFont(buttonFont);
@@ -10452,14 +11443,14 @@ void Player::CharacterSheet_t::createCharacterSheet()
 			mapButton->setMenuConfirmControlType(Widget::MENU_CONFIRM_CONTROLLER);
 			mapButton->setColor(makeColor(255, 255, 255, 255));
 			mapButton->setHighlightColor(makeColor(255, 255, 255, 255));
-			mapButton->setCallback([](Button& button){
-			    openMapWindow(button.getOwner());
-			    if (players[button.getOwner()]->minimap.mapWindow) {
-	                button.deselect();
-			    }
-			});
+			mapButton->setCallback([](Button& button) {
+				openMapWindow(button.getOwner());
+			if ( players[button.getOwner()]->minimap.mapWindow ) {
+				button.deselect();
+			}
+				});
 			mapButton->setTickCallback(charsheet_deselect_fn);
-			
+
 			auto mapSelector = buttonFrame->addFrame("map button selector");
 			mapSelector->setSize(buttonPos);
 			mapSelector->setHollow(true);
@@ -10478,10 +11469,10 @@ void Player::CharacterSheet_t::createCharacterSheet()
 			logButton->setColor(makeColor(255, 255, 255, 255));
 			logButton->setHighlightColor(makeColor(255, 255, 255, 255));
 			logButton->setCallback([](Button& button) {
-			    openLogWindow(button.getOwner());
-			});
+				openLogWindow(button.getOwner());
+				});
 			logButton->setTickCallback(charsheet_deselect_fn);
-			
+
 			auto logSelector = buttonFrame->addFrame("log button selector");
 			logSelector->setSize(buttonPos);
 			logSelector->setHollow(true);
@@ -10491,49 +11482,49 @@ void Player::CharacterSheet_t::createCharacterSheet()
 		// game timer
 		{
 			const char* timerFont = "fonts/pixel_maz.ttf#32#2";
-			Uint32 timerTextColor = makeColor( 188, 154, 114, 255);
+			Uint32 timerTextColor = makeColor(188, 154, 114, 255);
 
 			Frame* timerFrame = sheetFrame->addFrame("game timer");
-			timerFrame->setSize(SDL_Rect{leftAlignX + 36, 90, 142, 26});
+			timerFrame->setSize(SDL_Rect{ leftAlignX + 36, 90, 142, 26 });
 			timerFrame->setDrawCallback([](const Widget& widget, SDL_Rect pos) {
 				auto frame = (Frame*)(&widget);
-				auto timerToggleImg = frame->findImage("timer icon img");
-				auto timerSelector = frame->findButton("timer selector");
-				if ( timerToggleImg && timerSelector )
+			auto timerToggleImg = frame->findImage("timer icon img");
+			auto timerSelector = frame->findButton("timer selector");
+			if ( timerToggleImg && timerSelector )
+			{
+				if ( !players[frame->getOwner()]->characterSheet.showGameTimerAlways )
 				{
-					if ( !players[frame->getOwner()]->characterSheet.showGameTimerAlways )
+					if ( timerSelector->isCurrentlyPressed() )
 					{
-						if ( timerSelector->isCurrentlyPressed() )
-						{
-							timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_PressOff00.png";
-						}
-						else if ( timerSelector->isHighlighted() || (!inputs.getVirtualMouse(widget.getOwner())->draw_cursor && timerSelector->isSelected()) )
-						{
-							timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_SelectOff00.png";
-						}
-						else
-						{
-							timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_UnselectOff00.png";
-						}
+						timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_PressOff00.png";
+					}
+					else if ( timerSelector->isHighlighted() || (!inputs.getVirtualMouse(widget.getOwner())->draw_cursor && timerSelector->isSelected()) )
+					{
+						timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_SelectOff00.png";
 					}
 					else
 					{
-						if ( timerSelector->isCurrentlyPressed() )
-						{
-							timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_PressOn00.png";
-						}
-						else if ( timerSelector->isHighlighted() || (!inputs.getVirtualMouse(widget.getOwner())->draw_cursor && timerSelector->isSelected()) )
-						{
-							timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_SelectOn00.png";
-						}
-						else
-						{
-							timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_UnselectOn00.png";
-						}
+						timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_UnselectOff00.png";
 					}
 				}
-			});
-			auto timerToggleImg = timerFrame->addImage(SDL_Rect{0, 0, 26, 26}, 0xFFFFFFFF, "*#images/ui/CharSheet/HUD_Button_Timer_SelectOff00.png", "timer icon img");
+				else
+				{
+					if ( timerSelector->isCurrentlyPressed() )
+					{
+						timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_PressOn00.png";
+					}
+					else if ( timerSelector->isHighlighted() || (!inputs.getVirtualMouse(widget.getOwner())->draw_cursor && timerSelector->isSelected()) )
+					{
+						timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_SelectOn00.png";
+					}
+					else
+					{
+						timerToggleImg->path = "images/ui/CharSheet/HUD_Button_Timer_UnselectOn00.png";
+					}
+				}
+			}
+				});
+			auto timerToggleImg = timerFrame->addImage(SDL_Rect{ 0, 0, 26, 26 }, 0xFFFFFFFF, "*#images/ui/CharSheet/HUD_Button_Timer_SelectOff00.png", "timer icon img");
 			auto timerImg = timerFrame->addImage(SDL_Rect{ 30, 0, 112, 26 }, 0xFFFFFFFF, "*#images/ui/CharSheet/HUD_CharSheet_Timer_Backing_00.png", "timer bg img");
 			auto timerText = timerFrame->addField("timer text", 32);
 			timerText->setFont(timerFont);
@@ -10546,10 +11537,18 @@ void Player::CharacterSheet_t::createCharacterSheet()
 			timerButton->setHideKeyboardGlyphs(true);
 			timerButton->setHideSelectors(true);
 			timerButton->setMenuConfirmControlType(Widget::MENU_CONFIRM_CONTROLLER);
-			timerButton->setCallback([](Button& button){
+			timerButton->setCallback([](Button& button) {
 				bool& bShowTimer = players[button.getOwner()]->characterSheet.showGameTimerAlways;
-				bShowTimer = !bShowTimer;
-			});
+			bShowTimer = !bShowTimer;
+			if ( bShowTimer )
+			{
+				Player::soundActivate();
+			}
+			else
+			{
+				Player::soundCancel();
+			}
+				});
 			timerButton->setTickCallback(charsheet_deselect_fn);
 
 			SDL_Rect textPos = timerImg->pos;
@@ -10580,14 +11579,14 @@ void Player::CharacterSheet_t::createCharacterSheet()
 			skillsButton->setHighlightColor(makeColor(255, 255, 255, 255));
 			skillsButton->setCallback([](Button& button) {
 				players[button.getOwner()]->skillSheet.openSkillSheet();
-			});
+				});
 			skillsButton->setTickCallback(charsheet_deselect_fn);
 		}
 
 		// dungeon floor and level descriptor
 		{
 			const char* dungeonFont = "fonts/pixel_maz.ttf#32#2";
-			Uint32 dungeonTextColor = makeColor( 188, 154, 114, 255);
+			Uint32 dungeonTextColor = makeColor(188, 154, 114, 255);
 			Frame* dungeonFloorFrame = sheetFrame->addFrame("dungeon floor frame");
 
 			dungeonFloorFrame->setSize(SDL_Rect{ leftAlignX + 6, 118, 202, 52 });
@@ -10620,12 +11619,12 @@ void Player::CharacterSheet_t::createCharacterSheet()
 
 		Frame* characterFrame = sheetFrame->addFrame("character info");
 		const char* infoFont = "fonts/pixel_maz.ttf#32#2";
-		characterFrame->setSize(SDL_Rect{ leftAlignX, 206, bgWidth, 116});
+		characterFrame->setSize(SDL_Rect{ leftAlignX, 206, bgWidth, 116 });
 		characterFrame->setHollow(true);
-		Uint32 infoTextColor = makeColor( 188, 154, 114, 255);
-		Uint32 classTextColor = makeColor( 74, 66, 207, 255);
+		Uint32 infoTextColor = makeColor(188, 154, 114, 255);
+		Uint32 classTextColor = makeColor(74, 66, 207, 255);
 
-		sheetFrame->addImage(SDL_Rect{ characterFrame->getSize().x, characterFrame->getSize().y - 60, 
+		sheetFrame->addImage(SDL_Rect{ characterFrame->getSize().x, characterFrame->getSize().y - 60,
 			214, 170 }, 0xFFFFFFFF,
 			"*#images/ui/CharSheet/HUD_CharSheet_Window_01A_TopCompact.png", "character info compact img");
 
@@ -10650,7 +11649,7 @@ void Player::CharacterSheet_t::createCharacterSheet()
 
 			/*characterInnerFrame->addImage(SDL_Rect{ 2, 2, 198, 20 }, makeColor(255, 255, 255, 64),
 				"images/system/white.png", "character name frame");*/
-			//characterInnerFrame->addFrame("character name selector")->setSize(SDL_Rect{ 2, 2, 198, 20 });
+				//characterInnerFrame->addFrame("character name selector")->setSize(SDL_Rect{ 2, 2, 198, 20 });
 
 			characterTextPos.x = 8;
 			characterTextPos.w = 190;
@@ -10709,7 +11708,7 @@ void Player::CharacterSheet_t::createCharacterSheet()
 			raceText->setColor(infoTextColor);
 
 			auto sexImg = characterInnerFrame->addImage(
-				SDL_Rect{ characterTextPos.x + characterTextPos.w - 40, characterTextPos.y - 4, 16, 28}, 0xFFFFFFFF,
+				SDL_Rect{ characterTextPos.x + characterTextPos.w - 40, characterTextPos.y - 4, 16, 28 }, 0xFFFFFFFF,
 				"*#images/ui/CharSheet/HUD_CharSheet_Sex_M_01.png", "character sex img");
 
 			/*characterInnerFrame->addImage(SDL_Rect{ 4, 28, 194, 22 }, makeColor(255, 255, 255, 64),
@@ -11249,102 +12248,171 @@ void Player::CharacterSheet_t::createCharacterSheet()
 		}
 
 		{
-		auto tooltipFrame = sheetFrame->addFrame("sheet tooltip");
-		tooltipFrame->setSize(SDL_Rect{ leftAlignX - 200, 0, 200, 200 });
-		tooltipFrame->setHollow(true);
-		tooltipFrame->setInheritParentFrameOpacity(false);
-		tooltipFrame->setDisabled(true);
-		Uint32 color = makeColor(255, 255, 255, 255);
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_00.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_00.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_00.png", skillsheetEffectBackgroundImages[TOP].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_L_00.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_R_00.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			makeColor(22, 24, 29, 255), "images/system/white.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BL_00.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BR_00.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
-		tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-			color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_B_00.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
-		imageSetWidthHeight9x9(tooltipFrame, skillsheetEffectBackgroundImages);
-		imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, 200, 200 }, skillsheetEffectBackgroundImages);
-		auto txt = tooltipFrame->addField("tooltip text", 1024);
-		auto txtRightAlignHint = tooltipFrame->addField("tooltip text right align hint", 128);
-		const char* tooltipFont = "fonts/pixel_maz_multiline.ttf#16#2";
-		txt->setFont(tooltipFont);
-		txt->setColor(makeColor(188, 154, 114, 255));
-		txtRightAlignHint->setFont(tooltipFont);
-		txtRightAlignHint->setColor(hudColors.characterSheetFaintText);
-		auto glyph1 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 1");
-		glyph1->disabled = true;
-		auto glyph2 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 2");
-		glyph2->disabled = true;
-		auto glyph3 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 3");
-		glyph3->disabled = true;
-		auto glyph4 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 4");
-		glyph4->disabled = true;
+			auto tooltipFrame = sheetFrame->addFrame("sheet tooltip");
+			tooltipFrame->setSize(SDL_Rect{ leftAlignX - 200, 0, 200, 200 });
+			tooltipFrame->setHollow(true);
+			tooltipFrame->setInheritParentFrameOpacity(false);
+			tooltipFrame->setDisabled(true);
+			Uint32 color = makeColor(255, 255, 255, 255);
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_00.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_00.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_00.png", skillsheetEffectBackgroundImages[TOP].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_L_00.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_R_00.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				makeColor(22, 24, 29, 255), "images/system/white.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BL_00.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BR_00.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_B_00.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
+			imageSetWidthHeight9x9(tooltipFrame, skillsheetEffectBackgroundImages);
+			imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, 200, 200 }, skillsheetEffectBackgroundImages);
+			auto txt = tooltipFrame->addField("tooltip text", 1024);
+			auto txtRightAlignHint = tooltipFrame->addField("tooltip text right align hint", 128);
+			const char* tooltipFont = "fonts/pixel_maz_multiline.ttf#16#2";
+			txt->setFont(tooltipFont);
+			txt->setColor(makeColor(188, 154, 114, 255));
+			txtRightAlignHint->setFont(tooltipFont);
+			txtRightAlignHint->setColor(hudColors.characterSheetFaintText);
+			auto glyph1 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 1");
+			glyph1->disabled = true;
+			auto glyph2 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 2");
+			glyph2->disabled = true;
+			auto glyph3 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 3");
+			glyph3->disabled = true;
+			auto glyph4 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 4");
+			glyph4->disabled = true;
 
-		for ( int i = 1; i <= NUM_CHARSHEET_TOOLTIP_TEXT_FIELDS; ++i )
-		{
-			char txtEntryFieldName[64] = "";
-			snprintf(txtEntryFieldName, sizeof(txtEntryFieldName), "txt %d", i);
-			auto txtEntry = tooltipFrame->addField(txtEntryFieldName, 1024);
-			txtEntry->setFont(tooltipFont);
-			txtEntry->setDisabled(true);
-			txtEntry->setVJustify(Field::justify_t::CENTER);
-			txtEntry->setColor(makeColor(188, 154, 114, 255));
-			txtEntry->setOntop(true);
+			for ( int i = 1; i <= NUM_CHARSHEET_TOOLTIP_TEXT_FIELDS; ++i )
+			{
+				char txtEntryFieldName[64] = "";
+				snprintf(txtEntryFieldName, sizeof(txtEntryFieldName), "txt %d", i);
+				auto txtEntry = tooltipFrame->addField(txtEntryFieldName, 1024);
+				txtEntry->setFont(tooltipFont);
+				txtEntry->setDisabled(true);
+				txtEntry->setVJustify(Field::justify_t::CENTER);
+				txtEntry->setColor(makeColor(188, 154, 114, 255));
+				txtEntry->setOntop(true);
 
-			characterSheetTooltipTextFields[player.playernum][i] = txtEntry;
-		}
+				characterSheetTooltipTextFields[player.playernum][i] = txtEntry;
+			}
 
-		auto div = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 1 },
-			makeColor( 49, 53, 61, 255),
-			"images/system/white.png", "tooltip divider 1");
-		div->disabled = true;
-		div = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 1 },
-			makeColor( 49, 53, 61, 255),
-			"images/system/white.png", "tooltip divider 2");
-		div->disabled = true;
+			auto div = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 1 },
+				makeColor(49, 53, 61, 255),
+				"images/system/white.png", "tooltip divider 1");
+			div->disabled = true;
+			div = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 1 },
+				makeColor(49, 53, 61, 255),
+				"images/system/white.png", "tooltip divider 2");
+			div->disabled = true;
 
 
-		for ( int i = 1; i <= NUM_CHARSHEET_TOOLTIP_BACKING_FRAMES; ++i )
-		{
-			char backingFrameName[64] = "";
-			snprintf(backingFrameName, sizeof(backingFrameName), "txt value backing frame %d", i);
-			auto txtValueBackingFrame = tooltipFrame->addFrame(backingFrameName);
-			txtValueBackingFrame->setSize(SDL_Rect{ 0, 0, tooltipFrame->getSize().w, tooltipFrame->getSize().h });
-			txtValueBackingFrame->setDisabled(true);
-			Uint32 color = makeColor(51, 33, 26, 255);
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_TL00.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_TR00.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_T00.png", skillsheetEffectBackgroundImages[TOP].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_L00.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_R00.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_M00.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_BL00.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_BR00.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
-			txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
-				color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_B00.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
-			imageSetWidthHeight9x9(txtValueBackingFrame, skillsheetEffectBackgroundImages);
+			for ( int i = 1; i <= NUM_CHARSHEET_TOOLTIP_BACKING_FRAMES; ++i )
+			{
+				char backingFrameName[64] = "";
+				snprintf(backingFrameName, sizeof(backingFrameName), "txt value backing frame %d", i);
+				auto txtValueBackingFrame = tooltipFrame->addFrame(backingFrameName);
+				txtValueBackingFrame->setSize(SDL_Rect{ 0, 0, tooltipFrame->getSize().w, tooltipFrame->getSize().h });
+				txtValueBackingFrame->setDisabled(true);
+				Uint32 color = makeColor(51, 33, 26, 255);
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_TL00.png", skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_TR00.png", skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_T00.png", skillsheetEffectBackgroundImages[TOP].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_L00.png", skillsheetEffectBackgroundImages[MIDDLE_LEFT].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_R00.png", skillsheetEffectBackgroundImages[MIDDLE_RIGHT].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_M00.png", skillsheetEffectBackgroundImages[MIDDLE].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_BL00.png", skillsheetEffectBackgroundImages[BOTTOM_LEFT].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_BR00.png", skillsheetEffectBackgroundImages[BOTTOM_RIGHT].c_str());
+				txtValueBackingFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+					color, "*#images/ui/SkillSheet/UI_Skills_EffectBG_B00.png", skillsheetEffectBackgroundImages[BOTTOM].c_str());
+				imageSetWidthHeight9x9(txtValueBackingFrame, skillsheetEffectBackgroundImages);
 
-			characterSheetTooltipTextBackingFrames[player.playernum][i] = txtValueBackingFrame;
-		}
+				characterSheetTooltipTextBackingFrames[player.playernum][i] = txtValueBackingFrame;
+			}
+
+			{
+				auto raceTooltip = tooltipFrame->addFrame("sheet race tooltip");
+				raceTooltip->setSize(SDL_Rect{ 0, 24, 324, 664 });
+				raceTooltip->setDisabled(true);
+				raceTooltip->setHollow(true);
+				const auto font = smallfont_outline;
+
+				auto details_text = raceTooltip->addField("details", 1024);
+				details_text->setFont(font);
+				details_text->setSize(SDL_Rect{ 0, 0, 242, 300 });
+				details_text->setColor(hudColors.characterSheetOffWhiteText);
+
+				auto details_text_right = raceTooltip->addField("details_right", 1024);
+				details_text_right->setFont(font);
+				details_text_right->setSize(SDL_Rect{ 121, 0, 121, 300 });
+				details_text_right->setColor(hudColors.characterSheetOffWhiteText);
+
+				MainMenu::RaceDescriptions::update_details_text(*raceTooltip, stats[player.playernum]);
+			}
+
+			{
+				auto classTooltip = tooltipFrame->addFrame("sheet class tooltip");
+				classTooltip->setDisabled(true);
+				classTooltip->setHollow(true);
+				auto statGrowths = classTooltip->addFrame("stat growths");
+				// stats definitions
+				const char* class_stats_text[] = {
+					"STR", "DEX", "CON", "INT", "PER", "CHR"
+				};
+				constexpr int num_class_stats = sizeof(class_stats_text) / sizeof(class_stats_text[0]);
+				constexpr SDL_Rect bottom{ 0, 0, 236, 30 };
+				constexpr int column = bottom.w / num_class_stats;
+
+				classTooltip->setSize(SDL_Rect{ 0, 0, bottom.w, bottom.h });
+				statGrowths->setSize(bottom);
+
+				for ( int c = 0; c < num_class_stats; ++c ) 
+				{
+					char buf[16];
+					snprintf(buf, sizeof(buf), "%d", c);
+					auto class_stat = statGrowths->addField(buf, 16);
+					class_stat->setSize(SDL_Rect{
+						bottom.x + column * c, bottom.y, column, bottom.h });
+					class_stat->setHJustify(Field::justify_t::CENTER);
+					class_stat->setVJustify(Field::justify_t::TOP);
+					class_stat->setFont(smallfont_outline);
+					class_stat->setText(class_stats_text[c]);
+					//class_stat->setTickCallback([](Widget& widget) {class_stat_fn(*static_cast<Field*>(&widget), widget.getOwner()); });
+
+					SDL_Rect imgPos = class_stat->getSize();
+					imgPos.x += imgPos.w / 2;
+					imgPos.w = 14;
+					imgPos.x -= imgPos.w / 2;
+					imgPos.h = 16;
+					imgPos.y -= imgPos.h - 4;
+
+					char buf2[32];
+					/*snprintf(buf2, sizeof(buf2), "stat img top %d", c);
+					auto class_stat_img_top = statGrowths->addImage(imgPos, 0xFFFFFFFF,
+						"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_hi2.png", buf2);
+					class_stat_img_top->disabled = true;*/
+					snprintf(buf2, sizeof(buf2), "stat img bottom %d", c);
+					imgPos.y = class_stat->getSize().y + 17;
+					auto class_stat_img_bottom = statGrowths->addImage(imgPos, 0xFFFFFFFF,
+						"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_lo2.png", buf2);
+					class_stat_img_bottom->disabled = true;
+				}
+			}
 		}
 	}
 }
@@ -11382,6 +12450,53 @@ void Player::GUIDropdown_t::activateSelection(const std::string& name, const int
 			snprintf(dropCommand, sizeof(dropCommand), "/dropgold %d %d", player.playernum, std::max(0, stats[player.playernum]->GOLD));
 			consoleCommand(dropCommand);
 		}
+		else if ( dropdown.options[option].action == "view_status_effects" )
+		{
+			if ( /*StatusEffectQueue[player.playernum].effectQueue.size() > 0*/ true )
+			{
+				player.GUI.previousModule = players[player.playernum]->GUI.activeModule;
+				if ( !inputs.getVirtualMouse(player.playernum)->draw_cursor )
+				{
+					player.GUI.activateModule(Player::GUI_t::MODULE_STATUS_EFFECTS);
+				}
+				else
+				{
+					player.GUI.activateModule(Player::GUI_t::MODULE_NONE);
+				}
+				StatusEffectQueue[player.playernum].selectedElement = 0;
+				player.hud.statusFxFocusedWindowActive = true;
+			}
+		}
+		else if ( dropdown.options[option].action == "view_portrait" )
+		{
+			if ( playerInventoryFrames[player.playernum].characterPreview )
+			{
+				player.GUI.previousModule = players[player.playernum]->GUI.activeModule;
+				player.GUI.activateModule(Player::GUI_t::MODULE_PORTRAIT);
+
+				SDL_Rect size = playerInventoryFrames[player.playernum].characterPreview->getAbsoluteSize();
+
+				// make sure to adjust absolute size to camera viewport
+				const int offsetX = 4;
+				const int offsetY = 6;
+				size.x += offsetX;
+				size.y += offsetY;
+				size.w -= offsetX * 2;
+				size.h -= offsetY * 2;
+				size.x -= player.camera_virtualx1();
+				size.y -= player.camera_virtualy1();
+
+				player.hud.updateCursorAnimation(size.x - 1, size.y - 1,
+					size.w, size.h, inputs.getVirtualMouse(player.playernum)->draw_cursor);
+				player.paperDoll.portraitActiveToEdit = true;
+			}
+		}
+		else if ( dropdown.options[option].action == "inventory_autosort" )
+		{
+			autosortInventory(player.playernum);
+			//quickStackItems();
+			//playSound(139, 64);
+		}
 		messagePlayer(player.playernum, MESSAGE_DEBUG, "[Dropdowns]: Executing action '%s' for [%s] : option %d",
 			dropdown.options[option].action.c_str(), name.c_str(), option);
 	}
@@ -11403,6 +12518,16 @@ bool Player::GUIDropdown_t::getDropDownAlignRight(const std::string& name)
 		if ( player.inventoryUI.bCompactView )
 		{
 			if ( player.inventoryUI.inventoryPanelJustify != PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+			{
+				invert = true;
+			}
+		}
+	}
+	else if ( name == "paper_doll" )
+	{
+		if ( player.inventoryUI.bCompactView )
+		{
+			if ( player.inventoryUI.paperDollPanelJustify == PanelJustify_t::PANEL_JUSTIFY_RIGHT )
 			{
 				invert = true;
 			}
@@ -11517,6 +12642,7 @@ void Player::CharacterSheet_t::processCharacterSheet()
 		Frame* fullscreenBg = sheetFrame->findFrame("sheet bg fullscreen");
 		Frame* timerFrame = sheetFrame->findFrame("game timer");
 		Frame* skillsButtonFrame = sheetFrame->findFrame("skills button frame");
+		Frame* characterInnerFrame = characterInfoFrame->findFrame("character info inner frame");
 
 		auto statsFrame = sheetFrame->findFrame("stats");
 		auto attributesFrame = sheetFrame->findFrame("attributes");
@@ -11536,9 +12662,13 @@ void Player::CharacterSheet_t::processCharacterSheet()
 			characterInfoFrame->setSize(pos);
 
 			SDL_Rect dungeonFloorFramePos = dungeonFloorFrame->getSize();
-			dungeonFloorFramePos.x = pos.x + 6;
+			dungeonFloorFramePos.x = pos.x + (panelJustify == PANEL_JUSTIFY_RIGHT ? 6 : 0);
 			dungeonFloorFramePos.y = pos.y - 56;
 			dungeonFloorFrame->setSize(dungeonFloorFramePos);
+
+			SDL_Rect characterInnerFramePos = characterInnerFrame->getSize();
+			characterInnerFramePos.x = (panelJustify == PANEL_JUSTIFY_RIGHT ? 6 : 0);
+			characterInnerFrame->setSize(characterInnerFramePos);
 
 			SDL_Rect buttonFramePos = buttonFrame->getSize();
 			buttonFramePos.w = 198;
@@ -11546,6 +12676,7 @@ void Player::CharacterSheet_t::processCharacterSheet()
 			buttonFramePos.x = (panelJustify == PANEL_JUSTIFY_RIGHT ? compactAlignX1 + 8 : compactAlignX2 - buttonFramePos.w - 8);
 			buttonFramePos.y = compactImgBg->pos.y + compactImgBg->pos.h + 1;
 			buttonFrame->setSize(buttonFramePos);
+
 			{
 				SDL_Rect buttonPos{ 0, 1, 98, 38 };
 				auto mapBtn = buttonFrame->findButton("map button");
@@ -11598,6 +12729,10 @@ void Player::CharacterSheet_t::processCharacterSheet()
 			dungeonFloorFramePos.x = pos.x + 6;
 			dungeonFloorFramePos.y = pos.y - 88;
 			dungeonFloorFrame->setSize(dungeonFloorFramePos);
+
+			SDL_Rect characterInnerFramePos = characterInnerFrame->getSize();
+			characterInnerFramePos.x = (panelJustify == PANEL_JUSTIFY_RIGHT ? 6 : 0);
+			characterInnerFrame->setSize(characterInnerFramePos);
 
 			SDL_Rect buttonFramePos = buttonFrame->getSize();
 			buttonFramePos.x = leftAlignX + 9;
@@ -11701,9 +12836,17 @@ void Player::CharacterSheet_t::processCharacterSheet()
 			sheetTimer->setDisabled(false);
 		}
 
-		if ( inputs.getVirtualMouse(player.playernum)->draw_cursor
+		bool mouseHighlightActive = inputs.getVirtualMouse(player.playernum)->draw_cursor
 			&& (!player.GUI.isDropdownActive())
-			&& isInteractable )
+			&& isInteractable;
+
+		if ( player.bUseCompactGUIWidth()
+			&& (player.minimap.mapWindow || player.messageZone.logWindow) )
+		{
+			mouseHighlightActive = false;
+		}
+
+		if ( mouseHighlightActive )
 		{
 			if ( skillsButton->isHighlighted() )
 			{
@@ -11938,6 +13081,16 @@ void Player::GUIDropdown_t::process()
 			if ( currentName == "hotbar_interact" )
 			{
 				contextOptions.push_back(PROMPT_CLEAR_HOTBAR_SLOT);
+				if ( itemCategory(item) == SPELLBOOK )
+				{
+					for ( auto it = contextOptions.begin(); it != contextOptions.end(); ++it )
+					{
+						if ( (*it) == PROMPT_INTERACT )
+						{
+							(*it) = PROMPT_INTERACT_SPELLBOOK_HOTBAR;
+						}
+					}
+				}
 			}
 			if ( player.inventoryUI.useItemDropdownOnGamepad == Inventory_t::GAMEPAD_DROPDOWN_FULL )
 			{
@@ -11993,6 +13146,7 @@ void Player::GUIDropdown_t::process()
 			{
 				dropDownOptionSelected = 0;
 			}
+			Player::soundMovement();
 		}
 		else if ( pressedUp	&& player.bControlEnabled && !gamePaused && !player.usingCommand() )
 		{
@@ -12001,6 +13155,7 @@ void Player::GUIDropdown_t::process()
 			{
 				dropDownOptionSelected = dropDown.options.size() - 1;
 			}
+			Player::soundMovement();
 		}
 	}
 
@@ -12216,6 +13371,10 @@ void Player::GUIDropdown_t::process()
 	if ( !dropDownToggleClick && !Input::inputs[player.playernum].binary("MenuRightClick") )
 	{
 		activate = true;
+		if ( dropDownOptionSelected >= 0 && dropDownOptionSelected < dropDown.options.size() )
+		{
+			Player::soundActivate();
+		}
 	}
 	else if ( dropDownToggleClick )
 	{
@@ -12226,10 +13385,15 @@ void Player::GUIDropdown_t::process()
 		else if ( Input::inputs[player.playernum].consumeBinaryToggle("MenuConfirm") )
 		{
 			activate = true;
+			if ( dropDownOptionSelected >= 0 && dropDownOptionSelected < dropDown.options.size() )
+			{
+				Player::soundActivate();
+			}
 		}
 		else if ( Input::inputs[player.playernum].consumeBinaryToggle("MenuCancel") )
 		{
 			close();
+			Player::soundCancel();
 		}
 	}
 
@@ -12347,6 +13511,10 @@ void Player::GUIDropdown_t::open(const std::string name)
 		return;
 	}
 
+	if ( !inputs.getVirtualMouse(player.playernum)->draw_cursor )
+	{
+		Player::soundActivate();
+	}
 	bOpen = true;
 	bClosedThisTick = false;
 
@@ -12814,7 +13982,7 @@ void Player::CharacterSheet_t::updateGameTimer()
 		SDL_Rect tooltipPos = characterInfoFrame->getSize();
 		tooltipPos.y = timerFrame->getSize().y;
 		Player::PanelJustify_t tooltipJustify = PANEL_JUSTIFY_RIGHT;
-		if ( panelJustify == PANEL_JUSTIFY_LEFT || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
+		if ( (panelJustify == PANEL_JUSTIFY_LEFT && !bCompactView) || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
 		{
 			tooltipJustify = PANEL_JUSTIFY_LEFT;
 			tooltipPos.x += tooltipPos.w;
@@ -13379,7 +14547,9 @@ struct CharacterSheetTooltipCache_t
 
 	Sint32 ac = 0;
 	int playerRace = RACE_HUMAN;
+	int playerRaceType = NOTHING;
 	int type = NOTHING;
+	int classnum = -1;
 	bool hungerEnabled = false;
 	int weapontype = 0;
 	Sint32 ATK = -1;
@@ -13420,10 +14590,26 @@ struct CharacterSheetTooltipCache_t
 		if ( modifiedCHR != statGetCHR(stats[player], players[player]->entity) ) { return true; }
 
 		if ( playerRace != stats[player]->playerRace ) { return true; }
-		if ( type != stats[player]->type ) { return true; }
 		if ( hungerEnabled != (svFlags & SV_FLAG_HUNGER) ) { return true; }
 		if ( ac != AC(stats[player]) ) { return true; }
 		if ( weapontype != getWeaponSkill(stats[player]->weapon) ) { return true; }
+
+		int playerRaceType = getMonsterFromPlayerRace(playerRace);
+		int type = stats[player]->type;
+		if ( arachnophobia_filter )
+		{
+			if ( type == SPIDER )
+			{
+				type = CRAB;
+			}
+			if ( playerRaceType == SPIDER )
+			{
+				playerRaceType = CRAB;
+			}
+		}
+		if ( type != this->type ) { return true; }
+		if ( playerRaceType != this->playerRaceType ) { return true; }
+		if ( client_classes[player] != classnum ) { return true; }
 		return false;
 	}
 	void updateToCharacter(const int player)
@@ -13445,7 +14631,20 @@ struct CharacterSheetTooltipCache_t
 		modifiedCHR = statGetCHR(stats[player], players[player]->entity);
 
 		playerRace = stats[player]->playerRace;
+		playerRaceType = getMonsterFromPlayerRace(playerRace);
 		type = stats[player]->type;
+		classnum = client_classes[player];
+		if ( arachnophobia_filter )
+		{
+			if ( type == SPIDER )
+			{
+				type = CRAB;
+			}
+			if ( playerRaceType == SPIDER )
+			{
+				playerRaceType = CRAB;
+			}
+		}
 		hungerEnabled = (svFlags & SV_FLAG_HUNGER);
 		ac = AC(stats[player]);
 		weapontype = getWeaponSkill(stats[player]->weapon);
@@ -13495,6 +14694,11 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 	if ( selectedElement == SHEET_UNSELECTED )
 	{
 		cachedElementTooltip = SHEET_UNSELECTED;
+	}
+	if ( player.shootmode )
+	{
+		tooltipOpacitySetpoint = 0;
+		tooltipOpacityAnimate = 0.0;
 	}
 	if ( element == SHEET_ENUM_END || element == SHEET_UNSELECTED
 		|| player.GUI.activeModule != Player::GUI_t::MODULE_CHARACTERSHEET )
@@ -13572,6 +14776,11 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 		auto txtValueBackingFrame = characterSheetTooltipTextBackingFrames[player.playernum][i];
 		txtValueBackingFrame->setDisabled(true);
 	}
+
+	auto raceTooltip = tooltipFrame->findFrame("sheet race tooltip");
+	raceTooltip->setDisabled(true);
+	auto classTooltip = tooltipFrame->findFrame("sheet class tooltip");
+	classTooltip->setDisabled(true);
 
 	if ( !(element >= Player::CharacterSheet_t::SHEET_STR && element <= Player::CharacterSheet_t::SHEET_CHR) )
 	{
@@ -16424,6 +17633,327 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 		imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, tooltipPos.w, tooltipPos.h },
 			skillsheetEffectBackgroundImages);
 	}
+	else if ( element == Player::CharacterSheet_t::SHEET_CHAR_RACE_SEX )
+	{
+		auto tooltipTopLeft = tooltipFrame->findImage(skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+		tooltipTopLeft->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_Blue_00.png";
+		auto tooltipTop = tooltipFrame->findImage(skillsheetEffectBackgroundImages[TOP].c_str());
+		tooltipTop->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_Blue_00.png";
+		auto tooltipTopRight = tooltipFrame->findImage(skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+		tooltipTopRight->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_Blue_00.png";
+		imageSetWidthHeight9x9(tooltipFrame, skillsheetEffectBackgroundImages);
+
+		int maxWidth = 260;
+		int minWidth = 0;
+
+		const int padx = 16;
+		const int pady1 = 8;
+		const int pady2 = 4;
+		const int padxMid = 4;
+		const int padyMid = 8;
+		SDL_Rect tooltipPos = SDL_Rect{ 400, 0, maxWidth, 100 };
+
+		Monster race = HUMAN;
+		if ( stats[player.playernum]->appearance == 0 && stats[player.playernum]->playerRace != RACE_HUMAN )
+		{
+			race = getMonsterFromPlayerRace(stats[player.playernum]->playerRace);
+		}
+		Monster modifiedRace = stats[player.playernum]->type;
+		if ( arachnophobia_filter )
+		{
+			if ( modifiedRace == SPIDER )
+			{
+				modifiedRace = CRAB;
+			}
+			if ( race == SPIDER )
+			{
+				race = CRAB;
+			}
+		}
+
+		char titleBuf[64];
+		std::string titleText = getHoverTextString("race_title_normal");
+		if ( players[player.playernum]->entity )
+		{
+			if ( players[player.playernum]->entity->effectShapeshift != NOTHING )
+			{
+				titleText = getHoverTextString("race_title_shapeshift");
+			}
+			else if ( race != modifiedRace )
+			{
+				titleText = getHoverTextString("race_title_polymorph");
+			}
+		}
+
+		txt->setText(titleText.c_str());
+		SDL_Rect txtPos = SDL_Rect{ padx, pady1 - 2, maxWidth - padx * 2, 80 };
+		txt->setSize(txtPos);
+		if ( charsheetTooltipCache[player.playernum].textEntries[element].title != txt->getText() )
+		{
+			txt->reflowTextToFit(0);
+			charsheetTooltipCache[player.playernum].textEntries[element].title = txt->getText();
+		}
+		txt->setColor(hudColors.characterSheetHeadingText);
+		Font* actualFont = Font::get(txt->getFont());
+		int txtHeight = txt->getNumTextLines() * actualFont->height(true);
+		txtPos.h = txtHeight + 4;
+		auto txtGet = Text::get(txt->getLongestLine().c_str(), txt->getFont(),
+			txt->getTextColor(), txt->getOutlineColor());
+		txtPos.w = txtGet->getWidth();
+		txtPos.w = std::max(minWidth - padx * 2, txtPos.w);
+		txt->setSize(txtPos);
+
+		tooltipPos.w = (txtPos.w + padx * 2);
+
+		unsigned int longestValue = 0;
+		std::map<int, std::pair<Field*, SDL_Rect>> valueSizes;
+
+		int currentHeight = txtPos.y + (actualFont->height(true) * 1) + 2;
+		const int extraTextHeightForLowerCharacters = 4;
+		currentHeight += padyMid;
+		
+		if ( raceTooltip )
+		{
+			raceTooltip->setDisabled(false);
+			MainMenu::RaceDescriptions::update_details_text(*raceTooltip, stats[player.playernum]);
+
+			SDL_Rect raceTooltipPos = raceTooltip->getSize();
+			raceTooltipPos.x = txtPos.x + padxMid;
+			raceTooltipPos.y = currentHeight;
+			raceTooltipPos.w = 272;
+			int heightOffset = 0;
+			if ( auto details_text = raceTooltip->findField("details") )
+			{
+				SDL_Rect pos = details_text->getSize();
+				if ( auto actualFont = Font::get(details_text->getFont()) )
+				{
+					const int numlines = details_text->getNumTextLines();
+					const int pad = details_text->getPaddingPerLine();
+					const int actualHeight = actualFont->height(true);
+					pos.h = 0;
+					for ( int line = 0; line < numlines; ++line )
+					{
+						pos.h += actualHeight + pad;// +details_text->getIndividualLinePadding(line);
+						heightOffset += details_text->getIndividualLinePadding(line);
+					}
+				}
+				raceTooltipPos.h = pos.h + pos.y + extraTextHeightForLowerCharacters;
+				details_text->setSize(pos);
+			}
+			if ( auto details_text_right = raceTooltip->findField("details_right") )
+			{
+				SDL_Rect pos = details_text_right->getSize();
+				if ( auto actualFont = Font::get(details_text_right->getFont()) )
+				{
+					const int numlines = details_text_right->getNumTextLines();
+					const int pad = details_text_right->getPaddingPerLine();
+					const int actualHeight = actualFont->height(true);
+					pos.h = 0;
+					for ( int line = 0; line < numlines; ++line )
+					{
+						pos.h += actualHeight + pad;// +details_text_right->getIndividualLinePadding(line);
+					}
+				}
+
+				details_text_right->setSize(pos);
+			}
+			raceTooltip->setSize(raceTooltipPos);
+			tooltipPos.w = raceTooltipPos.w + padxMid * 2;
+			currentHeight = std::max(raceTooltipPos.y + raceTooltipPos.h - extraTextHeightForLowerCharacters + heightOffset, 0);
+		}
+
+		tooltipPos.h = pady1 + currentHeight + pady2;
+		if ( tooltipJustify == PANEL_JUSTIFY_RIGHT )
+		{
+			tooltipPos.x = pos.x - tooltipPos.w;
+		}
+		else
+		{
+			tooltipPos.x = pos.x;
+		}
+		tooltipPos.y = pos.y;
+		if ( tooltipPos.y + tooltipPos.h > sheetFrame->getSize().h )
+		{
+			// keep on-screen
+			tooltipPos.y -= ((tooltipPos.y + tooltipPos.h) - sheetFrame->getSize().h);
+			tooltipFrame->setSize(tooltipPos);
+		}
+		tooltipFrame->setSize(tooltipPos);
+		imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, tooltipPos.w, tooltipPos.h },
+			skillsheetEffectBackgroundImages);
+	}
+	else if ( element == Player::CharacterSheet_t::SHEET_CHAR_CLASS )
+	{
+		auto tooltipTopLeft = tooltipFrame->findImage(skillsheetEffectBackgroundImages[TOP_LEFT].c_str());
+		tooltipTopLeft->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_Blue_00.png";
+		auto tooltipTop = tooltipFrame->findImage(skillsheetEffectBackgroundImages[TOP].c_str());
+		tooltipTop->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_Blue_00.png";
+		auto tooltipTopRight = tooltipFrame->findImage(skillsheetEffectBackgroundImages[TOP_RIGHT].c_str());
+		tooltipTopRight->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_Blue_00.png";
+		imageSetWidthHeight9x9(tooltipFrame, skillsheetEffectBackgroundImages);
+
+		int maxWidth = 260;
+		int minWidth = 0;
+		if ( getHoverTextString("stat_growth_min_tooltip_width") != defaultString )
+		{
+			minWidth = std::max(0, std::stoi(getHoverTextString("stat_growth_min_tooltip_width")));
+		}
+		if ( getHoverTextString("stat_growth_max_tooltip_width") != defaultString )
+		{
+			maxWidth = std::max(0, std::stoi(getHoverTextString("stat_growth_max_tooltip_width")));
+		}
+
+		const int padx = 16;
+		const int pady1 = 8;
+		const int pady2 = 4;
+		const int padxMid = 4;
+		const int padyMid = 8;
+		SDL_Rect tooltipPos = SDL_Rect{ 400, 0, maxWidth, 100 };
+
+		Monster race = HUMAN;
+		if ( stats[player.playernum]->appearance == 0 && stats[player.playernum]->playerRace != RACE_HUMAN )
+		{
+			race = getMonsterFromPlayerRace(stats[player.playernum]->playerRace);
+		}
+		Monster modifiedRace = stats[player.playernum]->type;
+		if ( arachnophobia_filter )
+		{
+			if ( modifiedRace == SPIDER )
+			{
+				modifiedRace = CRAB;
+			}
+			if ( race == SPIDER )
+			{
+				race = CRAB;
+			}
+		}
+
+		char titleBuf[64];
+		if ( player.entity && player.entity->effectShapeshift != 0 )
+		{
+			txt->setText(getHoverTextString("class_title_shapeshift").c_str());
+		}
+		else
+		{
+			txt->setText(getHoverTextString("class_title").c_str());
+		}
+		SDL_Rect txtPos = SDL_Rect{ padx, pady1 - 2, maxWidth - padx * 2, 80 };
+		txt->setSize(txtPos);
+		if ( charsheetTooltipCache[player.playernum].textEntries[element].title != txt->getText() )
+		{
+			txt->reflowTextToFit(0);
+			charsheetTooltipCache[player.playernum].textEntries[element].title = txt->getText();
+		}
+		txt->setColor(hudColors.characterSheetHeadingText);
+		Font* actualFont = Font::get(txt->getFont());
+		int txtHeight = txt->getNumTextLines() * actualFont->height(true);
+		txtPos.h = txtHeight + 4;
+		auto txtGet = Text::get(txt->getLongestLine().c_str(), txt->getFont(),
+			txt->getTextColor(), txt->getOutlineColor());
+		txtPos.w = txtGet->getWidth();
+		txtPos.w = std::max(minWidth - padx * 2, txtPos.w);
+		txt->setSize(txtPos);
+
+		tooltipPos.w = (txtPos.w + padx * 2);
+
+		std::map<int, std::pair<Field*, SDL_Rect>> valueSizes;
+
+		int currentHeight = txtPos.y + (actualFont->height(true) * 1) + 2;
+		const int extraTextHeightForLowerCharacters = 4;
+		currentHeight += padyMid;
+
+		if ( classTooltip )
+		{
+			classTooltip->setDisabled(false);
+			auto statGrowths = classTooltip->findFrame("stat growths");
+			if ( player.entity )
+			{
+				MainMenu::ClassDescriptions::update_stat_growths(*statGrowths, client_classes[player.playernum], player.entity->effectShapeshift);
+			}
+			else
+			{
+				MainMenu::ClassDescriptions::update_stat_growths(*statGrowths, client_classes[player.playernum], 0);
+			}
+
+			SDL_Rect classTooltipPos = classTooltip->getSize();
+			classTooltipPos.w = statGrowths->getSize().w;
+			classTooltipPos.h = statGrowths->getSize().h;
+			classTooltipPos.x = tooltipPos.w / 2 - classTooltipPos.w / 2;
+			classTooltipPos.y = currentHeight;
+			classTooltip->setSize(classTooltipPos);
+
+			currentHeight += classTooltipPos.h;
+
+			std::string descText = "";
+			descText = getHoverTextString("stat_growth_info");
+			
+			{
+				currentHeight += padyMid;
+
+				div->pos.x = padx;
+				div->pos.y = currentHeight;
+				div->pos.w = txtPos.w;
+				div->disabled = false;
+
+				currentHeight += padyMid;
+
+				auto entry = characterSheetTooltipTextFields[player.playernum][1]; assert(entry);
+				entry->setDisabled(false);
+				char buf[512] = "";
+
+				std::string descTextFormatted = "\x1E ";
+				for ( auto s : descText )
+				{
+					descTextFormatted += s;
+					if ( s == '\n' )
+					{
+						descTextFormatted += "\x1E ";
+					}
+				}
+
+				snprintf(buf, sizeof(buf), "%s", descTextFormatted.c_str());
+				entry->setText(buf);
+
+				SDL_Rect entryPos = entry->getSize();
+				entryPos.x = padx;
+				entryPos.y = currentHeight;
+				entryPos.w = txtPos.w;
+				entry->setSize(entryPos);
+				if ( charsheetTooltipCache[player.playernum].textEntries[element].entry1 != entry->getText() )
+				{
+					entry->reflowTextToFit(0);
+					charsheetTooltipCache[player.playernum].textEntries[element].entry1 = entry->getText();
+				}
+				entryPos.h = actualFont->height(true) * entry->getNumTextLines() + extraTextHeightForLowerCharacters;
+				entry->setSize(entryPos);
+				entry->setColor(hudColors.characterSheetOffWhiteText);
+				currentHeight = std::max(entryPos.y + entryPos.h - extraTextHeightForLowerCharacters, 0);
+
+				currentHeight += padyMid / 4;
+				tooltipPos.h = pady1 + currentHeight + pady2;
+			}
+		}
+
+		tooltipPos.h = pady1 + currentHeight + pady2;
+		if ( tooltipJustify == PANEL_JUSTIFY_RIGHT )
+		{
+			tooltipPos.x = pos.x - tooltipPos.w;
+		}
+		else
+		{
+			tooltipPos.x = pos.x;
+		}
+		tooltipPos.y = pos.y;
+		if ( tooltipPos.y + tooltipPos.h > sheetFrame->getSize().h )
+		{
+			// keep on-screen
+			tooltipPos.y -= ((tooltipPos.y + tooltipPos.h) - sheetFrame->getSize().h);
+			tooltipFrame->setSize(tooltipPos);
+		}
+		tooltipFrame->setSize(tooltipPos);
+		imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, tooltipPos.w, tooltipPos.h },
+			skillsheetEffectBackgroundImages);
+	}
 	else if ( element == Player::CharacterSheet_t::SHEET_TIMER )
 	{
 		const int maxWidth = 240;
@@ -16575,6 +18105,25 @@ void Player::CharacterSheet_t::updateCharacterInfo()
 		charLevel->setSize(charLevelPos);
 		className->setSize(classNamePos);
 		//messagePlayer(0, "%d | %d", charLevelPos.x - startX, 198 - (classNamePos.x + classNamePos.w));
+
+		if ( selectedElement == SHEET_CHAR_CLASS && enableTooltips )
+		{
+			SDL_Rect tooltipPos = characterInfoFrame->getSize();
+			tooltipPos.y -= 4;
+			//tooltipPos.y += raceText->getSize().y;
+			Player::PanelJustify_t tooltipJustify = PANEL_JUSTIFY_RIGHT;
+			if ( (panelJustify == PANEL_JUSTIFY_LEFT && !bCompactView) || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
+			{
+				tooltipJustify = PANEL_JUSTIFY_LEFT;
+				tooltipPos.x += tooltipPos.w;
+			}
+			if ( bCompactView )
+			{
+				tooltipPos.y = 0;
+				tooltipPos.x += (tooltipJustify == PANEL_JUSTIFY_LEFT) ? 6 : -6;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
+		}
 	}
 	if ( auto raceText = characterInnerFrame->findField("character race text") )
 	{
@@ -16686,6 +18235,25 @@ void Player::CharacterSheet_t::updateCharacterInfo()
 			}
 			sexImg->pos.y = raceText->getSize().y + raceText->getSize().h / 2 - sexImg->pos.h / 2;
 		}
+
+		if ( selectedElement == SHEET_CHAR_RACE_SEX && enableTooltips )
+		{
+			SDL_Rect tooltipPos = characterInfoFrame->getSize();
+			tooltipPos.y -= 4;
+			//tooltipPos.y += raceText->getSize().y;
+			Player::PanelJustify_t tooltipJustify = PANEL_JUSTIFY_RIGHT;
+			if ( (panelJustify == PANEL_JUSTIFY_LEFT && !bCompactView) || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
+			{
+				tooltipJustify = PANEL_JUSTIFY_LEFT;
+				tooltipPos.x += tooltipPos.w;
+			}
+			if ( bCompactView )
+			{
+				tooltipPos.y = 0;
+				tooltipPos.x += (tooltipJustify == PANEL_JUSTIFY_LEFT) ? 6 : -6;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
+		}
 	}
 	if ( auto floorFrame = sheetFrame->findFrame("dungeon floor frame") )
 	{
@@ -16713,10 +18281,15 @@ void Player::CharacterSheet_t::updateCharacterInfo()
 					SDL_Rect tooltipPos = characterInfoFrame->getSize();
 					tooltipPos.y = floorFrame->getSize().y;
 					Player::PanelJustify_t tooltipJustify = PANEL_JUSTIFY_RIGHT;
-					if ( panelJustify == PANEL_JUSTIFY_LEFT || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
+					if ( (panelJustify == PANEL_JUSTIFY_LEFT && !bCompactView) || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
 					{
 						tooltipJustify = PANEL_JUSTIFY_LEFT;
 						tooltipPos.x += tooltipPos.w;
+					}
+					if ( bCompactView )
+					{
+						tooltipPos.y = 0;
+						tooltipPos.x += (tooltipJustify == PANEL_JUSTIFY_LEFT) ? 6 : -6;
 					}
 					updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 				}
@@ -16776,11 +18349,16 @@ void Player::CharacterSheet_t::updateCharacterInfo()
 			{
 				SDL_Rect tooltipPos = characterInfoFrame->getSize();
 				tooltipPos.y += gold->getSize().y;
+				tooltipPos.y -= 6;
 				Player::PanelJustify_t tooltipJustify = PANEL_JUSTIFY_RIGHT;
-				if ( panelJustify == PANEL_JUSTIFY_LEFT || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
+				if ( (panelJustify == PANEL_JUSTIFY_LEFT && !bCompactView) || (panelJustify == PANEL_JUSTIFY_RIGHT && bCompactView) )
 				{
 					tooltipJustify = PANEL_JUSTIFY_LEFT;
 					tooltipPos.x += tooltipPos.w;
+				}
+				if ( bCompactView )
+				{
+					tooltipPos.x += (tooltipJustify == PANEL_JUSTIFY_LEFT) ? 6 : -6;
 				}
 				updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 			}
@@ -16819,6 +18397,8 @@ void Player::CharacterSheet_t::updateStats()
 	Button* intButton = statsInnerFrame->findButton("int button");
 	Button* perButton = statsInnerFrame->findButton("per button");
 	Button* chrButton = statsInnerFrame->findButton("chr button");
+
+	bool bCompactView = player.bUseCompactGUIHeight();
 
 	bool enableTooltips = !player.GUI.isDropdownActive() && !player.GUI.dropdownMenu.bClosedThisTick;
 	if ( !inputs.getVirtualMouse(player.playernum)->draw_cursor 
@@ -16864,7 +18444,12 @@ void Player::CharacterSheet_t::updateStats()
 		{
 			SDL_Rect tooltipPos = statsFrame->getSize();
 			tooltipPos.y += statsInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 	if ( auto field = statsInnerFrame->findField("dex text stat") )
@@ -16903,7 +18488,12 @@ void Player::CharacterSheet_t::updateStats()
 		{
 			SDL_Rect tooltipPos = statsFrame->getSize();
 			tooltipPos.y += statsInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 	if ( auto field = statsInnerFrame->findField("con text stat") )
@@ -16942,7 +18532,12 @@ void Player::CharacterSheet_t::updateStats()
 		{
 			SDL_Rect tooltipPos = statsFrame->getSize();
 			tooltipPos.y += statsInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 	if ( auto field = statsInnerFrame->findField("int text stat") )
@@ -16981,7 +18576,12 @@ void Player::CharacterSheet_t::updateStats()
 		{
 			SDL_Rect tooltipPos = statsFrame->getSize();
 			tooltipPos.y += statsInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 	if ( auto field = statsInnerFrame->findField("per text stat") )
@@ -17020,7 +18620,12 @@ void Player::CharacterSheet_t::updateStats()
 		{
 			SDL_Rect tooltipPos = statsFrame->getSize();
 			tooltipPos.y += statsInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 	if ( auto field = statsInnerFrame->findField("chr text stat") )
@@ -17059,7 +18664,12 @@ void Player::CharacterSheet_t::updateStats()
 		{
 			SDL_Rect tooltipPos = statsFrame->getSize();
 			tooltipPos.y += statsInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 }
@@ -17085,6 +18695,8 @@ void Player::CharacterSheet_t::updateAttributes()
 		attributesInnerPos.x = leftAlignPosX;
 	}*/
 	attributesInnerFrame->setSize(attributesInnerPos);
+
+	bool bCompactView = player.bUseCompactGUIHeight();
 
 	bool enableTooltips = !player.GUI.isDropdownActive() && !player.GUI.dropdownMenu.bClosedThisTick;
 	if ( !inputs.getVirtualMouse(player.playernum)->draw_cursor
@@ -17122,7 +18734,12 @@ void Player::CharacterSheet_t::updateAttributes()
 		{
 			SDL_Rect tooltipPos = attributesFrame->getSize();
 			tooltipPos.y += attributesInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 
@@ -17140,7 +18757,12 @@ void Player::CharacterSheet_t::updateAttributes()
 		{
 			SDL_Rect tooltipPos = attributesFrame->getSize();
 			tooltipPos.y += attributesInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 
@@ -17159,7 +18781,12 @@ void Player::CharacterSheet_t::updateAttributes()
 		{
 			SDL_Rect tooltipPos = attributesFrame->getSize();
 			tooltipPos.y += attributesInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 
@@ -17188,7 +18815,12 @@ void Player::CharacterSheet_t::updateAttributes()
 		{
 			SDL_Rect tooltipPos = attributesFrame->getSize();
 			tooltipPos.y += attributesInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 
@@ -17208,7 +18840,12 @@ void Player::CharacterSheet_t::updateAttributes()
 		{
 			SDL_Rect tooltipPos = attributesFrame->getSize();
 			tooltipPos.y += attributesInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 
@@ -17228,7 +18865,12 @@ void Player::CharacterSheet_t::updateAttributes()
 		{
 			SDL_Rect tooltipPos = attributesFrame->getSize();
 			tooltipPos.y += attributesInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 
@@ -17257,7 +18899,12 @@ void Player::CharacterSheet_t::updateAttributes()
 		{
 			SDL_Rect tooltipPos = attributesFrame->getSize();
 			tooltipPos.y += attributesInnerFrame->getSize().y;
-			updateCharacterSheetTooltip(selectedElement, tooltipPos);
+			Player::PanelJustify_t tooltipJustify = panelJustify;
+			if ( panelJustify == PANEL_JUSTIFY_LEFT )
+			{
+				tooltipPos.x += tooltipPos.w;
+			}
+			updateCharacterSheetTooltip(selectedElement, tooltipPos, tooltipJustify);
 		}
 	}
 }
@@ -18897,7 +20544,7 @@ void createInventoryTooltipFrame(const int player)
 
 view_t playerPortraitView[MAXPLAYERS];
 
-void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offsetyaw)
+void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offsetyaw, bool dark)
 {
     if (player < 0 || player >= MAXPLAYERS) {
         return;
@@ -18912,14 +20559,14 @@ void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offset
 	{
         GL_CHECK_ERR(glClear(GL_DEPTH_BUFFER_BIT));
 
-		//TODO: These two NOT PLAYERSWAP
-		//camera.x=players[player]->x/16.0+.5*cos(players[player]->yaw)-.4*sin(players[player]->yaw);
-		//camera.y=players[player]->y/16.0+.5*sin(players[player]->yaw)+.4*cos(players[player]->yaw);
-		view.x = players[player]->entity->x / 16.0 + (.92 * cos(offsetyaw));
-		view.y = players[player]->entity->y / 16.0 + (.92 * sin(offsetyaw));
+		static ConsoleVariable<bool> cvar_char_portrait_static_angle("/char_portrait_static_angle", true);
+		view.x = players[player]->entity->x / 16.0 + (.92 * cos(offsetyaw 
+			+ (*cvar_char_portrait_static_angle ? players[player]->entity->yaw : 0)));
+		view.y = players[player]->entity->y / 16.0 + (.92 * sin(offsetyaw 
+			+ (*cvar_char_portrait_static_angle ? players[player]->entity->yaw : 0)));
 		view.z = players[player]->entity->z * 2;
-		//camera.ang=atan2(players[player]->y/16.0-camera.y,players[player]->x/16.0-camera.x); //TODO: _NOT_ PLAYERSWAP
-		view.ang = (offsetyaw - PI); //5 * PI / 4;
+		view.ang = (offsetyaw - PI
+			+ (*cvar_char_portrait_static_angle ? players[player]->entity->yaw : 0)); //5 * PI / 4;
 		view.vang = PI / 20;
 
 		view.winx = pos.x;
@@ -18932,7 +20579,7 @@ void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offset
 		view.winh = pos.h;
 		glBeginCamera(&view, false);
 		bool b = players[player]->entity->flags[BRIGHT];
-		players[player]->entity->flags[BRIGHT] = true;
+        if (!dark) { players[player]->entity->flags[BRIGHT] = true; }
 		if ( !players[player]->entity->flags[INVISIBLE] )
 		{
 			glDrawVoxel(&view, players[player]->entity, REALCOLORS);
@@ -18952,7 +20599,7 @@ void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offset
 				if ( !entity->flags[INVISIBLE] )
 				{
 					bool b = entity->flags[BRIGHT];
-					entity->flags[BRIGHT] = true;
+                    if (!dark) { entity->flags[BRIGHT] = true; }
 					glDrawVoxel(&view, entity, REALCOLORS);
 					entity->flags[BRIGHT] = b;
 				}
@@ -18964,7 +20611,7 @@ void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offset
 				if ( (Sint32)entity->getUID() == -4 ) // torch sprites
 				{
                     bool b = entity->flags[BRIGHT];
-                    entity->flags[BRIGHT] = true;
+                    if (!dark) { entity->flags[BRIGHT] = true; }
 					glDrawSprite(&view, entity, REALCOLORS);
                     entity->flags[BRIGHT] = b;
 				}
@@ -18980,14 +20627,14 @@ void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offset
 					if ( (Sint32)entity->getUID() == -4 ) // torch sprites
 					{
                         bool b = entity->flags[BRIGHT];
-                        entity->flags[BRIGHT] = true;
+                        if (!dark) { entity->flags[BRIGHT] = true; }
 						glDrawSprite(&view, entity, REALCOLORS);
                         entity->flags[BRIGHT] = b;
 					}
 					else
 					{
                         bool b = entity->flags[BRIGHT];
-                        entity->flags[BRIGHT] = true;
+                        if (!dark) { entity->flags[BRIGHT] = true; }
 						glDrawVoxel(&view, entity, REALCOLORS);
                         entity->flags[BRIGHT] = b;
 					}
@@ -21067,6 +22714,7 @@ void createChestGUI(const int player)
 		grabAllBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
 		grabAllBtn->setCallback([](Button& button) {
 			takeAllChestGUIAction(button.getOwner());
+			Player::soundActivate();
 		});
 
 		std::string promptFont = "fonts/pixel_maz.ttf#32#2";
@@ -21257,6 +22905,7 @@ void createShopGUI(const int player)
 		closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
 		closeBtn->setCallback([](Button& button) {
 			closeShopGUIAction(button.getOwner());
+			Player::soundCancel();
 		});
 
 		auto discountFrame = bgFrame->addFrame("discount frame");
@@ -21385,6 +23034,7 @@ void createShopGUI(const int player)
 			buybackBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
 			buybackBtn->setCallback([](Button& button) {
 				toggleShopBuybackView(button.getOwner());
+				Player::soundActivate();
 			});
 
 			auto closeText = bgFrame->addField("close shop prompt", 32);
@@ -21686,49 +23336,138 @@ void createPlayerInventory(const int player)
 			auto charSize = dollSlotsPos;
 			charSize.x += inventorySlotSize + baseSlotOffsetX + 4;
 			charSize.w -= 2 * (inventorySlotSize + baseSlotOffsetX + 4);
-
 			charFrame->setSize(charSize);
 			charFrame->setTickCallback([](Widget& widget) {
+				Frame* frame = static_cast<Frame*>(&widget);
 				int player = widget.getOwner();
-				if ( players[player]->GUI.bActiveModuleUsesInventory() 
-					&& players[player]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY )
+				auto& scrollInertia = players[player]->paperDoll.portraitRotationInertia;
+				auto& scrollPercent = players[player]->paperDoll.portraitRotationPercent;
+				auto& portraitYaw = players[player]->paperDoll.portraitYaw;
+				static ConsoleVariable<float> cvar_char_portrait_spd("/char_portrait_spd", 15.0);
+				static ConsoleVariable<float> cvar_char_portrait_decel("/char_portrait_decel", 25.0);
+
+				bool close = false;
+				if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_PORTRAIT )
 				{
-					if ( !players[player]->inventoryUI.itemTooltipDisplay.scrollable )
+					SDL_Rect size = frame->getAbsoluteSize();
+
+					// make sure to adjust absolute size to camera viewport
+					const int offsetX = 4;
+					const int offsetY = 6;
+					size.x += offsetX;
+					size.y += offsetY;
+					size.w -= offsetX * 2;
+					size.h -= offsetY * 2;
+					size.x -= players[player]->camera_virtualx1();
+					size.y -= players[player]->camera_virtualy1();
+
+					players[player]->hud.updateCursorAnimation(size.x - 1, size.y - 1,
+						size.w, size.h, inputs.getVirtualMouse(player)->draw_cursor);
+					players[player]->paperDoll.portraitActiveToEdit = true;
+
+					if ( inputs.bPlayerUsingKeyboardControl(player) )
 					{
-						/*if ( Input::inputs[player].analog("InventoryCharacterRotateLeft") )
+						if ( Input::inputs[player].binaryToggle("InventoryCharacterRotateLeftMouse") )
 						{
-							camera_charsheet_offsetyaw -= 0.05;
+							scrollInertia = std::min(scrollInertia + .05 / *cvar_char_portrait_spd, .05);
 						}
-						else if ( Input::inputs[player].analog("InventoryCharacterRotateRight") )
+						if ( Input::inputs[player].binaryToggle("InventoryCharacterRotateRightMouse") )
 						{
-							camera_charsheet_offsetyaw += 0.05;
-						}*/
+							scrollInertia = std::max(scrollInertia - .05 / *cvar_char_portrait_spd, -.05);
+						}
+						close |= Input::inputs[player].consumeBinaryToggle("MenuLeftClick");
+						close |= Input::inputs[player].consumeBinaryToggle("MenuRightClick");
 					}
-					if ( camera_charsheet_offsetyaw > 2 * PI )
+					if ( inputs.hasController(player) )
 					{
-						camera_charsheet_offsetyaw -= 2 * PI;
+						close |= Input::inputs[player].consumeBinaryToggle("MenuConfirm");
+						close |= Input::inputs[player].consumeBinaryToggle("MenuCancel");
 					}
-					if ( camera_charsheet_offsetyaw < 0.0 )
+					if ( close )
 					{
-						camera_charsheet_offsetyaw += 2 * PI;
+						Player::soundCancel();
 					}
+
+					if ( players[player]->shootmode )
+					{
+						close = true;
+					}
+
+					if ( Input::inputs[player].analog("InventoryCharacterRotateRight") )
+					{
+						scrollInertia = 0.0;
+						real_t delta = Input::inputs[player].analog("InventoryCharacterRotateRight");
+						scrollPercent = (scrollPercent + .05 * (getFPSScale(60.0)) * delta);
+						while ( scrollPercent >= 1.0 )
+						{
+							scrollPercent -= 1.0;
+						}
+					}
+					else if ( Input::inputs[player].analog("InventoryCharacterRotateLeft") )
+					{
+						scrollInertia = 0.0;
+						real_t delta = Input::inputs[player].analog("InventoryCharacterRotateLeft");
+						scrollPercent = scrollPercent - .05 * (getFPSScale(60.0)) * delta;
+						while ( scrollPercent < 0.0 )
+						{
+							scrollPercent += 1.0;
+						}
+					}
+
+					if ( abs(scrollInertia) > 0.0 )
+					{
+						scrollInertia *= .9;
+						if ( abs(scrollInertia) < (.01 / *cvar_char_portrait_decel) )
+						{
+							scrollInertia = 0.0;
+						}
+						scrollPercent += scrollInertia;
+					}
+
+					if ( Input::inputs[player].consumeBinaryToggle("ResetPortraitRotation") )
+					{
+						Input::inputs[player].consumeBindingsSharedWithBinding("ResetPortraitRotation");
+						scrollPercent = 0.0;
+						scrollInertia = 0.0;
+						portraitYaw = (330) * PI / 180;
+						close = true;
+						Player::soundCancel();
+					}
+				}
+
+				if ( close )
+				{
+					if ( !inputs.getVirtualMouse(player)->draw_cursor )
+					{
+						players[player]->GUI.returnToPreviousActiveModule();
+					}
+					else
+					{
+						players[player]->GUI.activateModule(Player::GUI_t::MODULE_NONE);
+					}
+				}
+				if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_PORTRAIT )
+				{
+					players[player]->paperDoll.portraitActiveToEdit = false;
+				}
+				portraitYaw = (330) * PI / 180 + (scrollPercent * 2 * PI);
+				if ( portraitYaw > 2 * PI )
+				{
+					portraitYaw -= 2 * PI;
+				}
+				if ( portraitYaw < 0.0 )
+				{
+					portraitYaw += 2 * PI;
 				}
 				});
 			charFrame->setDrawCallback([](const Widget& widget, SDL_Rect pos) {
-				drawCharacterPreview(widget.getOwner(), pos, 50, camera_charsheet_offsetyaw);
+				drawCharacterPreview(widget.getOwner(), pos, 50, players[widget.getOwner()]->paperDoll.portraitYaw);
 			});
+
 			/*charFrame->addImage(SDL_Rect{ 0, 0, charSize.w, charSize.h },
 				makeColor( 255, 255, 255, 255),
 				"images/system/white.png", "inventory character preview bg");*/
 		}
-
-		/*auto selectedFrame = dollSlotsFrame->addFrame("paperdoll selected item");
-		selectedFrame->setSize(SDL_Rect{ 0, 0, inventorySlotSize, inventorySlotSize });
-		selectedFrame->setDisabled(true);
-
-		Uint32 color = makeColor( 255, 255, 0, 255);
-		selectedFrame->addImage(SDL_Rect{ 0, 0, selectedFrame->getSize().w, selectedFrame->getSize().h },
-			color, "images/system/hotbar_slot.png", "paperdoll selected highlight");*/
 	}
 
 	createPlayerSpellList(player);
@@ -21765,11 +23504,50 @@ void createPlayerInventory(const int player)
 		playerInventoryFrames[player].flourishFrame = flourishFrame;
 		const int flourishW = 126;
 		const int flourishH = 26;
+		flourishFrame->setHollow(true);
 		flourishFrame->setSize(SDL_Rect{ (bgFrame->getSize().w / 2) - (flourishW / 2), 202 - flourishH + 6, flourishW, flourishH });
 		auto flourishImg = flourishFrame->addImage(SDL_Rect{ 0, 0, flourishFrame->getSize().w, flourishFrame->getSize().h },
 			makeColor( 255, 255, 255, 255),
 			"*#images/ui/Inventory/HUD_Inventory_Flourish_00.png", "inventory flourish img");
 		//flourishImg->disabled = true;
+
+		{
+			SDL_Rect charSize = playerInventoryFrames[player].characterPreview->getSize();
+			auto autosortFrame = frame->addFrame("autosort frame");
+			playerInventoryFrames[player].autosortFrame = autosortFrame;
+			autosortFrame->setHollow(true);
+			autosortFrame->setSize(charSize);
+			auto autosortButton = autosortFrame->addButton("autosort button");
+			autosortButton->setSize(SDL_Rect{ charSize.w - 26,
+				charSize.h - 26 - 16, 26, 26 });
+			autosortButton->setBackground("*#images/ui/Inventory/HUD_Button_AutosortUnselect.png");
+			autosortButton->setBackgroundActivated("*#images/ui/Inventory/HUD_Button_AutosortPress.png");
+			autosortButton->setBackgroundHighlighted("*#images/ui/Inventory/HUD_Button_AutosortSelect.png");
+			autosortButton->setHideGlyphs(true);
+			autosortButton->setHideKeyboardGlyphs(true);
+			autosortButton->setHideSelectors(true);
+			autosortButton->setMenuConfirmControlType(0);
+			//autosortButton->setOntop(true);
+			autosortButton->setColor(makeColor(255, 255, 255, 255));
+			autosortButton->setHighlightColor(makeColor(255, 255, 255, 255));
+			autosortButton->setCallback([](Button& button) {
+				autosortInventory(button.getOwner());
+				//playSound(139, 64);
+				Player::soundActivate();
+			});
+			autosortButton->setTickCallback([](Widget& widget) {
+				if ( widget.isSelected()
+					&& (players[widget.getOwner()]->GUI.activeModule != Player::GUI_t::MODULE_INVENTORY
+						|| players[widget.getOwner()]->shootmode
+						|| !inputs.getVirtualMouse(widget.getOwner())->draw_cursor) )
+				{
+					widget.deselect();
+				}
+			});
+			auto autosortImg = autosortFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "autosort glyph");
+			autosortImg->disabled = true;
+			autosortImg->ontop = true;
+		}
 
 		GenericGUI[player].tinkerGUI.tinkerFrame = frame->addFrame("tinker");
 		GenericGUI[player].tinkerGUI.tinkerFrame->setHollow(true);
@@ -21974,6 +23752,16 @@ void Player::Inventory_t::updateItemContextMenu()
 	{
 		options.push_back(PROMPT_CLEAR_HOTBAR_SLOT);
 		std::reverse(options.begin(), options.end());
+		if ( itemCategory(item) == SPELLBOOK )
+		{
+			for ( auto& it : options )
+			{
+				if ( it == PROMPT_INTERACT )
+				{
+					it = PROMPT_INTERACT_SPELLBOOK_HOTBAR;
+				}
+			}
+		}
 	}
 	std::vector<std::pair<Frame::image_t*, Field*>> optionFrames;
 	auto glyph1 = interactFrame->findImage("glyph 1");
@@ -22784,7 +24572,11 @@ void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextM
 		item_FoodAutomaton(item, player);
 		return;
 	}
-	else if ( prompt == PROMPT_INTERACT || prompt == PROMPT_INSPECT || prompt == PROMPT_INSPECT_ALTERNATE || prompt == PROMPT_TINKER )
+	else if ( prompt == PROMPT_INTERACT 
+		|| prompt == PROMPT_INTERACT_SPELLBOOK_HOTBAR
+		|| prompt == PROMPT_INSPECT 
+		|| prompt == PROMPT_INSPECT_ALTERNATE 
+		|| prompt == PROMPT_TINKER )
 	{
 		if ( item->type == TOOL_PLAYER_LOOT_BAG )
 		{
@@ -22844,7 +24636,16 @@ void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextM
 		}
 		else
 		{
-			if ( !disableItemUsage && prompt == PROMPT_INTERACT )
+			if ( !disableItemUsage && prompt == PROMPT_INTERACT_SPELLBOOK_HOTBAR )
+			{
+				if ( itemCategory(item) == SPELLBOOK )
+				{
+					players[player]->magic.spellbookUidFromHotbarSlot = item->uid;
+				}
+				useItem(item, player);
+				players[player]->magic.spellbookUidFromHotbarSlot = 0;
+			}
+			else if ( !disableItemUsage && prompt == PROMPT_INTERACT )
 			{
 				useItem(item, player);
 			}
@@ -23548,15 +25349,18 @@ void Player::HUD_t::updateCursorAnimation(int destx, int desty, int width, int h
 				);
 				cursor.animateSetpointX = destx;
 				cursor.animateSetpointY = desty;
-				cursor.animateSetpointW = width;
-				cursor.animateSetpointH = height;
+				cursor.animateSetpointW = width + 2 * (cursor.cursorToSlotOffset + 1);
+				cursor.animateSetpointH = height + 2 * (cursor.cursorToSlotOffset + 1);
 
 				cursor.animateStartX = destx;
 				cursor.animateStartY = desty;
-				cursor.animateStartW = width;
-				cursor.animateStartH = height;
+				cursor.animateStartW = width + 2 * (cursor.cursorToSlotOffset + 1);
+				cursor.animateStartH = height + 2 * (cursor.cursorToSlotOffset + 1);
 			}
-			else if ( cursor.animateSetpointX != destx || cursor.animateSetpointY != desty )
+			else if ( cursor.animateSetpointX != destx 
+				|| cursor.animateSetpointY != desty
+				|| cursor.animateSetpointW != width + 2 * (cursor.cursorToSlotOffset + 1)
+				|| cursor.animateSetpointH != height + 2 * (cursor.cursorToSlotOffset + 1) )
 			{
 				SDL_Rect size = hudCursor->getSize();
 				cursor.animateStartX = size.x;
@@ -23633,7 +25437,7 @@ void Player::HUD_t::updateCursor()
 		int offset = ((ticks - cursor.lastUpdateTick) % TICKS_PER_SECOND < TICKS_PER_SECOND / 2) ? largeOffset : smallOffset;
 		if ( inputs.getVirtualMouse(player.playernum)->draw_cursor )
 		{
-			if ( player.GUI.dropdownMenu.bOpen )
+			if ( player.GUI.dropdownMenu.bOpen || player.GUI.activeModule == Player::GUI_t::MODULE_PORTRAIT )
 			{
 				// animate cursor
 			}
@@ -23670,7 +25474,9 @@ void Player::HUD_t::updateCursor()
 		SDL_Rect currentPos = hudCursor->getSize();
 		const int offsetPosition = cursor.cursorToSlotOffset;
 		if ( cursor.animateSetpointX - offsetPosition != currentPos.x
-			|| cursor.animateSetpointY - offsetPosition != currentPos.y )
+			|| cursor.animateSetpointY - offsetPosition != currentPos.y
+			|| cursor.animateSetpointW != currentPos.w
+			|| cursor.animateSetpointH != currentPos.h )
 		{
 			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.1, (1.0 - cursor.animateX)) / (2.5);
@@ -24259,6 +26065,7 @@ void Player::HUD_t::updateXPBar()
 	}
 
 	bool tempHideXP = false;
+	bool fadeOut = false;
 	if ( !levelUpAnimation[player.playernum].lvlUps.empty() && !levelUpAnimation[player.playernum].lvlUps[0].titleFinishAnim )
 	{
 		tempHideXP = true;
@@ -24268,13 +26075,26 @@ void Player::HUD_t::updateXPBar()
 	{
 		tempHideXP = true;
 	}
+	else if ( player.bUseCompactGUIHeight() && player.shootmode && !skillUpAnimation[player.playernum].skillUps.empty()
+		&& !(!levelUpAnimation[player.playernum].lvlUps.empty() && levelUpAnimation[player.playernum].lvlUps[0].titleFinishAnim) )
+	{
+		// hide xp in compact height, if skillup active and level up isn't playing
+		tempHideXP = true;
+		fadeOut = true;
+	}
 	if ( tempHideXP )
 	{
-		//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
-		//real_t setpointDiff = fpsScale * std::max(.1, (1.0 - animHideXP)) / 2.5;
-		//animHideXP += setpointDiff;
-		//animHideXP = std::min(1.0, animHideXP);
-		animHideXP = 1.0;
+		if ( fadeOut )
+		{
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			real_t setpointDiff = fpsScale * std::max(.1, (1.0 - animHideXP)) / 2.5;
+			animHideXP += setpointDiff;
+			animHideXP = std::min(1.0, animHideXP);
+		}
+		else
+		{
+			animHideXP = 1.0;
+		}
 	}
 	else
 	{
@@ -26889,6 +28709,30 @@ void hotbar_slot_t::storeLastItem(Item* item)
 	lastCategory = itemCategory(item);
 }
 
+std::string hotbarSlotBindingText(const int player, const int slotnum, const Input::binding_t& binding)
+{
+	std::string inputName = "";
+	if ( binding.type == Input::binding_t::KEYBOARD && binding.keycode != SDLK_UNKNOWN )
+	{
+		if ( binding.keycode >= SDLK_0 && binding.keycode <= SDLK_9 )
+		{
+			inputName = SDL_GetKeyName(binding.keycode);
+		}
+	}
+	else if ( binding.type != Input::binding_t::MOUSE_BUTTON )
+	{
+		if ( slotnum + 1 == 10 )
+		{
+			inputName = "0";
+		}
+		else
+		{
+			inputName = std::to_string(slotnum + 1);
+		}
+	}
+	return inputName;
+}
+
 void Player::Hotbar_t::updateHotbar()
 {
 	if ( !hotbarFrame )
@@ -27327,10 +29171,26 @@ void Player::Hotbar_t::updateHotbar()
 				default:
 					break;
 			}
+
+			slot->setSize(pos);
+
+			auto glyphImage = Image::get(glyph->path.c_str());
+			if ( glyphImage )
+			{
+				glyph->pos.w = std::min((int)glyphImage->getWidth(), slot->getSize().w);
+				glyph->pos.h = glyphImage->getHeight();
+				glyph->pos.x = pos.x + pos.w / 2 - glyph->pos.w / 2;
+				glyph->pos.y = pos.y - glyph->pos.h;
+			}
 		}
 		else
 		{
-			slot->findField("slot num text")->setDisabled(false); // enable the hotkey prompts per slot
+			auto slot_text = slot->findField("slot num text");
+			slot_text->setDisabled(false); // enable the hotkey prompts per slot
+			std::string slotstr = "Hotbar Slot " + std::to_string(num + 1);
+			auto binding = Input::inputs[player.playernum].input(slotstr.c_str());
+			std::string inputName = hotbarSlotBindingText(player.playernum, num, binding);
+
 			const unsigned int midpoint = NUM_HOTBAR_SLOTS / 2;
 			if ( num < midpoint )
 			{
@@ -27340,17 +29200,41 @@ void Player::Hotbar_t::updateHotbar()
 			{
 				pos.x += (pos.w) * (num - midpoint);
 			}
-		}
 
-		slot->setSize(pos);
+			if ( inputName == "" )
+			{
+				slot_text->setText("");
+				glyph->disabled = slot->isDisabled();
+				glyph->color = 0xFFFFFFFF;// player.shootmode ? 0xFFFFFFFF : makeColor(255, 255, 255, 192);
+				if ( binding.type == Input::binding_t::KEYBOARD )
+				{
+					glyph->path = Input::inputs[player.playernum].getGlyphPathForBinding(slotstr.c_str(), true);
+				}
+				else
+				{
+					glyph->path = Input::inputs[player.playernum].getGlyphPathForBinding(slotstr.c_str());
+				}
+			}
+			else
+			{
+				slot_text->setText(inputName.c_str());
+			}
 
-		auto glyphImage = Image::get(glyph->path.c_str());
-		if ( glyphImage )
-		{
-			glyph->pos.w = glyphImage->getWidth();
-			glyph->pos.h = glyphImage->getHeight();
-			glyph->pos.x = pos.x + pos.w / 2 - glyph->pos.w / 2;
-			glyph->pos.y = pos.y - glyph->pos.h;
+			slot->setSize(pos);
+
+			auto glyphImage = Image::get(glyph->path.c_str());
+			if ( glyphImage )
+			{
+				glyph->pos.w = std::min((int)glyphImage->getWidth(), slot->getSize().w);
+				glyph->pos.h = glyphImage->getHeight();
+				glyph->pos.x = pos.x + pos.w / 2 - glyph->pos.w / 2;
+				glyph->pos.y = pos.y - glyph->pos.h;
+
+				if ( binding.type == Input::binding_t::MOUSE_BUTTON )
+				{
+					glyph->pos.y += 4;
+				}
+			}
 		}
 
 		if ( current_hotbar == num )
@@ -27501,8 +29385,15 @@ static void drawConsoleCommandBuffer() {
     if (intro) {
         font = "fonts/pixelmix.ttf#16#2";
     } else {
-        font = players[commandPlayer]->messageZone.useBigFont ?
-            "fonts/pixelmix.ttf#16#2" : "fonts/pixel_maz_multiline.ttf#16#2";
+		if ( players[commandPlayer]->isLocalPlayer() )
+		{
+			font = players[commandPlayer]->messageZone.useBigFont ?
+			    "fonts/pixelmix.ttf#16#2" : "fonts/pixel_maz_multiline.ttf#16#2";
+		}
+		else
+		{
+			font = "fonts/pixelmix.ttf#16#2";
+		}
     }
 	auto text = Text::get(buf, font, 0xffffffff, makeColor(0, 0, 0, 255));
 	const int printx = players[commandPlayer]->camera_virtualx1() + 8;
@@ -27771,6 +29662,42 @@ void Player::SkillSheet_t::createSkillSheet()
 	skillTitleTxt->setFont(titleFont);
 	skillTitleTxt->setOntop(true);
 	skillTitleTxt->setTextColor(makeColor(201, 162, 100, 255));
+
+	{
+		auto closeBtn = skillBackground->addButton("close skills button");
+		SDL_Rect closeBtnPos;
+		closeBtnPos.x = skillBackground->getSize().w - 66;
+		closeBtnPos.y = 22;
+		closeBtnPos.w = 26;
+		closeBtnPos.h = 26;
+		closeBtn->setSize(closeBtnPos);
+		closeBtn->setColor(makeColor(255, 255, 255, 255));
+		closeBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+		closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+		closeBtn->setText("X");
+		closeBtn->setOntop(true);
+		closeBtn->setFont(boldFont);
+		closeBtn->setHideGlyphs(true);
+		closeBtn->setHideKeyboardGlyphs(true);
+		closeBtn->setHideSelectors(true);
+		closeBtn->setMenuConfirmControlType(0);
+		closeBtn->setBackground("*#images/ui/Skillsheet/Button_X_00.png");
+		closeBtn->setBackgroundHighlighted("*#images/ui/Skillsheet/Button_XHigh_00.png");
+		closeBtn->setBackgroundActivated("*#images/ui/Skillsheet/Button_XPress_00.png");
+		closeBtn->setCallback([](Button& button) {
+			players[button.getOwner()]->skillSheet.closeSkillSheet();
+			Player::soundCancel();
+		});
+		closeBtn->setTickCallback([](Widget& widget) {
+			if ( widget.isSelected() )
+			{
+				if ( !inputs.getVirtualMouse(widget.getOwner())->draw_cursor )
+				{
+					widget.deselect();
+				}
+			}
+		});
+	}
 
 	SDL_Rect descPos{ 0, 54, 320, 324 };
 	descPos.x = skillBackground->getSize().w / 2 - descPos.w / 2;
@@ -28121,6 +30048,10 @@ void Player::SkillSheet_t::openSkillSheet()
 	{
 		players[player.playernum]->openStatusScreen(GUI_MODE_INVENTORY,
 			players[player.playernum]->inventory_mode, player.GUI.MODULE_SKILLS_LIST); // Reset the GUI to the inventory.
+	}
+	if ( !bSkillSheetOpen )
+	{
+		Player::soundActivate();
 	}
 	bSkillSheetOpen = true;
 	openTick = ticks;
@@ -28802,11 +30733,19 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 			else
 			{
 				val = 10 * (stats[playernum]->PROFICIENCIES[proficiency] + (statGetPER(stats[playernum], player) * 5)); // max gold value can appraise
-				if ( val < 0.1 )
+				if ( val < 0.0 )
+				{
+					snprintf(buf, sizeof(buf), "??? Gold");
+				}
+				else if ( val < 0.1 )
 				{
 					val = 9;
+					snprintf(buf, sizeof(buf), rawValue.c_str(), (int)val);
 				}
-				snprintf(buf, sizeof(buf), rawValue.c_str(), (int)val);
+				else
+				{
+					snprintf(buf, sizeof(buf), rawValue.c_str(), (int)val);
+				}
 			}
 		}
 		else if ( tag == "APPRAISE_WORTHLESS_GLASS" )
@@ -29566,6 +31505,24 @@ void Player::SkillSheet_t::selectSkill(int skill)
 //	return sprite;
 //}
 
+void buttonSkillsheetUpdateSelectorOnHighlight(const int player, Button* button)
+{
+	if ( button->isHighlighted() )
+	{
+		players[player]->GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_SKILLS_LIST);
+		if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_SKILLS_LIST )
+		{
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_SKILLS_LIST);
+		}
+		SDL_Rect pos = button->getAbsoluteSize();
+		// make sure to adjust absolute size to camera viewport
+		pos.x -= players[player]->camera_virtualx1();
+		pos.y -= players[player]->camera_virtualy1();
+		players[player]->hud.setCursorDisabled(false);
+		players[player]->hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player)->draw_cursor);
+	}
+}
+
 static ConsoleVariable<bool> cvar_skillsheet_optimise("/skillsheet_optimise", true);
 void Player::SkillSheet_t::processSkillSheet()
 {
@@ -29586,6 +31543,7 @@ void Player::SkillSheet_t::processSkillSheet()
 		else
 		{
 			closeSkillSheet();
+			Player::soundCancel();
 		}
 	}
 
@@ -30077,6 +32035,7 @@ void Player::SkillSheet_t::processSkillSheet()
 				}
 			}
 			inputs.getVirtualMouse(player.playernum)->draw_cursor = false;
+			Player::soundMovement();
 		}
 		if ( Input::inputs[player.playernum].binaryToggle("MenuCancel")
 			&& player.bControlEnabled && !gamePaused && !player.usingCommand() )
@@ -30155,6 +32114,7 @@ void Player::SkillSheet_t::processSkillSheet()
 						{
 							selectSkill(i);
 							Input::inputs[player.playernum].consumeBinaryToggle("MenuLeftClick");
+							Player::soundActivate();
 						}
 					}
 				}
@@ -31115,6 +33075,36 @@ void Player::SkillSheet_t::processSkillSheet()
 		}
 	}
 
+	{
+		// close btn
+		auto closeBtn = innerFrame->findButton("close skills button");
+		closeBtn->setDisabled(true);
+		if ( inputs.getVirtualMouse(player.playernum)->draw_cursor )
+		{
+			closeBtn->setDisabled(!(skillsFadeInAnimationY >= 0.999));
+			closeBtn->setInvisible(false);
+			if ( !closeBtn->isDisabled() )
+			{
+				buttonSkillsheetUpdateSelectorOnHighlight(player.playernum, closeBtn);
+			}
+		}
+		else
+		{
+			closeBtn->setDisabled(true);
+			closeBtn->setInvisible(true);
+			if ( closeBtn->isSelected() )
+			{
+				closeBtn->deselect();
+			}
+		}
+
+		SDL_Rect closeBtnPos = closeBtn->getSize();
+		SDL_Rect bgImgPos = bgImgFrame->getSize();
+		closeBtnPos.x = bgImgPos.x + bgImgPos.w - 38;
+		closeBtnPos.y = bgImgPos.y + 22;
+		closeBtn->setSize(closeBtnPos);
+	}
+
 	if ( closeSheetAction || mouseClickedOutOfBounds )
 	{
 		if ( mouseClickedOutOfBounds )
@@ -31127,6 +33117,7 @@ void Player::SkillSheet_t::processSkillSheet()
 			}
 		}
 		closeSkillSheet();
+		Player::soundCancel();
 		return;
 	}
 
@@ -31165,6 +33156,10 @@ void Player::Inventory_t::SpellPanel_t::openSpellPanel()
 			scrollPercent = 0.0;
 			scrollInertia = 0.0;
 			bFirstTimeSnapCursor = false;
+			if ( !inputs.getUIInteraction(player.playernum)->selectedItem )
+			{
+				Player::soundActivate();
+			}
 		}
 		bOpen = true;
 	}
@@ -31182,6 +33177,15 @@ void Player::Inventory_t::SpellPanel_t::closeSpellPanel()
 	scrollPercent = 0.0;
 	scrollInertia = 0.0;
 	scrollAnimateX = scrollSetpoint;
+	if ( bOpen 
+		&& !(player.inventoryUI.bCompactView 
+			&& player.hud.compactLayoutMode == Player::HUD_t::COMPACT_LAYOUT_CHARSHEET) )
+	{
+		if ( !inputs.getUIInteraction(player.playernum)->selectedItem )
+		{
+			Player::soundCancel();
+		}
+	}
 	bOpen = false;
 	bFirstTimeSnapCursor = false;
 }
@@ -31853,23 +33857,23 @@ void Player::Inventory_t::ChestGUI_t::updateChest()
 	}
 	else
 	{
-		closeBtn->setInvisible(true);
-		grabAllBtn->setInvisible(true);
-		grabAllBtn->setDisabled(true);
-		closeBtn->setDisabled(true);
+		closeBtn->setInvisible(false);
+		grabAllBtn->setInvisible(false);
+		grabAllBtn->setDisabled(!isInteractable);
+		closeBtn->setDisabled(!isInteractable);
 	}
 
 	//auto slider = baseFrame->findSlider("chest slider");
 	auto chestSlotsFrame = chestFrame->findFrame("chest slots");
 
 	auto promptBack = baseFrame->findField("prompt back txt");
-	promptBack->setDisabled(!drawGlyphs);
+	promptBack->setDisabled(true);
 	auto promptBackImg = baseFrame->findImage("prompt back img");
-	promptBackImg->disabled = !drawGlyphs;
+	promptBackImg->disabled = !drawGlyphs || player.inventoryUI.spellPanel.bOpen;
 	auto promptGrab = baseFrame->findField("prompt grab txt");
-	promptGrab->setDisabled(!drawGlyphs);
+	promptGrab->setDisabled(true);
 	auto promptGrabImg = baseFrame->findImage("prompt grab img");
-	promptGrabImg->disabled = !drawGlyphs;
+	promptGrabImg->disabled = !drawGlyphs || player.inventoryUI.spellPanel.bOpen;
 	// handle height changing..
 	{
 		int frameHeight = 236 + 16;
@@ -31998,6 +34002,23 @@ void Player::Inventory_t::ChestGUI_t::updateChest()
 				promptBackImg->pos = glyphPos;
 			}
 		}
+		else if ( drawGlyphs )
+		{
+			SDL_Rect glyphPos = closeBtn->getSize();
+			//glyphPos.x += glyphPos.w / 2;
+			promptBackImg->path = Input::inputs[player.playernum].getGlyphPathForBinding("MenuCancel");
+			promptBackImg->ontop = true;
+			Image* glyphImage = Image::get(promptBackImg->path.c_str());
+			if ( glyphImage )
+			{
+				glyphPos.w = glyphImage->getWidth();
+				glyphPos.h = glyphImage->getHeight();
+				glyphPos.x -= glyphPos.w;
+				glyphPos.x += 2;
+				glyphPos.y += 2;
+				promptBackImg->pos = glyphPos;
+			}
+		}
 		if ( !promptGrab->isDisabled() )
 		{
 			promptGrab->setText(language[4091]);
@@ -32034,6 +34055,22 @@ void Player::Inventory_t::ChestGUI_t::updateChest()
 				}
 			}
 		}
+		else if ( drawGlyphs )
+		{
+			SDL_Rect glyphPos = grabAllBtn->getSize();
+			glyphPos.x += glyphPos.w / 2;
+			glyphPos.y += glyphPos.h - 4;
+			promptGrabImg->path = Input::inputs[player.playernum].getGlyphPathForBinding("MenuPageRightAlt");
+			promptGrabImg->ontop = true;
+			Image* glyphImage = Image::get(promptGrabImg->path.c_str());
+			if ( glyphImage )
+			{
+				glyphPos.w = glyphImage->getWidth();
+				glyphPos.h = glyphImage->getHeight();
+				glyphPos.x -= glyphPos.w / 2;
+				promptGrabImg->pos = glyphPos;
+			}
+		}
 		if ( !promptBack->isDisabled() )
 		{
 			if ( furthestLeftPrompt < promptBackImg->pos.x + promptBackImg->pos.w / 2 )
@@ -32061,9 +34098,10 @@ void Player::Inventory_t::ChestGUI_t::updateChest()
 				Input::inputs[player.playernum].consumeBinaryToggle("MenuCancel");
 				closeChestAction = true;
 			}
-			else if ( !promptGrab->isDisabled() && Input::inputs[player.playernum].consumeBinaryToggle("MenuPageRightAlt") )
+			else if ( !promptGrabImg->disabled && Input::inputs[player.playernum].consumeBinaryToggle("MenuPageRightAlt") )
 			{
 				takeAllChestGUIAction(player.playernum);
+				Player::soundActivate();
 			}
 		}
 	}
@@ -33239,7 +35277,14 @@ SDL_Surface* Player::WorldUI_t::WorldTooltipItem_t::blitItemWorldTooltip(Item* i
 			SDL_BlitScaled(srcSurf, nullptr, itemWorldTooltipSurface, &goldPos);
 
 			char goldBuf[32];
-			snprintf(goldBuf, sizeof(goldBuf), "%d", item->sellValue(player.playernum));
+			if ( !item->identified && itemCategory(item) == GEM )
+			{
+				snprintf(goldBuf, sizeof(goldBuf), "%d", items[GEM_GLASS].value);
+			}
+			else
+			{
+				snprintf(goldBuf, sizeof(goldBuf), "%d", items[item->type].value);
+			}
 			if ( SDL_Surface* textSurf = const_cast<SDL_Surface*>(Text::get(goldBuf, font->getName(),
 				hudColors.characterSheetNeutral, 0)->getSurf()) )
 			{
@@ -35789,7 +37834,13 @@ void updateSkillUpFrame(const int player)
 	}
 
 	static ConsoleVariable<int> cvar_skillup_framey("/skillup_framey", 48);
-	SDL_Rect levelUpFramePos{ hud_t.hudFrame->getSize().w / 2 - frameWidth / 2, *cvar_skillup_framey,
+	int framey = *cvar_skillup_framey;
+	if ( players[player]->bUseCompactGUIHeight() && players[player]->shootmode )
+	{
+		framey -= 28;
+		framey = std::max(4, framey);
+	}
+	SDL_Rect levelUpFramePos{ hud_t.hudFrame->getSize().w / 2 - frameWidth / 2, framey,
 		frameWidth, skillsFramePos.y + skillsFramePos.h };
 	levelUpFramePos.x += players[player]->camera_virtualx1();
 	levelUpFramePos.y += players[player]->camera_virtualy1();

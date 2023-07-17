@@ -257,8 +257,19 @@ Uint32 messagesEnabled = 0xffffffff; // all enabled
 
 real_t getFPSScale(real_t baseFPS)
 {
+#ifndef EDITOR
+	static ConsoleVariable<bool> cvar_ui_fps_scale_fixed("/ui_fps_scale_fixed", false);
+	if ( *cvar_ui_fps_scale_fixed )
+	{
+		return baseFPS / (std::max(1U, fpsLimit));
+	}
+	else
+	{
+		return baseFPS / (std::max(1U, (unsigned int)fps));
+	}
+#else
 	return baseFPS / (std::max(1U, (unsigned int)fps));
-	//return baseFPS / (std::max(1U, fpsLimit));
+#endif
 }
 
 //ConsoleVariable<bool> cvar_useTimerInterpolation("/timer_interpolation_enabled", true);
@@ -917,6 +928,10 @@ void gameLogic(void)
 	Uint32 i = 0, j;
 	deleteent_t* deleteent;
 	bool entitydeletedself;
+
+#ifdef NINTENDO
+	(void)nxUpdateCrashMessage();
+#endif
 
     if (!gamePaused && !loading) {
         if (demo_file) {
@@ -5007,10 +5022,12 @@ void ingameHud()
 			if ( players[player]->shootmode )
 			{
 				players[player]->openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
+				//Player::soundStatusOpen();
 			}
 			else
 			{
 				players[player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+				//Player::soundStatusClose();
 			}
 		}
 
@@ -5046,6 +5063,7 @@ void ingameHud()
                     input.consumeBinaryToggle("Hotbar Up / Select");
                     input.consumeBinaryToggle("Hotbar Right");
                 }
+				Player::soundCancel();
 			}
 		}
 
@@ -5273,6 +5291,7 @@ void ingameHud()
 			{
 				players[player]->skillSheet.closeSkillSheet();
 			}
+			players[player]->hud.closeStatusFxWindow();
 
 			gui_clickdrag[player] = false; //Just a catchall to make sure that any ongoing GUI dragging ends when the GUI is closed.
 
@@ -5321,8 +5340,6 @@ void ingameHud()
 
 	DebugStats.t8Status = std::chrono::high_resolution_clock::now();
 
-    doSharedMinimap();
-
 	for ( int player = 0; player < MAXPLAYERS; ++player )
 	{
 		if ( !players[player]->isLocalPlayer() )
@@ -5335,6 +5352,7 @@ void ingameHud()
 		updateLevelUpFrame(player);
 		players[player]->inventoryUI.updateSelectedItemAnimation();
 		players[player]->inventoryUI.updateInventoryItemTooltip();
+		players[player]->inventoryUI.updateInventoryMiscTooltip();
 		players[player]->hotbar.processHotbar();
 		players[player]->inventoryUI.processInventory();
 		GenericGUI[player].tinkerGUI.updateTinkerMenu();
@@ -5362,8 +5380,7 @@ void ingameHud()
 			{
 				drawStatusNew(player);
 			}
-			drawSustainedSpells(player);
-			updateAppraisalItemBox(player);
+			//drawSustainedSpells(player);
 		}
 
 		// inventory and stats
@@ -5554,7 +5571,7 @@ void ingameHud()
 						auto cursor = Image::get("*#images/system/cursor_hand.png");
 						if ( enableDebugKeys && keystatus[SDLK_j] )
 						{
-							cursor = Image::get("*#images/system/cursor.png");
+							cursor = Image::get("*#images/ui/Crosshairs/cursor_xB.png");
 						}
 
                         const int w = cursor->getWidth() * factorX;
@@ -5566,43 +5583,6 @@ void ingameHud()
 						pos.w = w;
 						pos.h = h;
 						cursor->drawColor(nullptr, pos, SDL_Rect{ 0, 0, xres, yres }, 0xFF0000FF);
-					}
-				}
-				else
-				{
-					pos.x = inputs.getMouse(player, Inputs::X) - 15;
-					pos.y = inputs.getMouse(player, Inputs::Y) - 15;
-					pos.w = 32 * uiscale_inventory;
-					pos.h = 32 * uiscale_inventory;
-
-					drawImageScaled(itemSprite(selectedItem), NULL, &pos);
-					if ( selectedItem->count > 1 )
-					{
-						ttfPrintTextFormatted(ttf8, pos.x + 24 * uiscale_inventory, pos.y + 24 * uiscale_inventory, "%d", selectedItem->count);
-					}
-					if ( itemCategory(selectedItem) != SPELL_CAT )
-					{
-						if ( itemIsEquipped(selectedItem, player) )
-						{
-							pos.y += 16;
-							drawImage(equipped_bmp, NULL, &pos);
-						}
-						else if ( selectedItem->status == BROKEN )
-						{
-							pos.y += 16;
-							drawImage(itembroken_bmp, NULL, &pos);
-						}
-					}
-					else
-					{
-						spell_t* spell = getSpellFromItem(player, selectedItem);
-						if ( players[player]->magic.selectedSpell() == spell &&
-							(players[player]->magic.selected_spell_last_appearance == selectedItem->appearance
-								|| players[player]->magic.selected_spell_last_appearance == -1) )
-						{
-							pos.y += 16;
-							drawImage(equipped_bmp, NULL, &pos);
-						}
 					}
 				}
 			}
@@ -5670,7 +5650,7 @@ void ingameHud()
                 const float factorY = (float)yres / Frame::virtualScreenY;
 				auto cursor = Image::get("*#images/system/cursor_hand.png");
 				real_t& mouseAnim = inputs.getVirtualMouse(player)->mouseAnimationPercent;
-				if ( mousestatus[SDL_BUTTON_LEFT] )
+				if ( Input::inputs[player].binary("MenuLeftClick") )
 				{
 					mouseAnim = .5;
 				}
@@ -5680,11 +5660,11 @@ void ingameHud()
 				}
 				if ( mouseAnim > 0.0 )
 				{
-					mouseAnim -= .05;
+					mouseAnim -= .05 * getFPSScale(144.0);
 				}
 				if ( enableDebugKeys && keystatus[SDLK_j] )
 				{
-					cursor = Image::get("*#images/system/cursor.png");
+					cursor = Image::get("*#images/ui/Crosshairs/cursor_xB.png");
 				}
                 const int w = cursor->getWidth() * factorX;
                 const int h = cursor->getHeight() * factorY;
@@ -5713,7 +5693,7 @@ void ingameHud()
 					auto cursor = Image::get("*#images/system/cursor_hand.png");
 					if ( enableDebugKeys && keystatus[SDLK_j] )
 					{
-						cursor = Image::get("*#images/system/cursor.png");
+						cursor = Image::get("*#images/ui/Crosshairs/cursor_xB.png");
 					}
                     const int w = cursor->getWidth() * factorX;
                     const int h = cursor->getHeight() * factorY;
@@ -5727,6 +5707,11 @@ void ingameHud()
 				}
 #endif
 			}
+		}
+		else
+		{
+			real_t& mouseAnim = inputs.getVirtualMouse(player)->mouseAnimationPercent;
+			mouseAnim = 0.0;
 		}
 		players[player]->hud.updateWorldTooltipPrompts();
 	}
@@ -5759,14 +5744,14 @@ void drawAllPlayerCameras() {
 		}
 		else
 		{
-			if ( ::fov >= 15 )
+			/*if ( ::fov >= 15 )
 			{
 				::fov -= 15;
 			}
 			else
 			{
 				::fov = 0;
-			}
+			}*/
 		}
 	}
 
@@ -6405,15 +6390,6 @@ int main(int argc, char** argv)
 		Input::defaultBindings();
 		MainMenu::randomizeUsername();
 
-		// load config file
-		if ( loadingconfig )
-		{
-			loadConfig(configtoload);
-		}
-		else
-		{
-			loadDefaultConfig();
-		}
         MainMenu::settingsReset();
         MainMenu::settingsApply();
 		bool load_successful = MainMenu::settingsLoad();
@@ -6759,17 +6735,8 @@ int main(int argc, char** argv)
 							list_RemoveNode(light->node);
 						}
 
-						if (newui)
-						{
-							MainMenu::doMainMenu(!intro);
-							UIToastNotificationManager.drawNotifications(MainMenu::isCutsceneActive(), true); // draw this before the cursor
-						}
-						else
-						{
-							handleMainMenu(intro);
-							UIToastNotificationManager.drawNotifications(MainMenu::isCutsceneActive(), true); // draw this before the cursor
-						}
-
+						MainMenu::doMainMenu(!intro);
+						UIToastNotificationManager.drawNotifications(MainMenu::isCutsceneActive(), true); // draw this before the cursor
                         framesProcResult = doFrames();
 
 #ifdef USE_IMGUI
@@ -6785,22 +6752,60 @@ int main(int argc, char** argv)
 							auto cursor = Image::get("*#images/system/cursor_hand.png");
                             const int w = cursor->getWidth() * factorX;
                             const int h = cursor->getHeight() * factorY;
-                            pos.x = inputs.getMouse(inputs.getPlayerIDAllowedKeyboard(), Inputs::X) - w / 2;
-                            pos.y = inputs.getMouse(inputs.getPlayerIDAllowedKeyboard(), Inputs::Y) - h / 2;
-                            pos.x += 4;
-                            pos.y += 4;
-                            pos.w = w;
-                            pos.h = h;
-							cursor->draw(nullptr, pos, SDL_Rect{0, 0, xres, yres});
 
-							if (MainMenu::cursor_delete_mode)
+							if ( inputs.getPlayerIDAllowedKeyboard() >= 0 )
 							{
-							    auto icon = Image::get("*#images/system/Broken.png");
-							    pos.x = pos.x + pos.w;
-							    pos.y = pos.y + pos.h;
-							    pos.w = icon->getWidth() * 2;
-							    pos.h = icon->getHeight() * 2;
-							    icon->draw(nullptr, pos, SDL_Rect{0, 0, xres, yres});
+								real_t& mouseAnim = inputs.getVirtualMouse(inputs.getPlayerIDAllowedKeyboard())->mouseAnimationPercent;
+								if ( Input::inputs[inputs.getPlayerIDAllowedKeyboard()].binary("MenuLeftClick") )
+								{
+									mouseAnim = .5;
+								}
+								if ( mouseAnim > .25 )
+								{
+									cursor = Image::get("*#images/system/cursor_hand2.png");
+								}
+								if ( mouseAnim > 0.0 )
+								{
+									mouseAnim -= .05 * getFPSScale(144.0);
+								}
+
+								pos.x = inputs.getMouse(inputs.getPlayerIDAllowedKeyboard(), Inputs::X) - (mouseAnim * w / 7) - w / 2;
+								pos.y = inputs.getMouse(inputs.getPlayerIDAllowedKeyboard(), Inputs::Y) - (mouseAnim * h / 7) - h / 2;
+								pos.x += 4;
+								pos.y += 4;
+								pos.w = w;
+								pos.h = h;
+								cursor->draw(nullptr, pos, SDL_Rect{ 0, 0, xres, yres });
+
+								if ( MainMenu::cursor_delete_mode )
+								{
+									auto icon = Image::get("*#images/system/Broken.png");
+									pos.x = pos.x + pos.w;
+									pos.y = pos.y + pos.h;
+									pos.w = icon->getWidth() * 2;
+									pos.h = icon->getHeight() * 2;
+									icon->draw(nullptr, pos, SDL_Rect{ 0, 0, xres, yres });
+								}
+							}
+							else
+							{
+								pos.x = inputs.getMouse(inputs.getPlayerIDAllowedKeyboard(), Inputs::X) - w / 2;
+								pos.y = inputs.getMouse(inputs.getPlayerIDAllowedKeyboard(), Inputs::Y) - h / 2;
+								pos.x += 4;
+								pos.y += 4;
+								pos.w = w;
+								pos.h = h;
+								cursor->draw(nullptr, pos, SDL_Rect{0, 0, xres, yres});
+
+								if (MainMenu::cursor_delete_mode)
+								{
+									auto icon = Image::get("*#images/system/Broken.png");
+									pos.x = pos.x + pos.w;
+									pos.y = pos.y + pos.h;
+									pos.w = icon->getWidth() * 2;
+									pos.h = icon->getHeight() * 2;
+									icon->draw(nullptr, pos, SDL_Rect{0, 0, xres, yres});
+								}
 							}
 						}
 #endif
@@ -7004,15 +7009,7 @@ int main(int argc, char** argv)
 
 				if ( gamePaused )
 				{
-					// handle menu
-					if (newui)
-					{
-						MainMenu::doMainMenu(!intro);
-					}
-					else
-					{
-						handleMainMenu(intro);
-					}
+					MainMenu::doMainMenu(!intro);
 				}
 				else
 				{
@@ -7060,8 +7057,23 @@ int main(int argc, char** argv)
 							auto cursor = Image::get("*#images/system/cursor_hand.png");
                             const int w = cursor->getWidth() * factorX;
                             const int h = cursor->getHeight() * factorY;
-                            pos.x = inputs.getMouse(i, Inputs::X) - w / 2;
-                            pos.y = inputs.getMouse(i, Inputs::Y) - h / 2;
+
+							real_t& mouseAnim = inputs.getVirtualMouse(i)->mouseAnimationPercent;
+							if ( Input::inputs[i].binary("MenuLeftClick") )
+							{
+								mouseAnim = .5;
+							}
+							if ( mouseAnim > .25 )
+							{
+								cursor = Image::get("*#images/system/cursor_hand2.png");
+							}
+							if ( mouseAnim > 0.0 )
+							{
+								mouseAnim -= .05 * getFPSScale(144.0);
+							}
+
+                            pos.x = inputs.getMouse(i, Inputs::X) - (mouseAnim * w / 7) - w / 2;
+                            pos.y = inputs.getMouse(i, Inputs::Y) - (mouseAnim * h / 7) - h / 2;
                             pos.x += 4;
                             pos.y += 4;
                             pos.w = w;
@@ -7241,7 +7253,7 @@ int main(int argc, char** argv)
 			skipintro = true;
 		}
 		saveConfig("default.cfg");
-		MainMenu::settingsMount();
+		MainMenu::settingsMount(false);
 		(void)MainMenu::settingsSave();
 
 		// deinit

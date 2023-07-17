@@ -17,7 +17,7 @@ void createInventoryTooltipFrame(const int player);
 bool getSlotFrameXYFromMousePos(const int player, int& outx, int& outy, bool spells);
 void resetInventorySlotFrames(const int player);
 void createPlayerInventorySlotFrameElements(Frame* slotFrame);
-void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offsetyaw);
+void drawCharacterPreview(const int player, SDL_Rect pos, int fov, real_t offsetyaw, bool dark = false);
 extern view_t playerPortraitView[MAXPLAYERS];
 void toggleShopBuybackView(const int player);
 void loadHUDSettingsJSON();
@@ -118,6 +118,17 @@ struct StatusEffectQueueEntry_t
 		notificationTargetPosition.w = pos.w;
 		notificationTargetPosition.h = pos.h;
 	}
+
+	enum Dir_t : int
+	{
+		NONE,
+		LEFT,
+		UP,
+		DOWN,
+		RIGHT
+	};
+	std::map<Dir_t, size_t> navigation;
+	size_t index = 0;
 	int getEffectSpriteNormalWidth();
 	int getEffectSpriteNormalHeight();
 	void animate();
@@ -152,6 +163,7 @@ struct StatusEffectQueue_t
 	static const int kEffectLifesaving;
 	static const int kEffectPush;
 	static const int kEffectSneak;
+	static const int kEffectDrunkGoatman;
 	
 	Frame* statusEffectFrame = nullptr;
 	Frame* statusEffectTooltipFrame = nullptr;
@@ -167,12 +179,20 @@ struct StatusEffectQueue_t
 	int tooltipShowingEffectVariable = -1;
 	bool insertEffect(int effectID, int spellID);
 	int effectsPerRow = 4;
+	real_t focusedWindowAnim = 0.0;
 	bool requiresAnimUpdate = false;
+	bool bCompactWidth = false;
+	bool bCompactHeight = false;
+	SDL_Rect effectsBoundingBox{ 0, 0, 0, 0 };
+	int selectedElement = -1;
 	void updateAllQueuedEffects();
 	void animateStatusEffectTooltip(bool showTooltip);
 	bool doStatusEffectTooltip(StatusEffectQueueEntry_t& entry, SDL_Rect pos);
 	void updateEntryImage(StatusEffectQueueEntry_t& entry, Frame::image_t* img);
 	void createStatusEffectTooltip();
+	Frame* getStatusEffectFrame();
+	void handleNavigation(std::map<int, StatusEffectQueueEntry_t*>& grid, 
+		bool& tooltipShowing, const bool hungerEffectInEffectQueue);
 	void resetQueue()
 	{
 		requiresAnimUpdate = true;
@@ -277,6 +297,7 @@ struct PlayerInventoryFrames_t
 	Frame* inventoryBaseImagesFrame = nullptr;
 	Frame* backpackSlotsFrame = nullptr;
 	Frame* chestBgFrame = nullptr;
+	Frame* autosortFrame = nullptr;
 
 	Frame::image_t* defaultInvImg = nullptr; //"inventory base img"
 	Frame::image_t* compactInvImg = nullptr; //"inventory base compact img"

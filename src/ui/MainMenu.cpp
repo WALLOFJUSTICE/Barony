@@ -37,6 +37,12 @@
 #define NETWORK_SCAN_PORT_CLIENT 0
 #endif
 
+// all platforms but windows need to restart the game
+// to apply video mode changes (resolution, window mode, etc)
+#ifndef WINDOWS
+#define VIDEO_RESTART_NEEDED
+#endif
+
 namespace MainMenu {
     int pause_menu_owner = 0;
 	bool cursor_delete_mode = false;
@@ -45,11 +51,13 @@ namespace MainMenu {
     constexpr int MIN_FPS = 30;
     constexpr int MAX_FPS = 300;
     constexpr int AUTO_FPS = MAX_FPS + 1;
+	constexpr int MAX_LOBBY_FILTERS_SAVED = 32;
 
 	// ALL NEW menu options:
 	std::string current_audio_device;
 	float master_volume = 1.f;
 	bool arachnophobia_filter = false;
+	bool hidden_roomcode = false;
 	ConsoleVariable<bool> vertical_splitscreen("/vertical_splitscreen", false);
     ConsoleVariable<bool> staggered_splitscreen("/split_staggered", true);
     ConsoleVariable<bool> clipped_splitscreen("/split_clipped", true);
@@ -60,9 +68,18 @@ namespace MainMenu {
 	ConsoleVariable<bool> cvar_gamepad_facehotbar("/gamepad_facehotbar", true);
 	ConsoleVariable<float> cvar_worldtooltip_scale("/worldtooltip_scale", 100.0);
 	ConsoleVariable<float> cvar_worldtooltip_scale_splitscreen("/worldtooltip_scale_splitscreen", 150.0);
+	ConsoleVariable<float> cvar_enemybar_scale("/enemybar_scale", 100.0);
     ConsoleVariable<int> cvar_desiredFps("/desiredfps", AUTO_FPS);
     ConsoleVariable<int> cvar_displayHz("/displayhz", 0);
 	ConsoleVariable<bool> cvar_hdrEnabled("/hdr_enabled", true);
+	static const int numFilters = NUM_SERVER_FLAGS + 3;
+	enum Filter : int {
+		UNCHECKED,
+		OFF,
+		ON,
+		NUM,
+	};
+	static Filter lobbyFilters[numFilters] = { Filter::UNCHECKED };
 
 	static ConsoleCommand ccmd_dumpcache("/dumpcache", "Dump UI asset caches",
 	    [](int argc, const char** argv){
@@ -95,7 +112,7 @@ namespace MainMenu {
                 {"Pause Game", hiddenBinding, "ButtonStart", emptyBinding},
                 {"Spell List", "B", hiddenBinding, emptyBinding},
                 {"Skill Sheet", "K", hiddenBinding, emptyBinding},
-                {"Autosort Inventory", "R", "ButtonLeftStick", emptyBinding},
+                {"Autosort Inventory", "R", hiddenBinding, emptyBinding},
                 {"Command NPC", "Q", "DpadX-", emptyBinding},
                 {"Show NPC Commands", "C", "DpadX+", emptyBinding},
                 {"Cycle NPCs", "E", "DpadY-", emptyBinding},
@@ -112,7 +129,11 @@ namespace MainMenu {
                 {"Hotbar Up / Select", "Mouse2", "ButtonY", emptyBinding},
 #endif
                 {"Hotbar Down / Cancel", hiddenBinding, "DpadY+", emptyBinding},
-                {"Interact Tooltip Next", "R", "ButtonB", emptyBinding },
+#ifdef NINTENDO
+                {"Interact Tooltip Next", "R", "DpadY+", emptyBinding },
+#else
+				{"Interact Tooltip Next", "R", "DpadY+", emptyBinding },
+#endif
                 {"Interact Tooltip Prev", emptyBinding, emptyBinding, emptyBinding },
                 {"Expand Inventory Tooltip", "X", hiddenBinding, emptyBinding },
                 {"Quick Turn", emptyBinding, "ButtonLeftStick", emptyBinding },
@@ -126,6 +147,16 @@ namespace MainMenu {
                 {"Look Up", "Up", hiddenBinding, emptyBinding},
                 {"Look Down", "Down", hiddenBinding, emptyBinding},
                 {"Screenshot", "F6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 1", "1", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 2", "2", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 3", "3", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 4", "4", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 5", "5", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 6", "6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 7", "7", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
             }
         },
         {
@@ -140,7 +171,7 @@ namespace MainMenu {
                 {"Pause Game", hiddenBinding, "ButtonStart", emptyBinding},
                 {"Spell List", "B", hiddenBinding, emptyBinding},
                 {"Skill Sheet", "K", hiddenBinding, emptyBinding},
-                {"Autosort Inventory", "R", "ButtonLeftStick", emptyBinding},
+                {"Autosort Inventory", "R", hiddenBinding, emptyBinding},
                 {"Command NPC", "Q", "DpadX-", emptyBinding},
                 {"Show NPC Commands", "C", "DpadX+", emptyBinding},
                 {"Cycle NPCs", "E", "DpadY-", emptyBinding},
@@ -175,6 +206,16 @@ namespace MainMenu {
                 {"Look Up", "Up", hiddenBinding, emptyBinding},
                 {"Look Down", "Down", hiddenBinding, emptyBinding},
                 {"Screenshot", "F6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 1", "1", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 2", "2", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 3", "3", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 4", "4", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 5", "5", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 6", "6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 7", "7", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
             }
         },
         {
@@ -189,7 +230,7 @@ namespace MainMenu {
                 {"Pause Game", hiddenBinding, "ButtonStart", emptyBinding},
                 {"Spell List", "B", hiddenBinding, emptyBinding},
                 {"Skill Sheet", "K", hiddenBinding, emptyBinding},
-                {"Autosort Inventory", "R", "ButtonLeftStick", emptyBinding},
+                {"Autosort Inventory", "R", hiddenBinding, emptyBinding},
 #ifdef NINTENDO
                 {"Command NPC", "Q", "ButtonY", emptyBinding},
                 {"Show NPC Commands", "C", "ButtonX", emptyBinding},
@@ -220,6 +261,16 @@ namespace MainMenu {
                 {"Look Up", "Up", hiddenBinding, emptyBinding},
                 {"Look Down", "Down", hiddenBinding, emptyBinding},
                 {"Screenshot", "F6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 1", "1", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 2", "2", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 3", "3", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 4", "4", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 5", "5", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 6", "6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 7", "7", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
             }
         },
         {
@@ -234,7 +285,7 @@ namespace MainMenu {
                 {"Pause Game", hiddenBinding, "ButtonStart", emptyBinding},
                 {"Spell List", "B", hiddenBinding, emptyBinding},
                 {"Skill Sheet", "K", hiddenBinding, emptyBinding},
-                {"Autosort Inventory", "R", "ButtonLeftStick", emptyBinding},
+                {"Autosort Inventory", "R", hiddenBinding, emptyBinding},
                 {"Command NPC", "Q", "DpadX-", emptyBinding},
                 {"Show NPC Commands", "C", "DpadX+", emptyBinding},
                 {"Cycle NPCs", "E", "DpadY-", emptyBinding},
@@ -265,6 +316,16 @@ namespace MainMenu {
                 {"Look Up", "Up", hiddenBinding, emptyBinding},
                 {"Look Down", "Down", hiddenBinding, emptyBinding},
                 {"Screenshot", "F6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 1", "1", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 2", "2", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 3", "3", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 4", "4", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 5", "5", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 6", "6", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 7", "7", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
+				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
             }
         },
     };
@@ -320,6 +381,12 @@ namespace MainMenu {
 	bool isMenuOpen() {
 		return main_menu_frame != nullptr;
 	}
+
+    static bool isMouseVisible() {
+        auto cmouse = inputs.getVirtualMouse(inputs.getPlayerIDAllowedKeyboard());
+        auto vmouse = intro ? cmouse : inputs.getVirtualMouse(getMenuOwner());
+        return !vmouse->lastMovementFromController;
+    }
 
 	void beginFade(FadeDestination fd) {
 		main_menu_fade_destination = fd;
@@ -457,6 +524,7 @@ namespace MainMenu {
 	    bool fast_restart = false;
 		float world_tooltip_scale = 100.f;
 		float world_tooltip_scale_splitscreen = 150.f;
+		float enemybar_scale = 100.f;
 		bool add_items_to_hotbar_enabled;
 		InventorySorting inventory_sorting;
 		LastCreatedCharacter lastCharacter;
@@ -481,6 +549,8 @@ namespace MainMenu {
 		bool staggered_split_enabled;
 		bool clipped_split_enabled;
 		float item_tooltip_height = 100.f;
+		int shootmode_crosshair = 0;
+		int shootmode_crosshair_opacity = 50;
 		bool hdr_enabled = true;
 		float fov;
 		float fps;
@@ -518,10 +588,20 @@ namespace MainMenu {
 		bool cheats_enabled;
 		bool skipintro;
 		int port_number;
+		bool show_lobby_code = false;
+		std::vector<int> lobby_filter_settings;
 		inline int save(); // non-zero if video needs restart
-		static inline AllSettings load();
+		static inline AllSettings load(bool video);
 		static inline AllSettings reset();
 		bool serialize(FileInterface*);
+		AllSettings()
+		{
+			lobby_filter_settings.resize(MAX_LOBBY_FILTERS_SAVED);
+			for ( auto& filter : lobby_filter_settings )
+			{
+				filter = 0;
+			}
+		};
 	};
 
 	int getMenuOwner() {
@@ -572,6 +652,11 @@ namespace MainMenu {
 	}
 
 	static BaronyRNG RNG;
+
+    static int old_classes[MAXPLAYERS];
+    static int old_races[MAXPLAYERS];
+    static Uint32 old_appearances[MAXPLAYERS];
+    static sex_t old_sexes[MAXPLAYERS];
 
 /******************************************************************************/
 
@@ -1173,7 +1258,9 @@ namespace MainMenu {
 	}
 
 	static void closePrompt(const char* name) {
-        assert(main_menu_frame);
+        if (!main_menu_frame) {
+			return;
+		}
         auto prompt = main_menu_frame->findFrame(name);
         if (prompt) {
             auto dimmer = static_cast<Frame*>(prompt->getParent()); assert(dimmer);
@@ -1247,7 +1334,9 @@ namespace MainMenu {
 		field->select();
         field->activate();
 		field->setTickCallback([](Widget& widget) {
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
 			if (!selectedWidget) {
 				auto field = static_cast<Field*>(&widget);
@@ -1293,7 +1382,9 @@ namespace MainMenu {
 	}
 
 	static const char* closeTextField() {
-        assert(main_menu_frame);
+		if (!main_menu_frame) {
+			return "";
+		}
         auto prompt = main_menu_frame->findFrame("text_field_prompt"); assert(prompt);
         auto field = prompt->findField("field"); assert(field);
         auto dimmer = static_cast<Frame*>(prompt->getParent()); assert(dimmer);
@@ -1346,7 +1437,9 @@ namespace MainMenu {
 		okay->setCallback(okay_callback);
 		okay->select();
 		okay->setTickCallback([](Widget& widget) {
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
 			if (!selectedWidget) {
 				auto button = static_cast<Button*>(&widget);
@@ -1457,7 +1550,9 @@ namespace MainMenu {
 		if (selected) {
 		    selected->select();
 			selected->setTickCallback([](Widget& widget){
-				assert(main_menu_frame);
+				if (!main_menu_frame) {
+					return;
+				}
 				auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
 				if (!selectedWidget) {
 					auto button = static_cast<Button*>(&widget);
@@ -1511,7 +1606,9 @@ namespace MainMenu {
 		cancel->setWidgetBack("cancel");
 		cancel->select();
 		cancel->setTickCallback([](Widget& widget) {
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
 			if (!selectedWidget) {
 				auto button = static_cast<Button*>(&widget);
@@ -1554,7 +1651,9 @@ namespace MainMenu {
 		okay->setCallback(okay_callback);
 		okay->select();
 		okay->setTickCallback([](Widget& widget) {
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
 			if (!selectedWidget) {
 				auto button = static_cast<Button*>(&widget);
@@ -1650,24 +1749,24 @@ namespace MainMenu {
     }
 
     static void openDLCPrompt(int which) {
-#ifdef NINTENDO
-		// For now, DLC is disabled for the 1.0 build.
-		// This is because we can't setup store pages for our DLC yet,
-		// So this feature simply won't pass lot-check until later.
-		soundError();
-		return;
-#else
 		static int dlcPromptIndex;
 		dlcPromptIndex = which;
 #if defined(NINTENDO) || defined(STEAMWORKS) || defined(USE_EOS)
+#ifdef NINTENDO
+		const char* window_text = "Would you like to browse this\nDLC in the Nintendo eShop?";
+#else
 		const char* window_text = "Would you like to browse this\nDLC in the online store?";
+#endif
 		binaryPrompt(window_text, "Yes", "No",
 			[](Button& button){
 #if defined(STEAMWORKS)
 				soundActivate();
 				openURLTryWithOverlay("https://store.steampowered.com/dlc/371970/Barony/");
 #elif defined(NINTENDO)
-				nxShowDLCPage(dlcPromptIndex);
+                nxShowAllDLC();
+                /*if (nxShowDLCPage(dlcPromptIndex) == false) {
+                    soundError();
+                }*/
 #elif defined(USE_EOS)
 				soundActivate();
 				openURLTryWithOverlay("https://store.epicgames.com/en-US/all-dlc/barony");
@@ -1780,7 +1879,6 @@ namespace MainMenu {
                 soundCancel();
                 closeTextField();
             });
-#endif
 #endif
     }
 
@@ -2402,13 +2500,20 @@ namespace MainMenu {
 		    new_borderless != borderless) {
 		    result = true;
 		}
-		fullscreen = new_fullscreen;
-		borderless = new_borderless;
-		::display_id = display_id;
-		xres = std::max(resolution_x, 1024);
-		yres = std::max(resolution_y, 720);
-        *cvar_displayHz = hz;
-		verticalSync = vsync_enabled;
+
+#if defined(VIDEO_RESTART_NEEDED)
+		if (!initialized)
+#endif
+		{
+			fullscreen = new_fullscreen;
+			borderless = new_borderless;
+			::display_id = display_id;
+			xres = std::max(resolution_x, 1024);
+			yres = std::max(resolution_y, 720);
+			verticalSync = vsync_enabled;
+		}
+
+		*cvar_displayHz = hz;
 		vidgamma = std::min(std::max(.5f, gamma / 100.f), 2.f);
 
 		return result;
@@ -2453,6 +2558,7 @@ namespace MainMenu {
 		*cvar_fastRestart = fast_restart;
 		*cvar_worldtooltip_scale = world_tooltip_scale;
 		*cvar_worldtooltip_scale_splitscreen = world_tooltip_scale_splitscreen;
+		*cvar_enemybar_scale = enemybar_scale;
 		auto_hotbar_new_items = add_items_to_hotbar_enabled;
 		inventory_sorting.save();
 		lastCharacter.save();
@@ -2462,6 +2568,11 @@ namespace MainMenu {
         const float oldUIScale = uiScale;
         *ui_filter = ui_filter_enabled;
 		Player::WorldUI_t::tooltipHeightOffsetZ = (6 * (100 - item_tooltip_height)) / 100.f;
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			playerSettings[i].shootmodeCrosshair = shootmode_crosshair;
+			playerSettings[i].shootmodeCrosshairOpacity = shootmode_crosshair_opacity;
+		}
 		*cvar_hdrEnabled = true;// hdr_enabled;
         uiScale = ui_scale / 100.f;
         result |= (oldUIFilter != *ui_filter || oldUIScale != uiScale) ?
@@ -2540,6 +2651,14 @@ namespace MainMenu {
 	    sendSvFlagsOverNet();
 		::skipintro = skipintro;
 		::portnumber = (Uint16)port_number ? (Uint16)port_number : DEFAULT_PORT;
+		hidden_roomcode = !show_lobby_code;
+		for ( int i = 0; i < MAX_LOBBY_FILTERS_SAVED; ++i )
+		{
+			if ( i < numFilters )
+			{
+				lobbyFilters[i] = (MainMenu::Filter)lobby_filter_settings[i];
+			}
+		}
 
 #if defined(USE_EOS) && defined(STEAMWORKS)
 	    if ( crossplay_enabled && !LobbyHandler.crossplayEnabled )
@@ -2556,13 +2675,14 @@ namespace MainMenu {
 	    return result;
     }
 
-	inline AllSettings AllSettings::load() {
+	inline AllSettings AllSettings::load(bool video) {
 		AllSettings settings;
 		settings.mods = gamemods_mountedFilepaths;
 		settings.crossplay_enabled = LobbyHandler.crossplayEnabled;
 		settings.fast_restart = *cvar_fastRestart;
 		settings.world_tooltip_scale = *cvar_worldtooltip_scale;
 		settings.world_tooltip_scale_splitscreen = *cvar_worldtooltip_scale_splitscreen;
+		settings.enemybar_scale = *cvar_enemybar_scale;
 		settings.add_items_to_hotbar_enabled = auto_hotbar_new_items;
 		settings.inventory_sorting = InventorySorting::load();
 		settings.lastCharacter = LastCreatedCharacter::load();
@@ -2572,6 +2692,8 @@ namespace MainMenu {
         settings.ui_filter_enabled = *ui_filter;
 		settings.item_tooltip_height =
 			100.f * (Player::WorldUI_t::tooltipHeightOffsetZ - 6) / -6;
+		settings.shootmode_crosshair = playerSettings[0].shootmodeCrosshair;
+		settings.shootmode_crosshair_opacity = playerSettings[0].shootmodeCrosshairOpacity;
 		settings.hdr_enabled = true;// *cvar_hdrEnabled;
 		settings.show_messages_enabled = !disable_messages;
 		settings.show_messages = Messages::load();
@@ -2584,7 +2706,11 @@ namespace MainMenu {
 		settings.shaking_enabled = shaking;
 		settings.bobbing_enabled = bobbing;
 		settings.light_flicker_enabled = flickerLights;
-		settings.video = Video::load();
+		if (video) {
+			settings.video = Video::load();
+		} else {
+			settings.video = allSettings.video;
+		}
 		settings.vertical_split_enabled = *vertical_splitscreen;
 		settings.staggered_split_enabled = *staggered_splitscreen;
 		settings.clipped_split_enabled = *clipped_splitscreen;
@@ -2625,6 +2751,15 @@ namespace MainMenu {
 		settings.cheats_enabled = svFlags & SV_FLAG_CHEATS;
 		settings.skipintro = true;
 		settings.port_number = ::portnumber;
+		settings.show_lobby_code = !hidden_roomcode;
+		for ( int i = 0; i < MAX_LOBBY_FILTERS_SAVED; ++i )
+		{
+			settings.lobby_filter_settings[i] = 0;
+			if ( i < numFilters )
+			{
+				settings.lobby_filter_settings[i] = lobbyFilters[i];
+			}
+		}
 		return settings;
 	}
 
@@ -2635,6 +2770,7 @@ namespace MainMenu {
 		settings.fast_restart = false;
 		settings.world_tooltip_scale = 100.f;
 		settings.world_tooltip_scale_splitscreen = 150.f;
+		settings.enemybar_scale = 100.f;
 		settings.add_items_to_hotbar_enabled = true;
 		settings.inventory_sorting = InventorySorting::reset();
 		settings.lastCharacter = LastCreatedCharacter::reset();
@@ -2659,6 +2795,8 @@ namespace MainMenu {
 		settings.fov = 60;
 		settings.fps = AUTO_FPS;
 		settings.item_tooltip_height = 100.f;
+		settings.shootmode_crosshair = 0;
+		settings.shootmode_crosshair_opacity = 50;
 		settings.hdr_enabled = true;
 		settings.audio_device = "";
 		settings.master_volume = 100.f;
@@ -2694,11 +2832,16 @@ namespace MainMenu {
 		settings.cheats_enabled = false;
 		settings.skipintro = true;
 		settings.port_number = DEFAULT_PORT;
+		settings.show_lobby_code = true;
+		for ( int i = 0; i < MAX_LOBBY_FILTERS_SAVED; ++i )
+		{
+			settings.lobby_filter_settings[i] = 0;
+		}
 		return settings;
 	}
 
 	bool AllSettings::serialize(FileInterface* file) {
-	    int version = 11;
+	    int version = 16;
 	    file->property("version", version);
 	    file->property("mods", mods);
 		file->property("crossplay_enabled", crossplay_enabled);
@@ -2726,7 +2869,10 @@ namespace MainMenu {
         file->propertyVersion("ui_filter", version >= 7, ui_filter_enabled);
         file->propertyVersion("ui_scale", version >= 7, ui_scale);
 		file->propertyVersion("item_tooltip_height", version >= 11, item_tooltip_height);
+		file->propertyVersion("shootmode_crosshair", version >= 15, shootmode_crosshair);
+		file->propertyVersion("shootmode_crosshair_opacity", version >= 15, shootmode_crosshair_opacity);
 		file->property("show_messages_enabled", show_messages_enabled);
+		file->propertyVersion("message_filters", version >= 14, show_messages);
 		file->property("show_player_nametags_enabled", show_player_nametags_enabled);
 		file->property("show_hud_enabled", show_hud_enabled);
 		file->property("show_ip_address_enabled", show_ip_address_enabled);
@@ -2787,6 +2933,7 @@ namespace MainMenu {
             file->property("world_tooltip_scale", world_tooltip_scale);
             file->property("world_tooltip_scale_splitscreen", world_tooltip_scale_splitscreen);
         }
+		file->propertyVersion("enemybar_scale", version >= 16, enemybar_scale);
 		file->property("numkeys_in_inventory_enabled", numkeys_in_inventory_enabled);
 		file->property("mouse_sensitivity", mouse_sensitivity);
 		file->property("reverse_mouse_enabled", reverse_mouse_enabled);
@@ -2812,6 +2959,8 @@ namespace MainMenu {
 		file->property("use_model_cache", useModelCache);
 		file->property("debug_keys_enabled", enableDebugKeys);
 		file->property("port_number", port_number);
+		file->propertyVersion("show_lobby_code", version >= 12, show_lobby_code);
+		file->propertyVersion("lobby_filters", version >= 13, lobby_filter_settings);
 		return true;
 	}
 
@@ -3364,7 +3513,7 @@ namespace MainMenu {
 			u8" \n"
 			u8" \n"
 			u8" \n \n \n \n \n"
-			u8"A big shout-out to our open-source community!\n"
+			u8"Many thanks to our open-source community!\n"
 			u8" \n"
 			u8" \n \n \n \n \n"
 			u8"Barony is a product of Turning Wheel LLC\n"
@@ -3412,7 +3561,7 @@ namespace MainMenu {
 			u8"Jesse Riddle\n"
 			u8" \n \n \n \n \n"
 			u8" \n"
-			u8"Learn more at https://www.github.com/TurningWheel/Barony\n"
+			u8"Barony was made possible by many anonymous contributors.\n"
 			u8" \n \n \n \n \n"
 			u8" \n"
 			u8"Copyright \u00A9 %s, all rights reserved\n"
@@ -3461,10 +3610,11 @@ namespace MainMenu {
 
 	void settingsApply() {
         auto save_result = allSettings.save();
-        
+
 		// change video mode
         if (initialized) {
             video_refresh = save_result;
+#if !defined(VIDEO_RESTART_NEEDED)
             if (video_refresh & VideoRefresh::Video) {
                 int x = std::max(allSettings.video.resolution_x, 1024);
                 int y = std::max(allSettings.video.resolution_y, 720);
@@ -3473,6 +3623,7 @@ namespace MainMenu {
                     mainloop = 0;
                 }
             }
+#endif
 		}
 
 		// apply splitscreen setting
@@ -3486,32 +3637,15 @@ namespace MainMenu {
 			messagePlayer(clientnum, MESSAGE_MISC, language[276]);
 		}
 
-		// update volume for sound groups
+		// set volume and sound driver
 		if (initialized) {
-#ifdef USE_FMOD
-			int selected_driver = 0;
-			int numDrivers = 0;
-			fmod_system->getNumDrivers(&numDrivers);
-			for (int i = 0; i < numDrivers; ++i) {
-				FMOD_GUID guid;
-				fmod_result = fmod_system->getDriverInfo(i, nullptr, 0, &guid, nullptr, nullptr, nullptr);
-
-				uint32_t _1; memcpy(&_1, &guid.Data1, sizeof(_1));
-				uint64_t _2; memcpy(&_2, &guid.Data4, sizeof(_2));
-				char guid_string[25];
-				snprintf(guid_string, sizeof(guid_string), "%.8x%.16llx", _1, (unsigned long long)_2);
-				if (!selected_driver && current_audio_device == guid_string) {
-					selected_driver = i;
-				}
-			}
-			fmod_system->setDriver(selected_driver);
-#endif
+			setAudioDevice(current_audio_device);
 		    setGlobalVolume(master_volume, musvolume, sfxvolume, sfxAmbientVolume, sfxEnvironmentVolume, sfxNotificationVolume);
 		}
 	}
 
-	void settingsMount() {
-		allSettings = AllSettings::load();
+	void settingsMount(bool video) {
+		allSettings = AllSettings::load(video);
 		if (!video_refresh) {
 	        old_video = allSettings.video;
 	    }
@@ -3539,8 +3673,9 @@ namespace MainMenu {
 	static void inventorySortingDefaults(Button& button) {
 		soundActivate();
 		allSettings.inventory_sorting = InventorySorting::reset();
-		auto window = main_menu_frame->findFrame("inventory_sorting_window"); assert(window);
-		window->removeSelf();
+		auto window = static_cast<Frame*>(button.getParent());
+		auto dimmer = static_cast<Frame*>(window->getParent());
+		dimmer->removeSelf();
 		settingsCustomizeInventorySorting(button);
 	}
 
@@ -3565,8 +3700,9 @@ namespace MainMenu {
 
 	static void inventorySortingConfirm(Button& button) {
 		soundActivate();
-		auto window = main_menu_frame->findFrame("inventory_sorting_window"); assert(window);
-		window->removeSelf();
+		auto window = static_cast<Frame*>(button.getParent());
+		auto dimmer = static_cast<Frame*>(window->getParent());
+		dimmer->removeSelf();
 		auto settings = main_menu_frame->findFrame("settings");
 		if (settings) {
 			auto settings_subwindow = settings->findFrame("settings_subwindow");
@@ -4075,11 +4211,7 @@ namespace MainMenu {
 				uint32_t _1; memcpy(&_1, &driver.guid.Data1, sizeof(_1));
 				uint64_t _2; memcpy(&_2, &driver.guid.Data4, sizeof(_2));
 				char guid_string[25];
-#ifdef APPLE
-				snprintf(guid_string, sizeof(guid_string), "%.8x%.16llx", _1, _2);
-#else
-                snprintf(guid_string, sizeof(guid_string), "%.8x%.16lx", _1, _2);
-#endif
+                snprintf(guid_string, sizeof(guid_string), FMOD_AUDIO_GUID_FMT, _1, _2);
 				allSettings.audio_device = guid_string;
 				fmod_system->setDriver(index);
 			}
@@ -4272,6 +4404,7 @@ namespace MainMenu {
 		button->setColor(makeColor(255,255,255,255));
 		button->setTextHighlightColor(makeColor(255,255,255,255));
 		button->setTextColor(makeColor(255,255,255,255));
+        button->setDontSearchAncestors(true);
 		button->setWidgetSearchParent(frame.getParent()->getName());
 		button->setWidgetBack("discard_and_exit");
 		button->addWidgetAction("MenuAlt1", "restore_defaults");
@@ -4351,6 +4484,7 @@ namespace MainMenu {
 		field->setBackgroundColor(makeColor(52, 30, 22, 255));
 		field->setBackgroundSelectAllColor(makeColor(52, 30, 22, 255));
 		field->setBackgroundActivatedColor(makeColor(52, 30, 22, 255));
+        field->setDontSearchAncestors(true);
 		field->setWidgetSearchParent(frame.getParent()->getName());
 		field->setWidgetBack("discard_and_exit");
 		field->setWidgetPageLeft("tab_left");
@@ -4389,6 +4523,7 @@ namespace MainMenu {
 		button->setColor(makeColor(255,255,255,255));
 		button->setTextHighlightColor(makeColor(255,255,255,255));
 		button->setTextColor(makeColor(255,255,255,255));
+        button->setDontSearchAncestors(true);
 		button->setWidgetSearchParent(frame.getParent()->getName());
 		button->setWidgetBack("discard_and_exit");
 		button->setWidgetPageLeft("tab_left");
@@ -4427,6 +4562,7 @@ namespace MainMenu {
 		button->setColor(makeColor(255,255,255,255));
 		button->setTextHighlightColor(makeColor(255,255,255,255));
 		button->setTextColor(makeColor(255,255,255,255));
+        button->setDontSearchAncestors(true);
 		button->setWidgetSearchParent(frame.getParent()->getName());
 		button->setWidgetLeft((fullname + "_button").c_str());
 		button->setWidgetBack("discard_and_exit");
@@ -4435,6 +4571,7 @@ namespace MainMenu {
 		button->addWidgetAction("MenuAlt1", "restore_defaults");
 		button->addWidgetAction("MenuStart", "confirm_and_exit");
 		auto boolean = frame.findButton((fullname + "_button").c_str()); assert(boolean);
+        boolean->setDontSearchAncestors(true);
 		boolean->setWidgetSearchParent(frame.getParent()->getName());
 		boolean->setWidgetRight((fullname + "_customize_button").c_str());
 		boolean->setWidgetBack("discard_and_exit");
@@ -4472,6 +4609,7 @@ namespace MainMenu {
 		button->setColor(makeColor(255,255,255,255));
 		button->setTextHighlightColor(makeColor(255,255,255,255));
 		button->setTextColor(makeColor(255,255,255,255));
+        button->setDontSearchAncestors(true);
 		button->setWidgetSearchParent(frame.getParent()->getName());
 		button->setWidgetBack("discard_and_exit");
 		button->setWidgetPageLeft("tab_left");
@@ -4516,6 +4654,7 @@ namespace MainMenu {
 		button->setColor(makeColor(255,255,255,255));
 		button->setTextHighlightColor(makeColor(255,255,255,255));
 		button->setTextColor(makeColor(255,255,255,255));
+        button->setDontSearchAncestors(true);
 		button->setWidgetSearchParent(frame.getParent()->getName());
 		button->setWidgetBack("discard_and_exit");
 		button->setWidgetPageLeft("tab_left");
@@ -4595,6 +4734,7 @@ namespace MainMenu {
 		} else {
 			slider->setRailImage("*images/ui/Main Menus/Settings/Settings_ValueSlider_Backing00.png");
 		}
+        slider->setDontSearchAncestors(true);
 		slider->setWidgetSearchParent(frame.getParent()->getName());
 		slider->setWidgetBack("discard_and_exit");
 		slider->setWidgetPageLeft("tab_left");
@@ -4995,47 +5135,47 @@ namespace MainMenu {
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_combat", "Combat messages",
 			"Enable report of damage received or given in combat.",
-			allSettings.show_messages.combat, [](Button& button){allSettings.show_messages.combat = button.isPressed();});
+			allSettings.show_messages.combat, [](Button& button) {soundToggle(); allSettings.show_messages.combat = button.isPressed(); });
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_status", "Status messages",
 			"Enable report of character status changes and other passive effects.",
-			allSettings.show_messages.status, [](Button& button){allSettings.show_messages.status = button.isPressed();});
+			allSettings.show_messages.status, [](Button& button){soundToggle(); allSettings.show_messages.status = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_inventory", "Inventory messages",
 			"Enable report of inventory and item appraisal messages.",
-			allSettings.show_messages.inventory, [](Button& button){allSettings.show_messages.inventory = button.isPressed();});
+			allSettings.show_messages.inventory, [](Button& button){soundToggle(); allSettings.show_messages.inventory = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_equipment", "Equipment messages",
 			"Enable report of player equipment changes.",
-			allSettings.show_messages.equipment, [](Button& button){allSettings.show_messages.equipment = button.isPressed();});
+			allSettings.show_messages.equipment, [](Button& button){soundToggle(); allSettings.show_messages.equipment = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_world", "World messages",
 			"Enable report of diegetic messages, such as speech and text.",
-			allSettings.show_messages.world, [](Button& button){allSettings.show_messages.world = button.isPressed();});
+			allSettings.show_messages.world, [](Button& button){soundToggle(); allSettings.show_messages.world = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_chat", "Player chat",
 			"Enable multiplayer chat.",
-			allSettings.show_messages.chat, [](Button& button){allSettings.show_messages.chat = button.isPressed();});
+			allSettings.show_messages.chat, [](Button& button){soundToggle(); allSettings.show_messages.chat = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_progression", "Progression messages",
 			"Enable report of player character progression messages (ie level-ups).",
-			allSettings.show_messages.progression, [](Button& button){allSettings.show_messages.progression = button.isPressed();});
+			allSettings.show_messages.progression, [](Button& button){soundToggle(); allSettings.show_messages.progression = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_interaction", "Interaction messages",
 			"Enable report of player interactions with the world.",
-			allSettings.show_messages.interaction, [](Button& button){allSettings.show_messages.interaction = button.isPressed();});
+			allSettings.show_messages.interaction, [](Button& button){soundToggle(); allSettings.show_messages.interaction = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_inspection", "Inspection messages",
 			"Enable player inspections of world objects.",
-			allSettings.show_messages.inspection, [](Button& button){allSettings.show_messages.inspection = button.isPressed();});
+			allSettings.show_messages.inspection, [](Button& button){soundToggle(); allSettings.show_messages.inspection = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_hint", "Hint messages",
 			"Enable cryptic hints for certain items, world events, etc.",
-			allSettings.show_messages.hint, [](Button& button){allSettings.show_messages.hint = button.isPressed();});
+			allSettings.show_messages.hint, [](Button& button){soundToggle(); allSettings.show_messages.hint = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_obituary", "Obituary messages",
 			"Enable obituary messages for player deaths.",
-			allSettings.show_messages.obituary, [](Button& button){allSettings.show_messages.obituary = button.isPressed();});
+			allSettings.show_messages.obituary, [](Button& button){soundToggle(); allSettings.show_messages.obituary = button.isPressed();});
 
 		hookSettings(*subwindow,
 			{{Setting::Type::Boolean, "messages_combat"},
@@ -5342,6 +5482,9 @@ bind_failed:
 #ifdef NINTENDO
 					if ( Input::lastInputOfAnyKind.size() >= 4 )
 					{
+						if (Input::lastInputOfAnyKind.substr(4) == "ButtonY") {
+							Input::inputs[widget.getOwner()].consumeBinary("MenuAlt1");
+						}
 						if (Input::lastInputOfAnyKind.substr(4) == "ButtonX") {
 							Input::inputs[widget.getOwner()].consumeBinary("MenuAlt2");
 						}
@@ -5349,6 +5492,9 @@ bind_failed:
 #else
 					if ( Input::lastInputOfAnyKind.size() >= 4 )
 					{
+						if (Input::lastInputOfAnyKind.substr(4) == "ButtonX") {
+							Input::inputs[widget.getOwner()].consumeBinary("MenuAlt1");
+						}
 						if (Input::lastInputOfAnyKind.substr(4) == "ButtonY") {
 							Input::inputs[widget.getOwner()].consumeBinary("MenuAlt2");
 						}
@@ -5391,6 +5537,44 @@ bind_failed:
 		settingsSelect(*subwindow, setting_to_select);
 	}
 
+	static const std::vector<const char*> crosshairs =
+	{ 
+		"Dot",
+		"Dot (Large)",
+		"Plus (Small)",
+		"Plus (Medium)",
+		"Plus (Large)",
+		"Cross",
+		"Carat",
+		"Circle",
+		"Dots (3x)",
+		"Dots (4x)",
+		":)",
+		"@" };
+	static void settingsCrosshairType(Button& button) {
+		settingsOpenDropdown(button, "shootmode_crosshair", DropdownType::Short, [](Frame::entry_t& entry) {
+			soundActivate();
+
+		int index = 0;
+		for ( auto str : crosshairs )
+		{
+			if ( entry.name == str )
+			{
+				allSettings.shootmode_crosshair = index;
+				break;
+			}
+			++index;
+		}
+		auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+		auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
+		auto button = settings_subwindow->findButton("setting_shootmode_crosshair_dropdown_button"); assert(button);
+		auto dropdown = settings_subwindow->findFrame("setting_shootmode_crosshair_dropdown"); assert(dropdown);
+		button->setText(entry.name.c_str());
+		dropdown->removeSelf();
+		button->select();
+			});
+	}
+
 	static void settingsGeneral(Button& button) {
 		Frame* settings_subwindow;
 		if ((settings_subwindow = settingsSubwindowSetup(button)) == nullptr) {
@@ -5425,10 +5609,34 @@ bind_failed:
             "Scale the UI to a larger or smaller size. (Recommended values: 50%, 75%, or 100%)",
             allSettings.ui_scale, 50.f, 100.f, sliderPercent,
             [](Slider& slider){soundSlider(true); allSettings.ui_scale = floorf(slider.getValue());});
+#endif
+		y += settingsAddSlider(*settings_subwindow, y, "enemybar_scale", "Enemy Health Bar Scaling",
+			"Control size of in-world popups for enemy health bars.",
+			allSettings.enemybar_scale, 50, 100, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.enemybar_scale = slider.getValue(); });
+		y += settingsAddSlider(*settings_subwindow, y, "world_tooltip_scale", "Popup Scaling",
+			"Control size of in-world popups for items, gravestones and NPC dialogue.",
+			allSettings.world_tooltip_scale, 100, 200, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.world_tooltip_scale = slider.getValue(); });
+		y += settingsAddSlider(*settings_subwindow, y, "world_tooltip_scale_splitscreen", "Popup Scaling (Splitscreen)",
+			"Control size of in-world popups for items, gravestones and NPC dialogue in splitscreen.",
+			allSettings.world_tooltip_scale_splitscreen, 100, 200, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.world_tooltip_scale_splitscreen = slider.getValue(); });
+		y += settingsAddSlider(*settings_subwindow, y, "item_tooltip_height", "Item Tooltip Height",
+			"Adjust the vertical position of in-world item tooltip popups.",
+			allSettings.item_tooltip_height, 50, 100, sliderPercent, [
+			](Slider& slider) {soundSlider(true); allSettings.item_tooltip_height = slider.getValue(); });
+		y += settingsAddSlider(*settings_subwindow, y, "shootmode_crosshair_opacity", "Crosshair Opacity",
+			"Adjust the opacity of the crosshair.",
+			allSettings.shootmode_crosshair_opacity, 0, 100, sliderPercent, [
+			](Slider& slider) {soundSlider(true); allSettings.shootmode_crosshair_opacity = slider.getValue(); });
+		const char* selected_mode = crosshairs[allSettings.shootmode_crosshair];
+		y += settingsAddDropdown(*settings_subwindow, y, "shootmode_crosshair", "Crosshair Type", "Adjust the appearance of the crosshair.",
+			false, crosshairs, selected_mode, settingsCrosshairType);
+
+#ifndef NINTENDO
         y += settingsAddBooleanOption(*settings_subwindow, y, "ui_filter", "Filter Scaling",
             "Scaled UI elements will have softer edges if this is enabled, at the cost of some sharpness.",
             allSettings.ui_filter_enabled, [](Button& button){soundToggle(); allSettings.ui_filter_enabled = button.isPressed();});
 #endif
+
 		y += settingsAddCustomize(*settings_subwindow, y, "minimap_settings", "Minimap Settings",
 			"Customize the appearance of the in-game minimap.",
 			[](Button& button){allSettings.minimap = Minimap::load(); settingsMinimap(button);});
@@ -5439,11 +5647,34 @@ bind_failed:
 		y += settingsAddBooleanOption(*settings_subwindow, y, "show_player_nametags", "Show Player Nametags",
 			"Display the name of each player character above their avatar.",
 			allSettings.show_player_nametags_enabled, [](Button& button){soundToggle(); allSettings.show_player_nametags_enabled = button.isPressed();});
-		y += settingsAddSlider(*settings_subwindow, y, "item_tooltip_height", "Item Tooltip Height",
-			"Adjust the vertical position of in-world item tooltip popups.",
-			allSettings.item_tooltip_height, 50, 100, sliderPercent, [
-			](Slider& slider) {soundSlider(true); allSettings.item_tooltip_height = slider.getValue(); });
 
+
+		y += settingsAddSubHeader(*settings_subwindow, y, "accessibility", "Accessibility");
+		y += settingsAddBooleanOption(*settings_subwindow, y, "content_control", "Content Control",
+			"Disable the appearance of blood and other explicit kinds of content in the game",
+			allSettings.content_control_enabled, [](Button& button) {soundToggle(); allSettings.content_control_enabled = button.isPressed(); });
+		y += settingsAddBooleanOption(*settings_subwindow, y, "colorblind_mode", "Colorblind Mode",
+			"Change the appearance of certain UI elements to improve visibility for certain colorblind individuals.",
+			allSettings.colorblind_mode_enabled, [](Button& button) {soundToggle(); allSettings.colorblind_mode_enabled = button.isPressed(); });
+		const char* arachnophobia_desc;
+		if ( intro ) {
+			arachnophobia_desc = "Replace all giant spiders in the game with hostile crustaceans.";
+		}
+		else {
+			arachnophobia_desc = "Replace all giant spiders in the game with hostile crustaceans. (Updates at end of current dungeon level)";
+		}
+		y += settingsAddBooleanOption(*settings_subwindow, y, "arachnophobia_filter", "Arachnophobia Filter",
+			arachnophobia_desc, allSettings.arachnophobia_filter_enabled,
+			[](Button& button) {soundToggle(); allSettings.arachnophobia_filter_enabled = button.isPressed(); });
+		y += settingsAddBooleanOption(*settings_subwindow, y, "shaking", "Shaking",
+			"Toggle the camera's ability to twist and roll when the player stumbles or receives damage.",
+			allSettings.shaking_enabled, [](Button& button) {soundToggle(); allSettings.shaking_enabled = button.isPressed(); });
+		y += settingsAddBooleanOption(*settings_subwindow, y, "bobbing", "Bobbing",
+			"Toggle the camera's ability to bob steadily as the player moves.",
+			allSettings.bobbing_enabled, [](Button& button) {soundToggle(); allSettings.bobbing_enabled = button.isPressed(); });
+		y += settingsAddBooleanOption(*settings_subwindow, y, "light_flicker", "Light Flicker",
+			"Toggle the flickering appearance of torches and other light fixtures in the game world.",
+			allSettings.light_flicker_enabled, [](Button& button) {soundToggle(); allSettings.light_flicker_enabled = button.isPressed(); });
 #if 0
 		y += settingsAddBooleanOption(*settings_subwindow, y, "show_hud", "Show HUD",
 			"Toggle the display of health and other status bars in game when the inventory is closed.",
@@ -5453,26 +5684,61 @@ bind_failed:
 #ifndef NINTENDO
 		hookSettings(*settings_subwindow,
 			{{Setting::Type::Boolean, "fast_restart"},
+
+			// inventory options
 			{Setting::Type::Boolean, "add_items_to_hotbar"},
 			{Setting::Type::Customize, "inventory_sorting"},
 			{Setting::Type::Boolean, "use_on_release"},
+
+			// hud options
             {Setting::Type::Slider, "ui_scale"},
+			{Setting::Type::Slider, "enemybar_scale"},
+			{Setting::Type::Slider, "world_tooltip_scale"},
+			{Setting::Type::Slider, "world_tooltip_scale_splitscreen"},
+			{Setting::Type::Slider, "item_tooltip_height"},
+			{Setting::Type::Slider, "shootmode_crosshair_opacity"},
+			{Setting::Type::Dropdown, "shootmode_crosshair"},
             {Setting::Type::Boolean, "ui_filter"},
+
 			{Setting::Type::Customize, "minimap_settings"},
 			{Setting::Type::BooleanWithCustomize, "show_messages"},
 			{Setting::Type::Boolean, "show_player_nametags"},
-			{Setting::Type::Slider, "item_tooltip_height"},
+
+			// accessibility
+			{Setting::Type::Boolean, "content_control"},
+			{Setting::Type::Boolean, "colorblind_mode"},
+			{Setting::Type::Boolean, "arachnophobia_filter"},
+			{Setting::Type::Boolean, "shaking"},
+			{Setting::Type::Boolean, "bobbing"},
+			{Setting::Type::Boolean, "light_flicker"},
 			//{Setting::Type::Boolean, "show_hud"},
         });
 #else
 		hookSettings(*settings_subwindow,
 			{{Setting::Type::Boolean, "fast_restart"},
+			// inventory options
 			{Setting::Type::Boolean, "add_items_to_hotbar"},
 			{Setting::Type::Customize, "inventory_sorting"},
+
+			// hud options
+			{Setting::Type::Slider, "enemybar_scale"},
+			{Setting::Type::Slider, "world_tooltip_scale"},
+			{Setting::Type::Slider, "world_tooltip_scale_splitscreen"},
+			{Setting::Type::Slider, "item_tooltip_height"},
+			{Setting::Type::Slider, "shootmode_crosshair_opacity"},
+			{Setting::Type::Dropdown, "shootmode_crosshair"},
+
 			{Setting::Type::Customize, "minimap_settings"},
 			{Setting::Type::BooleanWithCustomize, "show_messages"},
 			{Setting::Type::Boolean, "show_player_nametags"},
-			{Setting::Type::Slider, "item_tooltip_height"},
+
+			// accessibility
+			{Setting::Type::Boolean, "content_control"},
+			{Setting::Type::Boolean, "colorblind_mode"},
+			{Setting::Type::Boolean, "arachnophobia_filter"},
+			{Setting::Type::Boolean, "shaking"},
+			{Setting::Type::Boolean, "bobbing"},
+			{Setting::Type::Boolean, "light_flicker"},
         });
 #endif
 
@@ -5495,7 +5761,7 @@ bind_failed:
 		int y = 0;
 
 #ifndef NINTENDO
-		int selected_res = 0;
+		int selected_res = -1;
 		std::list<resolution> resolutions;
 		getResolutionList(allSettings.video.display_id, resolutions);
 		std::vector<std::string> resolutions_formatted;
@@ -5511,10 +5777,14 @@ bind_failed:
 			snprintf(buf, sizeof(buf), "%d x %d @ %dhz", res.x, res.y, res.hz);
 			resolutions_formatted.push_back(std::string(buf));
 			resolutions_formatted_ptrs.push_back(resolutions_formatted.back().c_str());
-			if (allSettings.video.resolution_x == res.x && allSettings.video.resolution_y == res.y &&
-				allSettings.video.hz == res.hz) {
-				selected_res = index;
+			if (allSettings.video.resolution_x == res.x && allSettings.video.resolution_y == res.y) {
+				if (selected_res == -1) {
+					selected_res = index;
+				}
 			}
+		}
+		if (selected_res == -1) {
+			selected_res = 0;
 		}
 
 		int num_displays = getNumDisplays();
@@ -5527,13 +5797,8 @@ bind_failed:
 			displays_formatted_ptrs.push_back(displays_formatted.back().c_str());
 		}
 
-#ifdef WINDOWS
         const std::vector<const char*> modes = {"Windowed", "Borderless", "Fullscreen"};
 		const char* selected_mode = borderless ? "Borderless" : (fullscreen ? "Fullscreen" : "Windowed");
-#else
-        const std::vector<const char*> modes = {"Bordered", "Borderless"};
-        const char* selected_mode = borderless ? "Borderless" : "Bordered";
-#endif
 
 		y += settingsAddSubHeader(*settings_subwindow, y, "display", "Display Mode");
         y += settingsAddDropdown(*settings_subwindow, y, "resolution", "Resolution", "Change the current window resolution.",
@@ -5586,40 +5851,6 @@ bind_failed:
 			"For splitscreen with two-players: stagger each viewport so they each rest in a corner of the display.",
 			allSettings.staggered_split_enabled, [](Button& button){soundToggle(); allSettings.staggered_split_enabled = button.isPressed();});
 
-		y += settingsAddSubHeader(*settings_subwindow, y, "accessibility", "Accessibility");
-		y += settingsAddBooleanOption(*settings_subwindow, y, "content_control", "Content Control",
-			"Disable the appearance of blood and other explicit kinds of content in the game",
-			allSettings.content_control_enabled, [](Button& button){soundToggle(); allSettings.content_control_enabled = button.isPressed();});
-		y += settingsAddBooleanOption(*settings_subwindow, y, "colorblind_mode", "Colorblind Mode",
-			"Change the appearance of certain UI elements to improve visibility for certain colorblind individuals.",
-			allSettings.colorblind_mode_enabled, [](Button& button){soundToggle(); allSettings.colorblind_mode_enabled = button.isPressed();});
-		const char* arachnophobia_desc;
-		if (intro) {
-		    arachnophobia_desc = "Replace all giant spiders in the game with hostile crustaceans.";
-		} else {
-		    arachnophobia_desc = "Replace all giant spiders in the game with hostile crustaceans. (Updates at end of current dungeon level)";
-		}
-		y += settingsAddBooleanOption(*settings_subwindow, y, "arachnophobia_filter", "Arachnophobia Filter",
-			arachnophobia_desc, allSettings.arachnophobia_filter_enabled,
-			[](Button& button){soundToggle(); allSettings.arachnophobia_filter_enabled = button.isPressed();});
-		y += settingsAddSlider(*settings_subwindow, y, "world_tooltip_scale", "Popup Scaling",
-			"Control size of in-world popups for items, gravestones and NPC dialogue.",
-			allSettings.world_tooltip_scale, 100, 200, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.world_tooltip_scale = slider.getValue(); });
-		y += settingsAddSlider(*settings_subwindow, y, "world_tooltip_scale_splitscreen", "Popup Scaling (Splitscreen)",
-			"Control size of in-world popups for items, gravestones and NPC dialogue in splitscreen.",
-			allSettings.world_tooltip_scale_splitscreen, 100, 200, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.world_tooltip_scale_splitscreen = slider.getValue(); });
-
-		y += settingsAddSubHeader(*settings_subwindow, y, "effects", "Effects");
-		y += settingsAddBooleanOption(*settings_subwindow, y, "shaking", "Shaking",
-			"Toggle the camera's ability to twist and roll when the player stumbles or receives damage.",
-			allSettings.shaking_enabled, [](Button& button){soundToggle(); allSettings.shaking_enabled = button.isPressed();});
-		y += settingsAddBooleanOption(*settings_subwindow, y, "bobbing", "Bobbing",
-			"Toggle the camera's ability to bob steadily as the player moves.",
-			allSettings.bobbing_enabled, [](Button& button){soundToggle(); allSettings.bobbing_enabled = button.isPressed();});
-		y += settingsAddBooleanOption(*settings_subwindow, y, "light_flicker", "Light Flicker",
-			"Toggle the flickering appearance of torches and other light fixtures in the game world.",
-			allSettings.light_flicker_enabled, [](Button& button){soundToggle(); allSettings.light_flicker_enabled = button.isPressed();});
-
 #ifndef NINTENDO
 		hookSettings(*settings_subwindow,{
             {Setting::Type::Dropdown, "resolution"},
@@ -5634,14 +5865,7 @@ bind_failed:
 			{Setting::Type::Boolean, "vertical_split"},
 			{Setting::Type::Boolean, "clipped_split"},
 			{Setting::Type::Boolean, "staggered_split"},
-			{Setting::Type::Boolean, "content_control"},
-			{Setting::Type::Boolean, "colorblind_mode"},
-			{Setting::Type::Boolean, "arachnophobia_filter"},
-			{Setting::Type::Slider, "world_tooltip_scale"},
-			{Setting::Type::Slider, "world_tooltip_scale_splitscreen"},
-			{Setting::Type::Boolean, "shaking"},
-			{Setting::Type::Boolean, "bobbing"},
-			{Setting::Type::Boolean, "light_flicker"},
+
 			});
 
 		settingsSubwindowFinalize(*settings_subwindow, y, {Setting::Type::Dropdown, "resolution"});
@@ -5653,14 +5877,6 @@ bind_failed:
 			{Setting::Type::Boolean, "vertical_split"},
 			{Setting::Type::Boolean, "clipped_split"},
 			{Setting::Type::Boolean, "staggered_split"},
-			{Setting::Type::Boolean, "content_control"},
-			{Setting::Type::Boolean, "colorblind_mode"},
-			{Setting::Type::Boolean, "arachnophobia_filter"},
-			{Setting::Type::Slider, "world_tooltip_scale"},
-			{Setting::Type::Slider, "world_tooltip_scale_splitscreen"},
-			{Setting::Type::Boolean, "shaking"},
-			{Setting::Type::Boolean, "bobbing"},
-			{Setting::Type::Boolean, "light_flicker"},
 			});
 
 		settingsSubwindowFinalize(*settings_subwindow, y, {Setting::Type::Slider, "gamma"});
@@ -5699,7 +5915,7 @@ bind_failed:
 			uint32_t _1; memcpy(&_1, &d.guid.Data1, sizeof(_1));
 			uint64_t _2; memcpy(&_2, &d.guid.Data4, sizeof(_2));
 			char guid_string[25];
-			snprintf(guid_string, sizeof(guid_string), "%.8x%.16llx", _1, (unsigned long long)_2);
+			snprintf(guid_string, sizeof(guid_string), FMOD_AUDIO_GUID_FMT, _1, _2);
 			if (!selected_device && allSettings.audio_device == guid_string) {
 				selected_device = c;
 			}
@@ -6093,7 +6309,9 @@ bind_failed:
 			frame = static_cast<Frame*>(frame->getParent());
 			frame = static_cast<Frame*>(frame->getParent());
 			frame->removeSelf();
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
 			auto leaderboards = buttons->findButton("Leaderboards"); assert(leaderboards);
 			leaderboards->select();
@@ -6222,42 +6440,42 @@ bind_failed:
             Uint32 outlineColor;
         };
         static Victory victories[] = {
-            {
+            { // defeat (victory = 0)
                 "Here lies\n%s\nRequiescat In Pace",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_DeadEnd_Plate_00A.png",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_DeadEnd_Image_01B.png",
                 makeColor(151, 115, 58, 255),
                 makeColor(21, 9, 8, 255)
             },
-            {
+            { // classic victory (victory = 1)
                 "Make Way For\n%s\nthe Triumphant!",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_Gold_Plate_00.png",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_Gold_Image_01B.png",
                 makeColor(230, 183, 20, 255),
                 makeColor(82, 31, 4, 255)
             },
-            {
+            { // classic hell victory (victory = 2)
                 "Bow Before\n%s\nthe Eternal!",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_Gold_Plate_00.png",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_Gold_Image_01B.png",
                 makeColor(230, 183, 20, 255),
                 makeColor(82, 31, 4, 255)
             },
-            {
+            { // neutral (beast) victory (victory = 3)
                 "Long Live\n%s\nthe Baron!",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_Gold_Plate_00.png",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_Gold_Image_01B.png",
                 makeColor(230, 183, 20, 255),
                 makeColor(82, 31, 4, 255)
             },
-            {
+            { // good (human) victory (victory = 4)
                 "All Hail\n%s\nthe Baron!",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_GoodEnd_Plate_00.png",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_GoodEnd_Image_01B.png",
                 makeColor(110, 107, 224, 255),
                 makeColor(22, 16, 30, 255)
             },
-            {
+            { // evil (demon) victory (victory = 5)
                 "Tremble Before\n%s\nthe Baron!",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_EvilEnd_Plate_00.png",
                 "*images/ui/Main Menus/Leaderboards/AA_VictoryPlate_EvilEnd_Image_01B.png",
@@ -6418,6 +6636,11 @@ bind_failed:
 		    conduct->clearEntries();
 		    conduct->setWidgetLeft(button.getName());
 		    conduct->setActualSize(SDL_Rect{0, 0, 272, 102});
+            conduct->setTickCallback([](Widget& widget){
+                auto frame = static_cast<Frame*>(&widget);
+                frame->setAllowScrollBinds(frame->isSelected());
+                });
+            
 		    auto conduct_header = conduct->addEntry("header", true);
 		    conduct_header->text = " Voluntary Challenges:";
 		    conduct_header->color = makeColor(203, 171, 101, 255);
@@ -6574,6 +6797,23 @@ bind_failed:
         static constexpr int num_categories = sizeof(categories) / sizeof(categories[0]);
         static int category;
         category = 1;
+        
+        static auto set_links = [](const char* name){
+            assert(main_menu_frame);
+            auto window = main_menu_frame->findFrame("leaderboards"); assert(window);
+            auto list = window->findFrame("list"); assert(list);
+            auto category_right = window->findButton("category_right"); assert(category_right);
+            auto category_left = window->findButton("category_left"); assert(category_left);
+            auto delete_entry = window->findButton("delete_entry"); assert(delete_entry);
+            auto slider = window->findSlider("scroll_slider"); assert(slider);
+            auto subframe = window->findFrame("subframe"); assert(subframe);
+            auto conduct = subframe->findFrame("conduct"); assert(conduct);
+            category_right->setWidgetUp(name);
+            category_left->setWidgetUp(name);
+            delete_entry->setWidgetUp(name);
+            slider->setWidgetRight(name);
+            conduct->setWidgetLeft(name);
+            };
 
         static const char* fmt = "  #%d %s";
 
@@ -6585,6 +6825,10 @@ bind_failed:
 
             char buf[128];
             snprintf(buf, sizeof(buf), fmt, index + 1, name);
+            
+            if (index == 0) {
+                set_links(buf);
+            }
 
             auto button = list->addButton(buf);
             button->setUserData(score);
@@ -6597,6 +6841,7 @@ bind_failed:
             button->setTextColor(makeColor(203,171,101,255));
             button->setTextHighlightColor(makeColor(231,213,173,255));
             button->setGlyphPosition(Widget::glyph_position_t::CENTERED_RIGHT);
+            button->setHideGlyphs(true);
             button->setWidgetSearchParent("leaderboards");
             button->addWidgetAction("MenuCancel", "back_button");
             button->addWidgetAction("MenuAlt1", "delete_entry");
@@ -6612,7 +6857,9 @@ bind_failed:
             button->setBackgroundHighlighted("*images/ui/Main Menus/Leaderboards/AA_NameList_Selected_00.png");
             button->setBackgroundActivated("*images/ui/Main Menus/Leaderboards/AA_NameList_Selected_00.png");
             button->setCallback([](Button& button){
-                soundActivate();
+                if (isMouseVisible()) {
+                    soundActivate();
+                }
                 auto list = static_cast<Frame*>(button.getParent());
                 button.setTextColor(makeColor(231,213,173,255));
                 button.setBackground("*images/ui/Main Menus/Leaderboards/AA_NameList_Selected_00.png");
@@ -6641,13 +6888,19 @@ bind_failed:
                             }
                         }
                     }
-                    if (button->getSize().y + button->getSize().h >= list->getActualSize().y + list->getSize().h) {
+                    if (button->getSize().y + button->getSize().h > list->getActualSize().y + list->getSize().h) {
                         auto next = button->getWidgetMovements().find("MenuUp");
                         if (next != button->getWidgetMovements().end() && !next->second.empty()) {
                             auto result = list->findButton(next->second.c_str());
                             if (result) {
                                 result->select();
                             }
+                        }
+                    }
+                    if (!isMouseVisible()) {
+                        const char* unselected = "*images/ui/Main Menus/Leaderboards/AA_NameList_Unselected_00.png";
+                        if (strcmp(button->getBackground(), unselected) == 0) {
+                            button->activate();
                         }
                     }
                 }
@@ -6682,32 +6935,6 @@ bind_failed:
         static int scores_loaded;
         scores_loaded = 0;
 
-        static auto set_links = [](){
-            assert(main_menu_frame);
-            auto window = main_menu_frame->findFrame("leaderboards"); assert(window);
-            auto list = window->findFrame("list"); assert(list);
-		    auto category_right = window->findButton("category_right"); assert(category_right);
-		    auto category_left = window->findButton("category_left"); assert(category_left);
-		    auto delete_entry = window->findButton("delete_entry"); assert(delete_entry);
-            auto slider = window->findSlider("scroll_slider"); assert(slider);
-            auto subframe = window->findFrame("subframe"); assert(subframe);
-            auto conduct = subframe->findFrame("conduct"); assert(conduct);
-		    if (list->getButtons().empty()) {
-		        category_right->setWidgetUp("");
-		        category_left->setWidgetUp("");
-		        delete_entry->setWidgetUp("");
-		        slider->setWidgetRight("");
-		        conduct->setWidgetLeft("");
-		    } else {
-		        auto name = list->getButtons()[0]->getName();
-		        category_right->setWidgetUp(name);
-		        category_left->setWidgetUp(name);
-		        delete_entry->setWidgetUp(name);
-		        slider->setWidgetRight(name);
-		        conduct->setWidgetLeft(name);
-		    }
-            };
-
         static auto repopulate_list = [](BoardType type){
             downloadedScores.deleteAll();
             selectedScore = nullptr;
@@ -6719,6 +6946,7 @@ bind_failed:
 
             auto size = list->getActualSize();
             size.h = list->getSize().h;
+            size.y = 0;
             list->setActualSize(size);
 
             if (boardType == BoardType::LOCAL_SINGLE || boardType == BoardType::LOCAL_MULTI) {
@@ -6759,6 +6987,7 @@ bind_failed:
                     } else {
                         field->setText("No scores found.");
                     }
+                    set_links("");
                 }
             } else {
 #ifdef STEAMWORKS
@@ -6775,10 +7004,9 @@ bind_failed:
                 } else {
                     field->setText("Downloading scores...");
                 }
+                set_links("");
 #endif
             }
-
-            set_links();
             };
 
         auto disableIfNotOnline = [](Widget& widget){
@@ -6824,17 +7052,19 @@ bind_failed:
 		category_left->setWidgetSearchParent(window->getName());
 		category_left->setTickCallback(disableIfNotOnline);
 		category_left->setCallback([](Button& button){
-		    soundActivate();
-		    --category;
-		    if (category <= 0) {
-		        category = num_categories - 1;
-		    }
-		    repopulate_list(boardType);
-		    auto window = static_cast<Frame*>(button.getParent());
-		    auto category_text = window->findField("category_text");
-		    if (category_text) {
-		        category_text->setText(categories[category]);
-		    }
+            if (!button.isInvisible()) {
+                soundActivate();
+                --category;
+                if (category <= 0) {
+                    category = num_categories - 1;
+                }
+                repopulate_list(boardType);
+                auto window = static_cast<Frame*>(button.getParent());
+                auto category_text = window->findField("category_text");
+                if (category_text) {
+                    category_text->setText(categories[category]);
+                }
+            }
 		    });
         category_left->addWidgetAction("MenuCancel", "back_button");
         category_left->addWidgetAction("MenuAlt1", "delete_entry");
@@ -6854,17 +7084,19 @@ bind_failed:
 		category_right->setHighlightColor(makeColor(255, 255, 255, 255));
 		category_right->setTickCallback(disableIfNotOnline);
 		category_right->setCallback([](Button& button){
-		    soundActivate();
-		    ++category;
-		    if (category >= num_categories) {
-		        category = 1;
-		    }
-		    repopulate_list(boardType);
-		    auto window = static_cast<Frame*>(button.getParent());
-		    auto category_text = window->findField("category_text");
-		    if (category_text) {
-		        category_text->setText(categories[category]);
-		    }
+            if (!button.isInvisible()) {
+                soundActivate();
+                ++category;
+                if (category >= num_categories) {
+                    category = 1;
+                }
+                repopulate_list(boardType);
+                auto window = static_cast<Frame*>(button.getParent());
+                auto category_text = window->findField("category_text");
+                if (category_text) {
+                    category_text->setText(categories[category]);
+                }
+            }
 		    });
 		category_right->setWidgetSearchParent(window->getName());
         category_right->addWidgetAction("MenuCancel", "back_button");
@@ -6932,7 +7164,9 @@ bind_failed:
 						}
                         add_score(score, name, prev_buf, next_buf, index);
                     }
-                    set_links();
+                    if (num_scores == 0) {
+                        set_links("");
+                    }
                 }
             }
             });
@@ -7148,8 +7382,17 @@ bind_failed:
                         },
                     [](Button& button){ // No
 		                soundCancel();
-		                repopulate_list(boardType);
 		                closeBinary();
+                        assert(main_menu_frame);
+                        auto window = main_menu_frame->findFrame("leaderboards"); assert(window);
+                        auto list = window->findFrame("list"); assert(list);
+                        for (auto button : list->getButtons()) {
+                            auto score = (score_t*)button->getUserData();
+                            if (score == selectedScore) {
+                                button->select();
+                                break;
+                            }
+                        }
                         });
                 auto scores = boardType == BoardType::LOCAL_SINGLE ?
                     &topscores : &topscoresMultiplayer;
@@ -7194,7 +7437,9 @@ bind_failed:
 			frame = static_cast<Frame*>(frame->getParent());
 			frame = static_cast<Frame*>(frame->getParent());
 			frame->removeSelf();
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
 			auto achievements = buttons->findButton("Achievements"); assert(achievements);
 			achievements->select();
@@ -7488,7 +7733,9 @@ bind_failed:
 		soundCancel();
         destroyMainMenu();
         createMainMenu(false);
-        assert(main_menu_frame);
+		if (!main_menu_frame) {
+			return;
+		}
 		auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
 		auto selection = buttons->findButton("Adventure Archives");
 		if (selection) {
@@ -7604,7 +7851,9 @@ bind_failed:
     }
 
     static Frame* toggleLobbyChatWindow() {
-        assert(main_menu_frame);
+		if (!main_menu_frame) {
+			return nullptr;
+		}
         auto lobby = main_menu_frame->findFrame("lobby"); assert(lobby);
         auto frame = lobby->findFrame("chat window");
         if (frame) {
@@ -7895,6 +8144,13 @@ bind_failed:
 		gameModeManager.currentSession.restoreSavedServerFlags();
 
 	    closeNetworkInterfaces();
+
+		// hide all mouses
+		for (int c = 0; c < MAXPLAYERS; ++c) {
+			auto vmouse = inputs.getVirtualMouse(c);
+			vmouse->lastMovementFromController = true;
+			vmouse->draw_cursor = false;
+		}
 
 #ifdef NINTENDO
 		nxEnableAutoSleep();
@@ -9263,8 +9519,8 @@ bind_failed:
         if (strncmp(name, str, len) == 0) {
             lobbyID = (int)strtol(name + len, nullptr, 10);
         }
-        if (lobbyID >= 0 && lobbyID < EOS.LobbySearchResults.results.size()) {
-            return &EOS.LobbySearchResults.results[lobbyID];
+        if (lobbyID >= 0 && lobbyID < EOS.LobbySearchResults.resultsSortedForDisplay.size()) {
+			return EOS.LobbySearchResults.getResultFromDisplayedIndex(lobbyID);
         } else {
             return nullptr;
         }
@@ -9662,12 +9918,6 @@ failed:
 	};
 
 	static const std::unordered_map<std::string, Class> classes = {
-		{"random", {
-			"Random", DLC::Base,
-			"ClassSelect_Icon_Randomize_00.png",
-			"ClassSelect_Icon_RandomizeHigh_00.png",
-			"ClassSelect_Icon_Randomize_00.png",
-			}},
 		{"barbarian", {
 			"Barbarian", DLC::Base,
 			"ClassSelect_Icon_Barbarian_00.png",
@@ -9797,7 +10047,7 @@ failed:
 	};
 
 	static const char* classes_in_order[] = {
-		"random", "barbarian", "warrior", "healer",
+		"barbarian", "warrior", "healer",
 		"rogue", "wanderer", "cleric", "merchant",
 		"wizard", "arcanist", "joker", "sexton",
 		"ninja", "monk", "conjurer", "accursed",
@@ -9867,12 +10117,19 @@ failed:
 		static constexpr Uint32 bad = makeColorRGB(255, 64, 0);
 
 		auto& classes = d["descriptions"];
+		Stat tmpStats(0);
 		for ( auto it = classes.MemberBegin(); it != classes.MemberEnd(); ++it )
 		{
 			std::string classname = it->name.GetString();
 			int key = it->value["id"].GetInt();
 			auto& classEntry = data[key];
 			classEntry.internal_name = classname;
+
+			tmpStats.clearStats();
+			initClassStats(key, &tmpStats);
+			classEntry.hp = tmpStats.HP;
+			classEntry.mp = tmpStats.MP;
+
 			for ( auto it2 = it->value["desc"].Begin(); it2 != it->value["desc"].End(); )
 			{
 				std::string line = (it2->GetString());
@@ -9887,6 +10144,10 @@ failed:
 				{
 					classEntry.text += '\n';
 				}
+			}
+			for ( auto it2 = it->value["line_spacing"].Begin(); it2 != it->value["line_spacing"].End(); ++it2 )
+			{
+				classEntry.linePaddings.push_back(it2->GetInt());
 			}
 
 			int c = 0;
@@ -9956,6 +10217,11 @@ failed:
 		printlog("[JSON]: Successfully read json file %s", inputPath.c_str());
 	}
 
+	RaceDescriptions::DescData_t& RaceDescriptions::getMonsterDescriptionData(int type) 
+	{ 
+		return data[monstertypename[type]]; 
+	}
+
 	void RaceDescriptions::readFromFile()
 	{
 		const std::string filename = "data/race_descriptions.json";
@@ -9976,7 +10242,7 @@ failed:
 			return;
 		}
 
-		char buf[10000];
+		static char buf[16000];
 		const int count = (int)fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
 		buf[count] = '\0';
 		rapidjson::StringStream is(buf);
@@ -9998,6 +10264,8 @@ failed:
 			std::string key = it->name.GetString();
 			auto& raceEntry = data[key];
 			raceEntry.title = it->value["title"].GetString();
+			std::vector<std::string> textLeftLines;
+			std::vector<std::string> textRightLines;
 			for ( auto it2 = it->value["left_align"].Begin(); it2 != it->value["left_align"].End(); )
 			{
 				std::string line = (it2->GetString());
@@ -10006,11 +10274,33 @@ failed:
 					line[0] = '\x1E';
 				}
 				raceEntry.textLeft += line;
-
+				textLeftLines.push_back(line);
 				++it2;
 				if ( it2 != it->value["left_align"].End() )
 				{
 					raceEntry.textLeft += '\n';
+				}
+			}
+			raceEntry.traitsBasedOnPlayerRace = "";
+			for ( auto it2 = it->value["traits_active_if_polymorphed_out_of"].Begin(); 
+				it2 != it->value["traits_active_if_polymorphed_out_of"].End(); )
+			{
+				raceEntry.traitsBasedOnPlayerRace += (textLeftLines[it2->GetInt()]);
+				++it2;
+				if ( it2 != it->value["traits_active_if_polymorphed_out_of"].End() )
+				{
+					raceEntry.traitsBasedOnPlayerRace += '\n';
+				}
+			}
+			raceEntry.traitsBasedOnMonsterType = "";
+			for ( auto it2 = it->value["traits_active_if_polymorphed_into"].Begin();
+				it2 != it->value["traits_active_if_polymorphed_into"].End(); )
+			{
+				raceEntry.traitsBasedOnMonsterType += (textLeftLines[it2->GetInt()]);
+				++it2;
+				if ( it2 != it->value["traits_active_if_polymorphed_into"].End() )
+				{
+					raceEntry.traitsBasedOnMonsterType += '\n';
 				}
 			}
 			for ( auto it2 = it->value["right_align"].Begin(); it2 != it->value["right_align"].End(); )
@@ -10021,7 +10311,7 @@ failed:
 					line[0] = '\x1E';
 				}
 				raceEntry.textRight += line;
-
+				textRightLines.push_back(line);
 				++it2;
 				if ( it2 != it->value["right_align"].End() )
 				{
@@ -10029,7 +10319,10 @@ failed:
 				}
 			}
 
-			auto& highlights = it->value["text_line_hightlights"];
+			auto& highlights = it->value["text_line_highlights"];
+			int minProLine = 999;
+			int spellProLine = 999;
+			int maxProLine = 0;
 			for ( auto it2 = highlights["traits_lines"].Begin(); it2 != highlights["traits_lines"].End(); ++it2 )
 			{
 				raceEntry.traitLines.insert(it2->GetInt());
@@ -10037,10 +10330,72 @@ failed:
 			for ( auto it2 = highlights["benefit_lines"].Begin(); it2 != highlights["benefit_lines"].End(); ++it2 )
 			{
 				raceEntry.proLines.insert(it2->GetInt());
+				if ( it2->GetInt() > 1 ) // skip racial spells
+				{
+					minProLine = std::min(minProLine, it2->GetInt());
+				}
+				else
+				{
+					spellProLine = std::min(spellProLine, it2->GetInt());
+				}
+				maxProLine = std::max(maxProLine, it2->GetInt());
 			}
 			for ( auto it2 = it->value["line_spacing"].Begin(); it2 != it->value["line_spacing"].End(); ++it2 )
 			{
 				raceEntry.linePaddings.push_back(it2->GetInt());
+			}
+			
+			int numweaknesses = 0;
+			int numresistances = 0;
+			for ( size_t index = minProLine; index < textLeftLines.size(); ++index )
+			{
+				if ( textLeftLines[index] == "" ) {	break; }
+				if ( raceEntry.resistances != "" )
+				{
+					raceEntry.resistances += '\n';
+				}
+				raceEntry.resistances += textLeftLines[index];
+				++numresistances;
+			}
+			for ( size_t index = maxProLine; index < textLeftLines.size(); ++index )
+			{
+				if ( textLeftLines[index] == "" ) { break; }
+				if ( raceEntry.friendlyWith != "" )
+				{
+					raceEntry.friendlyWith += '\n';
+				}
+				raceEntry.friendlyWith += textLeftLines[index];
+			}
+			for ( size_t index = minProLine; index < textRightLines.size(); ++index )
+			{
+				if ( textRightLines[index] == "" ) { break; }
+				if ( raceEntry.weaknesses != "" )
+				{
+					raceEntry.weaknesses += '\n';
+				}
+				raceEntry.weaknesses += textRightLines[index];
+				++numweaknesses;
+			}
+			while ( numweaknesses > numresistances )
+			{
+				raceEntry.resistances += '\n';
+				++numresistances;
+			}
+			if ( spellProLine < 999 )
+			{
+				for ( size_t index = spellProLine; index < textLeftLines.size(); ++index )
+				{
+					if ( textLeftLines[index] == "" ) { break; }
+					if ( index > spellProLine )
+					{
+						if ( textLeftLines[index][0] != '\x1E' ) { break; }
+					}
+					if ( raceEntry.racialSpells != "" )
+					{
+						raceEntry.racialSpells += '\n';
+					}
+					raceEntry.racialSpells += textLeftLines[index];
+				}
 			}
 		}
 		init = true;
@@ -10061,18 +10416,254 @@ failed:
 	std::vector<const char*> reducedClassList(int index) {
 		std::vector<const char*> result;
 		result.reserve(num_classes);
-		result.emplace_back("random");
 		for (int c = CLASS_BARBARIAN; c <= CLASS_HUNTER; ++c) {
-			if (isCharacterValidFromDLC(*stats[index], c) == VALID_OK_CHARACTER ) {
-				result.emplace_back(classes_in_order[c + 1]);
+			if (isCharacterValidFromDLC(*stats[index], c) == VALID_OK_CHARACTER) {
+				result.emplace_back(classes_in_order[c]);
 			}
 		}
 		return result;
 	}
 
-	static void update_details_text(Frame& card) {
-	    const int index = card.getOwner();
-        const int race = stats[index]->playerRace;
+	void RaceDescriptions::update_details_text(Frame& card, void* stats) {
+		
+		Monster race = HUMAN;
+		if ( static_cast<Stat*>(stats)->appearance == 0 && static_cast<Stat*>(stats)->playerRace != RACE_HUMAN )
+		{
+			race = getMonsterFromPlayerRace(static_cast<Stat*>(stats)->playerRace);
+		}
+		Monster modifiedRace = static_cast<Stat*>(stats)->type;
+		if ( arachnophobia_filter )
+		{
+			if ( modifiedRace == SPIDER )
+			{
+				modifiedRace = CRAB;
+			}
+			if ( race == SPIDER )
+			{
+				race = CRAB;
+			}
+		}
+
+		auto& raceDescriptionData = RaceDescriptions::getMonsterDescriptionData(modifiedRace);
+		auto& raceDescriptionDataBase = RaceDescriptions::getMonsterDescriptionData(race);
+		auto details_text = card.findField("details"); assert(details_text);
+		auto details_text_right = card.findField("details_right"); assert(details_text_right);
+		std::string details_text_buf = "";
+		std::string details_text_right_buf = "";
+		if ( details_text ) {
+			details_text->clearLinesToColor();
+			details_text->clearIndividualLinePadding();
+			details_text->setPaddingPerLine(-2);
+			details_text_right->clearLinesToColor();
+			details_text_right->clearIndividualLinePadding();
+			details_text_right->setPaddingPerLine(-2);
+
+			int line = 0;
+			int numIndividualPadding = 0;
+
+			size_t c = 0;
+			if ( raceDescriptionDataBase.racialSpells.size() > 0 )
+			{
+				details_text_buf += raceDescriptionDataBase.racialSpells;
+				if ( race != modifiedRace )
+				{
+					// Add (Insectoid) etc if we're polymorphed from our base race.
+					char buf[64] = "";
+					auto localizedName = getMonsterLocalizedName(race);
+					camelCaseString(localizedName);
+					snprintf(buf, sizeof(buf), " (%s)", localizedName.c_str());
+					for ( size_t d = 0; d < details_text_buf.size(); ++d )
+					{
+						// first newline "Innate Spells", insert the monster type name here
+						if ( details_text_buf[d] == '\n' ) 
+						{
+							details_text_buf.insert(d, buf);
+							break;
+						}
+					}
+				}
+				details_text_buf += '\n';
+				details_text_buf += '\n';
+				details_text->addColorToLine(line, color_pro);
+
+				for ( ; c < details_text_buf.size(); ++c )
+				{
+					if ( details_text_buf[c] == '\n' )
+					{
+						++line;
+						details_text_right_buf += '\n';
+					}
+				}
+				details_text->setIndividualLinePadding(line - 1, -16);
+				details_text_right->setIndividualLinePadding(line - 1, -16);
+				++numIndividualPadding;
+			}
+
+			details_text_buf += Player::CharacterSheet_t::getHoverTextString("race_traits");
+			details_text_buf += '\n';
+			details_text->addColorToLine(line, color_traits);
+			details_text_buf += raceDescriptionData.traitsBasedOnMonsterType;
+			if ( race != modifiedRace )
+			{
+				if ( raceDescriptionDataBase.traitsBasedOnPlayerRace != "" )
+				{
+					details_text_buf += '\n';
+					details_text_buf += raceDescriptionDataBase.traitsBasedOnPlayerRace;
+				}
+			}
+			details_text_buf += '\n';
+			details_text_buf += '\n';
+			for ( ; c < details_text_buf.size(); ++c )
+			{
+				if ( details_text_buf[c] == '\n' )
+				{ 
+					++line;
+					details_text_right_buf += '\n';
+				}
+			}
+
+			details_text->setIndividualLinePadding(line - 1, -16);
+			++numIndividualPadding;
+			details_text->addColorToLine(line, color_pro);
+			details_text_right->setIndividualLinePadding(line - 1, -16);
+			details_text_right->addColorToLine(line, color_con);
+
+			details_text_buf += raceDescriptionData.resistances;
+			details_text_right_buf += raceDescriptionData.weaknesses;
+			details_text_buf += '\n';
+			details_text_buf += '\n';
+			for ( ; c < details_text_buf.size(); ++c )
+			{
+				if ( details_text_buf[c] == '\n' ) { ++line; }
+			}
+
+			details_text->setIndividualLinePadding(line - 1, -16);
+			++numIndividualPadding;
+			details_text->addColorToLine(line, color_pro);
+			details_text_buf += raceDescriptionData.friendlyWith;
+			details_text->setText(details_text_buf.c_str());
+			details_text_right->setText(details_text_right_buf.c_str());
+
+			if ( auto actualFont = Font::get(details_text->getFont()) )
+			{
+				const int numlines = details_text->getNumTextLines();
+				const int pad = details_text->getPaddingPerLine();
+				const int actualHeight = actualFont->height(true);
+				int height = 0;
+				for ( int line = 0; line < numlines; ++line )
+				{
+					height += actualHeight + pad;
+				}
+
+				if ( height < Frame::virtualScreenY / 2 )
+				{
+					int extraSpace = (Frame::virtualScreenY / 2) - height / std::max(1,  numIndividualPadding);
+					extraSpace = std::min(8, extraSpace);
+					for ( int line = 0; line < numlines; ++line )
+					{
+						if ( int pad = details_text->getIndividualLinePadding(line) )
+						{
+							pad += extraSpace;
+							details_text->setIndividualLinePadding(line, pad);
+						}
+						if ( int pad = details_text_right->getIndividualLinePadding(line) )
+						{
+							pad += extraSpace;
+							details_text_right->setIndividualLinePadding(line, pad);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	void ClassDescriptions::update_stat_growths(Frame& card, int classnum, int shapeshiftedType)
+	{
+		// stats definitions
+		const char* class_stats_text[] = {
+			"STR", "DEX", "CON", "INT", "PER", "CHR"
+		};
+		constexpr int num_class_stats = sizeof(class_stats_text) / sizeof(class_stats_text[0]);
+
+		switch ( shapeshiftedType )
+		{
+			case RAT:
+				classnum = 100;
+				break;
+			case SPIDER:
+				classnum = 101;
+				break;
+			case TROLL:
+				classnum = 102;
+				break;
+			case CREATURE_IMP:
+				classnum = 103;
+				break;
+			default:
+				break;
+		}
+
+		for ( int c = 0; c < num_class_stats; ++c )
+		{
+			static char buf[16];
+			snprintf(buf, sizeof(buf), "%d", c);
+			auto field = card.findField(buf);
+			field->setColor(ClassDescriptions::data[classnum].statRatings[c]);
+
+			char buf2[32];
+			snprintf(buf2, sizeof(buf2), "stat img bottom %d", c);
+			auto class_stat_img_bottom = card.findImage(buf2);
+			if ( !class_stat_img_bottom )
+			{
+				return;
+			}
+
+			if ( ClassDescriptions::data[classnum].statRatingsStrings[c] == "bad" )
+			{
+				//class_stat_img_top->disabled = true;
+				class_stat_img_bottom->disabled = false;
+
+				class_stat_img_bottom->path =
+					"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_lo2.png";
+			}
+			else if ( ClassDescriptions::data[classnum].statRatingsStrings[c] == "poor" )
+			{
+				//class_stat_img_top->disabled = true;
+				class_stat_img_bottom->disabled = false;
+
+				class_stat_img_bottom->path =
+					"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_lo1.png";
+			}
+			else if ( ClassDescriptions::data[classnum].statRatingsStrings[c] == "decent" )
+			{
+				//class_stat_img_top->disabled = false;
+				class_stat_img_bottom->disabled = false;
+
+				class_stat_img_bottom->path =
+					"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_hi1.png";
+			}
+			else if ( ClassDescriptions::data[classnum].statRatingsStrings[c] == "good" )
+			{
+				//class_stat_img_top->disabled = false;
+				class_stat_img_bottom->disabled = false;
+
+				class_stat_img_bottom->path =
+					"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_hi2.png";
+			}
+			else
+			{
+				//class_stat_img_top->disabled = true;
+				class_stat_img_bottom->disabled = false;
+
+				class_stat_img_bottom->path =
+					"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_neutral.png";
+			}
+		}
+	}
+
+	void RaceDescriptions::update_details_text(Frame& card) {
+		const int index = card.getOwner();
+		const int race = stats[index]->playerRace;
 
 	    // color title
 	    Uint32 color_race;
@@ -10130,18 +10721,22 @@ failed:
 	    }
     }
 
-	static void race_button_fn(Button& button, int index) {
+	static void race_button_fn(Button& button, bool override_dlc) {
+        const int index = button.getOwner();
 		auto frame = static_cast<Frame*>(button.getParent()); assert(frame);
+        bool success = false;
 		for (int c = 0; c < num_races; ++c) {
 			auto race = races[c];
 			if (strcmp(button.getName(), race) == 0) {
-				if ((!enabledDLCPack1 && c >= 1 && c <= 4) ||
-					(!enabledDLCPack2 && c >= 5 && c <= 8)) {
+				if (!override_dlc &&
+                    ((!enabledDLCPack1 && c >= 1 && c <= 4) ||
+					(!enabledDLCPack2 && c >= 5 && c <= 8))) {
 					// this class is not available to the player
 					button.setPressed(false);
 					openDLCPrompt(c >= 5 ? 1 : 0);
 					return;
 				} else {
+                    success = true;
 					soundToggle();
 					stats[index]->playerRace = c;
 					if (stats[index]->playerRace == RACE_SUCCUBUS) {
@@ -10173,12 +10768,18 @@ failed:
 						male->setHighlightColor(stats[index]->sex == MALE ? makeColorRGB(255, 255, 255) : makeColorRGB(127, 127, 127));
 					}
 					else if (stats[index]->playerRace == RACE_HUMAN) {
-						stats[index]->appearance = RNG.uniform(0, NUMAPPEARANCES - 1);
-						auto appearances = frame->findFrame("appearances");
-						if (appearances) {
-							appearances->setSelection(stats[index]->appearance);
-							appearances->scrollToSelection();
-						}
+                        auto appearances = frame->findFrame("appearances");
+                        if (inputs.hasController(index)) {
+                            // get the appearance that is currently selected in the UI
+                            stats[index]->appearance = std::max(0, appearances->getSelection());
+                        } else {
+                            // pick a random appearance
+                            stats[index]->appearance = RNG.uniform(0, NUMAPPEARANCES - 1);
+                        }
+                        if (appearances) {
+                            appearances->setSelection(stats[index]->appearance);
+                            appearances->scrollToSelection();
+                        }
 					}
 					else {
 						stats[index]->appearance = 0;
@@ -10206,12 +10807,24 @@ failed:
 		}
 		stats[index]->clearStats();
 		initClass(index);
-		sendPlayerOverNet();
-		saveLastCharacter(index, multiplayer);
+        
+        if (!override_dlc) {
+            sendPlayerOverNet();
+            saveLastCharacter(index, multiplayer);
+            if (success) {
+                if (inputs.hasController(index)) {
+                    createCharacterCard(index);
+                    auto lobby = main_menu_frame->findFrame("lobby"); assert(lobby);
+                    auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str()); assert(card);
+                    auto button = card->findButton("race"); assert(button);
+                    button->select();
+                }
+            }
+        }
 
 		auto card = static_cast<Frame*>(frame->getParent());
 		if (card) {
-		    update_details_text(*card);
+		    RaceDescriptions::update_details_text(*card);
 		}
 	}
 
@@ -10268,7 +10881,7 @@ failed:
 		initClass(index);
 		sendPlayerOverNet();
 		saveLastCharacter(index, multiplayer);
-		update_details_text(*card);
+		RaceDescriptions::update_details_text(*card);
 	}
 
 	static void female_button_fn(Button& button, int index) {
@@ -10324,12 +10937,14 @@ failed:
 		initClass(index);
 		sendPlayerOverNet();
 		saveLastCharacter(index, multiplayer);
-		update_details_text(*card);
+		RaceDescriptions::update_details_text(*card);
 	}
 
 	static Frame* initCharacterCard(int index, int height) {
 		auto lobby = main_menu_frame->findFrame("lobby");
-		assert(lobby);
+        if (!lobby) {
+            return nullptr;
+        }
 
 		auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str());
 		if (card) {
@@ -10363,6 +10978,9 @@ failed:
 		bool local = currentLobbyType == LobbyType::LobbyLocal;
 
 		auto card = initCharacterCard(index, 664);
+        if (!card) {
+            return;
+        }
 
 		if (multiplayer == CLIENT) {
 			allSettings.classic_mode_enabled = lobbyWindowSvFlags & SV_FLAG_CLASSIC;
@@ -10399,7 +11017,9 @@ failed:
 		auto back = createBackWidget(card,[](Button& button){soundCancel(); back_fn(button.getOwner());});
         if (multiplayer == CLIENT) {
             back->setTickCallback([](Widget& widget){
-                assert(main_menu_frame);
+				if (!main_menu_frame) {
+					return;
+				}
                 if (!main_menu_frame->findSelectedWidget(widget.getOwner())) {
                     widget.select(); // rescue cursor
                 }
@@ -10481,7 +11101,9 @@ failed:
 				setting->setCallback([](Button& button){soundCheckmark(); allSettings.hunger_enabled = !button.isPressed();});
                 if (multiplayer != CLIENT) {
                     setting->setTickCallback([](Widget& widget) {
-                        assert(main_menu_frame);
+						if (!main_menu_frame) {
+							return;
+						}
                         if (!main_menu_frame->findSelectedWidget(widget.getOwner())) {
                             widget.select(); // rescue cursor
                         }
@@ -10605,6 +11227,10 @@ failed:
 		const bool online = currentLobbyType == LobbyType::LobbyOnline;
 
 		auto card = initCharacterCard(index, 424);
+        if (!card) {
+            return;
+        }
+        
 		const std::string name = std::string("card") + std::to_string(index);
 
 		static void (*back_fn)(int) = [](int index){
@@ -10650,7 +11276,9 @@ failed:
 		custom_difficulty->setCallback([](Button& button){soundActivate(); characterCardGameFlagsMenu(button.getOwner());});
 		custom_difficulty->setTickCallback([](Widget& widget){
 			// rescue player selection
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto selected_widget = main_menu_frame->findSelectedWidget(widget.getOwner());
 			if (!selected_widget) {
 				widget.select();
@@ -10725,10 +11353,11 @@ failed:
 			    invite->setCallback([](Button& button){
 			        soundActivate();
 			        auto parent = static_cast<Frame*>(button.getParent());
-			        auto invite = parent->findButton("invite"); assert(invite);
-			        auto friends = parent->findButton("friends"); assert(friends);
-			        auto open = parent->findButton("open"); assert(open);
+#ifndef NINTENDO
+					auto friends = parent->findButton("friends"); assert(friends);
 			        friends->setPressed(false);
+#endif
+					auto open = parent->findButton("open"); assert(open);
 			        open->setPressed(false);
 
                     if (LobbyHandler.getHostingType() == LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY) {
@@ -10813,7 +11442,6 @@ failed:
 			        soundActivate();
 			        auto parent = static_cast<Frame*>(button.getParent());
 			        auto invite = parent->findButton("invite"); assert(invite);
-			        auto friends = parent->findButton("friends"); assert(friends);
 			        auto open = parent->findButton("open"); assert(open);
 			        invite->setPressed(false);
 			        open->setPressed(false);
@@ -10912,10 +11540,11 @@ failed:
 			        soundActivate();
 			        auto parent = static_cast<Frame*>(button.getParent());
 			        auto invite = parent->findButton("invite"); assert(invite);
-			        auto friends = parent->findButton("friends"); assert(friends);
-			        auto open = parent->findButton("open"); assert(open);
 			        invite->setPressed(false);
+#ifndef NINTENDO
+					auto friends = parent->findButton("friends"); assert(friends);
 			        friends->setPressed(false);
+#endif
 
                     if (LobbyHandler.getHostingType() == LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY) {
 #ifdef USE_EOS
@@ -11197,6 +11826,9 @@ failed:
 		bool local = currentLobbyType == LobbyType::LobbyLocal;
 
 		auto card = initCharacterCard(index, 580);
+        if (!card) {
+            return;
+        }
 
 		static void (*back_fn)(int) = [](int index){
 			createCharacterCard(index);
@@ -11556,10 +12188,21 @@ failed:
 
 	static void characterCardRaceMenu(int index, bool details, int selection) {
 		auto card = initCharacterCard(index, details ? 664 : 488);
+        if (!card) {
+            return;
+        }
 
 		static int race_selection[MAXPLAYERS];
 
 		static void (*back_fn)(int) = [](int index){
+            if (inputs.hasController(index)) {
+                client_classes[index] = old_classes[index];
+                stats[index]->appearance = old_appearances[index];
+                stats[index]->playerRace = old_races[index];
+                stats[index]->sex = old_sexes[index];
+                stats[index]->clearStats();
+                initClass(index);
+            }
 			createCharacterCard(index);
 			auto lobby = main_menu_frame->findFrame("lobby"); assert(lobby);
 			auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str()); assert(card);
@@ -11600,7 +12243,7 @@ failed:
 		    details_text_right->setFont(font);
 		    details_text_right->setSize(SDL_Rect{161, 68, 121, 300 });
 
-		    update_details_text(*card);
+			RaceDescriptions::update_details_text(*card);
 		}
 
 		auto subframe = card->addFrame("subframe");
@@ -11685,13 +12328,14 @@ failed:
 		    race->setBorderColor(0);
 		    race->setHighlightColor(0xffffffff);
 		    race->setWidgetSearchParent(((std::string("card") + std::to_string(index)).c_str()));
+            if (c == 0) {
+                race->addWidgetAction("MenuRight", "appearance_downarrow");
+                race->addWidgetAction("MenuLeft", "appearance_uparrow");
+            }
 		    race->addWidgetAction("MenuStart", "confirm");
 		    race->addWidgetAction("MenuPageRightAlt", "chat");
 		    race->addWidgetAction("MenuPageLeftAlt", "privacy");
 		    race->setWidgetBack("back_button");
-		    if (c == 0) {
-		        race->setWidgetRight("appearances");
-		    }
 		    if (c < num_races - 1) {
 		        race->setWidgetDown(races[c + 1]);
 		    }
@@ -11706,7 +12350,10 @@ failed:
 		    race->addWidgetAction("MenuPageRight", "female");
 		    race->addWidgetAction("MenuAlt1", "disable_abilities");
 		    race->addWidgetAction("MenuAlt2", "show_race_info");
-		    race->setCallback([](Button& button){race_button_fn(button, button.getOwner());});
+            race->setCallback([](Button& button){
+                soundActivate();
+                race_button_fn(button, false);
+                });
 		    if (stats[index]->playerRace == c) {
 			    race->setPressed(true);
 		    }
@@ -11722,14 +12369,24 @@ failed:
 		            auto hover = subframe->findImage("hover"); assert(hover);
 		            hover->pos.y = button->getSize().y;
 		            race_selection[widget.getOwner()] = (hover->pos.y - 2) / 36;
+                    
+                    const int index = widget.getOwner();
+                    if (inputs.hasController(index)) {
+                        race_button_fn(*button, true);
+                    }
 		        }
 
 				// rescue this player's focus
-				assert(main_menu_frame);
-				auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
-				if (!selectedWidget) {
-					widget.select();
-				}
+                if (strcmp(widget.getName(), "Human") == 0) {
+                    if (!main_menu_frame) {
+                        return;
+                    }
+                    auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
+                    if (!selectedWidget) {
+                        // TODO - last race is always being rescued when cancelling DLC prompt
+                        widget.select(); // select this widget
+                    }
+                }
 		        });
 
 		    auto label = subframe->addField((std::string(races[c]) + "_label").c_str(), 64);
@@ -11746,6 +12403,16 @@ failed:
 		    label->setHJustify(Field::justify_t::LEFT);
 		    label->setVJustify(Field::justify_t::CENTER);
 		}
+        
+        static const char* appearance_names[] = {
+            "Landguard", "Northborn", "Firebrand", "Hardbred",
+            "Highwatch", "Gloomforge", "Pyrebloom", "Snakestone",
+            "Windclan", "Warblood", "Millbound", "Sunstalk",
+            "Claymount", "Stormward", "Tradefell", "Nighthill",
+            "Baytower", "Whetsong"
+        };
+
+        constexpr int num_appearances = sizeof(appearance_names) / sizeof(appearance_names[0]);
 
 		auto appearances = subframe->addFrame("appearances");
 		appearances->setSize(SDL_Rect{102, 0, 122, 36});
@@ -11774,21 +12441,25 @@ failed:
 			auto parent = static_cast<Frame*>(frame->getParent());
 			auto backdrop = frame->findImage("background"); assert(backdrop);
 			auto box = frame->findImage("selection_box"); assert(box);
-			box->disabled = !frame->isSelected();
 			box->pos.y = frame->getActualSize().y;
 			backdrop->pos.y = frame->getActualSize().y + 4;
-			auto appearance_uparrow = parent->findButton("appearance_uparrow");
-			auto appearance_downarrow = parent->findButton("appearance_downarrow");
+            auto human = parent->findButton("Human"); assert(human);
+            auto appearance_uparrow = parent->findButton("appearance_uparrow"); assert(appearance_uparrow);
+            auto appearance_downarrow = parent->findButton("appearance_downarrow"); assert(appearance_downarrow);
 			auto controlType = Input::inputs[widget.getOwner()].getPlayerControlType();
+            const bool selected = controlType == Input::playerControlType_t::PLAYER_CONTROLLED_BY_KEYBOARD ?
+                frame->isActivated() : frame->isActivated() || human->isSelected();
 			const bool deselected = controlType == Input::playerControlType_t::PLAYER_CONTROLLED_BY_KEYBOARD ?
 				(!frame->isSelected() && !appearance_uparrow->isSelected() && !appearance_downarrow->isSelected()) :
-				!frame->isActivated();
-			if (frame->isActivated()) {
+				!frame->isActivated() || !human->isSelected();
+			if (selected) {
+                box->disabled = false;
 				appearance_uparrow->setDisabled(false);
 				appearance_uparrow->setInvisible(false);
 				appearance_downarrow->setDisabled(false);
 				appearance_downarrow->setInvisible(false);
 			} else if (deselected) {
+                box->disabled = true;
 				appearance_uparrow->setDisabled(true);
 				appearance_uparrow->setInvisible(true);
 				appearance_downarrow->setDisabled(true);
@@ -11829,11 +12500,16 @@ failed:
 		appearance_uparrow->setCallback([](Button& button){
 			auto card = static_cast<Frame*>(button.getParent());
 			auto appearances = card->findFrame("appearances"); assert(appearances);
-			int selection = std::max((int)stats[button.getOwner()]->appearance - 1, 0);
+			int selection = (int)stats[button.getOwner()]->appearance - 1;
+            if (selection < 0) {
+                selection = num_appearances - 1;
+            }
 			appearances->setSelection(selection);
 			appearances->scrollToSelection();
 			appearances->activateSelection();
-			button.select();
+            if (!inputs.hasController(button.getOwner())) {
+                button.select();
+            }
 			});
 	    appearance_uparrow->setTickCallback([](Widget& widget){
 	        if (widget.isSelected()) {
@@ -11866,12 +12542,16 @@ failed:
 		appearance_downarrow->setCallback([](Button& button){
 			auto card = static_cast<Frame*>(button.getParent());
 			auto appearances = card->findFrame("appearances"); assert(appearances);
-			int selection = std::min((int)stats[button.getOwner()]->appearance + 1,
-				(int)appearances->getEntries().size() - 1);
+            int selection = (int)stats[button.getOwner()]->appearance + 1;
+            if (selection >= num_appearances) {
+                selection = 0;
+            }
 			appearances->setSelection(selection);
 			appearances->scrollToSelection();
 			appearances->activateSelection();
-			button.select();
+            if (!inputs.hasController(button.getOwner())) {
+                button.select();
+            }
 			});
 	    appearance_downarrow->setTickCallback([](Widget& widget){
 	        if (widget.isSelected()) {
@@ -11891,16 +12571,6 @@ failed:
 	    appearance_downarrow->addWidgetAction("MenuAlt1", "disable_abilities");
 	    appearance_downarrow->addWidgetAction("MenuAlt2", "show_race_info");
 
-		static const char* appearance_names[] = {
-			"Landguard", "Northborn", "Firebrand", "Hardbred",
-			"Highwatch", "Gloomforge", "Pyrebloom", "Snakestone",
-			"Windclan", "Warblood", "Millbound", "Sunstalk",
-			"Claymount", "Stormward", "Tradefell", "Nighthill",
-			"Baytower", "Whetsong"
-		};
-
-		constexpr int num_appearances = sizeof(appearance_names) / sizeof(appearance_names[0]);
-
 		static auto appearance_fn = [](Frame::entry_t& entry, int index){
 			if (stats[index]->playerRace != RACE_HUMAN) {
 				return;
@@ -11913,7 +12583,14 @@ failed:
 			auto entry = appearances->addEntry(std::to_string(c).c_str(), true);
 			entry->color = color_dlc0;
 			entry->text = name;
-			entry->click = [](Frame::entry_t& entry){soundActivate(); appearance_fn(entry, entry.parent.getOwner()); entry.parent.activate();};
+            entry->click = [](Frame::entry_t& entry){
+                soundActivate();
+                const int player = entry.parent.getOwner();
+                appearance_fn(entry, player);
+                if (!inputs.hasController(player)) {
+                    entry.parent.activate();
+                }
+            };
 			entry->selected = entry->click;
 			if (stats[index]->appearance == c && stats[index]->playerRace == RACE_HUMAN) {
 				appearances->setSelection(c);
@@ -12140,17 +12817,27 @@ failed:
 	}
 
 	static void characterCardClassMenu(int index, bool details, int selection) {
+        static int class_selection[MAXPLAYERS];
+        
 		auto reduced_class_list = reducedClassList(index);
 		auto card = initCharacterCard(index, details? 664 : 446);
-
-		static int class_selection[MAXPLAYERS];
+        if (!card) {
+            return;
+        }
 
 		static void (*back_fn)(int) = [](int index){
-			createCharacterCard(index);
-			auto lobby = main_menu_frame->findFrame("lobby"); assert(lobby);
-			auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str()); assert(card);
-			auto button = card->findButton("class"); assert(button);
-			button->select();
+            if (inputs.hasController(index)) {
+                client_classes[index] = old_classes[index];
+                stats[index]->clearStats();
+                initClass(index);
+            }
+            createCharacterCard(index);
+            
+            assert(main_menu_frame);
+            auto lobby = main_menu_frame->findFrame("lobby"); assert(lobby);
+            auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str()); assert(card);
+            auto button = card->findButton("class"); assert(button);
+            button->select();
 		};
 
 		(void)createBackWidget(card,[](Button& button){soundCancel(); back_fn(button.getOwner());});
@@ -12177,15 +12864,6 @@ failed:
 		class_name_header->setHJustify(Field::justify_t::CENTER);
 		class_name_header->setVJustify(Field::justify_t::BOTTOM);*/
 
-        if (!details) {
-		    auto textbox = card->addImage(
-			    SDL_Rect{42, 68, 192, 46},
-			    0xffffffff,
-			    "*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Box_ClassName_04.png",
-			    "textbox"
-		    );
-		}
-
         if (details) {
   		    static auto class_desc_fn = [](Field& field, int index){
 			    const int i = std::min(std::max(0, client_classes[index]), (Sint32)(ClassDescriptions::data.size() - 1));
@@ -12197,10 +12875,16 @@ failed:
 			    } else {
 			        field.addColorToLine(0, color_dlc2);
 			    }
+
+				field.clearIndividualLinePadding();
+				for ( auto line = 0; line < ClassDescriptions::data[i].linePaddings.size(); ++line )
+				{
+					field.setIndividualLinePadding(line, ClassDescriptions::data[i].linePaddings[line]);
+				}
 		    };
 
 		    auto class_desc = card->addField("class_desc", 1024);
-		    class_desc->setSize(SDL_Rect{42, 68, 240, 218});
+		    class_desc->setSize(SDL_Rect{42, 68, 240, 220});
 		    class_desc->setFont(smallfont_no_outline);
 		    class_desc->setTickCallback([](Widget& widget){class_desc_fn(*static_cast<Field*>(&widget), widget.getOwner());});
 		    (*class_desc->getTickCallback())(*class_desc);
@@ -12305,12 +12989,51 @@ failed:
 				(*class_stat->getTickCallback())(*class_stat);
 		    }
 
+			// hpmp header
+			{
+				SDL_Rect hpmp_size{ 48, 339, 52, 44 };
+				auto hpmp_header = card->addField("hpmp_header", 32);
+				hpmp_header->setFont(smallfont_outline);
+				hpmp_header->setColor(makeColorRGB(209, 166, 161));
+				hpmp_header->setText("HP:\nMP:");
+				hpmp_header->setHJustify(Field::justify_t::LEFT);
+				hpmp_header->setVJustify(Field::justify_t::TOP);
+				hpmp_header->setSize(hpmp_size);
+				hpmp_header->setPaddingPerLine(-4);
+
+				static constexpr int hpmp_buf_size = 32;
+				static auto hpmp_fn = [](Field& field, int index) {
+					const int i = std::min(std::max(0, client_classes[index]), (Sint32)(ClassDescriptions::data.size() - 1));
+					char buf[hpmp_buf_size];
+					snprintf(buf, sizeof(buf), "%d\n%d",
+						ClassDescriptions::data[i].hp,
+						ClassDescriptions::data[i].mp);
+					field.setText(buf);
+				};
+
+				auto hpmp_values = card->addField("hpmp_values", 128);
+				hpmp_size.x += 32;
+                hpmp_values->setFont(smallfont_outline);
+                hpmp_values->setPaddingPerLine(-4);
+				hpmp_values->setColor(makeColorRGB(209, 166, 161));
+				hpmp_values->setText("20\n20");
+				hpmp_values->setHJustify(Field::justify_t::RIGHT);
+				if ( hpmp_values->getHJustify() == Field::justify_t::RIGHT )
+				{
+					hpmp_size.x -= 26;
+				}
+				hpmp_values->setVJustify(Field::justify_t::TOP);
+				hpmp_values->setSize(hpmp_size);
+				hpmp_values->setTickCallback([](Widget& widget) {hpmp_fn(*static_cast<Field*>(&widget), widget.getOwner()); });
+				(*hpmp_values->getTickCallback())(*hpmp_values);
+			}
+
 		    // difficulty header
-		    constexpr SDL_Rect difficulty_size{82, 339, 160, 44};
+		    constexpr SDL_Rect difficulty_size{115, 339, 158, 44};
 		    auto difficulty_header = card->addField("difficulty_header", 128);
 		    difficulty_header->setFont(smallfont_outline);
 		    difficulty_header->setColor(makeColorRGB(209, 166, 161));
-		    difficulty_header->setText("Survival\nComplexity");
+		    difficulty_header->setText("Survival:\nComplexity:");
 		    difficulty_header->setHJustify(Field::justify_t::LEFT);
 		    difficulty_header->setVJustify(Field::justify_t::TOP);
 		    difficulty_header->setSize(difficulty_size);
@@ -12320,7 +13043,6 @@ failed:
 		    static constexpr int star_buf_size = 32;
 	        static auto stars_fn = [](Field& field, int index){
 		        const int i = std::min(std::max(0, client_classes[index]), (Sint32)(ClassDescriptions::data.size() - 1));
-		        const char* lines[2];
 		        for (int c = 0; c < 2; ++c) {
 					field.addColorToLine(c, std::get<2>(ClassDescriptions::data[i].survivalComplexity[c]));
 		        }
@@ -12341,14 +13063,14 @@ failed:
 	        (*difficulty_stars->getTickCallback())(*difficulty_stars);
         } else {
 		    static auto class_name_fn = [](Field& field, int index){
-			    const int i = std::min(std::max(0, client_classes[index] + 1), num_classes - 1);
+			    const int i = std::min(std::max(0, client_classes[index]), num_classes - 1);
 			    auto find = classes.find(classes_in_order[i]);
 			    if (find != classes.end()) {
 				    field.setText(find->second.name);
 			    }
-			    if (i - 1 < CLASS_CONJURER) {
+			    if (i < CLASS_CONJURER) {
 			        field.setColor(color_dlc0);
-			    } else if (i - 1 < CLASS_MACHINIST) {
+			    } else if (i < CLASS_MACHINIST) {
 			        field.setColor(color_dlc1);
 			    } else {
 			        field.setColor(color_dlc2);
@@ -12356,7 +13078,7 @@ failed:
 		    };
 
 		    auto class_name = card->addField("class_name", 64);
-		    class_name->setSize(SDL_Rect{42, 68, 192, 46});
+		    class_name->setSize(SDL_Rect{66, 64, 192, 46});
 		    class_name->setHJustify(Field::justify_t::CENTER);
 		    class_name->setVJustify(Field::justify_t::CENTER);
 		    class_name->setFont(smallfont_outline);
@@ -12369,9 +13091,9 @@ failed:
 		auto subframe = card->addFrame("subframe");
 		subframe->setScrollBarsEnabled(false);
 		if (details) {
-		    subframe->setSize(SDL_Rect{34, 382, 226, 214});
+		    subframe->setSize(SDL_Rect{34, 392, 226, 144});
 		} else {
-		    subframe->setSize(SDL_Rect{34, 124, 226, 254});
+		    subframe->setSize(SDL_Rect{34, 120, 226, 198});
 		}
 		subframe->setActualSize(SDL_Rect{0, 0, 226, height});
 		subframe->setBorder(0);
@@ -12380,10 +13102,10 @@ failed:
 		if (subframe->getActualSize().h > subframe->getSize().h) {
 			auto slider = card->addSlider("scroll_slider");
 			if (details) {
-			    slider->setRailSize(SDL_Rect{260, 382, 30, 214});
+			    slider->setRailSize(SDL_Rect{260, 394, 30, 142});
 			    slider->setRailImage("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_ScrollBar_01.png");
 			} else {
-			    slider->setRailSize(SDL_Rect{260, 118, 30, 266});
+			    slider->setRailSize(SDL_Rect{260, 122, 30, 196});
 			    slider->setRailImage("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_ScrollBar_00.png");
 			}
 			slider->setHandleSize(SDL_Rect{0, 0, 34, 34});
@@ -12415,34 +13137,92 @@ failed:
 		class_info->setColor(makeColor(255, 255, 255, 255));
 		class_info->setHighlightColor(makeColor(255, 255, 255, 255));
 		if (details) {
-		    class_info->setSize(SDL_Rect{266, 38, 46, 46});
+		    class_info->setSize(SDL_Rect{42, 542, 194, 36});
+            class_info->setBackground("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_InfoOn_02.png");
+            class_info->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_InfoHighOn_02.png");
+            class_info->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_InfoPress_02.png");
 		} else {
-		    class_info->setSize(SDL_Rect{238, 68, 46, 46});
+		    class_info->setSize(SDL_Rect{42, 324, 194, 36});
+            class_info->setBackground("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_Info_02.png");
+            class_info->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_InfoHigh_02.png");
+            class_info->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_InfoPressOff_02.png");
 		}
-		class_info->setBackground("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_Info_00.png");
-		class_info->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_InfoHigh_00.png");
-		class_info->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Button_InfoPress_00.png");
 		class_info->setWidgetSearchParent(((std::string("card") + std::to_string(index)).c_str()));
+        class_info->setWidgetRight("randomize_class");
 		class_info->addWidgetAction("MenuStart", "confirm");
 		class_info->addWidgetAction("MenuPageRightAlt", "chat");
 		class_info->addWidgetAction("MenuPageLeftAlt", "privacy");
+        class_info->addWidgetAction("MenuAlt1", "randomize_class");
 		class_info->addWidgetAction("MenuAlt2", "class_info");
 		class_info->setWidgetBack("back_button");
-		class_info->setGlyphPosition(Widget::glyph_position_t::CENTERED_RIGHT);
+        class_info->setTextOffset(SDL_Rect{-8, 0, 0, 0});
+        class_info->setFont(smallfont_outline);
+		class_info->setGlyphPosition(Widget::glyph_position_t::CENTERED_BOTTOM);
 		if (details) {
+            class_info->setText("Hide Class Info");
 		    class_info->setCallback([](Button& button){
 				characterCardClassMenu(button.getOwner(), false, class_selection[button.getOwner()]);
 				soundActivate();
 				});
 		} else {
+            class_info->setText("Show Class Info");
 		    class_info->setCallback([](Button& button){
 				characterCardClassMenu(button.getOwner(), true, class_selection[button.getOwner()]);
 				soundActivate();
 				});
 		}
+        
+        auto randomize_class = card->addButton("randomize_class");
+        randomize_class->setColor(makeColor(255, 255, 255, 255));
+        randomize_class->setHighlightColor(makeColor(255, 255, 255, 255));
+        if (details) {
+            randomize_class->setSize(SDL_Rect{242, 540, 36, 40});
+        } else {
+            randomize_class->setSize(SDL_Rect{242, 322, 36, 40});
+        }
+        randomize_class->setBackground("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Icon_Randomize_00.png");
+        randomize_class->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Icon_RandomizeHigh_00.png");
+        randomize_class->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/ClassSelect_Icon_RandomizePress_00.png");
+        randomize_class->setWidgetSearchParent(((std::string("card") + std::to_string(index)).c_str()));
+        randomize_class->setWidgetLeft("class_info");
+        randomize_class->addWidgetAction("MenuStart", "confirm");
+        randomize_class->addWidgetAction("MenuPageRightAlt", "chat");
+        randomize_class->addWidgetAction("MenuPageLeftAlt", "privacy");
+        randomize_class->addWidgetAction("MenuAlt1", "randomize_class");
+        randomize_class->addWidgetAction("MenuAlt2", "class_info");
+        randomize_class->setWidgetBack("back_button");
+        randomize_class->setGlyphPosition(Widget::glyph_position_t::CENTERED_BOTTOM);
+        randomize_class->setCallback([](Button& button){
+            const int index = button.getOwner();
+            soundActivate();
+
+            auto reduced_class_list = reducedClassList(index);
+            auto random_class = reduced_class_list[RNG.uniform(0, (int)reduced_class_list.size() - 1)];
+            for (int c = 0; c < num_classes; ++c) {
+               if (strcmp(random_class, classes_in_order[c]) == 0) {
+                   client_classes[index] = c;
+                   break;
+               }
+            }
+            if (inputs.hasController(index)) {
+                auto frame = static_cast<Frame*>(button.getParent());
+                auto subframe = frame->findFrame("subframe"); assert(subframe);
+                for (auto button : subframe->getButtons()) {
+                    if (strcmp(button->getName(), classes_in_order[client_classes[index]]) == 0) {
+                        button->select();
+                        break;
+                    }
+                }
+            }
+
+            stats[index]->clearStats();
+            initClass(index);
+            sendPlayerOverNet();
+            saveLastCharacter(index, multiplayer);
+        });
 
 		const int current_class = std::min(std::max(0, client_classes[index]), num_classes - 1);
-		auto current_class_name = classes_in_order[current_class + 1];
+		auto current_class_name = classes_in_order[current_class];
 
         bool selected_button = false;
 		static const std::string prefix = "*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/";
@@ -12488,30 +13268,39 @@ failed:
 			    selected_button = true;
 			}
 			button->setWidgetSearchParent(((std::string("card") + std::to_string(index)).c_str()));
-			if (c > 0) {
-				button->setWidgetLeft(classes_in_order[c - 1]);
-			}
-			if (c < num_classes - 1) {
-				button->setWidgetRight(classes_in_order[c + 1]);
-			}
-			if (c > 3) {
-				button->setWidgetUp(classes_in_order[c - 4]);
-			} else {
-				button->setWidgetUp(classes_in_order[0]);
-			}
-			if (c < num_classes - 4) {
-				button->setWidgetDown(classes_in_order[c + 4]);
-			} else {
-				button->setWidgetDown(classes_in_order[num_classes - 1]);
-			}
+			button->setWidgetLeft(c == 0 ? classes_in_order[num_classes - 1] : classes_in_order[c - 1]);
+            button->setWidgetRight(c == num_classes - 1 ? classes_in_order[0] : classes_in_order[c + 1]);
+			if (c == 0) {
+				button->setWidgetUp(classes_in_order[num_classes - 1]);
+			} else if (c == 1) {
+				button->setWidgetUp(classes_in_order[num_classes - 4]);
+			} else if (c == 2) {
+                button->setWidgetUp(classes_in_order[num_classes - 3]);
+            } else if (c == 3) {
+                button->setWidgetUp(classes_in_order[num_classes - 2]);
+            } else {
+                button->setWidgetUp(classes_in_order[c - 4]);
+            }
+            if (c == num_classes - 1) {
+                button->setWidgetDown(classes_in_order[0]);
+            } else if (c == num_classes - 2) {
+                button->setWidgetDown(classes_in_order[3]);
+            } else if (c == num_classes - 3) {
+                button->setWidgetDown(classes_in_order[2]);
+            } else if (c == num_classes - 4) {
+                button->setWidgetDown(classes_in_order[1]);
+            } else {
+                button->setWidgetDown(classes_in_order[c + 4]);
+            }
 			button->addWidgetAction("MenuStart", "confirm");
 			button->addWidgetAction("MenuPageRightAlt", "chat");
 			button->addWidgetAction("MenuPageLeftAlt", "privacy");
+            button->addWidgetAction("MenuAlt1", "randomize_class");
 			button->addWidgetAction("MenuAlt2", "class_info");
 			button->setWidgetBack("back_button");
 
 			// add a lock icon
-			if (isCharacterValidFromDLC(*stats[index], c - 1) != VALID_OK_CHARACTER) {
+			if (isCharacterValidFromDLC(*stats[index], c) != VALID_OK_CHARACTER) {
 				const auto lock_name = std::string(button->getName()) + "lock";
 				auto lock = subframe->addImage(
 					button->getSize(),
@@ -12522,8 +13311,6 @@ failed:
 			}
 
 			static auto button_fn = [](Button& button, int index){
-			    auto frame = static_cast<Frame*>(button.getParent());
-
 				// figure out which class button we clicked based on name
 				int c = 0;
 				for (; c < num_classes; ++c) {
@@ -12532,47 +13319,47 @@ failed:
 					}
 				}
 
-				if (c > 0) {
-				    // when selecting anything but random class...
-					--c; // discount the "random class" option
-					auto check = isCharacterValidFromDLC(*stats[index], c);
-					if (check != VALID_OK_CHARACTER) {
-						switch (check) {
-						default:
-						case INVALID_CHARACTER:
-						case INVALID_REQUIRE_ACHIEVEMENT:
-							soundError();
-							break;
-						case INVALID_REQUIREDLC1:
-							openDLCPrompt(0);
-							break;
-						case INVALID_REQUIREDLC2:
-							openDLCPrompt(1);
-							break;
-						}
-					} else {
-						soundActivate();
-				    	button.setColor(makeColor(255, 255, 255, 255)); // highlight this button
-						client_classes[index] = c;
-					}
-				} else {
-					soundActivate();
-
-				    // when selecting random class...
-					auto reduced_class_list = reducedClassList(index);
-					auto random_class = reduced_class_list[RNG.uniform(1, (int)reduced_class_list.size() - 1)];
-					for (int c = 1; c < num_classes; ++c) {
-						if (strcmp(random_class, classes_in_order[c]) == 0) {
-							client_classes[index] = c - 1;
-							break;
-						}
-					}
-				}
-
-				stats[index]->clearStats();
-				initClass(index);
-				sendPlayerOverNet();
-				saveLastCharacter(index, multiplayer);
+                // set class
+                bool success = false;
+                if (c < num_classes) {
+                    auto check = isCharacterValidFromDLC(*stats[index], c);
+                    if (check != VALID_OK_CHARACTER) {
+                        switch (check) {
+                        default:
+                        case INVALID_CHARACTER:
+                        case INVALID_REQUIRE_ACHIEVEMENT:
+                            soundError();
+                            break;
+                        case INVALID_REQUIREDLC1:
+                            openDLCPrompt(0);
+                            break;
+                        case INVALID_REQUIREDLC2:
+                            openDLCPrompt(1);
+                            break;
+                        }
+                    } else {
+                        success = true;
+                        soundActivate();
+                        button.setColor(makeColor(255, 255, 255, 255)); // highlight this button
+                        client_classes[index] = c;
+                    }
+                    
+                    stats[index]->clearStats();
+                    initClass(index);
+                    sendPlayerOverNet();
+                    saveLastCharacter(index, multiplayer);
+                }
+                
+                // if using a gamepad, back out to the previous menu
+                if (success) {
+                    if (inputs.hasController(index)) {
+                        createCharacterCard(index);
+                        auto lobby = main_menu_frame->findFrame("lobby"); assert(lobby);
+                        auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str()); assert(card);
+                        auto button = card->findButton("class"); assert(button);
+                        button->select();
+                    }
+                }
 			};
 
 			button->setCallback([](Button& button){button_fn(button, button.getOwner());});
@@ -12580,13 +13367,13 @@ failed:
 			    auto button = static_cast<Button*>(&widget);
 				const int index = widget.getOwner();
 
-				int class_index_with_random_option = 0;
+				int class_index = 0;
 				for (int c = 0; c < num_classes; ++c) {
 					if (strcmp(button->getName(), classes_in_order[c]) == 0) {
 						if (button->isSelected()) {
 							class_selection[widget.getOwner()] = c;
 						}
-						class_index_with_random_option = c;
+						class_index = c;
 						break;
 					}
 				}
@@ -12598,7 +13385,7 @@ failed:
 						if (inputs.hasController(player)) {
 							auto& input = Input::inputs[player];
 							size_t len = strlen(widget.getName());
-							if (stringCmp(widget.getName(), "random", len, 6) && input.consumeBinaryToggle("MenuAlt1")) {
+							if (stringCmp(widget.getName(), "random", len, 6) && input.consumeBinaryToggle("MenuPageLeft")) {
 								constexpr Uint32 waitingPeriod = 3;
 								static Uint32 lastClassRequest = 0;
 								char buf[1024];
@@ -12623,8 +13410,24 @@ failed:
 				const auto find = classes.find(name);
 				if (find != classes.end()) {
 					const auto& full_class = find->second;
-					if (isCharacterValidFromDLC(*stats[index], class_index_with_random_option - 1) == VALID_OK_CHARACTER) {
-						if (button->isHighlighted() || client_classes[index] == class_index_with_random_option - 1) {
+                    
+                    // preview the class
+                    if (button->isSelected() || button->isHighlighted() || client_classes[index] == class_index) {
+                        if (inputs.hasController(index)) {
+                            if (client_classes[index] != class_index) {
+                                if (!button->isSelected()) {
+                                    button->select();
+                                }
+                                client_classes[index] = class_index;
+                                stats[index]->clearStats();
+                                initClass(index);
+                            }
+                        }
+                    }
+                    
+                    // set button icon
+					if (isCharacterValidFromDLC(*stats[index], class_index) == VALID_OK_CHARACTER) {
+						if (button->isSelected() || button->isHighlighted() || client_classes[index] == class_index) {
 							button->setIcon((prefix + full_class.image_highlighted).c_str());
 						} else {
 							button->setIcon((prefix + full_class.image).c_str());
@@ -12647,7 +13450,9 @@ failed:
 				}
 
 				// rescue this player's focus
-				assert(main_menu_frame);
+				if (!main_menu_frame) {
+					return;
+				}
 				auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
 				if (!selectedWidget) {
 					widget.select();
@@ -12670,6 +13475,7 @@ failed:
 		confirm->setFont(bigfont_outline);
 		confirm->setWidgetSearchParent(((std::string("card") + std::to_string(index)).c_str()));
 		confirm->addWidgetAction("MenuStart", "confirm");
+        confirm->addWidgetAction("MenuAlt1", "randomize_class");
 		confirm->addWidgetAction("MenuAlt2", "class_info");
 		confirm->setWidgetBack("back_button");
 		confirm->setCallback([](Button& button){soundActivate(); back_fn(button.getOwner());});*/
@@ -12689,11 +13495,25 @@ failed:
 		if (countdown) {
 		    countdown->removeSelf();
 		}
+        
+        // make SURE this player is valid when the character card opens
+        if (isCharacterValidFromDLC(*stats[index], client_classes[index]) != VALID_OK_CHARACTER) {
+            stats[index]->playerRace = RACE_HUMAN;
+            stats[index]->sex = static_cast<sex_t>(RNG.getU8() % 2);
+            stats[index]->appearance = RNG.uniform(0, NUMAPPEARANCES - 1);
+            client_classes[index] = 0;
+            stats[index]->clearStats();
+            initClass(index);
+        }
+        
         sendReadyOverNet(index, false);
         sendPlayerOverNet();
 		saveLastCharacter(index, multiplayer);
 
 		auto card = initCharacterCard(index, 346);
+        if (!card) {
+            return;
+        }
 
 		(void)createBackWidget(card,[](Button& button){
 			createStartButton(button.getOwner());
@@ -12770,7 +13590,9 @@ failed:
 			name_field_fn(field->getText(), field->getOwner());
 
 			// rescue this player's focus
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
 			if (!selectedWidget) {
 				widget.select();
@@ -12960,7 +13782,15 @@ failed:
 		race_button->setWidgetLeft("female");
 		race_button->setWidgetUp("game_settings");
 		race_button->setWidgetDown("class");
-		race_button->setCallback([](Button& button){soundActivate(); characterCardRaceMenu(button.getOwner(), false, -1);});
+        race_button->setCallback([](Button& button){
+            soundActivate();
+            const int index = button.getOwner();
+            old_classes[index] = client_classes[index];
+            old_appearances[index] = stats[index]->appearance;
+            old_races[index] = stats[index]->playerRace;
+            old_sexes[index] = stats[index]->sex;
+            characterCardRaceMenu(button.getOwner(), false, -1);
+            });
 
 		static auto randomize_class_fn = [](Button& button, int index){
 			soundActivate();
@@ -13029,11 +13859,11 @@ failed:
 
 			// select a random class
 			const auto reduced_class_list = reducedClassList(index);
-			const auto class_choice = RNG.uniform(1, (int)reduced_class_list.size() - 1);
+			const auto class_choice = RNG.uniform(0, (int)reduced_class_list.size() - 1);
 			const auto random_class = reduced_class_list[class_choice];
-			for (int c = 1; c < num_classes; ++c) {
+			for (int c = 0; c < num_classes; ++c) {
 				if (strcmp(random_class, classes_in_order[c]) == 0) {
-					client_classes[index] = c - 1;
+					client_classes[index] = c;
 					break;
 				}
 			}
@@ -13064,7 +13894,7 @@ failed:
 		auto class_text = card->addField("class_text", 64);
 		class_text->setSize(SDL_Rect{96, 236, 138, 32});
 		static auto class_text_fn = [](Field& field, int index){
-			int i = std::min(std::max(0, client_classes[index] + 1), num_classes - 1);
+			int i = std::min(std::max(0, client_classes[index]), num_classes - 1);
 			auto find = classes.find(classes_in_order[i]);
 			if (find != classes.end()) {
 				field.setText(find->second.name);
@@ -13076,7 +13906,7 @@ failed:
 		(*class_text->getTickCallback())(*class_text);
 
 		static auto class_button_tick_fn = [](Button& button, int index) {
-			int i = std::min(std::max(0, client_classes[index] + 1), num_classes - 1);
+			int i = std::min(std::max(0, client_classes[index]), num_classes - 1);
 			auto find = classes.find(classes_in_order[i]);
 			if (find != classes.end()) {
 				auto& class_info = find->second;
@@ -13103,13 +13933,24 @@ failed:
 
 		static auto class_button_fn = [](int index){
 			soundActivate();
-#ifdef NINTENDO
-		    addLobbyChatMessage(uint32ColorBaronyBlue, "*** Press Y to suggest a class for your party ***");
-#else
 			if (inputs.hasController(index)) {
-		    	addLobbyChatMessage(uint32ColorBaronyBlue, "*** Press X to suggest a class for your party ***");
+                const char* msg;
+                const auto type = Input::getControllerType(index);
+                switch (type) {
+                default:
+                case Input::ControllerType::Xbox:
+                    msg = "*** Press [LB] to suggest a class for your party ***";
+                    break;
+                case Input::ControllerType::NintendoSwitch:
+                    msg = "*** Press [L] to suggest a class for your party ***";
+                    break;
+                case Input::ControllerType::PlayStation:
+                    msg = "*** Press [L1] to suggest a class for your party ***";
+                    break;
+                }
+                addLobbyChatMessage(uint32ColorBaronyBlue, msg);
 			}
-#endif
+            old_classes[index] = client_classes[index];
 			characterCardClassMenu(index, false, 0);
 		};
 
@@ -13151,7 +13992,9 @@ failed:
 		ready_button->setWidgetUp("class");
 		ready_button->setCallback([](Button& button){ready_button_fn(button, button.getOwner());});
 		ready_button->setTickCallback([](Widget& widget){
-			assert(main_menu_frame);
+			if (!main_menu_frame) {
+				return;
+			}
 			if (!main_menu_frame->findSelectedWidget(widget.getOwner())) {
 				widget.select();
 			}
@@ -13165,7 +14008,9 @@ failed:
 	    }
 
 		auto lobby = main_menu_frame->findFrame("lobby");
-		assert(lobby);
+        if (!lobby) {
+            return;
+        }
 
 		auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str());
 		if (card) {
@@ -13243,7 +14088,9 @@ failed:
 	    }
 
 		auto lobby = main_menu_frame->findFrame("lobby");
-		assert(lobby);
+        if (!lobby) {
+            return;
+        }
 
 		sendReadyOverNet(index, false);
 		auto countdown = lobby->findFrame("countdown");
@@ -13535,7 +14382,9 @@ failed:
 	    }
 
 		auto lobby = main_menu_frame->findFrame("lobby");
-		assert(lobby);
+        if (!lobby) {
+            return;
+        }
 
 		auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str());
 		if (card) {
@@ -13594,7 +14443,9 @@ failed:
 		}
 
 		auto lobby = main_menu_frame->findFrame("lobby");
-		assert(lobby);
+        if (!lobby) {
+            return;
+        }
 
 		auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str());
 		if (card) {
@@ -13920,7 +14771,9 @@ failed:
 		static const char* timer_font = "fonts/pixelmix_bold.ttf#64#2";
 
 		auto lobby = main_menu_frame->findFrame("lobby");
-		assert(lobby);
+        if (!lobby) {
+            return;
+        }
 
 		auto frame = lobby->addFrame("countdown");
 		frame->setSize(SDL_Rect{(Frame::virtualScreenX - 300) / 2, 64, 300, 120});
@@ -14199,7 +15052,10 @@ failed:
 				});
 			paperdoll->setDrawCallback([](const Widget& widget, SDL_Rect pos){
 				auto angle = (330.0 + 20.0 * widget.getOwner()) * PI / 180.0;
-				drawCharacterPreview(widget.getOwner(), pos, 80, angle);
+                const int player = widget.getOwner();
+                //const bool dark = isCharacterValidFromDLC(*stats[player],
+                //    client_classes[player]) != VALID_OK_CHARACTER;
+				drawCharacterPreview(widget.getOwner(), pos, 80, angle, false);
 				});
 		}
 
@@ -14432,7 +15288,6 @@ failed:
 		    label->setText(type_str);
 
 			if (type != LobbyType::LobbyLocal) {
-		        static bool hidden_roomcode;
 		        static auto hide_roomcode = [](Field& roomcode, Button& button, bool hide){
 		            hidden_roomcode = hide;
 	                if (hide) {
@@ -14501,10 +15356,21 @@ failed:
 		            };
 
 		        // roomcode
+                auto roomcode_header = banner->addField("roomcode_header", 32);
+                roomcode_header->setHJustify(Field::justify_t::RIGHT);
+                roomcode_header->setVJustify(Field::justify_t::CENTER);
+                roomcode_header->setSize(SDL_Rect{Frame::virtualScreenX - 212 - 44 - 292 - 32, 0, 320, 35});
+                roomcode_header->setFont(smallfont_outline);
+                if (directConnect) {
+                    roomcode_header->setText("LAN address");
+                } else {
+                    roomcode_header->setText("Room code");
+                }
+                
 			    auto roomcode = banner->addField("roomcode", 128);
 			    roomcode->setHJustify(Field::justify_t::RIGHT);
 			    roomcode->setVJustify(Field::justify_t::CENTER);
-			    roomcode->setSize(SDL_Rect{Frame::virtualScreenX - 212 - 44 - 292, 0, 288, 48});
+			    roomcode->setSize(SDL_Rect{Frame::virtualScreenX - 212 - 44 - 292 - 32, 0, 320, 70});
 		        roomcode->setFont(bigfont_outline);
 
 				if (roomcodeDisabled) {
@@ -14537,6 +15403,13 @@ failed:
 					privacy->setTickCallback([](Widget& widget){
 						auto& input = Input::inputs[widget.getOwner()];
 
+						auto banner = static_cast<Frame*>(widget.getParent()); assert(banner);
+						auto roomcode = banner->findField("roomcode"); assert(roomcode);
+						if ( !strcmp(roomcode->getText(), "") )
+						{
+							hide_roomcode(*roomcode, static_cast<Button&>(widget), hidden_roomcode);
+						}
+
 						// this refocuses the player card
 						if (widget.isSelected()) {
 							if (input.consumeBinaryToggle("MenuCancel")) {
@@ -14552,7 +15425,7 @@ failed:
 						});
 
 					// set default privacy
-					hide_roomcode(*roomcode, *privacy, true);
+					hide_roomcode(*roomcode, *privacy, hidden_roomcode);
 				}
 
                 // chat button
@@ -14871,20 +15744,11 @@ failed:
 	    {}
 	};
 
-	enum Filter : int {
-	    UNCHECKED,
-	    OFF,
-	    ON,
-	    NUM,
-	};
-
-    static const int numFilters = NUM_SERVER_FLAGS + 3;
-    static Filter lobbyFilters[numFilters] = { Filter::UNCHECKED };
     static bool lobbyFiltersEnabled = false;
 	static std::vector<LobbyInfo> lobbies;
 	static int selectedLobby = 0;
 
-	static void addLobby(const LobbyInfo& info) {
+	static void addLobby(LobbyInfo& info) {
 	    if (info.ping < 0) {
 	        // probably the result of an out-of-date network scan
 	        return;
@@ -14907,6 +15771,15 @@ failed:
 #ifdef USE_EOS
             auto lobby = getLobbyEpic(info.address.c_str());
             if (lobby) {
+				if ( lobby->LobbyAttributes.PermissionLevel != 0 )
+				{
+					// this is a invite-only lobby.
+					info.locked = true;
+					info.name = "Private lobby";
+					lobbies.back().name = info.name;
+					lobbies.back().locked = info.locked;
+					//return;
+				}
                 for (auto& player : lobby->playersInLobby) {
                     for (auto& _friend : EOS.CurrentUserInfo.Friends) {
                         if (_friend.EpicAccountId == player.memberEpicAccountId) {
@@ -14921,7 +15794,11 @@ failed:
                 if (lobby->LobbyAttributes.friendsOnly) {
                     if (!foundFriend) {
                         // this is a friends-only lobby, and we don't have any friends in it.
-                        return;
+						info.locked = true;
+						info.name = "Private lobby";
+						lobbies.back().name = info.name;
+						lobbies.back().locked = info.locked;
+                        //return;
                     }
                 }
             }
@@ -14935,8 +15812,12 @@ failed:
             if (lobby) {
 				auto invite_only = SteamMatchmaking()->GetLobbyData(*lobby, "invite_only");
 				if (invite_only && stringCmp(invite_only, "true", 4, 4) == 0) {
-					// this is an invite-only lobby.
-					return;
+					// this is a invite-only lobby.
+					info.locked = true;
+					info.name = "Private lobby";
+					lobbies.back().name = info.name;
+					lobbies.back().locked = info.locked;
+					//return;
 				}
                 const int num_friends = SteamFriends()->GetFriendCount( k_EFriendFlagImmediate );
                 for (int i = 0; i < num_friends; ++i) {
@@ -14952,7 +15833,11 @@ failed:
                 if (friends && stringCmp(friends, "true", 4, 4) == 0) {
                     if (!foundFriend) {
                         // this is a friends-only lobby, and we don't have any friends in it.
-                        return;
+						info.locked = true;
+						info.name = "Private lobby";
+						lobbies.back().name = info.name;
+						lobbies.back().locked = info.locked;
+                        //return;
                     }
                 }
             }
@@ -15013,7 +15898,8 @@ failed:
 
 	    auto names = window->findFrame("names"); assert(names);
 	    auto players = window->findFrame("players"); assert(players);
-	    auto pings = window->findFrame("pings"); assert(pings);
+	    //auto pings = window->findFrame("pings"); assert(pings);
+		auto versions = window->findFrame("versions"); assert(versions);
 
 	    // function to make highlight the same on all columns...
 	    static auto selection_fn = [](Frame::entry_t& entry){
@@ -15021,11 +15907,13 @@ failed:
 	        auto window = main_menu_frame->findFrame("lobby_browser_window"); assert(window);
 	        auto names = window->findFrame("names"); assert(names);
 	        auto players = window->findFrame("players"); assert(players);
-	        auto pings = window->findFrame("pings"); assert(pings);
+			//auto pings = window->findFrame("pings"); assert(pings);
+	        auto versions = window->findFrame("versions"); assert(versions);
 	        auto selection = entry.parent.getSelection();
 	        names->setSelection(selection);
 	        players->setSelection(selection);
-	        pings->setSelection(selection);
+			versions->setSelection(selection);
+			//pings->setSelection(selection);
             
             auto mouse = inputs.getVirtualMouse(entry.parent.getOwner());
             if (mouse && !mouse->draw_cursor) {
@@ -15040,11 +15928,13 @@ failed:
 	        auto window = main_menu_frame->findFrame("lobby_browser_window"); assert(window);
 	        auto names = window->findFrame("names"); assert(names);
 	        auto players = window->findFrame("players"); assert(players);
-	        auto pings = window->findFrame("pings"); assert(pings);
+			//auto pings = window->findFrame("pings"); assert(pings);
+	        auto versions = window->findFrame("versions"); assert(versions);
 	        auto selection = entry.parent.getSelection();
             names->setActivation(names->getEntries()[selection]);
             players->setActivation(players->getEntries()[selection]);
-            pings->setActivation(pings->getEntries()[selection]);
+			//pings->setActivation(pings->getEntries()[selection]);
+			versions->setActivation(versions->getEntries()[selection]);
 			auto lobbyId = (intptr_t)entry.data;
 			if (selectedLobby != lobbyId) {
 				selectedLobby = (int)lobbyId;
@@ -15105,26 +15995,36 @@ failed:
         entry_players->data = (info.index < 0 || info.index >= lobbies.size()) ?
             (void*)lobbies.back().index : (void*)lobbies[info.index].index;
 
-        // ping cell
-        auto entry_ping = pings->addEntry(info.name.c_str(), true);
-        entry_ping->click = activate_fn;
-        entry_ping->ctrlClick = activate_fn;
-        entry_ping->highlight = selection_fn;
-        entry_ping->selected = selection_fn;
-        entry_ping->color = 0xffffffff;
-        entry_ping->data = (info.index < 0 || info.index >= lobbies.size()) ?
-            (void*)lobbies.back().index : (void*)lobbies[info.index].index;
-        if (!info.locked) {
-            if (info.ping < 100) {
-                entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Green00.png";
-            } else if (info.ping < 200) {
-                entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Yellow00.png";
-            } else if (info.ping < 300) {
-                entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Orange00.png";
-            } else {
-                entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Red00.png";
-            }
-        }
+		auto entry_version = versions->addEntry(info.name.c_str(), true);
+		entry_version->click = activate_fn;
+		entry_version->ctrlClick = activate_fn;
+		entry_version->highlight = selection_fn;
+		entry_version->selected = selection_fn;
+		entry_version->color = info.locked ? makeColor(50, 56, 67, 255) : makeColor(183, 155, 119, 255);
+		entry_version->text = std::string("  ") + info.version;
+		entry_version->data = (info.index < 0 || info.index >= lobbies.size()) ?
+			(void*)lobbies.back().index : (void*)lobbies[info.index].index;
+
+        //// ping cell
+        //auto entry_ping = pings->addEntry(info.name.c_str(), true);
+        //entry_ping->click = activate_fn;
+        //entry_ping->ctrlClick = activate_fn;
+        //entry_ping->highlight = selection_fn;
+        //entry_ping->selected = selection_fn;
+        //entry_ping->color = 0xffffffff;
+        //entry_ping->data = (info.index < 0 || info.index >= lobbies.size()) ?
+        //    (void*)lobbies.back().index : (void*)lobbies[info.index].index;
+        //if (!info.locked) {
+        //    if (info.ping < 100) {
+        //        entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Green00.png";
+        //    } else if (info.ping < 200) {
+        //        entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Yellow00.png";
+        //    } else if (info.ping < 300) {
+        //        entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Orange00.png";
+        //    } else {
+        //        entry_ping->image = "*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Ping_Red00.png";
+        //    }
+        //}
 
         auto slider = window->findSlider("scroll_slider");
         slider->setMaxValue(names->getActualSize().h - names->getSize().h);
@@ -15139,16 +16039,20 @@ failed:
 	    }
 	    auto names = window->findFrame("names"); assert(names);
 	    auto players = window->findFrame("players"); assert(players);
-	    auto pings = window->findFrame("pings"); assert(pings);
+	    //auto pings = window->findFrame("pings"); assert(pings);
+		auto versions = window->findFrame("versions"); assert(versions);
 	    names->clearEntries();
 	    names->setSelection(-1);
 	    names->setActivation(nullptr);
 	    players->clearEntries();
 	    players->setSelection(-1);
 	    players->setActivation(nullptr);
-	    pings->clearEntries();
-	    pings->setSelection(-1);
-	    pings->setActivation(nullptr);
+	    //pings->clearEntries();
+	    //pings->setSelection(-1);
+	    //pings->setActivation(nullptr);
+		versions->clearEntries();
+		versions->setSelection(-1);
+		versions->setActivation(nullptr);
 	}
 
 	static void refreshOnlineLobbies() {
@@ -15233,17 +16137,19 @@ failed:
 	            }
 #endif
 #if defined(USE_EOS)
-	            for (int c = 0; c < EOS.LobbySearchResults.results.size(); ++c) {
-	                auto& lobby = EOS.LobbySearchResults.results[c];
-	                LobbyInfo info;
-	                info.name = lobby.LobbyAttributes.lobbyName;
-                    info.version = lobby.LobbyAttributes.gameVersion;
-	                info.players = MAXPLAYERS - lobby.FreeSlots;
-	                info.ping = 50; // TODO
-	                info.locked = lobby.LobbyAttributes.gameCurrentLevel != -1;
-	                info.flags = lobby.LobbyAttributes.serverFlags;
-	                info.address = "epic:" + std::to_string(c);
-	                addLobby(info);
+	            for (int c = 0; c < EOS.LobbySearchResults.resultsSortedForDisplay.size(); ++c) {
+					if ( auto lobby = EOS.LobbySearchResults.getResultFromDisplayedIndex(c) )
+					{
+						LobbyInfo info;
+						info.name = lobby->LobbyAttributes.lobbyName;
+						info.version = lobby->LobbyAttributes.gameVersion;
+						info.players = MAXPLAYERS - lobby->FreeSlots;
+						info.ping = 50; // TODO
+						info.locked = lobby->LobbyAttributes.gameCurrentLevel != -1;
+						info.flags = lobby->LobbyAttributes.serverFlags;
+						info.address = "epic:" + std::to_string(c);
+						addLobby(info);
+					}
 	            }
 #endif
             }
@@ -15283,6 +16189,12 @@ failed:
 	    else
 	    {
 		    EOS.bRequestingLobbies = false; // don't attempt search if not logged in
+			for ( auto& result : EOS.LobbySearchResults.results )
+			{
+				result.ClearData();
+			}
+			EOS.LobbySearchResults.results.clear();
+			EOS.LobbySearchResults.resultsSortedForDisplay.clear();
 	    }
 #else
 	    EOS.searchLobbies(EOSFuncs::LobbyParameters_t::LobbySearchOptions::LOBBY_SEARCH_ALL,
@@ -15432,12 +16344,13 @@ failed:
 
 		// create lobby browser window
 		auto window = dimmer->addFrame("lobby_browser_window");
+		const int lobbyBrowserWidth = 1280;
 		window->setSize(SDL_Rect{
-			(Frame::virtualScreenX - 1020) / 2,
+			(Frame::virtualScreenX - lobbyBrowserWidth) / 2,
 			(Frame::virtualScreenY - 552) / 2,
-			1020,
+			lobbyBrowserWidth,
 			552});
-		window->setActualSize(SDL_Rect{0, 0, 1020, 552});
+		window->setActualSize(SDL_Rect{0, 0, lobbyBrowserWidth, 552});
 		window->setColor(0);
 		window->setBorder(0);
 
@@ -15517,20 +16430,20 @@ failed:
 		    }, SDL_Rect{292, 4, 0, 0});
 
 		auto background = window->addImage(
-			SDL_Rect{288, 0, 444, 552},
+			SDL_Rect{lobbyBrowserWidth / 2 - 696 / 2, 0, 696, 552},
 			0xffffffff,
 			"*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Window01.png",
 			"background"
 		);
 
 		auto banner_title = window->addField("banner", 64);
-		banner_title->setSize(SDL_Rect{408, 24, 204, 18});
+		banner_title->setSize(SDL_Rect{538, 24, 204, 18});
 		banner_title->setText("ONLINE LOBBY BROWSER");
 		banner_title->setFont(smallfont_outline);
 		banner_title->setJustify(Field::justify_t::CENTER);
 
 		auto interior = window->addImage(
-			SDL_Rect{330, 70, 358, 380},
+			SDL_Rect{ background->pos.x + 52, 70, 590, 380},
 			0xffffffff,
 #if defined(STEAMWORKS) && defined(USE_EOS)
 			mode == BrowserMode::Online ?
@@ -15544,16 +16457,20 @@ failed:
 			"interior"
 		);
 
-		auto lobby_slider_topper = window->addImage(
-			SDL_Rect{640, 116, 38, 20},
-			0xffffffff,
-			"*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Slider_Topper00.png",
-			"lobby_slider_topper"
-		);
+		lobbyFiltersEnabled = false;
+		for ( int i = 0; i < numFilters; ++i )
+		{
+			if ( lobbyFilters[i] != Filter::UNCHECKED )
+			{
+				lobbyFiltersEnabled = true;
+				break;
+			}
+		}
+
 
 		auto frame_right = window->addFrame("frame_right");
-		frame_right->setInvisible(true);
-		frame_right->setSize(SDL_Rect{716, 28, 304, 414});
+		frame_right->setInvisible(!lobbyFiltersEnabled);
+		frame_right->setSize(SDL_Rect{background->pos.x + background->pos.w - 16, 28, 304, 414});
 		frame_right->setActualSize(SDL_Rect{0, 0, 304, 414});
 		frame_right->setBorder(0);
 		frame_right->setColor(0);
@@ -15637,25 +16554,56 @@ failed:
                     case Filter::OFF: *filter = Filter::UNCHECKED; break;
                     }
                     button.setIcon(icons[(int)*filter]);
+					lobbyFiltersEnabled = false;
+					for ( int i = 0; i < numFilters; ++i )
+					{
+						if ( lobbyFilters[i] != Filter::UNCHECKED )
+						{
+							lobbyFiltersEnabled = true;
+							break;
+						}
+					}
                     clearLobbies();
                     for (auto& lobby : lobbies) {
                         addLobby(lobby);
                     }
+
+					if ( Frame* parent = static_cast<Frame*>(button.getParent()) ) 
+					{
+						if ( Frame* parent2 = parent->getParent() )
+						{
+							if ( auto slider = parent2->findSlider("scroll_slider") )
+							{
+								slider->setValue(0.0);
+								slider->getCallback()(*slider);
+							}
+						}
+					}
 		            });
 		        checkbox->setWidgetBack("filter_settings");
 		        std::string next_name = std::string("filter_checkbox") + std::to_string(index + 1);
 		        std::string prev_name = std::string("filter_checkbox") + std::to_string(index - 1);
 		        checkbox->setWidgetDown(next_name.c_str());
 		        checkbox->setWidgetUp(prev_name.c_str());
-
+				checkbox->addWidgetAction("MenuAlt2", "refresh");
+				checkbox->addWidgetAction("MenuLeft", "filter_settings");
 		        ++index;
             }
 		}
-        lobbyFiltersEnabled = !frame_right->isInvisible();
+
+		lobbyFiltersEnabled = false;
+		for ( int i = 0; i < numFilters; ++i )
+		{
+			if ( lobbyFilters[i] != Filter::UNCHECKED )
+			{
+				lobbyFiltersEnabled = true;
+				break;
+			}
+		}
 
 		auto frame_left = window->addFrame("frame_left");
 		frame_left->setInvisible(true);
-		frame_left->setSize(SDL_Rect{0, 28, 304, 414});
+		frame_left->setSize(SDL_Rect{4, 28, 304, 414});
 		frame_left->setActualSize(SDL_Rect{0, 0, 304, 414});
 		frame_left->setBorder(0);
 		frame_left->setColor(0);
@@ -15776,13 +16724,14 @@ failed:
 		}
 
 		auto online_tab = window->addButton("online_tab");
-		online_tab->setSize(SDL_Rect{392, 70, 106, 38});
+		online_tab->setSize(SDL_Rect{background->pos.x + 230, 70, 106, 38});
 		online_tab->setHighlightColor(0);
 		online_tab->setBorder(0);
 		online_tab->setColor(0);
 		online_tab->setText("ONLINE");
 		online_tab->setFont(smallfont_outline);
-		online_tab->setGlyphPosition(Widget::glyph_position_t::CENTERED_TOP);
+		online_tab->setGlyphPosition(Widget::glyph_position_t::CENTERED_LEFT);
+		online_tab->setButtonsOffset(SDL_Rect{ 0, 0, 0, 0 });
 		online_tab->setWidgetSearchParent(window->getName());
 		online_tab->addWidgetAction("MenuPageLeft", "online_tab");
 		online_tab->addWidgetAction("MenuPageRight", "lan_tab");
@@ -15855,7 +16804,7 @@ failed:
 #endif
 
 		auto lan_tab = window->addButton("lan_tab");
-		lan_tab->setSize(SDL_Rect{502, 70, 128, 38});
+		lan_tab->setSize(SDL_Rect{online_tab->getSize().x + online_tab->getSize().w + 4, 70, 128, 38});
 		lan_tab->setHighlightColor(0);
 		lan_tab->setBorder(0);
 		lan_tab->setColor(0);
@@ -15865,7 +16814,8 @@ failed:
 		lan_tab->setText("LAN");
 #endif
 		lan_tab->setFont(smallfont_outline);
-		lan_tab->setGlyphPosition(Widget::glyph_position_t::CENTERED_TOP);
+		lan_tab->setGlyphPosition(Widget::glyph_position_t::CENTERED_RIGHT);
+		lan_tab->setButtonsOffset(SDL_Rect{ 0, 0, 0, 0 });
 		lan_tab->setWidgetSearchParent(window->getName());
 		lan_tab->addWidgetAction("MenuPageLeft", "online_tab");
 		lan_tab->addWidgetAction("MenuPageRight", "lan_tab");
@@ -15911,23 +16861,6 @@ failed:
 #endif
 			});
 
-		auto refresh = window->addButton("refresh");
-		refresh->setSize(SDL_Rect{634, 62, 40, 40});
-		refresh->setBackground("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_Refresh00.png");
-		refresh->setBackgroundHighlighted("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_RefreshHigh00.png");
-		refresh->setBackgroundActivated("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_RefreshPress00.png");
-		refresh->setHighlightColor(makeColor(255, 255, 255, 255));
-		refresh->setColor(makeColor(255, 255, 255, 255));
-		refresh->setWidgetSearchParent(window->getName());
-		refresh->addWidgetAction("MenuPageLeft", "online_tab");
-		refresh->addWidgetAction("MenuPageRight", "lan_tab");
-		refresh->addWidgetAction("MenuStart", "join_lobby");
-		refresh->addWidgetAction("MenuAlt1", "enter_code");
-		refresh->addWidgetAction("MenuAlt2", "refresh");
-		refresh->setWidgetBack("back_button");
-		refresh->setWidgetLeft("lan_tab");
-		refresh->setWidgetDown("names");
-		refresh->setCallback([](Button&){refreshLobbyBrowser();});
 
 		static auto enter_code_fn = [](Button& button){
 #ifdef NINTENDO
@@ -15966,7 +16899,7 @@ failed:
 		    };
 
 		auto enter_code = window->addButton("enter_code");
-		enter_code->setSize(SDL_Rect{342, 454, 164, 62});
+		enter_code->setSize(SDL_Rect{ online_tab->getSize().x - 50, 454, 164, 62});
 		enter_code->setBackground("*images/ui/Main Menus/Play/LobbyBrowser/UI_Button_Basic00.png");
 		enter_code->setBackgroundHighlighted("*images/ui/Main Menus/Play/LobbyBrowser/UI_Button_BasicHigh00.png");
 		enter_code->setBackgroundActivated("*images/ui/Main Menus/Play/LobbyBrowser/UI_Button_BasicPress00.png");
@@ -16034,7 +16967,7 @@ failed:
 		    };
 
 		auto join_lobby = window->addButton("join_lobby");
-		join_lobby->setSize(SDL_Rect{514, 454, 164, 62});
+		join_lobby->setSize(SDL_Rect{enter_code->getSize().x + enter_code->getSize().w + 8, 454, 164, 62});
 		join_lobby->setBackground("*images/ui/Main Menus/Play/LobbyBrowser/UI_Button_Basic00.png");
 		join_lobby->setBackgroundHighlighted("*images/ui/Main Menus/Play/LobbyBrowser/UI_Button_BasicHigh00.png");
 		join_lobby->setBackgroundActivated("*images/ui/Main Menus/Play/LobbyBrowser/UI_Button_BasicPress00.png");
@@ -16067,31 +17000,94 @@ failed:
 	    constexpr Uint32 highlightColor = makeColor(22, 25, 30, 255);
 	    constexpr Uint32 activatedColor = makeColor(30, 25, 22, 255);
 
+		SDL_Rect prevColumnSize;
         // name column
         {
-		    auto name_column_header = window->addField("name_column_header", 32);
+		    auto name_column_header = window->addField("name_column_header", 64);
 		    name_column_header->setHJustify(Field::justify_t::LEFT);
 		    name_column_header->setVJustify(Field::justify_t::TOP);
 		    name_column_header->setFont(smallfont_no_outline);
-		    name_column_header->setSize(SDL_Rect{340, 116, 172, 20});
+		    name_column_header->setSize(SDL_Rect{354, 116, 380, 20});
 		    name_column_header->setColor(makeColor(106, 192, 159, 255));
 		    name_column_header->setText(" Lobby Name");
+			name_column_header->setTickCallback([](Widget& widget) {
+				Field* name_column_header = static_cast<Field*>(&widget);
+				if ( lobbyFiltersEnabled )
+				{
+					auto names = static_cast<Frame*>(widget.getParent())->findFrame("names");
+					int lobbiesFiltered = std::max(0, (int)lobbies.size() - (int)names->getEntries().size());
+					if ( lobbiesFiltered > 0 )
+					{
+						char buf[64] = {'\0'};
+						snprintf(buf, sizeof(buf), " Lobby Name (%d hidden)", lobbiesFiltered);
+						name_column_header->setText(buf);
+					}
+					else
+					{
+						name_column_header->setText(" Lobby Name");
+					}
+				}
+				else
+				{
+					name_column_header->setText(" Lobby Name");
+				}
+			});
 
 		    auto list = window->addFrame("names");
 		    list->setScrollBarsEnabled(false);
 #if defined(STEAMWORKS) && defined(USE_EOS)
-			list->setSize(SDL_Rect{ 336, 140, 174, 200 });
-			list->setActualSize(SDL_Rect{ 0, 0, 174, 200 });
+			list->setSize(SDL_Rect{ name_column_header->getSize().x - 4, 140, 384, 200});
+			list->setActualSize(SDL_Rect{ 0, 0, 384, 200 });
 #else
-			list->setSize(SDL_Rect{ 336, 140, 174, 234 });
-			list->setActualSize(SDL_Rect{ 0, 0, 174, 234 });
+			list->setSize(SDL_Rect{ name_column_header->getSize().x - 4, 140, 384, 234 });
+			list->setActualSize(SDL_Rect{ 0, 0, 384, 234 });
 #endif
+			prevColumnSize = list->getSize();
 		    list->setFont(smallfont_no_outline);
 		    list->setColor(0);
 		    list->setBorder(0);
 		    list->setEntrySize(18);
 		    list->setSelectedEntryColor(highlightColor);
 		    list->setActivatedEntryColor(activatedColor);
+
+			static auto tick_callback = [](Widget& widget) {
+				widget.setHideSelectors(!inputs.hasController(widget.getOwner()));
+				Frame* frame = static_cast<Frame*>(&widget);
+				if ( frame->isActivated() )
+				{
+					widget.setHideSelectors(true);
+					frame->setGlyphPosition(Widget::UPPER_LEFT);
+					SDL_Rect rect{ 0, 0, 0, 0 };
+					rect.y = frame->getSelection() * frame->getEntrySize();
+					rect.y -= frame->getActualSize().y; // subtract scroll
+					rect.x -= 7;
+					rect.y += 7;
+					if ( rect.y < 0 ) {
+						frame->setHideGlyphs(true);
+					}
+					else if ( rect.y > frame->getSize().h )
+					{
+						frame->setHideGlyphs(true);
+					}
+					else
+					{
+						frame->setHideGlyphs(false);
+					}
+					//rect.y = std::max(0, rect.y);
+					//rect.y = std::min(frame->getSize().h, rect.y);
+					frame->setButtonsOffset(rect);
+				}
+				else
+				{
+					frame->setHideGlyphs(false);
+					frame->setButtonsOffset(SDL_Rect{ 0, 0, 192, 0 });
+					frame->setGlyphPosition(Widget::CENTERED_BOTTOM);
+				}
+				if ( !gui->findSelectedWidget(widget.getOwner()) ) {
+					widget.select();
+				}
+			};
+
 		    list->setTickCallback(tick_callback);
 		    list->setWidgetSearchParent(window->getName());
 		    list->addWidgetMovement("MenuListCancel", list->getName());
@@ -16101,12 +17097,22 @@ failed:
 		    list->addWidgetAction("MenuAlt1", "enter_code");
 		    list->addWidgetAction("MenuAlt2", "refresh");
 		    list->setWidgetBack("back_button");
-		    list->setWidgetUp("online_tab");
-		    list->setWidgetRight("players");
+		    //list->setWidgetUp("online_tab");
+		    //list->setWidgetRight("players");
 		    list->setWidgetDown("filter_settings");
 		    list->addSyncScrollTarget("players");
-		    list->addSyncScrollTarget("pings");
+		    //list->addSyncScrollTarget("pings");
+			list->addSyncScrollTarget("versions");
+			list->setSelectorOffset(SDL_Rect{ 0, 0, 150, 0 });
+			list->setButtonsOffset(SDL_Rect{ 0, 0, 192, 0 });
 		    list->select();
+
+			auto divider = window->addImage(
+				SDL_Rect{ list->getSize().x, 116, 6, 256 },
+				0xffffffff,
+				"*#images/ui/Main Menus/Play/LobbyBrowser/Lobby_InteriorWindow_Dividers.png",
+				"divider");
+			divider->ontop = true;
 		}
 
         // players column
@@ -16115,19 +17121,20 @@ failed:
 		    players_column_header->setHJustify(Field::justify_t::LEFT);
 		    players_column_header->setVJustify(Field::justify_t::TOP);
 		    players_column_header->setFont(smallfont_no_outline);
-		    players_column_header->setSize(SDL_Rect{514, 116, 76, 20});
+		    players_column_header->setSize(SDL_Rect{ prevColumnSize.x + prevColumnSize.w + 4, 116, 76, 20});
 		    players_column_header->setColor(makeColor(106, 192, 159, 255));
 		    players_column_header->setText(" Players");
 
 		    auto list = window->addFrame("players");
 		    list->setScrollBarsEnabled(false);
 #if defined(STEAMWORKS) && defined(USE_EOS)
-			list->setSize(SDL_Rect{ 510, 140, 78, 200 });
+			list->setSize(SDL_Rect{ players_column_header->getSize().x - 4, 140, 78, 200});
 			list->setActualSize(SDL_Rect{ 0, 0, 78, 200 });
 #else
-			list->setSize(SDL_Rect{ 510, 140, 78, 234 });
+			list->setSize(SDL_Rect{ players_column_header->getSize().x - 4, 140, 78, 234 });
 			list->setActualSize(SDL_Rect{ 0, 0, 78, 234 });
 #endif
+			prevColumnSize = list->getSize();
 		    list->setFont(smallfont_no_outline);
 		    list->setColor(0);
 		    list->setBorder(0);
@@ -16144,32 +17151,91 @@ failed:
 		    list->addWidgetAction("MenuAlt2", "refresh");
 		    list->setWidgetBack("back_button");
 		    list->setWidgetUp("online_tab");
-		    list->setWidgetRight("pings");
+		    //list->setWidgetRight("pings");
+			//list->setWidgetRight("versions");
 		    list->setWidgetLeft("names");
 		    list->setWidgetDown("filter_settings");
 		    list->addSyncScrollTarget("names");
-		    list->addSyncScrollTarget("pings");
+		    //list->addSyncScrollTarget("pings");
+			list->addSyncScrollTarget("versions");
+
+			auto divider = window->addImage(
+				SDL_Rect{ list->getSize().x, 116, 6, 256 },
+				0xffffffff,
+				"*#images/ui/Main Menus/Play/LobbyBrowser/Lobby_InteriorWindow_Dividers.png",
+				"divider");
+			divider->ontop = true;
+		}
+
+		// version column
+		{
+			auto version_column_header = window->addField("version_column_header", 32);
+			version_column_header->setHJustify(Field::justify_t::LEFT);
+			version_column_header->setVJustify(Field::justify_t::TOP);
+			version_column_header->setFont(smallfont_no_outline);
+			version_column_header->setSize(SDL_Rect{ prevColumnSize.x + prevColumnSize.w + 4, 116, 70, 20 });
+			version_column_header->setColor(makeColor(106, 192, 159, 255));
+			version_column_header->setText(" Version");
+
+			auto list = window->addFrame("versions");
+			list->setScrollBarsEnabled(false);
+#if defined(STEAMWORKS) && defined(USE_EOS)
+			list->setSize(SDL_Rect{ version_column_header->getSize().x - 4, 140, version_column_header->getSize().w + 4, 200 });
+			list->setActualSize(SDL_Rect{ 0, 0, 52, 200 });
+#else
+			list->setSize(SDL_Rect{ version_column_header->getSize().x - 4, 140, version_column_header->getSize().w + 4, 234 });
+			list->setActualSize(SDL_Rect{ 0, 0, 52, 234 });
+#endif
+			prevColumnSize = list->getSize();
+			list->setFont(smallfont_no_outline);
+			list->setColor(0);
+			list->setBorder(0);
+			list->setEntrySize(18);
+			list->setSelectedEntryColor(highlightColor);
+			list->setActivatedEntryColor(activatedColor);
+			list->setTickCallback(tick_callback);
+			list->setWidgetSearchParent(window->getName());
+			list->addWidgetMovement("MenuListCancel", list->getName());
+			list->addWidgetAction("MenuPageLeft", "online_tab");
+			list->addWidgetAction("MenuPageRight", "lan_tab");
+			list->addWidgetAction("MenuStart", "join_lobby");
+			list->addWidgetAction("MenuAlt1", "enter_code");
+			list->addWidgetAction("MenuAlt2", "refresh");
+			list->setWidgetBack("back_button");
+			list->setWidgetUp("online_tab");
+			list->setWidgetLeft("names");
+			list->setWidgetDown("filter_settings");
+			list->addSyncScrollTarget("names");
+			list->addSyncScrollTarget("players");
+
+			auto divider = window->addImage(
+				SDL_Rect{ list->getSize().x, 116, 6, 256 },
+				0xffffffff,
+				"*#images/ui/Main Menus/Play/LobbyBrowser/Lobby_InteriorWindow_Dividers.png",
+				"divider");
+			divider->ontop = true;
 		}
 
         // ping column
-        {
+		/*{
 		    auto ping_column_header = window->addField("ping_column_header", 32);
 		    ping_column_header->setHJustify(Field::justify_t::LEFT);
 		    ping_column_header->setVJustify(Field::justify_t::TOP);
 		    ping_column_header->setFont(smallfont_no_outline);
-		    ping_column_header->setSize(SDL_Rect{592, 116, 48, 20});
+		    ping_column_header->setSize(SDL_Rect{ prevColumnSize.x + prevColumnSize.w + 4, 116, 48, 20});
 		    ping_column_header->setColor(makeColor(106, 192, 159, 255));
 		    ping_column_header->setText(" Ping");
 
 		    auto list = window->addFrame("pings");
 		    list->setScrollBarsEnabled(false);
 #if defined(STEAMWORKS) && defined(USE_EOS)
-			list->setSize(SDL_Rect{ 588, 140, 52, 200 });
+			list->setSize(SDL_Rect{ ping_column_header->getSize().x - 4, 140, 52, 200});
 			list->setActualSize(SDL_Rect{ 0, 0, 52, 200 });
 #else
-			list->setSize(SDL_Rect{ 588, 140, 52, 234 });
+			list->setSize(SDL_Rect{ ping_column_header->getSize().x - 4, 140, 52, 234 });
 			list->setActualSize(SDL_Rect{ 0, 0, 52, 234 });
 #endif
+			prevColumnSize = list->getSize();
 		    list->setFont(smallfont_no_outline);
 		    list->setColor(0);
 		    list->setBorder(0);
@@ -16190,19 +17256,37 @@ failed:
 		    list->setWidgetDown("filter_settings");
 		    list->addSyncScrollTarget("names");
 		    list->addSyncScrollTarget("players");
-		}
+		}*/
 
-		auto dividers = window->addImage(
-		    SDL_Rect{336, 138, 308, 204},
-		    0xffffffff,
-		    "*#images/ui/Main Menus/Play/LobbyBrowser/Lobby_InteriorWindow_Dividers.png",
-		    "dividers");
-		dividers->ontop = true;
+		auto refresh = window->addButton("refresh");
+		refresh->setSize(SDL_Rect{ prevColumnSize.x + prevColumnSize.w, 62, 40, 40 });
+		refresh->setBackground("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_Refresh00.png");
+		refresh->setBackgroundHighlighted("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_RefreshHigh00.png");
+		refresh->setBackgroundActivated("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_RefreshPress00.png");
+		refresh->setHighlightColor(makeColor(255, 255, 255, 255));
+		refresh->setColor(makeColor(255, 255, 255, 255));
+		refresh->setWidgetSearchParent(window->getName());
+		refresh->addWidgetAction("MenuPageLeft", "online_tab");
+		refresh->addWidgetAction("MenuPageRight", "lan_tab");
+		refresh->addWidgetAction("MenuStart", "join_lobby");
+		refresh->addWidgetAction("MenuAlt1", "enter_code");
+		refresh->addWidgetAction("MenuAlt2", "refresh");
+		refresh->setWidgetBack("back_button");
+		refresh->setWidgetLeft("lan_tab");
+		refresh->setWidgetDown("names");
+		refresh->setCallback([](Button&) {refreshLobbyBrowser(); });
+
+		auto lobby_slider_topper = window->addImage(
+			SDL_Rect{ prevColumnSize.x + prevColumnSize.w, 116, 38, 20 },
+			0xffffffff,
+			"*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Slider_Topper00.png",
+			"lobby_slider_topper"
+		);
 
 		auto slider = window->addSlider("scroll_slider");
 		slider->setOrientation(Slider::SLIDER_VERTICAL);
 		slider->setGlyphPosition(Widget::glyph_position_t::CENTERED);
-		slider->setRailSize(SDL_Rect{640, 138, 38, 234});
+		slider->setRailSize(SDL_Rect{ prevColumnSize.x + prevColumnSize.w, 138, 38, 234});
 		slider->setHandleSize(SDL_Rect{0, 0, 34, 34});
 		slider->setRailImage("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Slider_Backing01B.png");
 		slider->setHandleImage("*images/ui/Main Menus/Play/LobbyBrowser/UI_Slider_Boulder00.png");
@@ -16216,7 +17300,8 @@ failed:
 	    slider->setWidgetBack("back_button");
 	    slider->setWidgetUp("wireless_tab");
 	    slider->setWidgetDown("join_lobby");
-	    slider->setWidgetLeft("pings");
+	    //slider->setWidgetLeft("pings");
+		slider->setWidgetLeft("names");
 		slider->setCallback([](Slider& slider){
 			Frame* frame = static_cast<Frame*>(slider.getParent()); assert(frame);
 			{
@@ -16231,11 +17316,17 @@ failed:
 			    actualSize.y = slider.getValue();
 			    column->setActualSize(actualSize);
 			}
-			{
+			/*{
 			    Frame* column = frame->findFrame("pings"); assert(column);
 			    auto actualSize = column->getActualSize();
 			    actualSize.y = slider.getValue();
 			    column->setActualSize(actualSize);
+			}*/
+			{
+				Frame* column = frame->findFrame("versions"); assert(column);
+				auto actualSize = column->getActualSize();
+				actualSize.y = slider.getValue();
+				column->setActualSize(actualSize);
 			}
 			slider.updateHandlePosition();
 			});
@@ -16251,20 +17342,48 @@ failed:
 		auto filter_settings_fn = [](Button& button){
 			auto frame = static_cast<Frame*>(button.getParent()); assert(frame);
 			auto frame_right = frame->findFrame("frame_right"); assert(frame_right);
-			frame_right->setInvisible(frame_right->isInvisible() == false);
-			lobbyFiltersEnabled = !frame_right->isInvisible();
-			clearLobbies();
+
+			lobbyFiltersEnabled = false;
+			for ( int i = 0; i < numFilters; ++i )
+			{
+				if ( lobbyFilters[i] != Filter::UNCHECKED )
+				{
+					lobbyFiltersEnabled = true;
+					break;
+				}
+			}
+
+			if ( button.isSelected() && !inputs.getVirtualMouse(getMenuOwner())->draw_cursor )
+			{
+				frame_right->setInvisible(false);
+			}
+			else
+			{
+				frame_right->setInvisible(!lobbyFiltersEnabled && !frame_right->isInvisible());
+			}
+
+			/*clearLobbies();
 			for (auto& lobby : lobbies) {
 				addLobby(lobby);
-			}
-			if (lobbyFiltersEnabled) {
+			}*/
+
+			if (!frame_right->isInvisible()) {
 				if (!inputs.getVirtualMouse(getMenuOwner())->draw_cursor) {
-					auto checkbox = frame_right->findButton("filter_checkbox0");
-					if (checkbox) {
-						checkbox->select();
+					auto selectedWidget = frame_right->findSelectedWidget(frame_right->getOwner());
+					if ( selectedWidget )
+					{
+						button.select();
+						soundMove();
+					}
+					else
+					{
+						auto checkbox = frame_right->findButton("filter_checkbox0");
+						if (checkbox) {
+							checkbox->select();
+						}
+						soundActivate();
 					}
 				}
-				soundActivate();
 			}
 			else {
 				soundCancel();
@@ -16274,7 +17393,7 @@ failed:
 
 #if defined(STEAMWORKS) && defined(USE_EOS)
 		auto filter_settings = window->addButton("filter_settings");
-		filter_settings->setSize(SDL_Rect{424, 344, 160, 32});
+		filter_settings->setSize(SDL_Rect{online_tab->getSize().x + 36, 344, 160, 32});
 		filter_settings->setBackground("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_FilterSettings00.png");
 		filter_settings->setBackgroundHighlighted("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_FilterSettingsHigh00.png");
 		filter_settings->setBackgroundActivated("*images/ui/Main Menus/Play/LobbyBrowser/Lobby_Button_FilterSettingsPress00.png");
@@ -16295,12 +17414,12 @@ failed:
 
 		auto crossplay_label = window->addField("crossplay_label", 128);
 		crossplay_label->setJustify(Field::justify_t::CENTER);
-		crossplay_label->setSize(SDL_Rect{378, 378, 96, 48});
+		crossplay_label->setSize(SDL_Rect{ online_tab->getSize().x - 14, 378, 96, 48});
 		crossplay_label->setFont(smallfont_outline);
 		crossplay_label->setText("Crossplay");
 
 		auto crossplay = window->addButton("crossplay");
-		crossplay->setSize(SDL_Rect{474, 378, 158, 48});
+		crossplay->setSize(SDL_Rect{ filter_settings->getSize().x + 50, 378, 158, 48});
 		crossplay->setJustify(Button::justify_t::CENTER);
 		crossplay->setPressed(LobbyHandler.crossplayEnabled);
 		crossplay->setStyle(Button::style_t::STYLE_TOGGLE);
@@ -16332,7 +17451,7 @@ failed:
 			});
 #else
 		auto filter_settings = window->addButton("filter_settings");
-		filter_settings->setSize(SDL_Rect{430, 384, 158, 44});
+		filter_settings->setSize(SDL_Rect{ online_tab->getSize().x + 38, 384, 158, 44});
 		filter_settings->setFont(smallfont_outline);
 		filter_settings->setText("Filter Settings");
 		filter_settings->setJustify(Button::justify_t::CENTER);
@@ -16370,23 +17489,45 @@ failed:
                     allBlanks.append("\n");
                 }
             }
-		    addLobby(LobbyInfo("Ben", VERSION, 1, 50, false, SV_FLAG_CHEATS));
-		    addLobby(LobbyInfo("Sheridan", VERSION, 3, 50, false, SV_FLAG_FRIENDLYFIRE | SV_FLAG_MINOTAURS | SV_FLAG_HUNGER | SV_FLAG_TRAPS | SV_FLAG_CLASSIC));
-		    addLobby(LobbyInfo("Paulie", VERSION, 2, 250, false, SV_FLAG_HARDCORE));
-		    addLobby(LobbyInfo("Fart_Face", VERSION, 1, 420, false, SV_FLAG_KEEPINVENTORY | SV_FLAG_LIFESAVING));
-		    addLobby(LobbyInfo("Tim", VERSION, 3, 90, true, SV_FLAG_MINOTAURS | SV_FLAG_KEEPINVENTORY));
-		    addLobby(LobbyInfo("Johnny", VERSION, 3, 30, false, SV_FLAG_FRIENDLYFIRE));
-		    addLobby(LobbyInfo("Boaty McBoatFace", VERSION, 2, 20, false));
-		    addLobby(LobbyInfo("RIP_Morgan_", VERSION, 0, 120, false));
-		    addLobby(LobbyInfo("This is the longest name we can fit in a Barony lobby for real.", VERSION, 4, 150, false, 0xffffffff));
-            addLobby(LobbyInfo(allBlanks.c_str(), VERSION, 4, 420, false, 0xffffffff));
-		    addLobby(LobbyInfo("16 PLAYER SMASH FEST", VERSION, 16, 90, false));
-		    addLobby(LobbyInfo("ur mom", VERSION, 16, 160, true));
-		    addLobby(LobbyInfo("waow more lobbies", VERSION, 16, 160, true));
-		    addLobby(LobbyInfo("snobby lobby", VERSION, 16, 260, true));
-		    addLobby(LobbyInfo("gAmERs RiSe uP!!", VERSION, 16, 0, false));
-		    addLobby(LobbyInfo("a very unsuspicious lobby", VERSION, 2, 130, false));
-		    addLobby(LobbyInfo("cool lobby bro!", VERSION, 3, 240, false));
+			LobbyInfo testLobbies[] = {
+				{"Ben", VERSION, 1, 50, false, SV_FLAG_CHEATS},
+				{"Sheridan", VERSION, 3, 50, false, SV_FLAG_FRIENDLYFIRE | SV_FLAG_MINOTAURS | SV_FLAG_HUNGER | SV_FLAG_TRAPS | SV_FLAG_CLASSIC},
+				{"Paulie", VERSION, 2, 250, false, SV_FLAG_HARDCORE},
+				{"Fart_Face", VERSION, 1, 420, false, SV_FLAG_KEEPINVENTORY | SV_FLAG_LIFESAVING},
+				{"Tim", VERSION, 3, 90, true, SV_FLAG_MINOTAURS | SV_FLAG_KEEPINVENTORY},
+				{"Johnny", VERSION, 3, 30, false, SV_FLAG_FRIENDLYFIRE},
+				{"Boaty McBoatFace", VERSION, 2, 20, false},
+				{"RIP_Morgan_", VERSION, 0, 120, false},
+				{"This is the longest name we can fit in a Barony lobby for real.", VERSION, 4, 150, false, 0xffffffff},
+				{allBlanks.c_str(), VERSION, 4, 420, false, 0xffffffff},
+				{"16 PLAYER SMASH FEST", VERSION, 16, 90, false},
+				{"ur mom", VERSION, 16, 160, true},
+				{"waow more lobbies", VERSION, 16, 160, true},
+				{"snobby lobby", VERSION, 16, 260, true},
+				{"gAmERs RiSe uP!!", VERSION, 16, 0, false},
+				{"a very unsuspicious lobby", VERSION, 2, 130, false},
+				{"cool lobby bro!", VERSION, 3, 240, false},
+				{"Ben", VERSION, 1, 50, false, SV_FLAG_CHEATS},
+				{"Sheridan", VERSION, 3, 50, false, SV_FLAG_FRIENDLYFIRE | SV_FLAG_MINOTAURS | SV_FLAG_HUNGER | SV_FLAG_TRAPS | SV_FLAG_CLASSIC},
+				{"Paulie", VERSION, 2, 250, false, SV_FLAG_HARDCORE},
+				{"Fart_Face", VERSION, 1, 420, false, SV_FLAG_KEEPINVENTORY | SV_FLAG_LIFESAVING},
+				{"Tim", VERSION, 3, 90, true, SV_FLAG_MINOTAURS | SV_FLAG_KEEPINVENTORY},
+				{"Johnny", VERSION, 3, 30, false, SV_FLAG_FRIENDLYFIRE},
+				{"Boaty McBoatFace", VERSION, 2, 20, false},
+				{"RIP_Morgan_", VERSION, 0, 120, false},
+				{"This is the longest name we can fit in a Barony lobby for real.", VERSION, 4, 150, false, 0xffffffff},
+				{allBlanks.c_str(), VERSION, 4, 420, false, 0xffffffff},
+				{"16 PLAYER SMASH FEST", VERSION, 16, 90, false},
+				{"ur mom", VERSION, 16, 160, true},
+				{"waow more lobbies", VERSION, 16, 160, true},
+				{"snobby lobby", VERSION, 16, 260, true},
+				{"gAmERs RiSe uP!!", VERSION, 16, 0, false},
+				{"a very unsuspicious lobby", VERSION, 2, 130, false},
+				{"cool lobby bro!", VERSION, 3, 240, false},
+			};
+			for (auto& lobby : testLobbies) {
+				addLobby(lobby);
+			}
 		} else {
 		    refresh->activate();
 		}
@@ -17638,7 +18779,7 @@ failed:
         
         // class image
         const int num_classes = sizeof(classes_in_order) / sizeof(classes_in_order[0]);
-        const int class_index = (info.players[player].char_class + 1) % num_classes;
+        const int class_index = (info.players[player].char_class) % num_classes;
         const auto class_name = classes_in_order[class_index];
         const auto class_find = classes.find(class_name);
         if (class_find != classes.end()) {
@@ -17678,293 +18819,321 @@ failed:
             none_exists->setText("No compatible save files found.");
             none_exists->setJustify(Field::justify_t::CENTER);
         } else {
-            int saveGameCount = 0;
+			// sort savegames by date/time
+			using list_type = std::pair<int, SaveGameInfo>;
+			std::list<list_type> savegames;
 		    for (int i = 0; i < SAVE_GAMES_MAX; ++i) {
                 if (saveGameExists(singleplayer, i)) {
-                    const int posX = saveGameCount * 256 + (898 - 220) / 2;
-                    auto str = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(i);
-                    auto savegame_book = subwindow.addButton(str.c_str());
-                    savegame_book->setSize(SDL_Rect{posX, 0, 220, 280});
-                    savegame_book->setBackground("*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_00.png");
-		            savegame_book->setColor(makeColor(255, 255, 255, 255));
-		            savegame_book->setHighlightColor(makeColor(255, 255, 255, 255));
-		            savegame_book->setFont(smallfont_outline);
-		            savegame_book->setTextColor(makeColor(255, 182, 73, 255));
-		            savegame_book->setTextHighlightColor(makeColor(255, 182, 73, 255));
-		            savegame_book->setTickCallback([](Widget& widget){
-	                    auto button = static_cast<Button*>(&widget);
-	                    auto frame = static_cast<Frame*>(widget.getParent());
+					savegames.emplace_back(i, getSaveGameInfo(singleplayer, i));
+				}
+			}
+			savegames.sort([](const list_type& lhs, const list_type& rhs){
+				return rhs.second.timestamp < lhs.second.timestamp;
+				});
 
-		                Input& input = Input::inputs[widget.getOwner()];
-		                bool scrolled = false;
-		                scrolled |= input.binary("MenuScrollDown");
-		                scrolled |= input.binary("MenuScrollUp");
-		                scrolled |= input.binary("MenuScrollLeft");
-		                scrolled |= input.binary("MenuScrollRight");
-		                scrolled |= input.binary("MenuMouseWheelUp");
-		                scrolled |= input.binary("MenuMouseWheelDown");
-		                if (scrolled) {
-		                    timeSinceScroll = ticks;
-		                } else if (widget.isSelected() && !inputs.getVirtualMouse(getMenuOwner())->draw_cursor) {
-		                    savegame_selected = button;
-		                }
+			// create save game entries
+			int index = 0;
+			for (auto it = savegames.begin(); it != savegames.end(); ++it) {
+				auto& savegame = *it;
+                const int posX = index * 256 + (898 - 220) / 2;
+                auto str = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(savegame.first);
+                auto savegame_book = subwindow.addButton(str.c_str());
+                savegame_book->setSize(SDL_Rect{posX, 0, 220, 280});
+                savegame_book->setBackground("*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_00.png");
+		        savegame_book->setColor(makeColor(255, 255, 255, 255));
+		        savegame_book->setHighlightColor(makeColor(255, 255, 255, 255));
+		        savegame_book->setFont(smallfont_outline);
+		        savegame_book->setTextColor(makeColor(255, 182, 73, 255));
+		        savegame_book->setTextHighlightColor(makeColor(255, 182, 73, 255));
+		        savegame_book->setTickCallback([](Widget& widget){
+	                auto button = static_cast<Button*>(&widget);
+	                auto frame = static_cast<Frame*>(widget.getParent());
 
-	                    auto frame_pos = frame->getActualSize();
-	                    auto button_size = button->getSize();
-	                    const int diff = ((button_size.x - (898 - 220) / 2) - frame_pos.x);
+		            Input& input = Input::inputs[widget.getOwner()];
+		            bool scrolled = false;
+		            scrolled |= input.binary("MenuScrollDown");
+		            scrolled |= input.binary("MenuScrollUp");
+		            scrolled |= input.binary("MenuScrollLeft");
+		            scrolled |= input.binary("MenuScrollRight");
+		            scrolled |= input.binary("MenuMouseWheelUp");
+		            scrolled |= input.binary("MenuMouseWheelDown");
+		            if (scrolled) {
+		                timeSinceScroll = ticks;
+		            } else if (widget.isSelected() && !inputs.getVirtualMouse(getMenuOwner())->draw_cursor) {
+		                savegame_selected = button;
+		            }
 
-		                if (ticks - timeSinceScroll > TICKS_PER_SECOND / 2) {
-		                    if (savegame_selected == button) {
-		                        if (diff > 0) {
-		                            frame_pos.x += std::max(1, diff / 8);
-		                        } else if (diff < 0) {
-		                            frame_pos.x += std::min(-1, diff / 8);
-		                        }
-		                        frame->setActualSize(frame_pos);
+	                auto frame_pos = frame->getActualSize();
+	                auto button_size = button->getSize();
+	                const int diff = ((button_size.x - (898 - 220) / 2) - frame_pos.x);
+
+		            if (ticks - timeSinceScroll > TICKS_PER_SECOND / 2) {
+		                if (savegame_selected == button) {
+		                    if (diff > 0) {
+		                        frame_pos.x += std::max(1, diff / 8);
+		                    } else if (diff < 0) {
+		                        frame_pos.x += std::min(-1, diff / 8);
 		                    }
-		                } else {
-	                        if (abs(diff) < 100) {
-	                            savegame_selected = button;
-	                        }
+		                    frame->setActualSize(frame_pos);
 		                }
-		                });
-		            savegame_book->setCallback([](Button& button){
-		                if (savegame_selected != &button && inputs.getVirtualMouse(getMenuOwner())->draw_cursor) {
-		                    soundCheckmark();
-	                        savegame_selected = &button;
-	                        timeSinceScroll = 0;
-		                    return;
-		                } else {
-	                        savegame_selected = &button;
-		                    int save_index = -1;
-	                        const char* name = continueSingleplayer ? "savegame" : "savegame_multiplayer";
-	                        size_t name_len = strlen(name);
-                            save_index = (int)strtol(button.getName() + name_len, nullptr, 10);
-                            if (cursor_delete_mode) {
-                                deleteSavePrompt(continueSingleplayer, save_index);
-                            } else {
-                                loadSavePrompt(continueSingleplayer, save_index);
-                            }
-		                }
-		                });
-		            if (i > 0) {
-		                int prev;
-		                for (prev = i - 1; prev >= 0 && !saveGameExists(singleplayer, prev); --prev);
-                        auto str = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(prev);
-                        savegame_book->setWidgetLeft(str.c_str());
+		            } else {
+	                    if (abs(diff) < 100) {
+	                        savegame_selected = button;
+	                    }
 		            }
-		            if (i < SAVE_GAMES_MAX - 1) {
-		                int next;
-		                for (next = i + 1; next < SAVE_GAMES_MAX && !saveGameExists(singleplayer, next); ++next);
-                        auto str = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(next);
-                        savegame_book->setWidgetRight(str.c_str());
+		            });
+		        savegame_book->setCallback([](Button& button){
+		            if (savegame_selected != &button && inputs.getVirtualMouse(getMenuOwner())->draw_cursor) {
+		                soundCheckmark();
+	                    savegame_selected = &button;
+	                    timeSinceScroll = 0;
+		                return;
+		            } else {
+	                    savegame_selected = &button;
+		                int save_index = -1;
+	                    const char* name = continueSingleplayer ? "savegame" : "savegame_multiplayer";
+	                    size_t name_len = strlen(name);
+                        save_index = (int)strtol(button.getName() + name_len, nullptr, 10);
+                        if (cursor_delete_mode) {
+                            deleteSavePrompt(continueSingleplayer, save_index);
+                        } else {
+                            loadSavePrompt(continueSingleplayer, save_index);
+                        }
 		            }
-		            savegame_book->setWidgetBack("back_button");
-		            savegame_book->addWidgetAction("MenuAlt1", "delete");
-		            savegame_book->addWidgetAction("MenuConfirm", "enter");
-		            savegame_book->addWidgetAction("MenuPageLeft", "singleplayer");
-		            savegame_book->addWidgetAction("MenuPageRight", "multiplayer");
-		            savegame_book->setWidgetSearchParent("continue_window");
+		            });
 
-		            first_savegame = first_savegame ? first_savegame : savegame_book;
+				// set previous book in line
+				std::string prevstr;
+				auto prev = it;
+				if (prev != savegames.begin()) {
+					--prev;
+					prevstr = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(prev->first);
+				} else {
+					prevstr = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(savegames.back().first);
+				}
+				savegame_book->setWidgetLeft(prevstr.c_str());
 
-		            auto saveGameInfo = getSaveGameInfo(singleplayer, i);
+				// set next book in line
+				std::string nextstr;
+				auto next = it;
+				++next;
+				if (next == savegames.end()) {
+					nextstr = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(savegames.front().first);
+				} else {
+					nextstr = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(next->first);
+				}
+				savegame_book->setWidgetRight(nextstr.c_str());
 
-                    // extract savegame info
-                    const std::string& game_name = saveGameInfo.gamename;
-                    const std::string class_name = playerClassLangEntry(saveGameInfo.players[saveGameInfo.player_num].char_class, 0);
-                    char* class_name_c = const_cast<char*>(class_name.c_str());
-                    class_name_c[0] = (char)toupper((int)class_name[0]);
-                    const int dungeon_lvl = saveGameInfo.dungeon_lvl;
-                    const int player_lvl = saveGameInfo.players[saveGameInfo.player_num].stats.LVL;
-					int numplayers = 0;
-					for (auto p : saveGameInfo.players_connected) {
-						if (p) {
-							++numplayers;
-						}
+		        savegame_book->setWidgetBack("back_button");
+		        savegame_book->addWidgetAction("MenuAlt1", "delete");
+		        savegame_book->addWidgetAction("MenuConfirm", "enter");
+		        savegame_book->addWidgetAction("MenuPageLeft", "singleplayer");
+		        savegame_book->addWidgetAction("MenuPageRight", "multiplayer");
+		        savegame_book->setWidgetSearchParent("continue_window");
+
+		        first_savegame = first_savegame ? first_savegame : savegame_book;
+
+		        auto& saveGameInfo = savegame.second;
+
+                // extract savegame info
+                const std::string& game_name = saveGameInfo.gamename;
+                const auto timestamp = saveGameInfo.timestamp;
+				int numplayers = 0;
+				for (auto p : saveGameInfo.players_connected) {
+					if (p) {
+						++numplayers;
 					}
+				}
+				auto time = timestamp.substr(11);
+				time[2] = ':';
+				time[5] = ' ';
+				time[6] = ' ';
+				time[7] = ' ';
+				auto date = timestamp.substr(0, 10);
+				date[4] = '/';
+				date[7] = '/';
 
-                    // create shortened player name
-                    char shortened_name[20] = { '\0' };
-                    int len = (int)game_name.size();
-                    strncpy(shortened_name, game_name.c_str(), std::min(len, 16));
-                    if (len > 16) {
-                        strcat(shortened_name, "...");
-                    }
-
-					// create game type string
-					char game_type[32] = { '\0' };
-					switch (saveGameInfo.multiplayer_type) {
-					default:
-					case SINGLE: snprintf(game_type, sizeof(game_type), "Singleplayer"); break;
-					case SERVER: snprintf(game_type, sizeof(game_type), "Online Host %dp (#1)", numplayers); break;
-					case CLIENT: snprintf(game_type, sizeof(game_type), "Online Client %dp (#%d)", numplayers, saveGameInfo.player_num + 1); break;
-					case DIRECTSERVER: snprintf(game_type, sizeof(game_type), "Local Host %dp (#1)", numplayers); break;
-					case DIRECTCLIENT: snprintf(game_type, sizeof(game_type), "Local Client (#%d/%d)", saveGameInfo.player_num + 1, numplayers); break;
-					case SERVERCROSSPLAY: snprintf(game_type, sizeof(game_type), "Online Host %dp (#1)", numplayers); break;
-					case SPLITSCREEN: snprintf(game_type, sizeof(game_type), "Splitscreen %dp", numplayers); break;
-					}
-
-                    // format book label string
-		            char text[1024];
-		            snprintf(text, sizeof(text), "%s\n%s\nDungeon LVL %d",
-		                shortened_name, game_type, dungeon_lvl);
-		            savegame_book->setText(text);
-
-                    // offset text
-                    SDL_Rect offset;
-                    offset.x = 34;
-                    offset.y = 184;
-		            savegame_book->setTextOffset(offset);
-		            savegame_book->setJustify(Button::justify_t::LEFT);
-
-		            // add savegame screenshot
-		            /*auto screenshot_path = setSaveGameFileName(singleplayer, SaveFileType::SCREENSHOT, i);
-                    if (dataPathExists(screenshot_path.c_str(), false)) {
-		                auto screenshot = subwindow.addImage(
-		                    SDL_Rect{saveGameCount * 256 + (898 - 220) / 2 + 32, 16, 160, 162},
-		                    0xffffffff,
-		                    screenshot_path.c_str(),
-		                    (str + "_screenshot").c_str()
-		                );
-		                screenshot->ontop = true;
-		                Image* image = Image::get(screenshot_path.c_str()); assert(image);
-		                screenshot->section.x = (image->getWidth() - image->getHeight()) / 2;
-		                screenshot->section.w = image->getHeight();
-		            }*/
-                    
-                    auto cover = subwindow.addFrame("bookcover");
-                    cover->setSize(SDL_Rect{posX, 0, 220, 280});
-                    cover->setColor(0);
-                    cover->setHollow(true);
-
-					// add savegame picture
-					std::string screenshot_path = "images/ui/Main Menus/ContinueGame/savescreens/";
-					if (saveGameInfo.level_track == 1) {
-						switch (saveGameInfo.dungeon_lvl) {
-						default: screenshot_path += "save_unknown00.png"; break;
-						case 3: screenshot_path += "save_gnome00.png"; break;
-						case 4: screenshot_path += "save_minetown00.png"; break;
-						case 6:
-						case 7: screenshot_path += "save_underworld00.png"; break;
-						case 8: screenshot_path += "save_temple00.png"; break;
-						case 9: screenshot_path += "save_castle00.png"; break;
-						case 12: screenshot_path += "save_sokoban00.png"; break;
-						case 14: screenshot_path += "save_maze00.png"; break;
-						case 17: screenshot_path += "save_library00.png"; break;
-						case 19:
-						case 20: screenshot_path += "save_underworld00.png"; break;
-						case 24: screenshot_path += "save_boss00.png"; break;
-						case 29: screenshot_path += "save_lair00.png"; break;
-						case 34: screenshot_path += "save_bram00.png"; break;
-						}
-					} else {
-						switch (saveGameInfo.dungeon_lvl) {
-						default: screenshot_path += "save_unknown00.png"; break;
-						case 0: screenshot_path += "save_start00.png"; break;
-						case 1:
-						case 2:
-						case 3:
-						case 4: screenshot_path += "save_mines00.png"; break;
-						case 5: screenshot_path += "save_minetoswamp00.png"; break;
-						case 6:
-						case 7:
-						case 8:
-						case 9: screenshot_path += "save_swamp00.png"; break;
-						case 10: screenshot_path += "save_swamptolab00.png"; break;
-						case 11:
-						case 12:
-						case 13:
-						case 14: screenshot_path += "save_labyrinth00.png"; break;
-						case 15: screenshot_path += "save_labtoruin00.png"; break;
-						case 16:
-						case 17:
-						case 18:
-						case 19: screenshot_path += "save_ruin00.png"; break;
-						case 20: screenshot_path += "save_boss00.png"; break;
-						case 21:
-						case 22:
-						case 23: screenshot_path += "save_hell00.png"; break;
-						case 24: screenshot_path += "save_devil00.png"; break;
-						case 25: screenshot_path += "save_hamlet00.png"; break;
-						case 26:
-						case 27:
-						case 28:
-						case 29: screenshot_path += "save_caves00.png"; break;
-						case 30: screenshot_path += "save_cavetocitadel00.png"; break;
-						case 31:
-						case 32:
-						case 33:
-						case 34: screenshot_path += "save_citadel00.png"; break;
-						case 35: screenshot_path += "save_sanctum00.png"; break;
-						}
-					}
-
-					auto screenshot = cover->addImage(
-						SDL_Rect{32, 16, 160, 162},
-						0xffffffff,
-						screenshot_path.c_str(),
-						(str + "_screenshot").c_str()
-					);
-					Image* image = Image::get(screenshot_path.c_str()); assert(image);
-					screenshot->section.x = (image->getWidth() - image->getHeight()) / 2;
-					screenshot->section.w = image->getHeight();
-
-		            // add book overlay
-		            auto overlay = cover->addImage(
-		                SDL_Rect{32, 16, 160, 162},
-		                0xffffffff,
-		                "*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_Corners_00.png",
-		                (str + "_overlay").c_str()
-		            );
-                    
-                    // add player info
-                    if (numplayers == 1) {
-                        addContinuePlayerInfo(subwindow, saveGameInfo, saveGameInfo.player_num, posX + 30, 114, false);
-                    }
-                    else if (numplayers == 2) {
-                        for (int c = 0, index = 0; c < (int)saveGameInfo.players_connected.size(); ++c) {
-                            if (saveGameInfo.players_connected[c]) {
-                                switch (index) {
-                                default:
-                                case 0:
-                                    addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 30, 114, true);
-                                    break;
-                                case 1:
-                                    addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 128, 114, true);
-                                    break;
-                                }
-                                ++index;
-                            }
-                        }
-                    }
-                    else if (numplayers >= 3) {
-                        for (int c = 0, index = 0; c < (int)saveGameInfo.players_connected.size(); ++c) {
-                            if (saveGameInfo.players_connected[c]) {
-                                switch (index) {
-                                default:
-                                case 0:
-                                    addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 30, 16, true);
-                                    break;
-                                case 1:
-                                    addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 128, 16, true);
-                                    break;
-                                case 2:
-                                    addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 30, 114, true);
-                                    break;
-                                case 3:
-                                    addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 128, 114, true);
-                                    break;
-                                }
-                                ++index;
-                            }
-                        }
-                    }
-
-		            ++saveGameCount;
+                // create shortened game name
+                char shortened_name[20] = { '\0' };
+                int len = (int)game_name.size();
+                strncpy(shortened_name, game_name.c_str(), std::min(len, 16));
+                if (len > 16) {
+                    strcat(shortened_name, "...");
                 }
+
+				// create game type string
+				char game_type[32] = { '\0' };
+				switch (saveGameInfo.multiplayer_type) {
+				default:
+				case SINGLE: snprintf(game_type, sizeof(game_type), "Singleplayer"); break;
+				case SERVER: snprintf(game_type, sizeof(game_type), "Online Host %dp (#1)", numplayers); break;
+				case CLIENT: snprintf(game_type, sizeof(game_type), "Online Client %dp (#%d)", numplayers, saveGameInfo.player_num + 1); break;
+				case DIRECTSERVER: snprintf(game_type, sizeof(game_type), "Local Host %dp (#1)", numplayers); break;
+				case DIRECTCLIENT: snprintf(game_type, sizeof(game_type), "Local Client (#%d/%d)", saveGameInfo.player_num + 1, numplayers); break;
+				case SERVERCROSSPLAY: snprintf(game_type, sizeof(game_type), "Online Host %dp (#1)", numplayers); break;
+				case SPLITSCREEN: snprintf(game_type, sizeof(game_type), "Splitscreen %dp", numplayers); break;
+				}
+
+                // format book label string
+		        char text[1024];
+				snprintf(text, sizeof(text), "%s\n%s\n%s %s",
+					shortened_name, game_type, date.c_str(), time.c_str());
+		        savegame_book->setText(text);
+
+                // offset text
+                SDL_Rect offset;
+                offset.x = 34;
+                offset.y = 181;
+				savegame_book->setPaddingPerTextLine(4);
+		        savegame_book->setTextOffset(offset);
+		        savegame_book->setJustify(Button::justify_t::LEFT);
+
+		        // add savegame screenshot
+		        /*auto screenshot_path = setSaveGameFileName(singleplayer, SaveFileType::SCREENSHOT, i);
+                if (dataPathExists(screenshot_path.c_str(), false)) {
+		            auto screenshot = subwindow.addImage(
+		                SDL_Rect{saveGameCount * 256 + (898 - 220) / 2 + 32, 16, 160, 162},
+		                0xffffffff,
+		                screenshot_path.c_str(),
+		                (str + "_screenshot").c_str()
+		            );
+		            screenshot->ontop = true;
+		            Image* image = Image::get(screenshot_path.c_str()); assert(image);
+		            screenshot->section.x = (image->getWidth() - image->getHeight()) / 2;
+		            screenshot->section.w = image->getHeight();
+		        }*/
+                    
+                auto cover = subwindow.addFrame("bookcover");
+                cover->setSize(SDL_Rect{posX, 0, 220, 280});
+                cover->setColor(0);
+                cover->setHollow(true);
+
+				// add savegame picture
+				std::string screenshot_path = "images/ui/Main Menus/ContinueGame/savescreens/";
+				if (saveGameInfo.level_track == 1) {
+					switch (saveGameInfo.dungeon_lvl) {
+					default: screenshot_path += "save_unknown00.png"; break;
+					case 3: screenshot_path += "save_gnome00.png"; break;
+					case 4: screenshot_path += "save_minetown00.png"; break;
+					case 6:
+					case 7: screenshot_path += "save_underworld00.png"; break;
+					case 8: screenshot_path += "save_temple00.png"; break;
+					case 9: screenshot_path += "save_castle00.png"; break;
+					case 12: screenshot_path += "save_sokoban00.png"; break;
+					case 14: screenshot_path += "save_maze00.png"; break;
+					case 17: screenshot_path += "save_library00.png"; break;
+					case 19:
+					case 20: screenshot_path += "save_underworld00.png"; break;
+					case 24: screenshot_path += "save_boss00.png"; break;
+					case 29: screenshot_path += "save_lair00.png"; break;
+					case 34: screenshot_path += "save_bram00.png"; break;
+					}
+				} else {
+					switch (saveGameInfo.dungeon_lvl) {
+					default: screenshot_path += "save_unknown00.png"; break;
+					case 0: screenshot_path += "save_start00.png"; break;
+					case 1:
+					case 2:
+					case 3:
+					case 4: screenshot_path += "save_mines00.png"; break;
+					case 5: screenshot_path += "save_minetoswamp00.png"; break;
+					case 6:
+					case 7:
+					case 8:
+					case 9: screenshot_path += "save_swamp00.png"; break;
+					case 10: screenshot_path += "save_swamptolab00.png"; break;
+					case 11:
+					case 12:
+					case 13:
+					case 14: screenshot_path += "save_labyrinth00.png"; break;
+					case 15: screenshot_path += "save_labtoruin00.png"; break;
+					case 16:
+					case 17:
+					case 18:
+					case 19: screenshot_path += "save_ruin00.png"; break;
+					case 20: screenshot_path += "save_boss00.png"; break;
+					case 21:
+					case 22:
+					case 23: screenshot_path += "save_hell00.png"; break;
+					case 24: screenshot_path += "save_devil00.png"; break;
+					case 25: screenshot_path += "save_hamlet00.png"; break;
+					case 26:
+					case 27:
+					case 28:
+					case 29: screenshot_path += "save_caves00.png"; break;
+					case 30: screenshot_path += "save_cavetocitadel00.png"; break;
+					case 31:
+					case 32:
+					case 33:
+					case 34: screenshot_path += "save_citadel00.png"; break;
+					case 35: screenshot_path += "save_sanctum00.png"; break;
+					}
+				}
+
+				auto screenshot = cover->addImage(
+					SDL_Rect{32, 16, 160, 162},
+					0xffffffff,
+					screenshot_path.c_str(),
+					(str + "_screenshot").c_str()
+				);
+				Image* image = Image::get(screenshot_path.c_str()); assert(image);
+				screenshot->section.x = (image->getWidth() - image->getHeight()) / 2;
+				screenshot->section.w = image->getHeight();
+
+		        // add book overlay
+		        auto overlay = cover->addImage(
+		            SDL_Rect{32, 16, 160, 162},
+		            0xffffffff,
+		            "*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_Corners_00.png",
+		            (str + "_overlay").c_str()
+		        );
+                    
+                // add player info
+                if (numplayers == 1) {
+                    addContinuePlayerInfo(subwindow, saveGameInfo, saveGameInfo.player_num, posX + 30, 114, false);
+                }
+                else if (numplayers == 2) {
+                    for (int c = 0, player = 0; c < (int)saveGameInfo.players_connected.size(); ++c) {
+                        if (saveGameInfo.players_connected[c]) {
+                            switch (player) {
+                            default:
+                            case 0:
+                                addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 30, 114, true);
+                                break;
+                            case 1:
+                                addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 128, 114, true);
+                                break;
+                            }
+                            ++player;
+                        }
+                    }
+                }
+                else if (numplayers >= 3) {
+                    for (int c = 0, player = 0; c < (int)saveGameInfo.players_connected.size(); ++c) {
+                        if (saveGameInfo.players_connected[c]) {
+                            switch (player) {
+                            default:
+                            case 0:
+                                addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 30, 16, true);
+                                break;
+                            case 1:
+                                addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 128, 16, true);
+                                break;
+                            case 2:
+                                addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 30, 114, true);
+                                break;
+                            case 3:
+                                addContinuePlayerInfo(subwindow, saveGameInfo, c, posX + 128, 114, true);
+                                break;
+                            }
+                            ++player;
+                        }
+                    }
+                }
+
+		        ++index;
 		    }
-		    subwindow.setActualSize(SDL_Rect{0, 0, 898 + 256 * (saveGameCount - 1), 294});
+		    subwindow.setActualSize(SDL_Rect{0, 0, 898 + 256 * ((int)savegames.size() - 1), 294});
         }
         return first_savegame;
 	}
@@ -18787,6 +19956,7 @@ failed:
 		discard_and_exit->setHighlightColor(makeColor(255, 255, 255, 255));
 		discard_and_exit->setCallback([](Button& button){
 			soundCancel();
+			setAudioDevice(current_audio_device);
 		    setGlobalVolume(master_volume, musvolume, sfxvolume, sfxAmbientVolume, sfxEnvironmentVolume, sfxNotificationVolume);
 			if (main_menu_frame) {
 				auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
@@ -18827,16 +19997,40 @@ failed:
 			    soundActivate();
 			}
 			(void)settingsSave();
-			if (main_menu_frame) {
-				auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
-				auto settings_button = buttons->findButton("Settings"); assert(settings_button);
-				settings_button->select();
+
+			static auto return_to_main_menu = [](Button& button){
+				if (main_menu_frame) {
+					auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
+					auto settings_button = buttons->findButton("Settings"); assert(settings_button);
+					settings_button->select();
+					auto settings = main_menu_frame->findFrame("settings");
+					if (settings) {
+						auto dimmer = static_cast<Frame*>(settings->getParent());
+						dimmer->removeSelf();
+					}
+				}
+				};
+
+#if defined(VIDEO_RESTART_NEEDED)
+			if (video_refresh != VideoRefresh::None) {
+				if (video_refresh & VideoRefresh::Video) {
+					// non-windows platforms need to throw a prompt to restart to apply video settings
+					monoPrompt("You must restart Barony for\nsome settings to take effect.", "Okay",
+						[](Button& button) {
+							soundCancel();
+							closeMono();
+							return_to_main_menu(button);
+						});
+				} else {
+					return_to_main_menu(button);
+				}
+				video_refresh = VideoRefresh::None;
+			} else {
+				return_to_main_menu(button);
 			}
-			auto settings = static_cast<Frame*>(button.getParent());
-			if (settings) {
-				auto dimmer = static_cast<Frame*>(settings->getParent());
-				dimmer->removeSelf();
-			}
+#else
+			return_to_main_menu(button);
+#endif
 			});
 		confirm_and_exit->setWidgetSearchParent("settings");
 		confirm_and_exit->setWidgetBack("discard_and_exit");
@@ -19234,13 +20428,13 @@ failed:
 				destroyMainMenu();
 				createDummyMainMenu();
 				createStoryScreen("data/story/intro.json", [](){beginFade(FadeDestination::RootMainMenu);});
-				playMusic(sounds[501], false, true, false);
+				playMusic(introstorymusic, false, true, false);
 			}
 			else if (main_menu_fade_destination == FadeDestination::IntroStoryScreenNoMusicFade) {
 				destroyMainMenu();
 				createDummyMainMenu();
 				createStoryScreen("data/story/intro.json", [](){beginFade(FadeDestination::TitleScreen);});
-				playMusic(sounds[501], false, false, false);
+				playMusic(introstorymusic, false, false, false);
 			}
 			else if (main_menu_fade_destination >= FadeDestination::HerxMidpointHuman &&
 			    main_menu_fade_destination <= FadeDestination::ClassicBaphometEndingEvil) {
@@ -19288,13 +20482,34 @@ failed:
 			}
 			else if (main_menu_fade_destination == FadeDestination::GameStart) {
 				gameModeManager.setMode(GameModeManager_t::GAME_MODE_DEFAULT);
+
+				// set save game file index
 				if (!loadingsavegame) {
+					const bool singleplayer = (multiplayer == SINGLE);
+					bool foundEmptySlot = false;
 	                for (int i = 0; i < SAVE_GAMES_MAX; ++i) {
-                        if (!saveGameExists(multiplayer == SINGLE, i)) {
+						// look for an empty save slot
+                        if (!saveGameExists(singleplayer, i)) {
                             savegameCurrentFileIndex = i;
+							foundEmptySlot = true;
                             break;
                         }
                     }
+					if (!foundEmptySlot) {
+						// no empty save slots, look for the oldest one to overwrite
+						using list_type = std::pair<int, SaveGameInfo>;
+						std::list<list_type> savegames;
+						for (int i = 0; i < SAVE_GAMES_MAX; ++i) {
+							if (saveGameExists(singleplayer, i)) {
+								savegames.emplace_back(i, getSaveGameInfo(singleplayer, i));
+							}
+						}
+						assert(!savegames.empty());
+						savegames.sort([](const list_type& lhs, const list_type& rhs) {
+							return rhs.second.timestamp > lhs.second.timestamp;
+							});
+						savegameCurrentFileIndex = savegames.front().first;
+					}
 				}
 
 				// set clientnum and client_disconnected[] based on the state of the lobby
@@ -19402,7 +20617,6 @@ failed:
             // reset resolution function
 		    static auto resetResolution = [](){
 		        allSettings.video = old_video;
-				allSettings.video.window_mode = 0;
 		        if (allSettings.video.save()) {
 		            int x = std::max(allSettings.video.resolution_x, 1024);
 		            int y = std::max(allSettings.video.resolution_y, 720);
@@ -19423,11 +20637,7 @@ failed:
                     assert(main_menu_frame);
 			        auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			        auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-#ifdef NINTENDO
-					settingsSelect(*settings_subwindow, {Setting::Type::Boolean, "vertical_split"});
-#else
 		            settingsSelect(*settings_subwindow, {Setting::Type::Dropdown, "resolution"});
-#endif
                 },
                 [](Button&){ // no
                     soundCancel();
@@ -19437,11 +20647,7 @@ failed:
                     assert(main_menu_frame);
 			        auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			        auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-#ifdef NINTENDO
-					settingsSelect(*settings_subwindow, { Setting::Type::Boolean, "vertical_split" });
-#else
 					settingsSelect(*settings_subwindow, { Setting::Type::Dropdown, "resolution" });
-#endif
                 }, false, false); // yellow buttons
 
             // prompt timeout
@@ -19545,9 +20751,8 @@ failed:
         }
 
 		// hide mouse if we're driving around with a controller
-		auto cmouse = inputs.getVirtualMouse(inputs.getPlayerIDAllowedKeyboard());
-		auto vmouse = intro ? cmouse : inputs.getVirtualMouse(getMenuOwner());
-		cmouse->draw_cursor = !vmouse->lastMovementFromController;
+        auto cmouse = inputs.getVirtualMouse(inputs.getPlayerIDAllowedKeyboard());
+        cmouse->draw_cursor = isMouseVisible();
 
 		static ConsoleVariable<bool> cvar_disableFadeFinished("/test_disable_fade_finished", false);
 		if (fadeout && fadealpha >= 255 && !*cvar_disableFadeFinished) {
@@ -19690,7 +20895,7 @@ failed:
 		button->setCallback([](Button&){
 		    destroyMainMenu();
 		    createMainMenu(false);
-			settingsMount();
+			settingsMount(false);
 			(void)settingsSave();
 			if (!firstTimeTutorialPrompt()) {
 				soundActivate();
@@ -19982,7 +21187,11 @@ failed:
 			int back = c - 1 < 0 ? num_options - 1 : c - 1;
 			int forward = c + 1 >= num_options ? 0 : c + 1;
 #ifdef NINTENDO
-			button->setWidgetDown(options[forward].name);
+            if (ingame || c + 1 < num_options || (enabledDLCPack1 && enabledDLCPack2)) {
+                button->setWidgetDown(options[forward].name);
+            } else {
+                button->setWidgetDown("banner1");
+            }
 #else
 			if (ingame || c + 1 < num_options) {
 			    button->setWidgetDown(options[forward].name);
@@ -20054,7 +21263,6 @@ failed:
 		);
 
 		if (!ingame) {
-#ifndef NINTENDO
 		    const char* banner_images[][2] = {
 		        {
 		            "*#images/ui/Main Menus/Banners/UI_MainMenu_QoDPatchNotes1_base.png",
@@ -20089,7 +21297,12 @@ failed:
                 openURLTryWithOverlay("https://discord.gg/xDhtaR9KA2");
 		        },
 		    };
+#ifdef NINTENDO
+			const int num_banners = (enabledDLCPack1 && enabledDLCPack2) ?
+                0 : 1;
+#else
 		    constexpr int num_banners = sizeof(banner_funcs) / sizeof(banner_funcs[0]);
+#endif
 		    auto banners = main_menu_frame->addFrame("banners");
 		    banners->setSize(SDL_Rect{(Frame::virtualScreenX - 472) / 2, y, 472, Frame::virtualScreenY - y});
 			for (int c = 0; c < num_banners; ++c) {
@@ -20134,7 +21347,6 @@ failed:
 				auto dimmer = main_menu_frame->findFrame("dimmer");
 				widget.setInvisible(dimmer != nullptr);
 				});
-#endif
 
 			char buf[64];
 			const char date[] = __DATE__;
@@ -20219,6 +21431,10 @@ failed:
 	void closeMainMenu() {
 		destroyMainMenu();
 		gamePaused = false;
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			Input::inputs[i].consumeBindingsSharedWithBinding("MenuConfirm");
+		}
 	}
 
 	void disconnectedFromServer(const char* text) {

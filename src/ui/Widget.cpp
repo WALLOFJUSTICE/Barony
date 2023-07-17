@@ -28,6 +28,25 @@ Widget::~Widget() {
 	deselect();
 }
 
+bool Widget::remove(const char* name) {
+    for (auto widget : widgets) {
+        if (strcmp(widget->getName(), name) == 0) {
+            widget->removeSelf();
+            return true;
+        }
+    }
+    return false;
+}
+
+void Widget::removeSelf() {
+    toBeDeleted = true;
+    
+    // also mark children deleted so they don't get processed.
+    for (auto widget : widgets) {
+        widget->removeSelf();
+    }
+}
+
 void Widget::select() {
 	if (selected) {
 		return;
@@ -114,7 +133,7 @@ Widget* Widget::handleInput() {
 				if (input.consumeBinaryToggle(move.first.c_str())) {
 					root = root ? root : findSearchRoot();
 					Widget* result = root->findWidget(move.second.c_str(), true);
-					if (!result) {
+					if (!result && !dontSearchAncestors) {
 						result = head ? head->findWidget(move.second.c_str(), true) : nullptr;
 					}
 					//printlog("%s: %p", move.second.c_str(), (void*)result);
@@ -140,7 +159,7 @@ Widget* Widget::handleInput() {
 				if (input.consumeBinaryToggle(action.first.c_str()) && !inputstr) {
 					root = root ? root : findSearchRoot();
 					Widget* result = root->findWidget(action.second.c_str(), true);
-					if (!result) {
+					if (!result && !dontSearchAncestors) {
 						result = head ? head->findWidget(action.second.c_str(), true) : nullptr;
 					}
 					//printlog("%s: %p", action.second.c_str(), (void*)result);
@@ -439,22 +458,22 @@ void Widget::drawPost(const SDL_Rect size,
         if (glyphPosition == CENTERED ||
             glyphPosition == CENTERED_TOP ||
             glyphPosition == CENTERED_BOTTOM) {
-            x += size.w / 2;
+            x += (size.w + buttonsOffset.w) / 2;
         }
         if (glyphPosition == CENTERED_RIGHT ||
             glyphPosition == UPPER_RIGHT ||
             glyphPosition == BOTTOM_RIGHT) {
-            x += size.w;
+            x += size.w + buttonsOffset.w;
         }
         if (glyphPosition == CENTERED_LEFT ||
             glyphPosition == CENTERED ||
             glyphPosition == CENTERED_RIGHT) {
-            y += size.h / 2;
+            y += (size.h + buttonsOffset.h) / 2;
         }
         if (glyphPosition == CENTERED_BOTTOM ||
             glyphPosition == BOTTOM_LEFT ||
             glyphPosition == BOTTOM_RIGHT) {
-            y += size.h;
+            y += size.h + buttonsOffset.h;
         }
 
         // draw glyphs

@@ -50,9 +50,23 @@ extern bool gamepad_righty_invert;
 extern bool gamepad_menux_invert;
 extern bool gamepad_menuy_invert;
 
+struct PlayerSettings_t
+{
+	int player = -1;
+	int shootmodeCrosshair = 0;
+	int shootmodeCrosshairOpacity = 50;
+	void init(const int _player)
+	{
+		player = _player;
+	}
+};
+extern PlayerSettings_t playerSettings[MAXPLAYERS];
+
 //Game Controller 1 handler
 //TODO: Joystick support?
 //extern SDL_GameController* game_controller;
+
+#include <chrono>
 
 class GameController
 {
@@ -62,6 +76,13 @@ class GameController
 	int id;
 	std::string name;
 	static const int BUTTON_HELD_TICKS = TICKS_PER_SECOND / 4;
+
+#ifdef NINTENDO
+	using time_unit = std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::milliseconds>;
+	time_unit timeNow;
+	time_unit timeStart = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now());
+#endif
+
 public:
 	GameController();
 	~GameController();
@@ -79,8 +100,17 @@ public:
 			RUMBLE_TMP
 		};
 		int hapticEffectId = -1;
-		SDL_HapticEffect hapticEffect;
+		struct HapticEffect
+		{
+			Uint16 type = SDL_HAPTIC_LEFTRIGHT;
+			Uint32 length = 0;
+			Uint16 large_magnitude = 0;
+			Uint16 small_magnitude = 0;
+			Sint32 leftRightBalance = 0;
+		};
+		HapticEffect hapticEffect;
 		Uint32 hapticTick;
+		Uint32 oscillatorTick;
 		Haptic_t();
 		~Haptic_t() {};
 
@@ -210,8 +240,8 @@ public:
 	SDL_Haptic* getHaptic() { return sdl_haptic; }
 	const bool isActive();
 	void addRumble(Haptic_t::RumblePattern pattern, Uint16 smallMagnitude, Uint16 largeMagnitude, Uint32 length, Uint32 srcEntityUid);
-	SDL_HapticEffect* doRumble(Haptic_t::Rumble* r);
-	SDL_HapticEffect* handleRumble();
+	GameController::Haptic_t::HapticEffect* doRumble(Haptic_t::Rumble* r);
+	GameController::Haptic_t::HapticEffect* handleRumble();
 	void stopRumble();
 	void reinitHaptic();
 
@@ -281,12 +311,6 @@ public:
 	float x_forceMaxForwardThreshold = 0.7;
 	float x_forceMaxBackwardThreshold = 0.5;
 	float y_forceMaxStrafeThreshold = 0.7;
-
-	/*
-	* Uses dpad to move the cursor through the item context menu and select entries.
-	* Returns true if moved.
-	*/
-	bool handleRepairGUIMovement(const int player);
 };
 const int MAX_GAME_CONTROLLERS = 16;
 extern std::array<GameController, MAX_GAME_CONTROLLERS> game_controllers;
@@ -321,7 +345,7 @@ class Inputs
 
 		bool draw_cursor = true; //True if the gamepad's d-pad has been used to navigate menus and such. //TODO: Off by default on consoles and the like.
 		bool moved = false;
-		bool lastMovementFromController = false;
+		bool lastMovementFromController = true;
 		real_t mouseAnimationPercent = 0.0;
 		VirtualMouse() {};
 		~VirtualMouse() {};
@@ -595,6 +619,12 @@ public:
 	}
 	void addRumbleForPlayerHPLoss(const int player, Sint32 damageAmount);
 	SDL_Rect getGlyphRectForInput(const int player, bool pressed, const unsigned keyboardImpulse, const unsigned controllerImpulse);
+	void addRumbleForHapticType(const int player, Uint32 hapticType, Uint32 uid);
+	static const Uint32 HAPTIC_SFX_BOULDER_BOUNCE_VOL;
+	static const Uint32 HAPTIC_SFX_BOULDER_ROLL_LOW_VOL;
+	static const Uint32 HAPTIC_SFX_BOULDER_ROLL_HIGH_VOL;
+	static const Uint32 HAPTIC_SFX_BOULDER_LAUNCH_VOL;
+	void addRumbleRemotePlayer(const int player, Uint32 hapticType, Uint32 uid);
 };
 extern Inputs inputs;
 void initGameControllers();
@@ -741,7 +771,8 @@ public:
 			MODULE_LOG,
 			MODULE_MAP,
 			MODULE_SIGN_VIEW,
-			MODULE_ITEMEFFECTGUI
+			MODULE_ITEMEFFECTGUI,
+			MODULE_PORTRAIT
 		};
 		GUIModules activeModule = MODULE_NONE;
 		GUIModules previousModule = MODULE_NONE;
@@ -808,10 +839,17 @@ public:
 		void openInventory();
 		void closeInventory();
 
+		int miscTooltipOpacitySetpoint = 100;
+		real_t miscTooltipOpacityAnimate = 1.0;
+		Uint32 miscTooltipDeselectedTick = 0;
+		Frame* miscTooltipFrame = nullptr;
+
 		PanelJustify_t inventoryPanelJustify = PANEL_JUSTIFY_LEFT;
 		PanelJustify_t paperDollPanelJustify = PANEL_JUSTIFY_LEFT;
 		void setCompactView(bool bCompact);
 		void resizeAndPositionInventoryElements();
+		bool paperDollContextMenuActive();
+		void updateInventoryMiscTooltip();
 		enum GamepadDropdownTypes : int
 		{
 			GAMEPAD_DROPDOWN_DISABLE,
@@ -1579,6 +1617,8 @@ public:
 		};
 		CompactLayoutModes compactLayoutMode = COMPACT_LAYOUT_CHARSHEET;
 		bool bShowUINavigation = false;
+		void closeStatusFxWindow();
+		bool statusFxFocusedWindowActive = false;
 
 		HUD_t(Player& p) : player(p)
 		{};
@@ -1645,6 +1685,7 @@ public:
 		void updateStatusEffectFocusedWindow();
 		void updateCursorAnimation(int destx, int desty, int width, int height, bool usingMouse);
 		void setCursorDisabled(bool disabled) { if ( cursorFrame ) { cursorFrame->setDisabled(disabled); } };
+		const char* getCrosshairPath();
 	} hud;
 
 	class Magic_t
@@ -1659,6 +1700,7 @@ public:
 		bool bHasUnreadNewSpell = false;
 		Uint32 noManaFeedbackTicks = 0;
 		Uint32 noManaProcessedOnTick = 0;
+		Uint32 spellbookUidFromHotbarSlot = 0;
 		void flashNoMana()
 		{
 			noManaFeedbackTicks = 0;
@@ -2019,6 +2061,16 @@ public:
 		void selectPaperDollCoordinatesFromSlotType(PaperDollSlotType slot) const;
 		std::vector<Uint32> returningItemsToInventory;
 		void warpMouseToMostRecentReturnedInventoryItem();
+		bool portraitActiveToEdit = false;
+		real_t portraitRotationInertia = 0.0;
+		real_t portraitRotationPercent = 0.0;
+		real_t portraitYaw = (330) * PI / 180;
+		void resetPortrait()
+		{
+			portraitRotationInertia = 0.0;
+			portraitRotationPercent = 0.0;
+			portraitYaw = (330) * PI / 180;
+		}
 	} paperDoll;
 
 	class Hotbar_t {
@@ -2124,19 +2176,7 @@ public:
 		auto& slots() { return hotbar; };
 		auto& slotsAlternate(int alternate) { return hotbar_alternate[alternate]; };
 		auto& slotsAlternate() { return hotbar_alternate; }
-		void selectHotbarSlot(int slot)
-		{
-			if ( slot < 0 )
-			{
-				slot = NUM_HOTBAR_SLOTS - 1;
-			}
-			if ( slot >= NUM_HOTBAR_SLOTS )
-			{
-				slot = 0;
-			}
-			current_hotbar = slot;
-			player.GUI.activateModule(GUI_t::MODULE_HOTBAR);
-		}
+		void selectHotbarSlot(int slot);
 		void initFaceButtonHotbar();
 		FaceMenuGroup getFaceMenuGroupForSlot(int hotbarSlot);
 		void processHotbar();
@@ -2177,6 +2217,14 @@ public:
 		static real_t compactBigScale;
 		static real_t compact2pVerticalBigScale;
 	} minimap;
+
+	static void soundMovement();
+	static void soundActivate();
+	static void soundCancel();
+	static void soundModuleNavigation();
+	static void soundStatusOpen();
+	static void soundStatusClose();
+	static void soundHotbarShootmodeMovement();
 };
 
 extern Player* players[MAXPLAYERS];

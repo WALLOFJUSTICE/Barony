@@ -4402,6 +4402,7 @@ void actPlayer(Entity* my)
 							followerMenu.initfollowerMenuGUICursor(true);
 							followerMenu.updateScrollPartySheet();
 							selectedEntity[PLAYER_NUM] = NULL;
+							Player::soundActivate();
 						}
 					}
 				}
@@ -4938,7 +4939,7 @@ void actPlayer(Entity* my)
 
 							if (allDead)
 							{
-								playMusic(sounds[209], false, true, false);
+								playMusic(gameovermusic, false, true, false);
 							}
 #endif
 							combat = false;

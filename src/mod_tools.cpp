@@ -82,6 +82,7 @@ void GameModeManager_t::Tutorial_t::startTutorial(std::string mapToSet)
 	stats[0]->sex = static_cast<sex_t>(local_rng.rand() % 2);
 	stats[0]->playerRace = RACE_HUMAN;
 	stats[0]->appearance = local_rng.rand() % NUMAPPEARANCES;
+	client_classes[0] = CLASS_WARRIOR;
 	initClass(0);
 }
 
@@ -302,48 +303,49 @@ void GameModeManager_t::Tutorial_t::Menu_t::onClickEntry()
 
 void GameModeManager_t::Tutorial_t::FirstTimePrompt_t::createPrompt()
 {
-	bWindowOpen = true;
-	showFirstTimePrompt = false;
+	return;
+	//bWindowOpen = true;
+	//showFirstTimePrompt = false;
+	//if ( !title_bmp )
+	//{
+	//	return;
+	//}
 
-	if ( !title_bmp )
-	{
-		return;
-	}
+	//// create window
+	//subwindow = 1;
+	//subx1 = xres / 2 - ((0.75 * title_bmp->w / 2) + 52);
+	//subx2 = xres / 2 + ((0.75 * title_bmp->w / 2) + 52);
+	//suby1 = yres / 2 - ((0.75 * title_bmp->h / 2) + 88);
+	//suby2 = yres / 2 + ((0.75 * title_bmp->h / 2) + 88);
+	//strcpy(subtext, "");
 
-	// create window
-	subwindow = 1;
-	subx1 = xres / 2 - ((0.75 * title_bmp->w / 2) + 52);
-	subx2 = xres / 2 + ((0.75 * title_bmp->w / 2) + 52);
-	suby1 = yres / 2 - ((0.75 * title_bmp->h / 2) + 88);
-	suby2 = yres / 2 + ((0.75 * title_bmp->h / 2) + 88);
-	strcpy(subtext, "");
+	//Uint32 centerWindowX = subx1 + (subx2 - subx1) / 2;
 
-	Uint32 centerWindowX = subx1 + (subx2 - subx1) / 2;
+	//button_t* button = newButton();
+	//strcpy(button->label, language[3965]);
+	//button->sizex = strlen(language[3965]) * 10 + 8;
+	//button->sizey = 20;
+	//button->x = centerWindowX - button->sizex / 2;
+	//button->y = suby2 - 28 - 24;
+	//button->action = &buttonPromptEnterTutorialHub;
+	//button->visible = 1;
+	//button->focused = 1;
 
-	button_t* button = newButton();
-	strcpy(button->label, language[3965]);
-	button->sizex = strlen(language[3965]) * 10 + 8;
-	button->sizey = 20;
-	button->x = centerWindowX - button->sizex / 2;
-	button->y = suby2 - 28 - 24;
-	button->action = &buttonPromptEnterTutorialHub;
-	button->visible = 1;
-	button->focused = 1;
-
-	button = newButton();
-	strcpy(button->label, language[3966]);
-	button->sizex = strlen(language[3966]) * 12 + 8;
-	button->sizey = 20;
-	button->x = centerWindowX - button->sizex / 2;
-	button->y = suby2 - 28;
-	button->action = &buttonSkipPrompt;
-	button->visible = 1;
-	button->focused = 1;
+	//button = newButton();
+	//strcpy(button->label, language[3966]);
+	//button->sizex = strlen(language[3966]) * 12 + 8;
+	//button->sizey = 20;
+	//button->x = centerWindowX - button->sizex / 2;
+	//button->y = suby2 - 28;
+	//button->action = &buttonSkipPrompt;
+	//button->visible = 1;
+	//button->focused = 1;
 }
 
 void GameModeManager_t::Tutorial_t::FirstTimePrompt_t::drawDialogue()
 {
-	if ( !bWindowOpen )
+	return;
+	/*if ( !bWindowOpen )
 	{
 		return;
 	}
@@ -363,7 +365,7 @@ void GameModeManager_t::Tutorial_t::FirstTimePrompt_t::drawDialogue()
 	
 	ttfPrintTextFormattedColor(ttf12, centerWindowX - strlen(language[3936]) * TTF12_WIDTH / 2, suby2 + 8 - TTF12_HEIGHT * 13, makeColorRGB(255, 255, 0), language[3936]);
 	ttfPrintTextFormatted(ttf12, centerWindowX - (longestline(language[3967]) * TTF12_WIDTH) / 2, suby2 + 8 - TTF12_HEIGHT * 11, language[3967]);
-	ttfPrintTextFormatted(ttf12, centerWindowX - (longestline(language[3967]) * TTF12_WIDTH) / 2 - TTF12_WIDTH / 2, suby2 + 8 - TTF12_HEIGHT * 11, language[3968]);
+	ttfPrintTextFormatted(ttf12, centerWindowX - (longestline(language[3967]) * TTF12_WIDTH) / 2 - TTF12_WIDTH / 2, suby2 + 8 - TTF12_HEIGHT * 11, language[3968]);*/
 }
 
 void GameModeManager_t::Tutorial_t::FirstTimePrompt_t::buttonSkipPrompt(button_t* my)
@@ -656,6 +658,9 @@ void ItemTooltips_t::readItemsFromFile()
 
 	printlog("[JSON]: Successfully read %d items from '%s'", itemsRead, inputPath.c_str());
 
+	//itemValueTable.clear();
+	//itemValueTableByCategory.clear();
+
 	for ( int i = 0; i < NUMITEMS && i < itemsRead; ++i )
 	{
 		assert(i == tmpItems[i].itemId);
@@ -795,6 +800,24 @@ void ItemTooltips_t::readItemsFromFile()
 		{
 			items[i].item_slot = ItemEquippableSlot::EQUIPPABLE_IN_SLOT_HELM;
 		}
+
+		/*{
+			auto pair = std::make_pair(items[i].value, i);
+			auto lower = std::lower_bound(itemValueTable.begin(), itemValueTable.end(), pair,
+				[](const auto& lhs, const auto& rhs) {
+					return lhs < rhs;
+			});
+			itemValueTable.insert(lower, pair);
+		}
+		{
+			auto pair = std::make_pair(items[i].value, i);
+			auto lower = std::lower_bound(itemValueTableByCategory[items[i].category].begin(), 
+				itemValueTableByCategory[items[i].category].end(), pair,
+				[](const auto& lhs, const auto& rhs) {
+					return lhs < rhs;
+				});
+			itemValueTableByCategory[items[i].category].insert(lower, pair);
+		}*/
 	}
 
 	spellItems.clear();
@@ -1021,6 +1044,19 @@ void ItemTooltips_t::readItemLocalizationsFromFile()
 	{
 		spell.second.name = spellNameLocalizations[spell.second.internalName];
 	}
+
+	/*for ( auto i : itemValueTable )
+	{
+		printlog("itemValueTable %4d | %s", items[i.second].value, items[i.second].getIdentifiedName());
+	}
+	for ( int cat = 0; cat < NUMCATEGORIES; ++cat )
+	{
+		for ( auto i : itemValueTableByCategory[cat] )
+		{
+			printlog("itemValueTableByCategory %2d | %4d | %s", cat,
+				items[i.second].value, items[i.second].getIdentifiedName());
+		}
+	}*/
 }
 
 #ifndef EDITOR
@@ -2854,7 +2890,8 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 			}
 			else if ( detailTag == "EFF_WARNING" )
 			{
-				int radius = std::max(3, 11 + 5 * item.beatitude);
+				int beatitude = shouldInvertEquipmentBeatitude(stats[player]) ? abs(item.beatitude) : item.beatitude;
+				int radius = std::max(3, 11 + 5 * beatitude);
 				snprintf(buf, sizeof(buf), str.c_str(), radius, getItemBeatitudeAdjective(item.beatitude).c_str());
 			}
 			else
@@ -4042,6 +4079,37 @@ void StatueManager_t::refreshAllStatues()
 #endif // !EDITOR
 }
 
+void StatueManager_t::readAllStatues()
+{
+	std::string baseDir = "data/statues";
+	auto files = physfsGetFileNamesInDirectory(baseDir.c_str());
+	for ( auto file : files )
+	{
+		std::string checkFile = baseDir + '/' + file;
+		PHYSFS_Stat stat;
+		if ( PHYSFS_stat(checkFile.c_str(), &stat) == 0 ) { continue; }
+
+		if ( stat.filetype == PHYSFS_FileType::PHYSFS_FILETYPE_DIRECTORY )
+		{
+			auto files2 = physfsGetFileNamesInDirectory(checkFile.c_str());
+			for ( auto file2 : files2 )
+			{
+				std::string checkFile2 = checkFile + '/' + file2;
+				if ( PHYSFS_stat(checkFile2.c_str(), &stat) == 0 ) { continue; }
+
+				if ( stat.filetype != PHYSFS_FileType::PHYSFS_FILETYPE_DIRECTORY )
+				{
+					readStatueFromFile(0, checkFile2);
+				}
+			}
+		}
+		else
+		{
+			readStatueFromFile(0, checkFile);
+		}
+	}
+}
+
 void StatueManager_t::readStatueFromFile(int index, std::string filename)
 {
 	std::string fileName = "/data/statues/statue" + std::to_string(index) + ".json";
@@ -4052,6 +4120,9 @@ void StatueManager_t::readStatueFromFile(int index, std::string filename)
 	if ( PHYSFS_getRealDir(fileName.c_str()) )
 	{
 		std::string inputPath = PHYSFS_getRealDir(fileName.c_str());
+		if (!inputPath.empty()) {
+			inputPath.append(PHYSFS_getDirSeparator());
+		}
 		inputPath.append(fileName);
 
 		File* fp = FileIO::open(inputPath.c_str(), "rb");
@@ -5045,19 +5116,21 @@ void VideoManager_t::drawTexturedQuad(unsigned int texID, int tw, int th, const 
         &src, dest, viewport, color);
 }
 
+#ifndef EDITOR
+static ConsoleVariable<bool> cvar_doublebufferVideo("/video_doublebuffer", true);
+#endif
+
 void VideoManager_t::drawAsFrameCallback(const Widget& widget, SDL_Rect frameSize, SDL_Rect offset, float alpha)
 {
-	if ( !clip )
-	{
+	if (!clip) {
 		return;
 	}
 
-    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, textureId));
 	theoraplayer::VideoFrame* frame = clip->fetchNextFrame();
-	if ( frame != nullptr )
-	{
+	if (frame) {
+		GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, whichTexture ? textureId1 : textureId2));
         GL_CHECK_ERR(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-            clip->getWidth(), clip->getHeight(), textureFormat,
+            clip->getWidth(), clip->getHeight(), GL_RGBA,
             GL_UNSIGNED_BYTE, frame->getBuffer()));
 		clip->popFrame();
 	}
@@ -5066,80 +5139,71 @@ void VideoManager_t::drawAsFrameCallback(const Widget& widget, SDL_Rect frameSiz
 	float h = clip->getSubFrameHeight();
 	float sx = clip->getSubFrameX();
 	float sy = clip->getSubFrameY();
-	float tw = potCeil(w);
-	float th = potCeil(h);
+	float tw = w;
+	float th = h;
 
 	SDL_Rect rect = frameSize;
-	if ( offset.w <= 0 )
-	{
+	if (offset.w <= 0) {
 		// use native size of video
 		rect.w = w;
 		rect.w += offset.w;
 		w += offset.w;
-	}
-	else
-	{
+	} else {
 		// manual scale video
 		rect.w = offset.w;
 	}
-	if ( offset.h <= 0 )
-	{
+
+	if (offset.h <= 0) {
 		// use native size of video
 		rect.h = h;
 		rect.h += offset.h;
 		h += offset.h;
-	}
-	else
-	{
+	} else {
 		// manual scale video
 		rect.h = offset.h;
 	}
 
-
-	if ( offset.x < 0 )
-	{
+	if (offset.x < 0) {
 		sx += -offset.x; // shift video to re-center
 		offset.x = 0;
 	}
-	else
-	{
-		if ( offset.x + rect.w > frameSize.w )
-		{
-			rect.w -= (offset.x + rect.w) - frameSize.w; // limit output rect width to frame
-		}
+	else if (offset.x + rect.w > frameSize.w) {
+		rect.w -= (offset.x + rect.w) - frameSize.w; // limit output rect width to frame
 	}
-	if ( offset.y < 0 )
-	{
+	if (offset.y < 0) {
 		sy += -offset.y; // shift video to re-center
 		offset.y = 0;
 	}
-	else
-	{
-		if ( offset.y + rect.h > frameSize.h )
-		{
-			rect.h -= (offset.y + rect.h) - frameSize.h; // limit output rect height to frame
+	else if (offset.y + rect.h > frameSize.h) {
+		rect.h -= (offset.y + rect.h) - frameSize.h; // limit output rect height to frame
+	}
+
+	if (frame) {
+#ifndef EDITOR
+		if (*cvar_doublebufferVideo) {
+			whichTexture = (whichTexture == false);
 		}
+#else
+		whichTexture = (whichTexture == false);
+#endif
 	}
 
 	const SDL_Rect dest{rect.x + offset.x, rect.y + offset.y, rect.w, rect.h};
-	const SDL_Rect src{ sx, sy, w, h };
-	drawTexturedQuad(textureId, tw, th, src, dest, alpha);
+	const SDL_Rect src{(int)sx, (int)sy, (int)w, (int)h};
+	drawTexturedQuad(whichTexture ? textureId1 : textureId2, tw, th, src, dest, alpha);
 }
 
 void VideoManager_t::draw()
 {
-	if ( !clip )
-	{
+	if (!clip) {
 		return;
 	}
     
-    GL_CHECK_ERR(glEnable(GL_BLEND));
-    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, textureId));
 	theoraplayer::VideoFrame* frame = clip->fetchNextFrame();
-	if ( frame != NULL )
-	{
+	if (frame) {
+		GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, whichTexture ? textureId1 : textureId2));
         GL_CHECK_ERR(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-            clip->getWidth(), clip->getHeight(), textureFormat,
+            clip->getWidth(), clip->getHeight(), GL_RGBA,
             GL_UNSIGNED_BYTE, frame->getBuffer()));
 		clip->popFrame();
 	}
@@ -5148,28 +5212,36 @@ void VideoManager_t::draw()
     const int sh = clip->getSubFrameHeight();
     const int sx = clip->getSubFrameX();
     const int sy = clip->getSubFrameY();
-    const int tw = potCeil(sw);
-    const int th = potCeil(sh);
+    const int tw = sw;
+    const int th = sh;
+
+	if (frame) {
+#ifndef EDITOR
+		if (*cvar_doublebufferVideo) {
+			whichTexture = (whichTexture == false);
+		}
+#else
+		whichTexture = (whichTexture == false);
+#endif
+	}
 
 	const SDL_Rect dest{400, 200, 320, 180};
 	const SDL_Rect src{sx, sy, sw, sh};
-	drawTexturedQuad(textureId, tw, th, src, dest, 1.f);
-    
-    GL_CHECK_ERR(glDisable(GL_BLEND));
+	drawTexturedQuad(whichTexture ? textureId1 : textureId2, tw, th, src, dest, 1.f);
 }
 
 unsigned int VideoManager_t::createTexture(int w, int h, unsigned int format)
 {
-	unsigned int textureId = 0;
-    GL_CHECK_ERR(glGenTextures(1, &textureId));
-    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, textureId));
+	unsigned int tex = 0;
+    GL_CHECK_ERR(glGenTextures(1, &tex));
+    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, tex));
 	unsigned char* data = new unsigned char[w * h * 4];
 	memset(data, 0, w * h * 4);
-    GL_CHECK_ERR(glTexImage2D(GL_TEXTURE_2D, 0, format == GL_RGB ? GL_RGB : GL_RGBA, w, h, 0, format, GL_UNSIGNED_BYTE, data));
+    GL_CHECK_ERR(glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data));
     GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 	delete[] data;
-	return textureId;
+	return tex;
 }
 
 void VideoManager_t::init()
@@ -5205,16 +5277,19 @@ void VideoManager_t::destroyClip()
 		theoraplayer::manager->destroyVideoClip(clip);
 		clip = NULL;
 	}
-	if ( textureId != 0 )
+	if ( textureId1 != 0 )
 	{
-        GL_CHECK_ERR(glDeleteTextures(1, &textureId));
-		textureId = 0;
+        GL_CHECK_ERR(glDeleteTextures(1, &textureId1));
+		textureId1 = 0;
+	}
+	if (textureId2 != 0)
+	{
+		GL_CHECK_ERR(glDeleteTextures(1, &textureId2));
+		textureId2 = 0;
 	}
 }
 
-#ifndef NDEBUG
 #define PRELOAD_VIDEO_TO_RAM
-#endif
 
 #ifdef PRELOAD_VIDEO_TO_RAM
 #include <theoraplayer/MemoryDataSource.h>
@@ -5222,9 +5297,10 @@ void VideoManager_t::destroyClip()
 
 void VideoManager_t::loadfile(const char* filename)
 {
-	if ( !isInit ) { init(); }
-	if ( clip )
-	{
+	if (!isInit) {
+		init();
+	}
+	if (clip) {
 		destroyClip();
 	}
 	if (!filename || !PHYSFS_getRealDir(filename)) {
@@ -5234,18 +5310,29 @@ void VideoManager_t::loadfile(const char* filename)
 	path += PHYSFS_getDirSeparator();
 	path += filename;
 
-#ifdef PRELOAD_VIDEO_TO_RAM
-	clip = theoraplayer::manager->createVideoClip(new theoraplayer::MemoryDataSource(path.c_str()), theoraplayer::FORMAT_RGB);
-#else
-	clip = theoraplayer::manager->createVideoClip(path.c_str(), outputMode, 16);
+	auto output_format = theoraplayer::FORMAT_RGBX;
+
+#ifndef EDITOR
+	static ConsoleVariable<int> cvar_theoraOutput("/theora_output", 0);
+	if (*cvar_theoraOutput > 0) {
+		output_format = (theoraplayer::OutputMode)*cvar_theoraOutput;
+	}
 #endif
-	if ( !clip )
-	{
+
+#ifdef PRELOAD_VIDEO_TO_RAM
+	clip = theoraplayer::manager->createVideoClip(new theoraplayer::MemoryDataSource(path.c_str()), output_format);
+#else
+	clip = theoraplayer::manager->createVideoClip(path, output_format);
+#endif
+
+	if (!clip) {
 		return;
 	}
 	currentfile = filename;
 	clip->setAutoRestart(true);
-	textureId = createTexture(potCeil(clip->getWidth()), potCeil(clip->getHeight()), textureFormat);
+	clip->setPrecachedFramesCount(16);
+	textureId1 = createTexture(clip->getWidth(), clip->getHeight(), GL_RGBA);
+	textureId2 = createTexture(clip->getWidth(), clip->getHeight(), GL_RGBA);
 }
 
 void VideoManager_t::updateCurrentClip(float timeDelta)
@@ -5400,7 +5487,9 @@ void MonsterData_t::loadMonsterDataJSON()
 								{
 									if ( !noOverrideIcon )
 									{
-										entry.iconSpritesAndPaths[m] = iconPath;
+										entry.iconSpritesAndPaths[m].iconPath = iconPath;
+										entry.iconSpritesAndPaths[m].key = special_itr->name.GetString();
+										entry.keyToSpriteLookup[special_itr->name.GetString()].push_back(m);
 									}
 								}
 								specialNPC.modelIndexes.insert(m);
@@ -5449,7 +5538,9 @@ void MonsterData_t::loadMonsterDataJSON()
 									entry.playerModelIndexes.insert(m);
 								}
 								entry.modelIndexes.insert(m);
-								entry.iconSpritesAndPaths[m] = iconPath;
+								entry.iconSpritesAndPaths[m].iconPath = iconPath;
+								entry.iconSpritesAndPaths[m].key = entry_itr->name.GetString();
+								entry.keyToSpriteLookup[entry_itr->name.GetString()].push_back(m);
 							}
 						}
 					}

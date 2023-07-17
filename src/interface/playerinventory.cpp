@@ -27,6 +27,7 @@
 #include "../ui/Image.hpp"
 #include "../ui/Field.hpp"
 #include "../ui/Text.hpp"
+#include "../ui/Button.hpp"
 #include "../ui/MainMenu.hpp"
 #include "../mod_tools.hpp"
 #include "../book.hpp"
@@ -44,7 +45,6 @@ SDL_Surface* inventory_mode_spell_highlighted_img = NULL;
 
 bool executeItemMenuOption0ForPaperDoll(const int player, Item* item, bool droppingAndUnequipping)
 {
-	//TODO UI: VERIFY
 	if ( !item )
 	{
 		return false;
@@ -96,7 +96,6 @@ bool executeItemMenuOption0ForPaperDoll(const int player, Item* item, bool dropp
 
 bool executeItemMenuOption0ForInventoryItem(const int player, Item* item) // returns true on equip successful.
 {
-	//TODO UI: VERIFY
 	if ( !item )
 	{
 		return false;
@@ -611,82 +610,6 @@ const char* itemUseString(int player, const Item& item)
 //	}
 //	return language[332];
 //}
-
-/*-------------------------------------------------------------------------------
-
-	updateAppraisalItemBox
-
-	draws the current item being appraised
-
--------------------------------------------------------------------------------*/
-
-//TODO UI: PORT
-void updateAppraisalItemBox(const int player)
-{
-    if (players[player]->shootmode) {
-        return;
-    }
-
-    static ConsoleVariable<bool> disable("/disableappraisalbox", true);
-    if (*disable) {
-        return;
-    }
-
-	SDL_Rect pos;
-	Item* item;
-
-	int x = 0; //players[player]->inventoryUI.getStartX();
-	int y = 0; //players[player]->inventoryUI.getStartY();
-
-	Player::Inventory_t::Appraisal_t& appraisal_t = players[player]->inventoryUI.appraisal;
-
-	// appraisal item box
-	if ( (item = uidToItem(appraisal_t.current_item)) != NULL
-		&& appraisal_t.timer > 0 )
-	{
-		if ( !players[player]->shootmode )
-		{
-			pos.x = players[player]->camera_x1() + players[player]->camera_width() / 2;
-			pos.y = players[player]->camera_y1() + 16;
-		}
-		else
-		{
-			pos.x = players[player]->camera_x1() + 16;
-			pos.y = players[player]->camera_y1() + 16;
-		}
-		int w1, w2;
-		getSizeOfText(ttf12, language[340], &w1, NULL);
-		getSizeOfText(ttf12, item->getName(), &w2, NULL);
-		w2 += 48;
-		pos.w = std::max(w1, w2) + 8;
-		if ( !players[player]->shootmode )
-		{
-			pos.x -= pos.w / 2;
-		}
-		pos.h = 68;
-		drawTooltip(&pos);
-
-		char tempstr[64] = { 0 };
-		snprintf(tempstr, 63, language[341], 
-			(((double)(appraisal_t.timermax - appraisal_t.timer)) / ((double)appraisal_t.timermax)) * 100);
-		ttfPrintText( ttf12, pos.x + 8, pos.y + 8, tempstr );
-		if ( !players[player]->shootmode )
-		{
-			pos.x = players[player]->camera_x1() + players[player]->camera_width() / 2 + 8;
-			pos.x -= pos.w / 2;
-			pos.y = players[player]->camera_y1() + 16 + 24;
-		}
-		else
-		{
-			pos.x = players[player]->camera_x1() + 24;
-			pos.y = players[player]->camera_y1() + 16 + 24;
-		}
-		ttfPrintText( ttf12, pos.x + 40, pos.y + 8, item->getName() );
-		pos.w = 32;
-		pos.h = 32;
-		drawImageScaled(itemSprite(item), NULL, &pos);
-	}
-}
 
 Player::PaperDoll_t::PaperDollSlotType getPaperDollSlotFromItemType(Item& item)
 {
@@ -2633,7 +2556,6 @@ void releaseChestItem(const int player)
 	int slotFrameX = UNKNOWN_SLOT;
 	int slotFrameY = UNKNOWN_SLOT;
 
-	//TODO UI: CLEANUP COMMENTS
 	bool mouseOverSlot = getSlotFrameXYFromMousePos(player, slotFrameX, slotFrameY, itemCategory(selectedItem) == SPELL_CAT);
 	bool mouseInInventory = mouseInsidePlayerInventory(player);
 	bool mouseInChest = false;
@@ -3236,7 +3158,7 @@ void releaseChestItem(const int player)
 	}
 }
 
-void releaseItem(const int player) //TODO: This function uses toggleclick. Conflict with inventory context menu?
+void releaseItem(const int player)
 {
 	Item*& selectedItem = inputs.getUIInteraction(player)->selectedItem;
 	int& selectedItemFromHotbar = inputs.getUIInteraction(player)->selectedItemFromHotbar;
@@ -3256,7 +3178,6 @@ void releaseItem(const int player) //TODO: This function uses toggleclick. Confl
 
 	if ( Input::inputs[player].binaryToggle("MenuCancel") )
 	{
-		//TODO UI: VERIFY
 		if ( selectedItemFromChest > 0 )
 		{
 			if ( !players[player]->inventoryUI.chestGUI.bOpen )
@@ -3264,7 +3185,6 @@ void releaseItem(const int player) //TODO: This function uses toggleclick. Confl
 				if ( !players[player]->inventoryUI.warpMouseToSelectedItem(selectedItem, (Inputs::SET_CONTROLLER)) )
 				{
 					//messagePlayer(0, "[Debug]: warpMouseToSelectedItem failed");
-					// TODO UI: REMOVE DEBUG AND CLEAN UP
 				}
 				players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
 				selectedItemFromChest = 0;
@@ -3277,7 +3197,6 @@ void releaseItem(const int player) //TODO: This function uses toggleclick. Confl
 				if ( !players[player]->inventoryUI.warpMouseToSelectedChestSlot(selectedItem, (Inputs::SET_CONTROLLER)) )
 				{
 					//messagePlayer(0, "[Debug]: warpMouseToSelectedSpell failed");
-					// TODO UI: REMOVE DEBUG AND CLEAN UP
 				}
 				players[player]->GUI.activateModule(Player::GUI_t::MODULE_CHEST);
 				selectedItemFromHotbar = -1;
@@ -3307,7 +3226,6 @@ void releaseItem(const int player) //TODO: This function uses toggleclick. Confl
 				if ( !players[player]->inventoryUI.warpMouseToSelectedSpell(selectedItem, (Inputs::SET_CONTROLLER)) )
 				{
 					//messagePlayer(0, "[Debug]: warpMouseToSelectedSpell failed");
-					// TODO UI: REMOVE DEBUG AND CLEAN UP
 				}
 				players[player]->GUI.activateModule(Player::GUI_t::MODULE_SPELLS);
 			}
@@ -3316,7 +3234,6 @@ void releaseItem(const int player) //TODO: This function uses toggleclick. Confl
 				if ( !players[player]->inventoryUI.warpMouseToSelectedItem(selectedItem, (Inputs::SET_CONTROLLER)) )
 				{
 					//messagePlayer(0, "[Debug]: warpMouseToSelectedInventorySlot failed");
-					// TODO UI: REMOVE DEBUG AND CLEAN UP
 				}
 				players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
 			}
@@ -3325,10 +3242,10 @@ void releaseItem(const int player) //TODO: This function uses toggleclick. Confl
 		selectedItemFromChest = 0;
 		selectedItem = nullptr;
 		Input::inputs[player].consumeBinaryToggle("MenuCancel");
+		Player::soundCancel();
 		return;
 	}
 
-	//TODO: Do proper refactoring.
 	if ( selectedItem && itemCategory(selectedItem) == SPELL_CAT && selectedItem->appearance >= 1000 )
 	{
 		if ( canUseShapeshiftSpellInCurrentForm(player, *selectedItem) == 0 )
@@ -4297,18 +4214,17 @@ bool mouseInBoundsRealtimeCoords(int player, int x1, int x2, int y1, int y2)
 	return false;
 }
 
-//TODO UI: VERIFY BLUE BORDER FOR PAPERDOLL
-void drawBlueInventoryBorder(const int player, const Item& item, int x, int y)
-{
-	SDL_Rect pos;
-	pos.x = x + item.x * players[player]->inventoryUI.getSlotSize() + 2;
-	pos.y = y + item.y * players[player]->inventoryUI.getSlotSize() + 1;
-	pos.w = players[player]->inventoryUI.getSlotSize();
-	pos.h = players[player]->inventoryUI.getSlotSize();
-
-	Uint32 color = makeColor( 0, 0, 255, 127);
-	drawBox(&pos, color, 127);
-}
+//void drawBlueInventoryBorder(const int player, const Item& item, int x, int y)
+//{
+//	SDL_Rect pos;
+//	pos.x = x + item.x * players[player]->inventoryUI.getSlotSize() + 2;
+//	pos.y = y + item.y * players[player]->inventoryUI.getSlotSize() + 1;
+//	pos.w = players[player]->inventoryUI.getSlotSize();
+//	pos.h = players[player]->inventoryUI.getSlotSize();
+//
+//	Uint32 color = makeColor( 0, 0, 255, 127);
+//	drawBox(&pos, color, 127);
+//}
 
 std::string getBindingNameForMissingTooltipPrompts(int index)
 {
@@ -4404,6 +4320,9 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
     {
         return;
     }
+
+	players[player]->inventoryUI.miscTooltipOpacitySetpoint = 0;
+	players[player]->inventoryUI.miscTooltipOpacityAnimate = 0.0;
     
     auto& tooltipDisplayedSettings = this->player.inventoryUI.itemTooltipDisplay;
     
@@ -6057,7 +5976,14 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
             }
             else
             {
-                snprintf(valueBuf, sizeof(valueBuf), "%d", item->sellValue(player));
+				if ( !item->identified && itemCategory(item) == GEM )
+				{
+					snprintf(valueBuf, sizeof(valueBuf), "%d", items[GEM_GLASS].value);
+				}
+				else
+				{
+					snprintf(valueBuf, sizeof(valueBuf), "%d", items[item->type].value);
+				}
                 txtGoldValue->setText(valueBuf);
             }
             txtGoldValue->setDisabled(false);
@@ -7183,9 +7109,12 @@ void Player::Inventory_t::resizeAndPositionInventoryElements()
 	}
 
 	if ( bCompactView 
-		&& player.bUseCompactGUIWidth() 
+		&& (player.bUseCompactGUIWidth() 
 		&& (player.GUI.activeModule == Player::GUI_t::MODULE_HOTBAR
-			|| player.GUI.activeModule == Player::GUI_t::MODULE_SHOP) )
+			|| player.GUI.activeModule == Player::GUI_t::MODULE_SHOP))
+		|| (player.bUseCompactGUIHeight()
+			&& (player.GUI.activeModule == Player::GUI_t::MODULE_STATUS_EFFECTS
+				|| player.hud.statusFxFocusedWindowActive)) )
 	{
 		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiff = fpsScale * std::max(.1, (1.0 - slideOutPercent)) / 2.0;
@@ -7383,6 +7312,25 @@ bool Player::Inventory_t::guiAllowDropItems() const
 	return false;
 }
 
+bool Player::Inventory_t::paperDollContextMenuActive()
+{
+	bool inventoryControlActive = player.bControlEnabled
+		&& !gamePaused
+		&& !player.usingCommand();
+	return inventoryControlActive 
+		&& !player.shootmode
+		&& !inputs.getUIInteraction(player.playernum)->selectedItem
+		&& !(player.GUI.isDropdownActive() && player.GUI.dropdownMenu.currentName.find("paper_doll") == std::string::npos)
+		&& player.inventory_mode == INVENTORY_MODE_ITEM
+		&& animPaperDollHide <= 0.001
+		&& isInteractable
+		&& slideOutPercent <= 0.001
+		&& player.GUI.activeModule != Player::GUI_t::MODULE_PORTRAIT
+		&& (inputs.getVirtualMouse(player.playernum)->draw_cursor
+			|| (!inputs.getVirtualMouse(player.playernum)->draw_cursor 
+				&& (player.GUI.activeModule == Player::GUI_t::MODULE_INVENTORY) ));
+}
+
 bool blitInventorySlotFramesToSurf = false;
 void Player::Inventory_t::updateInventory()
 {
@@ -7482,6 +7430,10 @@ void Player::Inventory_t::updateInventory()
 				//warpMouseToSelectedItem(nullptr, (Inputs::SET_CONTROLLER));
 			}
 		}
+		if ( !isInteractable )
+		{
+			tooltipDelayTick = ticks + 4;
+		}
 		isInteractable = true;
 	}
 	else
@@ -7554,72 +7506,222 @@ void Player::Inventory_t::updateInventory()
 			// do nothing?
 		}
 		else if ( inventoryControlActive
-			&& GenericGUI[player].selectedSlot < 0
 			&& players[player]->GUI.handleInventoryMovement() ) // handleInventoryMovement should be at the end of this check
 		{
-			if ( GenericGUI[player].selectedSlot < 0 ) //This second check prevents the extra mouse warp.
-			{
-				if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY )
-				{
-					warpMouseToSelectedItem(nullptr, (Inputs::SET_CONTROLLER));
-				}
-				else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_SPELLS )
-				{
-					warpMouseToSelectedSpell(nullptr, (Inputs::SET_CONTROLLER));
-				}
-				else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_CHEST )
-				{
-					warpMouseToSelectedChestSlot(nullptr, (Inputs::SET_CONTROLLER));
-				}
-				else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_SHOP )
-				{
-					players[player]->shopGUI.warpMouseToSelectedShopItem(nullptr, (Inputs::SET_CONTROLLER));
-				}
-				else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_TINKERING )
-				{
-					tinkerGUI.warpMouseToSelectedTinkerItem(nullptr, (Inputs::SET_CONTROLLER));
-				}
-				else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ALCHEMY )
-				{
-					alchemyGUI.warpMouseToSelectedAlchemyItem(nullptr, (Inputs::SET_CONTROLLER));
-				}
-				else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_FEATHER )
-				{
-					featherGUI.warpMouseToSelectedFeatherItem(nullptr, (Inputs::SET_CONTROLLER));
-				}
-				else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_HOTBAR )
-				{
-					disableMouseDisablingHotbarFocus = true;
-				}
-			}
-		}
-		else if ( GenericGUI[player].selectedSlot >= 0 && inventoryControlActive && inputs.getController(player)->handleRepairGUIMovement(player) )
-		{
-			if ( GenericGUI[player].selectedSlot < 0 )
+			if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY )
 			{
 				warpMouseToSelectedItem(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_SPELLS )
+			{
+				warpMouseToSelectedSpell(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_CHEST )
+			{
+				warpMouseToSelectedChestSlot(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_SHOP )
+			{
+				players[player]->shopGUI.warpMouseToSelectedShopItem(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_TINKERING )
+			{
+				tinkerGUI.warpMouseToSelectedTinkerItem(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ALCHEMY )
+			{
+				alchemyGUI.warpMouseToSelectedAlchemyItem(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_FEATHER )
+			{
+				featherGUI.warpMouseToSelectedFeatherItem(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_HOTBAR )
+			{
+				disableMouseDisablingHotbarFocus = true;
 			}
 		}
 	}
 
 	Input& input = Input::inputs[player];
+	auto selectedSlotFrame = playerInventoryFrames[player].selectedSlotFrame;
+	auto selectedSlotCursor = selectedItemCursorFrame;
 
-	if ( inventoryControlActive && input.consumeBinaryToggle("Autosort Inventory"))
 	{
-		autosortInventory(player);
-		//quickStackItems();
-		//*inputPressedForPlayer(player, impulses[IN_AUTOSORT]) = 0;
-		inputs.controllerClearInput(player, INJOY_MENU_CHEST_GRAB_ALL);
-		playSound(139, 64);
+		auto autosortFrame = frame->findFrame("autosort frame");
+		auto autosortBtn = autosortFrame->findButton("autosort button");
+		auto autosortGlyph = autosortFrame->findImage("autosort glyph");
+		autosortGlyph->disabled = true;
+
+		SDL_Rect autosortFrameSize = autosortFrame->getSize();
+		SDL_Rect portraitSize = playerInventoryFrames[player].characterPreview->getSize();
+		static ConsoleVariable<int> cvar_autosortBtnX("/autosort_button_x", 0);
+		static ConsoleVariable<int> cvar_autosortBtnY("/autosort_button_y", 0);
+		autosortFrameSize.x = portraitSize.x + 2 + *cvar_autosortBtnX;
+		autosortFrameSize.y = portraitSize.y + 2 + *cvar_autosortBtnY;
+		autosortFrame->setSize(autosortFrameSize);
+
+		autosortBtn->setDisabled(!paperDollContextMenuActive());
+		autosortBtn->setInvisible(false);
+
+		if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_PORTRAIT )
+		{
+			autosortBtn->setInvisible(true);
+			if ( inputs.hasController(player) && !inputs.getVirtualMouse(player)->draw_cursor )
+			{
+				if ( ticks % TICKS_PER_SECOND < TICKS_PER_SECOND / 2 )
+				{
+					autosortGlyph->path = input.getGlyphPathForBinding("InventoryCharacterRotateLeft", false);
+				}
+				else
+				{
+					autosortGlyph->path = input.getGlyphPathForBinding("InventoryCharacterRotateRight", false);
+				}
+			}
+			else
+			{
+				if ( ticks % TICKS_PER_SECOND < TICKS_PER_SECOND / 2 )
+				{
+					autosortGlyph->path = input.getGlyphPathForBinding("InventoryCharacterRotateLeftMouse", false);
+				}
+				else
+				{
+					autosortGlyph->path = input.getGlyphPathForBinding("InventoryCharacterRotateRightMouse", false);
+				}
+			}
+			if ( auto imgGet = Image::get(autosortGlyph->path.c_str()) )
+			{
+				autosortGlyph->disabled = false;
+				autosortGlyph->color = makeColor(255, 255, 255, 255);
+				autosortGlyph->pos.w = imgGet->getWidth();
+				autosortGlyph->pos.h = imgGet->getHeight();
+				autosortGlyph->pos.x = autosortBtn->getSize().x + autosortBtn->getSize().w / 2 - autosortGlyph->pos.w / 2;
+				autosortGlyph->pos.y = autosortBtn->getSize().y;
+			}
+		}
+		else if ( !inputs.getVirtualMouse(player)->draw_cursor )
+		{
+			autosortBtn->setBackground("*#images/ui/Inventory/HUD_Button_AutosortGamepad.png");
+			autosortBtn->setSize(SDL_Rect{ autosortFrameSize.w - 42, autosortFrameSize.h - 42, 42, 38 });
+
+			autosortGlyph->path = input.getGlyphPathForBinding("PaperDollContextMenu", true);
+			if ( auto imgGet = Image::get(autosortGlyph->path.c_str()) )
+			{
+				autosortGlyph->disabled = false;
+				autosortGlyph->color = makeColor(255, 255, 255, 255);
+				if ( autosortBtn->isDisabled() )
+				{
+					autosortGlyph->color = makeColor(255, 255, 255, 128);
+				}
+				autosortGlyph->pos.w = imgGet->getWidth();
+				autosortGlyph->pos.h = imgGet->getHeight();
+				autosortGlyph->pos.x = autosortBtn->getSize().x + 4;
+				autosortGlyph->pos.y = autosortBtn->getSize().y;
+			}
+		}
+		else
+		{
+			autosortBtn->setBackground("*#images/ui/Inventory/HUD_Button_AutosortUnselect.png");
+			autosortBtn->setSize(SDL_Rect{ autosortFrameSize.w - 42, autosortFrameSize.h - 42, 42, 38 });
+		}
+
+		if ( paperDollContextMenuActive() )
+		{
+			bool keyboardInputPressed = (Input::inputs[player].binaryToggle("MenuRightClick") && inputs.bPlayerUsingKeyboardControl(player));
+			if ( keyboardInputPressed && autosortBtn->isSelected() && autosortBtn->isHighlighted() )
+			{
+				if ( /*players[player]->bUseCompactGUIHeight()*/true )
+				{
+					players[player]->GUI.dropdownMenu.open("paper_doll");
+					players[player]->GUI.dropdownMenu.dropDownToggleClick = false;
+					players[player]->GUI.dropdownMenu.dropDownY = std::max(players[player]->GUI.dropdownMenu.dropDownY, 
+						players[player]->camera_virtualy1());
+				}
+			}
+			else if ( input.consumeBinaryToggle("PaperDollContextMenu") )
+			{
+				players[player]->GUI.dropdownMenu.open("paper_doll");
+				players[player]->GUI.dropdownMenu.dropDownToggleClick = !keyboardInputPressed;
+				SDL_Rect dropdownPos = players[player]->inventoryUI.frame->findFrame("inventory character preview")->getSize();
+				dropdownPos.y += dropdownPos.h;
+				if ( auto interactMenuTop = players[player]->GUI.dropdownMenu.dropdownFrame->findImage("interact top background") )
+				{
+					// 10px is slot half height, move by 1.5 slots, minus the top interact text height
+					dropdownPos.y -= (interactMenuTop->pos.h + (3 * 10) + 4);
+				}
+				if ( players[player]->GUI.dropdownMenu.getDropDownAlignRight("paper_doll") )
+				{
+					players[player]->GUI.dropdownMenu.dropDownX = dropdownPos.x + dropdownPos.w;
+				}
+				else
+				{
+					players[player]->GUI.dropdownMenu.dropDownX = dropdownPos.x;
+				}
+				players[player]->GUI.dropdownMenu.dropDownX += players[player]->camera_virtualx1();
+				players[player]->GUI.dropdownMenu.dropDownY = dropdownPos.y + players[player]->camera_virtualy1();
+			}
+			if ( input.consumeBinaryToggle("Autosort Inventory") && input.input("Autosort Inventory").isBindingUsingKeyboard() )
+			{
+				autosortInventory(player);
+				//quickStackItems();
+				Player::soundActivate();
+			}
+		}
+
+		if ( (inventoryControlActive && inputs.getVirtualMouse(player)->draw_cursor
+			&& players[player]->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_INVENTORY)
+			&& autosortBtn->isHighlighted())
+			|| (players[player]->GUI.isDropdownActive()
+				&& players[player]->GUI.dropdownMenu.currentName == "paper_doll") )
+		{
+			if ( inputs.getVirtualMouse(player)->draw_cursor )
+			{
+				players[player]->GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_INVENTORY);
+				if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_INVENTORY )
+				{
+					players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+				}
+			}
+			SDL_Rect pos = autosortBtn->getAbsoluteSize();
+			// make sure to adjust absolute size to camera viewport
+			pos.x -= players[player]->camera_virtualx1();
+			pos.y -= players[player]->camera_virtualy1();
+
+			//selectedSlotCursor->setDisabled(false);
+			//updateSelectedSlotAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player)->draw_cursor);
+
+			players[player]->hud.setCursorDisabled(false);
+			players[player]->hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h,
+				true);
+			//else if ( playerInventoryFrames[player].characterPreview->capturesMouse()
+			//	&& players[player]->GUI.hoveringOverModuleButton() == Player::GUI_t::MODULE_NONE )
+			//{
+			//	if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_PORTRAIT )
+			//	{
+			//		SDL_Rect size = playerInventoryFrames[player].characterPreview->getAbsoluteSize();
+			//		players[player]->GUI.activateModule(Player::GUI_t::MODULE_PORTRAIT);
+
+			//		// make sure to adjust absolute size to camera viewport
+			//		const int offsetX = 4;
+			//		const int offsetY = 6;
+			//		size.x += offsetX;
+			//		size.y += offsetY;
+			//		size.w -= offsetX * 2;
+			//		size.h -= offsetY * 2;
+			//		size.x -= players[player]->camera_virtualx1();
+			//		size.y -= players[player]->camera_virtualy1();
+
+			//		players[player]->hud.updateCursorAnimation(size.x - 1, size.y - 1,
+			//			size.w, size.h, inputs.getVirtualMouse(player)->draw_cursor);
+			//	}
+			//}
+		}
 	}
 	//DebugStats.gui7 = std::chrono::high_resolution_clock::now();
 	resetInventorySlotFrames(player);
 
 	auto invSlotsFrame = playerInventoryFrames[player].invSlotsFrame;
 	auto dollSlotsFrame = playerInventoryFrames[player].dollSlotsFrame;
-
-	auto selectedSlotFrame = playerInventoryFrames[player].selectedSlotFrame;
-	auto selectedSlotCursor = selectedItemCursorFrame;
 
 	bool tinkerCraftableListOpen = tinkerGUI.isConstructMenuActive();
 	bool tinkeringSalvageOrRepairMenuActive = tinkerGUI.isSalvageOrRepairMenuActive();
@@ -7944,9 +8046,11 @@ void Player::Inventory_t::updateInventory()
 		bool highlighted = false;
 		if ( slotFrameToHighlight )
 		{
-			if ( (players[player]->GUI.isDropdownActive() && !itemMenuFromHotbar) || // if item menu open, then always draw cursor on current item.
+			bool paperDollMenuOpen = players[player]->GUI.dropdownMenu.currentName == "paper_doll";
+			if ( (players[player]->GUI.isDropdownActive() && !paperDollMenuOpen && !itemMenuFromHotbar) || // if item menu open, then always draw cursor on current item.
 				(!selectedItem	// otherwise, if no selected item, and mouse hovering over item
 					&& !(players[player]->GUI.isDropdownActive() && itemMenuFromHotbar)
+					&& !paperDollMenuOpen
 					&& (!inputs.getVirtualMouse(player)->draw_cursor
 						|| (inputs.getVirtualMouse(player)->draw_cursor && slotFrameToHighlight->capturesMouse()))) )
 			{
@@ -9478,7 +9582,7 @@ void Player::Inventory_t::updateInventory()
 				else if ( Input::inputs[player].binaryToggle("MenuRightClick") && inputs.bPlayerUsingKeyboardControl(player)
 					&& inventoryControlActive && !selectedItem )
 				{
-					if ( keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT] ) //TODO: selected shop slot, identify, remove curse?
+					if ( keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT] )
 					{
 						if ( guiAllowDefaultRightClick() )
 						{
@@ -9594,65 +9698,65 @@ void Player::Inventory_t::updateInventory()
 					&& inputs.bPlayerUsingKeyboardControl(player) )
 				{
 					int slotNum = -1;
-					if ( Input::inputs[player].binaryToggle("HotbarSlot1") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 1") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot1");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 1");
 						hotbar[0].item = item->uid;
 						slotNum = 0;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot2") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 2") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot2");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 2");
 						hotbar[1].item = item->uid;
 						slotNum = 1;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot3") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 3") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot3");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 3");
 						hotbar[2].item = item->uid;
 						slotNum = 2;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot4") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 4") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot4");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 4");
 						hotbar[3].item = item->uid;
 						slotNum = 3;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot5") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 5") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot5");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 5");
 						hotbar[4].item = item->uid;
 						slotNum = 4;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot6") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 6") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot6");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 6");
 						hotbar[5].item = item->uid;
 						slotNum = 5;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot7") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 7") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot7");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 7");
 						hotbar[6].item = item->uid;
 						slotNum = 6;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot8") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 8") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot8");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 8");
 						hotbar[7].item = item->uid;
 						slotNum = 7;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot9") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 9") )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot9");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 9");
 						hotbar[8].item = item->uid;
 						slotNum = 8;
 					}
-					if ( Input::inputs[player].binaryToggle("HotbarSlot10") 
+					if ( Input::inputs[player].binaryToggle("Hotbar Slot 10") 
 						&& this->player.hotbar.getHotbarSlotFrame(9)
 						&& !this->player.hotbar.getHotbarSlotFrame(9)->isDisabled() )
 					{
-						Input::inputs[player].consumeBinaryToggle("HotbarSlot10");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Slot 10");
 						hotbar[9].item = item->uid;
 						slotNum = 9;
 					}
@@ -10131,6 +10235,7 @@ std::string getContextMenuOptionBindingName(const int player, const ItemContextM
 			return "MenuAlt1";
 		case PROMPT_TINKER:
 		case PROMPT_INTERACT:
+		case PROMPT_INTERACT_SPELLBOOK_HOTBAR:
 		case PROMPT_EAT:
 		case PROMPT_SPELL_QUICKCAST:
 		case PROMPT_CONSUME:
@@ -10166,6 +10271,7 @@ const char* getContextMenuLangEntry(const int player, const ItemContextMenuPromp
 		case PROMPT_SPELL_EQUIP:
 			return itemEquipString(player, item);
 		case PROMPT_INTERACT:
+		case PROMPT_INTERACT_SPELLBOOK_HOTBAR:
 		case PROMPT_EAT:
 			return itemUseString(player, item);
 		case PROMPT_SPELL_QUICKCAST:
@@ -10410,7 +10516,9 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 		{
 			learnedSpell = true; // equipped spellbook will unequip on use.
 		}
-		else if ( stats[player] && stats[player]->type == GOBLIN )
+		else if ( stats[player] 
+			&& (stats[player]->type == GOBLIN
+				|| (stats[player]->playerRace == RACE_GOBLIN && stats[player]->appearance == 0)) )
 		{
 			// goblinos can't learn spells but always equip books.
 			learnedSpell = true; 
@@ -11314,13 +11422,6 @@ bool mouseInsidePlayerInventory(const int player)
 		}
 	}
 	return false;
-	// TODO UI: CLEAN UP / VERIFY
-	//SDL_Rect pos;
-	//pos.x = players[player]->inventoryUI.getStartX();
-	//pos.y = players[player]->inventoryUI.getStartY();
-	//pos.w = players[player]->inventoryUI.getSizeX() * players[player]->inventoryUI.getSlotSize();
-	//pos.h = players[player]->inventoryUI.getSizeY() * players[player]->inventoryUI.getSlotSize();
-	//return mouseInBounds(player, pos.x, pos.x + pos.w, pos.y, pos.y + pos.h);
 }
 
 bool mouseInsidePlayerHotbar(const int player)
@@ -11340,13 +11441,6 @@ bool mouseInsidePlayerHotbar(const int player)
 		}
 	}
 	return false;
-	// TODO UI: CLEAN UP / VERIFY
-	//SDL_Rect pos;
-	//pos.x = players[player]->hotbar.getStartX();
-	//pos.y = players[player]->statusBarUI.getStartY() - hotbar_img->h * uiscale_hotbar;
-	//pos.w = NUM_HOTBAR_SLOTS * hotbar_img->w * uiscale_hotbar;
-	//pos.h = hotbar_img->h * uiscale_hotbar;
-	//return mouseInBounds(player, pos.x, pos.x + pos.w, pos.y, pos.y + pos.h);
 }
 
 bool playerLearnedSpellbook(int player, Item* current_item)
