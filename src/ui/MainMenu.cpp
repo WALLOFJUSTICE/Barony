@@ -26,6 +26,9 @@
 
 #include <cassert>
 #include <functional>
+#ifdef STEAMWORKS
+#include <nfd.h>
+#endif
 
 // quick restart:
 
@@ -63,11 +66,9 @@ namespace MainMenu {
     ConsoleVariable<bool> clipped_splitscreen("/split_clipped", true);
     static ConsoleVariable<int> clipped_size("/split_clipped_percent", 20);
     ConsoleVariable<bool> cvar_fastRestart("/fastrestart", false, "if true, game restarts 1 second after last player death");
-	ConsoleVariable<bool> cvar_mkb_world_tooltips("/mkb_world_tooltips", true);
-	ConsoleVariable<bool> cvar_mkb_facehotbar("/mkb_facehotbar", false);
-	ConsoleVariable<bool> cvar_gamepad_facehotbar("/gamepad_facehotbar", true);
 	ConsoleVariable<float> cvar_worldtooltip_scale("/worldtooltip_scale", 100.0);
 	ConsoleVariable<float> cvar_worldtooltip_scale_splitscreen("/worldtooltip_scale_splitscreen", 150.0);
+	ConsoleVariable<bool> cvar_hold_to_activate("/hold_to_activate", true);
 	ConsoleVariable<float> cvar_enemybar_scale("/enemybar_scale", 100.0);
     ConsoleVariable<int> cvar_desiredFps("/desiredfps", AUTO_FPS);
     ConsoleVariable<int> cvar_displayHz("/displayhz", 0);
@@ -136,7 +137,7 @@ namespace MainMenu {
 #endif
                 {"Interact Tooltip Prev", emptyBinding, emptyBinding, emptyBinding },
                 {"Expand Inventory Tooltip", "X", hiddenBinding, emptyBinding },
-                {"Quick Turn", emptyBinding, "ButtonLeftStick", emptyBinding },
+                {"Quick Turn", emptyBinding, "ButtonRightBumper", emptyBinding },
                 {"Chat", "Return", hiddenBinding, emptyBinding},
                 {"Move Forward", "W", hiddenBinding, emptyBinding},
                 {"Move Left", "A", hiddenBinding, emptyBinding},
@@ -191,7 +192,7 @@ namespace MainMenu {
 #ifdef NINTENDO
                 {"Interact Tooltip Next", "R", "ButtonB", emptyBinding },
 #else
-                {"Interact Tooltip Next", "R", "ButtonA", emptyBinding },
+                {"Interact Tooltip Next", "R", "DpadY+", emptyBinding },
 #endif
                 {"Interact Tooltip Prev", emptyBinding, emptyBinding, emptyBinding },
                 {"Expand Inventory Tooltip", "X", hiddenBinding, emptyBinding },
@@ -278,7 +279,11 @@ namespace MainMenu {
             {
                 {"Attack", "Mouse1", "RightTrigger", emptyBinding},
                 {"Use", "Mouse3", "ButtonA", emptyBinding},
-                {"Cast Spell", "F", "ButtonX", emptyBinding},
+#ifdef NINTENDO
+                {"Cast Spell", "F", "ButtonY", emptyBinding},
+#else
+				{"Cast Spell", "F", "ButtonX", emptyBinding},
+#endif
                 {"Defend", "Space", "LeftTrigger", emptyBinding},
                 {"Sneak", "Space", "LeftTrigger", emptyBinding},
                 {"Character Status", "Tab", "ButtonBack", emptyBinding},
@@ -286,9 +291,9 @@ namespace MainMenu {
                 {"Spell List", "B", hiddenBinding, emptyBinding},
                 {"Skill Sheet", "K", hiddenBinding, emptyBinding},
                 {"Autosort Inventory", "R", hiddenBinding, emptyBinding},
-                {"Command NPC", "Q", "DpadX-", emptyBinding},
-                {"Show NPC Commands", "C", "DpadX+", emptyBinding},
-                {"Cycle NPCs", "E", "DpadY-", emptyBinding},
+                {"Command NPC", "Q", emptyBinding, emptyBinding},
+                {"Show NPC Commands", "C", emptyBinding, emptyBinding},
+                {"Cycle NPCs", "E", emptyBinding, emptyBinding},
                 {"Open Map", "M", hiddenBinding, emptyBinding},
                 {"Open Log", "L", hiddenBinding, emptyBinding},
                 {"Toggle Minimap", "`", emptyBinding, emptyBinding},
@@ -517,78 +522,86 @@ namespace MainMenu {
 	};
 	static struct Video old_video;
 
+    // Controls options
+    struct Controls {
+        bool numkeys_in_inventory_enabled = true;
+        bool mkb_world_tooltips_enabled = true;
+        bool gamepad_facehotbar = true;
+        float mouse_sensitivity = 32.f;
+        bool reverse_mouse_enabled = false;
+        bool smooth_mouse_enabled = false;
+        float turn_sensitivity_x = 75.f;
+        float turn_sensitivity_y = 50.f;
+        bool gamepad_camera_invert_x = false;
+        bool gamepad_camera_invert_y = false;
+        inline void save(int index);
+        static inline Controls load(int index);
+        static inline Controls reset();
+        bool serialize(FileInterface*);
+    };
+
     // All menu options combined
 	struct AllSettings {
-	    std::vector<std::pair<std::string, std::string>> mods;
-	    bool crossplay_enabled;
+	    std::vector<std::pair<std::string, std::string>> mods = Mods::mountedFilepathsSaved;
+	    bool crossplay_enabled = LobbyHandler.crossplayEnabled;
 	    bool fast_restart = false;
 		float world_tooltip_scale = 100.f;
 		float world_tooltip_scale_splitscreen = 150.f;
 		float enemybar_scale = 100.f;
-		bool add_items_to_hotbar_enabled;
+		bool add_items_to_hotbar_enabled = true;
 		InventorySorting inventory_sorting;
 		LastCreatedCharacter lastCharacter;
-		bool use_on_release_enabled;
+		bool use_on_release_enabled = true;
         bool ui_filter_enabled = false;
         float ui_scale = 100.f;
 		Minimap minimap;
-		bool show_messages_enabled;
+		bool show_messages_enabled = true;
 		Messages show_messages;
-		bool show_player_nametags_enabled;
-		bool show_hud_enabled;
-		bool show_ip_address_enabled;
-		bool content_control_enabled;
-		bool colorblind_mode_enabled;
-		bool arachnophobia_filter_enabled;
-		bool shaking_enabled;
-		bool bobbing_enabled;
-		bool light_flicker_enabled;
+		bool show_player_nametags_enabled = true;
+		bool show_hud_enabled = true;
+		bool show_ip_address_enabled = true;
+		bool content_control_enabled = false;
+		bool colorblind_mode_enabled = false;
+		bool arachnophobia_filter_enabled = false;
+		bool shaking_enabled = true;
+		bool bobbing_enabled = true;
+		bool light_flicker_enabled = true;
+		bool hold_to_activate_enabled = true;
         struct Video video;
 		bool use_frame_interpolation = true;
-		bool vertical_split_enabled;
-		bool staggered_split_enabled;
-		bool clipped_split_enabled;
+		bool vertical_split_enabled = false;
+		bool staggered_split_enabled = false;
+		bool clipped_split_enabled = false;
 		float item_tooltip_height = 100.f;
 		int shootmode_crosshair = 0;
 		int shootmode_crosshair_opacity = 50;
 		bool hdr_enabled = true;
-		float fov;
-		float fps;
-		std::string audio_device;
-		float master_volume;
-		float gameplay_volume;
-		float ambient_volume;
-		float environment_volume;
-		float notification_volume;
-		float music_volume;
-		bool minimap_pings_enabled;
-		bool player_monster_sounds_enabled;
-		bool out_of_focus_audio_enabled;
-		Bindings bindings;
-		bool numkeys_in_inventory_enabled;
-		bool mkb_world_tooltips_enabled = true;
-		bool mkb_facehotbar = false;
-		bool gamepad_facehotbar = true;
-		float mouse_sensitivity;
-		bool reverse_mouse_enabled;
-		bool smooth_mouse_enabled;
-		bool rotation_speed_limit_enabled;
-		float turn_sensitivity_x;
-		float turn_sensitivity_y;
-		bool gamepad_camera_invert_x;
-		bool gamepad_camera_invert_y;
-		bool classic_mode_enabled;
-		bool hardcore_mode_enabled;
-		bool friendly_fire_enabled;
-		bool keep_inventory_enabled;
-		bool hunger_enabled;
-		bool minotaur_enabled;
-		bool random_traps_enabled;
-		bool extra_life_enabled;
-		bool cheats_enabled;
-		bool skipintro;
-		int port_number;
-		bool show_lobby_code = false;
+		float fov = 60.f;
+		float fps = AUTO_FPS;
+		std::string audio_device = "";
+		float master_volume = 100.f;
+		float gameplay_volume = 100.f;
+		float ambient_volume = 100.f;
+		float environment_volume = 100.f;
+		float notification_volume = 100.f;
+		float music_volume = 100.f;
+		bool minimap_pings_enabled = true;
+		bool player_monster_sounds_enabled = true;
+		bool out_of_focus_audio_enabled = true;
+        Bindings bindings = Bindings::reset(defaultControlLayout);
+        Controls controls[MAX_SPLITSCREEN];
+		bool classic_mode_enabled = false;
+		bool hardcore_mode_enabled = false;
+		bool friendly_fire_enabled = true;
+		bool keep_inventory_enabled = false;
+		bool hunger_enabled = true;
+		bool minotaur_enabled = true;
+		bool random_traps_enabled = true;
+		bool extra_life_enabled = false;
+		bool cheats_enabled = false;
+		bool skipintro = true;
+		int port_number = DEFAULT_PORT;
+		bool show_lobby_code = true;
 		std::vector<int> lobby_filter_settings;
 		inline int save(); // non-zero if video needs restart
 		static inline AllSettings load(bool video);
@@ -624,11 +637,52 @@ namespace MainMenu {
 		playSound(492, 48);
 	}
 
+	static const int SETTING_MODIFIED = 1;
+	static inline void soundToggleSetting(Button& button) {
+		if ( auto parent = button.getParent() )
+		{
+			if ( auto window = parent->getParent() )
+			{
+				window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+			}
+		}
+		playSound(492, 48);
+	}
+
 	static inline void soundCheckmark() {
 		playSound(494, 48);
 	}
 
+	static inline void soundCheckmarkSetting(Button& button) {
+		if ( auto parent = button.getParent() )
+		{
+			if ( auto window = parent->getParent() )
+			{
+				window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+			}
+		}
+		playSound(494, 48);
+	}
+
 	static inline void soundSlider(bool deafen_unless_gamepad = false) {
+		if ( inputs.getVirtualMouse(getMenuOwner())->draw_cursor && deafen_unless_gamepad ) {
+			return;
+		}
+		static Uint32 timeSinceLastTick = 0;
+		if ( main_menu_ticks - timeSinceLastTick >= fpsLimit / 10 ) {
+			timeSinceLastTick = main_menu_ticks;
+			playSound(497, 48);
+		}
+	}
+
+	static inline void soundSliderSetting(Slider& slider, bool deafen_unless_gamepad = false) {
+		if ( auto parent = slider.getParent() )
+		{
+			if ( auto window = parent->getParent() )
+			{
+				window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+			}
+		}
 	    if (inputs.getVirtualMouse(getMenuOwner())->draw_cursor && deafen_unless_gamepad) {
 	        return;
 	    }
@@ -1622,23 +1676,24 @@ namespace MainMenu {
 	static Frame* monoPromptGeneric(
 	    const char* window_text,
 	    const char* okay_text,
-	    void (*okay_callback)(Button&)
+	    void (*okay_callback)(Button&),
+		bool issmall = true
 	) {
 		soundActivate();
 
-	    Frame* frame = createPrompt("mono_prompt");
+	    Frame* frame = createPrompt("mono_prompt", issmall);
 	    if (!frame) {
 	        return nullptr;
 	    }
 
-		auto text = frame->addField("text", 128);
-		text->setSize(SDL_Rect{30, 28, 304, 46});
+		auto text = frame->addField("text", issmall ? 128 : 1024);
+		text->setSize(SDL_Rect{30, 28, frame->getSize().w - 60, issmall ? 46 : 134});
 		text->setFont(smallfont_no_outline);
 		text->setText(window_text);
 		text->setJustify(Field::justify_t::CENTER);
 
 		auto okay = frame->addButton("okay");
-		okay->setSize(SDL_Rect{(frame->getActualSize().w - 108) / 2, 78, 108, 52});
+		okay->setSize(SDL_Rect{(frame->getActualSize().w - 108) / 2, frame->getSize().h - 98, 108, 52});
 		okay->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
 		okay->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
 		okay->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
@@ -1680,6 +1735,15 @@ namespace MainMenu {
 	) {
 		soundActivate();
 		return monoPromptGeneric(window_text, okay_text, okay_callback);
+	}
+
+	static Frame* monoPromptXL(
+		const char* window_text,
+		const char* okay_text,
+		void (*okay_callback)(Button&)
+	) {
+		soundActivate();
+		return monoPromptGeneric(window_text, okay_text, okay_callback, false);
 	}
 
 	static void closeMono() {
@@ -2302,11 +2366,17 @@ namespace MainMenu {
 				input.consumeBinaryToggle(b.first.c_str());
 			}
 		}
-		old_bindings = *this;
 	}
 
 	inline Bindings Bindings::load() {
-		return old_bindings;
+        Bindings bindings;
+        for (int c = 0; c < MAX_SPLITSCREEN; ++c) {
+            Input& input = Input::inputs[c];
+            bindings.kb_mouse_bindings[c] = input.getKeyboardBindings();
+            bindings.gamepad_bindings[c] = input.getGamepadBindings();
+            bindings.joystick_bindings[c] = input.getJoystickBindings();
+        }
+        return bindings;
 	}
 
 	inline Bindings Bindings::reset(const char* profile) {
@@ -2548,13 +2618,75 @@ namespace MainMenu {
 		return true;
 	}
 
+    /******************************************************************************/
+
+    // rebinding state
+    static Button* bound_button;
+    static std::string bound_binding;
+    static std::string bound_input;
+    static int bound_player;
+    static int bound_device;
+    static const char* bound_profile;
+
+    inline void Controls::save(int index) {
+        assert(index >= 0 && index < MAXPLAYERS);
+        auto& settings = playerSettings[index];
+        settings.mkb_world_tooltips_enabled = mkb_world_tooltips_enabled;
+        settings.gamepad_facehotbar = gamepad_facehotbar;
+        settings.hotbar_numkey_quick_add = numkeys_in_inventory_enabled;
+        settings.mousespeed = std::min(std::max(0.f, mouse_sensitivity), 100.f);
+        settings.reversemouse = reverse_mouse_enabled;
+        settings.smoothmouse = smooth_mouse_enabled;
+        settings.gamepad_rightx_sensitivity = std::min(std::max(25.f / 32768.f, turn_sensitivity_x / 32768.f), 200.f / 32768.f);
+        settings.gamepad_righty_sensitivity = std::min(std::max(25.f / 32768.f, turn_sensitivity_y / 32768.f), 200.f / 32768.f);
+        settings.gamepad_rightx_invert = gamepad_camera_invert_x;
+        settings.gamepad_righty_invert = gamepad_camera_invert_y;
+    }
+
+    inline Controls Controls::load(int index) {
+        assert(index >= 0 && index < MAXPLAYERS);
+        auto& settings = playerSettings[index];
+        Controls controls;
+        controls.mkb_world_tooltips_enabled = settings.mkb_world_tooltips_enabled;
+        controls.gamepad_facehotbar = settings.gamepad_facehotbar;
+        controls.numkeys_in_inventory_enabled = settings.hotbar_numkey_quick_add;
+        controls.mouse_sensitivity = settings.mousespeed;
+        controls.reverse_mouse_enabled = settings.reversemouse;
+        controls.smooth_mouse_enabled = settings.smoothmouse;
+        controls.turn_sensitivity_x = settings.gamepad_rightx_sensitivity * 32768.0;
+        controls.turn_sensitivity_y = settings.gamepad_righty_sensitivity * 32768.0;
+        controls.gamepad_camera_invert_x = settings.gamepad_rightx_invert;
+        controls.gamepad_camera_invert_y = settings.gamepad_righty_invert;
+        return controls;
+    }
+
+    inline Controls Controls::reset() {
+        return Controls();
+    }
+
+    bool Controls::serialize(FileInterface* file) {
+        int version = 1;
+        file->property("version", version);
+        file->property("mkb_world_tooltips_enabled", mkb_world_tooltips_enabled);
+        file->property("gamepad_facehotbar", gamepad_facehotbar);
+        file->property("numkeys_in_inventory_enabled", numkeys_in_inventory_enabled);
+        file->property("mouse_sensitivity", mouse_sensitivity);
+        file->property("reverse_mouse_enabled", reverse_mouse_enabled);
+        file->property("smooth_mouse_enabled", smooth_mouse_enabled);
+        file->property("turn_sensitivity_x", turn_sensitivity_x);
+        file->property("turn_sensitivity_y", turn_sensitivity_y);
+        file->property("gamepad_camera_invert_x", gamepad_camera_invert_x);
+        file->property("gamepad_camera_invert_y", gamepad_camera_invert_y);
+        return true;
+    }
+
 	/******************************************************************************/
 
 	static AllSettings allSettings;
 
 	inline int AllSettings::save() {
         int result = VideoRefresh::None;
-        gamemods_mountedFilepaths = mods;
+		Mods::mountedFilepathsSaved = mods;
 		*cvar_fastRestart = fast_restart;
 		*cvar_worldtooltip_scale = world_tooltip_scale;
 		*cvar_worldtooltip_scale_splitscreen = world_tooltip_scale_splitscreen;
@@ -2588,6 +2720,7 @@ namespace MainMenu {
 		shaking = shaking_enabled;
 		bobbing = bobbing_enabled;
 		flickerLights = light_flicker_enabled;
+		*cvar_hold_to_activate = hold_to_activate_enabled;
 		result |= video.save() ? VideoRefresh::Video : VideoRefresh::None;
 		*vertical_splitscreen = vertical_split_enabled;
 		*staggered_splitscreen = staggered_split_enabled;
@@ -2625,18 +2758,10 @@ namespace MainMenu {
 		mute_player_monster_sounds = !player_monster_sounds_enabled;
 		mute_audio_on_focus_lost = !out_of_focus_audio_enabled;
 		bindings.save();
-		*cvar_mkb_world_tooltips = mkb_world_tooltips_enabled;
-		*cvar_mkb_facehotbar = false; //mkb_facehotbar;
-		*cvar_gamepad_facehotbar = gamepad_facehotbar;
-		hotbar_numkey_quick_add = numkeys_in_inventory_enabled;
-		mousespeed = std::min(std::max(0.f, mouse_sensitivity), 100.f);
-		reversemouse = reverse_mouse_enabled;
-		smoothmouse = smooth_mouse_enabled;
-		disablemouserotationlimit = true; //!rotation_speed_limit_enabled;
-		gamepad_rightx_sensitivity = std::min(std::max(25.f / 32768.f, turn_sensitivity_x / 32768.f), 200.f / 32768.f);
-		gamepad_righty_sensitivity = std::min(std::max(25.f / 32768.f, turn_sensitivity_y / 32768.f), 200.f / 32768.f);
-		gamepad_rightx_invert = gamepad_camera_invert_x;
-		gamepad_righty_invert = gamepad_camera_invert_y;
+        for (int c = 0; c < MAX_SPLITSCREEN; ++c) {
+            controls[c].save(c);
+        }
+        disablemouserotationlimit = true;
 		if (multiplayer != CLIENT) {
 		    svFlags = classic_mode_enabled ? svFlags | SV_FLAG_CLASSIC : svFlags & ~(SV_FLAG_CLASSIC);
 		    svFlags = hardcore_mode_enabled ? svFlags | SV_FLAG_HARDCORE : svFlags & ~(SV_FLAG_HARDCORE);
@@ -2677,7 +2802,7 @@ namespace MainMenu {
 
 	inline AllSettings AllSettings::load(bool video) {
 		AllSettings settings;
-		settings.mods = gamemods_mountedFilepaths;
+		settings.mods = Mods::mountedFilepathsSaved;
 		settings.crossplay_enabled = LobbyHandler.crossplayEnabled;
 		settings.fast_restart = *cvar_fastRestart;
 		settings.world_tooltip_scale = *cvar_worldtooltip_scale;
@@ -2706,6 +2831,7 @@ namespace MainMenu {
 		settings.shaking_enabled = shaking;
 		settings.bobbing_enabled = bobbing;
 		settings.light_flicker_enabled = flickerLights;
+		settings.hold_to_activate_enabled = *cvar_hold_to_activate;
 		if (video) {
 			settings.video = Video::load();
 		} else {
@@ -2728,18 +2854,9 @@ namespace MainMenu {
 		settings.player_monster_sounds_enabled = !mute_player_monster_sounds;
 		settings.out_of_focus_audio_enabled = !mute_audio_on_focus_lost;
 		settings.bindings = Bindings::load();
-		settings.mkb_world_tooltips_enabled = *cvar_mkb_world_tooltips;
-		settings.mkb_facehotbar = *cvar_mkb_facehotbar;
-		settings.gamepad_facehotbar = *cvar_gamepad_facehotbar;
-		settings.numkeys_in_inventory_enabled = hotbar_numkey_quick_add;
-		settings.mouse_sensitivity = mousespeed;
-		settings.reverse_mouse_enabled = reversemouse;
-		settings.smooth_mouse_enabled = smoothmouse;
-		settings.rotation_speed_limit_enabled = !disablemouserotationlimit;
-		settings.turn_sensitivity_x = gamepad_rightx_sensitivity * 32768.0;
-		settings.turn_sensitivity_y = gamepad_righty_sensitivity * 32768.0;
-		settings.gamepad_camera_invert_x = gamepad_rightx_invert;
-		settings.gamepad_camera_invert_y = gamepad_righty_invert;
+        for (int c = 0; c < MAX_SPLITSCREEN; ++c) {
+            settings.controls[c] = Controls::load(c);
+        }
 		settings.classic_mode_enabled = svFlags & SV_FLAG_CLASSIC;
 		settings.hardcore_mode_enabled = svFlags & SV_FLAG_HARDCORE;
 		settings.friendly_fire_enabled = svFlags & SV_FLAG_FRIENDLYFIRE;
@@ -2764,84 +2881,11 @@ namespace MainMenu {
 	}
 
 	inline AllSettings AllSettings::reset() {
-		AllSettings settings;
-		settings.mods = gamemods_mountedFilepaths;
-		settings.crossplay_enabled = LobbyHandler.crossplayEnabled;
-		settings.fast_restart = false;
-		settings.world_tooltip_scale = 100.f;
-		settings.world_tooltip_scale_splitscreen = 150.f;
-		settings.enemybar_scale = 100.f;
-		settings.add_items_to_hotbar_enabled = true;
-		settings.inventory_sorting = InventorySorting::reset();
-		settings.lastCharacter = LastCreatedCharacter::reset();
-		settings.use_on_release_enabled = true;
-		settings.minimap = Minimap::reset();
-		settings.show_messages_enabled = true;
-		settings.show_messages = Messages::reset();
-		settings.show_player_nametags_enabled = true;
-		settings.show_hud_enabled = true;
-		settings.show_ip_address_enabled = true;
-		settings.content_control_enabled = false;
-		settings.colorblind_mode_enabled = false;
-		settings.arachnophobia_filter_enabled = false;
-		settings.shaking_enabled = true;
-		settings.bobbing_enabled = true;
-		settings.light_flicker_enabled = true;
-		settings.video = Video::reset();
-		settings.vertical_split_enabled = false;
-		settings.clipped_split_enabled = false;
-		settings.staggered_split_enabled = false;
-		settings.use_frame_interpolation = true;
-		settings.fov = 60;
-		settings.fps = AUTO_FPS;
-		settings.item_tooltip_height = 100.f;
-		settings.shootmode_crosshair = 0;
-		settings.shootmode_crosshair_opacity = 50;
-		settings.hdr_enabled = true;
-		settings.audio_device = "";
-		settings.master_volume = 100.f;
-		settings.gameplay_volume = 100.f;
-		settings.ambient_volume = 100.f;
-		settings.environment_volume = 100.f;
-		settings.notification_volume = 100.f;
-		settings.music_volume = 100.f;
-		settings.minimap_pings_enabled = true;
-		settings.player_monster_sounds_enabled = true;
-		settings.out_of_focus_audio_enabled = true;
-		settings.bindings = Bindings::reset(defaultControlLayout);
-		settings.mkb_facehotbar = false;
-		settings.gamepad_facehotbar = true;
-		settings.mkb_world_tooltips_enabled = true;
-		settings.numkeys_in_inventory_enabled = true;
-		settings.mouse_sensitivity = 32.f;
-		settings.reverse_mouse_enabled = false;
-		settings.smooth_mouse_enabled = false;
-		settings.rotation_speed_limit_enabled = false;
-		settings.turn_sensitivity_x = 75.f;
-		settings.turn_sensitivity_y = 50.f;
-		settings.gamepad_camera_invert_x = false;
-		settings.gamepad_camera_invert_y = false;
-		settings.classic_mode_enabled = false;
-		settings.hardcore_mode_enabled = false;
-		settings.friendly_fire_enabled = true;
-		settings.keep_inventory_enabled = false;
-		settings.hunger_enabled = true;
-		settings.minotaur_enabled = true;
-		settings.random_traps_enabled = true;
-		settings.extra_life_enabled = false;
-		settings.cheats_enabled = false;
-		settings.skipintro = true;
-		settings.port_number = DEFAULT_PORT;
-		settings.show_lobby_code = true;
-		for ( int i = 0; i < MAX_LOBBY_FILTERS_SAVED; ++i )
-		{
-			settings.lobby_filter_settings[i] = 0;
-		}
-		return settings;
+		return AllSettings();
 	}
 
 	bool AllSettings::serialize(FileInterface* file) {
-	    int version = 16;
+	    int version = 17;
 	    file->property("version", version);
 	    file->property("mods", mods);
 		file->property("crossplay_enabled", crossplay_enabled);
@@ -2882,6 +2926,7 @@ namespace MainMenu {
 		file->property("shaking_enabled", shaking_enabled);
 		file->property("bobbing_enabled", bobbing_enabled);
 		file->property("light_flicker_enabled", light_flicker_enabled);
+		file->propertyVersion("hold_to_activate_enabled", version >= 17, hold_to_activate_enabled);
         if (version >= 1) {
             file->property("video", video);
             file->property("vertical_split_enabled", vertical_split_enabled);
@@ -2925,26 +2970,33 @@ namespace MainMenu {
 		file->property("player_monster_sounds_enabled", player_monster_sounds_enabled);
 		file->property("out_of_focus_audio_enabled", out_of_focus_audio_enabled);
 		file->property("bindings", bindings);
-        if ( version >= 5 )
-        {
-            file->property("mkb_world_tooltips_enabled", mkb_world_tooltips_enabled);
-            file->property("mkb_facehotbar", mkb_facehotbar);
-            file->property("gamepad_facehotbar", gamepad_facehotbar);
+        if (version < 17) {
+            Controls controls;
+            if (version >= 5) {
+                file->property("mkb_world_tooltips_enabled", controls.mkb_world_tooltips_enabled);
+                file->property("gamepad_facehotbar", controls.gamepad_facehotbar);
+                file->property("world_tooltip_scale", world_tooltip_scale);
+                file->property("world_tooltip_scale_splitscreen", world_tooltip_scale_splitscreen);
+            }
+            file->propertyVersion("enemybar_scale", version >= 16, enemybar_scale);
+            file->property("numkeys_in_inventory_enabled", controls.numkeys_in_inventory_enabled);
+            file->property("mouse_sensitivity", controls.mouse_sensitivity);
+            file->property("reverse_mouse_enabled", controls.reverse_mouse_enabled);
+            file->property("smooth_mouse_enabled", controls.smooth_mouse_enabled);
+            file->property("turn_sensitivity_x", controls.turn_sensitivity_x);
+            file->property("turn_sensitivity_y", controls.turn_sensitivity_y);
+            if (version >= 6) {
+                file->property("gamepad_camera_invert_x", controls.gamepad_camera_invert_x);
+                file->property("gamepad_camera_invert_y", controls.gamepad_camera_invert_y);
+            }
+            for (int c = 0; c < MAX_SPLITSCREEN; ++c) {
+                this->controls[c] = controls;
+            }
+        } else {
+            file->property("controls", controls);
+            file->propertyVersion("enemybar_scale", version >= 16, enemybar_scale);
             file->property("world_tooltip_scale", world_tooltip_scale);
             file->property("world_tooltip_scale_splitscreen", world_tooltip_scale_splitscreen);
-        }
-		file->propertyVersion("enemybar_scale", version >= 16, enemybar_scale);
-		file->property("numkeys_in_inventory_enabled", numkeys_in_inventory_enabled);
-		file->property("mouse_sensitivity", mouse_sensitivity);
-		file->property("reverse_mouse_enabled", reverse_mouse_enabled);
-		file->property("smooth_mouse_enabled", smooth_mouse_enabled);
-		//file->property("rotation_speed_limit_enabled", rotation_speed_limit_enabled);
-		file->property("turn_sensitivity_x", turn_sensitivity_x);
-		file->property("turn_sensitivity_y", turn_sensitivity_y);
-        if ( version >= 6 )
-        {
-            file->property("gamepad_camera_invert_x", gamepad_camera_invert_x);
-            file->property("gamepad_camera_invert_y", gamepad_camera_invert_y);
         }
 		file->property("classic_mode_enabled", classic_mode_enabled);
 		file->property("hardcore_mode_enabled", hardcore_mode_enabled);
@@ -3634,7 +3686,7 @@ namespace MainMenu {
 		// transmit server flags
 		if (initialized && !intro) {
 			sendSvFlagsOverNet();
-			messagePlayer(clientnum, MESSAGE_MISC, language[276]);
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(276));
 		}
 
 		// set volume and sound driver
@@ -3656,16 +3708,11 @@ namespace MainMenu {
 	}
 
 	bool settingsLoad() {
-		bool result = FileHelper::readObject((std::string(outputdir) + "/config/config.json").c_str(), allSettings);
-		if (result) {
-		    old_bindings = allSettings.bindings;
-		}
-		return result;
+		return FileHelper::readObject((std::string(outputdir) + "/config/config.json").c_str(), allSettings);
 	}
 
 	void settingsReset() {
 		allSettings = AllSettings::reset();
-		old_bindings = allSettings.bindings;
 	}
 
 	static void settingsCustomizeInventorySorting(Button&);
@@ -3677,24 +3724,104 @@ namespace MainMenu {
 		auto dimmer = static_cast<Frame*>(window->getParent());
 		dimmer->removeSelf();
 		settingsCustomizeInventorySorting(button);
+
+		if ( main_menu_frame )
+		{
+			if ( auto window = main_menu_frame->findFrame("inventory_sorting_window") )
+			{
+				if ( auto dimmer = window->getParent() )
+				{
+					dimmer->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+				}
+			}
+		}
 	}
 
 	static void inventorySortingDiscard(Button& button) {
-		soundCancel();
-        auto window = static_cast<Frame*>(button.getParent());
-        auto dimmer = static_cast<Frame*>(window->getParent());
-        dimmer->removeSelf();
-		if (main_menu_frame) {
-			auto settings = main_menu_frame->findFrame("settings");
-			if (settings) {
-				auto settings_subwindow = settings->findFrame("settings_subwindow");
-				if (settings_subwindow) {
-					auto inventory_sorting_customize = settings_subwindow->findButton("setting_inventory_sorting_customize_button");
-					if (inventory_sorting_customize) {
-						inventory_sorting_customize->select();
+		if ( auto window = button.getParent() )
+		{
+			if ( auto dimmer = window->getParent() )
+			{
+				auto settingModified = reinterpret_cast<intptr_t>(dimmer->getUserData());
+				if ( settingModified != SETTING_MODIFIED )
+				{
+					soundCancel();
+					dimmer->removeSelf();
+					if ( main_menu_frame ) {
+						auto settings = main_menu_frame->findFrame("settings");
+						if ( settings ) {
+							auto settings_subwindow = settings->findFrame("settings_subwindow");
+							if ( settings_subwindow ) {
+								auto inventory_sorting_customize = settings_subwindow->findButton("setting_inventory_sorting_customize_button");
+								if ( inventory_sorting_customize ) {
+									inventory_sorting_customize->select();
+								}
+							}
+						}
 					}
+					return;
 				}
 			}
+		}
+
+		auto prompt = binaryPrompt("Are you sure you want\nto discard changes?",
+			"Yes,\nDiscard", "Cancel",
+			[](Button& button) {
+				closeBinary();
+				
+				soundActivate();
+
+				if ( main_menu_frame )
+				{
+					if ( auto window = main_menu_frame->findFrame("inventory_sorting_window") )
+					{
+						auto dimmer = static_cast<Frame*>(window->getParent());
+						dimmer->removeSelf();
+						if ( main_menu_frame ) {
+							auto settings = main_menu_frame->findFrame("settings");
+							if ( settings ) {
+								auto settings_subwindow = settings->findFrame("settings_subwindow");
+								if ( settings_subwindow ) {
+									auto inventory_sorting_customize = settings_subwindow->findButton("setting_inventory_sorting_customize_button");
+									if ( inventory_sorting_customize ) {
+										inventory_sorting_customize->select();
+									}
+								}
+							}
+						}
+					}
+				}
+			}, 
+			[](Button& button) {
+				closeBinary();
+
+				soundCancel();
+
+				if ( main_menu_frame )
+				{
+					if ( auto window = main_menu_frame->findFrame("inventory_sorting_window") )
+					{
+						if ( auto button = window->findButton("hotbar_button0") )
+						{
+							button->select();
+						}
+					}
+				}
+			}, true, false);
+		if ( prompt )
+		{
+			prompt->findButton("okay")->select();
+			prompt->setTickCallback([](Widget& widget) {
+				auto okay = (static_cast<Frame*>(&widget))->findButton("okay");
+				auto cancel = (static_cast<Frame*>(&widget))->findButton("cancel");
+				if ( !((okay && okay->isSelected()) || (cancel && cancel->isSelected())) )
+				{
+					if ( okay )
+					{
+						okay->select();
+					}
+				}
+			});
 		}
 	}
 
@@ -3822,23 +3949,22 @@ namespace MainMenu {
 			button->setHideKeyboardGlyphs(false);
 		}
 		auto first_button = window->findButton(options[0].name); assert(first_button);
-		first_button->select();
 		first_button->setWidgetLeft("hotbar_button11");
 
 		// hotbar toggle buttons
 		void (*hotbar_callbacks[12])(Button&) = {
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarWeapons = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarArmor = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarAmulets = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarBooks = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarTools = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarThrown = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarGems = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarPotions = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarScrolls = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarStaves = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarFood = button.isPressed(); },
-			[](Button& button){ soundCheckmark(); allSettings.inventory_sorting.hotbarSpells = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarWeapons = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarArmor = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarAmulets = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarBooks = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarTools = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarThrown = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarGems = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarPotions = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarScrolls = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarStaves = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarFood = button.isPressed(); },
+			[](Button& button){ soundCheckmarkSetting(button); allSettings.inventory_sorting.hotbarSpells = button.isPressed(); },
 		};
 		const int num_hotbar_buttons = sizeof(hotbar_callbacks) / sizeof(hotbar_callbacks[0]);
 		for (int c = num_hotbar_buttons - 1; c >= 0; --c) {
@@ -3850,6 +3976,10 @@ namespace MainMenu {
 			button->setCallback(hotbar_callbacks[c]);
 			button->setSelectorOffset(SDL_Rect{0, 6, -4, 4});
 			button->setBorder(0);
+			if ( c == 0 )
+			{
+				button->select();
+			}
 			if (c > 0) {
 				button->setWidgetUp((std::string("hotbar_button") + std::to_string(c - 1)).c_str());
 			}
@@ -3883,17 +4013,17 @@ namespace MainMenu {
 
 		// inventory sort sliders
 		void (*sort_slider_callbacks[11])(Slider&) = {
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortWeapons = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortArmor = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortAmulets = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortBooks = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortTools = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortThrown = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortGems = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortPotions = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortScrolls = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortStaves = slider.getValue(); },
-			[](Slider& slider){ soundSlider(true); allSettings.inventory_sorting.sortFood = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortWeapons = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortArmor = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortAmulets = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortBooks = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortTools = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortThrown = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortGems = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortPotions = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortScrolls = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortStaves = slider.getValue(); },
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.inventory_sorting.sortFood = slider.getValue(); },
 			//[](Slider& slider){ allSettings.inventory_sorting.sortEquipped = slider.getValue(); }, // Hey, we don't have enough room for this
 		};
 		const int num_sliders = sizeof(sort_slider_callbacks) / sizeof(sort_slider_callbacks[0]);
@@ -4015,6 +4145,13 @@ namespace MainMenu {
 	};
 
 	static void settingsOpenDropdown(Button& button, const char* name, DropdownType type, void(*entry_func)(Frame::entry_t&)) {
+		if ( auto parent = button.getParent() )
+		{
+			if ( auto window = parent->getParent() )
+			{
+				window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+			}
+		}
 		std::string dropdown_name = "setting_" + std::string(name) + "_dropdown";
 		auto frame = static_cast<Frame*>(button.getParent());
 		auto dropdown = frame->addFrame(dropdown_name.c_str()); assert(dropdown);
@@ -4228,24 +4365,7 @@ namespace MainMenu {
 #endif
 
 	static void settingsMkbHotbarLayout(Button& button) {
-		settingsOpenDropdown(button, "mkb_facehotbar", DropdownType::Short_2Slot, [](Frame::entry_t& entry) {
-			soundActivate();
-			if ( entry.name == "Classic" )
-			{
-				allSettings.mkb_facehotbar = false;
-			}
-			else
-			{
-				allSettings.mkb_facehotbar = true;
-			}
-			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
-			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-			auto button = settings_subwindow->findButton("setting_mkb_facehotbar_dropdown_button"); assert(button);
-			auto dropdown = settings_subwindow->findFrame("setting_mkb_facehotbar_dropdown"); assert(dropdown);
-			button->setText(entry.name.c_str());
-			dropdown->removeSelf();
-			button->select();
-		});
+		// deprecated
 	}
 
 	static void settingsGamepadHotbarLayout(Button& button) {
@@ -4253,11 +4373,11 @@ namespace MainMenu {
 			soundActivate();
 			if ( entry.name == "Classic" )
 			{
-				allSettings.gamepad_facehotbar = false;
+				allSettings.controls[bound_player].gamepad_facehotbar = false;
 			}
 			else
 			{
-				allSettings.gamepad_facehotbar = true;
+				allSettings.controls[bound_player].gamepad_facehotbar = true;
 			}
 			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
@@ -4746,14 +4866,11 @@ namespace MainMenu {
 		return result;
 	}
 
-	static Frame* settingsSubwindowSetup(Button& button) {
-		/*if (settings_tab_name == button.getName()) {
-			return nullptr;
-		}*/
+	static Frame* settingsSubwindowSetup(const char* tab) {
 		if (!video_refresh) {
 		    soundActivate();
 		}
-		settings_tab_name = button.getName();
+		settings_tab_name = tab;
 
 		assert(main_menu_frame);
 		auto settings = main_menu_frame->findFrame("settings"); assert(settings);
@@ -5034,17 +5151,98 @@ namespace MainMenu {
 				parent_background->removeSelf();
 				allSettings.minimap = Minimap::reset();
 				settingsMinimap(button);
+
+				if ( main_menu_frame )
+				{
+					if ( auto window = main_menu_frame->findFrame("minimap") )
+					{
+						window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+					}
+				}
 			},
 			[](Button& button){ // discard & exit
-				soundCancel();
-				auto parent = static_cast<Frame*>(button.getParent()); assert(parent);
-				auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
-				parent_background->removeSelf();
-				allSettings.minimap.load();
-			    auto settings = main_menu_frame->findFrame("settings"); assert(settings);
-			    auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-			    auto previous = settings_subwindow->findButton("setting_minimap_settings_customize_button"); assert(previous);
-			    previous->select();
+				if ( auto parent = button.getParent() )
+				{
+					auto settingModified = reinterpret_cast<intptr_t>(parent->getUserData());
+					if ( settingModified != SETTING_MODIFIED )
+					{
+						soundCancel();
+						auto parent = static_cast<Frame*>(button.getParent()); assert(parent);
+						auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
+						parent_background->removeSelf();
+						allSettings.minimap.load();
+						auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+						auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
+						auto previous = settings_subwindow->findButton("setting_minimap_settings_customize_button"); assert(previous);
+						previous->select();
+						return;
+					}
+				}
+
+				auto prompt = binaryPrompt("Are you sure you want\nto discard changes?",
+					"Yes,\nDiscard", "Cancel",
+					[](Button& button) {
+						closeBinary();
+
+						soundActivate();
+
+						allSettings.minimap.load();
+						if ( main_menu_frame )
+						{
+							if ( auto window = main_menu_frame->findFrame("minimap") )
+							{
+								auto dimmer = static_cast<Frame*>(window->getParent());
+								dimmer->removeSelf();
+								if ( main_menu_frame ) {
+									auto settings = main_menu_frame->findFrame("settings");
+									if ( settings ) {
+										auto settings_subwindow = settings->findFrame("settings_subwindow");
+										if ( settings_subwindow ) {
+											auto previous = settings_subwindow->findButton("setting_minimap_settings_customize_button"); assert(previous);
+											if ( previous )
+											{
+												previous->select();
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					[](Button& button) {
+						closeBinary();
+
+						soundCancel();
+
+						if ( main_menu_frame )
+						{
+							if ( auto window = main_menu_frame->findFrame("minimap") )
+							{
+								if ( auto subwindow = window->findFrame("subwindow") )
+								{
+									if ( auto slider = subwindow->findSlider("icon_scale") )
+									{
+										slider->select();
+									}
+								}
+							}
+						}
+					}, true, false);
+				if ( prompt )
+				{
+					prompt->findButton("okay")->select();
+					prompt->setTickCallback([](Widget& widget) {
+						auto okay = (static_cast<Frame*>(&widget))->findButton("okay");
+						auto cancel = (static_cast<Frame*>(&widget))->findButton("cancel");
+						if ( !((okay && okay->isSelected()) || (cancel && cancel->isSelected())) )
+						{
+							if ( okay )
+							{
+								okay->select();
+							}
+						}
+					});
+				}
 			},
 			[](Button& button){ // confirm & exit
 				soundActivate();
@@ -5066,24 +5264,24 @@ namespace MainMenu {
 		/*y += settingsAddSlider(*subwindow, y, "map_scale", "Map scale",
 			"Scale the map to be larger or smaller.",
             allSettings.minimap.map_scale, 25, 100, sliderPercent,
-			[](Slider& slider){ allSettings.minimap.map_scale = slider.getValue(); }, true);*/
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.minimap.map_scale = slider.getValue(); }, true);*/
 
 		y += settingsAddSlider(*subwindow, y, "icon_scale", "Icon scale",
 			"Scale the size of icons on the map (such as players and allies)",
 			allSettings.minimap.icon_scale, 100, 200, sliderPercent,
-			[](Slider& slider){ allSettings.minimap.icon_scale = slider.getValue(); }, true);
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.minimap.icon_scale = slider.getValue(); }, true);
 
 		y += settingsAddSubHeader(*subwindow, y, "transparency_header", "Transparency", true);
 
 		y += settingsAddSlider(*subwindow, y, "foreground_opacity", "Foreground opacity",
 			"Set the opacity of the minimap's foreground.",
 			allSettings.minimap.foreground_opacity, 0, 100, sliderPercent,
-			[](Slider& slider){ allSettings.minimap.foreground_opacity = slider.getValue(); }, true);
+			[](Slider& slider) { soundSliderSetting(slider, true); allSettings.minimap.foreground_opacity = slider.getValue(); }, true);
 
 		y += settingsAddSlider(*subwindow, y, "background_opacity", "Background opacity",
 			"Set the opacity of the minimap's background.",
 			allSettings.minimap.background_opacity, 0, 100, sliderPercent,
-			[](Slider& slider){ allSettings.minimap.background_opacity = slider.getValue(); }, true);
+			[](Slider& slider){ soundSliderSetting(slider, true); allSettings.minimap.background_opacity = slider.getValue(); }, true);
 
 		hookSettings(*subwindow,
 			{/*{Setting::Type::Slider, "map_scale"},*/
@@ -5104,17 +5302,98 @@ namespace MainMenu {
 				parent_background->removeSelf();
 				allSettings.show_messages = Messages::reset();
 				settingsMessages(button);
+
+				if ( main_menu_frame )
+				{
+					if ( auto window = main_menu_frame->findFrame("messages") )
+					{
+						window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+					}
+				}
 			},
 			[](Button& button){ // discard & exit
-				soundCancel();
-				auto parent = static_cast<Frame*>(button.getParent()); assert(parent);
-				auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
-				parent_background->removeSelf();
-				allSettings.show_messages.load();
-			    auto settings = main_menu_frame->findFrame("settings"); assert(settings);
-			    auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-			    auto previous = settings_subwindow->findButton("setting_show_messages_customize_button"); assert(previous);
-			    previous->select();
+				if ( auto parent = button.getParent() )
+				{
+					auto settingModified = reinterpret_cast<intptr_t>(parent->getUserData());
+					if ( settingModified != SETTING_MODIFIED )
+					{
+						soundCancel();
+						auto parent = static_cast<Frame*>(button.getParent()); assert(parent);
+						auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
+						parent_background->removeSelf();
+						allSettings.show_messages.load();
+						auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+						auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
+						auto previous = settings_subwindow->findButton("setting_show_messages_customize_button"); assert(previous);
+						previous->select();
+						return;
+					}
+				}
+
+				auto prompt = binaryPrompt("Are you sure you want\nto discard changes?",
+					"Yes,\nDiscard", "Cancel",
+					[](Button& button) {
+						closeBinary();
+
+						soundActivate();
+
+						allSettings.show_messages.load();
+						if ( main_menu_frame )
+						{
+							if ( auto window = main_menu_frame->findFrame("messages") )
+							{
+								auto dimmer = static_cast<Frame*>(window->getParent());
+								dimmer->removeSelf();
+								if ( main_menu_frame ) {
+									auto settings = main_menu_frame->findFrame("settings");
+									if ( settings ) {
+										auto settings_subwindow = settings->findFrame("settings_subwindow");
+										if ( settings_subwindow ) {
+											auto previous = settings_subwindow->findButton("setting_show_messages_customize_button"); assert(previous);
+											if ( previous )
+											{
+												previous->select();
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					[](Button& button) {
+						closeBinary();
+
+						soundCancel();
+
+						if ( main_menu_frame )
+						{
+							if ( auto window = main_menu_frame->findFrame("messages") )
+							{
+								if ( auto subwindow = window->findFrame("subwindow") )
+								{
+									if ( auto button = subwindow->findButton("messages_combat") )
+									{
+										button->select();
+									}
+								}
+							}
+						}
+					}, true, false);
+					if ( prompt )
+					{
+						prompt->findButton("okay")->select();
+						prompt->setTickCallback([](Widget& widget) {
+							auto okay = (static_cast<Frame*>(&widget))->findButton("okay");
+							auto cancel = (static_cast<Frame*>(&widget))->findButton("cancel");
+							if ( !((okay && okay->isSelected()) || (cancel && cancel->isSelected())) )
+							{
+								if ( okay )
+								{
+									okay->select();
+								}
+							}
+						});
+					}
 			},
 			[](Button& button){ // confirm & exit
 				soundActivate();
@@ -5135,47 +5414,47 @@ namespace MainMenu {
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_combat", "Combat messages",
 			"Enable report of damage received or given in combat.",
-			allSettings.show_messages.combat, [](Button& button) {soundToggle(); allSettings.show_messages.combat = button.isPressed(); });
+			allSettings.show_messages.combat, [](Button& button) {soundToggleSetting(button); allSettings.show_messages.combat = button.isPressed(); });
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_status", "Status messages",
 			"Enable report of character status changes and other passive effects.",
-			allSettings.show_messages.status, [](Button& button){soundToggle(); allSettings.show_messages.status = button.isPressed();});
+			allSettings.show_messages.status, [](Button& button){soundToggleSetting(button); allSettings.show_messages.status = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_inventory", "Inventory messages",
 			"Enable report of inventory and item appraisal messages.",
-			allSettings.show_messages.inventory, [](Button& button){soundToggle(); allSettings.show_messages.inventory = button.isPressed();});
+			allSettings.show_messages.inventory, [](Button& button){soundToggleSetting(button); allSettings.show_messages.inventory = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_equipment", "Equipment messages",
 			"Enable report of player equipment changes.",
-			allSettings.show_messages.equipment, [](Button& button){soundToggle(); allSettings.show_messages.equipment = button.isPressed();});
+			allSettings.show_messages.equipment, [](Button& button){soundToggleSetting(button); allSettings.show_messages.equipment = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_world", "World messages",
 			"Enable report of diegetic messages, such as speech and text.",
-			allSettings.show_messages.world, [](Button& button){soundToggle(); allSettings.show_messages.world = button.isPressed();});
+			allSettings.show_messages.world, [](Button& button){soundToggleSetting(button); allSettings.show_messages.world = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_chat", "Player chat",
 			"Enable multiplayer chat.",
-			allSettings.show_messages.chat, [](Button& button){soundToggle(); allSettings.show_messages.chat = button.isPressed();});
+			allSettings.show_messages.chat, [](Button& button){soundToggleSetting(button); allSettings.show_messages.chat = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_progression", "Progression messages",
 			"Enable report of player character progression messages (ie level-ups).",
-			allSettings.show_messages.progression, [](Button& button){soundToggle(); allSettings.show_messages.progression = button.isPressed();});
+			allSettings.show_messages.progression, [](Button& button){soundToggleSetting(button); allSettings.show_messages.progression = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_interaction", "Interaction messages",
 			"Enable report of player interactions with the world.",
-			allSettings.show_messages.interaction, [](Button& button){soundToggle(); allSettings.show_messages.interaction = button.isPressed();});
+			allSettings.show_messages.interaction, [](Button& button){soundToggleSetting(button); allSettings.show_messages.interaction = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_inspection", "Inspection messages",
 			"Enable player inspections of world objects.",
-			allSettings.show_messages.inspection, [](Button& button){soundToggle(); allSettings.show_messages.inspection = button.isPressed();});
+			allSettings.show_messages.inspection, [](Button& button){soundToggleSetting(button); allSettings.show_messages.inspection = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_hint", "Hint messages",
 			"Enable cryptic hints for certain items, world events, etc.",
-			allSettings.show_messages.hint, [](Button& button){soundToggle(); allSettings.show_messages.hint = button.isPressed();});
+			allSettings.show_messages.hint, [](Button& button){soundToggleSetting(button); allSettings.show_messages.hint = button.isPressed();});
 
 		y += settingsAddBooleanOption(*subwindow, y, "messages_obituary", "Obituary messages",
 			"Enable obituary messages for player deaths.",
-			allSettings.show_messages.obituary, [](Button& button){soundToggle(); allSettings.show_messages.obituary = button.isPressed();});
+			allSettings.show_messages.obituary, [](Button& button){soundToggleSetting(button); allSettings.show_messages.obituary = button.isPressed();});
 
 		hookSettings(*subwindow,
 			{{Setting::Type::Boolean, "messages_combat"},
@@ -5234,24 +5513,16 @@ namespace MainMenu {
 			}
 		}
 	}
+    
+    static void settingsControlsPopulate(int player, int device, const char* profile, Setting setting_to_select);
 
-	static void settingsBindings(int player_index, int device_index, const char* profile, Setting setting_to_select) {
+	static void settingsBindings(int player_index, int device_index, const char* profile) {
 		soundActivate();
-
-		static Button* bound_button;
-		static std::string bound_binding;
-		static std::string bound_input;
-		static int bound_player;
-		static int bound_device;
-        static const char* bound_profile;
 
 		bind_mode = false;
 		bound_button = nullptr;
 		bound_binding = "";
 		bound_input = "";
-		bound_player = player_index;
-		bound_device = device_index;
-        bound_profile = profile;
 
 		auto window = settingsGenericWindow("bindings", "BINDINGS",
 			[](Button& button){ // restore defaults
@@ -5260,19 +5531,114 @@ namespace MainMenu {
 				parent_background->removeSelf();
 				allSettings.bindings = Bindings::reset(defaultControlLayout);
 				const int player = multiplayer == CLIENT ? 0 : getMenuOwner();
-				settingsBindings(player, inputs.hasController(player) ? 1 : 0, defaultControlLayout,
-				    {Setting::Type::Dropdown, "player_dropdown_button"});
+				settingsBindings(player, inputs.hasController(player) ? 1 : 0, defaultControlLayout);
+
+				if ( main_menu_frame )
+				{
+					if ( auto window = main_menu_frame->findFrame("bindings") )
+					{
+						window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+					}
+				}
 			},
 			[](Button& button){ // discard & exit
-				soundCancel();
-				auto parent = static_cast<Frame*>(button.getParent()); assert(parent);
-				auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
-				parent_background->removeSelf();
-				allSettings.bindings.load();
-			    auto settings = main_menu_frame->findFrame("settings"); assert(settings);
-			    auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-			    auto previous = settings_subwindow->findButton("setting_bindings_customize_button"); assert(previous);
-			    previous->select();
+				if ( auto parent = button.getParent() )
+				{
+					auto settingModified = reinterpret_cast<intptr_t>(parent->getUserData());
+					if ( settingModified != SETTING_MODIFIED )
+					{
+						soundCancel();
+						auto parent = static_cast<Frame*>(button.getParent()); assert(parent);
+						auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
+						parent_background->removeSelf();
+						allSettings.bindings = old_bindings;
+
+						assert(main_menu_frame);
+						auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+						auto subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+						auto scroll = subwindow->getActualSize().y;
+						settingsControlsPopulate(bound_player, bound_device,
+							getMatchingProfileName(bound_player, bound_device == 1),
+							{Setting::Type::Customize, "bindings"});
+						subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+						auto size = subwindow->getActualSize();
+						size.y = scroll;
+						subwindow->setActualSize(size);
+						auto gradient = subwindow->findImage("gradient_background"); assert(gradient);
+						gradient->pos.y = size.y;
+						return;
+					}
+				}
+
+				auto prompt = binaryPrompt("Are you sure you want\nto discard changes?",
+					"Yes,\nDiscard", "Cancel",
+					[](Button& button) {
+						closeBinary();
+
+						allSettings.bindings = old_bindings;
+						if ( main_menu_frame )
+						{
+							if ( auto window = main_menu_frame->findFrame("bindings") )
+							{
+								auto dimmer = static_cast<Frame*>(window->getParent());
+								dimmer->removeSelf();
+								if ( main_menu_frame ) {
+									auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+									auto subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+									auto scroll = subwindow->getActualSize().y;
+									settingsControlsPopulate(bound_player, bound_device,
+										getMatchingProfileName(bound_player, bound_device == 1),
+										{ Setting::Type::Customize, "bindings" });
+									subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+									auto size = subwindow->getActualSize();
+									size.y = scroll;
+									subwindow->setActualSize(size);
+									auto gradient = subwindow->findImage("gradient_background"); assert(gradient);
+									gradient->pos.y = size.y;
+								}
+							}
+						}
+					},
+					[](Button& button) {
+						closeBinary();
+
+						soundCancel();
+
+						if ( main_menu_frame )
+						{
+							if ( auto window = main_menu_frame->findFrame("bindings") )
+							{
+								if ( auto subwindow = window->findFrame("subwindow") )
+								{
+									for ( auto button : subwindow->getButtons() )
+									{
+										button->select();
+										auto size = subwindow->getActualSize();
+										size.y = 0;
+										subwindow->setActualSize(size);
+										auto gradient = subwindow->findImage("gradient_background"); assert(gradient);
+										gradient->pos.y = size.y;
+										return;
+									}
+								}
+							}
+						}
+					}, true, false);
+					if ( prompt )
+					{
+						prompt->findButton("okay")->select();
+						prompt->setTickCallback([](Widget& widget) {
+							auto okay = (static_cast<Frame*>(&widget))->findButton("okay");
+						auto cancel = (static_cast<Frame*>(&widget))->findButton("cancel");
+						if ( !((okay && okay->isSelected()) || (cancel && cancel->isSelected())) )
+						{
+							if ( okay )
+							{
+								okay->select();
+							}
+						}
+					});
+				}
 			},
 			[](Button& button){ // confirm & exit
 				soundActivate();
@@ -5280,110 +5646,35 @@ namespace MainMenu {
 				auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
 				parent_background->removeSelf();
 				allSettings.bindings.save();
-			    auto settings = main_menu_frame->findFrame("settings"); assert(settings);
-			    auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-			    auto previous = settings_subwindow->findButton("setting_bindings_customize_button"); assert(previous);
-			    previous->select();
+                
+                assert(main_menu_frame);
+                auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+                auto subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                auto scroll = subwindow->getActualSize().y;
+                settingsControlsPopulate(bound_player, bound_device,
+                    getMatchingProfileName(bound_player, bound_device == 1),
+                    {Setting::Type::Customize, "bindings"});
+                subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                auto size = subwindow->getActualSize();
+                size.y = scroll;
+                subwindow->setActualSize(size);
+                auto gradient = subwindow->findImage("gradient_background"); assert(gradient);
+                gradient->pos.y = size.y;
 			});
 		assert(window);
 		auto subwindow = window->findFrame("subwindow"); assert(subwindow);
-
-		std::vector<Setting> bindings;
-		bindings.reserve(getBindings(profile).size());
-		for (auto& binding : getBindings(profile)) {
-            const std::string& str = *(&binding.keyboard + device_index);
-            if (str != hiddenBinding) {
-		        bindings.push_back({Setting::Type::Binding, binding.action.c_str()});
-		    }
-		}
-
 		int y = 0;
-		y += settingsAddSubHeader(*subwindow, y, "bindings_header", "Profiles", true);
-        
-        static std::vector<std::string> players;
-        static std::vector<const char*> player_ptrs;
-        if (players.empty()) {
-            players.reserve(MAX_SPLITSCREEN);
-            for (int c = 0; c < MAX_SPLITSCREEN; ++c) {
-                std::string str = "Player ";
-                str += std::to_string(c + 1);
-                players.emplace_back(str);
-                player_ptrs.emplace_back(players.back().c_str());
-            }
-        }
-
-		std::string player_str = "Player " + std::to_string(player_index + 1);
-		y += settingsAddDropdown(*subwindow, y, "player_dropdown_button", "Player",
-			"Select the player whose controls you wish to customize.", false,
-            player_ptrs, player_str.c_str(),
-			[](Button& button){
-				soundActivate();
-				settingsOpenDropdown(button, "player_dropdown", DropdownType::Short,
-					[](Frame::entry_t& entry){
-						soundActivate();
-						auto parent = main_menu_frame->findFrame("bindings");
-						auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
-						parent_background->removeSelf();
-						int player_index = (int)(entry.name.back() - '1');
-						settingsBindings(player_index, bound_device, getMatchingProfileName(player_index, bound_device == 1),
-						    {Setting::Type::Dropdown, "player_dropdown_button"});
-					});
-			});
-
-		const std::vector<const char*> devices = {
-		    "KB & Mouse",
-		    "Gamepad",
-		    //"Joystick", // Maybe for the future.
-		};
-
-#ifndef NINTENDO
-		y += settingsAddDropdown(*subwindow, y, "device_dropdown_button", "Device",
-			"Select a controller for the given player.", false, devices, devices[device_index],
-			[](Button& button){
-				soundActivate();
-				settingsOpenDropdown(button, "device_dropdown", DropdownType::Short,
-					[](Frame::entry_t& entry){
-						soundActivate();
-						auto parent = main_menu_frame->findFrame("bindings");
-						auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
-						parent_background->removeSelf();
-						int device_index = getDeviceIndexForName(entry.text.c_str());
-						settingsBindings(bound_player, device_index, getMatchingProfileName(bound_player, device_index == 1),
-						    {Setting::Type::Dropdown, "device_dropdown_button"});
-					});
-			});
-#endif
-        
-        std::vector<const char*> layouts;
-        for (auto& layout : defaultBindings) {
-            layouts.emplace_back(layout.name.c_str());
-        }
-        
-        y += settingsAddDropdown(*subwindow, y, "profile_dropdown_button", "Profile",
-            "Select a predefined binding layout for the given player.", false, layouts, profile,
-            [](Button& button){
-                soundActivate();
-                settingsOpenDropdown(button, "profile_dropdown", DropdownType::Short,
-                    [](Frame::entry_t& entry){
-                        soundActivate();
-                        auto parent = main_menu_frame->findFrame("bindings");
-                        auto parent_background = static_cast<Frame*>(parent->getParent()); assert(parent_background);
-                        parent_background->removeSelf();
-                        const char* profile = entry.text.c_str();
-                        allSettings.bindings.kb_mouse_bindings[bound_player].clear();
-                        allSettings.bindings.gamepad_bindings[bound_player].clear();
-                        allSettings.bindings.joystick_bindings[bound_player].clear();
-                        for (auto& binding : getBindings(profile)) {
-                            allSettings.bindings.kb_mouse_bindings[bound_player].emplace(binding.action, binding.keyboard);
-                            allSettings.bindings.gamepad_bindings[bound_player].emplace(binding.action, binding.gamepad);
-                            allSettings.bindings.joystick_bindings[bound_player].emplace(binding.action, binding.joystick);
-                        }
-                        settingsBindings(bound_player, bound_device, profile,
-                            {Setting::Type::Dropdown, "profile_dropdown_button"});
-                    });
-            });
 
 		y += settingsAddSubHeader(*subwindow, y, "bindings_header", "Bindings", true);
+        
+        std::vector<Setting> bindings;
+        bindings.reserve(getBindings(profile).size());
+        for (auto& binding : getBindings(profile)) {
+            const std::string& str = *(&binding.keyboard + device_index);
+            if (str != hiddenBinding) {
+                bindings.push_back({Setting::Type::Binding, binding.action.c_str()});
+            }
+        }
 
 		for (auto& binding : bindings) {
 			char tip[256];
@@ -5394,11 +5685,11 @@ namespace MainMenu {
 				snprintf(tip, sizeof(tip), "Bind a button to %s,\nor press Y to delete the current binding", binding.name);
 #endif
 			} else {
-				snprintf(tip, sizeof(tip), "Bind an input device to %s", binding.name);
+				snprintf(tip, sizeof(tip), "Bind an input to %s", binding.name);
 			}
 			y += settingsAddBinding(*subwindow, y, player_index, device_index, binding.name, tip,
 				[](Button& button){
-					soundToggle();
+					soundToggleSetting(button);
 					auto name = std::string(button.getName());
 					bind_mode = true;
 					bound_button = &button;
@@ -5523,18 +5814,10 @@ bind_failed:
 				}
 			}
 			});
-
-		hookSettings(*subwindow,
-			{{Setting::Type::Dropdown, "player_dropdown_button"},
-#ifndef NINTENDO
-			{Setting::Type::Dropdown, "device_dropdown_button"},
-#endif
-            {Setting::Type::Dropdown, "profile_dropdown_button"},
-			bindings[0],
-			});
+        
 		hookSettings(*subwindow, bindings);
-		settingsSubwindowFinalize(*subwindow, y, setting_to_select);
-		settingsSelect(*subwindow, setting_to_select);
+		settingsSubwindowFinalize(*subwindow, y, bindings[0]);
+		settingsSelect(*subwindow, bindings[0]);
 	}
 
 	static const std::vector<const char*> crosshairs =
@@ -5577,7 +5860,7 @@ bind_failed:
 
 	static void settingsGeneral(Button& button) {
 		Frame* settings_subwindow;
-		if ((settings_subwindow = settingsSubwindowSetup(button)) == nullptr) {
+		if ((settings_subwindow = settingsSubwindowSetup(button.getName())) == nullptr) {
 			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
 			settingsSelect(*settings_subwindow, {Setting::Type::Boolean, "fast_restart"});
@@ -5588,19 +5871,19 @@ bind_failed:
 		y += settingsAddSubHeader(*settings_subwindow, y, "general", "General Options");
 		y += settingsAddBooleanOption(*settings_subwindow, y, "fast_restart", "Instant Restart on Gameover",
 			"Automatically restarts the game quickly after dying.",
-			allSettings.fast_restart, [](Button& button){soundToggle(); allSettings.fast_restart = button.isPressed();});
+			allSettings.fast_restart, [](Button& button){soundToggleSetting(button); allSettings.fast_restart = button.isPressed();});
 
 		y += settingsAddSubHeader(*settings_subwindow, y, "inventory", "Inventory Options");
 		y += settingsAddBooleanOption(*settings_subwindow, y, "add_items_to_hotbar", "Add Items to Hotbar",
 			"Automatically fill the hotbar with recently collected items.",
-			allSettings.add_items_to_hotbar_enabled, [](Button& button){soundToggle(); allSettings.add_items_to_hotbar_enabled = button.isPressed();});
+			allSettings.add_items_to_hotbar_enabled, [](Button& button){soundToggleSetting(button); allSettings.add_items_to_hotbar_enabled = button.isPressed();});
 		y += settingsAddCustomize(*settings_subwindow, y, "inventory_sorting", "Inventory Sorting",
 			"Customize the way items are automatically sorted in your inventory.",
 			[](Button& button){allSettings.inventory_sorting = InventorySorting::load(); settingsCustomizeInventorySorting(button);});
 #ifndef NINTENDO
 		y += settingsAddBooleanOption(*settings_subwindow, y, "use_on_release", "Use on Release",
 			"Activate an item as soon as the Use key is released in the inventory window.",
-			allSettings.use_on_release_enabled, [](Button& button){soundToggle(); allSettings.use_on_release_enabled = button.isPressed();});
+			allSettings.use_on_release_enabled, [](Button& button){soundToggleSetting(button); allSettings.use_on_release_enabled = button.isPressed();});
 #endif
 
 		y += settingsAddSubHeader(*settings_subwindow, y, "hud", "HUD Options");
@@ -5608,25 +5891,25 @@ bind_failed:
         y += settingsAddSlider(*settings_subwindow, y, "ui_scale", "HUD Scaling",
             "Scale the UI to a larger or smaller size. (Recommended values: 50%, 75%, or 100%)",
             allSettings.ui_scale, 50.f, 100.f, sliderPercent,
-            [](Slider& slider){soundSlider(true); allSettings.ui_scale = floorf(slider.getValue());});
+            [](Slider& slider){soundSliderSetting(slider, true); allSettings.ui_scale = floorf(slider.getValue());});
 #endif
 		y += settingsAddSlider(*settings_subwindow, y, "enemybar_scale", "Enemy Health Bar Scaling",
 			"Control size of in-world popups for enemy health bars.",
-			allSettings.enemybar_scale, 50, 100, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.enemybar_scale = slider.getValue(); });
+			allSettings.enemybar_scale, 50, 100, sliderPercent, [](Slider& slider) {soundSliderSetting(slider, true); allSettings.enemybar_scale = slider.getValue(); });
 		y += settingsAddSlider(*settings_subwindow, y, "world_tooltip_scale", "Popup Scaling",
 			"Control size of in-world popups for items, gravestones and NPC dialogue.",
-			allSettings.world_tooltip_scale, 100, 200, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.world_tooltip_scale = slider.getValue(); });
+			allSettings.world_tooltip_scale, 100, 200, sliderPercent, [](Slider& slider) {soundSliderSetting(slider, true); allSettings.world_tooltip_scale = slider.getValue(); });
 		y += settingsAddSlider(*settings_subwindow, y, "world_tooltip_scale_splitscreen", "Popup Scaling (Splitscreen)",
 			"Control size of in-world popups for items, gravestones and NPC dialogue in splitscreen.",
-			allSettings.world_tooltip_scale_splitscreen, 100, 200, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.world_tooltip_scale_splitscreen = slider.getValue(); });
+			allSettings.world_tooltip_scale_splitscreen, 100, 200, sliderPercent, [](Slider& slider) {soundSliderSetting(slider, true); allSettings.world_tooltip_scale_splitscreen = slider.getValue(); });
 		y += settingsAddSlider(*settings_subwindow, y, "item_tooltip_height", "Item Tooltip Height",
 			"Adjust the vertical position of in-world item tooltip popups.",
 			allSettings.item_tooltip_height, 50, 100, sliderPercent, [
-			](Slider& slider) {soundSlider(true); allSettings.item_tooltip_height = slider.getValue(); });
+			](Slider& slider) {soundSliderSetting(slider, true); allSettings.item_tooltip_height = slider.getValue(); });
 		y += settingsAddSlider(*settings_subwindow, y, "shootmode_crosshair_opacity", "Crosshair Opacity",
 			"Adjust the opacity of the crosshair.",
 			allSettings.shootmode_crosshair_opacity, 0, 100, sliderPercent, [
-			](Slider& slider) {soundSlider(true); allSettings.shootmode_crosshair_opacity = slider.getValue(); });
+			](Slider& slider) {soundSliderSetting(slider, true); allSettings.shootmode_crosshair_opacity = slider.getValue(); });
 		const char* selected_mode = crosshairs[allSettings.shootmode_crosshair];
 		y += settingsAddDropdown(*settings_subwindow, y, "shootmode_crosshair", "Crosshair Type", "Adjust the appearance of the crosshair.",
 			false, crosshairs, selected_mode, settingsCrosshairType);
@@ -5634,7 +5917,7 @@ bind_failed:
 #ifndef NINTENDO
         y += settingsAddBooleanOption(*settings_subwindow, y, "ui_filter", "Filter Scaling",
             "Scaled UI elements will have softer edges if this is enabled, at the cost of some sharpness.",
-            allSettings.ui_filter_enabled, [](Button& button){soundToggle(); allSettings.ui_filter_enabled = button.isPressed();});
+            allSettings.ui_filter_enabled, [](Button& button){soundToggleSetting(button); allSettings.ui_filter_enabled = button.isPressed();});
 #endif
 
 		y += settingsAddCustomize(*settings_subwindow, y, "minimap_settings", "Minimap Settings",
@@ -5642,20 +5925,20 @@ bind_failed:
 			[](Button& button){allSettings.minimap = Minimap::load(); settingsMinimap(button);});
 		y += settingsAddBooleanWithCustomizeOption(*settings_subwindow, y, "show_messages", "Show Messages",
 			"Customize which messages will be logged to the player, if any.",
-			allSettings.show_messages_enabled, [](Button& button){soundToggle(); allSettings.show_messages_enabled = button.isPressed();},
+			allSettings.show_messages_enabled, [](Button& button){soundToggleSetting(button); allSettings.show_messages_enabled = button.isPressed();},
 			[](Button& button){allSettings.show_messages = Messages::load(); settingsMessages(button);});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "show_player_nametags", "Show Player Nametags",
 			"Display the name of each player character above their avatar.",
-			allSettings.show_player_nametags_enabled, [](Button& button){soundToggle(); allSettings.show_player_nametags_enabled = button.isPressed();});
+			allSettings.show_player_nametags_enabled, [](Button& button){soundToggleSetting(button); allSettings.show_player_nametags_enabled = button.isPressed();});
 
 
 		y += settingsAddSubHeader(*settings_subwindow, y, "accessibility", "Accessibility");
 		y += settingsAddBooleanOption(*settings_subwindow, y, "content_control", "Content Control",
 			"Disable the appearance of blood and other explicit kinds of content in the game",
-			allSettings.content_control_enabled, [](Button& button) {soundToggle(); allSettings.content_control_enabled = button.isPressed(); });
+			allSettings.content_control_enabled, [](Button& button) {soundToggleSetting(button); allSettings.content_control_enabled = button.isPressed(); });
 		y += settingsAddBooleanOption(*settings_subwindow, y, "colorblind_mode", "Colorblind Mode",
 			"Change the appearance of certain UI elements to improve visibility for certain colorblind individuals.",
-			allSettings.colorblind_mode_enabled, [](Button& button) {soundToggle(); allSettings.colorblind_mode_enabled = button.isPressed(); });
+			allSettings.colorblind_mode_enabled, [](Button& button) {soundToggleSetting(button); allSettings.colorblind_mode_enabled = button.isPressed(); });
 		const char* arachnophobia_desc;
 		if ( intro ) {
 			arachnophobia_desc = "Replace all giant spiders in the game with hostile crustaceans.";
@@ -5665,20 +5948,23 @@ bind_failed:
 		}
 		y += settingsAddBooleanOption(*settings_subwindow, y, "arachnophobia_filter", "Arachnophobia Filter",
 			arachnophobia_desc, allSettings.arachnophobia_filter_enabled,
-			[](Button& button) {soundToggle(); allSettings.arachnophobia_filter_enabled = button.isPressed(); });
+			[](Button& button) {soundToggleSetting(button); allSettings.arachnophobia_filter_enabled = button.isPressed(); });
 		y += settingsAddBooleanOption(*settings_subwindow, y, "shaking", "Shaking",
 			"Toggle the camera's ability to twist and roll when the player stumbles or receives damage.",
-			allSettings.shaking_enabled, [](Button& button) {soundToggle(); allSettings.shaking_enabled = button.isPressed(); });
+			allSettings.shaking_enabled, [](Button& button) {soundToggleSetting(button); allSettings.shaking_enabled = button.isPressed(); });
 		y += settingsAddBooleanOption(*settings_subwindow, y, "bobbing", "Bobbing",
 			"Toggle the camera's ability to bob steadily as the player moves.",
-			allSettings.bobbing_enabled, [](Button& button) {soundToggle(); allSettings.bobbing_enabled = button.isPressed(); });
+			allSettings.bobbing_enabled, [](Button& button) {soundToggleSetting(button); allSettings.bobbing_enabled = button.isPressed(); });
 		y += settingsAddBooleanOption(*settings_subwindow, y, "light_flicker", "Light Flicker",
 			"Toggle the flickering appearance of torches and other light fixtures in the game world.",
-			allSettings.light_flicker_enabled, [](Button& button) {soundToggle(); allSettings.light_flicker_enabled = button.isPressed(); });
+			allSettings.light_flicker_enabled, [](Button& button) {soundToggleSetting(button); allSettings.light_flicker_enabled = button.isPressed(); });
+		y += settingsAddBooleanOption(*settings_subwindow, y, "hold_to_activate", "Hold To Activate Exits",
+			"Toggle to change dungeon exits requiring long hold of the \"Use\" binding.",
+			allSettings.hold_to_activate_enabled, [](Button& button) {soundToggleSetting(button); allSettings.hold_to_activate_enabled = button.isPressed(); });
 #if 0
 		y += settingsAddBooleanOption(*settings_subwindow, y, "show_hud", "Show HUD",
 			"Toggle the display of health and other status bars in game when the inventory is closed.",
-			allSettings.show_hud_enabled, [](Button& button){soundToggle(); allSettings.show_hud_enabled = button.isPressed();});
+			allSettings.show_hud_enabled, [](Button& button){soundToggleSetting(button); allSettings.show_hud_enabled = button.isPressed();});
 #endif
 
 #ifndef NINTENDO
@@ -5711,6 +5997,7 @@ bind_failed:
 			{Setting::Type::Boolean, "shaking"},
 			{Setting::Type::Boolean, "bobbing"},
 			{Setting::Type::Boolean, "light_flicker"},
+			{Setting::Type::Boolean, "hold_to_activate"},
 			//{Setting::Type::Boolean, "show_hud"},
         });
 #else
@@ -5739,6 +6026,7 @@ bind_failed:
 			{Setting::Type::Boolean, "shaking"},
 			{Setting::Type::Boolean, "bobbing"},
 			{Setting::Type::Boolean, "light_flicker"},
+			{Setting::Type::Boolean, "hold_to_activate"},
         });
 #endif
 
@@ -5748,7 +6036,7 @@ bind_failed:
 
 	static void settingsVideo(Button& button) {
 		Frame* settings_subwindow;
-		if ((settings_subwindow = settingsSubwindowSetup(button)) == nullptr) {
+		if ((settings_subwindow = settingsSubwindowSetup(button.getName())) == nullptr) {
 			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
 #ifdef NINTENDO
@@ -5811,15 +6099,15 @@ bind_failed:
             false, modes, selected_mode, settingsWindowMode);
 		y += settingsAddBooleanOption(*settings_subwindow, y, "vsync", "Vertical Sync",
 			"Prevent screen-tearing by locking the game's refresh rate to the current display.",
-			allSettings.video.vsync_enabled, [](Button& button){soundToggle(); allSettings.video.vsync_enabled = button.isPressed();});
+			allSettings.video.vsync_enabled, [](Button& button){soundToggleSetting(button); allSettings.video.vsync_enabled = button.isPressed();});
 #endif
 		y += settingsAddSubHeader(*settings_subwindow, y, "options", "Display Options");
 		y += settingsAddSlider(*settings_subwindow, y, "gamma", "Gamma",
 			"Adjust the brightness of the visuals in-game.",
-			allSettings.video.gamma, 50, 200, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.video.gamma = slider.getValue();});
+			allSettings.video.gamma, 50, 200, sliderPercent, [](Slider& slider){soundSliderSetting(slider, true); allSettings.video.gamma = slider.getValue();});
 		y += settingsAddSlider(*settings_subwindow, y, "fov", "Field of View",
 			"Adjust the vertical field-of-view of the in-game camera.",
-			allSettings.fov, 40, 100, nullptr, [](Slider& slider){soundSlider(true); allSettings.fov = slider.getValue();});
+			allSettings.fov, 40, 100, nullptr, [](Slider& slider){soundSliderSetting(slider, true); allSettings.fov = slider.getValue();});
 #ifndef NINTENDO
         auto sliderFPS = [](float v) -> const char* {
             if ((int)v == AUTO_FPS) {
@@ -5833,23 +6121,23 @@ bind_failed:
         
 		y += settingsAddSlider(*settings_subwindow, y, "fps", "FPS limit",
 			"Limit the frame-rate of the game window. Do not set this higher than your refresh rate. (Recommended: Auto)",
-			allSettings.fps ? allSettings.fps : AUTO_FPS, MIN_FPS, AUTO_FPS, sliderFPS, [](Slider& slider){soundSlider(true); allSettings.fps = slider.getValue();});
+			allSettings.fps ? allSettings.fps : AUTO_FPS, MIN_FPS, AUTO_FPS, sliderFPS, [](Slider& slider){soundSliderSetting(slider, true); allSettings.fps = slider.getValue();});
 		/*y += settingsAddBooleanOption(*settings_subwindow, y, "hdr_enabled", "High Dynamic Range (HDR)",
 			"Increases color contrast of the rendered world with both brightened and darkened areas.",
-			allSettings.hdr_enabled, [](Button& button) {soundToggle(); allSettings.hdr_enabled = button.isPressed(); });*/
+			allSettings.hdr_enabled, [](Button& button) {soundToggleSetting(button); allSettings.hdr_enabled = button.isPressed(); });*/
 		y += settingsAddBooleanOption(*settings_subwindow, y, "use_frame_interpolation", "Camera Interpolation",
 			"Smooth player camera by interpolating camera movements over additional frames.",
-			allSettings.use_frame_interpolation, [](Button& button) {soundToggle(); allSettings.use_frame_interpolation = button.isPressed();});
+			allSettings.use_frame_interpolation, [](Button& button) {soundToggleSetting(button); allSettings.use_frame_interpolation = button.isPressed();});
 #endif
 		y += settingsAddBooleanOption(*settings_subwindow, y, "vertical_split", "Vertical Splitscreen",
 			"For splitscreen with two-players: divide the screen along a vertical line rather than a horizontal one.",
-			allSettings.vertical_split_enabled, [](Button& button){soundToggle(); allSettings.vertical_split_enabled = button.isPressed();});
+			allSettings.vertical_split_enabled, [](Button& button){soundToggleSetting(button); allSettings.vertical_split_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "clipped_split", "Clipped Splitscreen",
 			"For splitscreen with two-players: reduce each viewport by 20% to preserve aspect ratio.",
-			allSettings.clipped_split_enabled, [](Button& button){soundToggle(); allSettings.clipped_split_enabled = button.isPressed();});
+			allSettings.clipped_split_enabled, [](Button& button){soundToggleSetting(button); allSettings.clipped_split_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "staggered_split", "Staggered Splitscreen",
 			"For splitscreen with two-players: stagger each viewport so they each rest in a corner of the display.",
-			allSettings.staggered_split_enabled, [](Button& button){soundToggle(); allSettings.staggered_split_enabled = button.isPressed();});
+			allSettings.staggered_split_enabled, [](Button& button){soundToggleSetting(button); allSettings.staggered_split_enabled = button.isPressed();});
 
 #ifndef NINTENDO
 		hookSettings(*settings_subwindow,{
@@ -5886,7 +6174,7 @@ bind_failed:
 
 	static void settingsAudio(Button& button) {
 		Frame* settings_subwindow;
-		if ((settings_subwindow = settingsSubwindowSetup(button)) == nullptr) {
+		if ((settings_subwindow = settingsSubwindowSetup(button.getName())) == nullptr) {
 			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
 #if defined(NINTENDO) || !defined(USE_FMOD)
@@ -5935,46 +6223,46 @@ bind_failed:
 		y += settingsAddSubHeader(*settings_subwindow, y, "volume", "Volume");
 		y += settingsAddSlider(*settings_subwindow, y, "master_volume", "Master Volume",
 			"Adjust the volume of all sound sources equally.",
-			allSettings.master_volume, 0, 100, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.master_volume = slider.getValue();
+			allSettings.master_volume, 0, 100, sliderPercent, [](Slider& slider){soundSliderSetting(slider, true); allSettings.master_volume = slider.getValue();
 				setGlobalVolume(allSettings.master_volume / 100.0, allSettings.music_volume / 100.0, allSettings.gameplay_volume / 100.0,
 				allSettings.ambient_volume / 100.0, allSettings.environment_volume / 100.0, allSettings.notification_volume / 100.0);});
 		y += settingsAddSlider(*settings_subwindow, y, "gameplay_volume", "Gameplay Volume",
 			"Adjust the volume of most game sound effects.",
-			allSettings.gameplay_volume, 0, 100, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.gameplay_volume = slider.getValue();
+			allSettings.gameplay_volume, 0, 100, sliderPercent, [](Slider& slider){soundSliderSetting(slider, true); allSettings.gameplay_volume = slider.getValue();
 				setGlobalVolume(allSettings.master_volume / 100.0, allSettings.music_volume / 100.0, allSettings.gameplay_volume / 100.0,
 				allSettings.ambient_volume / 100.0, allSettings.environment_volume / 100.0, allSettings.notification_volume / 100.0);});
 		y += settingsAddSlider(*settings_subwindow, y, "ambient_volume", "Ambient Volume",
 			"Adjust the volume of ominous subterranean sound-cues.",
-			allSettings.ambient_volume, 0, 100, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.ambient_volume = slider.getValue();
+			allSettings.ambient_volume, 0, 100, sliderPercent, [](Slider& slider){soundSliderSetting(slider, true); allSettings.ambient_volume = slider.getValue();
 				setGlobalVolume(allSettings.master_volume / 100.0, allSettings.music_volume / 100.0, allSettings.gameplay_volume / 100.0,
 				allSettings.ambient_volume / 100.0, allSettings.environment_volume / 100.0, allSettings.notification_volume / 100.0);});
 		y += settingsAddSlider(*settings_subwindow, y, "environment_volume", "Environment Volume",
 			"Adjust the volume of flowing water and lava.",
-			allSettings.environment_volume, 0, 100, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.environment_volume = slider.getValue();
+			allSettings.environment_volume, 0, 100, sliderPercent, [](Slider& slider){soundSliderSetting(slider, true); allSettings.environment_volume = slider.getValue();
 				setGlobalVolume(allSettings.master_volume / 100.0, allSettings.music_volume / 100.0, allSettings.gameplay_volume / 100.0,
 				allSettings.ambient_volume / 100.0, allSettings.environment_volume / 100.0, allSettings.notification_volume / 100.0);});
 		y += settingsAddSlider(*settings_subwindow, y, "notification_volume", "Notification Volume",
 			"Adjust the volume of skill increase and level up notifications.",
-			allSettings.notification_volume, 0, 100, sliderPercent, [](Slider& slider) {soundSlider(true); allSettings.notification_volume = slider.getValue();
+			allSettings.notification_volume, 0, 100, sliderPercent, [](Slider& slider) {soundSliderSetting(slider, true); allSettings.notification_volume = slider.getValue();
 		setGlobalVolume(allSettings.master_volume / 100.0, allSettings.music_volume / 100.0, allSettings.gameplay_volume / 100.0,
 			allSettings.ambient_volume / 100.0, allSettings.environment_volume / 100.0, allSettings.notification_volume / 100.0); });
 		y += settingsAddSlider(*settings_subwindow, y, "music_volume", "Music Volume",
 			"Adjust the volume of the game's soundtrack.",
-			allSettings.music_volume, 0, 100, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.music_volume = slider.getValue();
+			allSettings.music_volume, 0, 100, sliderPercent, [](Slider& slider){soundSliderSetting(slider, true); allSettings.music_volume = slider.getValue();
 				setGlobalVolume(allSettings.master_volume / 100.0, allSettings.music_volume / 100.0, allSettings.gameplay_volume / 100.0,
 				allSettings.ambient_volume / 100.0, allSettings.environment_volume / 100.0, allSettings.notification_volume / 100.0);});
 
 		y += settingsAddSubHeader(*settings_subwindow, y, "options", "Options");
 		y += settingsAddBooleanOption(*settings_subwindow, y, "minimap_pings", "Minimap Pings",
 			"Toggle the ability to hear pings on the minimap",
-			allSettings.minimap_pings_enabled, [](Button& button){soundToggle(); allSettings.minimap_pings_enabled = button.isPressed();});
+			allSettings.minimap_pings_enabled, [](Button& button){soundToggleSetting(button); allSettings.minimap_pings_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "player_monster_sounds", "Player Monster Sounds",
 			"Toggle the chance to emit monstrous mumbles when playing a non-human character.",
-			allSettings.player_monster_sounds_enabled, [](Button& button){soundToggle(); allSettings.player_monster_sounds_enabled = button.isPressed();});
+			allSettings.player_monster_sounds_enabled, [](Button& button){soundToggleSetting(button); allSettings.player_monster_sounds_enabled = button.isPressed();});
 #ifndef NINTENDO
 		y += settingsAddBooleanOption(*settings_subwindow, y, "out_of_focus_audio", "Out-of-Focus Audio",
 			"Enable audio sources even when the game window is out-of-focus.",
-			allSettings.out_of_focus_audio_enabled, [](Button& button){soundToggle(); allSettings.out_of_focus_audio_enabled = button.isPressed();});
+			allSettings.out_of_focus_audio_enabled, [](Button& button){soundToggleSetting(button); allSettings.out_of_focus_audio_enabled = button.isPressed();});
 #endif
 
 #ifndef NINTENDO
@@ -6013,117 +6301,496 @@ bind_failed:
 #endif
 	}
 
-	static void settingsControls(Button& button) {
-		Frame* settings_subwindow;
-		if ((settings_subwindow = settingsSubwindowSetup(button)) == nullptr) {
-			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
-			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
-			settingsSelect(*settings_subwindow, {Setting::Type::Customize, "bindings"});
-			return;
-		}
-		int y = 0;
-
-#ifndef NINTENDO
-		y += settingsAddSubHeader(*settings_subwindow, y, "general", "General Settings");
-		y += settingsAddCustomize(*settings_subwindow, y, "bindings", "Bindings",
-			"Modify controls for mouse, keyboard, gamepads, and other peripherals.",
-			[](Button&){
-			    allSettings.bindings = Bindings::load();
-				const int player = multiplayer == CLIENT ? 0 : getMenuOwner();
-			    settingsBindings(player, inputs.hasController(player) ? 1 : 0, getMatchingProfileName(player, inputs.hasController(player)),
-			        {Setting::Type::Dropdown, "player_dropdown_button"});
-			    });
-
-		y += settingsAddSubHeader(*settings_subwindow, y, "mouse_and_keyboard", "Mouse & Keyboard");
-		std::vector<const char*> mkb_facehotbar_strings = { "Classic", "Modern" };
-		y += settingsAddSlider(*settings_subwindow, y, "mouse_sensitivity", "Mouse Sensitivity",
-			"Control the speed by which mouse movement affects camera movement.",
-			allSettings.mouse_sensitivity, 0, 100, nullptr, [](Slider& slider){soundSlider(true); allSettings.mouse_sensitivity = slider.getValue();});
-		/*y += settingsAddDropdown(*settings_subwindow, y, "mkb_facehotbar", "Hotbar Layout",
-			"Classic: Flat 10 slot layout. Modern: Grouped 3x3 slot layout.", false,
-			mkb_facehotbar_strings, mkb_facehotbar_strings[allSettings.mkb_facehotbar ? 1 : 0], settingsMkbHotbarLayout);*/
-		y += settingsAddBooleanOption(*settings_subwindow, y, "numkeys_in_inventory", "Number Keys in Inventory",
-			"Allow the player to bind inventory items to the hotbar using the number keys on their keyboard.",
-			allSettings.numkeys_in_inventory_enabled, [](Button& button){soundToggle(); allSettings.numkeys_in_inventory_enabled = button.isPressed();});
-		y += settingsAddBooleanOption(*settings_subwindow, y, "reverse_mouse", "Reverse Mouse",
-			"Reverse mouse up and down movement for controlling the orientation of the player.",
-			allSettings.reverse_mouse_enabled, [](Button& button){soundToggle(); allSettings.reverse_mouse_enabled = button.isPressed();});
-		y += settingsAddBooleanOption(*settings_subwindow, y, "smooth_mouse", "Smooth Mouse",
-			"Smooth the movement of the mouse over a few frames of input.",
-			allSettings.smooth_mouse_enabled, [](Button& button){soundToggle(); allSettings.smooth_mouse_enabled = button.isPressed();});
-		/*y += settingsAddBooleanOption(*settings_subwindow, y, "rotation_speed_limit", "Rotation Speed Limit",
-			"Limit how fast the player can rotate by moving the mouse.",
-			allSettings.rotation_speed_limit_enabled, [](Button& button){soundToggle(); allSettings.rotation_speed_limit_enabled = button.isPressed();});*/
-		y += settingsAddBooleanOption(*settings_subwindow, y, "mkb_world_tooltips", "Interact Aim Assist",
-			"Disable to always use precise cursor targeting on interactable objects and remove interact popups.",
-			allSettings.mkb_world_tooltips_enabled, [](Button& button) {soundToggle(); allSettings.mkb_world_tooltips_enabled = button.isPressed(); });
-#endif
-
+    static void settingsControlsPopulate(int player, int device, const char* profile, Setting setting_to_select) {
+        bound_player = player;
+        bound_device = device;
+        bound_profile = profile;
+        
+        Frame* settings_subwindow;
+        if ((settings_subwindow = settingsSubwindowSetup("Controls")) == nullptr) {
+            auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+            auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
+            settingsSelect(*settings_subwindow, {Setting::Type::Customize, "bindings"});
+            return;
+        }
+        int y = 0;
+        
+        // controller graph
+        if (device == 1) {
+            const auto& input = Input::inputs[player];
+            const auto controllerType = input.getControllerType();
+            
+            y += settingsAddSubHeader(*settings_subwindow, y, "layout_header", "Layout");
+            y += 8;
+            const char* path;
+            switch (controllerType) {
+            case Input::ControllerType::PlayStation:
+                path = "*#images/ui/Main Menus/Settings/Controls/Layout_PS5-lines.png";
+                break;
 #ifdef NINTENDO
-		y += settingsAddSubHeader(*settings_subwindow, y, "gamepad", "Controller Settings");
-		y += settingsAddCustomize(*settings_subwindow, y, "bindings", "Bindings",
-			"Change controller bindings.",
-			[](Button&){
-			    allSettings.bindings = Bindings::load();
-				const int player = multiplayer == CLIENT ? 0 : getMenuOwner();
-			    settingsBindings(player, inputs.hasController(player) ? 1 : 0, getMatchingProfileName(player, inputs.hasController(player)),
-			        {Setting::Type::Dropdown, "player_dropdown_button"});
-			    });
+			case Input::ControllerType::NintendoSwitch: {
+				if (nxIsHandheldMode()) {
+					path = "*#images/ui/Main Menus/Settings/Controls/Layout_SwitchHandheld-Lines.png";
+				}
+				else {
+					if (nxIsProController(player)) {
+						path = "*#images/ui/Main Menus/Settings/Controls/Layout_ProController-lines.png";
+					}
+					else {
+						path = "*#images/ui/Main Menus/Settings/Controls/Layout_Switch-Lines.png";
+					}
+				}
+				break;
+			}
 #else
-		y += settingsAddSubHeader(*settings_subwindow, y, "gamepad", "Gamepad Settings");
+			case Input::ControllerType::NintendoSwitch:
+				path = "*#images/ui/Main Menus/Settings/Controls/Layout_Switch-Lines.png";
+				break;
 #endif
-		std::vector<const char*> gamepad_facehotbar_strings = { "Modern", "Classic" };
-		y += settingsAddDropdown(*settings_subwindow, y, "gamepad_facehotbar", "Hotbar Layout",
-			"Modern: Grouped 3x3 slot layout using held buttons. Classic: Flat 10 slot layout with simpler controls.", false,
-			gamepad_facehotbar_strings, gamepad_facehotbar_strings[allSettings.gamepad_facehotbar ? 0 : 1], settingsGamepadHotbarLayout);
-		y += settingsAddSlider(*settings_subwindow, y, "turn_sensitivity_x", "Turn Sensitivity X",
-			"Affect the horizontal sensitivity of the control stick used for turning.",
-			allSettings.turn_sensitivity_x, 25.f, 200.f, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.turn_sensitivity_x = slider.getValue();});
-		y += settingsAddSlider(*settings_subwindow, y, "turn_sensitivity_y", "Turn Sensitivity Y",
-			"Affect the vertical sensitivity of the control stick used for turning.",
-			allSettings.turn_sensitivity_y, 25.f, 200.f, sliderPercent, [](Slider& slider){soundSlider(true); allSettings.turn_sensitivity_y = slider.getValue();});
+            case Input::ControllerType::SteamDeck:
+                path = "*#images/ui/Main Menus/Settings/Controls/Layout_Deck-Lines.png";
+                break;
+			default:
+            case Input::ControllerType::Xbox:
+                path = "*#images/ui/Main Menus/Settings/Controls/Layout_Xbox-lines.png";
+                break;
+            }
+            const Image* image = Image::get(path); assert(image);
+            const int x = (int)(settings_subwindow->getSize().w - image->getWidth()) / 2;
+            const SDL_Rect img_pos{x, y, (int)image->getWidth(), (int)image->getHeight()};
+            auto layout = settings_subwindow->addImage(img_pos, 0xffffffff, path, "layout");
+            
+            struct ButtonBinding {
+                const char* name;
+                int x;
+                int y;
+                bool pressed;
+                const char* text;
+            };
+            
+            std::vector<ButtonBinding> list;
+            if (controllerType == Input::ControllerType::PlayStation) {
+                const int r = x + (int)image->getWidth() + 4;
+                list.insert(list.end(),{
+                    {"ButtonLeftBumper", 0, 2, false, nullptr},
+                    {"LeftTrigger", 0, 44, false, nullptr},
+                    {"ButtonBack", 0, 78, false, nullptr},
+                    {"DpadX+", 0, 112, false, nullptr},
+                    {"DpadY+", 0, 148, false, nullptr},
+                    {"DpadX-", 0, 184, false, nullptr},
+                    {"DpadY-", 0, 220, false, nullptr},
+                    {"ButtonLeftStick", 0, 266, false, "Move"},
+                    {"ButtonLeftStick", 0, 306, true, nullptr},
+                    {"ButtonRightBumper", r, 2, false, nullptr},
+                    {"RightTrigger", r, 44, false, nullptr},
+                    {"ButtonStart", r, 78, false, nullptr},
+                    {"ButtonA", r, 112, false, nullptr},
+                    {"ButtonB", r, 148, false, nullptr},
+                    {"ButtonX", r, 184, false, nullptr},
+                    {"ButtonY", r, 220, false, nullptr},
+                    {"ButtonRightStick", r, 266, false, "Look / Turn"},
+                    {"ButtonRightStick", r, 306, true, nullptr},
+                });
+            }
+            else if (controllerType == Input::ControllerType::NintendoSwitch) {
+                const int r = x + (int)image->getWidth() + 4;
+#ifdef NINTENDO
+				if (!nxIsHandheldMode() && nxIsProController(player)) {
+					list.insert(list.end(), {
+						{"ButtonLeftBumper", 0, 2, false, nullptr},
+						{"LeftTrigger", 0, 44, false, nullptr},
+						{"ButtonLeftStick", 0, 78, false, "Move"},
+						{"ButtonLeftStick", 0, 118, true, nullptr},
+						{"ButtonBack", 0, 156, false, nullptr},
+						{"DpadX+", 0, 194, false, nullptr},
+						{"DpadY+", 0, 230, false, nullptr},
+						{"DpadX-", 0, 266, false, nullptr},
+						{"DpadY-", 0, 302, false, nullptr},
+						{"ButtonRightBumper", r, 2, false, nullptr},
+						{"RightTrigger", r, 44, false, nullptr},
+						{"ButtonA", r, 74, false, nullptr},
+						{"ButtonB", r, 110, false, nullptr},
+						{"ButtonX", r, 146, false, nullptr},
+						{"ButtonY", r, 182, false, nullptr},
+						{"ButtonStart", r, 214, false, nullptr},
+						{"ButtonRightStick", r, 266, false, "Look / Turn"},
+						{"ButtonRightStick", r, 306, true, nullptr},
+						});
+				}
+				else {
+					list.insert(list.end(), {
+						{"ButtonLeftBumper", 0, 2, false, nullptr},
+						{"LeftTrigger", 0, 44, false, nullptr},
+						{"ButtonBack", 0, 82, false, nullptr},
+						{"ButtonLeftStick", 0, 108, false, "Move"},
+						{"ButtonLeftStick", 0, 148, true, nullptr},
+						{"DpadX+", 0, 186, false, nullptr},
+						{"DpadY+", 0, 222, false, nullptr},
+						{"DpadX-", 0, 258, false, nullptr},
+						{"DpadY-", 0, 294, false, nullptr},
+						{"ButtonRightBumper", r, 2, false, nullptr},
+						{"RightTrigger", r, 44, false, nullptr},
+						{"ButtonStart", r, 76, false, nullptr},
+						{"ButtonA", r, 112, false, nullptr},
+						{"ButtonB", r, 148, false, nullptr},
+						{"ButtonX", r, 184, false, nullptr},
+						{"ButtonY", r, 220, false, nullptr},
+						{"ButtonRightStick", r, 266, false, "Look / Turn"},
+						{"ButtonRightStick", r, 306, true, nullptr},
+						});
+				}
+#else
+				list.insert(list.end(), {
+					{"ButtonLeftBumper", 0, 2, false, nullptr},
+					{"LeftTrigger", 0, 44, false, nullptr},
+					{"ButtonBack", 0, 82, false, nullptr},
+					{"ButtonLeftStick", 0, 108, false, "Move"},
+					{"ButtonLeftStick", 0, 148, true, nullptr},
+					{"DpadX+", 0, 186, false, nullptr},
+					{"DpadY+", 0, 222, false, nullptr},
+					{"DpadX-", 0, 258, false, nullptr},
+					{"DpadY-", 0, 294, false, nullptr},
+					{"ButtonRightBumper", r, 2, false, nullptr},
+					{"RightTrigger", r, 44, false, nullptr},
+					{"ButtonStart", r, 76, false, nullptr},
+					{"ButtonA", r, 112, false, nullptr},
+					{"ButtonB", r, 148, false, nullptr},
+					{"ButtonX", r, 184, false, nullptr},
+					{"ButtonY", r, 220, false, nullptr},
+					{"ButtonRightStick", r, 266, false, "Look / Turn"},
+					{"ButtonRightStick", r, 306, true, nullptr},
+					});
+#endif
+            }
+            else if (controllerType == Input::ControllerType::Xbox) {
+                const int r = x + (int)image->getWidth() + 4;
+                list.insert(list.end(),{
+                    {"ButtonLeftBumper", 0, 2, false, nullptr},
+                    {"LeftTrigger", 0, 44, false, nullptr},
+                    {"ButtonLeftStick", 0, 78, false, "Move"},
+                    {"ButtonLeftStick", 0, 118, true, nullptr},
+                    {"ButtonBack", 0, 156, false, nullptr},
+                    {"DpadX+", 0, 194, false, nullptr},
+                    {"DpadY+", 0, 230, false, nullptr},
+                    {"DpadX-", 0, 266, false, nullptr},
+                    {"DpadY-", 0, 302, false, nullptr},
+                    {"ButtonRightBumper", r, 2, false, nullptr},
+                    {"RightTrigger", r, 44, false, nullptr},
+                    {"ButtonA", r, 74, false, nullptr},
+                    {"ButtonB", r, 110, false, nullptr},
+                    {"ButtonX", r, 146, false, nullptr},
+                    {"ButtonY", r, 182, false, nullptr},
+                    {"ButtonStart", r, 214, false, nullptr},
+                    {"ButtonRightStick", r, 266, false, "Look / Turn"},
+                    {"ButtonRightStick", r, 306, true, nullptr},
+                });
+            }
+            else if (controllerType == Input::ControllerType::SteamDeck) {
+                const int r = x + (int)image->getWidth() + 4;
+                list.insert(list.end(),{
+                    {"ButtonLeftBumper", 0, 2, false, nullptr},
+                    {"LeftTrigger", 0, 44, false, nullptr},
+                    {"ButtonBack", 0, 78, false, nullptr},
+                    {"DpadX+", 0, 112, false, nullptr},
+                    {"DpadY+", 0, 148, false, nullptr},
+                    {"DpadX-", 0, 184, false, nullptr},
+                    {"DpadY-", 0, 220, false, nullptr},
+                    {"ButtonLeftStick", 0, 266, false, "Move"},
+                    {"ButtonLeftStick", 0, 306, true, nullptr},
+                    {"ButtonRightBumper", r, 2, false, nullptr},
+                    {"RightTrigger", r, 44, false, nullptr},
+                    {"ButtonStart", r, 78, false, nullptr},
+                    {"ButtonA", r, 112, false, nullptr},
+                    {"ButtonB", r, 148, false, nullptr},
+                    {"ButtonX", r, 184, false, nullptr},
+                    {"ButtonY", r, 220, false, nullptr},
+                    {"ButtonRightStick", r, 266, false, "Look / Turn"},
+                    {"ButtonRightStick", r, 306, true, nullptr},
+                });
+            }
+            for (auto& b : list) {
+                const auto path = input.getGlyphPathForInput(
+                    b.name, b.pressed, controllerType);
+                const auto img = Image::get(path.c_str()); assert(img);
+                
+                const int w = img->getWidth();
+                const int h = img->getHeight();
+                
+                constexpr int fieldHeight = 48;
+                auto field = settings_subwindow->addField("", 1024);
+                field->setFont(smallfont_outline);
+                
+                if (b.text) {
+                    field->setText(b.text);
+                } else {
+                    std::vector<std::string> bindings;
+                    for (auto& bind : allSettings.bindings.gamepad_bindings[player]) {
+                        if (bind.second == b.name) {
+                            bindings.emplace_back(bind.first);
+                        }
+                    }
+                    if (bindings.empty()) {
+                        field->setColor(makeColorRGB(127, 127, 127));
+                        field->setText("- UNBOUND -");
+                    } else {
+                        if (bindings.size() == 1) {
+                            field->setText(bindings[0].c_str());
+                        }
+                        if (bindings.size() >= 2) {
+                            const std::string cat = bindings[0] + "\n" + bindings[1];
+                            field->setText(cat.c_str());
+                        }
+                    }
+                }
+                
+                if (b.x) {
+                    // right side
+                    field->setHJustify(Field::justify_t::LEFT);
+                    field->setVJustify(Field::justify_t::CENTER);
+                    field->setSize(SDL_Rect{b.x + w + 4, y + b.y - fieldHeight / 2, x - w - 8, fieldHeight});
+                    const auto pos = SDL_Rect{
+                        b.x,
+                        y + b.y - h / 2,
+                        w,
+                        h
+                    };
+                    settings_subwindow->addImage(pos, 0xffffffff, path.c_str(), "button");
+                } else {
+                    // left side
+                    field->setHJustify(Field::justify_t::RIGHT);
+                    field->setVJustify(Field::justify_t::CENTER);
+                    field->setSize(SDL_Rect{b.x, y + b.y - fieldHeight / 2, x - w - 8, fieldHeight});
+                    const auto pos = SDL_Rect{
+                        x - w - 4,
+                        y + b.y - h / 2,
+                        w,
+                        h
+                    };
+                    settings_subwindow->addImage(pos, 0xffffffff, path.c_str(), "button");
+                }
+            }
+            
+            y += img_pos.h + 6;
+            y += 20;
+        }
+        
+        y += settingsAddSubHeader(*settings_subwindow, y, "bindings_header", "Bindings", true);
+        
+        static std::vector<std::string> players;
+        static std::vector<const char*> player_ptrs;
+        if (players.empty()) {
+            players.reserve(MAX_SPLITSCREEN);
+            for (int c = 0; c < MAX_SPLITSCREEN; ++c) {
+                std::string str = "Player ";
+                str += std::to_string(c + 1);
+                players.emplace_back(str);
+                player_ptrs.emplace_back(players.back().c_str());
+            }
+        }
 
-		y += settingsAddBooleanOption(*settings_subwindow, y, "gamepad_camera_invert_x", "Invert Camera Look X",
-			"Enable to invert left/right look controls of the player camera.",
-			allSettings.gamepad_camera_invert_x, [](Button& button) {soundToggle(); allSettings.gamepad_camera_invert_x = button.isPressed(); });
-		y += settingsAddBooleanOption(*settings_subwindow, y, "gamepad_camera_invert_y", "Invert Camera Look Y",
-			"Enable to invert up/down look controls of the player camera.",
-			allSettings.gamepad_camera_invert_y, [](Button& button) {soundToggle(); allSettings.gamepad_camera_invert_y = button.isPressed(); });
-
+        std::string player_str = "Player " + std::to_string(player + 1);
+        y += settingsAddDropdown(*settings_subwindow, y, "player_dropdown_button", "Player",
+            "Select the player whose controls you wish to customize.", false,
+            player_ptrs, player_str.c_str(),
+            [](Button& button){
+                soundActivate();
+                settingsOpenDropdown(button, "player_dropdown", DropdownType::Short,
+                    [](Frame::entry_t& entry){
+                        soundActivate();
+                        const int player = (int)(entry.name.back() - '1');
+                    
+                        assert(main_menu_frame);
+                        auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+                        auto subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                        auto scroll = subwindow->getActualSize().y;
+                        settingsControlsPopulate(player, bound_device,
+                            getMatchingProfileName(player, bound_device == 1),
+                            {Setting::Type::Dropdown, "player_dropdown_button"});
+                        subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                        auto size = subwindow->getActualSize();
+                        size.y = scroll;
+                        subwindow->setActualSize(size);
+                        auto gradient = subwindow->findImage("gradient_background"); assert(gradient);
+                        gradient->pos.y = size.y;
+                    });
+            });
+        
 #ifndef NINTENDO
-		hookSettings(*settings_subwindow,
-			{{Setting::Type::Customize, "bindings"},
-			{Setting::Type::Slider, "mouse_sensitivity"},
-			//{Setting::Type::Dropdown, "mkb_facehotbar"},
-			{Setting::Type::Boolean, "numkeys_in_inventory"},
-			{Setting::Type::Boolean, "reverse_mouse"},
-			{Setting::Type::Boolean, "smooth_mouse"},
-			//{Setting::Type::Boolean, "rotation_speed_limit"},
-			{Setting::Type::Boolean, "mkb_world_tooltips"},
-			{Setting::Type::Dropdown, "gamepad_facehotbar"},
-			{Setting::Type::Slider, "turn_sensitivity_x"},
-			{Setting::Type::Slider, "turn_sensitivity_y"},
-			{Setting::Type::Boolean, "gamepad_camera_invert_x"},
-			{Setting::Type::Boolean, "gamepad_camera_invert_y"},
-		});
-#else
-		hookSettings(*settings_subwindow,
-			{{Setting::Type::Customize, "bindings"},
-			{Setting::Type::Dropdown, "gamepad_facehotbar"},
-			{Setting::Type::Slider, "turn_sensitivity_x"},
-			{Setting::Type::Slider, "turn_sensitivity_y"},
-			{Setting::Type::Boolean, "gamepad_camera_invert_x"},
-			{Setting::Type::Boolean, "gamepad_camera_invert_y"},
-		});
+        const std::vector<const char*> devices = {
+            "KB & Mouse",
+            "Gamepad",
+            //"Joystick", // Maybe for the future.
+        };
+        
+        y += settingsAddDropdown(*settings_subwindow, y, "device_dropdown_button", "Device",
+            "Select a controller for the given player.", false, devices, devices[device],
+            [](Button& button){
+                soundActivate();
+                settingsOpenDropdown(button, "device_dropdown", DropdownType::Short,
+                    [](Frame::entry_t& entry){
+                    soundActivate();
+                    const int device = getDeviceIndexForName(entry.text.c_str());
+                    
+                    assert(main_menu_frame);
+                    auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+                    auto subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                    auto scroll = subwindow->getActualSize().y;
+                    settingsControlsPopulate(bound_player, device,
+                        getMatchingProfileName(bound_player, device == 1),
+                        {Setting::Type::Dropdown, "device_dropdown_button"});
+                    subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                    auto size = subwindow->getActualSize();
+                    size.y = scroll;
+                    subwindow->setActualSize(size);
+                    auto gradient = subwindow->findImage("gradient_background"); assert(gradient);
+                    gradient->pos.y = size.y;
+                    });
+            });
 #endif
+        
+        std::vector<const char*> layouts;
+        for (auto& layout : defaultBindings) {
+            layouts.emplace_back(layout.name.c_str());
+        }
+        
+        y += settingsAddDropdown(*settings_subwindow, y, "profile_dropdown_button", "Profile",
+            "Select a predefined binding layout for the given player.", false, layouts, profile,
+            [](Button& button){
+                soundActivate();
+                settingsOpenDropdown(button, "profile_dropdown", DropdownType::Short,
+                    [](Frame::entry_t& entry){
+                    soundActivate();
+                    const char* profile = entry.text.c_str();
+                    allSettings.bindings.kb_mouse_bindings[bound_player].clear();
+                    allSettings.bindings.gamepad_bindings[bound_player].clear();
+                    allSettings.bindings.joystick_bindings[bound_player].clear();
+                    for (auto& binding : getBindings(profile)) {
+                        allSettings.bindings.kb_mouse_bindings[bound_player].emplace(binding.action, binding.keyboard);
+                        allSettings.bindings.gamepad_bindings[bound_player].emplace(binding.action, binding.gamepad);
+                        allSettings.bindings.joystick_bindings[bound_player].emplace(binding.action, binding.joystick);
+                    }
+                    
+                    // using the "Minimal" layout causes facehotbar / "Modern" hotbar from working at all.
+                    // so make sure to disable that when Minimal is selected.
+                    if (entry.text == "Minimal") {
+                        allSettings.controls[bound_player].gamepad_facehotbar = false;
+                    }
+                    
+                    assert(main_menu_frame);
+                    auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+                    auto subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                    auto scroll = subwindow->getActualSize().y;
+                    settingsControlsPopulate(bound_player, bound_device, profile,
+                        {Setting::Type::Dropdown, "profile_dropdown_button"});
+                    subwindow = settings->findFrame("settings_subwindow"); assert(subwindow);
+                    auto size = subwindow->getActualSize();
+                    size.y = scroll;
+                    subwindow->setActualSize(size);
+                    auto gradient = subwindow->findImage("gradient_background"); assert(gradient);
+                    gradient->pos.y = size.y;
+                    });
+            });
 
-		settingsSubwindowFinalize(*settings_subwindow, y, {Setting::Type::Customize, "bindings"});
-		settingsSelect(*settings_subwindow, {Setting::Type::Customize, "bindings"});
+        y += settingsAddCustomize(*settings_subwindow, y, "bindings", "Bindings",
+            "Change controller bindings.",
+            [](Button&){
+                const int player = multiplayer == CLIENT ? 0 : getMenuOwner();
+                old_bindings = allSettings.bindings;
+                settingsBindings(player, bound_device, bound_profile);
+                });
+
+        // Mouse & Keyboard settings
+        if (device == 0) {
+            y += settingsAddSubHeader(*settings_subwindow, y, "settings", "Mouse & Keyboard");
+            y += settingsAddSlider(*settings_subwindow, y, "mouse_sensitivity", "Mouse Sensitivity",
+                "Control the speed by which mouse movement affects camera movement.",
+                allSettings.controls[bound_player].mouse_sensitivity, 0, 100, nullptr, [](Slider& slider)
+                {soundSliderSetting(slider, true); allSettings.controls[bound_player].mouse_sensitivity = slider.getValue();});
+            y += settingsAddBooleanOption(*settings_subwindow, y, "numkeys_in_inventory", "Number Keys in Inventory",
+                "Allow the player to bind inventory items to the hotbar using the number keys on their keyboard.",
+                allSettings.controls[bound_player].numkeys_in_inventory_enabled, [](Button& button)
+                {soundToggleSetting(button); allSettings.controls[bound_player].numkeys_in_inventory_enabled = button.isPressed();});
+            y += settingsAddBooleanOption(*settings_subwindow, y, "reverse_mouse", "Reverse Mouse",
+                "Reverse mouse up and down movement for controlling the orientation of the player.",
+                allSettings.controls[bound_player].reverse_mouse_enabled, [](Button& button)
+                {soundToggleSetting(button); allSettings.controls[bound_player].reverse_mouse_enabled = button.isPressed();});
+            y += settingsAddBooleanOption(*settings_subwindow, y, "smooth_mouse", "Smooth Mouse",
+                "Smooth the movement of the mouse over a few frames of input.",
+                allSettings.controls[bound_player].smooth_mouse_enabled, [](Button& button)
+                {soundToggleSetting(button); allSettings.controls[bound_player].smooth_mouse_enabled = button.isPressed();});
+            y += settingsAddBooleanOption(*settings_subwindow, y, "mkb_world_tooltips", "Interact Aim Assist",
+                "Disable to always use precise cursor targeting on interactable objects and remove interact popups.",
+                allSettings.controls[bound_player].mkb_world_tooltips_enabled, [](Button& button)
+                {soundToggleSetting(button); allSettings.controls[bound_player].mkb_world_tooltips_enabled = button.isPressed();});
+            
+            hookSettings(*settings_subwindow,
+                {{Setting::Type::Customize, "bindings"},
+                {Setting::Type::Slider, "mouse_sensitivity"},
+                {Setting::Type::Boolean, "numkeys_in_inventory"},
+                {Setting::Type::Boolean, "reverse_mouse"},
+                {Setting::Type::Boolean, "smooth_mouse"},
+                {Setting::Type::Boolean, "mkb_world_tooltips"},
+            });
+        }
+        
+        // Gamepad settings
+        if (device == 1) {
+            y += settingsAddSubHeader(*settings_subwindow, y, "settings", "Controller Settings");
+            std::vector<const char*> gamepad_facehotbar_strings = { "Modern", "Classic" };
+            y += settingsAddDropdown(*settings_subwindow, y, "gamepad_facehotbar", "Hotbar Layout",
+                "Modern: Grouped 3x3 slot layout using held buttons. Classic: Flat 10 slot layout with simpler controls.", false,
+                gamepad_facehotbar_strings, gamepad_facehotbar_strings[allSettings.controls[bound_player].gamepad_facehotbar ? 0 : 1], settingsGamepadHotbarLayout);
+            y += settingsAddSlider(*settings_subwindow, y, "turn_sensitivity_x", "Turn Sensitivity X",
+                "Affect the horizontal sensitivity of the control stick used for turning.",
+                allSettings.controls[bound_player].turn_sensitivity_x, 25.f, 200.f, sliderPercent, [](Slider& slider)
+                {soundSliderSetting(slider, true); allSettings.controls[bound_player].turn_sensitivity_x = slider.getValue();});
+            y += settingsAddSlider(*settings_subwindow, y, "turn_sensitivity_y", "Turn Sensitivity Y",
+                "Affect the vertical sensitivity of the control stick used for turning.",
+                allSettings.controls[bound_player].turn_sensitivity_y, 25.f, 200.f, sliderPercent, [](Slider& slider)
+                {soundSliderSetting(slider, true); allSettings.controls[bound_player].turn_sensitivity_y = slider.getValue();});
+
+            y += settingsAddBooleanOption(*settings_subwindow, y, "gamepad_camera_invert_x", "Invert Camera Look X",
+                "Enable to invert left/right look controls of the player camera.",
+                allSettings.controls[bound_player].gamepad_camera_invert_x, [](Button& button)
+                {soundToggleSetting(button); allSettings.controls[bound_player].gamepad_camera_invert_x = button.isPressed();});
+            y += settingsAddBooleanOption(*settings_subwindow, y, "gamepad_camera_invert_y", "Invert Camera Look Y",
+                "Enable to invert up/down look controls of the player camera.",
+                allSettings.controls[bound_player].gamepad_camera_invert_y, [](Button& button)
+                {soundToggleSetting(button); allSettings.controls[bound_player].gamepad_camera_invert_y = button.isPressed();});
+            
+            hookSettings(*settings_subwindow,
+                {{Setting::Type::Customize, "bindings"},
+                {Setting::Type::Dropdown, "gamepad_facehotbar"},
+                {Setting::Type::Slider, "turn_sensitivity_x"},
+                {Setting::Type::Slider, "turn_sensitivity_y"},
+                {Setting::Type::Boolean, "gamepad_camera_invert_x"},
+                {Setting::Type::Boolean, "gamepad_camera_invert_y"},
+            });
+        }
+            
+        hookSettings(*settings_subwindow,
+            {{Setting::Type::Dropdown, "player_dropdown_button"},
+#ifndef NINTENDO
+            {Setting::Type::Dropdown, "device_dropdown_button"},
+#endif
+            {Setting::Type::Dropdown, "profile_dropdown_button"},
+            {Setting::Type::Customize, "bindings"},
+        });
+        
+        settingsSubwindowFinalize(*settings_subwindow, y, setting_to_select);
+        settingsSelect(*settings_subwindow, setting_to_select);
+    }
+
+	static void settingsControls(Button& button) {
+        const int player = multiplayer == CLIENT ? 0 : getMenuOwner();
+        const int device = inputs.hasController(player) ? 1 : 0;
+        const char* profile = getMatchingProfileName(player, inputs.hasController(player));
+        settingsControlsPopulate(player, device, profile, {Setting::Type::Dropdown, "player_dropdown_button"});
 	}
 
 	static void settingsOnline(Button& button) {
 		Frame* settings_subwindow;
-		if ((settings_subwindow = settingsSubwindowSetup(button)) == nullptr) {
+		if ((settings_subwindow = settingsSubwindowSetup(button.getName())) == nullptr) {
 			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
 		    settingsSelect(*settings_subwindow, {Setting::Type::Field, "port_number"});
@@ -6135,7 +6802,7 @@ bind_failed:
 		y += settingsAddSubHeader(*settings_subwindow, y, "general", "General");
 		y += settingsAddBooleanOption(*settings_subwindow, y, "show_ip_address", "Streamer Mode",
 			"If you're a streamer and know what doxxing is, definitely switch this on.",
-			allSettings.show_ip_address_enabled, [](Button& button){soundToggle(); allSettings.show_ip_address_enabled = button.isPressed();});
+			allSettings.show_ip_address_enabled, [](Button& button){soundToggleSetting(button); allSettings.show_ip_address_enabled = button.isPressed();});
 #endif
 
         char port_desc[1024];
@@ -6145,13 +6812,25 @@ bind_failed:
         snprintf(buf, sizeof(buf), "%hu", (Uint16)allSettings.port_number);
 		y += settingsAddSubHeader(*settings_subwindow, y, "lan", "LAN");
 		y += settingsAddField(*settings_subwindow, y, "port_number", "Port",
-		    port_desc, buf, [](Field& field){allSettings.port_number = (Uint16)strtol(field.getText(), nullptr, 10);});
-
+			port_desc, buf, [](Field& field) {
+				auto oldPort = allSettings.port_number;
+				allSettings.port_number = (Uint16)strtol(field.getText(), nullptr, 10);
+				if ( oldPort != allSettings.port_number )
+				{
+					if ( auto parent = field.getParent() )
+					{
+						if ( auto window = parent->getParent() )
+						{
+							window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+						}
+					}
+				}
+			});
 #if defined(USE_EOS) && (defined(STEAMWORKS) || defined(NINTENDO))
 		y += settingsAddSubHeader(*settings_subwindow, y, "crossplay", "Crossplay");
 		y += settingsAddBooleanOption(*settings_subwindow, y, "crossplay", "Crossplay Enabled",
 		    "Enable crossplay through Epic Online Services",
-		    allSettings.crossplay_enabled, [](Button& button){soundToggle(); allSettings.crossplay_enabled = button.isPressed();});
+		    allSettings.crossplay_enabled, [](Button& button){soundToggleSetting(button); allSettings.crossplay_enabled = button.isPressed();});
 
 		hookSettings(*settings_subwindow,
 			{{Setting::Type::Field, "port_number"},
@@ -6167,7 +6846,7 @@ bind_failed:
 
 	static void settingsGame(Button& button) {
 		Frame* settings_subwindow;
-		if ((settings_subwindow = settingsSubwindowSetup(button)) == nullptr) {
+		if ((settings_subwindow = settingsSubwindowSetup(button.getName())) == nullptr) {
 			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
 			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
 			settingsSelect(*settings_subwindow, {Setting::Type::Boolean, "hunger"});
@@ -6190,32 +6869,32 @@ bind_failed:
 		y += settingsAddSubHeader(*settings_subwindow, y, "game", "Game Settings");
 		y += settingsAddBooleanOption(*settings_subwindow, y, "hunger", "Hunger",
 			"When hunger is off, passive HP regeneration is disabled and eating food heals the player directly.",
-			allSettings.hunger_enabled, [](Button& button){soundToggle(); allSettings.hunger_enabled = button.isPressed();});
+			allSettings.hunger_enabled, [](Button& button){soundToggleSetting(button); allSettings.hunger_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "minotaur", "Minotaur",
 			"Toggle the minotaur's ability to spawn on many levels after a certain amount of time.",
-			allSettings.minotaur_enabled, [](Button& button){soundToggle(); allSettings.minotaur_enabled = button.isPressed();});
+			allSettings.minotaur_enabled, [](Button& button){soundToggleSetting(button); allSettings.minotaur_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "random_traps", "Random Traps",
 			"Toggle the random placement of traps throughout each level.",
-			allSettings.random_traps_enabled, [](Button& button){soundToggle(); allSettings.random_traps_enabled = button.isPressed();});
+			allSettings.random_traps_enabled, [](Button& button){soundToggleSetting(button); allSettings.random_traps_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "friendly_fire", "Friendly Fire",
 			"Enable players to harm each other and their allies.",
-			allSettings.friendly_fire_enabled, [](Button& button){soundToggle(); allSettings.friendly_fire_enabled = button.isPressed();});
+			allSettings.friendly_fire_enabled, [](Button& button){soundToggleSetting(button); allSettings.friendly_fire_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "hardcore_mode", "Hardcore Mode",
 			"Greatly increases the difficulty of all combat encounters.",
-			allSettings.hardcore_mode_enabled, [](Button& button){soundToggle(); allSettings.hardcore_mode_enabled = button.isPressed();});
+			allSettings.hardcore_mode_enabled, [](Button& button){soundToggleSetting(button); allSettings.hardcore_mode_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "classic_mode", "Classic Mode",
 			"Toggle this option to make the game end after the battle with Baron Herx.",
-			allSettings.classic_mode_enabled, [](Button& button){soundToggle(); allSettings.classic_mode_enabled = button.isPressed();});
+			allSettings.classic_mode_enabled, [](Button& button){soundToggleSetting(button); allSettings.classic_mode_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "keep_inventory", "Keep Inventory after Death",
 			"When a player dies, they retain their inventory when revived on the next level.",
-			allSettings.keep_inventory_enabled, [](Button& button){soundToggle(); allSettings.keep_inventory_enabled = button.isPressed();});
+			allSettings.keep_inventory_enabled, [](Button& button){soundToggleSetting(button); allSettings.keep_inventory_enabled = button.isPressed();});
 		y += settingsAddBooleanOption(*settings_subwindow, y, "extra_life", "Extra Life",
 			"Start the game with an Amulet of Life-saving, to prevent one death.",
-			allSettings.extra_life_enabled, [](Button& button){soundToggle(); allSettings.extra_life_enabled = button.isPressed();});
+			allSettings.extra_life_enabled, [](Button& button){soundToggleSetting(button); allSettings.extra_life_enabled = button.isPressed();});
 #ifndef NINTENDO
 		y += settingsAddBooleanOption(*settings_subwindow, y, "cheats", "Cheats",
 			"Toggle the ability to activate cheatcodes during gameplay.",
-			allSettings.cheats_enabled, [](Button& button){soundToggle(); allSettings.cheats_enabled = button.isPressed();});
+			allSettings.cheats_enabled, [](Button& button){soundToggleSetting(button); allSettings.cheats_enabled = button.isPressed();});
 #endif
 
 #ifndef NINTENDO
@@ -6696,7 +7375,7 @@ bind_failed:
             assert(character_title);
             snprintf(buf, sizeof(buf), "LVL %d %s %s",
                 score->stats->LVL,
-                language[3821 + score->stats->playerRace],
+                Language::get(3821 + score->stats->playerRace),
                 playerClassLangEntry(score->classnum, 0));
             character_title->setText(buf);
 
@@ -8493,6 +9172,24 @@ bind_failed:
 				}
 			}
 #endif
+			memcpy((char*)net_packet->data, "MODS", 4);
+			net_packet->len = 5;
+			if ( Mods::disableSteamAchievements )
+			{
+				net_packet->data[4] = 1;
+			}
+			else
+			{
+				net_packet->data[4] = 0;
+			}
+			for ( int c = 1; c < MAXPLAYERS; c++ ) {
+				if ( client_disconnected[c] ) {
+					continue;
+				}
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
 	    } else if (multiplayer == CLIENT) {
 	        memcpy(net_packet->data, "SVFL", 4);
 			net_packet->len = 4;
@@ -8698,7 +9395,7 @@ bind_failed:
 			addLobbyChatMessage(color, (char*)(&net_packet->data[8]));
 		}},
 
-		// received client ping
+		// received manual client ping
 		{'PING', [](){
 			const int j = net_packet->data[4];
 			if (j <= 0 || j >= MAXPLAYERS ) {
@@ -8712,6 +9409,16 @@ bind_failed:
 			net_packet->address.port = net_clients[j - 1].port;
 			net_packet->len = 5;
 			sendPacketSafe(net_sock, -1, net_packet, j - 1);
+		}},
+
+		// automated ping
+		{'PNGU', []() {
+			PingNetworkStatus_t::respond();
+		}},
+
+		// automated ping response
+		{'PNGR', []() {
+			PingNetworkStatus_t::receive();
 		}},
 
 		// player disconnected
@@ -8759,6 +9466,25 @@ bind_failed:
 			net_packet->len = 8;
 			for (int c = 1; c < MAXPLAYERS; c++) {
 				if (client_disconnected[c]) {
+					continue;
+				}
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
+
+			memcpy((char*)net_packet->data, "MODS", 4);
+			net_packet->len = 5;
+			if ( Mods::disableSteamAchievements )
+			{
+				net_packet->data[4] = 1;
+			}
+			else
+			{
+				net_packet->data[4] = 0;
+			}
+			for ( int c = 1; c < MAXPLAYERS; c++ ) {
+				if ( client_disconnected[c] ) {
 					continue;
 				}
 				net_packet->address.host = net_clients[c - 1].host;
@@ -9044,6 +9770,16 @@ bind_failed:
 			addLobbyChatMessage(uint32ColorBaronyBlue, buf);
 		}},
 
+		// automated ping
+		{'PNGU', []() {
+			PingNetworkStatus_t::respond();
+		}},
+
+		// automated ping response
+		{'PNGR', []() {
+			PingNetworkStatus_t::receive();
+		}},
+
 		// player disconnect
 	    {'DISC', [](){
 		    const int playerDisconnected = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
@@ -9084,7 +9820,12 @@ bind_failed:
 	    // update svFlags
 	    {'SVFL', [](){
 		    lobbyWindowSvFlags = SDLNet_Read32(&net_packet->data[4]);
-	    }},
+		} },
+
+		// update mod achievement status
+		{ 'MODS', []() {
+			Mods::lobbyDisableSteamAchievements = net_packet->data[4] == 0 ? false : true;
+		}},
 
 	    // keepalive
 	    {'KPAL', [](){
@@ -9229,13 +9970,13 @@ bind_failed:
 
                     const char* error_str;
                     switch (error) {
-                    case MAXPLAYERS + 0: error_str = language[1378]; break;
-                    case MAXPLAYERS + 1: error_str = language[1379]; break;
-                    case MAXPLAYERS + 2: error_str = language[1380]; break;
-                    case MAXPLAYERS + 3: error_str = language[1381]; break;
-                    case MAXPLAYERS + 4: error_str = language[1382]; break;
-                    case MAXPLAYERS + 5: error_str = language[1383]; break;
-                    default: error_str = language[1384]; break;
+                    case MAXPLAYERS + 0: error_str = Language::get(1378); break;
+                    case MAXPLAYERS + 1: error_str = Language::get(1379); break;
+                    case MAXPLAYERS + 2: error_str = Language::get(1380); break;
+                    case MAXPLAYERS + 3: error_str = Language::get(1381); break;
+                    case MAXPLAYERS + 4: error_str = Language::get(1382); break;
+                    case MAXPLAYERS + 5: error_str = Language::get(1383); break;
+                    default: error_str = Language::get(1384); break;
                     }
 
 					// display error message
@@ -9259,6 +10000,7 @@ bind_failed:
 				} else {
 					// join game succeeded, advance to lobby
 					client_keepalive[0] = ticks;
+					PingNetworkStatus_t::reset();
 					receivedclientnum = true;
 					printlog("connected to server.\n");
 					client_disconnected[clientnum] = false;
@@ -9322,8 +10064,8 @@ bind_failed:
 						{
 							// subscribe to server loaded mods button
 							button = newButton();
-							strcpy(button->label, language[2984]);
-							button->sizex = strlen(language[2984]) * 12 + 8;
+							strcpy(button->label, Language::get(2984));
+							button->sizex = strlen(Language::get(2984)) * 12 + 8;
 							button->sizey = 20;
 							button->x = subx2 - 4 - button->sizex;
 							button->y = suby2 - 24;
@@ -9333,8 +10075,8 @@ bind_failed:
 
 							// mount server mods button
 							button = newButton();
-							strcpy(button->label, language[2985]);
-							button->sizex = strlen(language[2985]) * 12 + 8;
+							strcpy(button->label, Language::get(2985));
+							button->sizex = strlen(Language::get(2985)) * 12 + 8;
 							button->sizey = 20;
 							button->x = subx2 - 4 - button->sizex;
 							button->y = suby2 - 24;
@@ -9432,6 +10174,7 @@ bind_failed:
 	        handlePacketsAsClient();
 	    }
         doKeepAlive();
+		PingNetworkStatus_t::update();
 
         // push username to lobby
         if (multiplayer != SINGLE && !directConnect) {
@@ -9586,6 +10329,8 @@ bind_failed:
 
 	    // reset keepalive
 	    client_keepalive[0] = ticks;
+		PingNetworkStatus_t::reset();
+		Mods::lobbyDisableSteamAchievements = false;
 
 	    // open wait prompt
         cancellablePrompt("connect_prompt", "", "Cancel", [](Widget& widget){
@@ -10737,8 +11482,12 @@ failed:
 					return;
 				} else {
                     success = true;
-					soundToggle();
-					stats[index]->playerRace = c;
+                    if (stats[index]->playerRace != c) {
+                        stats[index]->playerRace = c;
+                        if (!inputs.hasController(index)) {
+                            soundToggle();
+                        }
+                    }
 					if (stats[index]->playerRace == RACE_SUCCUBUS) {
 						stats[index]->appearance = 0;
 						stats[index]->sex = FEMALE;
@@ -10768,14 +11517,8 @@ failed:
 						male->setHighlightColor(stats[index]->sex == MALE ? makeColorRGB(255, 255, 255) : makeColorRGB(127, 127, 127));
 					}
 					else if (stats[index]->playerRace == RACE_HUMAN) {
-                        auto appearances = frame->findFrame("appearances");
-                        if (inputs.hasController(index)) {
-                            // get the appearance that is currently selected in the UI
-                            stats[index]->appearance = std::max(0, appearances->getSelection());
-                        } else {
-                            // pick a random appearance
-                            stats[index]->appearance = RNG.uniform(0, NUMAPPEARANCES - 1);
-                        }
+                        auto appearances = frame->findFrame("appearances"); assert(appearances);
+                        stats[index]->appearance = std::max(0, appearances->getSelection());
                         if (appearances) {
                             appearances->setSelection(stats[index]->appearance);
                             appearances->scrollToSelection();
@@ -10813,6 +11556,7 @@ failed:
             saveLastCharacter(index, multiplayer);
             if (success) {
                 if (inputs.hasController(index)) {
+                    soundActivate();
                     createCharacterCard(index);
                     auto lobby = main_menu_frame->findFrame("lobby"); assert(lobby);
                     auto card = lobby->findFrame((std::string("card") + std::to_string(index)).c_str()); assert(card);
@@ -11152,21 +11896,28 @@ failed:
 		achievements->setTickCallback([](Widget& widget){
 			Field* achievements = static_cast<Field*>(&widget);
             if (multiplayer != CLIENT) {
-                if (allSettings.cheats_enabled ||
-                    allSettings.extra_life_enabled ||
-                    gamemods_disableSteamAchievements) {
-                    achievements->setColor(makeColor(180, 37, 37, 255));
-                    achievements->setText("ACHIEVEMENTS DISABLED");
+				if ( Mods::disableSteamAchievements ) {
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED\n(MODDED)");
+				} else if ( allSettings.cheats_enabled ||
+					allSettings.extra_life_enabled ) {
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED");
                 } else {
                     achievements->setColor(makeColor(37, 90, 255, 255));
                     achievements->setText("ACHIEVEMENTS ENABLED");
                 }
             } else {
-                if ((lobbyWindowSvFlags & SV_FLAG_CHEATS) ||
-                    (lobbyWindowSvFlags & SV_FLAG_LIFESAVING) ||
-                    gamemods_disableSteamAchievements) {
-                    achievements->setColor(makeColor(180, 37, 37, 255));
-                    achievements->setText("ACHIEVEMENTS DISABLED");
+				if ( Mods::disableSteamAchievements ) {
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED\n(MODDED)");
+				} else if ( Mods::lobbyDisableSteamAchievements ) {
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED\n(MODDED LOBBY)");
+				} else if ( (lobbyWindowSvFlags & SV_FLAG_CHEATS) ||
+					(lobbyWindowSvFlags & SV_FLAG_LIFESAVING) ) {
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED");
                 } else {
                     achievements->setColor(makeColor(37, 90, 255, 255));
                     achievements->setText("ACHIEVEMENTS ENABLED");
@@ -11364,6 +12115,8 @@ failed:
 #ifdef USE_EOS
                         EOS.currentPermissionLevel = EOS_ELobbyPermissionLevel::EOS_LPL_JOINVIAPRESENCE;
                         EOS.bFriendsOnly = false;
+						EOS.bFriendsOnlyUserConfigured = EOS.bFriendsOnly;
+						EOS.currentPermissionLevelUserConfigured = EOS.currentPermissionLevel;
 #endif // USE_EOS
                     }
                     else if (LobbyHandler.getHostingType() == LobbyHandler_t::LobbyServiceType::LOBBY_STEAM) {
@@ -11373,6 +12126,9 @@ failed:
                         SteamMatchmaking()->SetLobbyType(*lobby, ::currentLobbyType);
                         SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "false");
 						SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "true");
+						steamLobbyFriendsOnlyUserConfigured = false;
+						steamLobbyInviteOnlyUserConfigured = true;
+						steamLobbyTypeUserConfigured = ::currentLobbyType;
 #endif // STEAMWORKS
                     }
 			        });
@@ -11450,6 +12206,8 @@ failed:
 #ifdef USE_EOS
                         EOS.currentPermissionLevel = EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
                         EOS.bFriendsOnly = true;
+						EOS.bFriendsOnlyUserConfigured = EOS.bFriendsOnly;
+						EOS.currentPermissionLevelUserConfigured = EOS.currentPermissionLevel;
 #endif // USE_EOS
                     }
                     else if (LobbyHandler.getHostingType() == LobbyHandler_t::LobbyServiceType::LOBBY_STEAM) {
@@ -11459,6 +12217,9 @@ failed:
                         SteamMatchmaking()->SetLobbyType(*lobby, ::currentLobbyType);
                         SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "true");
 						SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "false");
+						steamLobbyFriendsOnlyUserConfigured = true;
+						steamLobbyInviteOnlyUserConfigured = false;
+						steamLobbyTypeUserConfigured = ::currentLobbyType;
 #endif // STEAMWORKS
                     }
 			        });
@@ -11550,6 +12311,8 @@ failed:
 #ifdef USE_EOS
                         EOS.currentPermissionLevel = EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
                         EOS.bFriendsOnly = false;
+						EOS.bFriendsOnlyUserConfigured = EOS.bFriendsOnly;
+						EOS.currentPermissionLevelUserConfigured = EOS.currentPermissionLevel;
 #endif // USE_EOS
                     }
                     else if (LobbyHandler.getHostingType() == LobbyHandler_t::LobbyServiceType::LOBBY_STEAM) {
@@ -11559,6 +12322,9 @@ failed:
                         SteamMatchmaking()->SetLobbyType(*lobby, ::currentLobbyType);
                         SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "false");
 						SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "false");
+						steamLobbyFriendsOnlyUserConfigured = false;
+						steamLobbyInviteOnlyUserConfigured = false;
+						steamLobbyTypeUserConfigured = ::currentLobbyType;
 #endif // STEAMWORKS
                     }
 			        });
@@ -12043,7 +12809,7 @@ failed:
 			Field* achievements = static_cast<Field*>(&widget);
 			if ((svFlags & SV_FLAG_CHEATS) ||
 				(svFlags & SV_FLAG_LIFESAVING) ||
-				gamemods_disableSteamAchievements) {
+				Mods::disableSteamAchievements ) {
 				achievements->setColor(makeColor(180, 37, 37, 255));
 				achievements->setText("ACHIEVEMENTS DISABLED");
 			} else {
@@ -12351,7 +13117,6 @@ failed:
 		    race->addWidgetAction("MenuAlt1", "disable_abilities");
 		    race->addWidgetAction("MenuAlt2", "show_race_info");
             race->setCallback([](Button& button){
-                soundActivate();
                 race_button_fn(button, false);
                 });
 		    if (stats[index]->playerRace == c) {
@@ -12412,7 +13177,7 @@ failed:
             "Baytower", "Whetsong"
         };
 
-        constexpr int num_appearances = sizeof(appearance_names) / sizeof(appearance_names[0]);
+        static constexpr int num_appearances = sizeof(appearance_names) / sizeof(appearance_names[0]);
 
 		auto appearances = subframe->addFrame("appearances");
 		appearances->setSize(SDL_Rect{102, 0, 122, 36});
@@ -12453,6 +13218,11 @@ failed:
 				(!frame->isSelected() && !appearance_uparrow->isSelected() && !appearance_downarrow->isSelected()) :
 				!frame->isActivated() || !human->isSelected();
 			if (selected) {
+                if (controlType == Input::playerControlType_t::PLAYER_CONTROLLED_BY_KEYBOARD) {
+                    if (!human->isPressed()) {
+                        human->activate();
+                    }
+                }
                 box->disabled = false;
 				appearance_uparrow->setDisabled(false);
 				appearance_uparrow->setInvisible(false);
@@ -12591,7 +13361,7 @@ failed:
                     entry.parent.activate();
                 }
             };
-			entry->selected = entry->click;
+			//entry->selected = entry->click;
 			if (stats[index]->appearance == c && stats[index]->playerRace == RACE_HUMAN) {
 				appearances->setSelection(c);
 				appearances->scrollToSelection();
@@ -13947,6 +14717,9 @@ failed:
                 case Input::ControllerType::PlayStation:
                     msg = "*** Press [L1] to suggest a class for your party ***";
                     break;
+                case Input::ControllerType::SteamDeck:
+                    msg = "*** Press [L1] to suggest a class for your party ***";
+                    break;
                 }
                 addLobbyChatMessage(uint32ColorBaronyBlue, msg);
 			}
@@ -14322,7 +15095,12 @@ failed:
 			const int h = image->getHeight();
 			image->draw(nullptr, SDL_Rect{ x - w / 2, y - h / 2, w, h }, viewport);
 #else
-            if (keyboardAvailable) {
+#ifdef STEAMWORKS
+            const bool steamdeck = SteamUtils()->IsSteamRunningOnSteamDeck();
+#else
+            constexpr bool steamdeck = false;
+#endif
+            if (keyboardAvailable && !steamdeck) {
                 if (controllerAvailable) {
                     // draw spacebar and A button
                     {
@@ -14846,7 +15624,7 @@ failed:
 			Field* achievements = static_cast<Field*>(&widget);
 			if ((svFlags & SV_FLAG_CHEATS) ||
 				(svFlags & SV_FLAG_LIFESAVING) ||
-				gamemods_disableSteamAchievements) {
+				Mods::disableSteamAchievements) {
 				achievements->setColor(makeColor(180, 37, 37, 255));
 				achievements->setText("ACHIEVEMENTS DISABLED");
 			} else {
@@ -14893,8 +15671,14 @@ failed:
 		}
 #endif
 
+		if ( type != LobbyType::LobbyJoined )
+		{
+			Mods::lobbyDisableSteamAchievements = false;
+		}
+
 		// reset ALL player stats
         if (!loadingsavegame) {
+
 		    for (int c = 0; c < MAXPLAYERS; ++c) {
 		        if (type != LobbyType::LobbyJoined && type != LobbyType::LobbyLocal && c != 0) {
 		            newPlayer[c] = true;
@@ -15409,6 +16193,10 @@ failed:
 						{
 							hide_roomcode(*roomcode, static_cast<Button&>(widget), hidden_roomcode);
 						}
+						else if ( strlen(roomcode->getText()) <= 2 )
+						{
+							hide_roomcode(*roomcode, static_cast<Button&>(widget), hidden_roomcode);
+						}
 
 						// this refocuses the player card
 						if (widget.isSelected()) {
@@ -15496,12 +16284,14 @@ failed:
                 createStartButton(c);
             }
 		} else if (type == LobbyType::LobbyLAN) {
+			PingNetworkStatus_t::reset();
 			setupNetGameAsServer();
 			createStartButton(0);
             for (int c = 1; c < MAXPLAYERS; ++c) {
                 createWaitingStone(c);
             }
 		} else if (type == LobbyType::LobbyOnline) {
+			PingNetworkStatus_t::reset();
 			setupNetGameAsServer();
 			createStartButton(0);
             for (int c = 1; c < MAXPLAYERS; ++c) {
@@ -15523,6 +16313,143 @@ failed:
 		            }
 		        }
 		    }
+		}
+
+		// network ping displays
+		if ( PingNetworkStatus_t::bEnabled 
+				&& (type == LobbyType::LobbyLAN || type == LobbyType::LobbyOnline
+					|| type == LobbyType::LobbyJoined) )
+		{
+			for ( int index = 0; index < MAXPLAYERS; ++index )
+			{
+				auto pingFrame = lobby->addFrame((std::string("ping") + std::to_string(index)).c_str());
+				const int x = (Frame::virtualScreenX / 8) * (index * 2 + 1);
+				SDL_Rect pos{ x - 108 / 2, Frame::virtualScreenY - 270, 108, 38 + 18 + 4 };
+				pos.y += 146 + 32;
+				pingFrame->setSize(pos);
+				pingFrame->setHollow(true);
+				pingFrame->setTickCallback([](Widget& widget) {
+					auto frame = static_cast<Frame*>(&widget);
+					std::string name = frame->getName();
+					name = name.substr(strlen("ping"));
+					int player = std::stoi(name);
+					if ( auto ping = frame->findField("ping") )
+					{
+						ping->setDisabled(true);
+						auto pingImg = frame->findImage("ping img");
+						pingImg->disabled = true;
+						auto warningImg = frame->findImage("warning img");
+						warningImg->disabled = true;
+						auto pingBg = frame->findImage("ping bg");
+						pingBg->disabled = true;
+						if ( player == clientnum || (clientnum > 0 && player > 0) )
+						{
+							return;
+						}
+						if ( !client_disconnected[player] )
+						{
+							pingBg->disabled = false;
+							auto value = PingNetworkStatus[player].displayMillisImmediate;
+							const int divideInterval = 25;
+							if ( value > 0 )
+							{
+								char buf[32];
+								ping->setDisabled(false);
+								if ( value < PingNetworkStatus_t::pingLimitGreen )
+								{
+									if ( pingImg->path != "#*images/ui/HUD/Ping_Green.png" )
+									{
+										PingNetworkStatus[player].saveDisplayMillis(true);
+									}
+									pingImg->path = "#*images/ui/HUD/Ping_Green.png";
+									value = PingNetworkStatus[player].displayMillis;
+									value /= divideInterval;
+									value *= divideInterval;
+									if ( value < divideInterval )
+									{
+										snprintf(buf, sizeof(buf), "<%dMS", divideInterval);
+									}
+									else
+									{
+										snprintf(buf, sizeof(buf), "%dMS", value);
+									}
+								}
+								else if ( value < PingNetworkStatus_t::pingLimitYellow )
+								{
+									if ( pingImg->path != "#*images/ui/HUD/Ping_Yellow.png" )
+									{
+										PingNetworkStatus[player].saveDisplayMillis(true);
+									}
+									pingImg->path = "#*images/ui/HUD/Ping_Yellow.png";
+									value = PingNetworkStatus[player].displayMillis;
+									value /= divideInterval;
+									value *= divideInterval;
+									snprintf(buf, sizeof(buf), "%dMS", value);
+								}
+								else if ( value < PingNetworkStatus_t::pingLimitOrange )
+								{
+									if ( pingImg->path != "#*images/ui/HUD/Ping_Orange.png" )
+									{
+										PingNetworkStatus[player].saveDisplayMillis(true);
+									}
+									pingImg->path = "#*images/ui/HUD/Ping_Orange.png";
+									warningImg->disabled = false;
+									warningImg->path = "#*images/ui/HUD/warning_glyph.png";
+									value = PingNetworkStatus[player].displayMillis;
+									value /= divideInterval;
+									value *= divideInterval;
+									snprintf(buf, sizeof(buf), "%dMS", value);
+								}
+								else
+								{
+									if ( pingImg->path != "#*images/ui/HUD/Ping_Red.png" )
+									{
+										PingNetworkStatus[player].saveDisplayMillis(true);
+									}
+									pingImg->path = "#*images/ui/HUD/Ping_Red.png";
+									warningImg->disabled = false;
+									warningImg->path = "#*images/ui/HUD/danger_glyph.png";
+									value = PingNetworkStatus[player].displayMillis;
+									value /= divideInterval;
+									value *= divideInterval;
+									if ( value >= 500 )
+									{
+										snprintf(buf, sizeof(buf), ">%dMS", std::min(value, (Uint32)500));
+									}
+									else
+									{
+										snprintf(buf, sizeof(buf), "%dMS", value);
+									}
+								}
+								pingImg->disabled = false;
+
+								ping->setText(buf);
+							}
+							else
+							{
+								pingImg->path = "#*images/ui/HUD/Ping_Grey.png";
+								pingImg->disabled = false;
+								warningImg->disabled = true;
+							}
+						}
+					}
+				});
+
+				auto pingValue = pingFrame->addField("ping", 32);
+				pingValue->setSize(SDL_Rect{ 0, pos.h - 29, pos.w - 12, 24 });
+				pingValue->setFont(smallfont_outline);
+				pingValue->setHJustify(Field::justify_t::RIGHT);
+				pingValue->setVJustify(Field::justify_t::TOP);
+				pingValue->setDisabled(true);
+				pingValue->setColor(makeColorRGB(134, 159, 165));
+
+				auto bg = pingFrame->addImage(SDL_Rect{0, pos.h - 38, 108, 38}, 0xFFFFFFFF,
+					"#*images/ui/HUD/Ping_Background.png", "ping bg");
+				auto pingImg = pingFrame->addImage(SDL_Rect{ 12, pos.h - 28, 18, 18 }, 0xFFFFFFFF,
+					"#*images/ui/HUD/Ping_Grey.png", "ping img");
+				auto warningImg = pingFrame->addImage(SDL_Rect{ pos.w / 2 - 10, 0, 18, 18 }, 0xFFFFFFFF,
+					"#*images/ui/HUD/warning_glyph.png", "warning img");
+			}
 		}
 
 		// announce lobby in chat window
@@ -15725,6 +16652,8 @@ failed:
 	    bool locked;
 	    Uint32 flags;
 	    std::string address;
+		int numMods;
+		bool modsDisableAchievements;
 	    intptr_t index = -1;
 	    LobbyInfo(
 	        const char* _name = "Barony",
@@ -15733,14 +16662,18 @@ failed:
 	        int _ping = 0,
 	        bool _locked = false,
 	        Uint32 _flags = 0,
-	        const char* _address = ""):
+	        const char* _address = "",
+			int _numMods = 0,
+			bool _modsDisableAchievements = false):
 	        name(_name),
             version(_version),
 	        players(_players),
 	        ping(_ping),
 	        locked(_locked),
 	        flags(_flags),
-	        address(_address)
+	        address(_address),
+			numMods(_numMods),
+			modsDisableAchievements(_modsDisableAchievements)
 	    {}
 	};
 
@@ -15771,6 +16704,7 @@ failed:
 #ifdef USE_EOS
             auto lobby = getLobbyEpic(info.address.c_str());
             if (lobby) {
+				bool privateLobby = false;
 				if ( lobby->LobbyAttributes.PermissionLevel != 0 )
 				{
 					// this is a invite-only lobby.
@@ -15778,6 +16712,7 @@ failed:
 					info.name = "Private lobby";
 					lobbies.back().name = info.name;
 					lobbies.back().locked = info.locked;
+					privateLobby = true;
 					//return;
 				}
                 for (auto& player : lobby->playersInLobby) {
@@ -15798,9 +16733,25 @@ failed:
 						info.name = "Private lobby";
 						lobbies.back().name = info.name;
 						lobbies.back().locked = info.locked;
+						privateLobby = true;
                         //return;
                     }
                 }
+				if ( !privateLobby )
+				{
+					if ( info.numMods > 0 )
+					{
+						if ( info.name.find("[MODDED] ") == std::string::npos )
+						{
+							info.name = "[MODDED] " + info.name;
+							lobbies.back().name = info.name;
+						}
+#ifdef NINTENDO
+						info.locked = true;
+						lobbies.back().locked = info.locked;
+#endif
+					}
+				}
             }
 #endif
         }
@@ -15810,6 +16761,7 @@ failed:
 #ifdef STEAMWORKS
             auto lobby = getLobbySteamID(info.address.c_str());
             if (lobby) {
+				bool privateLobby = false;
 				auto invite_only = SteamMatchmaking()->GetLobbyData(*lobby, "invite_only");
 				if (invite_only && stringCmp(invite_only, "true", 4, 4) == 0) {
 					// this is a invite-only lobby.
@@ -15817,6 +16769,7 @@ failed:
 					info.name = "Private lobby";
 					lobbies.back().name = info.name;
 					lobbies.back().locked = info.locked;
+					privateLobby = true;
 					//return;
 				}
                 const int num_friends = SteamFriends()->GetFriendCount( k_EFriendFlagImmediate );
@@ -15837,9 +16790,25 @@ failed:
 						info.name = "Private lobby";
 						lobbies.back().name = info.name;
 						lobbies.back().locked = info.locked;
+						privateLobby = true;
                         //return;
                     }
                 }
+				if ( !privateLobby )
+				{
+					if ( info.numMods > 0 )
+					{
+						if ( info.name.find("[MODDED] ") == std::string::npos )
+						{
+							info.name = "[MODDED] " + info.name;
+							lobbies.back().name = info.name;
+						}
+#ifdef NINTENDO
+						info.locked = true;
+						lobbies.back().locked = info.locked;
+#endif
+					}
+				}
             }
 #endif
         }
@@ -15863,13 +16832,19 @@ failed:
                 printlog("skipping lobby '%s' (has friends)\n", info.name.c_str());
                 return;
             }
-            if (lobbyFilters[2] == Filter::ON && (info.flags & (SV_FLAG_CHEATS | SV_FLAG_LIFESAVING))) {
+            if (lobbyFilters[2] == Filter::ON 
+				&& ( (info.flags & (SV_FLAG_CHEATS | SV_FLAG_LIFESAVING) )
+						|| info.modsDisableAchievements)
+				) {
                 // lobbies with cheats or +1 life do not count for
                 // achievements.
                 printlog("skipping lobby '%s' (achievements disabled)\n", info.name.c_str());
                 return;
             }
-            if (lobbyFilters[2] == Filter::OFF && !(info.flags & (SV_FLAG_CHEATS | SV_FLAG_LIFESAVING))) {
+            if (lobbyFilters[2] == Filter::OFF 
+				&& !( (info.flags & (SV_FLAG_CHEATS | SV_FLAG_LIFESAVING) ) 
+						|| info.modsDisableAchievements )
+				) {
                 // we're only looking for lobbies where achievements aren't enabled
                 printlog("skipping lobby '%s' (achievements enabled)\n", info.name.c_str());
                 return;
@@ -15952,8 +16927,18 @@ failed:
                             }
                         }
                         else {
-                            errorPrompt("Unable to join lobby.\nLobby is locked.",
-                                "Okay", [](Button&) {soundCancel(); closeMono(); });
+#ifdef NINTENDO
+							if ( lobby.numMods > 0 )
+							{
+								errorPrompt("Unable to join lobby.\nLobby is modded.",
+									"Okay", [](Button&) {soundCancel(); closeMono(); });
+							}
+							else
+#endif
+							{
+								errorPrompt("Unable to join lobby.\nLobby is locked.",
+									"Okay", [](Button&) {soundCancel(); closeMono(); });
+							}
                         }
                     }
 				}
@@ -16129,6 +17114,8 @@ failed:
 	                info.name = lobbyText[c];
                     info.version = lobbyVersion[c];
 	                info.players = lobbyPlayers[c];
+					info.numMods = lobbyNumMods[c];
+					info.modsDisableAchievements = lobbyModDisableAchievements[c];
 	                info.ping = 50; // TODO
 	                info.locked = false; // this will always be false because steam only reported joinable lobbies
 	                info.flags = (Uint32)flags;
@@ -16144,6 +17131,8 @@ failed:
 						info.name = lobby->LobbyAttributes.lobbyName;
 						info.version = lobby->LobbyAttributes.gameVersion;
 						info.players = MAXPLAYERS - lobby->FreeSlots;
+						info.numMods = lobby->LobbyAttributes.numServerMods;
+						info.modsDisableAchievements = lobby->LobbyAttributes.modsDisableAchievements;
 						info.ping = 50; // TODO
 						info.locked = lobby->LobbyAttributes.gameCurrentLevel != -1;
 						info.flags = lobby->LobbyAttributes.serverFlags;
@@ -17903,6 +18892,8 @@ failed:
             });
     }
 
+	static void createModsWindow();
+
 	static void createPlayWindow() {
 		multiplayer = SINGLE;
 
@@ -17965,13 +18956,21 @@ failed:
 			frame = static_cast<Frame*>(frame->getParent());
 			frame->removeSelf();
 			assert(main_menu_frame);
-			auto buttons = main_menu_frame->findFrame("buttons");
-			if (!buttons) {
-				destroyMainMenu();
-				createMainMenu(false);
-			} else {
-				auto play_button = buttons->findButton("Play Game"); assert(play_button);
-				play_button->select();
+
+			if ( Mods::numCurrentModsLoaded >= 0 )
+			{
+				createModsWindow();
+			}
+			else
+			{
+				auto buttons = main_menu_frame->findFrame("buttons");
+				if (!buttons) {
+					destroyMainMenu();
+					createMainMenu(false);
+				} else {
+					auto play_button = buttons->findButton("Play Game"); assert(play_button);
+					play_button->select();
+				}
 			}
 			});
 
@@ -18085,7 +19084,15 @@ failed:
 					steamIDRemote[c] = NULL;
 				}
 			}
-			::currentLobbyType = k_ELobbyTypePublic;
+
+			if ( loadingsavegame )
+			{
+				::currentLobbyType = k_ELobbyTypePublic;
+			}
+			else
+			{
+				::currentLobbyType = ::steamLobbyTypeUserConfigured;
+			}
 			cpp_SteamMatchmaking_CreateLobby(::currentLobbyType, MAXPLAYERS);
 			textPrompt("host_lobby_prompt", "Creating Steam lobby...",
 				[](Widget&){
@@ -18106,8 +19113,20 @@ failed:
 	}
 
 	static void hostOnlineLobby(Button&) {
+//#ifndef STEAMWORKS
+//		if ( Mods::numCurrentModsLoaded >= 1 )
+//		{
+//			errorPrompt("Unable to host lobby:\nModded online lobbies are not yet\navailable.", "Okay", [](Button&) {
+//				multiplayer = SINGLE;
+//				soundCancel();
+//				closeMono();
+//			});
+//			return;
+//		}
+//#endif
+
 #if !defined(STEAMWORKS) && !defined(USE_EOS)
-		errorPrompt("Unable to host lobby\nOnline play is not available.", "Okay", [](Button&){
+		errorPrompt("Unable to host lobby:\nOnline play is not available.", "Okay", [](Button&){
 			multiplayer = SINGLE;
 			soundCancel();
 			closeMono();
@@ -18123,20 +19142,38 @@ failed:
 			createOnlineLobby();
 #elif defined(STEAMWORKS) && defined(USE_EOS)
 			if (LobbyHandler.crossplayEnabled) {
-				const char* prompt = "Would you like to host via\nEpic Online for crossplay?";
-				binaryPrompt(prompt, "Yes", "No",
-					[](Button&) { // yes
-						closeBinary();
-						LobbyHandler.setHostingType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
-						LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
-						createOnlineLobby();
-					},
-					[](Button&) { // no
-						closeBinary();
-						LobbyHandler.setHostingType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
-						LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
-						createOnlineLobby();
-					}, false, false);
+				//if ( Mods::numCurrentModsLoaded >= 1 )
+				//{
+				//	const char* prompt = "Notice: Modded online lobbies are\nnot yet available for crossplay.";
+				//	binaryPrompt(prompt, "Host via\nSteam", "Cancel",
+				//		[](Button&) { // yes
+				//			closeBinary();
+				//			LobbyHandler.setHostingType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
+				//			LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
+				//			createOnlineLobby();
+				//		},
+				//		[](Button&) { // no
+				//			closeBinary();
+				//			soundCancel();
+				//		}, false, false);
+				//}
+				//else
+				{
+					const char* prompt = "Would you like to host via\nEpic Online for crossplay?";
+					binaryPrompt(prompt, "Yes", "No",
+						[](Button&) { // yes
+							closeBinary();
+							LobbyHandler.setHostingType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
+							LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
+							createOnlineLobby();
+						},
+						[](Button&) { // no
+							closeBinary();
+							LobbyHandler.setHostingType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
+							LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
+							createOnlineLobby();
+						}, false, false);
+				}
 			}
 			else {
 				LobbyHandler.setHostingType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
@@ -18147,7 +19184,7 @@ failed:
 				createOnlineLobby();
 			}
 			else {
-				errorPrompt("Unable to host lobby\nOnline play is not available.", "Okay", [](Button&) {
+				errorPrompt("Unable to host lobby:\nOnline play is not available.", "Okay", [](Button&) {
 					soundCancel();
 					closeMono();
 					});
@@ -18619,6 +19656,102 @@ failed:
 	    );
 	}
 
+	static void loadSaveConfirm(Button& button, bool load_singleplayer, int load_save_index)
+	{
+		destroyMainMenu();
+
+		savegameCurrentFileIndex = load_save_index;
+		auto info = getSaveGameInfo(load_singleplayer, savegameCurrentFileIndex);
+		loadingsavegame = getSaveGameUniqueGameKey(info);
+
+		if ( info.multiplayer_type == SPLITSCREEN || info.multiplayer_type == SINGLE ) {
+			multiplayer = SINGLE;
+			clientnum = -1;
+			for ( int c = 0; c < MAXPLAYERS; ++c ) {
+				if ( info.players_connected[c] ) {
+					clientnum = clientnum == -1 ? c : clientnum;
+					playerSlotsLocked[c] = false;
+					loadGame(c, info);
+				}
+				else {
+					playerSlotsLocked[c] = true;
+				}
+			}
+			assert(clientnum != -1);
+#ifndef NINTENDO
+			inputs.setPlayerIDAllowedKeyboard(clientnum);
+#endif
+			createLobby(LobbyType::LobbyLocal);
+		}
+		else if ( info.multiplayer_type == SERVER || info.multiplayer_type == DIRECTSERVER || info.multiplayer_type == SERVERCROSSPLAY ) {
+			multiplayer = SERVER;
+			for ( int c = 0; c < MAXPLAYERS; ++c ) {
+				newPlayer[c] = c != 0;
+				if ( info.players_connected[c] ) {
+					playerSlotsLocked[c] = false;
+					loadGame(c, info);
+				}
+				else {
+					playerSlotsLocked[c] = true;
+				}
+			}
+			if ( info.multiplayer_type == SERVERCROSSPLAY ) {
+#ifdef STEAMWORKS
+				LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_STEAM;
+				LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
+#ifdef USE_EOS
+				if ( LobbyHandler.crossplayEnabled )
+				{
+					LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY;
+					LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
+				}
+#endif
+#elif defined USE_EOS
+				// if just eos, then force hosting settings to default.
+				LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY;
+				LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
+#endif
+				createMainMenu(false); // just in-case the lobby hosting fails
+				hostOnlineLobby(button);
+			}
+			else if ( info.multiplayer_type == SERVER ) {
+				if ( getSaveGameVersionNum(info) <= 335 )
+				{
+					// legacy support for steam ver not remembering if crossplay or not. no action.
+					// starting with v3.3.6, (mul == SERVERCROSSPLAY) detects from the savefile.
+				}
+				else
+				{
+#ifdef STEAMWORKS
+					LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_STEAM;
+					LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
+#endif
+				}
+				createMainMenu(false); // just in-case the lobby hosting fails
+				hostOnlineLobby(button);
+			}
+			else if ( info.multiplayer_type == DIRECTSERVER ) {
+				createMainMenu(false); // just in-case the lobby hosting fails
+				hostLANLobby(button);
+			}
+		}
+		else if ( info.multiplayer_type == CLIENT || info.multiplayer_type == DIRECTCLIENT ) {
+			for ( int c = 0; c < MAXPLAYERS; ++c ) {
+				if ( info.players_connected[c] ) {
+					playerSlotsLocked[c] = false;
+					loadGame(c, info);
+				}
+				else {
+					playerSlotsLocked[c] = true;
+				}
+			}
+			multiplayer = SINGLE;
+			clientnum = 0;
+			createDummyMainMenu();
+			createLobbyBrowser(button);
+		}
+	}
+
 	static void loadSavePrompt(bool singleplayer, int save_index) {
 	    static bool load_singleplayer;
 	    static int load_save_index;
@@ -18639,117 +19772,113 @@ failed:
 
 	    // window text
 	    char window_text[1024];
-	    snprintf(window_text, sizeof(window_text),
-	        "Are you sure you want to load\nthe save game \"%s\"?", shortened_name);
+		const bool modded = saveGameInfo.players[saveGameInfo.player_num].additionalConducts[CONDUCT_MODDED];
+		bool moddedSavegameWarning = false;
+		bool unModdedSavegameWarning = false;
+		if ( modded && Mods::numCurrentModsLoaded <= 0 )
+		{
+			moddedSavegameWarning = true;
+		}
+		else if ( !modded && Mods::numCurrentModsLoaded >= 0 )
+		{
+			unModdedSavegameWarning = true;
+		}
 
-	    binaryPrompt(
-	        window_text, "Yes", "No",
-	        [](Button& button) { // Yes button
-                soundActivate();
-                destroyMainMenu();
+		if ( moddedSavegameWarning || unModdedSavegameWarning )
+		{
+			if ( moddedSavegameWarning )
+			{
+				snprintf(window_text, sizeof(window_text),
+					"Warning: This is a modded save game!\nNo mods are currently loaded.\n\nContinuing may cause save data issues.\n\nAre you sure you want to load\nthe save game \"%s\"?", shortened_name);
+			}
+			else if ( unModdedSavegameWarning )
+			{
+				snprintf(window_text, sizeof(window_text),
+					"Warning: This is an unmodded save game!\n%d mod(s) are currently loaded.\n\nContinuing may invalidate achievements for this save.\n\nAre you sure you want to load\nthe save game \"%s\"?",
+					Mods::numCurrentModsLoaded,
+					shortened_name);
+			}
 
-                savegameCurrentFileIndex = load_save_index;
-                auto info = getSaveGameInfo(load_singleplayer, savegameCurrentFileIndex);
-                loadingsavegame = getSaveGameUniqueGameKey(info);
+			auto prompt = monoPromptXL(
+				window_text, "Yes",
+				[](Button& button) { // Yes button
+					soundActivate();
+					loadSaveConfirm(button, load_singleplayer, load_save_index);
+				});
 
-                if (info.multiplayer_type == SPLITSCREEN || info.multiplayer_type == SINGLE) {
-                    multiplayer = SINGLE;
-                    clientnum = -1;
-                    for (int c = 0; c < MAXPLAYERS; ++c) {
-                        if (info.players_connected[c]) {
-                            clientnum = clientnum == -1 ? c : clientnum;
-                            playerSlotsLocked[c] = false;
-                            loadGame(c, info);
-                        } else {
-                            playerSlotsLocked[c] = true;
-                        }
-                    }
-                    assert(clientnum != -1);
-#ifndef NINTENDO
-                    inputs.setPlayerIDAllowedKeyboard(clientnum);
-#endif
-                    createLobby(LobbyType::LobbyLocal);
-                } else if (info.multiplayer_type == SERVER || info.multiplayer_type == DIRECTSERVER || info.multiplayer_type == SERVERCROSSPLAY) {
-                    multiplayer = SERVER;
-                    for (int c = 0; c < MAXPLAYERS; ++c) {
-                        newPlayer[c] = c != 0;
-                        if (info.players_connected[c]) {
-                            playerSlotsLocked[c] = false;
-                    		loadGame(c, info);
-                        } else {
-                            playerSlotsLocked[c] = true;
-                        }
-                    }
-                    if (info.multiplayer_type == SERVERCROSSPLAY) {
-#ifdef STEAMWORKS
-			            LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_STEAM;
-			            LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
-#ifdef USE_EOS
-			            if ( LobbyHandler.crossplayEnabled )
-			            {
-							LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY;
-				            LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
-			            }
-#endif
-#elif defined USE_EOS
-			            // if just eos, then force hosting settings to default.
-			            LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY;
-			            LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY);
-#endif
-						createMainMenu(false); // just in-case the lobby hosting fails
-                        hostOnlineLobby(button);
-                    } else if (info.multiplayer_type == SERVER) {
-			            if ( getSaveGameVersionNum(info) <= 335 )
-			            {
-				            // legacy support for steam ver not remembering if crossplay or not. no action.
-				            // starting with v3.3.6, (mul == SERVERCROSSPLAY) detects from the savefile.
-			            }
-			            else
-			            {
-#ifdef STEAMWORKS
-				            LobbyHandler.hostingType = LobbyHandler_t::LobbyServiceType::LOBBY_STEAM;
-				            LobbyHandler.setP2PType(LobbyHandler_t::LobbyServiceType::LOBBY_STEAM);
-#endif
-			            }
-						createMainMenu(false); // just in-case the lobby hosting fails
-                        hostOnlineLobby(button);
-                    } else if (info.multiplayer_type == DIRECTSERVER) {
-						createMainMenu(false); // just in-case the lobby hosting fails
-                        hostLANLobby(button);
-                    }
-                } else if (info.multiplayer_type == CLIENT || info.multiplayer_type == DIRECTCLIENT) {
-                    for (int c = 0; c < MAXPLAYERS; ++c) {
-                        if (info.players_connected[c]) {
-                            playerSlotsLocked[c] = false;
-                    		loadGame(c, info);
-                        } else {
-                            playerSlotsLocked[c] = true;
-						}
-                    }
-                    multiplayer = SINGLE;
-					clientnum = 0;
-                    createDummyMainMenu();
-                    createLobbyBrowser(button);
-                }
-	        },
-	        [](Button& button) { // No button
-			    soundCancel();
-			    if (savegame_selected) {
-			        savegame_selected->select();
-			    } else {
-			        assert(main_menu_frame);
-		            auto window = main_menu_frame->findFrame("continue_window"); assert(window);
-	                if (load_singleplayer) {
-                        auto b = window->findButton("singleplayer");
-                        b->select();
-	                } else {
-                        auto b = window->findButton("multiplayer");
-                        b->select();
-	                }
-			    }
-			    closeBinary();
-	        },
-	        false, false); // both buttons are yellow
+			auto button = prompt->findButton("okay");
+			SDL_Rect pos = button->getSize();
+			pos.x = prompt->getSize().w / 2 - pos.w - 8;
+			button->setSize(pos);
+
+			auto buttonCancel = prompt->addButton("cancel");
+			buttonCancel->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
+			buttonCancel->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
+			buttonCancel->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
+			buttonCancel->setColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setHighlightColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setTextColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setTextHighlightColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setFont(smallfont_outline);
+			buttonCancel->setText("Cancel");
+			pos.x = prompt->getSize().w / 2 + 8;
+			buttonCancel->setSize(pos);
+			buttonCancel->setCallback([](Button& button) {
+				soundCancel();
+				if ( savegame_selected ) {
+					savegame_selected->select();
+				}
+				else {
+					assert(main_menu_frame);
+					auto window = main_menu_frame->findFrame("continue_window"); assert(window);
+					if ( load_singleplayer ) {
+						auto b = window->findButton("singleplayer");
+						b->select();
+					}
+					else {
+						auto b = window->findButton("multiplayer");
+						b->select();
+					}
+				}
+				closeMono();
+			});
+
+			button->setWidgetRight("cancel");
+			button->setWidgetBack("cancel");
+			buttonCancel->setWidgetLeft("okay");
+			buttonCancel->setWidgetBack("cancel");
+		}
+		else
+		{
+			snprintf(window_text, sizeof(window_text),
+				"Are you sure you want to load\nthe save game \"%s\"?", shortened_name);
+			binaryPrompt(
+				window_text, "Yes", "No",
+				[](Button& button) { // Yes button
+					soundActivate();
+					loadSaveConfirm(button, load_singleplayer, load_save_index);
+				},
+				[](Button& button) { // No button
+					soundCancel();
+				if ( savegame_selected ) {
+					savegame_selected->select();
+				}
+				else {
+					assert(main_menu_frame);
+					auto window = main_menu_frame->findFrame("continue_window"); assert(window);
+					if ( load_singleplayer ) {
+						auto b = window->findButton("singleplayer");
+						b->select();
+					}
+					else {
+						auto b = window->findButton("multiplayer");
+						b->select();
+					}
+				}
+				closeBinary();
+				},
+				false, false); // both buttons are yellow
+		}
 	}
                   
     static void addContinuePlayerInfo(Frame& frame, SaveGameInfo& info, int player, int x, int y, bool show_pnum) {
@@ -18839,12 +19968,9 @@ failed:
                 auto str = std::string(singleplayer ? "savegame" : "savegame_multiplayer") + std::to_string(savegame.first);
                 auto savegame_book = subwindow.addButton(str.c_str());
                 savegame_book->setSize(SDL_Rect{posX, 0, 220, 280});
-                savegame_book->setBackground("*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_00.png");
 		        savegame_book->setColor(makeColor(255, 255, 255, 255));
 		        savegame_book->setHighlightColor(makeColor(255, 255, 255, 255));
 		        savegame_book->setFont(smallfont_outline);
-		        savegame_book->setTextColor(makeColor(255, 182, 73, 255));
-		        savegame_book->setTextHighlightColor(makeColor(255, 182, 73, 255));
 		        savegame_book->setTickCallback([](Widget& widget){
 	                auto button = static_cast<Button*>(&widget);
 	                auto frame = static_cast<Frame*>(widget.getParent());
@@ -18936,6 +20062,7 @@ failed:
 		        auto& saveGameInfo = savegame.second;
 
                 // extract savegame info
+                const bool modded = saveGameInfo.players[saveGameInfo.player_num].additionalConducts[CONDUCT_MODDED];
                 const std::string& game_name = saveGameInfo.gamename;
                 const auto timestamp = saveGameInfo.timestamp;
 				int numplayers = 0;
@@ -19079,12 +20206,24 @@ failed:
 				Image* image = Image::get(screenshot_path.c_str()); assert(image);
 				screenshot->section.x = (image->getWidth() - image->getHeight()) / 2;
 				screenshot->section.w = image->getHeight();
+    
+                if (modded) {
+                    savegame_book->setBackground("*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_01.png");
+                    savegame_book->setTextColor(makeColor(73, 255, 182, 255));
+                    savegame_book->setTextHighlightColor(makeColor(73, 255, 182, 255));
+                } else {
+                    savegame_book->setBackground("*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_00.png");
+                    savegame_book->setTextColor(makeColor(255, 182, 73, 255));
+                    savegame_book->setTextHighlightColor(makeColor(255, 182, 73, 255));
+                }
 
 		        // add book overlay
 		        auto overlay = cover->addImage(
 		            SDL_Rect{32, 16, 160, 162},
 		            0xffffffff,
-		            "*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_Corners_00.png",
+                    modded ?
+                        "*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_Corners_01.png":
+                        "*images/ui/Main Menus/ContinueGame/UI_Cont_SaveFile_Book_Corners_00.png",
 		            (str + "_overlay").c_str()
 		        );
                     
@@ -19485,10 +20624,24 @@ failed:
 		createPlayWindow();
 	}
 
+	static void createModsWindow();
+
 	static void mainPlayModdedGame(Button& button) {
 	    // WIP
 		soundActivate();
 		createPlayWindow();
+	}
+
+	static void mainModsMenu(Button& button) {
+		createModsWindow();
+	}
+
+	static void mainUnloadMods(Button& button) {
+		soundActivate();
+		gui->deselect();
+		Mods::unloadMods();
+		destroyMainMenu();
+		createMainMenu(false);
 	}
 
 	static void mainArchives(Button& button) {
@@ -19938,11 +21091,19 @@ failed:
                     if (strcmp(button->getBackground(), name) == 0) {
                         button->select();
                         button->activate();
+
+						if ( main_menu_frame )
+						{
+							if ( auto window = main_menu_frame->findFrame("settings") )
+							{
+								window->setUserData((void*)(intptr_t)SETTING_MODIFIED);
+							}
+						}
                         return;
                     }
                 }
 			}
-			});
+		});
 
 		auto discard_and_exit = settings->addButton("discard_and_exit");
 		discard_and_exit->setBackground("*images/ui/Main Menus/Settings/Settings_Button_Basic00.png");
@@ -19955,20 +21116,92 @@ failed:
 		discard_and_exit->setColor(makeColor(255, 255, 255, 255));
 		discard_and_exit->setHighlightColor(makeColor(255, 255, 255, 255));
 		discard_and_exit->setCallback([](Button& button){
-			soundCancel();
-			setAudioDevice(current_audio_device);
-		    setGlobalVolume(master_volume, musvolume, sfxvolume, sfxAmbientVolume, sfxEnvironmentVolume, sfxNotificationVolume);
-			if (main_menu_frame) {
-				auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
-				auto settings_button = buttons->findButton("Settings"); assert(settings_button);
-				settings_button->select();
+			if ( auto parent = static_cast<Frame*>(button.getParent()) )
+			{
+				auto settingModified = reinterpret_cast<intptr_t>(parent->getUserData());
+				if ( settingModified != SETTING_MODIFIED )
+				{
+					soundCancel();
+					setAudioDevice(current_audio_device);
+					setGlobalVolume(master_volume, musvolume, sfxvolume, sfxAmbientVolume, sfxEnvironmentVolume, sfxNotificationVolume);
+					if (main_menu_frame) {
+						auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
+						auto settings_button = buttons->findButton("Settings"); assert(settings_button);
+						settings_button->select();
+					}
+					auto settings = static_cast<Frame*>(button.getParent());
+					if (settings) {
+						auto dimmer = static_cast<Frame*>(settings->getParent());
+						dimmer->removeSelf();
+					}
+					return;
+				}
 			}
-			auto settings = static_cast<Frame*>(button.getParent());
-			if (settings) {
-				auto dimmer = static_cast<Frame*>(settings->getParent());
-				dimmer->removeSelf();
+			
+
+			auto prompt = binaryPrompt("Are you sure you want\nto discard changes?",
+				"Yes,\nDiscard", "Cancel",
+				[](Button& button) {
+					closeBinary();
+
+					soundActivate();
+
+					setAudioDevice(current_audio_device);
+					setGlobalVolume(master_volume, musvolume, sfxvolume, sfxAmbientVolume, sfxEnvironmentVolume, sfxNotificationVolume);
+					if ( main_menu_frame ) {
+						auto buttons = main_menu_frame->findFrame("buttons"); assert(buttons);
+						auto settings_button = buttons->findButton("Settings"); assert(settings_button);
+						settings_button->select();
+
+						if ( auto window = main_menu_frame->findFrame("settings") )
+						{
+							auto dimmer = static_cast<Frame*>(window->getParent());
+							dimmer->removeSelf();
+						}
+					}
+				},
+				[](Button& button) {
+					closeBinary();
+
+					if ( main_menu_frame )
+					{
+						if ( auto window = main_menu_frame->findFrame("settings") )
+						{
+							int settingModified = reinterpret_cast<intptr_t>(window->getUserData());
+							for ( auto button : window->getButtons() )
+							{
+								if ( settings_tab_name == button->getName() )
+								{
+									button->getCallback()(*button);
+									return;
+								}
+							}
+
+							// fallback
+							if ( auto general = window->findButton("General") )
+							{
+								general->getCallback()(*general);
+								return;
+							}
+						}
+					}
+				}, true, false);
+			if ( prompt )
+			{
+				prompt->findButton("okay")->select();
+				prompt->setTickCallback([](Widget& widget) {
+					auto okay = (static_cast<Frame*>(&widget))->findButton("okay");
+					auto cancel = (static_cast<Frame*>(&widget))->findButton("cancel");
+					if ( !((okay && okay->isSelected()) || (cancel && cancel->isSelected())) )
+					{
+						if ( okay )
+						{
+							okay->select();
+						}
+					}
+				});
 			}
-			});
+		});
 		discard_and_exit->setWidgetSearchParent("settings");
 		discard_and_exit->setWidgetBack("discard_and_exit");
 		discard_and_exit->setWidgetPageLeft("tab_left");
@@ -20711,22 +21944,22 @@ failed:
 				{
 					if ( GameplayPreferences_t::gameConfig[GameplayPreferences_t::GOPT_ARACHNOPHOBIA].value != 0 )
 					{
-						addLobbyChatMessage(uint32ColorWhite, language[4333]);
+						addLobbyChatMessage(uint32ColorWhite, Language::get(4333));
 					}
 					else
 					{
-						addLobbyChatMessage(uint32ColorWhite, language[4334]);
+						addLobbyChatMessage(uint32ColorWhite, Language::get(4334));
 					}
 				}
 				if ( GameplayPreferences_t::getGameConfigValue(GameplayPreferences_t::GOPT_COLORBLIND) != oldColorblindFilter )
 				{
 					if ( GameplayPreferences_t::gameConfig[GameplayPreferences_t::GOPT_COLORBLIND].value != 0 )
 					{
-						addLobbyChatMessage(uint32ColorWhite, language[4342]);
+						addLobbyChatMessage(uint32ColorWhite, Language::get(4342));
 					}
 					else
 					{
-						addLobbyChatMessage(uint32ColorWhite, language[4343]);
+						addLobbyChatMessage(uint32ColorWhite, Language::get(4343));
 					}
 				}
 			}
@@ -21134,12 +22367,33 @@ failed:
 		        //{"Quit to Desktop", "QUIT TO DESKTOP", mainQuitToDesktop},
 		        });
 		} else {
-			options.insert(options.begin(), {
+			if ( Mods::numCurrentModsLoaded >= 0 )
+			{
+				options.insert(options.begin(), {
+#if defined(NINTENDO)
+				{"Play Game", "PLAY", mainPlayGame},
+#else
+				{"Play Game", "PLAY MODDED GAME", mainModsMenu},
+				{"Unload Mods", "UNLOAD MODS", mainUnloadMods},
+#endif
+				{"Adventure Archives", "ADVENTURE ARCHIVES", mainArchives},
+				{"Settings", "SETTINGS", mainSettings},
+#if !defined(NINTENDO)
+#if !defined(NDEBUG)
+				{"Editor", "EDITOR", mainEditor},
+#endif
+				{"Quit", "QUIT", mainQuitToDesktop},
+#endif
+					});
+			}
+			else
+			{
+				options.insert(options.begin(), {
 #if defined(NINTENDO)
 				{"Play Game", "PLAY", mainPlayGame},
 #else
 				{"Play Game", "PLAY GAME", mainPlayGame},
-				//{"Play Modded Game", "PLAY MODDED GAME", mainPlayModdedGame}, // TODO
+				{"Mod Menu", "PLAY MODDED GAME", mainModsMenu},
 #endif
 				{"Adventure Archives", "ADVENTURE ARCHIVES", mainArchives},
 				{"Settings", "SETTINGS", mainSettings},
@@ -21150,6 +22404,7 @@ failed:
 				{"Quit", "QUIT", mainQuitToDesktop},
 #endif
 				});
+			}
 		}
 
 		const int num_options = (int)options.size();
@@ -21220,13 +22475,28 @@ failed:
 			achievements->setVJustify(Field::justify_t::TOP);
 			achievements->setTickCallback([](Widget& widget) {
 				Field* achievements = static_cast<Field*>(&widget);
-				if (conductGameChallenges[CONDUCT_CHEATS_ENABLED]
-					|| conductGameChallenges[CONDUCT_LIFESAVING]
-					|| gamemods_disableSteamAchievements) {
+				if ( multiplayer == CLIENT && Mods::lobbyDisableSteamAchievements )
+				{
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED (MODDED LOBBY)");
+				}
+				else if ( Mods::disableSteamAchievements )
+				{
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED (MODDED)");
+				}
+				else if ( conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS] )
+				{
+					achievements->setColor(makeColor(180, 37, 37, 255));
+					achievements->setText("ACHIEVEMENTS DISABLED (PREVIOUSLY MODDED LOBBY)");
+				}
+				else if (conductGameChallenges[CONDUCT_CHEATS_ENABLED]
+					|| conductGameChallenges[CONDUCT_LIFESAVING] ) {
 					achievements->setColor(makeColor(180, 37, 37, 255));
 					achievements->setText("ACHIEVEMENTS DISABLED");
 				}
-				else {
+				else 
+				{
 					achievements->setColor(makeColor(37, 90, 255, 255));
 					achievements->setText(""); // "ACHIEVEMENTS ENABLED"
 				}
@@ -21242,9 +22512,12 @@ failed:
 				main_menu_cursor_y = button->getSize().y - 9 + buttons->getSize().y;
 			}
 			button->setTickCallback([](Widget& widget){
-				if (!gui->findSelectedWidget(widget.getOwner())) {
-					if (!main_menu_frame || !main_menu_frame->findWidget("dimmer", false)) {
-						widget.select();
+				if ( !loading )
+				{
+					if (!gui->findSelectedWidget(widget.getOwner())) {
+						if (!main_menu_frame || !main_menu_frame->findWidget("dimmer", false)) {
+							widget.select();
+						}
 					}
 				}
 				});
@@ -21263,6 +22536,7 @@ failed:
 		);
 
 		if (!ingame) {
+#ifdef NINTENDO
 		    const char* banner_images[][2] = {
 		        {
 		            "*#images/ui/Main Menus/Banners/UI_MainMenu_QoDPatchNotes1_base.png",
@@ -21287,21 +22561,47 @@ failed:
 		    }
 		    void(*banner_funcs[])(Button&) = {
 		        [](Button&){ // banner #1
-		        if (enabledDLCPack1 && enabledDLCPack2) {
-                    openURLTryWithOverlay("https://turningwheelgames.com/blog/2022/11/qodbeta");
-                } else {
-					openDLCPrompt(enabledDLCPack1 ? 1 : 0);
-                }
-		        },
-		        [](Button&){ // banner #2
-                openURLTryWithOverlay("https://discord.gg/xDhtaR9KA2");
-		        },
+					if (enabledDLCPack1 && enabledDLCPack2) {
+						openURLTryWithOverlay("https://www.baronygame.com/blog/qod-update-launched");
+					} else {
+						openDLCPrompt(enabledDLCPack1 ? 1 : 0);
+					}
+		        }
 		    };
-#ifdef NINTENDO
 			const int num_banners = (enabledDLCPack1 && enabledDLCPack2) ?
                 0 : 1;
 #else
-		    constexpr int num_banners = sizeof(banner_funcs) / sizeof(banner_funcs[0]);
+			const char* banner_images[][2] = {
+				{
+					"*#images/ui/Main Menus/Banners/UI_MainMenu_QoDPatchNotes1_base.png",
+					"*#images/ui/Main Menus/Banners/UI_MainMenu_QoDPatchNotes1_high.png",
+				},
+				{
+					"*#images/ui/Main Menus/Banners/UI_MainMenu_ComboBanner1_base.png",
+					"*#images/ui/Main Menus/Banners/UI_MainMenu_ComboBanner1_high.png",
+				}
+			};
+			if ( !enabledDLCPack1 && !enabledDLCPack2 ) {
+				banner_images[1][0] = "*#images/ui/Main Menus/Banners/UI_MainMenu_ComboBanner1_base.png";
+				banner_images[1][1] = "*#images/ui/Main Menus/Banners/UI_MainMenu_ComboBanner1_high.png";
+			}
+			else if ( !enabledDLCPack1 ) {
+				banner_images[1][0] = "*#images/ui/Main Menus/Banners/UI_MainMenu_MnOBanner1_base.png";
+				banner_images[1][1] = "*#images/ui/Main Menus/Banners/UI_MainMenu_MnOBanner1_high.png";
+			}
+			else if ( !enabledDLCPack2 ) {
+				banner_images[1][0] = "*#images/ui/Main Menus/Banners/UI_MainMenu_LnPBanner1_base.png";
+				banner_images[1][1] = "*#images/ui/Main Menus/Banners/UI_MainMenu_LnPBanner1_high.png";
+			}
+			void(*banner_funcs[])(Button&) = {
+				[](Button&) { // banner #1
+					openURLTryWithOverlay("https://www.baronygame.com/blog/qod-update-launched");
+				},
+				[](Button&) { // banner #2
+					 openDLCPrompt(enabledDLCPack1 ? 1 : 0);
+				},
+			};
+		    const int num_banners = (enabledDLCPack1 && enabledDLCPack2) ? 1 : sizeof(banner_funcs) / sizeof(banner_funcs[0]);
 #endif
 		    auto banners = main_menu_frame->addFrame("banners");
 		    banners->setSize(SDL_Rect{(Frame::virtualScreenX - 472) / 2, y, 472, Frame::virtualScreenY - y});
@@ -21339,6 +22639,10 @@ failed:
 				}
 				banner->setWidgetBack("back_button");
 
+#ifndef NINTENDO
+				banner->setWidgetLeft("discord btn");
+#endif
+
 				y += banner->getSize().h;
 				y += 16;
 			}
@@ -21347,6 +22651,43 @@ failed:
 				auto dimmer = main_menu_frame->findFrame("dimmer");
 				widget.setInvisible(dimmer != nullptr);
 				});
+
+#ifndef NINTENDO
+			{
+				auto discordFrame = main_menu_frame->addFrame("discord");
+				auto button = discordFrame->addButton("discord btn");
+
+				button->setBackground("#images/ui/Main Menus/Banners/UI_MainMenu_DiscordLink_base.png");
+				button->setBackgroundHighlighted("#images/ui/Main Menus/Banners/UI_MainMenu_DiscordLink_high.png");
+				SDL_Rect btnPos = SDL_Rect{ 0, 0, 0, 0 };
+				if ( auto imgGet = Image::get(button->getBackground()) )
+				{
+					btnPos.w = imgGet->getWidth();
+					btnPos.h = imgGet->getHeight();
+				}
+				button->setSize(btnPos);
+				button->setCallback([](Button& button) {
+					openURLTryWithOverlay("https://discord.gg/xDhtaR9KA2");
+				});
+				button->setButtonsOffset(SDL_Rect{ 0, -8, 0, 0 });
+				button->setColor(uint32ColorWhite);
+				button->setHighlightColor(uint32ColorWhite);
+
+				button->setWidgetUp("Play Game");
+				button->setWidgetDown("Play Game");
+				button->setWidgetLeft("Play Game");
+				button->setWidgetRight("Play Game");
+				button->setWidgetBack("back_button");
+
+				discordFrame->setTickCallback([](Widget& widget) {
+					assert(main_menu_frame);
+					auto dimmer = main_menu_frame->findFrame("dimmer");
+					widget.setInvisible(dimmer != nullptr);
+				});
+
+				discordFrame->setSize(SDL_Rect{ 8, Frame::virtualScreenY - btnPos.h - 8, btnPos.w, btnPos.h });
+			}
+#endif
 
 			char buf[64];
 			const char date[] = __DATE__;
@@ -21962,6 +23303,131 @@ failed:
 	    }
 	}
 
+	void tutorialFirstTimeCompleted() {
+		if ( !gamePaused ) {
+			pauseGame(2, 0);
+			destroyMainMenu();
+			createDummyMainMenu();
+		}
+
+		if ( !main_menu_frame ) {
+			return;
+		}
+
+		bool issmall = false;
+		Frame* prompt = createPrompt("mono_prompt", issmall);
+		if ( !prompt ) {
+			return;
+		}
+
+		playSound(553, 64);
+
+		auto text = prompt->addField("text", issmall ? 128 : 1024);
+		text->setSize(SDL_Rect{ 30, 28, prompt->getSize().w - 60, issmall ? 46 : 134 });
+		text->setFont(smallfont_no_outline);
+		text->setText(
+			u8"Congratulations, you've completed the first tutorial!\n\n"
+			u8"You are now within the Hall of Trials,\n"
+			u8"9 more trials are available to teach and test you.\n\n"
+			u8"Explore the Hall of Trials to learn more or return\n"
+			u8"to the main menu and start your adventure.\n"
+		);
+		text->setJustify(Field::justify_t::CENTER);
+
+		auto okay = prompt->addButton("okay");
+		okay->setSize(SDL_Rect{ (prompt->getActualSize().w - 108) / 2, prompt->getSize().h - 98, 108, 52 });
+		okay->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
+		okay->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
+		okay->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
+		okay->setColor(makeColor(255, 255, 255, 255));
+		okay->setHighlightColor(makeColor(255, 255, 255, 255));
+		okay->setTextColor(makeColor(255, 255, 255, 255));
+		okay->setTextHighlightColor(makeColor(255, 255, 255, 255));
+		okay->setFont(smallfont_outline);
+		okay->setText("Explore\nHall of Trials");
+		okay->setCallback([](Button& button) {
+			closeMono();
+
+			destroyMainMenu();
+			pauseGame(1, 0); // unpause game
+
+			soundActivate();
+		});
+		okay->select();
+		okay->setTickCallback([](Widget& widget) {
+			if ( !main_menu_frame ) {
+				return;
+			}
+			auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
+			if ( !selectedWidget ) {
+				auto button = static_cast<Button*>(&widget);
+				button->select();
+			}
+		});
+
+		auto button = prompt->findButton("okay");
+		SDL_Rect pos = button->getSize();
+		button->setBackground("*images/ui/Main Menus/Play/HallofTrials/HoT_Button_00.png");
+		button->setBackgroundHighlighted("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonHigh_00.png");
+		button->setBackgroundActivated("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonPress_00.png");
+		pos.w = 164;
+		pos.y += (pos.h - 64);
+		pos.h = 64;
+		pos.x = prompt->getSize().w / 2 - pos.w - 8;
+		button->setSize(pos);
+
+		auto buttonCancel = prompt->addButton("cancel");
+		buttonCancel->setBackground("*images/ui/Main Menus/Play/HallofTrials/HoT_Button_00.png");
+		buttonCancel->setBackgroundHighlighted("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonHigh_00.png");
+		buttonCancel->setBackgroundActivated("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonPress_00.png");
+		buttonCancel->setColor(makeColor(255, 255, 255, 255));
+		buttonCancel->setHighlightColor(makeColor(255, 255, 255, 255));
+		buttonCancel->setTextColor(makeColor(255, 255, 255, 255));
+		buttonCancel->setTextHighlightColor(makeColor(255, 255, 255, 255));
+		buttonCancel->setFont(smallfont_outline);
+		buttonCancel->setText("Return to\nMain Menu");
+		pos.x = prompt->getSize().w / 2 + 8;
+		buttonCancel->setSize(pos);
+		buttonCancel->setCallback([](Button& button) {
+			closeMono();
+
+			soundActivate();
+
+			destroyMainMenu();
+			createDummyMainMenu();
+			if ( saveGameExists(multiplayer == SINGLE) ) {
+				beginFade(MainMenu::FadeDestination::RootMainMenu);
+			}
+			else {
+				beginFade(MainMenu::FadeDestination::Endgame);
+			}
+		});
+
+		button->setWidgetRight("cancel");
+		buttonCancel->setWidgetLeft("okay");
+		button->setDisabled(true);
+		buttonCancel->setDisabled(true);
+		button->setTextColor(makeColorRGB(128, 128, 128));
+		buttonCancel->setTextColor(makeColorRGB(128, 128, 128));
+
+		prompt->setTickCallback([](Widget& widget) {
+			auto frame = static_cast<Frame*>(&widget);
+			if ( frame->getTicks() > TICKS_PER_SECOND * 5 )
+			{
+				if ( auto button = frame->findButton("okay") )
+				{
+					button->setDisabled(false);
+					button->setTextColor(makeColorRGB(255, 255, 255));
+				}
+				if ( auto button = frame->findButton("cancel") )
+				{
+					button->setDisabled(false);
+					button->setTextColor(makeColorRGB(255, 255, 255));
+				}
+			}
+		});
+	}
+
     void controllerDisconnected(int player) {
         if (!gamePaused) {
             pauseGame(2, 0);
@@ -22209,7 +23675,7 @@ failed:
 		monster[0] = toupper(monster[0]);
 		char buf[32];
 		snprintf(buf, sizeof(buf), "%s %s #%04d",
-			language[4234 + RNG.uniform(0, 16)],
+			Language::get(4234 + RNG.uniform(0, 16)),
 			monster.c_str(), RNG.uniform(1000, 9999));
 		setUsername(buf);
 	}
@@ -22219,4 +23685,3849 @@ failed:
 		snprintf(buf, sizeof(buf), "Room #%04d", RNG.uniform(1000, 9999));
 		setHostname(buf);
 	}
+
+	static std::string mods_active_tab = "";
+	static Uint32 mods_loading_tick = 0;
+#ifdef STEAMWORKS
+	static void createWorkshopCreateMenu(SteamUGCDetails_t* details);
+#endif
+	static bool startModdedGame()
+	{
+		Mods::mountedFilepathsSaved = Mods::mountedFilepaths;
+		Mods::numCurrentModsLoaded = Mods::mountedFilepaths.size();
+		if ( Mods::numCurrentModsLoaded == 0 )
+		{
+			errorPrompt("Select at least 1 mod to load.", "Okay",
+				[](Button&) {
+					soundCancel();
+					closeMono();
+
+					if ( auto window = main_menu_frame->findFrame("mods_menu") )
+					{
+						if ( auto subwindow = window->findFrame("subwindow") )
+						{
+							for ( auto btn : subwindow->getButtons() )
+							{
+								if ( !btn->isToBeDeleted() )
+								{
+									btn->select();
+									btn->scrollParent();
+									return;
+								}
+							}
+						}
+						if ( auto tab = window->findButton(mods_active_tab.c_str()) )
+						{
+							tab->select();
+						}
+					}
+			});
+			return false;
+		}
+
+		soundActivate();
+
+		if ( Mods::numCurrentModsLoaded > 0 )
+		{
+			steamAchievement("BARONY_ACH_LOCAL_CUSTOMS");
+		}
+
+		gui->deselect();
+
+		Mods::loadMods();
+
+		destroyMainMenu();
+		createMainMenu(false);
+
+		return true;
+	}
+
+	static void fn_load_mod(Button& button, const int index, const bool isWorkshopMod, const bool toggleActive, const bool viewMyItems, bool& isDownloaded)
+	{
+		std::string name = button.getName();
+		name = name.substr(0, name.size() - strlen("_button"));
+		Frame* frame = static_cast<Frame*>(button.getParent())->findFrame(name.c_str());
+		bool modLoaded = false;
+		char fullpath[PATH_MAX] = "";
+		isDownloaded = true;
+		if ( isWorkshopMod )
+		{
+#ifdef STEAMWORKS
+			auto itemDetails = g_SteamWorkshop->m_subscribedItemListDetails[index];
+			bool itemDownloaded = SteamUGC()->GetItemInstallInfo(itemDetails.m_nPublishedFileId, NULL, fullpath, PATH_MAX, NULL);
+			isDownloaded = itemDownloaded;
+			bool pathIsMounted = Mods::isPathInMountedFiles(fullpath);
+			if ( viewMyItems )
+			{
+				if ( !itemDownloaded )
+				{
+					std::string fileID_jpg = "/workshop_cache/";
+					fileID_jpg += std::to_string(itemDetails.m_nPublishedFileId) + ".jpg";
+
+					std::string fileID_png = "/workshop_cache/";
+					fileID_png += std::to_string(itemDetails.m_nPublishedFileId) + ".png";
+
+					std::string filePath = "";
+					if ( PHYSFS_getRealDir(fileID_jpg.c_str()) )
+					{
+						filePath = PHYSFS_getRealDir(fileID_jpg.c_str());
+						filePath += PHYSFS_getDirSeparator();
+						filePath += fileID_jpg;
+					}
+					else
+					{
+						if ( !Mods::forceDownloadCachedImages && PHYSFS_getRealDir(fileID_png.c_str()) )
+						{
+							filePath = PHYSFS_getRealDir(fileID_png.c_str());
+							filePath += PHYSFS_getDirSeparator();
+							filePath += fileID_png;
+						}
+						else if ( g_SteamWorkshop->m_subscribedItemPreviewURL[index] != "" )
+						{
+#ifdef USE_LIBCURL
+							// cache image
+							LibCURL.download(std::to_string(itemDetails.m_nPublishedFileId),
+								g_SteamWorkshop->m_subscribedItemPreviewURL[index]);
+							if ( PHYSFS_getRealDir(fileID_jpg.c_str()) )
+							{
+								filePath = PHYSFS_getRealDir(fileID_jpg.c_str());
+								filePath += PHYSFS_getDirSeparator();
+								filePath += fileID_jpg;
+							}
+							else if ( PHYSFS_getRealDir(fileID_png.c_str()) )
+							{
+								filePath = PHYSFS_getRealDir(fileID_png.c_str());
+								filePath += PHYSFS_getDirSeparator();
+								filePath += fileID_png;
+							}
+#endif
+						}
+					}
+
+					if ( filePath != "" )
+					{
+						std::string modOrderName = frame->getName();
+						modOrderName += "_mod_order";
+						std::string modPathName = modOrderName + "_path";
+						Field* modOrderTxt = frame->findField(modOrderName.c_str());
+						if ( Field* modPathTxt = frame->findField(modPathName.c_str()) )
+						{
+							modPathTxt->setText(filePath.c_str());
+						}
+					}
+				}
+			}
+			else if ( !viewMyItems )
+			{
+				if ( pathIsMounted )
+				{
+					if ( !toggleActive )
+					{
+						button.setText("Unload Mod");
+						button.setBackground("*#images/ui/Main Menus/Mods/Unload_Button_00.png");
+						button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Unload_Button_High00.png");
+						button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Unload_Button_Press00.png");
+						modLoaded = true;
+					}
+					else if ( toggleActive )
+					{
+						PHYSFS_unmount(fullpath);
+						Mods::removePathFromMountedFiles(fullpath);
+						button.setText("Load Mod");
+						printlog("[%s] is removed from the search path.\n", fullpath);
+						button.setBackground("*#images/ui/Main Menus/Mods/Load_Button_00.png");
+						button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Load_Button_High00.png");
+						button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Load_Button_Press00.png");
+					}
+				}
+				else
+				{
+					if ( !toggleActive )
+					{
+						button.setText("Load Mod");
+						button.setBackground("*#images/ui/Main Menus/Mods/Load_Button_00.png");
+						button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Load_Button_High00.png");
+						button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Load_Button_Press00.png");
+					}
+					else if ( PHYSFS_mount(fullpath, NULL, 0) )
+					{
+						Mods::mountedFilepaths.push_back(std::make_pair(fullpath, itemDetails.m_rgchTitle));
+						modLoaded = true;
+						button.setText("Unload Mod");
+						button.setBackground("*#images/ui/Main Menus/Mods/Unload_Button_00.png");
+						button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Unload_Button_High00.png");
+						button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Unload_Button_Press00.png");
+					}
+				}
+			}
+#endif
+		}
+		else
+		{
+			std::string path = outputdir;
+			auto it = Mods::localModFoldernames.begin();
+			std::advance(it, index);
+			path.append(PHYSFS_getDirSeparator()).append("mods").append(PHYSFS_getDirSeparator()).append(*it);
+			bool pathIsMounted = Mods::isPathInMountedFiles(path);
+			snprintf(fullpath, sizeof(fullpath), "%s", path.c_str());
+			if ( pathIsMounted )
+			{
+				if ( !toggleActive )
+				{
+					button.setText("Unload Mod");
+					button.setBackground("*#images/ui/Main Menus/Mods/Unload_Button_00.png");
+					button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Unload_Button_High00.png");
+					button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Unload_Button_Press00.png");
+					modLoaded = true;
+				}
+				else if ( toggleActive )
+				{
+					PHYSFS_unmount(fullpath);
+					Mods::removePathFromMountedFiles(fullpath);
+					button.setText("Load Mod");
+					printlog("[%s] is removed from the search path.\n", fullpath);
+					button.setBackground("*#images/ui/Main Menus/Mods/Load_Button_00.png");
+					button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Load_Button_High00.png");
+					button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Load_Button_Press00.png");
+				}
+			}
+			else
+			{
+				if ( !toggleActive )
+				{
+					button.setText("Load Mod");
+					button.setBackground("*#images/ui/Main Menus/Mods/Load_Button_00.png");
+					button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Load_Button_High00.png");
+					button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Load_Button_Press00.png");
+				}
+				else if ( PHYSFS_mount(fullpath, NULL, 0) )
+				{
+					Mods::mountedFilepaths.push_back(std::make_pair(fullpath, *it));
+					modLoaded = true;
+					button.setText("Unload Mod");
+					button.setBackground("*#images/ui/Main Menus/Mods/Unload_Button_00.png");
+					button.setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Unload_Button_High00.png");
+					button.setBackgroundActivated("*#images/ui/Main Menus/Mods/Unload_Button_Press00.png");
+				}
+			}
+		}
+
+		Mods::numCurrentModsLoaded = Mods::mountedFilepaths.size();
+		Mods::updateModCounts();
+		if ( modLoaded )
+		{
+			Mods::verifyAchievements(fullpath, true);
+		}
+		else if ( toggleActive )
+		{
+			Mods::disableSteamAchievements = false;
+			Mods::verifyAchievements(nullptr, true);
+		}
+
+		if ( !viewMyItems )
+		{
+			std::string modOrderName = frame->getName();
+			modOrderName += "_mod_order";
+			std::string modPathName = modOrderName + "_path";
+			Field* modOrderTxt = frame->findField(modOrderName.c_str());
+			if ( Field* modPathTxt = frame->findField(modPathName.c_str()) )
+			{
+				modPathTxt->setText(fullpath);
+			}
+			if ( modOrderTxt )
+			{
+				if ( modLoaded )
+				{
+					modOrderTxt->setDisabled(false);
+					for ( size_t i = 0; i < Mods::mountedFilepaths.size(); ++i )
+					{
+						if ( Mods::mountedFilepaths[i].first == fullpath )
+						{
+							char buf[32];
+							snprintf(buf, sizeof(buf), "Load Order: %d", i + 1);
+							modOrderTxt->setText(buf);
+							break;
+						}
+					}
+				}
+				else
+				{
+					modOrderTxt->setDisabled(true);
+					modOrderTxt->setText("");
+					modOrderTxt->setUserData((void*)(intptr_t)-1);
+				}
+			}
+			auto bg = frame->findImage("bg");
+			auto title = frame->findField("title");
+			auto desc = frame->findField("desc");
+			auto version = frame->findField("version");
+			if ( modLoaded )
+			{
+				title->setColor(makeColorRGB(255, 255, 255));
+				if ( desc )
+				{
+					desc->setColor(makeColorRGB(255, 255, 255));
+					bg->path = "*#images/ui/Main Menus/Mods/ModMenu_ItemBlueOn_00.png";
+				}
+				else
+				{
+					bg->path = "*#images/ui/Main Menus/Mods/ModMenu_ItemBrownOn_00.png";
+				}
+				if ( version )
+				{
+					version->setColor(makeColorRGB(255, 255, 255));
+				}
+			}
+			else
+			{
+				title->setColor(makeColorRGB(128, 128, 128));
+				if ( desc )
+				{
+					desc->setColor(makeColorRGB(128, 128, 128));
+					bg->path = "*#images/ui/Main Menus/Mods/ModMenu_ItemBlue_00.png";
+				}
+				else
+				{
+					bg->path = "*#images/ui/Main Menus/Mods/ModMenu_ItemBrown_00.png";
+				}
+				if ( version )
+				{
+					version->setColor(makeColorRGB(128, 128, 128));
+				}
+			}
+		}
+		else
+		{
+			std::string modOrderName = frame->getName();
+			modOrderName += "_mod_order";
+			std::string modPathName = modOrderName + "_path";
+			Field* modOrderTxt = frame->findField(modOrderName.c_str());
+			if ( Field* modPathTxt = frame->findField(modPathName.c_str()) )
+			{
+				if ( strcmp(fullpath, "") )
+				{
+					modPathTxt->setText(fullpath);
+				}
+			}
+			auto bg = frame->findImage("bg");
+			auto title = frame->findField("title");
+			auto desc = frame->findField("desc");
+			if ( modLoaded )
+			{
+				title->setColor(makeColorRGB(255, 255, 255));
+				if ( desc )
+				{
+					desc->setColor(makeColorRGB(255, 255, 255));
+					bg->path = "*#images/ui/Main Menus/Mods/ModMenu_ItemBlueOn_00.png";
+				}
+				else
+				{
+					bg->path = "*#images/ui/Main Menus/Mods/ModMenu_ItemBrownOn_00.png";
+				}
+			}
+		}
+	}
+
+	static auto make_workshop_frame = [](Frame& subwindow, int y, 
+		const char* name, const char* titleTxt, const char* descTxt, 
+		bool isMounted, bool isWorkshopMod, int itemIndex, const char* tags) {
+		auto frame = subwindow.addFrame(name);
+		frame->setSize(SDL_Rect{ 16, y, 884, 0 });
+		frame->enableScroll(false);
+		frame->setAllowScrollBinds(false);
+		frame->setHollow(true);
+		bool viewMyItems = itemIndex >= 1000000;
+		if ( viewMyItems )
+		{
+			itemIndex -= 1000000;
+		}
+		frame->setUserData((void*)(intptr_t)itemIndex);
+
+		int latestVersionNum = 0;
+		int currentVersionNum = 0;
+		{
+			const char* c = VERSION;
+			char v[4];
+			v[0] = c[1];
+			v[1] = c[3];
+			v[2] = c[5];
+			v[3] = '\0';
+			currentVersionNum = std::stoi(v);
+		}
+
+		std::string latestVersionStr = "";
+		if ( tags )
+		{
+			std::string allTags = tags;
+			auto found = allTags.find(',');
+			std::vector<std::string> foundTags;
+			while ( found != std::string::npos )
+			{
+				foundTags.push_back(allTags.substr(0, found));
+				allTags = allTags.substr(found + 1); // skip the "," character.
+				found = allTags.find(',');
+			}
+			foundTags.push_back(allTags);
+
+
+			for ( auto& t : foundTags )
+			{
+				if ( t.size() == strlen(VERSION) )
+				{
+					if ( t[0] == 'v' && (t[1] >= '0' && t[1] <= '9') )
+					{
+						// found version tag
+						char v[4];
+						v[0] = t[1];
+						v[1] = t[3];
+						v[2] = t[5];
+						v[3] = '\0';
+						int version = std::stoi(v);
+						if ( version >= latestVersionNum )
+						{
+							latestVersionNum = version;
+							latestVersionStr = t;
+						}
+					}
+				}
+			}
+		}
+
+		auto title = frame->addField("title", 44);
+		std::string titleStr = titleTxt;
+		if ( titleStr.size() >= 40 )
+		{
+			titleStr = titleStr.substr(0, 40);
+			titleStr += "...";
+		}
+		title->setText(titleStr.c_str());
+		title->setFont(bigfont_outline);
+		const int padx = 54;
+
+		const int padleft = padx + 4 + 64;
+		SDL_Rect titlePos = SDL_Rect{ padx + 4 + 64, 8, 524, 24 };
+
+		if ( latestVersionStr != "" )
+		{
+			auto version = frame->addField("version", 16);
+			std::string s = "[";
+			s += latestVersionStr;
+			s += ']';
+			version->setText(s.c_str());
+			version->setFont(bigfont_outline);
+			SDL_Rect versionPos = titlePos;
+			versionPos.w = 76;
+
+			if ( !viewMyItems )
+			{
+				if ( currentVersionNum > latestVersionNum )
+				{
+					auto imgPos = versionPos;
+					imgPos.y += 2;
+					imgPos.w = 18;
+					imgPos.h = 18;
+					auto warning = frame->addImage(imgPos, 0xFFFFFFFF,
+						"#*images/ui/Main Menus/Mods/warning_glyph.png", "warning");
+					warning->ontop = true;
+					versionPos.x += 20;
+					titlePos.x += 20;
+				}
+			}
+
+			version->setSize(versionPos);
+			titlePos.x += versionPos.w + 8;
+		}
+		title->setSize(titlePos);
+		Field* desc = nullptr;
+
+		if ( descTxt != nullptr )
+		{
+			desc = frame->addField("desc", 1024);
+			desc->setText(descTxt);
+			desc->setFont(smallfont_outline);
+			SDL_Rect descPos = title->getSize();
+			descPos.x = padleft;
+			descPos.x += 4;
+			descPos.y += descPos.h + 1;
+			descPos.w = 726;
+			//desc->setPaddingPerLine(-2);
+			desc->setSize(descPos);
+
+			descPos.h = 48;
+			if ( desc->getNumTextLines() >= 3 ) // trim to 2 lines
+			{
+				std::string str = desc->getText();
+				auto find1 = str.find('\n');
+				if ( find1 != std::string::npos )
+				{
+					auto find2 = str.find('\n', find1 + 1);
+					if ( find2 != std::string::npos )
+					{
+						str = str.substr(0, find2);
+						desc->setText(str.c_str());
+					}
+				}
+			}
+
+			desc->reflowTextToFit(0);
+
+			if ( desc->getNumTextLines() >= 3 ) // if after reflow had to wrap line
+			{
+				std::string str = desc->getText();
+				auto find1 = str.find('\n');
+				if ( find1 != std::string::npos )
+				{
+					auto find2 = str.find('\n', find1 + 1);
+					if ( find2 != std::string::npos )
+					{
+						str = str.substr(0, find2);
+						str += "...";
+						//str.replace(str.size() - 3, 3, "...");
+						desc->setText(str.c_str());
+					}
+				}
+			}
+
+			descPos.w += 6;
+			desc->setSize(descPos);
+			SDL_Rect framePos = frame->getSize();
+			framePos.h = 86;
+			frame->setSize(framePos);
+			frame->addImage(SDL_Rect{ 0, 0, 890, 82 }, makeColorRGB(255, 255, 255), "*#images/ui/Main Menus/Mods/ModMenu_ItemBlue_00.png", "bg");
+			//frame->addImage(SDL_Rect{ 0, 0, framePos.w, framePos.h }, makeColorRGB(255, 255, 255), "images/ui/Main Menus/Mods/ModMenu_ItemBlue_00.png", "bg");
+			//frame->addImage(SDL_Rect{ 0, title->getSize().y, framePos.w, title->getSize().h }, makeColorRGB(128, 128, 128), "images/system/white.png", "title bg");
+			//frame->addImage(SDL_Rect{ 0, desc->getSize().y, framePos.w, desc->getSize().h }, makeColorRGB(128, 128, 128), "images/system/white.png", "desc bg");
+		}
+		else
+		{
+			SDL_Rect framePos = frame->getSize();
+			framePos.h = 86;
+			frame->setSize(framePos);
+			frame->addImage(SDL_Rect{ 0, 0, 890, 82 }, makeColorRGB(255, 255, 255), "*#images/ui/Main Menus/Mods/ModMenu_ItemBrown_00.png", "bg");
+			//frame->addImage(SDL_Rect{ 0, 0, framePos.w, framePos.h }, makeColorRGB(255, 255, 255), "images/system/white.png", "bg");
+			//frame->addImage(SDL_Rect{ 0, title->getSize().y, framePos.w, title->getSize().h }, makeColorRGB(128, 128, 128), "images/system/white.png", "title bg");
+		}
+
+		const SDL_Rect btnScrollParentOffset{ 0, -24, 0, 48 };
+
+		if ( !viewMyItems )
+		{
+			std::string button_name = name;
+			button_name += "_button";
+			auto button = subwindow.addButton(button_name.c_str());
+			button->setColor(0xffffffff);
+			button->setHighlightColor(0xffffffff);
+			button->setSize(SDL_Rect{ frame->getSize().x + frame->getSize().w, frame->getSize().y + 8, 158, 44});
+			button->setUserData((void*)(intptr_t)(isWorkshopMod ? 1 : 0));
+			button->setFont(smallfont_outline);
+			button->setScrollParentOffset(btnScrollParentOffset);
+			if ( isMounted )
+			{
+				button->setText("Unload Mod");
+				button->setBackground("*#images/ui/Main Menus/Mods/Unload_Button_00.png");
+				button->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Unload_Button_High00.png");
+				button->setBackgroundActivated("*#images/ui/Main Menus/Mods/Unload_Button_Press00.png");
+			}
+			else
+			{
+				button->setText("Load Mod");
+				button->setBackground("*#images/ui/Main Menus/Mods/Load_Button_00.png");
+				button->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Load_Button_High00.png");
+				button->setBackgroundActivated("*#images/ui/Main Menus/Mods/Load_Button_Press00.png");
+			}
+			button->setWidgetSearchParent("mods_menu");
+			button->setWidgetPageLeft("tab_left");
+			button->setWidgetPageRight("tab_right");
+			button->setWidgetBack("back_button");
+			if ( isWorkshopMod )
+			{
+				button->addWidgetAction("MenuAlt1", "browse_workshop");
+			}
+			else
+			{
+				button->addWidgetAction("MenuAlt1", "blank_mod_folder");
+			}
+			button->addWidgetAction("MenuAlt2", "load_status_help");
+			button->addWidgetAction("MenuStart", "start_modded_game");
+			button->setCallback([](Button& button) {
+				std::string name = button.getName();
+				name = name.substr(0, name.size() - strlen("_button"));
+				Frame* frame = static_cast<Frame*>(button.getParent())->findFrame(name.c_str());
+				auto index = reinterpret_cast<intptr_t>(frame->getUserData());
+				bool isWorkshopMod = reinterpret_cast<intptr_t>(button.getUserData()) == 1 ? true : false;
+
+				std::string buttonbg = button.getBackground();
+				if ( buttonbg == "*#images/ui/Main Menus/Mods/Load_Button_00.png" )
+				{
+					soundActivate();
+				}
+				else
+				{
+					soundCancel();
+				}
+				bool isDownloaded = true;
+				fn_load_mod(button, index, isWorkshopMod, true, false, isDownloaded);
+			});
+
+			std::string mod_order_name = name;
+			mod_order_name += "_mod_order";
+			Field* modOrder = frame->addField(mod_order_name.c_str(), 32);
+			modOrder->setFont(smallfont_outline);
+
+			SDL_Rect txtPos = frame->getSize();
+			txtPos.h = 24;
+			txtPos.y = 7;
+			txtPos.w = 200;
+			txtPos.x = frame->getSize().w - txtPos.w - 36;
+			modOrder->setSize(txtPos);
+			modOrder->setHJustify(Field::justify_t::RIGHT);
+			modOrder->setText("");
+			modOrder->setDisabled(true);
+			modOrder->setTickCallback([](Widget& widget) {
+				auto frame = static_cast<Frame*>(widget.getParent());
+				std::string modPathName = widget.getName();
+				modPathName += "_path";
+				if ( auto modPath = frame->findField(modPathName.c_str()) )
+				{
+					for ( size_t i = 0; i < Mods::mountedFilepaths.size(); ++i )
+					{
+						if ( !strcmp(Mods::mountedFilepaths[i].first.c_str(), modPath->getText()) )
+						{
+							char buf[32];
+							snprintf(buf, sizeof(buf), "Load Order: %d", i + 1);
+							Field* field = static_cast<Field*>(&widget);
+							field->setText(buf);
+							break;
+						}
+					}
+				}
+			});
+
+			std::string mod_path_name = mod_order_name + "_path";
+			Field* modPath = frame->addField(mod_path_name.c_str(), PATH_MAX);
+			modPath->setDisabled(true);
+			modPath->setText("");
+
+			bool isDownloaded = true;
+			fn_load_mod(*button, reinterpret_cast<intptr_t>(frame->getUserData()), isWorkshopMod, false, viewMyItems, isDownloaded);
+
+			if ( modPath )
+			{
+				std::string previewPath = modPath->getText();
+				previewPath += PHYSFS_getDirSeparator();
+				previewPath += "preview.png";
+				auto panel = frame->addImage(SDL_Rect{ padx - 6, 8, 68, 68 }, makeColorRGB(255, 255, 255), "*#images/ui/Main Menus/Mods/ModMenu_PreviewFrame.png", "preview bg");
+				if ( auto imgGet = Image::get(previewPath.c_str()) )
+				{
+					frame->addImage(SDL_Rect{ panel->pos.x + 2, panel->pos.y + 2, 64, 64 }, makeColorRGB(255, 255, 255), previewPath.c_str(), "preview");
+				}
+			}
+		}
+		else
+		{
+			std::string button_name = name;
+			button_name += "_button";
+			auto button = subwindow.addButton(button_name.c_str());
+			button->setBackground("*#images/ui/Main Menus/Mods/Load_Button_00.png");
+			button->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Load_Button_High00.png");
+			button->setBackgroundActivated("*#images/ui/Main Menus/Mods/Load_Button_Press00.png");
+			button->setColor(0xffffffff);
+			button->setHighlightColor(0xffffffff);
+			button->setSize(SDL_Rect{ frame->getSize().x + frame->getSize().w, frame->getSize().y + 8, 158, 44 });
+			button->setUserData((void*)(intptr_t)(isWorkshopMod ? 1 : 0));
+			button->setFont(smallfont_outline);
+			button->setScrollParentOffset(btnScrollParentOffset);
+			button->setText("Update Mod");
+			button->setWidgetSearchParent("mods_menu");
+			button->setWidgetPageLeft("tab_left");
+			button->setWidgetPageRight("tab_right");
+			button->setWidgetBack("back_button");
+			button->addWidgetAction("MenuAlt1", "blank_mod_folder");
+			button->addWidgetAction("MenuStart", "new_workshop_mod");
+			button->setCallback([](Button& button) {
+				soundActivate();
+
+				std::string name = button.getName();
+				name = name.substr(0, name.size() - strlen("_button"));
+				Frame* frame = static_cast<Frame*>(button.getParent())->findFrame(name.c_str());
+				auto index = reinterpret_cast<intptr_t>(frame->getUserData());
+				bool isWorkshopMod = reinterpret_cast<intptr_t>(button.getUserData()) == 1 ? true : false;
+				if ( isWorkshopMod )
+				{
+#ifdef STEAMWORKS
+					createWorkshopCreateMenu(&g_SteamWorkshop->m_subscribedItemListDetails[index]);
+#endif
+				}
+			});
+
+			std::string mod_order_name = name;
+			mod_order_name += "_mod_order";
+			std::string mod_path_name = mod_order_name + "_path";
+			Field* modPath = frame->addField(mod_path_name.c_str(), PATH_MAX);
+			modPath->setDisabled(true);
+			modPath->setText("");
+
+			bool isDownloaded = true;
+			fn_load_mod(*button, reinterpret_cast<intptr_t>(frame->getUserData()), isWorkshopMod, false, viewMyItems, isDownloaded);
+
+			if ( modPath )
+			{
+				std::string previewPath = modPath->getText();
+				if ( !(viewMyItems && !isDownloaded) )
+				{
+					previewPath += PHYSFS_getDirSeparator();
+					previewPath += "preview.png";
+				}
+				auto panel = frame->addImage(SDL_Rect{ padx - 6, 8, 68, 68 }, makeColorRGB(255, 255, 255), "*#images/ui/Main Menus/Mods/ModMenu_PreviewFrame.png", "preview bg");
+				if ( auto imgGet = Image::get(previewPath.c_str()) )
+				{
+					frame->addImage(SDL_Rect{ panel->pos.x + 2, panel->pos.y + 2, 64, 64 }, makeColorRGB(255, 255, 255), previewPath.c_str(), "preview");
+				}
+			}
+		}
+
+		SDL_Rect framePos = frame->getSize();
+		framePos.w = subwindow.getSize().w - framePos.x * 2;
+		frame->setSize(framePos);
+		return frame;
+	};
+
+	static void workshopLoadSubscribedItems(Button& button) {
+#ifdef STEAMWORKS
+		if ( !g_SteamWorkshop ) { return; }
+		mods_loading_tick = ticks;
+		mods_active_tab = "Steam Workshop";
+		auto prompt = monoPrompt(
+			"Fetching subscriptions...",
+			"Cancel",
+			[](Button&) {
+				soundCancel();
+				assert(main_menu_frame);
+				closeMono();
+				if ( auto window = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto subwindow = window->findFrame("subwindow") )
+					{
+						for ( auto f : subwindow->getFrames() )
+						{
+							f->removeSelf();
+						}
+						for ( auto b : subwindow->getButtons() )
+						{
+							b->removeSelf();
+						}
+
+						SDL_Rect actualPos = subwindow->getActualSize();
+						actualPos.y = 0;
+						actualPos.h = subwindow->getSize().h;
+						subwindow->setActualSize(actualPos);
+
+						auto rock_background = subwindow->findImage("rock_background");
+						rock_background->pos = subwindow->getActualSize();
+					}
+				}
+				if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto tab = mods_menu->findButton(mods_active_tab.c_str()) )
+					{
+						tab->select();
+					}
+				}
+		});
+
+		{
+			if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+			{
+				auto enter = mods_menu->findButton("start_modded_game");
+				if ( enter )
+				{
+					enter->setDisabled(false);
+					enter->setInvisible(false);
+				}
+				auto new_workshop_mod = mods_menu->findButton("new_workshop_mod");
+				if ( new_workshop_mod )
+				{
+					new_workshop_mod->setDisabled(true);
+					new_workshop_mod->setInvisible(true);
+					if ( new_workshop_mod->isSelected() && enter )
+					{
+						enter->select();
+					}
+				}
+
+				auto browse_workshop = mods_menu->findButton("browse_workshop");
+				if ( browse_workshop )
+				{
+					browse_workshop->setDisabled(false);
+					browse_workshop->setInvisible(false);
+				}
+
+				auto blank_mod_folder = mods_menu->findButton("blank_mod_folder");
+				if ( blank_mod_folder )
+				{
+					blank_mod_folder->setDisabled(true);
+					blank_mod_folder->setInvisible(true);
+					if ( blank_mod_folder->isSelected() && browse_workshop )
+					{
+						browse_workshop->select();
+					}
+				}
+			}
+		}
+
+		if ( auto window = main_menu_frame->findFrame("mods_menu") )
+		{
+			if ( auto subwindow = window->findFrame("subwindow") )
+			{
+				if ( auto no_mods_found = subwindow->findField("no_mods_found") )
+				{
+					no_mods_found->setDisabled(true);
+					no_mods_found->setText("");
+				}
+			}
+		}
+
+		if ( !prompt )
+		{
+			return;
+		}
+
+		g_SteamWorkshop->CreateQuerySubscribedItems(k_EUserUGCList_Subscribed, k_EUGCMatchingUGCType_All, k_EUserUGCListSortOrder_LastUpdatedDesc);
+		prompt->setTickCallback([](Widget& widget) {
+			if ( g_SteamWorkshop->subscribedCallStatus == 2 && (ticks - mods_loading_tick) > TICKS_PER_SECOND / 2 )
+			{
+				//soundActivate();
+				closeMono();
+
+				if ( auto window = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto tab = window->findButton(mods_active_tab.c_str()) )
+					{
+						tab->select();
+					}
+					if ( auto subwindow = window->findFrame("subwindow") )
+					{
+						for ( auto f : subwindow->getFrames() )
+						{
+							f->removeSelf();
+						}
+						for ( auto b : subwindow->getButtons() )
+						{
+							b->removeSelf();
+						}
+
+						SDL_Rect actualPos = subwindow->getActualSize();
+						actualPos.y = 0;
+						actualPos.h = subwindow->getSize().h;
+
+						int numResults = g_SteamWorkshop->SteamUGCQueryCompleted.m_unNumResultsReturned;
+						Frame* prevFrame = nullptr;
+						const int frameHeight = 82 + 8;
+						char fullpath[PATH_MAX] = "";
+						for ( int i = 0; i < numResults; ++i )
+						{
+							char name[32];
+							snprintf(name, sizeof(name), "mod%d", i);
+
+							auto itemDetails = g_SteamWorkshop->m_subscribedItemListDetails[i];
+							bool itemDownloaded = SteamUGC()->GetItemInstallInfo(itemDetails.m_nPublishedFileId, NULL, fullpath, PATH_MAX, NULL);
+							bool pathIsMounted = Mods::isPathInMountedFiles(fullpath);
+
+							std::string prevButtonName = "";
+							std::string currentButtonName = name;
+							currentButtonName += "_button";
+							if ( prevFrame )
+							{
+								prevButtonName = prevFrame->getName();
+								prevButtonName += "_button";
+								if ( Button* prevButton = subwindow->findButton(prevButtonName.c_str()) )
+								{
+									prevButton->setWidgetDown(currentButtonName.c_str());
+								}
+							}
+
+							prevFrame = make_workshop_frame(*subwindow, prevFrame ? prevFrame->getSize().y + frameHeight : 24, name, 
+								g_SteamWorkshop->m_subscribedItemListDetails[i].m_rgchTitle,
+								g_SteamWorkshop->m_subscribedItemListDetails[i].m_rgchDescription,
+								pathIsMounted, true, i,
+								g_SteamWorkshop->m_subscribedItemListDetails[i].m_rgchTags);
+
+							if ( prevFrame )
+							{
+								if ( auto currentButton = subwindow->findButton(currentButtonName.c_str()) )
+								{
+									if ( prevButtonName != "" )
+									{
+										currentButton->setWidgetUp(prevButtonName.c_str());
+									}
+									if ( i == 0 )
+									{
+										currentButton->select();
+									}
+								}
+							}
+						}
+						if ( prevFrame )
+						{
+							actualPos.h = std::max(actualPos.h, prevFrame->getSize().y + frameHeight);
+						}
+						subwindow->setActualSize(actualPos);
+
+						auto rock_background = subwindow->findImage("rock_background");
+						rock_background->pos = subwindow->getActualSize();
+
+						if ( auto no_mods_found = subwindow->findField("no_mods_found") )
+						{
+							no_mods_found->setDisabled(numResults > 0);
+							no_mods_found->setText("No subscribed Workshop items found.");
+						}
+					}
+				}
+			}
+		});
+#endif
+	}
+
+	static void workshopLoadMyItems(Button& button) {
+#ifdef STEAMWORKS
+		if ( !g_SteamWorkshop ) { return; }
+		mods_loading_tick = ticks;
+		mods_active_tab = "My Workshop Items";
+		auto prompt = monoPrompt(
+			"Fetching my items...",
+			"Cancel",
+			[](Button&) {
+				soundCancel();
+				assert(main_menu_frame);
+				closeMono();
+				if ( auto window = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto subwindow = window->findFrame("subwindow") )
+					{
+						for ( auto f : subwindow->getFrames() )
+						{
+							f->removeSelf();
+						}
+						for ( auto b : subwindow->getButtons() )
+						{
+							b->removeSelf();
+						}
+
+						SDL_Rect actualPos = subwindow->getActualSize();
+						actualPos.y = 0;
+						actualPos.h = subwindow->getSize().h;
+						subwindow->setActualSize(actualPos);
+
+						auto rock_background = subwindow->findImage("rock_background");
+						rock_background->pos = subwindow->getActualSize();
+					}
+				}
+				if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto tab = mods_menu->findButton(mods_active_tab.c_str()) )
+					{
+						tab->select();
+					}
+				}
+		});
+
+		{
+			if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+			{
+				auto new_workshop_mod = mods_menu->findButton("new_workshop_mod");
+				if ( new_workshop_mod )
+				{
+					new_workshop_mod->setDisabled(false);
+					new_workshop_mod->setInvisible(false);
+				}
+				auto enter = mods_menu->findButton("start_modded_game");
+				if ( enter )
+				{
+					enter->setDisabled(true);
+					enter->setInvisible(true);
+					if ( enter->isSelected() && new_workshop_mod )
+					{
+						new_workshop_mod->select();
+					}
+				}
+
+				auto blank_mod_folder = mods_menu->findButton("blank_mod_folder");
+				if ( blank_mod_folder )
+				{
+					blank_mod_folder->setDisabled(false);
+					blank_mod_folder->setInvisible(false);
+				}
+
+				auto browse_workshop = mods_menu->findButton("browse_workshop");
+				if ( browse_workshop )
+				{
+					browse_workshop->setDisabled(true);
+					browse_workshop->setInvisible(true);
+					if ( browse_workshop->isSelected() && blank_mod_folder )
+					{
+						blank_mod_folder->select();
+					}
+				}
+			}
+		}
+
+		if ( auto window = main_menu_frame->findFrame("mods_menu") )
+		{
+			if ( auto subwindow = window->findFrame("subwindow") )
+			{
+				if ( auto no_mods_found = subwindow->findField("no_mods_found") )
+				{
+					no_mods_found->setDisabled(true);
+					no_mods_found->setText("");
+				}
+			}
+		}
+
+		if ( !prompt )
+		{
+			return;
+		}
+
+		g_SteamWorkshop->CreateQuerySubscribedItems(k_EUserUGCList_Published, k_EUGCMatchingUGCType_All, k_EUserUGCListSortOrder_LastUpdatedDesc);
+		prompt->setTickCallback([](Widget& widget) {
+			if ( g_SteamWorkshop->subscribedCallStatus == 2 && (ticks - mods_loading_tick) > TICKS_PER_SECOND / 2 )
+			{
+				//soundActivate();
+				closeMono();
+
+				if ( auto window = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto tab = window->findButton(mods_active_tab.c_str()) )
+					{
+						tab->select();
+					}
+					if ( auto subwindow = window->findFrame("subwindow") )
+					{
+						for ( auto f : subwindow->getFrames() )
+						{
+							f->removeSelf();
+						}
+						for ( auto b : subwindow->getButtons() )
+						{
+							b->removeSelf();
+						}
+
+						SDL_Rect actualPos = subwindow->getActualSize();
+						actualPos.y = 0;
+						actualPos.h = subwindow->getSize().h;
+
+						int numResults = g_SteamWorkshop->SteamUGCQueryCompleted.m_unNumResultsReturned;
+						Frame* prevFrame = nullptr;
+						const int frameHeight = 82 + 8;
+						for ( int i = 0; i < numResults; ++i )
+						{
+							char name[32];
+							snprintf(name, sizeof(name), "mod%d", i);
+
+							std::string prevButtonName = "";
+							std::string currentButtonName = name;
+							currentButtonName += "_button";
+							if ( prevFrame )
+							{
+								prevButtonName = prevFrame->getName();
+								prevButtonName += "_button";
+								if ( Button* prevButton = subwindow->findButton(prevButtonName.c_str()) )
+								{
+									prevButton->setWidgetDown(currentButtonName.c_str());
+								}
+							}
+
+							prevFrame = make_workshop_frame(*subwindow, prevFrame ? prevFrame->getSize().y + frameHeight : 24, name,
+								g_SteamWorkshop->m_subscribedItemListDetails[i].m_rgchTitle,
+								g_SteamWorkshop->m_subscribedItemListDetails[i].m_rgchDescription, true, true, i + 1000000,
+								g_SteamWorkshop->m_subscribedItemListDetails[i].m_rgchTags);
+
+							if ( prevFrame )
+							{
+								if ( auto currentButton = subwindow->findButton(currentButtonName.c_str()) )
+								{
+									if ( prevButtonName != "" )
+									{
+										currentButton->setWidgetUp(prevButtonName.c_str());
+									}
+									if ( i == 0 )
+									{
+										currentButton->select();
+									}
+								}
+							}
+						}
+						if ( prevFrame )
+						{
+							actualPos.h = std::max(actualPos.h, prevFrame->getSize().y + frameHeight);
+						}
+						subwindow->setActualSize(actualPos);
+
+						auto rock_background = subwindow->findImage("rock_background");
+						rock_background->pos = subwindow->getActualSize();
+
+						if ( auto no_mods_found = subwindow->findField("no_mods_found") )
+						{
+							no_mods_found->setDisabled(numResults > 0);
+							no_mods_found->setText("No Workshop items found.");
+						}
+						Mods::forceDownloadCachedImages = false;
+					}
+				}
+			}
+			});
+#endif
+	}
+
+	static void workshopLoadLocalMods(Button& button) {
+		mods_loading_tick = ticks;
+		mods_active_tab = "Local Mods";
+		auto prompt = monoPrompt(
+			"Loading local mod folders...",
+			"Cancel",
+			[](Button&) {
+				soundCancel();
+				closeMono();
+
+				assert(main_menu_frame);
+				if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto tab = mods_menu->findButton(mods_active_tab.c_str()) )
+					{
+						tab->select();
+					}
+				}
+			});
+
+		{
+			if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+			{
+				auto enter = mods_menu->findButton("start_modded_game");
+				if ( enter )
+				{
+					enter->setDisabled(false);
+					enter->setInvisible(false);
+				}
+				auto new_workshop_mod = mods_menu->findButton("new_workshop_mod");
+				if ( new_workshop_mod )
+				{
+					new_workshop_mod->setDisabled(true);
+					new_workshop_mod->setInvisible(true);
+					if ( new_workshop_mod->isSelected() && enter )
+					{
+						enter->select();
+					}
+				}
+
+				auto blank_mod_folder = mods_menu->findButton("blank_mod_folder");
+				if ( blank_mod_folder )
+				{
+					blank_mod_folder->setDisabled(false);
+					blank_mod_folder->setInvisible(false);
+				}
+
+				auto browse_workshop = mods_menu->findButton("browse_workshop");
+				if ( browse_workshop )
+				{
+					browse_workshop->setDisabled(true);
+					browse_workshop->setInvisible(true);
+					if ( browse_workshop->isSelected() && blank_mod_folder )
+					{
+						blank_mod_folder->select();
+					}
+				}
+			}
+		}
+
+		if ( auto window = main_menu_frame->findFrame("mods_menu") )
+		{
+			if ( auto subwindow = window->findFrame("subwindow") )
+			{
+				if ( auto no_mods_found = subwindow->findField("no_mods_found") )
+				{
+					no_mods_found->setDisabled(true);
+					no_mods_found->setText("");
+				}
+			}
+		}
+
+		Mods::localModFoldernames.clear();
+		std::string path = outputdir;
+		path.append(PHYSFS_getDirSeparator()).append("mods").append(PHYSFS_getDirSeparator());
+		Mods::localModFoldernames = directoryContents(path.c_str(), true, false);
+
+		if ( !prompt )
+		{
+			return;
+		}
+
+		prompt->setTickCallback([](Widget& widget) {
+			if ( (ticks - mods_loading_tick) > TICKS_PER_SECOND / 2 )
+			{
+				closeMono();
+
+				if ( auto window = main_menu_frame->findFrame("mods_menu") )
+				{
+					if ( auto tab = window->findButton(mods_active_tab.c_str()) )
+					{
+						tab->select();
+					}
+					if ( auto subwindow = window->findFrame("subwindow") )
+					{
+						for ( auto f : subwindow->getFrames() )
+						{
+							f->removeSelf();
+						}
+						for ( auto b : subwindow->getButtons() )
+						{
+							b->removeSelf();
+						}
+
+						SDL_Rect actualPos = subwindow->getActualSize();
+						actualPos.y = 0;
+						actualPos.h = subwindow->getSize().h;
+
+						Frame* prevFrame = nullptr;
+						const int frameHeight = 82 + 8;
+						int index = -1;
+						for ( auto& folder : Mods::localModFoldernames )
+						{
+							++index;
+							char name[32];
+							snprintf(name, sizeof(name), "mod%d", index);
+
+							std::string path = outputdir;
+							path.append(PHYSFS_getDirSeparator()).append("mods").append(PHYSFS_getDirSeparator()).append(folder);
+							bool pathIsMounted = Mods::isPathInMountedFiles(path);
+							std::string title = "/mods/" + folder + "/";
+
+							std::string prevButtonName = "";
+							std::string currentButtonName = name;
+							currentButtonName += "_button";
+							if ( prevFrame )
+							{
+								prevButtonName = prevFrame->getName();
+								prevButtonName += "_button";
+								if ( Button* prevButton = subwindow->findButton(prevButtonName.c_str()) )
+								{
+									prevButton->setWidgetDown(currentButtonName.c_str());
+								}
+							}
+
+							prevFrame = make_workshop_frame(*subwindow, prevFrame ? prevFrame->getSize().y + frameHeight : 24, name,
+								title.c_str(), nullptr, pathIsMounted, false, index, nullptr);
+
+							if ( prevFrame )
+							{
+								if ( auto currentButton = subwindow->findButton(currentButtonName.c_str()) )
+								{
+									if ( prevButtonName != "" )
+									{
+										currentButton->setWidgetUp(prevButtonName.c_str());
+									}
+									if ( index == 0 )
+									{
+										currentButton->select();
+									}
+								}
+							}
+						}
+						if ( prevFrame )
+						{
+							actualPos.h = std::max(actualPos.h, prevFrame->getSize().y + frameHeight);
+						}
+						subwindow->setActualSize(actualPos);
+
+						auto rock_background = subwindow->findImage("rock_background");
+						rock_background->pos = subwindow->getActualSize();
+
+						if ( auto no_mods_found = subwindow->findField("no_mods_found") )
+						{
+							no_mods_found->setDisabled(Mods::localModFoldernames.size() != 0);
+							no_mods_found->setText("No folders found in /mods/ directory.");
+						}
+					}
+				}
+			}
+		});
+	}
+
+	static void createWorkshopUploadWindow();
+
+	static Frame* workshopEditPrompt(
+		const char* window_text,
+		const char* tip_text,
+		const char* okay_text,
+		const char* cancel_text,
+		void (*okay_callback)(Button&),
+		void (*cancel_callback)(Button&),
+		bool leftRed = true,
+		bool rightRed = false
+	) {
+		soundActivate();
+
+		Frame* frame = createPrompt("binary_prompt", false);
+		if ( !frame ) {
+			return nullptr;
+		}
+
+		auto textbox = frame->addImage(
+			SDL_Rect{ frame->getSize().w / 2 - 300 / 2 + 4, 48, 300, 36 },
+			0xffffffff,
+			"*images/ui/Main Menus/Mods/Upload/Finalize__NameField_00.png",
+			"name_box"
+		);
+
+		SDL_Rect texteditPos = textbox->pos;
+		texteditPos.x += 2;
+		texteditPos.w -= 4;
+		texteditPos.y += 4;
+		texteditPos.h = 28;
+		auto tip = frame->addField("tip", 36);
+		tip->setSize(texteditPos);
+		tip->setFont(smallfont_no_outline);
+		tip->setText(tip_text);
+		tip->setUserData(const_cast<void*>((const void*)tip_text));
+		tip->setFont(smallfont_outline);
+		tip->setHJustify(Field::justify_t::LEFT);
+		tip->setVJustify(Field::justify_t::CENTER);
+		tip->setColor(makeColor(166, 123, 81, 127));
+		tip->setBackgroundColor(makeColor(52, 30, 22, 255));
+		tip->setBackgroundSelectAllColor(makeColor(52, 30, 22, 255));
+		tip->setBackgroundActivatedColor(makeColor(52, 30, 22, 255));
+		tip->setTickCallback([](Widget& widget) {
+			auto tip = static_cast<Field*>(&widget);
+		auto parent = static_cast<Frame*>(widget.getParent());
+		auto field = parent->findField("field");
+		if ( field && field->getText()[0] != '\0' ) {
+			tip->setText("");
+		}
+		else {
+			tip->setText((const char*)tip->getUserData());
+		}
+			});
+
+		auto field = frame->addField("field", 36);
+		field->setGlyphPosition(Widget::glyph_position_t::CENTERED_RIGHT);
+		field->setSelectorOffset(SDL_Rect{ -7, -7, 7, 7 });
+		field->setButtonsOffset(SDL_Rect{ 11, 0, 0, 0 });
+		field->setEditable(true);
+		field->setScroll(true);
+		field->setSize(texteditPos);
+		field->setFont(smallfont_outline);
+		field->setText("");
+		field->setHJustify(Field::justify_t::LEFT);
+		field->setVJustify(Field::justify_t::CENTER);
+		field->setColor(makeColor(166, 123, 81, 255));
+		field->setWidgetSearchParent(field->getParent()->getName());
+		field->setWidgetBack("cancel");
+		field->setWidgetDown("okay");
+		field->select();
+		field->setTickCallback([](Widget& widget) {
+			if ( !main_menu_frame ) {
+				return;
+			}
+		auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
+		if ( !selectedWidget ) {
+			auto field = static_cast<Field*>(&widget);
+			field->select();
+		}
+			});
+
+		auto text = frame->addField("text", 1024);
+		text->setSize(SDL_Rect{ 30, texteditPos.y + texteditPos.h + 24, frame->getSize().w - 30 * 2, 24 * 4 + 4 });
+		text->setFont(smallfont_no_outline);
+		text->setText(window_text);
+		text->setHJustify(Field::justify_t::CENTER);
+		text->setVJustify(Field::justify_t::TOP);
+
+		auto okay = frame->addButton("okay");
+		SDL_Rect leftPos{ (leftRed ? -16 : 0), frame->getSize().h - 98, leftRed ? 130 : 108, 52 };
+		leftPos.x += frame->getSize().w / 2;
+		leftPos.x -= leftPos.w;
+		okay->setSize(leftPos);
+		okay->setBackground(leftRed ?
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_Abandon00.png" :
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
+		okay->setBackgroundHighlighted(leftRed ?
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonHigh00.png" :
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
+		okay->setBackgroundActivated(leftRed ?
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonPress00.png" :
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
+		okay->setColor(makeColor(255, 255, 255, 255));
+		okay->setHighlightColor(makeColor(255, 255, 255, 255));
+		okay->setTextColor(makeColor(255, 255, 255, 255));
+		okay->setTextHighlightColor(makeColor(255, 255, 255, 255));
+		okay->setFont(smallfont_outline);
+		okay->setText(okay_text);
+		okay->setWidgetSearchParent(okay->getParent()->getName());
+		okay->setWidgetRight("cancel");
+		okay->setWidgetBack("cancel");
+		okay->setWidgetUp("field");
+		okay->setCallback(okay_callback);
+		okay->setTickCallback([](Widget& widget) {
+			if ( !main_menu_frame ) {
+				return;
+			}
+		auto selectedWidget = main_menu_frame->findSelectedWidget(widget.getOwner());
+		if ( !selectedWidget ) {
+			auto button = static_cast<Button*>(&widget);
+			button->select();
+		}
+			});
+
+		auto cancel = frame->addButton("cancel");
+		SDL_Rect rightPos{ leftRed ? 8 : 0, frame->getSize().h - 98, rightRed ? 130 : 108, 52 };
+		rightPos.x += frame->getSize().w / 2;
+		rightPos.x += 8;
+		cancel->setSize(rightPos);
+		cancel->setBackground(rightRed ?
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_Abandon00.png" :
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
+		cancel->setBackgroundHighlighted(rightRed ?
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonHigh00.png" :
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
+		cancel->setBackgroundActivated(rightRed ?
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonPress00.png" :
+			"*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
+		cancel->setColor(makeColor(255, 255, 255, 255));
+		cancel->setHighlightColor(makeColor(255, 255, 255, 255));
+		cancel->setTextColor(makeColor(255, 255, 255, 255));
+		cancel->setTextHighlightColor(makeColor(255, 255, 255, 255));
+		cancel->setFont(smallfont_outline);
+		cancel->setText(cancel_text);
+		cancel->setWidgetSearchParent(okay->getParent()->getName());
+		cancel->setWidgetLeft("okay");
+		cancel->setWidgetBack("cancel");
+		cancel->setWidgetUp("field");
+		cancel->setCallback(cancel_callback);
+
+		return frame;
+	}
+	static bool forceWorkshopCacheUpdate = true;
+	static void createModsWindow() {
+		if ( forceWorkshopCacheUpdate )
+		{
+#ifdef STEAMWORKS
+			Mods::forceDownloadCachedImages = true;
+#endif
+		}
+		forceWorkshopCacheUpdate = false;
+		assert(main_menu_frame);
+		Mods::clearAllMountedPaths();
+		for ( auto it = Mods::mountedFilepathsSaved.begin(); it != Mods::mountedFilepathsSaved.end(); )
+		{
+			if ( !dataPathExists(it->first.c_str()) )
+			{
+				it = Mods::mountedFilepathsSaved.erase(it);
+			}
+			else
+			{
+#ifndef STEAMWORKS
+				if ( it->first.find("371970") != std::string::npos )
+				{
+					if ( it->first.find("workshop") != std::string::npos )
+					{
+						if ( it->first.find("content") != std::string::npos )
+						{
+							// steamworks mod, ignore this
+							it = Mods::mountedFilepathsSaved.erase(it);
+							continue;
+						}
+					}
+				}
+#endif // !STEAMWORKS
+				++it;
+			}
+		}
+		Mods::mountedFilepaths = Mods::mountedFilepathsSaved;
+		Mods::mountAllExistingPaths();
+		Mods::updateModCounts();
+
+		auto dimmer = main_menu_frame->addFrame("dimmer");
+		dimmer->setSize(SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY });
+		dimmer->setActualSize(dimmer->getSize());
+		dimmer->setColor(makeColor(0, 0, 0, 63));
+		dimmer->setBorder(0);
+
+		auto window = dimmer->addFrame("mods_menu");
+		window->setSize(SDL_Rect{
+			(Frame::virtualScreenX - 1164) / 2,
+			(Frame::virtualScreenY - 716) / 2,
+			1164,
+			716 });
+		window->setActualSize(SDL_Rect{ 0, 0, 1164, 716 });
+		window->setBorder(0);
+		window->setColor(0);
+
+		auto background = window->addImage(
+			SDL_Rect{ 16, 0, 1130, 714 },
+			0xffffffff,
+			"*images/ui/Main Menus/Mods/Mod_Window_00.png",
+			"background"
+		);
+
+		auto timber = window->addImage(
+			SDL_Rect{ 0, 716 - 586, 1164, 586 },
+			0xffffffff,
+			"*images/ui/Main Menus/Mods/Mod_Window_OverlayScaffold_00.png",
+			"timber"
+		);
+		timber->ontop = true;
+
+		auto subwindow = window->addFrame("subwindow");
+		subwindow->setSize(SDL_Rect{ 22, 142, 1118, 476 });
+		subwindow->setActualSize(SDL_Rect{ 0, 0, 1118, 476 });
+		subwindow->setBorder(0);
+		subwindow->setColor(0);
+		subwindow->setScrollWithLeftControls(false);
+
+		auto rock_background = subwindow->addImage(
+			subwindow->getActualSize(),
+			makeColor(255, 255, 255, 255),
+			"*images/ui/Main Menus/Mods/Settings_Window_06_BGPattern.png",
+			"rock_background"
+		);
+		rock_background->tiled = true;
+
+		auto gradient_background = subwindow->addImage(
+			SDL_Rect{ 0, 0, 1164, 476 },
+			makeColor(255, 255, 255, 255),
+			"*images/ui/Main Menus/Mods/Mod_Window_02_BGGradient.png",
+			"gradient_background"
+		);
+
+		auto window_title = window->addField("title", 64);
+		window_title->setFont(banner_font);
+		window_title->setSize(SDL_Rect{ 412, 24, 338, 24 });
+		window_title->setJustify(Field::justify_t::CENTER);
+		window_title->setText("MODS");
+
+		struct Option {
+			const char* name;
+			const char* title;
+			void (*callback)(Button&);
+		};
+		static std::vector<Option> mod_tabs = {
+			{"Local Mods", "Local\nMods", workshopLoadLocalMods},
+#ifdef STEAMWORKS
+			{"Steam Workshop", "Steam\nWorkshop", workshopLoadSubscribedItems},
+			{"My Workshop Items", "My Workshop\nItems", workshopLoadMyItems},
+#endif
+		};
+
+		auto back_button = createBackWidget(window, [](Button& button) {
+			if ( Mods::numCurrentModsLoaded >= 0 )
+			{
+				// open prompt
+				auto prompt = binaryPrompt(
+					"Do you want to exit this menu?\nAny active mods will be unloaded.", "Yes", "No",
+					[](Button& button) { // yes
+						soundActivate();
+				gui->deselect();
+				Mods::unloadMods();
+				destroyMainMenu();
+				createMainMenu(false);
+					},
+					[](Button&) { // no
+						soundCancel();
+					closeBinary();
+					}, false, false); // yellow buttons
+			}
+			else
+			{
+				soundCancel();
+				gui->deselect();
+				Mods::unloadMods();
+				destroyMainMenu();
+				createMainMenu(false);
+			}
+			});
+		back_button->setWidgetLeft(mod_tabs[0].name);
+		back_button->setWidgetRight(mod_tabs[0].name);
+		back_button->setWidgetUp(mod_tabs[0].name);
+		back_button->setWidgetDown(mod_tabs[0].name);
+		back_button->setWidgetSearchParent("mods_menu");
+		back_button->setWidgetPageLeft("tab_left");
+		back_button->setWidgetPageRight("tab_right");
+
+#ifdef STEAMWORKS
+		if ( mods_active_tab == "" )
+		{
+			mods_active_tab = mod_tabs[1].name;
+		}
+#else
+		if ( mods_active_tab == "" )
+		{
+			mods_active_tab = mod_tabs[0].name;
+		}
+#endif
+
+		auto no_mods_found = subwindow->addField("no_mods_found", 128);
+		no_mods_found->setFont(bigfont_outline);
+		no_mods_found->setSize(SDL_Rect{ 0, 0, subwindow->getSize().w, subwindow->getSize().h});
+		no_mods_found->setJustify(Field::justify_t::CENTER);
+		no_mods_found->setText("");
+		no_mods_found->setDisabled(true);
+		no_mods_found->setColor(makeColorRGB(192, 192, 192));
+
+		auto load_status_frame = window->addFrame("load_status");
+		load_status_frame->setSize(SDL_Rect{ 448, 622, 196, 78 });
+		load_status_frame->setTickCallback([](Widget& widget) {
+#ifdef STEAMWORKS
+			if ( mods_active_tab == mod_tabs[2].name )
+			{
+				widget.setInvisible(true);
+			}
+			else
+#endif
+			{
+				widget.setInvisible(false);
+			}
+		});
+		auto load_status_titles = load_status_frame->addField("load_status_titles", 128);
+		load_status_titles->setFont(smallfont_outline);
+		load_status_titles->setSize(SDL_Rect{ 8, 8, load_status_frame->getSize().w - 64, load_status_frame->getSize().h - 16 });
+#ifndef STEAMWORKS
+		load_status_titles->setText("\nMods Loaded:\n");
+#else
+		load_status_titles->setText("Local Mods:\nWorkshop:\nTotal Loaded:");
+#endif // !STEAMWORKS
+
+		load_status_titles->setHJustify(Field::justify_t::RIGHT);
+		load_status_titles->setVJustify(Field::justify_t::CENTER);
+		auto load_status_totals = load_status_frame->addField("load_status_totals", 128);
+		load_status_totals->setFont(smallfont_outline);
+		load_status_totals->setSize(SDL_Rect{
+			load_status_titles->getSize().w + 16,
+			load_status_titles->getSize().y,
+			48,
+			load_status_titles->getSize().h });
+		load_status_totals->setText("");
+		load_status_totals->setHJustify(Field::justify_t::LEFT);
+		load_status_totals->setVJustify(Field::justify_t::CENTER);
+		load_status_totals->setTickCallback([](Widget& widget) {
+			if ( Mods::numCurrentModsLoaded >= 0 )
+			{
+				Field* field = static_cast<Field*>(&widget);
+				char buf[128] = "";
+#ifndef STEAMWORKS
+				snprintf(buf, sizeof(buf), "\n%d\n",
+					Mods::numCurrentModsLoaded);
+#else
+				snprintf(buf, sizeof(buf), "%d\n%d\n%d",
+					Mods::mods_loaded_local.size(),
+					Mods::mods_loaded_workshop.size(),
+					Mods::numCurrentModsLoaded);
+#endif
+				field->setText(buf);
+				assert((Mods::mods_loaded_local.size() + Mods::mods_loaded_workshop.size())
+					== Mods::numCurrentModsLoaded);
+			}
+			});
+
+		SDL_Rect load_status_frame_pos = load_status_frame->getSize();
+		load_status_frame_pos.w += 160 + 16;
+		load_status_frame->setSize(load_status_frame_pos);
+		auto achievements_status = load_status_frame->addField("achievements_status", 64);
+		achievements_status->setFont(bigfont_outline);
+		achievements_status->setSize(SDL_Rect{ 196 + 8, 15, 160, 46 });
+		achievements_status->setText("");
+		achievements_status->setHJustify(Field::justify_t::CENTER);
+		achievements_status->setVJustify(Field::justify_t::CENTER);
+		achievements_status->setIndividualLinePadding(1, 8);
+		achievements_status->setTickCallback([](Widget& widget) {
+			Field* field = static_cast<Field*>(&widget);
+		if ( Mods::disableSteamAchievements )
+		{
+			field->setText("ACHIEVEMENTS\nDISABLED");
+			field->setTextColor(hudColors.characterSheetRed);
+		}
+		else
+		{
+			field->setText("ACHIEVEMENTS\nENABLED");
+			field->setTextColor(makeColorRGB(255, 255, 255));
+		}
+			});
+
+		SDL_Rect load_status_bg_pos = achievements_status->getSize();
+		load_status_bg_pos.x -= 8;
+		load_status_bg_pos.w += 16;
+		load_status_bg_pos.y = 8;
+		load_status_bg_pos.h += 16;
+		auto load_status_bg = load_status_frame->addImage(load_status_bg_pos, 0xFFFFFFFF,
+			"#*images/ui/Main Menus/Mods/ModMenu_AchievementStatus_00.png", "load_status_bg");
+
+		load_status_frame_pos.w += 66;
+		load_status_frame->setSize(load_status_frame_pos);
+		auto load_status_help = load_status_frame->addButton("load_status_help");
+		load_status_help->setBackground("*images/ui/Main Menus/Mods/Button_X_00.png");
+		load_status_help->setBackgroundHighlighted("*images/ui/Main Menus/Mods/Button_XHigh_00.png");
+		load_status_help->setBackgroundActivated("*images/ui/Main Menus/Mods/Button_XPress_00.png");
+		load_status_help->setColor(makeColor(255, 255, 255, 255));
+		load_status_help->setHighlightColor(makeColor(255, 255, 255, 255));
+		load_status_help->setTextColor(makeColor(255, 255, 255, 255));
+		load_status_help->setTextHighlightColor(makeColor(255, 255, 255, 255));
+		load_status_help->setFont(smallfont_outline);
+		load_status_help->setText("?");
+		load_status_help->setSize(SDL_Rect{ load_status_bg_pos.x + load_status_bg_pos.w + 8,
+			load_status_frame_pos.h / 2 - 14, 26, 26 });
+		load_status_help->setCallback([](Button& button) {
+			monoPrompt("Note: Not all modded files can be\nverified prior to game start to\nensure Achievements are enabled.", "Dismiss", [](Button& button) {
+				soundActivate();
+		closeMono();
+				});
+			});
+		load_status_help->setTickCallback([](Widget& widget) {
+			auto button = static_cast<Button*>(&widget);
+			if ( button->isSelected() && button->getParent() && button->getParent()->isInvisible() )
+			{
+				button->deselect();
+			}
+
+			if ( mods_active_tab == "Steam Workshop" )
+			{
+				button->setWidgetLeft("browse_workshop");
+				button->addWidgetAction("MenuAlt1", "browse_workshop");
+			}
+			else
+			{
+				button->setWidgetLeft("blank_mod_folder");
+				button->addWidgetAction("MenuAlt1", "blank_mod_folder");
+			}
+			if ( mods_active_tab == "My Workshop Items" )
+			{
+				button->setWidgetRight("new_workshop_mod");
+				button->addWidgetAction("MenuStart", "new_workshop_mod");
+			}
+			else
+			{
+				button->addWidgetAction("MenuAlt2", "load_status_help");
+				button->setWidgetRight("start_modded_game");
+				button->addWidgetAction("MenuStart", "start_modded_game");
+			}
+		});
+		load_status_help->setButtonsOffset(SDL_Rect{ 0, 8, 0, 0 });
+		load_status_help->setWidgetSearchParent("mods_menu");
+		load_status_help->setWidgetPageLeft("tab_left");
+		load_status_help->setWidgetPageRight("tab_right");
+		load_status_help->setWidgetBack("back_button");
+		load_status_help->setWidgetUp(mod_tabs[mod_tabs.size() - 1].name);
+
+
+		auto slider = subwindow->addSlider("scroll_slider");
+		slider->setBorder(48);
+		slider->setOrientation(Slider::SLIDER_VERTICAL);
+		slider->setRailSize(SDL_Rect{ 1118 - 54, 0, 54, 476 });
+		slider->setRailImage("*images/ui/Main Menus/Mods/Mod_Scroll_Bar_01.png");
+		slider->setHandleSize(SDL_Rect{ 0, 0, 34, 34 });
+		slider->setHandleImage("*images/ui/Main Menus/Mods/Mod_Scroll_Boulder_00.png");
+		slider->setGlyphPosition(Button::glyph_position_t::CENTERED);
+		slider->setCallback([](Slider& slider) {
+			Frame* frame = static_cast<Frame*>(slider.getParent());
+		auto actualSize = frame->getActualSize();
+		actualSize.y = slider.getValue();
+		frame->setActualSize(actualSize);
+		auto railSize = slider.getRailSize();
+		railSize.y = actualSize.y;
+		slider.setRailSize(railSize);
+		slider.updateHandlePosition();
+		auto gradient_background = frame->findImage("gradient_background");
+		assert(gradient_background);
+		gradient_background->pos.y = actualSize.y;
+			});
+		slider->setTickCallback([](Widget& widget) {
+			Slider* slider = static_cast<Slider*>(&widget);
+			Frame* frame = static_cast<Frame*>(slider->getParent());
+			auto actualSize = frame->getActualSize();
+			slider->setMaxValue(actualSize.h - frame->getSize().h);
+			slider->setValue(actualSize.y);
+			auto railSize = slider->getRailSize();
+			railSize.y = actualSize.y;
+			slider->setRailSize(railSize);
+			slider->updateHandlePosition();
+			auto gradient_background = frame->findImage("gradient_background");
+			assert(gradient_background);
+			gradient_background->pos.y = actualSize.y;
+
+			if ( mods_active_tab == "Steam Workshop" )
+			{
+				slider->addWidgetAction("MenuAlt1", "browse_workshop");
+			}
+			else
+			{
+				slider->addWidgetAction("MenuAlt1", "blank_mod_folder");
+			}
+			if ( mods_active_tab == "My Workshop Items" )
+			{
+				slider->addWidgetAction("MenuStart", "new_workshop_mod");
+			}
+			else
+			{
+				slider->addWidgetAction("MenuAlt2", "load_status_help");
+				slider->addWidgetAction("MenuStart", "start_modded_game");
+			}
+		});
+		slider->setValue(0.f);
+		slider->setMinValue(0.f);
+		slider->setMaxValue(subwindow->getActualSize().h - subwindow->getSize().h);
+		slider->setWidgetSearchParent("mods_menu");
+		slider->addWidgetAction("MenuCancel", "back_button");
+		slider->setWidgetLeft(mod_tabs[mod_tabs.size() - 1].name);
+		slider->setWidgetPageLeft("tab_left");
+		slider->setWidgetPageRight("tab_right");
+
+		auto enter = window->addButton("start_modded_game");
+		enter->setText("Start\nModded Game");
+		enter->setSize(SDL_Rect{ 902, 630, 164, 62 });
+		enter->setBackground("*images/ui/Main Menus/Mods/Mod_Button_00.png");
+		enter->setBackgroundHighlighted("*images/ui/Main Menus/Mods/Mod_ButtonHigh_00.png");
+		enter->setBackgroundActivated("*images/ui/Main Menus/Mods/Mod_ButtonPress_00.png");
+		enter->setFont(smallfont_outline);
+		enter->setHighlightColor(0xffffffff);
+		enter->setColor(0xffffffff);
+		enter->setCallback([](Button& button) {
+			if ( startModdedGame() )
+			{
+				auto frame = static_cast<Frame*>(button.getParent());
+				frame = static_cast<Frame*>(frame->getParent());
+				frame->removeSelf();
+
+				createPlayWindow();
+			}
+			});
+		enter->setTickCallback([](Widget& widget) {
+			if ( mods_active_tab == "Steam Workshop" )
+			{
+				widget.addWidgetAction("MenuAlt1", "browse_workshop");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt1", "blank_mod_folder");
+			}
+			if ( mods_active_tab == "My Workshop Items" )
+			{
+				widget.setWidgetLeft("blank_mod_folder");
+				widget.addWidgetAction("MenuStart", "new_workshop_mod");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt2", "load_status_help");
+				widget.setWidgetLeft("load_status_help");
+				widget.addWidgetAction("MenuStart", "start_modded_game");
+			}
+		});
+		enter->setWidgetSearchParent("mods_menu");
+		enter->setWidgetPageLeft("tab_left");
+		enter->setWidgetPageRight("tab_right");
+		enter->setWidgetBack("back_button");
+		enter->setWidgetUp(mod_tabs[mod_tabs.size() - 1].name);
+
+#ifdef STEAMWORKS
+		auto new_workshop_mod = window->addButton("new_workshop_mod");
+		new_workshop_mod->setText("New Workshop\nMod");
+		new_workshop_mod->setSize(SDL_Rect{ 902, 630, 164, 62 });
+		new_workshop_mod->setBackground("*images/ui/Main Menus/Mods/Mod_Button_00.png");
+		new_workshop_mod->setBackgroundHighlighted("*images/ui/Main Menus/Mods/Mod_ButtonHigh_00.png");
+		new_workshop_mod->setBackgroundActivated("*images/ui/Main Menus/Mods/Mod_ButtonPress_00.png");
+		new_workshop_mod->setFont(smallfont_outline);
+		new_workshop_mod->setHighlightColor(0xffffffff);
+		new_workshop_mod->setColor(0xffffffff);
+		new_workshop_mod->setDisabled(true);
+		new_workshop_mod->setInvisible(true);
+		new_workshop_mod->setCallback([](Button& button) {
+			soundActivate();
+			createWorkshopCreateMenu(nullptr);
+		});
+		new_workshop_mod->setTickCallback([](Widget& widget) {
+			if ( mods_active_tab == "Steam Workshop" )
+			{
+				widget.addWidgetAction("MenuAlt1", "browse_workshop");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt1", "blank_mod_folder");
+			}
+			if ( mods_active_tab == "My Workshop Items" )
+			{
+				widget.setWidgetLeft("blank_mod_folder");
+				widget.addWidgetAction("MenuStart", "new_workshop_mod");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt2", "load_status_help");
+				widget.setWidgetLeft("load_status_help");
+				widget.addWidgetAction("MenuStart", "start_modded_game");
+			}
+		});
+		new_workshop_mod->setWidgetSearchParent("mods_menu");
+		new_workshop_mod->setWidgetPageLeft("tab_left");
+		new_workshop_mod->setWidgetPageRight("tab_right");
+		new_workshop_mod->setWidgetBack("back_button");
+		new_workshop_mod->setWidgetUp(mod_tabs[mod_tabs.size() - 1].name);
+
+		auto browse_workshop = window->addButton("browse_workshop");
+		browse_workshop->setText("Browse\nWorkshop");
+		browse_workshop->setSize(SDL_Rect{ 152, 630, 164, 62 });
+		browse_workshop->setBackground("*images/ui/Main Menus/Mods/Mod_Button_00.png");
+		browse_workshop->setBackgroundHighlighted("*images/ui/Main Menus/Mods/Mod_ButtonHigh_00.png");
+		browse_workshop->setBackgroundActivated("*images/ui/Main Menus/Mods/Mod_ButtonPress_00.png");
+		browse_workshop->setFont(smallfont_outline);
+		browse_workshop->setHighlightColor(0xffffffff);
+		browse_workshop->setColor(0xffffffff);
+		browse_workshop->setDisabled(true);
+		browse_workshop->setInvisible(true);
+		browse_workshop->setCallback([](Button&) {
+			std::string info = "Browse community created mods and 'subscribe' to\ndownload mods for use.";
+				info += "\n\nSubscribing while Barony is running may require";
+				info += "\nclosing the game in order for Steam to begin downloading.";
+				info += "\n\nCurrent game version: ";
+				info += VERSION;
+			auto frame = monoPromptXL(info.c_str(),
+			"Open\nWorkshop", [](Button& button) {
+				openURLTryWithOverlay("https://steamcommunity.com/app/371970/workshop/");
+				soundActivate();
+
+				// fixes a bug where you could get spammed with 100s of browser tabs...
+				mousestatus[SDL_BUTTON_LEFT] = 0;
+				Input::mouseButtons[SDL_BUTTON_LEFT] = 0;
+
+				closeMono();
+
+				monoPrompt("Your workshop items\nwill now reload.", "Okay", [](Button& button) {
+					closeMono();
+					if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+					{
+						auto dimmer = mods_menu->getParent();
+						dimmer->removeSelf();
+					}
+					consoleCommand("/dumpcache");
+					createModsWindow();
+				});
+			});
+
+			auto button = frame->findButton("okay");
+			SDL_Rect pos = button->getSize();
+			pos.x = frame->getSize().w / 2 - pos.w - 8;
+			button->setSize(pos);
+
+			auto buttonCancel = frame->addButton("cancel");
+			buttonCancel->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_Abandon00.png");
+			buttonCancel->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonHigh00.png");
+			buttonCancel->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonPress00.png");
+			buttonCancel->setColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setHighlightColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setTextColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setTextHighlightColor(makeColor(255, 255, 255, 255));
+			buttonCancel->setFont(smallfont_outline);
+			buttonCancel->setText("Cancel");
+			pos.x = frame->getSize().w / 2 + 8;
+			buttonCancel->setSize(pos);
+			buttonCancel->setCallback([](Button& button) {
+				soundCancel();
+				closeMono();
+			});
+
+			button->setWidgetRight("cancel");
+			button->setWidgetBack("cancel");
+			buttonCancel->setWidgetLeft("okay");
+			buttonCancel->setWidgetBack("cancel");
+		});
+		browse_workshop->setTickCallback([](Widget& widget) {
+			if ( mods_active_tab == "Steam Workshop" )
+			{
+				widget.addWidgetAction("MenuAlt1", "browse_workshop");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt1", "blank_mod_folder");
+			}
+			if ( mods_active_tab == "My Workshop Items" )
+			{
+				widget.setWidgetRight("new_workshop_mod");
+				widget.addWidgetAction("MenuStart", "new_workshop_mod");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt2", "load_status_help");
+				widget.setWidgetRight("load_status_help");
+				widget.addWidgetAction("MenuStart", "start_modded_game");
+			}
+		});
+		browse_workshop->setWidgetSearchParent("mods_menu");
+		browse_workshop->setWidgetPageLeft("tab_left");
+		browse_workshop->setWidgetPageRight("tab_right");
+		browse_workshop->setWidgetBack("back_button");
+		browse_workshop->setWidgetUp(mod_tabs[0].name);
+#endif
+		auto blank_mod_folder = window->addButton("blank_mod_folder");
+		blank_mod_folder->setText("Create Blank\nMod Folder");
+		blank_mod_folder->setSize(SDL_Rect{ 152, 630, 164, 62 });
+		blank_mod_folder->setBackground("*images/ui/Main Menus/Mods/Mod_Button_00.png");
+		blank_mod_folder->setBackgroundHighlighted("*images/ui/Main Menus/Mods/Mod_ButtonHigh_00.png");
+		blank_mod_folder->setBackgroundActivated("*images/ui/Main Menus/Mods/Mod_ButtonPress_00.png");
+		blank_mod_folder->setFont(smallfont_outline);
+		blank_mod_folder->setHighlightColor(0xffffffff);
+		blank_mod_folder->setColor(0xffffffff);
+		blank_mod_folder->setCallback([](Button&) {
+			workshopEditPrompt("This will create a new mod folder inside the Barony\n/mods/ directory with a blank file structure\nand default preview.png file.",
+			"Enter a name for the new folder", "Confirm", "Cancel",
+			[](Button& button) {
+				auto prompt = main_menu_frame->findFrame("binary_prompt"); assert(prompt);
+				auto field = prompt->findField("field"); assert(field);
+				closeBinary();
+
+				int res = 0;
+				std::string folderName = field->getText();
+				if ( folderName != "" )
+				{
+					res = Mods::createBlankModDirectory(folderName);
+				}
+				else
+				{
+					errorPrompt("Error: Folder name cannot\n be blank.", "Okay", [](Button& button) {
+						soundActivate();
+						closeMono();
+					});
+					return;
+				}
+
+				if ( res == 0 )
+				{
+					char buf[128];
+					snprintf(buf, sizeof(buf), "New folder: '%s'\ncreated successfully!", folderName.c_str());
+					monoPrompt(buf, "Okay", [](Button& button) {
+						soundActivate();
+					closeMono();
+
+					if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+					{
+						auto dimmer = mods_menu->getParent();
+						dimmer->removeSelf();
+					}
+
+					createModsWindow();
+					});
+				}
+				else if ( res == 1 )
+				{
+					char buf[128];
+					snprintf(buf, sizeof(buf), "Error: A folder already exists\nnamed '%s'", folderName.c_str());
+					errorPrompt(buf, "Okay", [](Button& button) {
+						soundActivate();
+					closeMono();
+					});
+				}
+				else
+				{
+					char buf[128];
+					snprintf(buf, sizeof(buf), "Error: Unable to write folder\n'%s'", folderName.c_str());
+					errorPrompt(buf, "Okay", [](Button& button) {
+						soundActivate();
+					closeMono();
+					});
+				}
+			},
+			[](Button& button) {
+				soundCancel();
+			closeBinary();
+			}, false, true);
+		});
+		blank_mod_folder->setTickCallback([](Widget& widget) {
+			if ( mods_active_tab == "Steam Workshop" )
+			{
+				widget.addWidgetAction("MenuAlt1", "browse_workshop");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt1", "blank_mod_folder");
+			}
+			if ( mods_active_tab == "My Workshop Items" )
+			{
+				widget.setWidgetRight("new_workshop_mod");
+				widget.addWidgetAction("MenuStart", "new_workshop_mod");
+			}
+			else
+			{
+				widget.addWidgetAction("MenuAlt2", "load_status_help");
+				widget.setWidgetRight("load_status_help");
+				widget.addWidgetAction("MenuStart", "start_modded_game");
+			}
+		});
+		blank_mod_folder->setWidgetSearchParent("mods_menu");
+		blank_mod_folder->setWidgetPageLeft("tab_left");
+		blank_mod_folder->setWidgetPageRight("tab_right");
+		blank_mod_folder->setWidgetBack("back_button");
+		blank_mod_folder->setWidgetUp(mod_tabs[0].name);
+
+		const int num_tabs = (int)mod_tabs.size();
+		int buttonsLeftX = Frame::virtualScreenX;
+		int buttonsRightX = 0;
+		for ( int c = 0; c < num_tabs; ++c ) {
+			const int x = window->getSize().w / (num_tabs + 1);
+			auto button = window->addButton(mod_tabs[c].name);
+			button->setCallback(mod_tabs[c].callback);
+			button->setText(mod_tabs[c].title);
+			button->setFont(banner_font);
+			if ( mod_tabs[c].name == mods_active_tab ) {
+				button->setBackground("*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelect00.png");
+				button->setBackgroundHighlighted("*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelectHigh00.png");
+				button->setBackgroundActivated("*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelectPress00.png");
+				button->getCallback()(*button);
+			}
+			else {
+				button->setBackground("*images/ui/Main Menus/Settings/Settings_Button_SubTitle00.png");
+				button->setBackgroundHighlighted("*images/ui/Main Menus/Settings/Settings_Button_SubTitleHigh00.png");
+				button->setBackgroundActivated("*images/ui/Main Menus/Settings/Settings_Button_SubTitlePress00.png");
+			}
+			button->setSize(SDL_Rect{ x + (x * c) - 184 / 2, 64, 184, 64 });
+			buttonsLeftX = std::min(buttonsLeftX, button->getSize().x);
+			buttonsRightX = std::max(buttonsRightX, button->getSize().x + button->getSize().w);
+			button->setColor(makeColor(255, 255, 255, 255));
+			button->setHighlightColor(makeColor(255, 255, 255, 255));
+			button->setWidgetSearchParent("mods_menu");
+			button->setGlyphPosition(Widget::glyph_position_t::CENTERED_BOTTOM);
+			if ( num_tabs > 1 )
+			{
+				if ( c > 0 )
+				{
+					button->setWidgetPageLeft("tab_left");
+					button->setWidgetLeft(mod_tabs[c - 1].name);
+				}
+				else
+				{
+					button->setWidgetPageLeft("tab_left");
+					button->setWidgetLeft(mod_tabs[c].name);
+				}
+				if ( c < num_tabs - 1 ) 
+				{
+					button->setWidgetPageRight("tab_right");
+					button->setWidgetRight(mod_tabs[c + 1].name);
+				}
+				else 
+				{
+					button->setWidgetPageRight("tab_right");
+					button->setWidgetRight(mod_tabs[c].name);
+				}
+			}
+			button->setWidgetBack("back_button");
+
+			button->setTickCallback([](Widget& widget) {
+				auto button = static_cast<Button*>(&widget);
+				button->setWidgetDown("");
+				if ( Frame* window = static_cast<Frame*>(button->getParent()) )
+				{
+					if ( auto subwindow = window->findFrame("subwindow") )
+					{
+						if ( subwindow->getButtons().size() > 0 )
+						{
+							button->setWidgetDown(subwindow->getButtons()[0]->getName());
+						}
+					}
+				}
+
+				if ( mods_active_tab == "Steam Workshop" )
+				{
+					button->addWidgetAction("MenuAlt1", "browse_workshop");
+				}
+				else
+				{
+					button->addWidgetAction("MenuAlt1", "blank_mod_folder");
+				}
+				if ( mods_active_tab == "My Workshop Items" )
+				{
+					button->addWidgetAction("MenuStart", "new_workshop_mod");
+				}
+				else
+				{
+					button->addWidgetAction("MenuAlt2", "load_status_help");
+					button->addWidgetAction("MenuStart", "start_modded_game");
+				}
+			});
+		}
+
+		if ( num_tabs > 1 )
+		{
+			auto tab_left = window->addButton("tab_left");
+			tab_left->setBackground("*images/ui/Main Menus/Settings/Settings_Button_L00.png");
+			tab_left->setBackgroundHighlighted("*images/ui/Main Menus/Settings/Settings_Button_LHigh00.png");
+			tab_left->setBackgroundActivated("*images/ui/Main Menus/Settings/Settings_Button_LPress00.png");
+			tab_left->setSize(SDL_Rect{ 58, 68, 38, 58 });
+			tab_left->setColor(makeColor(255, 255, 255, 255));
+			tab_left->setHighlightColor(makeColor(255, 255, 255, 255));
+			tab_left->setWidgetSearchParent("mods_menu");
+			tab_left->setWidgetBack("back_button");
+			tab_left->setWidgetPageLeft("tab_left");
+			tab_left->setWidgetPageRight("tab_right");
+			tab_left->setWidgetUp(mod_tabs[0].name);
+			tab_left->setWidgetDown(mod_tabs[0].name);
+			tab_left->setWidgetLeft(mod_tabs[0].name);
+			tab_left->setWidgetRight(mod_tabs[0].name);
+			tab_left->setCallback([](Button&) {
+				auto mods_menu = main_menu_frame->findFrame("mods_menu"); assert(mods_menu);
+				const char* prevtab = nullptr;
+				for ( auto& tab : mod_tabs ) {
+					auto button = mods_menu->findButton(tab.name);
+					if ( button ) {
+						const char* name = "*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelect00.png";
+						if ( strcmp(button->getBackground(), name) == 0 ) {
+							if ( prevtab ) {
+								auto prevbutton = mods_menu->findButton(prevtab); assert(prevbutton);
+								prevbutton->select();
+								prevbutton->activate();
+							}
+							return;
+						}
+						prevtab = tab.name;
+					}
+				}
+			});
+			tab_left->setGlyphPosition(Button::glyph_position_t::CENTERED);
+
+			auto tab_right = window->addButton("tab_right");
+			tab_right->setBackground("*images/ui/Main Menus/Settings/Settings_Button_R00.png");
+			tab_right->setBackgroundHighlighted("*images/ui/Main Menus/Settings/Settings_Button_RHigh00.png");
+			tab_right->setBackgroundActivated("*images/ui/Main Menus/Settings/Settings_Button_RPress00.png");
+			tab_right->setSize(SDL_Rect{ 1066, 68, 38, 58 });
+			tab_right->setColor(makeColor(255, 255, 255, 255));
+			tab_right->setHighlightColor(makeColor(255, 255, 255, 255));
+			tab_right->setWidgetSearchParent("mods_menu");
+			tab_right->setWidgetBack("back_button");
+			tab_right->setWidgetPageLeft("tab_left");
+			tab_right->setWidgetPageRight("tab_right");
+			tab_right->setWidgetUp(mod_tabs[mod_tabs.size() - 1].name);
+			tab_right->setWidgetDown(mod_tabs[mod_tabs.size() - 1].name);
+			tab_right->setWidgetLeft(mod_tabs[mod_tabs.size() - 1].name);
+			tab_right->setWidgetRight(mod_tabs[mod_tabs.size() - 1].name);
+			tab_right->setCallback([](Button&) {
+				auto mods_menu = main_menu_frame->findFrame("mods_menu"); assert(mods_menu);
+				const char* nexttab = nullptr;
+				for ( auto it = mod_tabs.rbegin(); it != mod_tabs.rend(); ++it ) {
+					auto tab = (*it);
+					auto button = mods_menu->findButton(tab.name);
+					if ( button ) {
+						const char* name = "*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelect00.png";
+						if ( strcmp(button->getBackground(), name) == 0 ) {
+							if ( nexttab ) {
+								auto nextbutton = mods_menu->findButton(nexttab); assert(nextbutton);
+								nextbutton->select();
+								nextbutton->activate();
+							}
+							return;
+						}
+						nexttab = tab.name;
+					}
+				}
+			});
+			tab_right->setGlyphPosition(Button::glyph_position_t::CENTERED);
+		}
+
+		window->setTickCallback([](Widget& widget) {
+			auto window = static_cast<Frame*>(&widget);
+
+			bool rescueFocus = false;
+			assert(main_menu_frame);
+			bool createMenuOpen = false;
+			auto subwindow = window->findFrame("subwindow");
+			if ( main_menu_frame->findFrame("workshop_create") )
+			{
+				createMenuOpen = true;
+			}
+			subwindow->setAllowScrollBinds(!createMenuOpen);
+			if ( !main_menu_frame->findSelectedWidget(widget.getOwner()) )
+			{
+				if ( !createMenuOpen )
+				{
+					rescueFocus = true;
+				}
+			}
+
+			for ( auto& tab : mod_tabs ) 
+			{
+				auto button = window->findButton(tab.name);
+				if ( button ) 
+				{
+					if ( tab.name == mods_active_tab ) 
+					{
+						if ( rescueFocus )
+						{
+							button->select();
+						}
+						button->setBackground("*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelect00.png");
+						button->setBackgroundHighlighted("*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelectHigh00.png");
+						button->setBackgroundActivated("*images/ui/Main Menus/Settings/Settings_Button_SubTitleSelectPress00.png");
+					}
+					else {
+						button->setBackground("*images/ui/Main Menus/Settings/Settings_Button_SubTitle00.png");
+						button->setBackgroundHighlighted("*images/ui/Main Menus/Settings/Settings_Button_SubTitleHigh00.png");
+						button->setBackgroundActivated("*images/ui/Main Menus/Settings/Settings_Button_SubTitlePress00.png");
+					}
+				}
+			}
+
+			if ( rescueFocus )
+			{
+				if ( subwindow )
+				{
+					for ( auto btn : subwindow->getButtons() )
+					{
+						if ( !btn->isToBeDeleted() )
+						{
+							btn->select(); // select a mod as priority over above tabs
+							btn->scrollParent();
+							return;
+						}
+					}
+				}
+			}
+		});
+	}
+
+	static std::string modFolderPathToUpload = "";
+	static std::string modTitleToUpload = "";
+	static std::string modDescToUpload = "";
+	static std::set<int> modTags;
+
+#ifdef STEAMWORKS
+	static void createWorkshopCreateMenu(SteamUGCDetails_t* details) {
+		if ( !details )
+		{
+			Mods::uploadingExistingItem = 0;
+		}
+		else
+		{
+			Mods::uploadingExistingItem = details->m_nPublishedFileId;
+		}
+
+		modFolderPathToUpload = "";
+		modTitleToUpload = details ? details->m_rgchTitle : "Title";
+		modDescToUpload = details ? details->m_rgchDescription : "Description";
+		modTags.clear();
+		if ( details )
+		{
+			std::string allTags = details->m_rgchTags;
+			auto found = allTags.find(',');
+			std::vector<std::string> foundTags;
+			while ( found != std::string::npos )
+			{
+				foundTags.push_back(allTags.substr(0, found));
+				allTags = allTags.substr(found + 1); // skip the "," character.
+				found = allTags.find(',');
+			}
+			foundTags.push_back(allTags);
+
+
+			for ( auto& t : foundTags )
+			{
+				int index = 0;
+				for ( auto& s : Mods::tag_settings )
+				{
+					if ( t == s.tag )
+					{
+						modTags.insert(index);
+					}
+					++index;
+				}
+			}
+		}
+		assert(main_menu_frame);
+
+		auto dimmer = main_menu_frame->addFrame("dimmer");
+		dimmer->setSize(SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY });
+		dimmer->setActualSize(dimmer->getSize());
+		dimmer->setColor(makeColor(0, 0, 0, 63));
+		dimmer->setBorder(0);
+
+		const int windowWidth = 970;
+		auto window = dimmer->addFrame("workshop_create");
+		window->setSize(SDL_Rect{
+			((Frame::virtualScreenX - windowWidth) / 2) + 3,
+			(Frame::virtualScreenY - 716) / 2,
+			windowWidth,
+			716 });
+		window->setActualSize(SDL_Rect{ 0, 0, windowWidth, 716 });
+		window->setBorder(0);
+		window->setColor(0);
+		window->setTickCallback([](Widget& widget) {
+			auto window = static_cast<Frame*>(&widget);
+			bool rescueFocus = false;
+			assert(main_menu_frame);
+			if ( !main_menu_frame->findSelectedWidget(widget.getOwner()) )
+			{
+				rescueFocus = true;
+			}
+
+			if ( rescueFocus )
+			{
+				if ( auto subwindow = window->findFrame("subwindow") )
+				{
+					for ( auto btn : subwindow->getButtons() )
+					{
+						if ( !btn->isToBeDeleted() )
+						{
+							btn->select();
+							return;
+						}
+					}
+				}
+			}
+		});
+
+		auto background = window->addImage(
+			SDL_Rect{ 16, 0, 936, 714 },
+			0xffffffff,
+			"*images/ui/Main Menus/Mods/Upload/Upload_Window_00.png",
+			"background"
+		);
+
+		auto timber = window->addImage(
+			SDL_Rect{ 0, 716 - 586, windowWidth, 586 },
+			0xffffffff,
+			"*images/ui/Main Menus/Mods/Upload/Upload_Window_OverlayScaffold_00.png",
+			"timber"
+		);
+		timber->ontop = true;
+
+		auto subwindow = window->addFrame("subwindow");
+		subwindow->setSize(SDL_Rect{ 22, 142, background->pos.w - 12, 476 });
+		subwindow->setActualSize(SDL_Rect{ 0, 0, subwindow->getSize().w, subwindow->getSize().h});
+		subwindow->setBorder(0);
+		subwindow->setColor(0);
+
+		auto rock_background = subwindow->addImage(
+			subwindow->getActualSize(),
+			makeColor(255, 255, 255, 255),
+			"*images/ui/Main Menus/Play/HallofTrials/Settings_Window_06_BGPattern.png",
+			"rock_background"
+		);
+		rock_background->tiled = true;
+
+		auto gradient_background = subwindow->addImage(
+			SDL_Rect{ 0, 0, windowWidth, 476 },
+			makeColor(255, 255, 255, 255),
+			"*images/ui/Main Menus/Play/HallofTrials/HoT_Window_02_BGGradient.png",
+			"gradient_background"
+		);
+
+		auto window_title = window->addField("title", 64);
+		window_title->setFont(banner_font);
+		window_title->setSize(SDL_Rect{ 312, 24, 338, 24 });
+		window_title->setJustify(Field::justify_t::CENTER);
+		if ( details )
+		{
+			window_title->setText("UPDATE WORKSHOP MOD");
+		}
+		else
+		{
+			window_title->setText("NEW WORKSHOP MOD");
+		}
+
+		auto subtitle = window->addField("subtitle", 1024);
+		subtitle->setFont(bigfont_no_outline);
+		subtitle->setColor(makeColor(170, 134, 102, 255));
+		subtitle->setSize(SDL_Rect{ 146, 71, 676, 50 });
+		subtitle->setJustify(Field::justify_t::CENTER);
+		if ( !details )
+		{
+			subtitle->setText(
+				u8"Upload a folder within the /mods/ directory for your mod.\n"
+				u8"Files/tags may be changed within this menu after creation."
+			);
+		}
+		else
+		{
+			subtitle->setText(
+				u8"Submitting an update changes the tagged game version.\n"
+				u8"Choosing a new folder or changing tags is optional."
+			);
+		}
+		subtitle->setIndividualLinePadding(0, 4);
+
+		auto back_button = createBackWidget(window, [](Button& button) {
+			soundCancel();
+			auto frame = static_cast<Frame*>(button.getParent());
+			frame = static_cast<Frame*>(frame->getParent());
+			frame = static_cast<Frame*>(frame->getParent());
+			frame->removeSelf();
+		});
+		back_button->setWidgetLeft("folder button");
+		back_button->setWidgetRight("folder button");
+		back_button->setWidgetUp("folder button");
+		back_button->setWidgetDown("folder button");
+		back_button->setWidgetSearchParent("workshop_create");
+
+		int padX = 48;
+		int currentY = 24;
+
+		{
+			auto titleBacking = subwindow->addImage(SDL_Rect{ 0, currentY, 280, 52 }, 0xFFFFFFFF,
+				"*#images/ui/Main Menus/Mods/Upload/Upload_Left_Backing00.png", "folder title img");
+
+			auto title = subwindow->addField("folder upload title", 64);
+			title->setHJustify(Field::justify_t::LEFT);
+			title->setVJustify(Field::justify_t::CENTER);
+			title->setFont(bigfont_outline);
+			title->setText("Folder To Upload:");
+			title->setSize(SDL_Rect{ titleBacking->pos.x + 24, titleBacking->pos.y, titleBacking->pos.w - 24, titleBacking->pos.h });
+
+			SDL_Rect valuePos = titleBacking->pos;
+			valuePos.x = titleBacking->pos.x + titleBacking->pos.w + 20;
+			valuePos.w = 380;
+			auto valueBacking = subwindow->addImage(valuePos, 0xFFFFFFFF,
+				"*#images/ui/Main Menus/Mods/Upload/Upload_Folder_Backing00.png", "folder value img");
+			auto value = subwindow->addField("folder upload value", 64);
+			value->setHJustify(Field::justify_t::CENTER);
+			value->setVJustify(Field::justify_t::CENTER);
+			value->setFont(bigfont_outline);
+			value->setText("No folder selected");
+			value->setColor(makeColorRGB(128, 128, 128));
+			value->setSize(SDL_Rect{ valuePos.x + 24, valuePos.y, valuePos.w - 24 * 2, valuePos.h });
+			value->setTickCallback([](Widget& widget) {
+				auto field = static_cast<Field*>(&widget);
+				if ( modFolderPathToUpload == "" )
+				{
+					field->setText("No folder selected");
+					field->setColor(makeColorRGB(128, 128, 128));
+				}
+				else
+				{
+					std::size_t found = modFolderPathToUpload.find_last_of("/\\");
+					if ( found != std::string::npos )
+					{
+						std::string folderName = "/mods/" + modFolderPathToUpload.substr(found + 1) + "/";
+						field->setText(folderName.c_str());
+						field->setColor(makeColorRGB(255, 255, 255));
+					}
+				}
+			});
+
+			auto button = subwindow->addButton("folder button");
+			button->setText("Choose...");
+			button->setFont(smallfont_outline);
+			button->setSize(SDL_Rect{ valuePos.x + valuePos.w + 20, titleBacking->pos.y + titleBacking->pos.h / 2 - 44 / 2, 158, 44 });
+			button->setBackground("*#images/ui/Main Menus/Mods/Upload/Button_00.png");
+			button->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Upload/Button_High00.png");
+			button->setBackgroundActivated("*#images/ui/Main Menus/Mods/Upload/Button_Press00.png");
+            if (SteamUtils()->IsSteamRunningOnSteamDeck()) {
+                button->setTextColor(makeColorRGB(127, 127, 127));
+                button->setHighlightColor(makeColorRGB(127, 127, 127));
+                button->setColor(makeColorRGB(127, 127, 127));
+            } else {
+                button->setTextColor(0xFFFFFFFF);
+                button->setHighlightColor(0xFFFFFFFF);
+                button->setColor(0xFFFFFFFF);
+            }
+			button->select();
+
+			button->setWidgetSearchParent("workshop_create");
+			button->setWidgetDown("title button");
+			button->addWidgetAction("MenuStart", "enter");
+			if ( Mods::uploadingExistingItem != 0 )
+			{
+				button->addWidgetAction("MenuAlt1", "manage");
+			}
+			button->addWidgetAction("MenuCancel", "back_button");
+
+			auto buttonCancel = subwindow->addButton("folder cancel button");
+			SDL_Rect cancelPos = button->getSize();
+			cancelPos.x += cancelPos.w + 8;
+			cancelPos.y = titleBacking->pos.y + titleBacking->pos.h / 2 - 12;
+			cancelPos.w = 26;
+			cancelPos.h = 26;
+			buttonCancel->setSize(cancelPos);
+			buttonCancel->setFont(smallfont_outline);
+			buttonCancel->setText("X");
+			buttonCancel->setBackground("*#images/ui/Main Menus/Mods/Upload/Button_Red_X_00.png");
+			buttonCancel->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Upload/Button_Red_XHigh_00.png");
+			buttonCancel->setBackgroundActivated("*#images/ui/Main Menus/Mods/Upload/Button_Red_XPress_00.png");
+			buttonCancel->setHighlightColor(0xFFFFFFFF);
+			buttonCancel->setColor(0xFFFFFFFF);
+
+			buttonCancel->setWidgetSearchParent("workshop_create");
+			buttonCancel->setWidgetLeft("folder button");
+			buttonCancel->setWidgetDown("desc button");
+			buttonCancel->addWidgetAction("MenuStart", "enter");
+			if ( Mods::uploadingExistingItem != 0 )
+			{
+				buttonCancel->addWidgetAction("MenuAlt1", "manage");
+			}
+			buttonCancel->addWidgetAction("MenuCancel", "back_button");
+
+			buttonCancel->setCallback([](Button& button) {
+				modFolderPathToUpload = "";
+				button.setInvisible(true);
+				button.setDisabled(button.isInvisible());
+				auto frame = static_cast<Frame*>(button.getParent());
+				if ( auto button2 = frame->findButton("folder button") )
+				{
+					button2->select();
+				}
+				soundCancel();
+			});
+
+
+
+			button->setTickCallback([](Widget& widget) {
+				auto button = static_cast<Button*>(&widget);
+				if ( auto frame = static_cast<Frame*>(button->getParent()) )
+				{
+					button->setWidgetRight("");
+					if ( auto buttonCancel = frame->findButton("folder cancel button") )
+					{
+						if ( modFolderPathToUpload != "" )
+						{
+							buttonCancel->setInvisible(false);
+							button->setWidgetRight("folder cancel button");
+						}
+						else
+						{
+							buttonCancel->setInvisible(true);
+						}
+						buttonCancel->setDisabled(buttonCancel->isInvisible());
+						if ( buttonCancel->isInvisible() && buttonCancel->isSelected() )
+						{
+							button->select();
+						}
+					}
+				}
+			});
+			button->setCallback([](Button& button) {
+                if (SteamUtils()->IsSteamRunningOnSteamDeck()) {
+                    soundError();
+                    return;
+                }
+				soundActivate();
+				
+				nfdchar_t* outPath = NULL;
+				
+				char path[PATH_MAX];
+				nfdresult_t result = NFD_OKAY;
+
+				std::string modsPath = "";
+				if ( PHYSFS_getRealDir("mods") )
+				{
+					modsPath = PHYSFS_getRealDir("mods");
+					modsPath += "mods";
+					modsPath = Mods::getFolderFullPath(modsPath);
+				}
+				if ( modsPath != "" )
+				{
+					result = NFD_PickFolder(modsPath.c_str(), &outPath);
+				}
+				else
+				{
+					result = NFD_PickFolder(outputdir, &outPath); // hopefully this is absolute path?
+				}
+				if ( result == NFD_ERROR )
+				{
+					result = NFD_PickFolder(PHYSFS_getBaseDir(), &outPath); // fallback path
+				}
+
+				if ( result == NFD_OKAY )
+				{
+					modFolderPathToUpload = outPath;
+					bool fail = true;
+					std::size_t found = modFolderPathToUpload.find_last_of("/\\");
+					if ( found != std::string::npos )
+					{
+						std::string folder = modFolderPathToUpload.substr(found + 1);
+						std::string parent = modFolderPathToUpload.substr(0, found);
+						std::size_t found2 = parent.find_last_of("/\\");
+						if ( found2 != std::string::npos )
+						{
+							std::string parentFolder = parent.substr(found2 + 1);
+							if ( parentFolder == "mods" )
+							{
+								fail = false;
+							}
+						}
+					}
+
+					if ( fail )
+					{
+						modFolderPathToUpload = "";
+						errorPrompt("Error: Parent folder\nmust be \"mods\".", "Okay",
+							[](Button&) {
+								soundCancel();
+								closeMono();
+								if ( auto window = main_menu_frame->findFrame("workshop_create") )
+								{
+									if ( auto subwindow = window->findFrame("subwindow") )
+									{
+										if ( auto button = subwindow->findButton("folder button") )
+										{
+											button->select();
+										}
+									}
+								}
+						});
+						return;
+					}
+
+					soundActivate();
+					if ( auto window = main_menu_frame->findFrame("workshop_create") )
+					{
+						if ( auto subwindow = window->findFrame("subwindow") )
+						{
+							if ( auto button = subwindow->findButton("folder button") )
+							{
+								button->select();
+							}
+						}
+					}
+					return;
+				}
+				else if ( result == NFD_ERROR )
+				{
+					char err[128];
+					snprintf(err, sizeof(err), "Error: Could not open folder:\n%s", NFD_GetError());
+					errorPrompt(err, "Okay",
+						[](Button&) {
+							soundCancel();
+							closeMono();
+							if ( auto window = main_menu_frame->findFrame("workshop_create") )
+							{
+								if ( auto subwindow = window->findFrame("subwindow") )
+								{
+									if ( auto button = subwindow->findButton("folder button") )
+									{
+										button->select();
+									}
+								}
+							}
+					});
+				}
+				else
+				{
+					soundCancel();
+				}
+			});
+			currentY += titleBacking->pos.h + 10;
+		}
+
+		{
+			auto titleBacking = subwindow->addImage(SDL_Rect{ 0, currentY, 280, 52 }, 0xFFFFFFFF,
+				"*#images/ui/Main Menus/Mods/Upload/Upload_Left_Backing00.png", "title img");
+
+			auto title = subwindow->addField("title", 64);
+			title->setHJustify(Field::justify_t::LEFT);
+			title->setVJustify(Field::justify_t::CENTER);
+			title->setFont(bigfont_outline);
+			title->setText("Title:");
+			title->setSize(SDL_Rect{ titleBacking->pos.x + 24, titleBacking->pos.y, titleBacking->pos.w - 24, titleBacking->pos.h });
+
+			SDL_Rect valuePos = titleBacking->pos;
+			valuePos.x = titleBacking->pos.x + titleBacking->pos.w + 20;
+			valuePos.w = 380;
+			auto value = subwindow->addImage(valuePos, 0xFFFFFFFF,
+				"*#images/ui/Main Menus/Mods/Upload/Upload_Folder_Backing00.png", "title value img");
+			auto titleValue = subwindow->addField("title value", 64);
+			titleValue->setHJustify(Field::justify_t::CENTER);
+			titleValue->setVJustify(Field::justify_t::CENTER);
+			titleValue->setFont(bigfont_outline);
+			titleValue->setText(modTitleToUpload.c_str());
+			titleValue->setSize(SDL_Rect{ valuePos.x + 24, valuePos.y, valuePos.w - 24 * 2, valuePos.h });
+			titleValue->setTickCallback([](Widget& widget) {
+				auto field = static_cast<Field*>(&widget);
+				if ( modTitleToUpload.size() >= 26 )
+				{
+					char buf[32];
+					snprintf(buf, sizeof(buf), "%s...", modTitleToUpload.substr(0, 26).c_str());
+					field->setText(buf);
+				}
+				else
+				{
+					field->setText(modTitleToUpload.c_str());
+				}
+			});
+
+			auto button = subwindow->addButton("title button");
+			button->setText("Edit...");
+			button->setFont(smallfont_outline);
+			button->setSize(SDL_Rect{ valuePos.x + valuePos.w + 20, titleBacking->pos.y + titleBacking->pos.h / 2 - 44 / 2, 158, 44 });
+			button->setBackground("*#images/ui/Main Menus/Mods/Upload/Button_00.png");
+			button->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Upload/Button_High00.png");
+			button->setBackgroundActivated("*#images/ui/Main Menus/Mods/Upload/Button_Press00.png");
+			button->setHighlightColor(0xFFFFFFFF);
+			button->setColor(0xFFFFFFFF);
+			
+			button->setWidgetSearchParent("workshop_create");
+			button->setWidgetUp("folder button");
+			button->setWidgetDown("desc button");
+			button->addWidgetAction("MenuStart", "enter");
+			if ( Mods::uploadingExistingItem != 0 )
+			{
+				button->addWidgetAction("MenuAlt1", "manage");
+			}
+			button->addWidgetAction("MenuCancel", "back_button");
+
+			if ( !details )
+			{
+				button->setCallback([](Button& button) {
+					workshopEditPrompt("This can be edited later with a larger length\nwithin the Steam Workshop page after creation.", 
+					"Enter a title for this item", "Confirm", "Cancel",
+						[](Button& button) {
+							soundActivate();
+							assert(main_menu_frame);
+							auto prompt = main_menu_frame->findFrame("binary_prompt"); assert(prompt);
+							auto field = prompt->findField("field"); assert(field);
+
+							if ( strcmp(field->getText(), "") )
+							{
+								modTitleToUpload = field->getText();
+							}
+							closeBinary();
+
+							assert(main_menu_frame);
+							if ( auto window = main_menu_frame->findFrame("workshop_create") )
+							{
+								if ( auto subwindow = window->findFrame("subwindow") )
+								{
+									if ( auto button = subwindow->findButton("title button") )
+									{
+										button->select();
+									}
+								}
+							}
+						},
+						[](Button& button) {
+							soundCancel();
+							closeBinary();
+
+							assert(main_menu_frame);
+							if ( auto window = main_menu_frame->findFrame("workshop_create") )
+							{
+								if ( auto subwindow = window->findFrame("subwindow") )
+								{
+									if ( auto button = subwindow->findButton("title button") )
+									{
+										button->select();
+									}
+								}
+							}
+						}, false, true);
+				});
+			}
+			else
+			{
+				button->setTextColor(makeColorRGB(128, 128, 128));
+				button->setTextHighlightColor(makeColorRGB(128, 128, 128));
+				button->setCallback([](Button& button) {
+					errorPrompt("For existing items, visit the\nWorkshop page to make edits.", "Okay", [](Button& button) {
+						soundActivate();
+						closeMono();
+
+						assert(main_menu_frame);
+						if ( auto window = main_menu_frame->findFrame("workshop_create") )
+						{
+							if ( auto subwindow = window->findFrame("subwindow") )
+							{
+								if ( auto button = subwindow->findButton("title button") )
+								{
+									button->select();
+								}
+							}
+						}
+					});
+				});
+			}
+			currentY += titleBacking->pos.h + 10;
+		}
+
+		{
+			auto titleBacking = subwindow->addImage(SDL_Rect{ 0, currentY, 280, 52 }, 0xFFFFFFFF,
+				"*#images/ui/Main Menus/Mods/Upload/Upload_Left_Backing00.png", "desc img");
+
+			auto title = subwindow->addField("desc", 64);
+			title->setHJustify(Field::justify_t::LEFT);
+			title->setVJustify(Field::justify_t::CENTER);
+			title->setFont(bigfont_outline);
+			title->setText("Description:");
+			title->setSize(SDL_Rect{ titleBacking->pos.x + 24, titleBacking->pos.y, titleBacking->pos.w - 24, titleBacking->pos.h });
+
+			SDL_Rect valuePos = titleBacking->pos;
+			valuePos.x = titleBacking->pos.x + titleBacking->pos.w + 20;
+			valuePos.w = 380;
+			auto value = subwindow->addImage(valuePos, 0xFFFFFFFF,
+				"*#images/ui/Main Menus/Mods/Upload/Upload_Folder_Backing00.png", "desc value img");
+			auto titleValue = subwindow->addField("desc value", 64);
+			titleValue->setHJustify(Field::justify_t::CENTER);
+			titleValue->setVJustify(Field::justify_t::CENTER);
+			titleValue->setFont(bigfont_outline);
+			titleValue->setText(modDescToUpload.c_str());
+			titleValue->setSize(SDL_Rect{ valuePos.x + 24, valuePos.y, valuePos.w - 24 * 2, valuePos.h });
+			titleValue->setTickCallback([](Widget& widget) {
+				auto field = static_cast<Field*>(&widget);
+				if ( modDescToUpload.size() >= 26 )
+				{
+					char buf[32];
+					snprintf(buf, sizeof(buf), "%s...", modDescToUpload.substr(0, 26).c_str());
+					field->setText(buf);
+				}
+				else
+				{
+					field->setText(modDescToUpload.c_str());
+				}
+			});
+
+			auto button = subwindow->addButton("desc button");
+			button->setText("Edit...");
+			button->setFont(smallfont_outline);
+			button->setSize(SDL_Rect{ valuePos.x + valuePos.w + 20, titleBacking->pos.y + titleBacking->pos.h / 2 - 44 / 2, 158, 44 });
+			button->setBackground("*#images/ui/Main Menus/Mods/Upload/Button_00.png");
+			button->setBackgroundHighlighted("*#images/ui/Main Menus/Mods/Upload/Button_High00.png");
+			button->setBackgroundActivated("*#images/ui/Main Menus/Mods/Upload/Button_Press00.png");
+			button->setHighlightColor(0xFFFFFFFF);
+			button->setColor(0xFFFFFFFF);
+			
+			button->setWidgetSearchParent("workshop_create");
+			button->setWidgetUp("title button");
+			if ( Mods::tag_settings.size() > 0 )
+			{
+				button->setWidgetDown("setting0");
+			}
+			button->addWidgetAction("MenuStart", "enter");
+			if ( Mods::uploadingExistingItem != 0 )
+			{
+				button->addWidgetAction("MenuAlt1", "manage");
+			}
+			button->addWidgetAction("MenuCancel", "back_button");
+
+			if ( !details )
+			{
+				button->setCallback([](Button& button) {
+					workshopEditPrompt("This can be edited later with a larger length\nwithin the Steam Workshop page after creation.",
+					"Enter a description for this item", "Confirm", "Cancel",
+					[](Button& button) {
+						soundActivate();
+
+						auto prompt = main_menu_frame->findFrame("binary_prompt"); assert(prompt);
+						auto field = prompt->findField("field"); assert(field);
+
+						if ( strcmp(field->getText(), "") )
+						{
+							modDescToUpload = field->getText();
+						}
+						closeBinary();
+
+						assert(main_menu_frame);
+						if ( auto window = main_menu_frame->findFrame("workshop_create") )
+						{
+							if ( auto subwindow = window->findFrame("subwindow") )
+							{
+								if ( auto button = subwindow->findButton("desc button") )
+								{
+									button->select();
+								}
+							}
+						}
+					},
+					[](Button& button) {
+						soundCancel();
+						closeBinary();
+
+						assert(main_menu_frame);
+						if ( auto window = main_menu_frame->findFrame("workshop_create") )
+						{
+							if ( auto subwindow = window->findFrame("subwindow") )
+							{
+								if ( auto button = subwindow->findButton("desc button") )
+								{
+									button->select();
+								}
+							}
+						}
+					}, false, true);
+					});
+			}
+			else
+			{
+				button->setTextColor(makeColorRGB(128, 128, 128));
+				button->setTextHighlightColor(makeColorRGB(128, 128, 128));
+				button->setCallback([](Button& button) {
+					errorPrompt("For existing items, visit the\nWorkshop page to make edits.", "Okay", [](Button& button) {
+						soundActivate();
+						closeMono();
+
+						assert(main_menu_frame);
+						if ( auto window = main_menu_frame->findFrame("workshop_create") )
+						{
+							if ( auto subwindow = window->findFrame("subwindow") )
+							{
+								if ( auto button = subwindow->findButton("desc button") )
+								{
+									button->select();
+								}
+							}
+						}
+					});
+				});
+			}
+			currentY += titleBacking->pos.h + 10;
+		}
+
+		{
+			auto titleBacking = subwindow->addImage(SDL_Rect{ 0, currentY, 280, 52 }, 0xFFFFFFFF,
+				"*#images/ui/Main Menus/Mods/Upload/Upload_Left_Backing00.png", "tags img");
+
+			auto title = subwindow->addField("tags", 64);
+			title->setHJustify(Field::justify_t::LEFT);
+			title->setVJustify(Field::justify_t::CENTER);
+			title->setFont(bigfont_outline);
+			title->setText("Tags:");
+			title->setSize(SDL_Rect{ titleBacking->pos.x + 24, titleBacking->pos.y, titleBacking->pos.w - 24, titleBacking->pos.h });
+
+			int currentX = titleBacking->pos.x + titleBacking->pos.w + 20;
+			int row = 0;
+			const int tagsPerRow = 4;
+			for ( int i = 0; i < Mods::tag_settings.size(); ++i )
+			{
+				SDL_Rect settingPos{ currentX, currentY + 52 / 2 - 44 / 2, 44, 44 };
+				auto setting = subwindow->addButton((std::string("setting") + std::to_string(i)).c_str());
+				setting->setIcon("*#images/ui/Main Menus/Mods/Upload/Fill_Checked_00.png");
+				setting->setStyle(Button::style_t::STYLE_CHECKBOX);
+				setting->setSize(settingPos);
+				setting->setHighlightColor(0);
+				setting->setBorderColor(0);
+				setting->setBorder(0);
+				setting->setColor(0);
+				setting->setUserData((void*)(intptr_t)(i));
+				setting->setPressed(modTags.find(i) != modTags.end());
+				setting->setButtonsOffset(SDL_Rect{ -2, 0, 0, 0 });
+				setting->setSelectorOffset(SDL_Rect{ 1, 5, -5, -1 });
+				setting->setCallback([](Button& button) {
+					soundCheckmark();
+					int tagIndex = reinterpret_cast<intptr_t>(button.getUserData());
+					if ( button.isPressed() )
+					{
+						if ( modTags.find(tagIndex) == modTags.end() )
+						{
+							modTags.insert(tagIndex);
+						}
+					}
+					else
+					{
+						if ( modTags.find(tagIndex) != modTags.end() )
+						{
+							modTags.erase(tagIndex);
+						}
+					}
+				});
+
+				setting->setWidgetSearchParent("workshop_create");
+				setting->addWidgetAction("MenuCancel", "back_button");
+				setting->addWidgetAction("MenuStart", "enter");
+				if ( Mods::uploadingExistingItem != 0 )
+				{
+					setting->addWidgetAction("MenuAlt1", "manage");
+				}
+
+				if ( i % (tagsPerRow) != (tagsPerRow - 1) )
+				{
+					setting->setWidgetRight((std::string("setting") + std::to_string(i + 1)).c_str());
+				}
+				if ( i % (tagsPerRow) > 0 )
+				{
+					setting->setWidgetLeft((std::string("setting") + std::to_string(i - 1)).c_str());
+				}
+				if ( row > 0 )
+				{
+					setting->setWidgetUp((std::string("setting") + std::to_string(i - tagsPerRow)).c_str());
+				}
+				else
+				{
+					setting->setWidgetUp("desc button");
+				}
+				if ( i + tagsPerRow < Mods::tag_settings.size() )
+				{
+					setting->setWidgetDown((std::string("setting") + std::to_string(i + tagsPerRow)).c_str());
+				}
+
+				auto settingBg = subwindow->addImage(setting->getSize(), 0xFFFFFFFF,
+					"*#images/ui/Main Menus/Mods/Upload/BG_Checked_00.png", (std::string("setting_bg") + std::to_string(i)).c_str());
+
+				auto label = subwindow->addField((std::string("label") + std::to_string(i)).c_str(), 128);
+				label->setFont(smallfont_outline);
+				label->setText(Mods::tag_settings[i].text.c_str());
+				//label->setColor(makeColor(166, 123, 81, 255));
+				label->setColor(0xFFFFFFFF);
+				label->setHJustify(Field::justify_t::LEFT);
+				label->setVJustify(Field::justify_t::CENTER);
+				SDL_Rect labelPos { settingPos.x + settingPos.w + 8, currentY, 82, 52 };
+				if ( auto textGet = label->getTextObject() )
+				{
+					labelPos.w = std::max(labelPos.w, (int)textGet->getWidth());
+				}
+				label->setSize(labelPos);
+
+				if ( i > 0 && i % (tagsPerRow - 1) == 0 )
+				{
+					currentX = titleBacking->pos.x + titleBacking->pos.w + 20;
+					currentY += 52;
+					++row;
+				}
+				else
+				{
+					currentX = labelPos.x + labelPos.w + 16;
+				}
+			}
+
+			currentY += titleBacking->pos.h + 10;
+		}
+
+		// buttons at bottom
+		if ( Mods::uploadingExistingItem != 0 )
+		{
+			auto manage = window->addButton("manage");
+			manage->setText("Manage In\nWorkshop");
+			manage->setSize(SDL_Rect{ 152, 630, 164, 62 });
+			manage->setBackground("*images/ui/Main Menus/Play/HallofTrials/HoT_Button_00.png");
+			manage->setBackgroundHighlighted("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonHigh_00.png");
+			manage->setBackgroundActivated("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonPress_00.png");
+			manage->setFont(smallfont_outline);
+			manage->setHighlightColor(0xffffffff);
+			manage->setColor(0xffffffff);
+			manage->setCallback([](Button&) {
+				auto frame = monoPromptXL("You can view and edit most attributes of your mod\ndirectly on the Workshop page, such as longer\ndescriptions with HTML support, setting visibility to public\nor adding screenshots to the carousel.\n\nIf you need to edit the preview image or modded files,\nuse the upload window here in-game instead.",
+				"Open\nWorkshop", [](Button& button) {
+					std::string url = "steam://url/CommunityFilePage/";
+					url += std::to_string(Mods::uploadingExistingItem);
+					openURLTryWithOverlay(url);
+
+					soundActivate();
+
+					// fixes a bug where you could get spammed with 100s of browser tabs...
+					mousestatus[SDL_BUTTON_LEFT] = 0;
+					Input::mouseButtons[SDL_BUTTON_LEFT] = 0;
+
+					closeMono();
+
+					monoPrompt("Your workshop items\nwill now reload.", "Okay", [](Button& button) {
+						closeMono();
+						if ( auto workshop_create = main_menu_frame->findFrame("workshop_create") )
+						{
+							auto dimmer = workshop_create->getParent();
+							dimmer->removeSelf();
+						}
+
+						if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+						{
+							auto dimmer = mods_menu->getParent();
+							dimmer->removeSelf();
+						}
+
+						consoleCommand("/dumpcache");
+
+						createModsWindow();
+					});
+				});
+				auto button = frame->findButton("okay");
+				SDL_Rect pos = button->getSize();
+				pos.x = frame->getSize().w / 2 - pos.w - 8;
+				button->setSize(pos);
+
+				auto buttonCancel = frame->addButton("cancel");
+				buttonCancel->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_Abandon00.png");
+				buttonCancel->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonHigh00.png");
+				buttonCancel->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonPress00.png");
+				buttonCancel->setColor(makeColor(255, 255, 255, 255));
+				buttonCancel->setHighlightColor(makeColor(255, 255, 255, 255));
+				buttonCancel->setTextColor(makeColor(255, 255, 255, 255));
+				buttonCancel->setTextHighlightColor(makeColor(255, 255, 255, 255));
+				buttonCancel->setFont(smallfont_outline);
+				buttonCancel->setText("Cancel");
+				pos.x = frame->getSize().w / 2 + 8;
+				buttonCancel->setSize(pos);
+				buttonCancel->setCallback([](Button& button) {
+					soundCancel();
+					closeMono();
+				});
+
+				button->setWidgetRight("cancel");
+				button->setWidgetBack("cancel");
+				buttonCancel->setWidgetLeft("okay");
+				buttonCancel->setWidgetBack("cancel");
+			});
+
+			manage->setWidgetSearchParent("workshop_create");
+			{
+				int leftBottomTag = 4 * (Mods::tag_settings.size() / 4);
+				manage->setWidgetUp((std::string("setting") + std::to_string(leftBottomTag)).c_str());
+			}
+			manage->setWidgetRight("enter");
+			manage->addWidgetAction("MenuCancel", "back_button");
+		}
+
+		auto enter = window->addButton("enter");
+		if ( details )
+		{
+			enter->setText("Submit\nUpdate");
+		}
+		else
+		{
+			enter->setText("Submit New\nWorkshop Mod");
+		}
+		enter->setSize(SDL_Rect{ window->getSize().w - 164 - 152, 630, 164, 62});
+		enter->setBackground("*images/ui/Main Menus/Play/HallofTrials/HoT_Button_00.png");
+		enter->setBackgroundHighlighted("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonHigh_00.png");
+		enter->setBackgroundActivated("*images/ui/Main Menus/Play/HallofTrials/HoT_ButtonPress_00.png");
+		enter->setFont(smallfont_outline);
+		enter->setHighlightColor(0xffffffff);
+		enter->setColor(0xffffffff);
+
+		enter->setWidgetSearchParent("workshop_create");
+		enter->setWidgetUp((std::string("setting") + std::to_string(Mods::tag_settings.size() - 1)).c_str());
+		if ( Mods::uploadingExistingItem != 0 )
+		{
+			enter->setWidgetLeft("manage");
+		}
+		enter->addWidgetAction("MenuCancel", "back_button");
+
+		enter->setCallback([](Button& button) {
+			std::string message = "";
+			if ( Mods::uploadingExistingItem != 0 )
+			{
+				if ( modFolderPathToUpload == "" )
+				{
+					message = "No new files selected:\nOnly tags/version will be modified.";
+				}
+				else
+				{
+					message = "New files will be uploaded and\ntags/version will be modified.";
+				}
+				binaryPrompt(message.c_str(), "Proceed", "Cancel",
+					[](Button& button) {
+						closeBinary();
+						soundActivate();
+						createWorkshopUploadWindow();
+					},
+					[](Button& button) {
+						closeBinary();
+						soundCancel();
+					}, false, true);
+			}
+			else
+			{
+				createWorkshopUploadWindow();
+			}
+		});
+	}
+
+	enum UploadStatus {
+		STATUS_INIT,
+		STATUS_CREATE_ITEM,
+		STATUS_ITEM_CREATED,
+		STATUS_EXISTING_ITEM,
+		STATUS_NEEDS_ACCEPT_AGREEMENT,
+		STATUS_SET_TITLE,
+		STATUS_SET_DESC,
+		STATUS_SET_TAGS,
+		STATUS_UPLOAD_CONTENT_INIT,
+		STATUS_UPLOAD_PREVIEW_MISSING,
+		STATUS_UPLOAD_CONTENT_START,
+		STATUS_ITEM_UPDATING,
+		STATUS_COMPLETED,
+		STATUS_RETRY,
+		STATUS_ERROR
+	};
+	static const char* workshopUploadStateManager()
+	{
+		if ( Mods::processedOnTick != ticks )
+		{
+			++Mods::uploadTicks;
+		}
+		Mods::processedOnTick = ticks;
+
+		const int kStateDelay = TICKS_PER_SECOND / 2;
+
+		switch ( Mods::uploadStatus )
+		{
+			case UploadStatus::STATUS_INIT:
+				Mods::uploadNumRetries = 3;
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					Mods::uploadTicks = 0;
+					Mods::uploadStatus = UploadStatus::STATUS_CREATE_ITEM;
+					if ( !Mods::uploadingExistingItem )
+					{
+						g_SteamWorkshop->CreateItem();
+					}
+					else
+					{
+						Mods::uploadStatus = UploadStatus::STATUS_EXISTING_ITEM;
+					}
+				}
+				return "Starting upload";
+			case UploadStatus::STATUS_EXISTING_ITEM:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					Mods::uploadTicks = 0;
+					Mods::uploadStatus = STATUS_ITEM_CREATED;
+					g_SteamWorkshop->StartItemExistingUpdate(Mods::uploadingExistingItem);
+				}
+				return "Modifying existing item";
+			case UploadStatus::STATUS_CREATE_ITEM:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->createItemResult.m_eResult != k_EResultNone )
+					{
+						/*if ( g_SteamWorkshop->createItemResult.m_bUserNeedsToAcceptWorkshopLegalAgreement )
+						{
+							Mods::uploadTicks = 0;
+							Mods::uploadStatus = UploadStatus::STATUS_NEEDS_ACCEPT_AGREEMENT;
+						}
+						else */
+						if ( g_SteamWorkshop->createItemResult.m_eResult == k_EResultOK
+							&& g_SteamWorkshop->createItemResult.m_nPublishedFileId != 0 )
+						{
+							Mods::uploadTicks = 0;
+							Mods::uploadStatus = UploadStatus::STATUS_ITEM_CREATED;
+							g_SteamWorkshop->StartItemUpdate();
+						}
+						else
+						{
+							Mods::uploadTicks = 0;
+							Mods::uploadErrorStatus = Mods::uploadStatus;
+							Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+						}
+					}
+				}
+				return "Creating item";
+			case UploadStatus::STATUS_ITEM_CREATED:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						Mods::uploadTicks = 0;
+
+						if ( Mods::uploadingExistingItem != 0 )
+						{
+							// skip title/description
+							Mods::uploadStatus = UploadStatus::STATUS_SET_TAGS;
+						}
+						else
+						{
+							Mods::uploadStatus = UploadStatus::STATUS_SET_TITLE;
+						}
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Waiting on update handle";
+			case UploadStatus::STATUS_SET_TITLE:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadStatus = UploadStatus::STATUS_SET_DESC;
+						bool res = SteamUGC()->SetItemTitle(g_SteamWorkshop->UGCUpdateHandle, modTitleToUpload.c_str());
+						if ( !res )
+						{
+							Mods::uploadTicks = 0;
+							Mods::uploadErrorStatus = Mods::uploadStatus;
+							Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+						}
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Setting title";
+			case UploadStatus::STATUS_SET_DESC:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadStatus = UploadStatus::STATUS_SET_TAGS;
+						bool res = SteamUGC()->SetItemDescription(g_SteamWorkshop->UGCUpdateHandle, modDescToUpload.c_str());
+						if ( !res )
+						{
+							Mods::uploadTicks = 0;
+							Mods::uploadErrorStatus = Mods::uploadStatus;
+							Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+						}
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Setting description";
+			case UploadStatus::STATUS_SET_TAGS:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						Mods::uploadTicks = 0;
+
+						if ( Mods::uploadingExistingItem != 0 && modFolderPathToUpload == "" )
+						{
+							Mods::uploadStatus = UploadStatus::STATUS_UPLOAD_CONTENT_START;
+						}
+						else
+						{
+							Mods::uploadStatus = UploadStatus::STATUS_UPLOAD_CONTENT_INIT;
+						}
+
+						size_t index = 0;
+						std::vector<std::string> uploadTags;
+						for ( auto& t : Mods::tag_settings )
+						{
+							if ( modTags.find(index) != modTags.end() )
+							{
+								uploadTags.push_back(t.tag);
+							}
+							++index;
+						}
+
+						// some mumbo jumbo to work with the steam API needing const char[][]
+						SteamParamStringArray_t SteamParamStringArray;
+						SteamParamStringArray.m_nNumStrings = uploadTags.size() + 1;
+
+						// construct new char[][]
+						const int maxTags = 10;
+						char** tagArray = new char* [maxTags];
+						int i = 0;
+						for ( i = 0; i < maxTags; ++i )
+						{
+							tagArray[i] = new char[32];
+						}
+
+						// copy all the items into this new char[][].
+						i = 0;
+						for ( auto& s : uploadTags )
+						{
+							strcpy(tagArray[i], s.c_str());
+							++i;
+						}
+						strcpy(tagArray[i], VERSION); // copy the version number as a tag.
+
+						// set the tags in the API call.
+						SteamParamStringArray.m_ppStrings = const_cast<const char**>(tagArray);
+						bool res = SteamUGC()->SetItemTags(g_SteamWorkshop->UGCUpdateHandle, &SteamParamStringArray);
+
+						// delete the allocated char[][]
+						for ( i = 0; i < maxTags; ++i )
+						{
+							delete[] tagArray[i];
+						}
+						delete[] tagArray;
+
+						if ( !res )
+						{
+							Mods::uploadTicks = 0;
+							Mods::uploadErrorStatus = Mods::uploadStatus;
+							Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+						}
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Setting tags";
+			case UploadStatus::STATUS_UPLOAD_CONTENT_INIT:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadStatus = UploadStatus::STATUS_UPLOAD_CONTENT_START;
+						bool res = false;
+						
+						std::string fullpath = Mods::getFolderFullPath(modFolderPathToUpload);
+
+						if ( access(fullpath.c_str(), F_OK) == 0 )
+						{
+							res = SteamUGC()->SetItemContent(g_SteamWorkshop->UGCUpdateHandle, fullpath.c_str());
+
+							if ( res )
+							{
+								// set preview image.
+								bool imagePreviewFound = false;
+								std::string imgPath = fullpath;
+								/*imgPath.append("/preview.jpg");
+								if ( !imagePreviewFound && access((imgPath).c_str(), F_OK) == 0 )
+								{
+									imagePreviewFound = SteamUGC()->SetItemPreview(g_SteamWorkshop->UGCUpdateHandle, imgPath.c_str());
+								}
+								imgPath = fullpath;*/
+								imgPath.append("/preview.png");
+								if ( !imagePreviewFound && access((imgPath).c_str(), F_OK) == 0 )
+								{
+									imagePreviewFound = SteamUGC()->SetItemPreview(g_SteamWorkshop->UGCUpdateHandle, imgPath.c_str());
+								}
+								if ( !imagePreviewFound )
+								{
+									printlog("Failed to upload image for workshop item!");
+								}
+
+								if ( !imagePreviewFound )
+								{
+									Mods::uploadTicks = 0;
+									Mods::uploadStatus = STATUS_UPLOAD_PREVIEW_MISSING;
+								}
+							}
+						}
+						else
+						{
+							res = false;
+						}
+
+						if ( !res )
+						{
+							Mods::uploadTicks = 0;
+							Mods::uploadErrorStatus = Mods::uploadStatus;
+							Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+						}
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Preparing content";
+			case UploadStatus::STATUS_UPLOAD_PREVIEW_MISSING:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadStatus = UploadStatus::STATUS_UPLOAD_CONTENT_START;
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Note: No preview.png image found";
+			case UploadStatus::STATUS_UPLOAD_CONTENT_START:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadStatus = UploadStatus::STATUS_ITEM_UPDATING;
+						g_SteamWorkshop->SubmitItemUpdateResult.m_eResult = k_EResultNone;
+						if ( Mods::uploadingExistingItem == 0 )
+						{
+							g_SteamWorkshop->SubmitItemUpdate("First upload.");
+						}
+						else
+						{
+							g_SteamWorkshop->SubmitItemUpdate("Item updated.");
+						}
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Uploading content, this may take\nsome time.";
+			case UploadStatus::STATUS_ITEM_UPDATING:
+				if ( Mods::uploadTicks >= kStateDelay )
+				{
+					if ( g_SteamWorkshop->UGCUpdateHandle != 0 )
+					{
+						uint64 bytesProc;
+						uint64 bytesTotal;
+						int status = SteamUGC()->GetItemUpdateProgress(g_SteamWorkshop->UGCUpdateHandle, &bytesProc, &bytesTotal);
+						if ( g_SteamWorkshop->SubmitItemUpdateResult.m_eResult != k_EResultNone )
+						{
+							if ( g_SteamWorkshop->SubmitItemUpdateResult.m_eResult == k_EResultTimeout )
+							{
+								Mods::uploadTicks = 0;
+								g_SteamWorkshop->SubmitItemUpdateResult.m_eResult = k_EResultNone;
+								Mods::uploadStatus = UploadStatus::STATUS_RETRY;
+							}
+							else if ( g_SteamWorkshop->SubmitItemUpdateResult.m_eResult == k_EResultOK )
+							{
+								Mods::uploadTicks = 0;
+								Mods::uploadStatus = UploadStatus::STATUS_COMPLETED;
+							}
+							else
+							{
+								Mods::uploadTicks = 0;
+								Mods::uploadErrorStatus = Mods::uploadStatus;
+								Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+							}
+						}
+					}
+					else
+					{
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+				}
+				return "Uploading content, this may take\nsome time.";
+			case UploadStatus::STATUS_RETRY:
+				if ( Mods::uploadTicks >= TICKS_PER_SECOND * 2 )
+				{
+					if ( Mods::uploadNumRetries <= 1 )
+					{
+						Mods::uploadNumRetries = 0;
+						Mods::uploadTicks = 0;
+						Mods::uploadErrorStatus = Mods::uploadStatus;
+						Mods::uploadStatus = UploadStatus::STATUS_ERROR;
+					}
+					else
+					{
+						--Mods::uploadNumRetries;
+						Mods::uploadTicks = 0;
+						if ( Mods::uploadingExistingItem != 0 )
+						{
+							Mods::uploadStatus = UploadStatus::STATUS_EXISTING_ITEM;
+						}
+						else
+						{
+							Mods::uploadStatus = UploadStatus::STATUS_CREATE_ITEM;
+						}
+					}
+				}
+				if ( Mods::uploadNumRetries == 3 )
+				{
+					return "Timed out while uploading,\nretrying 1/3...";
+				}
+				else if ( Mods::uploadNumRetries == 2 )
+				{
+					return "Timed out while uploading,\nretrying 2/3...";
+				}
+				else if ( Mods::uploadNumRetries == 1 )
+				{
+					return "Timed out while uploading,\nretrying 3/3...";
+				}
+				else
+				{
+					return "Timed out while uploading,\ntry again later.";
+				}
+			case UploadStatus::STATUS_COMPLETED:
+				return "Successfully uploaded content!";
+			case UploadStatus::STATUS_ERROR:
+				return "Unknown error";
+			default:
+				return "Waiting";
+				break;
+		}
+	}
+
+	static void createWorkshopUploadWindow()
+	{
+		if ( !SteamUser()->BLoggedOn() || !g_SteamWorkshop )
+		{
+			auto frame = errorPrompt("Error: Not logged in.", "Okay", [](Button& button) {
+				closeMono();
+				soundActivate();
+			});
+			return;
+		}
+
+		auto fullpath = Mods::getFolderFullPath(modFolderPathToUpload);
+		if ( fullpath == "" && Mods::uploadingExistingItem == 0 )
+		{
+			auto frame = errorPrompt("Error: No content folder\nselected to upload.", "Okay", [](Button& button) {
+				closeMono();
+				soundActivate();
+				});
+			return;
+		}
+		if ( fullpath != "" && access(fullpath.c_str(), F_OK) != 0 )
+		{
+			auto frame = errorPrompt("Error: Could not read\ncontent folder.", "Okay", [](Button& button) {
+				closeMono();
+				soundActivate();
+				});
+			return;
+		}
+
+		auto frame = monoPrompt("Starting upload", "Please\nwait", [](Button& button) {
+			closeMono();
+
+			if ( auto workshop_create = main_menu_frame->findFrame("workshop_create") )
+			{
+				auto dimmer = workshop_create->getParent();
+				dimmer->removeSelf();
+			}
+
+			if ( auto mods_menu = main_menu_frame->findFrame("mods_menu") )
+			{
+				auto dimmer = mods_menu->getParent();
+				dimmer->removeSelf();
+			}
+
+			createModsWindow();
+		});
+
+		g_SteamWorkshop->createItemResult = {};
+		g_SteamWorkshop->createItemResult.m_nPublishedFileId = 0;
+		g_SteamWorkshop->createItemResult.m_eResult = k_EResultNone;
+		g_SteamWorkshop->SubmitItemUpdateResult.m_eResult = k_EResultNone;
+		g_SteamWorkshop->UGCUpdateHandle = 0;
+		Mods::uploadStatus = UploadStatus::STATUS_INIT;
+		Mods::uploadErrorStatus = UploadStatus::STATUS_INIT;
+		Mods::uploadTicks = 0;
+		Mods::processedOnTick = ticks;
+
+		auto button = frame->findButton("okay");
+		button->setDisabled(true);
+		button->setTextColor(makeColorRGB(128, 128, 128));
+
+		frame->setTickCallback([](Widget& widget) {
+			std::string status = workshopUploadStateManager();
+			status += '\n';
+
+			auto frame = static_cast<Frame*>(&widget);
+			auto field = frame->findField("text");
+
+			auto button = frame->findButton("okay");
+			if ( Mods::uploadStatus == UploadStatus::STATUS_COMPLETED )
+			{
+				if ( !frame->findButton("view workshop") )
+				{
+					playSound(553, 64);
+
+					button->setDisabled(false);
+					button->setText("Dismiss");
+					button->setWidgetLeft("view workshop");
+					button->setWidgetBack("okay");
+
+					auto view = frame->addButton("view workshop");
+					SDL_Rect posLeft = button->getSize();
+					SDL_Rect posRight = posLeft;
+					posLeft.x -= posLeft.w / 2 + 8;
+					view->setSize(posLeft);
+					view->setWidgetRight("okay");
+					view->setWidgetBack("okay");
+					view->select();
+
+					view->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
+					view->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
+					view->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
+					view->setColor(makeColor(255, 255, 255, 255));
+					view->setHighlightColor(makeColor(255, 255, 255, 255));
+					view->setTextColor(makeColor(255, 255, 255, 255));
+					view->setTextHighlightColor(makeColor(255, 255, 255, 255));
+					view->setFont(smallfont_outline);
+					view->setText("View Item");
+					view->setCallback([](Button& button) {
+						std::string url = "steam://url/CommunityFilePage/";
+						url += std::to_string(g_SteamWorkshop->SubmitItemUpdateResult.m_nPublishedFileId);
+						openURLTryWithOverlay(url);
+
+						soundActivate();
+
+						// fixes a bug where you could get spammed with 100s of browser tabs...
+						mousestatus[SDL_BUTTON_LEFT] = 0;
+						Input::mouseButtons[SDL_BUTTON_LEFT] = 0;
+					});
+
+					posRight.x += posRight.w / 2 + 8;
+					button->setSize(posRight);
+				}
+			}
+			else if ( Mods::uploadStatus == UploadStatus::STATUS_ERROR )
+			{
+				if ( !frame->findButton("retry upload") )
+				{
+					button->setDisabled(false);
+					button->select();
+					button->setText("Cancel");
+					button->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_Abandon00.png");
+					button->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonHigh00.png");
+					button->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_AbandonPress00.png");
+
+					SDL_Rect posLeft = button->getSize();
+					posLeft.x = (frame->getSize().w / 2) - (posLeft.w) - 8;
+					SDL_Rect posRight = posLeft;
+					posRight.x = (frame->getSize().w / 2) + 8;
+					button->setSize(posRight);
+
+					auto retry = frame->addButton("retry upload");
+					retry->setSize(posLeft);
+					retry->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
+					retry->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
+					retry->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
+					retry->setColor(makeColor(255, 255, 255, 255));
+					retry->setHighlightColor(makeColor(255, 255, 255, 255));
+					retry->setTextColor(makeColor(255, 255, 255, 255));
+					retry->setTextHighlightColor(makeColor(255, 255, 255, 255));
+					retry->setFont(smallfont_outline);
+					retry->setText("Retry\nUpload");
+					retry->select();
+					retry->setCallback([](Button& button) {
+						soundActivate();
+						auto frame = static_cast<Frame*>(button.getParent());
+						button.removeSelf();
+
+						auto okay = frame->findButton("okay");
+						SDL_Rect pos = okay->getSize();
+						pos.x = frame->getSize().w / 2 - pos.w / 2;
+						okay->setSize(pos);
+						okay->setBackground("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBack00.png");
+						okay->setBackgroundHighlighted("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackHigh00.png");
+						okay->setBackgroundActivated("*images/ui/Main Menus/Disconnect/UI_Disconnect_Button_GoBackPress00.png");
+						okay->select();
+
+						okay->setDisabled(true);
+						okay->setTextColor(makeColorRGB(128, 128, 128));
+
+						Mods::uploadTicks = 0;
+						if ( Mods::uploadingExistingItem != 0 )
+						{
+							Mods::uploadStatus = UploadStatus::STATUS_EXISTING_ITEM;
+						}
+						else
+						{
+							Mods::uploadStatus = UploadStatus::STATUS_CREATE_ITEM;
+						}
+					});
+				}
+
+				status += "Error code: ";
+				status += std::to_string(Mods::uploadErrorStatus);
+				status += '\n';
+			}
+			else
+			{
+				Uint32 interval = ticks % int(1.5 * TICKS_PER_SECOND);
+				int numDots = (interval / (TICKS_PER_SECOND / 2));
+				while ( numDots >= 0 )
+				{
+					--numDots;
+					status += '.';
+				}
+			}
+			field->setText(status.c_str());
+
+			if ( !button->isDisabled() )
+			{
+				button->setTextColor(makeColorRGB(255, 255, 255));
+			}
+			else
+			{
+				button->setTextColor(makeColorRGB(128, 128, 128));
+			}
+		});
+	}
+#endif
 }

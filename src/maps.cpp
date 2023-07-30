@@ -893,7 +893,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		printlog(generationLog, levelset, seed);
 
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 
 	std::string fullMapPath;
@@ -908,7 +908,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	if ( !verifyMapHash(fullMapPath.c_str(), checkMapHash) )
 	{
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 
 	// store this map's seed
@@ -955,7 +955,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		// function sets dark level for us.
 		if ( darkmap )
 		{
-			messageLocalPlayers(MESSAGE_HINT, language[1108]);
+			messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
 		}
 	}
 	else if ( !secretlevel )
@@ -965,7 +965,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			if ( map_rng.rand() % 100 < std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) )
 			{
 				darkmap = true;
-				messageLocalPlayers(MESSAGE_HINT, language[1108]);
+				messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
 			}
 			else
 			{
@@ -977,7 +977,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			if ( map_rng.rand() % 4 == 0 )
 			{
 				darkmap = true;
-				messageLocalPlayers(MESSAGE_HINT, language[1108]);
+				messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
 			}
 		}
 	}
@@ -1094,7 +1094,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 			{
 				conductGameChallenges[CONDUCT_MODDED] = 1;
-				gamemods_disableSteamAchievements = true;
+				Mods::disableSteamAchievements = true;
 			}
 		}
 		else
@@ -1137,7 +1137,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 		{
 			conductGameChallenges[CONDUCT_MODDED] = 1;
-			gamemods_disableSteamAchievements = true;
+			Mods::disableSteamAchievements = true;
 		}
 
 		// level is successfully loaded, add it to the pool
@@ -1290,7 +1290,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 			{
 				conductGameChallenges[CONDUCT_MODDED] = 1;
-				gamemods_disableSteamAchievements = true;
+				Mods::disableSteamAchievements = true;
 			}
 
 			// level is successfully loaded, add it to the pool
@@ -1443,13 +1443,105 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 		{
 			conductGameChallenges[CONDUCT_MODDED] = 1;
-			gamemods_disableSteamAchievements = true;
+			Mods::disableSteamAchievements = true;
 		}
 
 		// level is successfully loaded, add it to the pool
+		subRoomList = (list_t*)malloc(sizeof(list_t));
+		subRoomList->first = nullptr;
+		subRoomList->last = nullptr;
+
 		node = list_AddNodeLast(&shopSubRooms.list);
+		node->element = subRoomList;
+		node->deconstructor = &listDeconstructor;
+
+		node = list_AddNodeLast(subRoomList);
 		node->element = subRoomMap;
 		node->deconstructor = &mapDeconstructor;
+
+		// more nodes are created to record the exit points on the sublevel
+		for ( y = 0; y < subRoomMap->height; y++ )
+		{
+			for ( x = 0; x < subRoomMap->width; x++ )
+			{
+				if ( x == 0 || y == 0 || x == subRoomMap->width - 1 || y == subRoomMap->height - 1 )
+				{
+					if ( !subRoomMap->tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * subRoomMap->height] )
+					{
+						door = (door_t*)malloc(sizeof(door_t));
+						door->x = x;
+						door->y = y;
+						if ( x == subRoomMap->width - 1 )
+						{
+							door->dir = door_t::DIR_EAST;
+							if ( y == subRoomMap->height - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHEAST;
+							}
+							else if ( y == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHEAST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_EAST;
+							}
+						}
+						else if ( y == subRoomMap->height - 1 )
+						{
+							door->dir = door_t::DIR_SOUTH;
+							if ( x == subRoomMap->width - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHEAST;
+							}
+							else if ( x == 0 )
+							{
+								door->edge = door_t::EDGE_SOUTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_SOUTH;
+							}
+						}
+						else if ( x == 0 )
+						{
+							door->dir = door_t::DIR_WEST;
+							if ( y == subRoomMap->height - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHWEST;
+							}
+							else if ( y == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_WEST;
+							}
+						}
+						else if ( y == 0 )
+						{
+							door->dir = door_t::DIR_NORTH;
+							if ( x == subRoomMap->width - 1 )
+							{
+								door->edge = door_t::EDGE_NORTHEAST;
+							}
+							else if ( x == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_NORTH;
+							}
+						}
+						node2 = list_AddNodeLast(subRoomList);
+						node2->element = door;
+						node2->deconstructor = &defaultDeconstructor;
+					}
+				}
+			}
+		}
 	}
 
 	StartRoomInfo_t startRoomInfo;
@@ -1583,7 +1675,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 				{
 					conductGameChallenges[CONDUCT_MODDED] = 1;
-					gamemods_disableSteamAchievements = true;
+					Mods::disableSteamAchievements = true;
 				}
 
 				levelnum = 0;
@@ -1872,6 +1964,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					subRoomNode = subRoomNode->next;
 					k++;
 				}
+				subRoomNode = ((list_t*)subRoomNode->element)->first;
 				subRoomMap = (map_t*)subRoomNode->element;
 				subRoomDoorNode = subRoomNode->next;
 			}
@@ -2698,8 +2791,8 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		for ( doorNode = doorList.first; doorNode != nullptr; doorNode = doorNode->next )
 		{
 			door_t* door = (door_t*)doorNode->element;
-			int x = std::min<unsigned int>(std::max(0, door->x), map.width); //TODO: Why are const int and unsigned int being compared?
-			int y = std::min<unsigned int>(std::max(0, door->y), map.height); //TODO: Why are const int and unsigned int being compared?
+			int x = std::min<unsigned int>(std::max(0, door->x), map.width - 1); //TODO: Why are const int and unsigned int being compared?
+			int y = std::min<unsigned int>(std::max(0, door->y), map.height - 1); //TODO: Why are const int and unsigned int being compared?
 			if ( possiblelocations[y + x * map.height] == true )
 			{
 				possiblelocations[y + x * map.height] = false;
@@ -3951,12 +4044,12 @@ void assignActions(map_t* map)
 	{
 		customMonsterCurveExists = true;
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 	if ( gameplayCustomManager.inUse() )
 	{
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 
 	// assign entity behaviors
@@ -4032,7 +4125,7 @@ void assignActions(map_t* map)
                         }
                         if ( multiplayer != CLIENT )
                         {
-                            messagePlayer(numplayers, MESSAGE_STATUS, language[1109]);
+                            messagePlayer(numplayers, MESSAGE_STATUS, Language::get(1109));
 							stats[numplayers]->HP = stats[numplayers]->MAXHP / 2;
 							stats[numplayers]->MP = stats[numplayers]->MAXMP / 2;
 							stats[numplayers]->HUNGER = 500;
@@ -6985,15 +7078,15 @@ void mapFoodOnLevel(int player)
 	}
 	if ( numFood == 0 && previouslyIdentifiedFood )
 	{
-		messagePlayer(player, MESSAGE_HINT, language[3425]);
+		messagePlayer(player, MESSAGE_HINT, Language::get(3425));
 	}
 	else if ( numFood == 0 )
 	{
-		messagePlayer(player, MESSAGE_HINT, language[3423]);
+		messagePlayer(player, MESSAGE_HINT, Language::get(3423));
 	}
 	else
 	{
-		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(0, 255, 0),language[3424]);
+		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(0, 255, 0),Language::get(3424));
 	}
 }
 

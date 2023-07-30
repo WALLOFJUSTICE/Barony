@@ -42,6 +42,8 @@ char lobbyText[MAX_STEAM_LOBBIES][64];
 char lobbyVersion[MAX_STEAM_LOBBIES][64];
 void* lobbyIDs[MAX_STEAM_LOBBIES] = { NULL };
 int lobbyPlayers[MAX_STEAM_LOBBIES] = { 0 };
+int lobbyNumMods[MAX_STEAM_LOBBIES] = { 0 };
+bool lobbyModDisableAchievements[MAX_STEAM_LOBBIES] = { false };
 bool steamAwaitingLobbyCreation = false;
 
 const char* getRoomCode() {
@@ -53,7 +55,10 @@ void* steamIDRemote[MAXPLAYERS] = {NULL, NULL, NULL, NULL};
 char currentLobbyName[32] = { 0 };
 Uint32 currentSvFlags = 0;
 #ifdef STEAMWORKS
-ELobbyType currentLobbyType = k_ELobbyTypePrivate;
+ELobbyType currentLobbyType = k_ELobbyTypePublic;
+ELobbyType steamLobbyTypeUserConfigured = k_ELobbyTypePublic;
+bool steamLobbyFriendsOnlyUserConfigured = true;
+bool steamLobbyInviteOnlyUserConfigured = false;
 #endif
 static bool handlingInvite = false;
 
@@ -808,7 +813,8 @@ void steamAchievement(const char* achName)
 		{
 			return;
 		}
-		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] )
+		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED]
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS])
 		{
 			return;
 		}
@@ -817,7 +823,8 @@ void steamAchievement(const char* achName)
 	{
 		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] 
 			|| conductGameChallenges[CONDUCT_LIFESAVING]
-			|| gamemods_disableSteamAchievements )
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS]
+			|| Mods::disableSteamAchievements )
 		{
 		// cheats/mods have been enabled on savefile, disallow achievements.
 #ifndef DEBUG_ACHIEVEMENTS
@@ -927,7 +934,8 @@ void steamStatisticUpdate(int statisticNum, ESteamStatTypes type, int value)
 		{
 			return;
 		}
-		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] )
+		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] 
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS] )
 		{
 			return;
 		}
@@ -936,7 +944,8 @@ void steamStatisticUpdate(int statisticNum, ESteamStatTypes type, int value)
 	{
 		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED]
 			|| conductGameChallenges[CONDUCT_LIFESAVING]
-			|| gamemods_disableSteamAchievements )
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS]
+			|| Mods::disableSteamAchievements )
 		{
 		// cheats/mods have been enabled on savefile, disallow statistics update.
 #ifndef DEBUG_ACHIEVEMENTS
@@ -1171,7 +1180,8 @@ void steamStatisticUpdateClient(int player, int statisticNum, ESteamStatTypes ty
 		{
 			return;
 		}
-		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] )
+		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED]
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS] )
 		{
 			return;
 		}
@@ -1180,7 +1190,8 @@ void steamStatisticUpdateClient(int player, int statisticNum, ESteamStatTypes ty
 	{
 		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] 
 			|| conductGameChallenges[CONDUCT_LIFESAVING]
-			|| gamemods_disableSteamAchievements )
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS]
+			|| Mods::disableSteamAchievements )
 		{
 			// cheats/mods have been enabled on savefile, disallow statistics update.
 #ifndef DEBUG_ACHIEVEMENTS
@@ -1456,13 +1467,16 @@ void steam_OnLobbyMatchListCallback( void* pCallback, bool bIOFailure )
 		const char* lobbyName = SteamMatchmaking()->GetLobbyData(lobby, "name");
 		const char* lobbyVersion = SteamMatchmaking()->GetLobbyData(lobby, "ver");
 		const int numPlayers = SteamMatchmaking()->GetNumLobbyMembers(lobby);
-		const char* lobbyNumMods = SteamMatchmaking()->GetLobbyData(lobby, "svNumMods");
+		const char* svNumMods = SteamMatchmaking()->GetLobbyData(lobby, "svNumMods");
+		const char* svModsDisableAchievements = SteamMatchmaking()->GetLobbyData(lobby, "svModDisableAch");
 
 		if ( lobbyName && lobbyName[0] && lobbyVersion && lobbyVersion[0] && numPlayers )
 		{
             stringCopyUnsafe(lobbyText[iLobby], lobbyName, sizeof(lobbyText[iLobby]));
             stringCopyUnsafe(::lobbyVersion[iLobby], lobbyVersion, sizeof(::lobbyVersion[iLobby]));
 			lobbyPlayers[iLobby] = numPlayers;
+			lobbyNumMods[iLobby] = atoi(svNumMods);
+			lobbyModDisableAchievements[iLobby] = atoi(svModsDisableAchievements);
 		}
 		else
 		{
@@ -1472,6 +1486,8 @@ void steam_OnLobbyMatchListCallback( void* pCallback, bool bIOFailure )
 			// results will be returned via LobbyDataUpdate_t callback
 			snprintf(lobbyText[iLobby], sizeof(lobbyText[iLobby]), "Lobby %d", lobby.GetAccountID());
 			lobbyPlayers[iLobby] = 0;
+			::lobbyNumMods[iLobby] = 0;
+			::lobbyModDisableAchievements[iLobby] = false;
 		}
 	}
 	if (!roomkey_cached.empty()) {
@@ -1637,8 +1653,30 @@ void steam_OnLobbyCreated( void* pCallback, bool bIOFailure )
 		SteamMatchmaking()->SetLobbyData(*lobby, "svFlags", svFlagsChar);
 
 		// set the lobby open for friends only by default, or public if it's a savegame
-		SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", loadingsavegame ? "false" : "true");
-		SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "false");
+		if ( loadingsavegame )
+		{
+			SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "false");
+			SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "false");
+		}
+		else
+		{
+			if ( steamLobbyFriendsOnlyUserConfigured )
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "true");
+			}
+			else
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "false");
+			}
+			if ( steamLobbyInviteOnlyUserConfigured )
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "true");
+			}
+			else
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "false");
+			}
+		}
 
 		// set load game status on lobby
 		char loadingsavegameChar[16];
@@ -1646,7 +1684,7 @@ void steam_OnLobbyCreated( void* pCallback, bool bIOFailure )
 		SteamMatchmaking()->SetLobbyData(*lobby, "loadingsavegame", loadingsavegameChar);
 
 		char svNumMods[16];
-		snprintf(svNumMods, 15, "%d", gamemods_numCurrentModsLoaded);
+		snprintf(svNumMods, 15, "%d", Mods::numCurrentModsLoaded);
 		SteamMatchmaking()->SetLobbyData(*lobby, "svNumMods", svNumMods);
 
 		char modifiedTime[32];
@@ -1654,13 +1692,13 @@ void steam_OnLobbyCreated( void* pCallback, bool bIOFailure )
 		SteamMatchmaking()->SetLobbyData(*lobby, "lobbyModifiedTime", modifiedTime);
 		SteamMatchmaking()->SetLobbyData(*lobby, "lobbyCreationTime", modifiedTime);
 
-		if ( gamemods_numCurrentModsLoaded > 0 )
+		/*if ( Mods::numCurrentModsLoaded > 0 )
 		{
 			int count = 0;
-			for ( std::vector<std::pair<std::string, std::string>>::iterator it = gamemods_mountedFilepaths.begin(); it != gamemods_mountedFilepaths.end(); ++it )
+			for ( std::vector<std::pair<std::string, std::string>>::iterator it = Mods::mountedFilepaths.begin(); it != Mods::mountedFilepaths.end(); ++it )
 			{
-				for ( std::vector<std::pair<std::string, uint64>>::iterator itMap = gamemods_workshopLoadedFileIDMap.begin();
-					itMap != gamemods_workshopLoadedFileIDMap.end(); ++itMap )
+				for ( std::vector<std::pair<std::string, uint64>>::iterator itMap = Mods::workshopLoadedFileIDMap.begin();
+					itMap != Mods::workshopLoadedFileIDMap.end(); ++itMap )
 				{
 					if ( (itMap->first).compare(it->second) == 0 )
 					{
@@ -1674,7 +1712,7 @@ void steam_OnLobbyCreated( void* pCallback, bool bIOFailure )
 					}
 				}
 			}
-		}
+		}*/
 	}
 	else
 	{

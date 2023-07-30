@@ -40,8 +40,6 @@ class Entity;
 // impulses (bound keystrokes, mousestrokes, and joystick/game controller strokes) //TODO: Player-by-player basis.
 extern Uint32 impulses[NUMIMPULSES];
 extern Uint32 joyimpulses[NUM_JOY_IMPULSES]; //Joystick/gamepad only impulses.
-extern int reversemouse;
-extern real_t mousespeed;
 
 bool handleEvents(void);
 void startMessages();
@@ -214,6 +212,8 @@ void steamIndicateStatisticProgress(int statisticNum, ESteamStatTypes type);
 void freePlayerEquipment(int x);
 void pauseGame(int mode, int ignoreplayer);
 int initGame();
+void initGameDatafiles(bool moddedReload);
+void initGameDatafilesAsync(bool moddedReload);
 void deinitGame();
 void handleButtons(void);
 void gameLogic(void);
@@ -243,7 +243,7 @@ void actGoldBag(Entity* my);
 void actGib(Entity* my);
 void actDamageGib(Entity* my);
 Entity* spawnGib(Entity* parentent, int customGibSprite = -1);
-Entity* spawnDamageGib(Entity* parentent, Sint32 dmgAmount);
+Entity* spawnDamageGib(Entity* parentent, Sint32 dmgAmount, int gibDmgType);
 Entity* spawnGibClient(Sint16 x, Sint16 y, Sint16 z, Sint16 sprite);
 void serverSpawnGibForClient(Entity* gib);
 void actLadder(Entity* my);

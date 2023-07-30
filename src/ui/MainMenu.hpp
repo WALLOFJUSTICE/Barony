@@ -19,16 +19,13 @@ namespace MainMenu {
 	extern std::string current_audio_device; // guid of the audio device currently in use
 	extern float master_volume; // range is [0 - 100]
 	extern bool arachnophobia_filter; // if true, all spiders are crabs'
-	extern bool mkb_world_tooltips_enabled; // if true, mouse and keyboard control uses old pixel-picking for interacting
 	extern ConsoleVariable<bool> vertical_splitscreen; // if true, 2-player splitscreen has a vertical rather than horizontal layout
 	extern ConsoleVariable<bool> staggered_splitscreen; // if true, viewport sizes are reduced to preserve aspect ratio
 	extern ConsoleVariable<bool> clipped_splitscreen; // if true, viewports rest in a corner rather than centered
     extern ConsoleVariable<bool> cvar_fastRestart;
-	extern ConsoleVariable<bool> cvar_mkb_world_tooltips;
-	extern ConsoleVariable<bool> cvar_mkb_facehotbar;
-	extern ConsoleVariable<bool> cvar_gamepad_facehotbar;
 	extern ConsoleVariable<float> cvar_worldtooltip_scale;
 	extern ConsoleVariable<float> cvar_worldtooltip_scale_splitscreen;
+	extern ConsoleVariable<bool> cvar_hold_to_activate;
 	extern ConsoleVariable<float> cvar_enemybar_scale;
     extern ConsoleVariable<int> cvar_desiredFps;
     extern ConsoleVariable<int> cvar_displayHz;
@@ -114,6 +111,7 @@ namespace MainMenu {
 	// special events:
 
     void controllerDisconnected(int player);                        // controller disconnect prompt, eg if a player unplugs a controller
+	void tutorialFirstTimeCompleted();								// tutorial first level completed event
     void openGameoverWindow(int player, bool tutorial = false);     // opens gameover window, used when player dies
 	void disconnectedFromServer(const char* text);                  // called when the player is disconnected from the server, prompts them to end the game
 	void receivedInvite(void*);                                     // called when a player receives an invite to a lobby (EOS or Steam)

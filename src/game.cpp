@@ -220,6 +220,7 @@ LONG CALLBACK unhandled_handler(EXCEPTION_POINTERS* e)
 #endif
 
 ConsoleVariable<bool> cvar_enableKeepAlives("/keepalive_enabled", true);
+ConsoleVariable<bool> cvar_animate_tiles("/animate_tiles", true);
 
 std::vector<std::string> randomPlayerNamesMale;
 std::vector<std::string> randomPlayerNamesFemale;
@@ -1396,7 +1397,7 @@ void gameLogic(void)
 							int index = z + y * MAPLAYERS + x * MAPLAYERS * map.height;
 							if ( animatedtiles[map.tiles[index]] )
 							{
-								if ( ticks % 10 == 0 )
+								if ( ticks % 10 == 0 && *cvar_animate_tiles )
 								{
 									map.tiles[index]--;
 									if ( !animatedtiles[map.tiles[index]] )
@@ -1845,7 +1846,7 @@ void gameLogic(void)
 								item->ownerUid = parent->getUID();
 								Item* pickedUp = itemPickup(parent->skill[2], item);
 								Uint32 color = makeColorRGB(0, 255, 0);
-								messagePlayerColor(parent->skill[2], MESSAGE_EQUIPMENT, color, language[3746], items[item->type].getUnidentifiedName());
+								messagePlayerColor(parent->skill[2], MESSAGE_EQUIPMENT, color, Language::get(3746), items[item->type].getUnidentifiedName());
 								if ( pickedUp )
 								{
 									if ( parent->skill[2] == 0 || (parent->skill[2] > 0 && splitscreen) )
@@ -2117,7 +2118,7 @@ void gameLogic(void)
 					    if (!verifyMapHash(map.filename, checkMapHash))
 					    {
 						    conductGameChallenges[CONDUCT_MODDED] = 1;
-						    gamemods_disableSteamAchievements = true;
+						    Mods::disableSteamAchievements = true;
 					    }
 	                    updateLoadingScreen(50);
 
@@ -2178,7 +2179,7 @@ void gameLogic(void)
 								}
 							}
 						}
-						messageLocalPlayers(MESSAGE_STATUS, language[2599]);
+						messageLocalPlayers(MESSAGE_STATUS, Language::get(2599));
 
 						// undo shopkeeper grudge
 						for ( c = 0; c < MAXPLAYERS; ++c )
@@ -2203,49 +2204,59 @@ void gameLogic(void)
 
 					Player::Minimap_t::mapDetails.clear();
 
-					if ( !secretlevel )
+					if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_TUTORIAL )
 					{
-						messageLocalPlayers(MESSAGE_PROGRESSION, language[710], currentlevel);
+						if ( gameModeManager.Tutorial.showFirstTutorialCompletedPrompt )
+						{
+							gameModeManager.Tutorial.createFirstTutorialCompletedPrompt();
+						}
+					}
+					else if ( !secretlevel )
+					{
+						messageLocalPlayers(MESSAGE_PROGRESSION, Language::get(710), currentlevel);
 					}
 					else
 					{
-						messageLocalPlayers(MESSAGE_PROGRESSION, language[711], map.name);
+						messageLocalPlayers(MESSAGE_PROGRESSION, Language::get(711), map.name);
 					}
+
+					gameModeManager.Tutorial.showFirstTutorialCompletedPrompt = false;
+
 					if ( !secretlevel && result )
 					{
 						switch ( currentlevel )
 						{
 							case 2:
-								messageLocalPlayers(MESSAGE_HINT, language[712]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[712]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(712));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(712)));
 								break;
 							case 3:
-								messageLocalPlayers(MESSAGE_HINT, language[713]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[713]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(713));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(713)));
 								break;
 							case 7:
-								messageLocalPlayers(MESSAGE_HINT, language[714]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[714]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(714));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(714)));
 								break;
 							case 8:
-								messageLocalPlayers(MESSAGE_HINT, language[715]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[715]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(715));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(715)));
 								break;
 							case 11:
-								messageLocalPlayers(MESSAGE_HINT, language[716]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[716]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(716));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(716)));
 								break;
 							case 13:
-								messageLocalPlayers(MESSAGE_HINT, language[717]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[717]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(717));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(717)));
 								break;
 							case 16:
-								messageLocalPlayers(MESSAGE_HINT, language[718]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[718]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(718));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(718)));
 								break;
 							case 18:
-								messageLocalPlayers(MESSAGE_HINT, language[719]);
-								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", language[719]));
+								messageLocalPlayers(MESSAGE_HINT, Language::get(719));
+								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(719)));
 								break;
 							default:
 								break;
@@ -2253,25 +2264,25 @@ void gameLogic(void)
 					}
 					if ( MFLAG_DISABLETELEPORT )
 					{
-						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_teleport", language[2382]));
+						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_teleport", Language::get(2382)));
 					}
 					if ( MFLAG_DISABLEOPENING )
 					{
-						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_opening", language[2382]));
+						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_opening", Language::get(2382)));
 					}
 					if ( MFLAG_DISABLETELEPORT || MFLAG_DISABLEOPENING )
 					{
-						messageLocalPlayers(MESSAGE_HINT, language[2382]);
+						messageLocalPlayers(MESSAGE_HINT, Language::get(2382));
 					}
 					if ( MFLAG_DISABLELEVITATION )
 					{
-						messageLocalPlayers(MESSAGE_HINT, language[2383]);
-						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_levitation", language[2383]));
+						messageLocalPlayers(MESSAGE_HINT, Language::get(2383));
+						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_levitation", Language::get(2383)));
 					}
 					if ( MFLAG_DISABLEDIGGING )
 					{
-						messageLocalPlayers(MESSAGE_HINT, language[2450]);
-						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_digging", language[2450]));
+						messageLocalPlayers(MESSAGE_HINT, Language::get(2450));
+						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_digging", Language::get(2450)));
 					}
 					if ( MFLAG_DISABLEHUNGER )
 					{
@@ -2347,7 +2358,7 @@ void gameLogic(void)
 
 									Stat* monsterStats = (Stat*)newNode->element;
 									monsterStats->leader_uid = players[c]->entity->getUID();
-									messagePlayerMonsterEvent(c, 0xFFFFFFFF, *monsterStats, language[721], language[720], MSG_COMBAT_BASIC);
+									messagePlayerMonsterEvent(c, 0xFFFFFFFF, *monsterStats, Language::get(721), Language::get(720), MSG_COMBAT_BASIC);
 									monster->flags[USERFLAG2] = true;
 									serverUpdateEntityFlag(monster, USERFLAG2);
 									/*if (!monsterally[HUMAN][monsterStats->type])
@@ -2436,7 +2447,7 @@ void gameLogic(void)
 								}
 								else
 								{
-									messagePlayerMonsterEvent(c, 0xFFFFFFFF, *tempStats, language[723], language[722], MSG_COMBAT_BASIC);
+									messagePlayerMonsterEvent(c, 0xFFFFFFFF, *tempStats, Language::get(723), Language::get(722), MSG_COMBAT_BASIC);
 								}
 							}
 							if ( gyrobotEntity && !allyRobotNodes.empty() )
@@ -2601,18 +2612,18 @@ void gameLogic(void)
 						{
 							// regained connection
 							losingConnection[c] = false;
-							messageLocalPlayers(MESSAGE_MISC, language[724], c, stats[c]->name);
+							messageLocalPlayers(MESSAGE_MISC, Language::get(724), c, stats[c]->name);
 						}
 						else if ( !losingConnection[c] && ticks - client_keepalive[c] == TICKS_PER_SECOND * TIMEOUT_WARNING_TIME - 1 )
 						{
 							// give warning
 							losingConnection[c] = true;
-							messageLocalPlayers(MESSAGE_MISC, language[725], c, stats[c]->name, TIMEOUT_TIME - TIMEOUT_WARNING_TIME);
+							messageLocalPlayers(MESSAGE_MISC, Language::get(725), c, stats[c]->name, TIMEOUT_TIME - TIMEOUT_WARNING_TIME);
 						}
 						else if ( !client_disconnected[c] && ticks - client_keepalive[c] >= TICKS_PER_SECOND * TIMEOUT_TIME - 1 )
 						{
 							// kick client
-							messageLocalPlayers(MESSAGE_MISC, language[726], c, stats[c]->name);
+							messageLocalPlayers(MESSAGE_MISC, Language::get(726), c, stats[c]->name);
 							strcpy((char*)net_packet->data, "KICK");
 							net_packet->address.host = net_clients[c - 1].host;
 							net_packet->address.port = net_clients[c - 1].port;
@@ -2621,6 +2632,7 @@ void gameLogic(void)
 							client_disconnected[c] = true;
 						}
 					}
+					PingNetworkStatus_t::update();
 				}
 			}
 
@@ -2757,7 +2769,7 @@ void gameLogic(void)
 						&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
 						&& (item->x >= players[player]->inventoryUI.getSizeX() || item->y >= backpack_sizey[player]) )
 					{
-						messagePlayer(player, MESSAGE_INVENTORY, language[727], item->getName());
+						messagePlayer(player, MESSAGE_INVENTORY, Language::get(727), item->getName());
 						bool droppedAll = false;
 						while ( item && item->count > 1 )
 						{
@@ -2818,21 +2830,22 @@ void gameLogic(void)
 				{
 					// regained connection
 					losingConnection[0] = false;
-					messagePlayer(i, MESSAGE_MISC, language[728]);
+					messagePlayer(i, MESSAGE_MISC, Language::get(728));
 				}
 				else if ( !losingConnection[0] && ticks - client_keepalive[0] == TICKS_PER_SECOND * TIMEOUT_WARNING_TIME - 1 )
 				{
 					// give warning
 					losingConnection[0] = true;
-					messageLocalPlayers(MESSAGE_MISC, language[729], TIMEOUT_TIME - TIMEOUT_WARNING_TIME);
+					messageLocalPlayers(MESSAGE_MISC, Language::get(729), TIMEOUT_TIME - TIMEOUT_WARNING_TIME);
 				}
 				else if ( !client_disconnected[c] && ticks - client_keepalive[0] >= TICKS_PER_SECOND * TIMEOUT_TIME - 1 )
 				{
 					// timeout
-					messageLocalPlayers(MESSAGE_MISC, language[730]);
+					messageLocalPlayers(MESSAGE_MISC, Language::get(730));
 					MainMenu::timedOut();
 					client_disconnected[0] = true;
 				}
+				PingNetworkStatus_t::update();
 			}
 
 			// animate tiles
@@ -2848,7 +2861,7 @@ void gameLogic(void)
 							int index = z + y * MAPLAYERS + x * MAPLAYERS * map.height;
 							if ( animatedtiles[map.tiles[index]] )
 							{
-								if ( ticks % 10 == 0 )
+								if ( (ticks % 10 == 0) && *cvar_animate_tiles )
 								{
 									map.tiles[index]--;
 									if ( !animatedtiles[map.tiles[index]] )
@@ -3346,7 +3359,7 @@ void gameLogic(void)
 					&& item->x != Player::PaperDoll_t::ITEM_RETURN_TO_INVENTORY_COORDINATE
 					&& (item->x >= players[clientnum]->inventoryUI.getSizeX() || item->y >= backpack_sizey) )
 				{
-					messagePlayer(clientnum, MESSAGE_INVENTORY, language[727], item->getName());
+					messagePlayer(clientnum, MESSAGE_INVENTORY, Language::get(727), item->getName());
 					bool droppedAll = false;
 					while ( item && item->count > 1 )
 					{
@@ -3455,7 +3468,7 @@ void handleButtons(void)
 			continue;
 		}
 		//Hide "Random Character" button if not on first character creation step.
-		if (!strcmp(button->label, language[733]))
+		if (!strcmp(button->label, Language::get(733)))
 		{
 			if (charcreation_step > 1)
 			{
@@ -3467,7 +3480,7 @@ void handleButtons(void)
 			}
 		}
 		//Hide "Random Name" button if not on character naming screen.
-		if ( !strcmp(button->label, language[2498]) )
+		if ( !strcmp(button->label, Language::get(2498)) )
 		{
 			if ( charcreation_step != 4 )
 			{
@@ -4062,17 +4075,6 @@ bool handleEvents(void)
 			    }
 				mousestatus[event.button.button] = 0; // set this mouse button to 0
 				Input::mouseButtons[event.button.button] = 0;
-				buttonclick = 0; // release any buttons that were being held down
-				if (initialized)
-				{
-					for ( int i = 0; i < MAXPLAYERS; ++i )
-					{
-						if ( inputs.bPlayerUsingKeyboardControl(i) )
-						{
-							gui_clickdrag[i] = false;
-						}
-					}
-				}
 #ifdef APPLE
                 mousestatus[SDL_BUTTON_RIGHT] = 0;
                 Input::mouseButtons[SDL_BUTTON_RIGHT] = 0;
@@ -4135,7 +4137,7 @@ bool handleEvents(void)
 						{
 							inputs.getVirtualMouse(i)->lastMovementFromController = false;
 						}
-						if ( inputs.bPlayerUsingKeyboardControl(i) )
+						if ( inputs.bPlayerUsingKeyboardControl(i) && (!inputs.hasController(i) || gamePaused) )
 						{
 							inputs.getVirtualMouse(i)->lastMovementFromController = false;
 							if ( !players[i]->shootmode || !players[i]->entity || gamePaused )
@@ -4397,6 +4399,7 @@ bool handleEvents(void)
 				}
 
 				// now find a free controller slot.
+                int id = -1;
 				for ( int c = 0; c < game_controllers.size(); ++c )
 				{
 					auto& controller = game_controllers[c];
@@ -4405,11 +4408,12 @@ bool handleEvents(void)
 						continue;
 					}
 
-					bool result = controller.open(sdl_device_index, c);
+                    id = c;
+					bool result = controller.open(sdl_device_index, id);
 					assert(result); // this should always succeed because we test that the device index is valid above.
-					printlog("Device %d successfully initialized as game controller in slot %d.\n", sdl_device_index, controller.getID());
+					printlog("Device %d successfully initialized as game controller in slot %d.\n", sdl_device_index, id);
 					controller.initBindings();
-					Input::gameControllers[controller.getID()] = controller.getControllerDevice();
+					Input::gameControllers[id] = controller.getControllerDevice();
 					for (int c = 0; c < 4; ++c) {
 						Input::inputs[c].refresh();
 					}
@@ -4421,6 +4425,14 @@ bool handleEvents(void)
 					// reobtain haptic devices for each existing controller
 					controller.reinitHaptic();
 				}
+#ifdef STEAMWORKS
+                // on steam deck, player 1 always needs a controller.
+                if (SteamUtils()->IsSteamRunningOnSteamDeck()) {
+                    if (id >= 0 && !inputs.hasController(0)) {
+                        bindControllerToPlayer(id, 0);
+                    }
+                }
+#endif
 				break;
 			}
 			case SDL_CONTROLLERDEVICEREMOVED:
@@ -5111,10 +5123,14 @@ void ingameHud()
 			{
 				allowCasting = true;
 			}
-			else if ( !players[player]->usingCommand() && shootmode && bControlEnabled )
+			else if ( !players[player]->usingCommand() && bControlEnabled
+				&& ((shootmode && inputs.hasController(player)) || (!inputs.hasController(player) && inputs.bPlayerUsingKeyboardControl(player))) )
 			{
 				bool hotbarFaceMenuOpen = players[player]->hotbar.faceMenuButtonHeld != Player::Hotbar_t::GROUP_NONE;
-			    if (tryHotbarQuickCast || input.binaryToggle("Cast Spell") || (hasSpellbook && input.binaryToggle("Defend")) )
+				bool castMemorizedSpell = input.binaryToggle("Cast Spell");
+				bool castSpellbook = (hasSpellbook && input.binaryToggle("Defend"));
+
+			    if (tryHotbarQuickCast || castMemorizedSpell || castSpellbook )
 			    {
 				    allowCasting = true;
 				    if ( tryHotbarQuickCast == false )
@@ -5122,6 +5138,49 @@ void ingameHud()
 						if ( hotbarFaceMenuOpen )
 						{
 							allowCasting = false;
+						}
+						if ( !shootmode ) // check we dont conflict with system bindings
+						{
+							if ( players[player]->messageZone.logWindow || players[player]->minimap.mapWindow || FollowerMenu[player].followerMenuIsOpen() )
+							{
+								allowCasting = false;
+							}
+							else
+							{
+								if ( castMemorizedSpell )
+								{
+									if ( input.bindingIsSharedWithKeyboardSystemBinding("Cast Spell") )
+									{
+										allowCasting = false;
+									}
+								}
+								if ( castSpellbook )
+								{
+									if ( input.bindingIsSharedWithKeyboardSystemBinding("Defend") )
+									{
+										allowCasting = false;
+										input.consumeBinaryToggle("Defend");
+									}
+								}
+							}
+						}
+						else
+						{
+							if ( FollowerMenu[player].followerMenuIsOpen() )
+							{
+								if ( castMemorizedSpell )
+								{
+									if ( input.bindingIsSharedWithKeyboardSystemBinding("Cast Spell") )
+									{
+										allowCasting = false;
+									}
+								}
+								if ( castSpellbook )
+								{
+									allowCasting = false;
+									input.consumeBinaryToggle("Defend");
+								}
+							}
 						}
 				    }
 					else
@@ -5132,7 +5191,7 @@ void ingameHud()
 						}
 					}
 
-				    if ( allowCasting && input.binaryToggle("Defend") && hasSpellbook && players[player] && players[player]->entity )
+				    if ( allowCasting && castSpellbook && players[player] && players[player]->entity )
 				    {
 					    if ( players[player]->entity->effectShapeshift != NOTHING )
 					    {
@@ -5146,26 +5205,12 @@ void ingameHud()
 						    }
 					    }
 
-						if ( FollowerMenu[player].followerMenuIsOpen() )
+						if ( allowCasting && players[player]->entity->isBlind() )
 						{
-							input.consumeBinaryToggle("Defend"); // moveto or interact we can block, but dont cast spell
+							messagePlayer(player, MESSAGE_EQUIPMENT | MESSAGE_STATUS, Language::get(3863)); // prevent casting of spell.
+							input.consumeBinaryToggle("Defend");
 							allowCasting = false;
 						}
-					    else if ( input.binaryToggle("Defend")
-						    && strcmp(input.binding("Defend"), "Mouse3") == 0
-						    && inputs.getUIInteraction(player)->itemMenuOpen ) // bound to right click, has context menu open.
-					    {
-						    allowCasting = false;
-					    }
-					    else
-					    {
-						    if ( allowCasting && players[player]->entity->isBlind() )
-						    {
-							    messagePlayer(player, MESSAGE_EQUIPMENT | MESSAGE_STATUS, language[3863]); // prevent casting of spell.
-							    input.consumeBinaryToggle("Defend");
-							    allowCasting = false;
-						    }
-					    }
 				    }
 				}
 			}
@@ -5178,13 +5223,13 @@ void ingameHud()
 					{
 						if ( achievementBrawlerMode && conductGameChallenges[CONDUCT_BRAWLER] )
 						{
-							messagePlayer(player, MESSAGE_MISC, language[2999]); // prevent casting of spell.
+							messagePlayer(player, MESSAGE_MISC, Language::get(2999)); // prevent casting of spell.
 						}
 						else
 						{
 							if ( achievementBrawlerMode && players[player]->magic.selectedSpell() )
 							{
-								messagePlayer(player, MESSAGE_MISC, language[2998]); // notify no longer eligible for achievement but still cast.
+								messagePlayer(player, MESSAGE_MISC, Language::get(2998)); // notify no longer eligible for achievement but still cast.
 							}
 							if ( tryInventoryQuickCast )
 							{
@@ -5240,6 +5285,19 @@ void ingameHud()
 			}
 		}
 		players[player]->hud.followerDisplay.bCycleNextDisabled = (worldUIBlocksFollowerCycle && players[player]->shootmode);
+		bool allowCycle = true;
+		if ( FollowerMenu[player].followerMenuIsOpen() )
+		{
+			std::string cycleNPCbinding = input.binding("Cycle NPCs");
+			if ( cycleNPCbinding == input.binding("MenuCancel") )
+			{
+				allowCycle = false;
+				if ( !players[player]->shootmode )
+				{
+					players[player]->hud.followerDisplay.bCycleNextDisabled = true;
+				}
+			}
+		}
 
 		if ( !players[player]->usingCommand() && input.consumeBinaryToggle("Cycle NPCs")
 			&& !gamePaused
@@ -5247,13 +5305,16 @@ void ingameHud()
 		{
 			if ( (!worldUIBlocksFollowerCycle && players[player]->shootmode) || FollowerMenu[player].followerMenuIsOpen() )
 			{
-				// can select next follower in inventory or shootmode
-				FollowerMenu[player].selectNextFollower();
-				players[player]->characterSheet.proficienciesPage = 1;
-				if ( players[player]->shootmode && !players[player]->characterSheet.lock_right_sidebar )
+				if ( allowCycle )
 				{
-					// from now on, allies should be displayed all times
-					//players[player]->openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
+					// can select next follower in inventory or shootmode
+					FollowerMenu[player].selectNextFollower();
+					players[player]->characterSheet.proficienciesPage = 1;
+					if ( players[player]->shootmode && !players[player]->characterSheet.lock_right_sidebar )
+					{
+						// from now on, allies should be displayed all times
+						//players[player]->openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
+					}
 				}
 			}
 		}
@@ -5292,8 +5353,6 @@ void ingameHud()
 				players[player]->skillSheet.closeSkillSheet();
 			}
 			players[player]->hud.closeStatusFxWindow();
-
-			gui_clickdrag[player] = false; //Just a catchall to make sure that any ongoing GUI dragging ends when the GUI is closed.
 
 			if ( capture_mouse && !gamePaused )
 			{
@@ -5606,11 +5665,11 @@ void ingameHud()
 							|| followerMenu.followerToCommand->getMonsterTypeFromSprite() == SPELLBOT)
 						)
 					{
-						ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, language[3650]);
+						ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, Language::get(3650));
 					}
 					else
 					{
-						ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, language[3039]);
+						ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, Language::get(3039));
 					}
 				}
 				else
@@ -5625,16 +5684,16 @@ void ingameHud()
 								|| followerMenu.allowedInteractWorld(type)
 								)
 							{
-								ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, language[4041]); // "Interact with..."
+								ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, Language::get(4041)); // "Interact with..."
 							}
 							else
 							{
-								ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, language[4042]); // "Attack..."
+								ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, Language::get(4042)); // "Attack..."
 							}
 						}
 						else
 						{
-							ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, language[4041]); // "Interact with..."
+							ttfPrintTextFormatted(ttf12, pos.x + 24, pos.y + 24, Language::get(4041)); // "Interact with..."
 						}
 					}
 					else
@@ -6080,7 +6139,7 @@ static void doConsoleCommands() {
 					if (strcmp(command_str, ""))
 					{
 						char chatstring[256];
-						strcpy(chatstring, language[739]);
+						strcpy(chatstring, Language::get(739));
 						strcat(chatstring, command_str);
 						Uint32 color = playerColor(commandPlayer, colorblind_lobby, false);
 						if (messagePlayerColor(commandPlayer, MESSAGE_CHAT, color, chatstring)) {
@@ -6107,7 +6166,7 @@ static void doConsoleCommands() {
 					if (strcmp(command_str, ""))
 					{
 						char chatstring[256];
-						strcpy(chatstring, language[739]);
+						strcpy(chatstring, Language::get(739));
 						strcat(chatstring, command_str);
 						Uint32 color = playerColor(commandPlayer, colorblind_lobby, false);
 						if (messagePlayerColor(commandPlayer, MESSAGE_CHAT, color, chatstring)) {
@@ -6368,7 +6427,7 @@ int main(int argc, char** argv)
 		printlog("Output path is %s", outputdir);
 
 		// load default language file (english)
-		if ( loadLanguage("en") )
+		if ( Language::loadLanguage("en", true) )
 		{
 			printlog("Fatal error: failed to load default language file!\n");
 			if (logfile)
@@ -7021,7 +7080,7 @@ int main(int argc, char** argv)
 						drawWindowFancy(subx1, suby1, subx2, suby2);
 						if ( subtext[0] != '\0')
 						{
-							if ( strncmp(subtext, language[1133], 12) )
+							if ( strncmp(subtext, Language::get(1133), 12) )
 							{
 								ttfPrintTextFormatted(ttf12, subx1 + 8, suby1 + 8, subtext);
 							}

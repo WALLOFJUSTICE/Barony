@@ -215,13 +215,7 @@ char outputdir[PATH_MAX];
 SDL_bool EnableMouseCapture = SDL_TRUE; // disable if mouse capture causes problem debugging in Linux
 bool& enableDebugKeys = cvar_enableDebugKeys.data;
 
-// language stuff
-char languageCode[32] = { 0 };
-char** language = nullptr;
-
 // input stuff
-int reversemouse = 0;
-real_t mousespeed = 32;
 Uint32 impulses[NUMIMPULSES];
 Uint32 joyimpulses[NUM_JOY_IMPULSES];
 Uint32 lastkeypressed = 0;
@@ -404,7 +398,7 @@ bool inrange[MAXPLAYERS];
 Sint32 client_classes[MAXPLAYERS];
 Uint32 client_keepalive[MAXPLAYERS];
 Uint16 portnumber;
-bool client_disconnected[MAXPLAYERS];
+bool client_disconnected[MAXPLAYERS] = { false };
 list_t entitiesdeleted;
 
 // fps

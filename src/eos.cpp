@@ -28,6 +28,7 @@
 #include "lobbies.hpp"
 #include "prng.hpp"
 #include "ui/MainMenu.hpp"
+#include "mod_tools.hpp"
 
 EOSFuncs EOS;
 
@@ -1558,7 +1559,8 @@ void EOSFuncs::LobbyData_t::setLobbyAttributesFromGame(HostUpdateLobbyTypes upda
 		LobbyAttributes.gameVersion = VERSION;
 		LobbyAttributes.isLobbyLoadingSavedGame = loadingsavegame;
 		LobbyAttributes.serverFlags = svFlags;
-		LobbyAttributes.numServerMods = 0;
+		LobbyAttributes.numServerMods = Mods::numCurrentModsLoaded;
+		LobbyAttributes.modsDisableAchievements = Mods::disableSteamAchievements;
 		LobbyAttributes.PermissionLevel = static_cast<Uint32>(EOS.currentPermissionLevel);
 		LobbyAttributes.friendsOnly = EOS.bFriendsOnly;
 		LobbyAttributes.maxplayersCompatible = MAXPLAYERS;
@@ -1887,12 +1889,32 @@ void EOSFuncs::createLobby()
 
 	CurrentLobbyData.bAwaitingCreationCallback = true;
 
+#ifdef NINTENDO
+	bFriendsOnly = false;
+	bFriendsOnlyUserConfigured = false;
+#else
+	bFriendsOnly = loadingsavegame ? false : bFriendsOnlyUserConfigured;
+#endif
+	if ( loadingsavegame )
+	{
+		currentPermissionLevel = EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
+	}
+	else
+	{
+		currentPermissionLevel = currentPermissionLevelUserConfigured;
+		if ( currentPermissionLevel == EOS_ELobbyPermissionLevel::EOS_LPL_JOINVIAPRESENCE )
+		{
+			bFriendsOnly = false;
+			bFriendsOnlyUserConfigured = false;
+		}
+	}
+
 	LobbyHandle = EOS_Platform_GetLobbyInterface(PlatformHandle);
 	EOS_Lobby_CreateLobbyOptions CreateOptions;
 	CreateOptions.ApiVersion = EOS_LOBBY_CREATELOBBY_API_LATEST;
 	CreateOptions.LocalUserId = CurrentUserInfo.getProductUserIdHandle();
 	CreateOptions.MaxLobbyMembers = MAXPLAYERS;
-	CreateOptions.PermissionLevel = EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
+	CreateOptions.PermissionLevel = currentPermissionLevel;
 	CreateOptions.bPresenceEnabled = false;
 	CreateOptions.bAllowInvites = true;
 	CreateOptions.BucketId = EOS_LOBBY_SEARCH_BUCKET_ID;
@@ -1900,14 +1922,6 @@ void EOSFuncs::createLobby()
 	CreateOptions.bEnableRTCRoom = false;
 	CreateOptions.LocalRTCOptions = nullptr;
 	CreateOptions.LobbyId = nullptr;
-
-	currentPermissionLevel = EOS_ELobbyPermissionLevel::EOS_LPL_PUBLICADVERTISED;
-
-#ifdef NINTENDO
-	bFriendsOnly = false;
-#else
-	bFriendsOnly = loadingsavegame ? false : true;
-#endif
 
 	EOS_Lobby_CreateLobby(LobbyHandle, &CreateOptions, nullptr, OnCreateLobbyFinished);
 	CurrentLobbyData.MaxPlayers = CreateOptions.MaxLobbyMembers;
@@ -2448,7 +2462,11 @@ std::pair<std::string, std::string> EOSFuncs::LobbyData_t::getAttributePair(Attr
 			break;
 		case GAME_MODS:
 			attributePair.first = "SVNUMMODS";
-			attributePair.second = "0";
+			attributePair.second = std::to_string(this->LobbyAttributes.numServerMods);
+			break;
+		case GAME_MODS_DISABLE_ACHIEVEMENTS:
+			attributePair.first = "SVMODDISABLEACH";
+			attributePair.second = this->LobbyAttributes.modsDisableAchievements ? "1" : "0";
 			break;
 		case CREATION_TIME:
 			attributePair.first = "CREATETIME";
@@ -2504,6 +2522,10 @@ void EOSFuncs::LobbyData_t::setLobbyAttributesAfterReading(EOS_Lobby_AttributeDa
 	else if ( keyName.compare("SVNUMMODS") == 0 )
 	{
 		this->LobbyAttributes.numServerMods = std::stoi(data->Value.AsUtf8);
+	}
+	else if ( keyName.compare("SVMODDISABLEACH") == 0 )
+	{
+		this->LobbyAttributes.modsDisableAchievements = std::stoi(data->Value.AsUtf8) > 0 ? 1 : 0;
 	}
 	else if ( keyName.compare("CREATETIME") == 0 )
 	{

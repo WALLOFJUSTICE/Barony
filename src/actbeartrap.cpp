@@ -88,7 +88,7 @@ void actBeartrap(Entity* my)
 				entity->skill[15] = BEARTRAP_IDENTIFIED;
 				entity->itemNotMoving = 1;
 				entity->itemNotMovingClient = 1;
-				messagePlayer(i, MESSAGE_INTERACTION, language[1300]);
+				messagePlayer(i, MESSAGE_INTERACTION, Language::get(1300));
 				list_RemoveNode(my->mynode);
 				return;
 			}
@@ -158,7 +158,7 @@ void actBeartrap(Entity* my)
 					//}
 					// set obituary
 					entity->updateEntityOnHit(parent, true);
-					entity->setObituary(language[1504]);
+					entity->setObituary(Language::get(1504));
 					stat->killer = KilledBy::TRAP_BEAR;
 
 					if ( stat->HP <= 0 && oldHP > 0 )
@@ -172,7 +172,7 @@ void actBeartrap(Entity* my)
 					{
 						int player = entity->skill[2];
 						Uint32 color = makeColorRGB(255, 0, 0);
-						messagePlayerColor(player, MESSAGE_STATUS, color, language[454]);
+						messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(454));
 						if ( !players[player]->isLocalPlayer() )
 						{
 							serverUpdateEffects(player);
@@ -202,11 +202,11 @@ void actBeartrap(Entity* my)
 							{
 								if ( entityDist(my, parent) >= 64 && entityDist(my, parent) < 128 )
 								{
-									messagePlayer(player, MESSAGE_HINT, language[2521]);
+									messagePlayer(player, MESSAGE_HINT, Language::get(2521));
 								}
 								else
 								{
-									messagePlayer(player, MESSAGE_HINT, language[2522]);
+									messagePlayer(player, MESSAGE_HINT, Language::get(2522));
 								}
 								if ( local_rng.rand() % 10 == 0 )
 								{
@@ -220,11 +220,13 @@ void actBeartrap(Entity* my)
 							// update enemy bar for attacker
 							if ( !strcmp(stat->name, "") )
 							{
-								updateEnemyBar(parent, entity, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP);
+								updateEnemyBar(parent, entity, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP,
+									false, DamageGib::DMG_DEFAULT);
 							}
 							else
 							{
-								updateEnemyBar(parent, entity, stat->name, stat->HP, stat->MAXHP);
+								updateEnemyBar(parent, entity, stat->name, stat->HP, stat->MAXHP,
+									false, DamageGib::DMG_DEFAULT);
 							}
 						}
 					}
@@ -350,11 +352,11 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 	{
 		if ( !hitByAOE )
 		{
-			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3498], language[3499], MSG_TOOL_BOMB, my);
+			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3498), Language::get(3499), MSG_TOOL_BOMB, my);
 		}
 		else
 		{
-			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3613], language[3614], MSG_TOOL_BOMB, my);
+			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3613), Language::get(3614), MSG_TOOL_BOMB, my);
 		}
 	}
 	if ( triggered->behavior == &actPlayer )
@@ -364,11 +366,11 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 		// you stumbled into the trap!
 		if ( !hitByAOE )
 		{
-			messagePlayerColor(player, MESSAGE_STATUS, color, language[3497], items[BOMB_ITEMTYPE].getIdentifiedName());
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3497), items[BOMB_ITEMTYPE].getIdentifiedName());
 		}
 		else
 		{
-			messagePlayerColor(player, MESSAGE_STATUS, color, language[3612], items[BOMB_ITEMTYPE].getIdentifiedName());
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3612), items[BOMB_ITEMTYPE].getIdentifiedName());
 		}
 	}
 
@@ -380,7 +382,7 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			if ( parent && parent->behavior == &actPlayer )
 			{
 				Uint32 color = makeColorRGB(255, 0, 0);
-				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3603], language[3604], MSG_COMBAT);
+				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3603), Language::get(3604), MSG_COMBAT);
 			}
 			return;
 		}
@@ -434,13 +436,13 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 				if ( triggered != parent )
 				{
 					Uint32 color = makeColorRGB(0, 255, 0);
-					messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3601], language[3602], MSG_COMBAT);
+					messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3601), Language::get(3602), MSG_COMBAT);
 				}
 			}
 			if ( triggered->behavior == &actPlayer )
 			{
 				Uint32 color = makeColorRGB(255, 255, 255);
-				messagePlayerColor(triggered->skill[2], MESSAGE_STATUS, color, language[3611]);
+				messagePlayerColor(triggered->skill[2], MESSAGE_STATUS, color, Language::get(3611));
 				achievementObserver.playerAchievements[triggered->skill[2]].checkPathBetweenObjects(triggered, my, AchievementObserver::BARONY_ACH_WONDERFUL_TOYS);
 			}
 
@@ -457,7 +459,7 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			if ( parent && parent->behavior == &actPlayer && triggered != parent )
 			{
 				Uint32 color = makeColorRGB(255, 0, 0);
-				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3615], language[3616], MSG_COMBAT);
+				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3615), Language::get(3616), MSG_COMBAT);
 			}
 		}
 		return;
@@ -519,7 +521,7 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 		wasAsleep = stat->EFFECTS[EFF_ASLEEP];
 	}
 	triggered->modHP(-damage);
-	triggered->setObituary(language[3496]);
+	triggered->setObituary(Language::get(3496));
 	triggered->updateEntityOnHit(parent, true);
 	stat->killer = KilledBy::TRAP_BOMB;
 
@@ -576,11 +578,11 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			{
 				if ( entityDist(my, parent) >= 64 && entityDist(my, parent) < 128 )
 				{
-					messagePlayer(player, MESSAGE_HINT, language[3494]);
+					messagePlayer(player, MESSAGE_HINT, Language::get(3494));
 				}
 				else
 				{
-					messagePlayer(player, MESSAGE_HINT, language[3495]);
+					messagePlayer(player, MESSAGE_HINT, Language::get(3495));
 				}
 			}
 			if ( triggered->behavior == &actMonster )
@@ -626,11 +628,13 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			{
 				if ( !strcmp(stat->name, "") )
 				{
-					updateEnemyBar(parent, triggered, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP);
+					updateEnemyBar(parent, triggered, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP,
+						false, DamageGib::DMG_TODO);
 				}
 				else
 				{
-					updateEnemyBar(parent, triggered, stat->name, stat->HP, stat->MAXHP);
+					updateEnemyBar(parent, triggered, stat->name, stat->HP, stat->MAXHP,
+						false, DamageGib::DMG_TODO);
 				}
 				Entity* gib = spawnGib(triggered);
 				serverSpawnGibForClient(gib);
@@ -699,7 +703,7 @@ void actBomb(Entity* my)
 					entity->itemNotMoving = 0;
 					entity->itemNotMovingClient = 0;
 				}
-				messagePlayer(i, MESSAGE_INTERACTION, language[3600], items[BOMB_ITEMTYPE].getIdentifiedName());
+				messagePlayer(i, MESSAGE_INTERACTION, Language::get(3600), items[BOMB_ITEMTYPE].getIdentifiedName());
 				list_RemoveNode(my->mynode);
 				return;
 			}
@@ -1283,7 +1287,7 @@ void actDecoyBox(Entity* my)
 											}
 											if ( !message )
 											{
-												messagePlayer(parent->skill[2], MESSAGE_WORLD, language[3671]);
+												messagePlayer(parent->skill[2], MESSAGE_WORLD, Language::get(3671));
 												message = true;
 											}
 											break;
@@ -1300,7 +1304,7 @@ void actDecoyBox(Entity* my)
 		{
 			if ( parent && parent->behavior == &actPlayer )
 			{
-				messagePlayer(parent->skill[2], MESSAGE_HINT, language[3882]);
+				messagePlayer(parent->skill[2], MESSAGE_HINT, Language::get(3882));
 			}
 		}
 	}
@@ -1322,7 +1326,7 @@ void actDecoyBox(Entity* my)
 			}
 			/*if ( parent && parent->behavior == &actPlayer )
 			{
-				messagePlayer(parent->skill[2], language[3769]);
+				messagePlayer(parent->skill[2], Language::get(3769));
 			}*/
 			list_RemoveNode(my->mynode);
 			return;
@@ -1354,7 +1358,7 @@ void actDecoyBox(Entity* my)
 			}
 			if ( parent && parent->behavior == &actPlayer )
 			{
-				messagePlayer(parent->skill[2], MESSAGE_EQUIPMENT, language[3770]);
+				messagePlayer(parent->skill[2], MESSAGE_EQUIPMENT, Language::get(3770));
 			}
 			list_RemoveNode(my->mynode);
 			return;

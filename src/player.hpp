@@ -55,6 +55,16 @@ struct PlayerSettings_t
 	int player = -1;
 	int shootmodeCrosshair = 0;
 	int shootmodeCrosshairOpacity = 50;
+    real_t mousespeed = 32.0;
+    bool mkb_world_tooltips_enabled = true;
+    bool gamepad_facehotbar = true;
+    bool hotbar_numkey_quick_add = true;
+    bool reversemouse = 0;
+    bool smoothmouse = false;
+    real_t gamepad_rightx_sensitivity = 1.0;
+    real_t gamepad_righty_sensitivity = 1.0;
+    bool gamepad_rightx_invert = false;
+    bool gamepad_righty_invert = false;
 	void init(const int _player)
 	{
 		player = _player;
@@ -343,7 +353,7 @@ class Inputs
 		Uint32 mouseRightHeldTicks = 0;
 		bool mouseRightHeld = false;
 
-		bool draw_cursor = true; //True if the gamepad's d-pad has been used to navigate menus and such. //TODO: Off by default on consoles and the like.
+		bool draw_cursor = false; //True if the gamepad's d-pad has been used to navigate menus and such. //TODO: Off by default on consoles and the like.
 		bool moved = false;
 		bool lastMovementFromController = true;
 		real_t mouseAnimationPercent = 0.0;
@@ -1025,7 +1035,7 @@ public:
 		bool warpMouseToSelectedItem(Item* snapToItem, Uint32 flags);
 		bool warpMouseToSelectedSpell(Item* snapToItem, Uint32 flags);
 		bool warpMouseToSelectedChestSlot(Item* snapToItem, Uint32 flags);
-		bool guiAllowDropItems() const;
+		bool guiAllowDropItems(Item* itemToDrop) const;
 		bool guiAllowDefaultRightClick() const;
 		void processInventory();
 		void updateInventory();
@@ -1171,25 +1181,6 @@ public:
 	};
 	ShopGUI_t shopGUI;
 
-	class StatusBar_t
-	{
-		Player& player;
-	public:
-		StatusBar_t(Player& p) : player(p)
-		{};
-		~StatusBar_t() {};
-		SDL_Rect messageStatusBarBox;
-		const int getStartX() const 
-		{ 
-			return (player.camera_midx() - status_bmp->w * uiscale_chatlog / 2);
-		}
-		const int getStartY() const
-		{
-			return (player.camera_y2() - getOffsetY());
-		}
-		const int getOffsetY() const { return (status_bmp->h * uiscale_chatlog * (hide_statusbar ? 0 : 1)); }
-	} statusBarUI;
-
 	class BookGUI_t
 	{
 		Player& player;
@@ -1209,16 +1200,6 @@ public:
 		Item* openBookItem = nullptr;
 		std::string openBookName = "";
 		int currentBookPage = 0;
-		const int getStartX() const
-		{
-			return ((player.camera_midx() - (getBookWidth() / 2)) + offsetx);
-		}
-		const int getStartY() const
-		{
-			return ((player.camera_midy() - (getBookHeight() / 2)) + offsety);
-		}
-		const int getBookWidth() const { return bookgui_img->w; }
-		const int getBookHeight() const { return bookgui_img->h; }
 		void updateBookGUI();
 		void closeBookGUI();
 		void createBookGUI();
@@ -1776,7 +1757,6 @@ public:
 
 	class MessageZone_t
 	{
-		static const int MESSAGE_X_OFFSET = 5;
 		//Time in seconds before the message starts fading.
 		static const int MESSAGE_PREFADE_TIME = 3600;
 		//How fast the alpha value de-increments
@@ -1800,10 +1780,6 @@ public:
 		//Used on program deinitialization.
 		void deleteAllNotificationMessages();
 
-		// leftmost x-anchored location
-		int getMessageZoneStartX();
-		// bottommost y-anchored location
-		int getMessageZoneStartY();
 		//Maximum number of messages displayed on screen at once before the oldest message is automatically deleted.
 		int getMaxTotalLines();
 
