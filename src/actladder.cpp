@@ -24,6 +24,7 @@
 #include "items.hpp"
 #include "mod_tools.hpp"
 #include "ui/MainMenu.hpp"
+#include "colors.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -33,6 +34,8 @@
 	takes a pointer to the entity that uses it as an argument.
 
 -------------------------------------------------------------------------------*/
+
+Uint32 mpPokeCooldown[MAXPLAYERS] = { 0 };
 
 #define LADDER_AMBIENCE my->skill[1]
 #define LADDER_SECRET_ENTRANCE my->skill[3]
@@ -46,6 +49,7 @@ void actLadder(Entity* my)
 	if ( my->ticks == 1 )
 	{
 		my->createWorldUITooltip();
+		memset(mpPokeCooldown, 0, sizeof(mpPokeCooldown));
 	}
 
 	LADDER_AMBIENCE--;
@@ -77,17 +81,28 @@ void actLadder(Entity* my)
 						dist = sqrt(pow(my->x - players[c]->entity->x, 2) + pow(my->y - players[c]->entity->y, 2));
 						if (dist > TOUCHRANGE)
 						{
-							messagePlayer(i, MESSAGE_INTERACTION, language[505]);
+							sendMinimapPing(i, my->x / 16.0, my->y / 16.0);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(505)); // "you must assemble your party"
+							if (ticks - mpPokeCooldown[i] >= TICKS_PER_SECOND * 3) {
+								for (int j = 0; j < MAXPLAYERS; ++j) {
+									if (!client_disconnected[j] && j != i) {
+										// "so-and-so wants to leave the level"
+										messagePlayerColor(j, MESSAGE_INTERACTION, playerColor(i, colorblind_lobby, false),
+											Language::get(509), stats[i]->name);
+									}
+								}
+								mpPokeCooldown[i] = ticks;
+							}
 							return;
 						}
 					}
 					if (playercount == 1)
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[506]);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(506));
 					}
 					else
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[507]);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(507));
 					}
 					loadnextlevel = true;
 					if (secretlevel)
@@ -104,6 +119,13 @@ void actLadder(Entity* my)
 						if ( LADDER_SECRET_ENTRANCE )
 						{
 							skipLevelsOnLoad = -1; // don't skip a regular level anymore. still skip if in underworld.
+						}
+						if ( currentlevel == 0 )
+						{
+							if ( gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_SHOPPING_SPREE) )
+							{
+								skipLevelsOnLoad = 0;
+							}
 						}
 					}
 					if ( LADDER_SECRET_ENTRANCE )
@@ -125,10 +147,10 @@ void actLadderUp(Entity* my)
 		LADDER_AMBIENCE = TICKS_PER_SECOND * 30;
 		playSoundEntityLocal( my, 149, 64 );
 	}*/
-	if ( my->ticks == 1 )
+	/*if ( my->ticks == 1 )
 	{
 		my->createWorldUITooltip();
-	}
+	}*/
 
 	// use ladder
 	if ( multiplayer != CLIENT )
@@ -139,12 +161,22 @@ void actLadderUp(Entity* my)
 			{
 				if (inrange[i])
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[508]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(508));
 					return;
 				}
 			}
 		}
 	}
+    
+    if (my->z > -20) {
+        const int x = my->x / 16;
+        const int y = my->y / 16;
+        const int index = (MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map.height;
+        if (!map.tiles[index]) {
+            list_RemoveNode(my->mynode);
+            return;
+        }
+    }
 }
 
 void actPortal(Entity* my)
@@ -157,7 +189,7 @@ void actPortal(Entity* my)
 	{
 		my->createWorldUITooltip();
 		my->portalInit = 1;
-		my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 255);
+		my->light = addLight(my->x / 16, my->y / 16, "portal_purple");
 		if ( !strncmp(map.name, "Cockatrice Lair", 15) )
 		{
 			my->flags[INVISIBLE] = true;
@@ -166,6 +198,7 @@ void actPortal(Entity* my)
 		{
 			my->flags[INVISIBLE] = true;
 		}
+		memset(mpPokeCooldown, 0, sizeof(mpPokeCooldown));
 	}
 
 	my->portalAmbience--;
@@ -273,17 +306,28 @@ void actPortal(Entity* my)
 					dist = sqrt(pow(my->x - players[c]->entity->x, 2) + pow(my->y - players[c]->entity->y, 2));
 					if (dist > TOUCHRANGE)
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[505]);
+						sendMinimapPing(i, my->x / 16.0, my->y / 16.0);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(505)); // "you must assemble your party"
+						if (ticks - mpPokeCooldown[i] >= TICKS_PER_SECOND * 3) {
+							for (int j = 0; j < MAXPLAYERS; ++j) {
+								if (!client_disconnected[j] && j != i) {
+									// "so-and-so wants to leave the level"
+									messagePlayerColor(j, MESSAGE_INTERACTION, playerColor(i, colorblind_lobby, false),
+										Language::get(509), stats[i]->name);
+								}
+							}
+							mpPokeCooldown[i] = ticks;
+						}
 						return;
 					}
 				}
 				if (playercount == 1)
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[510]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(510));
 				}
 				else
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[511]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(511));
 				}
 				loadnextlevel = true;
 				if ( secretlevel )
@@ -366,6 +410,7 @@ void actWinningPortal(Entity* my)
 	if ( my->ticks == 1 )
 	{
 		my->createWorldUITooltip();
+		memset(mpPokeCooldown, 0, sizeof(mpPokeCooldown));
 	}
 
 	if ( multiplayer != CLIENT )
@@ -436,7 +481,7 @@ void actWinningPortal(Entity* my)
 	if ( !my->portalInit )
 	{
 		my->portalInit = 1;
-		my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 255);
+		my->light = addLight(my->x / 16, my->y / 16, "portal_white");
 	}
 
 	my->portalAmbience--;
@@ -474,7 +519,18 @@ void actWinningPortal(Entity* my)
 					dist = sqrt( pow(my->x - players[c]->entity->x, 2) + pow(my->y - players[c]->entity->y, 2));
 					if (dist > TOUCHRANGE)
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[509]);
+						sendMinimapPing(i, my->x / 16.0, my->y / 16.0);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(505)); // "you must assemble your party"
+						if (ticks - mpPokeCooldown[i] >= TICKS_PER_SECOND * 3) {
+							for (int j = 0; j < MAXPLAYERS; ++j) {
+								if (!client_disconnected[j] && j != i) {
+									// "so-and-so wants to leave the level"
+									messagePlayerColor(j, MESSAGE_INTERACTION, playerColor(i, colorblind_lobby, false),
+										Language::get(509), stats[i]->name);
+								}
+							}
+							mpPokeCooldown[i] = ticks;
+						}
 						return;
 					}
 				}
@@ -505,10 +561,32 @@ void actWinningPortal(Entity* my)
 						net_packet->len = 6;
 						sendPacketSafe(net_sock, -1, net_packet, c - 1);
 					}
+
+					if ( victory > 0 )
+					{
+						int k = 0;
+						for ( int c = 0; c < MAXPLAYERS; c++ )
+						{
+							if ( players[c] && players[c]->entity )
+							{
+								k++;
+							}
+						}
+						if ( k >= 2 )
+						{
+							steamAchievement("BARONY_ACH_IN_GREATER_NUMBERS");
+						}
+					}
 				}
 
 	            if (cutscene == 1) { // classic herx ending
-	                switch (stats[clientnum]->playerRace) {
+					int race = RACE_HUMAN;
+					if ( stats[clientnum]->playerRace != RACE_HUMAN && stats[clientnum]->appearance == 0 )
+					{
+						race = stats[clientnum]->playerRace;
+					}
+
+	                switch ( race ) {
 	                default:
 	                case RACE_HUMAN:
 	                    MainMenu::beginFade(MainMenu::FadeDestination::ClassicEndingHuman);
@@ -530,7 +608,13 @@ void actWinningPortal(Entity* my)
 	                }
 	            }
 	            else if (cutscene == 2) { // classic baphomet ending
-	                switch (stats[clientnum]->playerRace) {
+					int race = RACE_HUMAN;
+					if ( stats[clientnum]->playerRace != RACE_HUMAN && stats[clientnum]->appearance == 0 )
+					{
+						race = stats[clientnum]->playerRace;
+					}
+
+	                switch ( race ) {
 	                default:
 	                case RACE_HUMAN:
 	                    MainMenu::beginFade(MainMenu::FadeDestination::ClassicBaphometEndingHuman);
@@ -579,6 +663,7 @@ void Entity::actExpansionEndGamePortal()
 	if ( this->ticks == 1 )
 	{
 		this->createWorldUITooltip();
+		memset(mpPokeCooldown, 0, sizeof(mpPokeCooldown));
 	}
 
 	if ( multiplayer != CLIENT )
@@ -633,7 +718,7 @@ void Entity::actExpansionEndGamePortal()
 	if ( !portalInit )
 	{
 		portalInit = 1;
-		light = lightSphereShadow(x / 16, y / 16, 3, 255);
+		light = addLight(x / 16, y / 16, "portal_blue");
 	}
 
 	portalAmbience--;
@@ -671,7 +756,18 @@ void Entity::actExpansionEndGamePortal()
 					dist = sqrt(pow(x - players[c]->entity->x, 2) + pow(y - players[c]->entity->y, 2));
 					if ( dist > TOUCHRANGE )
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[509]);
+						sendMinimapPing(i, this->x / 16.0, this->y / 16.0);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(505)); // "you must assemble your party"
+						if (::ticks - mpPokeCooldown[i] >= TICKS_PER_SECOND * 3) {
+							for (int j = 0; j < MAXPLAYERS; ++j) {
+								if (!client_disconnected[j] && j != i) {
+									// "so-and-so wants to leave the level"
+									messagePlayerColor(j, MESSAGE_INTERACTION, playerColor(i, colorblind_lobby, false),
+										Language::get(509), stats[i]->name);
+								}
+							}
+							mpPokeCooldown[i] = ::ticks;
+						}
 						return;
 					}
 				}
@@ -692,9 +788,31 @@ void Entity::actExpansionEndGamePortal()
 						net_packet->len = 6;
 						sendPacketSafe(net_sock, -1, net_packet, c - 1);
 					}
+
+					if ( victory > 0 )
+					{
+						int k = 0;
+						for ( int c = 0; c < MAXPLAYERS; c++ )
+						{
+							if ( players[c] && players[c]->entity )
+							{
+								k++;
+							}
+						}
+						if ( k >= 2 )
+						{
+							steamAchievement("BARONY_ACH_IN_GREATER_NUMBERS");
+						}
+					}
 				}
 
-                switch (stats[clientnum]->playerRace) {
+				int race = RACE_HUMAN;
+				if ( stats[clientnum]->playerRace != RACE_HUMAN && stats[clientnum]->appearance == 0 )
+				{
+					race = stats[clientnum]->playerRace;
+				}
+
+                switch ( race ) {
                 default:
                 case RACE_HUMAN:
                     MainMenu::beginFade(MainMenu::FadeDestination::EndingHuman);
@@ -742,6 +860,7 @@ void Entity::actMidGamePortal()
 	if ( this->ticks == 1 )
 	{
 		this->createWorldUITooltip();
+		memset(mpPokeCooldown, 0, sizeof(mpPokeCooldown));
 	}
 
 	if ( multiplayer != CLIENT )
@@ -815,7 +934,7 @@ void Entity::actMidGamePortal()
 	if ( !portalInit )
 	{
 		portalInit = 1;
-		light = lightSphereShadow(x / 16, y / 16, 3, 255);
+		light = addLight(x / 16, y / 16, "portal_blue");
 	}
 
 	portalAmbience--;
@@ -853,7 +972,18 @@ void Entity::actMidGamePortal()
 					dist = sqrt(pow(x - players[c]->entity->x, 2) + pow(y - players[c]->entity->y, 2));
 					if ( dist > TOUCHRANGE )
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[509]);
+						sendMinimapPing(i, this->x / 16.0, this->y / 16.0);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(505)); // "you must assemble your party"
+						if (::ticks - mpPokeCooldown[i] >= TICKS_PER_SECOND * 3) {
+							for (int j = 0; j < MAXPLAYERS; ++j) {
+								if (!client_disconnected[j] && j != i) {
+									// "so-and-so wants to leave the level"
+									messagePlayerColor(j, MESSAGE_INTERACTION, playerColor(i, colorblind_lobby, false),
+										Language::get(509), stats[i]->name);
+								}
+							}
+							mpPokeCooldown[i] = ::ticks;
+						}
 						return;
 					}
 				}
@@ -885,8 +1015,14 @@ void Entity::actMidGamePortal()
 					}
 				}
 
+				int race = RACE_HUMAN;
+				if ( stats[clientnum]->playerRace != RACE_HUMAN && stats[clientnum]->appearance == 0 )
+				{
+					race = stats[clientnum]->playerRace;
+				}
+
 	            if (cutscene == 0) {
-	                switch (stats[clientnum]->playerRace) { // herx midpoint
+	                switch ( race ) { // herx midpoint
 	                default:
 	                case RACE_HUMAN:
 	                    MainMenu::beginFade(MainMenu::FadeDestination::HerxMidpointHuman);
@@ -908,7 +1044,7 @@ void Entity::actMidGamePortal()
 	                }
 	            }
 	            else if (cutscene == 1) { // baphomet midpoint
-	                switch (stats[clientnum]->playerRace) {
+	                switch ( race ) {
 	                default:
 	                case RACE_HUMAN:
 	                    MainMenu::beginFade(MainMenu::FadeDestination::BaphometMidpointHuman);
@@ -1130,6 +1266,7 @@ void actCustomPortal(Entity* my)
 	if ( my->ticks == 1 )
 	{
 		my->createWorldUITooltip();
+		memset(mpPokeCooldown, 0, sizeof(mpPokeCooldown));
 	}
 
 	if ( multiplayer != CLIENT )
@@ -1167,7 +1304,7 @@ void actCustomPortal(Entity* my)
 		my->portalInit = 1;
 		if ( my->portalCustomSpriteAnimationFrames > 0 )
 		{
-			my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 255);
+			my->light = addLight(my->x / 16, my->y / 16, "portal_purple");
 		}
 	}
 
@@ -1221,17 +1358,28 @@ void actCustomPortal(Entity* my)
 					dist = sqrt(pow(my->x - players[c]->entity->x, 2) + pow(my->y - players[c]->entity->y, 2));
 					if ( dist > TOUCHRANGE )
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[509]);
+						sendMinimapPing(i, my->x / 16.0, my->y / 16.0);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(505)); // "you must assemble your party"
+						if (ticks - mpPokeCooldown[i] >= TICKS_PER_SECOND * 3) {
+							for (int j = 0; j < MAXPLAYERS; ++j) {
+								if (!client_disconnected[j] && j != i) {
+									// "so-and-so wants to leave the level"
+									messagePlayerColor(j, MESSAGE_INTERACTION, playerColor(i, colorblind_lobby, false),
+										Language::get(509), stats[i]->name);
+								}
+							}
+							mpPokeCooldown[i] = ticks;
+						}
 						return;
 					}
 				}
 				if ( playercount == 1 )
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[506]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(506));
 				}
 				else
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[507]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(507));
 				}
 				loadnextlevel = true;
 				skipLevelsOnLoad = 0;
@@ -1248,6 +1396,14 @@ void actCustomPortal(Entity* my)
 						auto& tutorialLevels = gameModeManager.Tutorial.levels;
 						if ( number >= 1 && number < tutorialLevels.size() )
 						{
+							if ( number == 1 )
+							{
+								if ( !gameModeManager.Tutorial.firstTutorialCompleted )
+								{
+									gameModeManager.Tutorial.showFirstTutorialCompletedPrompt = true;
+									gameModeManager.Tutorial.firstTutorialCompleted = true;
+								}
+							}
 							if ( tutorialLevels.at(number).completionTime == 0 )
 							{
 								tutorialLevels.at(number).completionTime = completionTime; // first time score.

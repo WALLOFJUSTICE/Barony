@@ -28,6 +28,9 @@
 #include <steam/steam_api.h>
 #include "steam.hpp"
 #endif
+#ifdef USE_PLAYFAB
+#include "playfab.hpp"
+#endif
 #include "menu.hpp"
 #include "paths.hpp"
 #include "player.hpp"
@@ -37,6 +40,7 @@
 #include "ui/LoadingScreen.hpp"
 #include "ui/GameUI.hpp"
 #include "ui/Text.hpp"
+#include "ui/MainMenu.hpp"
 
 #include <thread>
 #include <future>
@@ -49,6 +53,77 @@
 	initializes certain game specific resources
 
 -------------------------------------------------------------------------------*/
+
+void initGameDatafiles(bool moddedReload)
+{
+	for ( int i = 0; i < NUMITEMS && i < (NUM_ITEM_STRINGS - 2); ++i )
+	{
+		ItemTooltips.itemNameStringToItemID[itemNameStrings[i + 2]] = i;
+	}
+	ItemTooltips.readItemsFromFile();
+	ItemTooltips.readTooltipsFromFile();
+	ItemTooltips.readItemLocalizationsFromFile();
+	ItemTooltips.readBookLocalizationsFromFile();
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		// set these to something silly clear the tooltip cache match
+		players[i]->worldUI.worldTooltipItem.type = WOODEN_SHIELD;
+		players[i]->worldUI.worldTooltipItem.count = 99;
+	}
+
+	loadHUDSettingsJSON();
+	Player::SkillSheet_t::loadSkillSheetJSON();
+	Player::CharacterSheet_t::loadCharacterSheetJSON();
+	StatusEffectQueue_t::loadStatusEffectsJSON();
+	FollowerRadialMenu::loadFollowerJSON();
+	CalloutRadialMenu::loadCalloutJSON();
+	MonsterData_t::loadMonsterDataJSON();
+	ScriptTextParser.readAllScripts();
+	ShopkeeperConsumables_t::readFromFile();
+	EditorEntityData_t::readFromFile();
+	ClassHotbarConfig_t::init();
+	MainMenu::RaceDescriptions::readFromFile();
+	MainMenu::ClassDescriptions::readFromFile();
+	StatueManager.readAllStatues();
+	GameModeManager_t::CurrentSession_t::SeededRun_t::readSeedNamesFromFile();
+	loadLights();
+	for ( int c = 1; c < NUMMONSTERS; ++c )
+	{
+		EquipmentModelOffsets.readFromFile(monstertypename[c], c);
+	}
+}
+
+void initGameDatafilesAsync(bool moddedReload)
+{
+	physfsReloadMonsterLimbFiles();
+	GlyphHelper.readFromFile();
+#ifndef NINTENDO
+	if ( PHYSFS_getRealDir(PLAYERNAMES_MALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(PLAYERNAMES_MALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(PLAYERNAMES_MALE_FILE);
+		randomPlayerNamesMale = getLinesFromDataFile(namesDirectory);
+	}
+	if ( PHYSFS_getRealDir(PLAYERNAMES_FEMALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(PLAYERNAMES_FEMALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(PLAYERNAMES_FEMALE_FILE);
+		randomPlayerNamesFemale = getLinesFromDataFile(namesDirectory);
+	}
+	if ( PHYSFS_getRealDir(NPCNAMES_MALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(NPCNAMES_MALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(NPCNAMES_MALE_FILE);
+		randomNPCNamesMale = getLinesFromDataFile(namesDirectory);
+	}
+	if ( PHYSFS_getRealDir(NPCNAMES_FEMALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(NPCNAMES_FEMALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(NPCNAMES_FEMALE_FILE);
+		randomNPCNamesFemale = getLinesFromDataFile(namesDirectory);
+	}
+#endif
+}
 
 int initGame()
 {
@@ -76,6 +151,9 @@ int initGame()
 	cpp_SteamServerClientWrapper_OnRequestEncryptedAppTicket = &steam_OnRequestEncryptedAppTicket;
  #endif //USE_EOS
 #endif
+#ifdef USE_PLAYFAB
+	playfabUser.init();
+#endif
 
 	initGameControllers();
 
@@ -85,7 +163,7 @@ int initGame()
 
 	// load achievement images
 #ifdef NINTENDO
-	Directory achievementsDir("rom:/images/achievements");
+	Directory achievementsDir(BASE_DATA_DIR"/images/achievements");
 #else
 	Directory achievementsDir("images/achievements");
 #endif
@@ -97,213 +175,30 @@ int initGame()
 	}
 
 	// load item types
-	int newItems = 0;
-	printlog("loading items...\n");
-	std::string itemsDirectory = PHYSFS_getRealDir("items/items.txt");
-	itemsDirectory.append(PHYSFS_getDirSeparator()).append("items/items.txt");
-	File* fp = openDataFile(itemsDirectory.c_str(), "rb");
-	for (int c = 0; !fp->eof(); ++c)
-	{
-		if (c > SPELLBOOK_DETECT_FOOD)
-		{
-			newItems = c - SPELLBOOK_DETECT_FOOD - 1;
-			items[c].name_identified = language[3500 + newItems * 2];
-			items[c].name_unidentified = language[3501 + newItems * 2];
-		}
-		else if (c > ARTIFACT_BOW)
-		{
-			newItems = c - ARTIFACT_BOW - 1;
-			items[c].name_identified = language[2200 + newItems * 2];
-			items[c].name_unidentified = language[2201 + newItems * 2];
-		}
-		else
-		{
-			items[c].name_identified = language[1545 + c * 2];
-			items[c].name_unidentified = language[1546 + c * 2];
-		}
-		items[c].index = fp->geti();
-		items[c].fpindex = fp->geti();
-		items[c].variations = fp->geti();
-		char name[32];
-		fp->gets2(name, sizeof(name));
-		if (!strcmp(name, "WEAPON"))
-		{
-			items[c].category = WEAPON;
-		}
-		else if (!strcmp(name, "ARMOR"))
-		{
-			items[c].category = ARMOR;
-		}
-		else if (!strcmp(name, "AMULET"))
-		{
-			items[c].category = AMULET;
-		}
-		else if (!strcmp(name, "POTION"))
-		{
-			items[c].category = POTION;
-		}
-		else if (!strcmp(name, "SCROLL"))
-		{
-			items[c].category = SCROLL;
-		}
-		else if (!strcmp(name, "MAGICSTAFF"))
-		{
-			items[c].category = MAGICSTAFF;
-		}
-		else if (!strcmp(name, "RING"))
-		{
-			items[c].category = RING;
-		}
-		else if (!strcmp(name, "SPELLBOOK"))
-		{
-			items[c].category = SPELLBOOK;
-		}
-		else if (!strcmp(name, "TOOL"))
-		{
-			items[c].category = TOOL;
-		}
-		else if (!strcmp(name, "FOOD"))
-		{
-			items[c].category = FOOD;
-		}
-		else if (!strcmp(name, "BOOK"))
-		{
-			items[c].category = BOOK;
-		}
-		else if (!strcmp(name, "THROWN"))
-		{
-			items[c].category = THROWN;
-		}
-		else if (!strcmp(name, "SPELL_CAT"))
-		{
-			items[c].category = SPELL_CAT;
-		}
-		else
-		{
-			items[c].category = GEM;
-		}
-		items[c].weight = fp->geti();
-		items[c].value = fp->geti();
-		items[c].images.first = NULL;
-		items[c].images.last = NULL;
-		while (1)
-		{
-			string_t* string = (string_t*)malloc(sizeof(string_t));
-			string->data = (char*)malloc(sizeof(char) * 64);
-			string->lines = 1;
-
-			node_t* node = list_AddNodeLast(&items[c].images);
-			node->element = string;
-			node->deconstructor = &stringDeconstructor;
-			node->size = sizeof(string_t);
-			string->node = node;
-
-			auto result = fp->gets2(string->data, 64);
-			if (result == nullptr || string->data[0] == '\0') {
-				list_RemoveNode(node);
-				break;
-			}
-		}
-	}
-	FileIO::close(fp);
-	loadItemLists();
-	ItemTooltips.readItemsFromFile();
-	ItemTooltips.readTooltipsFromFile();
+	initGameDatafiles(false);
 	setupSpells();
-
-	loadHUDSettingsJSON();
-	Player::SkillSheet_t::loadSkillSheetJSON();
-	Player::CharacterSheet_t::loadCharacterSheetJSON();
-	StatusEffectQueue_t::loadStatusEffectsJSON();
-	FollowerRadialMenu::loadFollowerJSON();
-	MonsterData_t::loadMonsterDataJSON();
-	ScriptTextParser.readAllScripts();
-	ShopkeeperConsumables_t::readFromFile();
 
 	std::atomic_bool loading_done {false};
 	auto loading_task = std::async(std::launch::async, [&loading_done](){
-		int c, x;
-		char name[32];
-
-		// load model offsets
-		printlog( "loading model offsets...\n");
-		for ( c = 1; c < NUMMONSTERS; c++ )
-		{
-			// initialize all offsets to zero
-			for ( x = 0; x < 20; x++ )
-			{
-				limbs[c][x][0] = 0;
-				limbs[c][x][1] = 0;
-				limbs[c][x][2] = 0;
-			}
-
-			// open file
-			char filename[256];
-			strcpy(filename, "models/creatures/");
-			strcat(filename, monstertypename[c]);
-			strcat(filename, "/limbs.txt");
-			File* fp;
-			if ( (fp = openDataFile(filename, "rb")) == NULL )
-			{
-				continue;
-			}
-
-			// read file
-			int line;
-			for ( line = 1; !fp->eof(); line++ )
-			{
-				char data[256];
-				int limb = 20;
-				int dummy;
-
-				// read line from file
-				fp->gets( data, 256 );
-
-				// skip blank and comment lines
-				if ( data[0] == '\n' || data[0] == '\r' || data[0] == '#' )
-				{
-					continue;
-				}
-
-				// process line
-				if ( sscanf( data, "%d", &limb ) != 1 || limb >= 20 || limb < 0 )
-				{
-					printlog( "warning: syntax error in '%s':%d\n invalid limb index!\n", filename, line);
-					continue;
-				}
-				if ( sscanf( data, "%d %f %f %f\n", &dummy, &limbs[c][limb][0], &limbs[c][limb][1], &limbs[c][limb][2] ) != 4 )
-				{
-					printlog( "warning: syntax error in '%s':%d\n invalid limb offsets!\n", filename, line);
-					continue;
-				}
-			}
-
-			// close file
-			FileIO::close(fp);
-		}
-
 		updateLoadingScreen(92);
-
-		GlyphHelper.readFromFile();
-
+		initGameDatafilesAsync(false);
 #ifdef NINTENDO
-		std::string maleNames, femaleNames;
-		maleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_MALE_FILE;
-		femaleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_FEMALE_FILE;
-		randomPlayerNamesMale = getLinesFromDataFile(maleNames);
-		randomPlayerNamesFemale = getLinesFromDataFile(femaleNames);
-#else // NINTENDO
-		randomPlayerNamesMale = getLinesFromDataFile(PLAYERNAMES_MALE_FILE);
-		randomPlayerNamesFemale = getLinesFromDataFile(PLAYERNAMES_FEMALE_FILE);
-#endif // !NINTENDO
+		const auto playerMaleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_MALE_FILE;
+		const auto playerFemaleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_FEMALE_FILE;
+        const auto npcMaleNames = BASE_DATA_DIR + std::string("/") + NPCNAMES_MALE_FILE;
+        const auto npcFemaleNames = BASE_DATA_DIR + std::string("/") + NPCNAMES_FEMALE_FILE;
+		randomPlayerNamesMale = getLinesFromDataFile(playerMaleNames);
+		randomPlayerNamesFemale = getLinesFromDataFile(playerFemaleNames);
+        randomNPCNamesMale = getLinesFromDataFile(npcMaleNames);
+        randomNPCNamesFemale = getLinesFromDataFile(npcFemaleNames);
+#endif // NINTENDO
 
 		updateLoadingScreen(94);
 
-#ifdef NINTENDO_DEBUG
-		//#error "No DLC support on SWITCH yet :(" //TODO: Resolve this.
-		enabledDLCPack1 = true;
-		enabledDLCPack2 = true;
-#endif
+//#ifdef NINTENDO_DEBUG
+		//enabledDLCPack1 = true;
+		//enabledDLCPack2 = true;
+//#endif
 
 #if defined(USE_EOS) || defined(STEAMWORKS)
 #else
@@ -367,7 +262,7 @@ int initGame()
 		removedEntities.last = NULL;
 		safePacketsSent.first = NULL;
 		safePacketsSent.last = NULL;
-		for ( c = 0; c < MAXPLAYERS; c++ )
+		for ( int c = 0; c < MAXPLAYERS; c++ )
 		{
 			safePacketsReceivedMap[c].clear();
 		}
@@ -384,7 +279,7 @@ int initGame()
 		}
 		command_history.first = NULL;
 		command_history.last = NULL;
-		for ( c = 0; c < MAXPLAYERS; c++ )
+		for ( int c = 0; c < MAXPLAYERS; c++ )
 		{
 			openedChest[c] = NULL;
 		}
@@ -418,12 +313,10 @@ int initGame()
 			stats[c]->clearStats();
 			entitiesToDelete[c].first = nullptr;
 			entitiesToDelete[c].last = nullptr;
-			if ( c == 0 )
-			{
-				initClass(c);
-			}
+			initClass(c);
 			GenericGUI[c].setPlayer(c);
 			FollowerMenu[c].setPlayer(c);
+			CalloutMenu[c].setPlayer(c);
 			cameras[c].winx = 0;
 			cameras[c].winy = 0;
 			cameras[c].winw = xres;
@@ -493,17 +386,20 @@ int initGame()
 		}
 
 		// load extraneous game resources
-		title_bmp = loadImage("images/system/title.png");
-		logo_bmp = loadImage("images/system/logo.png");
-		cursor_bmp = loadImage("images/system/cursor.png");
-		cross_bmp = loadImage("images/system/cross.png");
-		selected_cursor_bmp = loadImage("images/system/selectedcursor.png");
 		if (!loadInterfaceResources())
 		{
 			printlog("Failed to load interface resources.\n");
 			loading_done = true;
 			return -1;
 		}
+
+		loadAchievementData("/data/achievements.json");
+#ifdef LOCAL_ACHIEVEMENTS
+		LocalAchievements.readFromFile();
+#endif
+#ifdef NINTENDO
+		nxPostSDLInit();
+#endif
 	}
 
 	return result;
@@ -517,9 +413,24 @@ int initGame()
 
 -------------------------------------------------------------------------------*/
 
+#include "interface/ui.hpp"
+
 void deinitGame()
 {
-	int c, x;
+    // destroy camera framebuffers
+    constexpr int numFbs = sizeof(view_t::fb) / sizeof(view_t::fb[0]);
+    for (int c = 0; c < MAXPLAYERS; ++c) {
+        for (int i = 0; i < numFbs; ++i) {
+            cameras[c].fb[i].destroy();
+            playerPortraitView[c].fb[i].destroy();
+        }
+    }
+    for (int i = 0; i < numFbs; ++i) {
+        menucam.fb[i].destroy();
+    }
+
+	// destroy enemy hp bar textures
+	EnemyHPDamageBarHandler::dumpCache();
 
 	// send disconnect messages
 	if (multiplayer != SINGLE) {
@@ -535,7 +446,7 @@ void deinitGame()
 	    }
 	    else if ( multiplayer == SERVER )
 	    {
-		    for ( x = 1; x < MAXPLAYERS; x++ )
+		    for ( int x = 1; x < MAXPLAYERS; x++ )
 		    {
 			    if ( client_disconnected[x] == true )
 			    {
@@ -566,6 +477,11 @@ void deinitGame()
 	    }
 	}
 
+	UIToastNotificationManager.term(true);
+#ifdef LOCAL_ACHIEVEMENTS
+	LocalAchievements_t::writeToFile();
+#endif
+
 	saveAllScores(SCORESFILE);
 	saveAllScores(SCORESFILE_MULTIPLAYER);
 	list_FreeAll(&topscores);
@@ -576,33 +492,13 @@ void deinitGame()
 		players[i]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
 	}
 	list_FreeAll(&removedEntities);
-	if ( title_bmp != nullptr )
-	{
-		SDL_FreeSurface(title_bmp);
-	}
-	if ( logo_bmp != nullptr )
-	{
-		SDL_FreeSurface(logo_bmp);
-	}
-	if ( cursor_bmp != nullptr )
-	{
-		SDL_FreeSurface(cursor_bmp);
-	}
-	if ( cross_bmp != nullptr )
-	{
-		SDL_FreeSurface(cross_bmp);
-	}
-	if ( selected_cursor_bmp != nullptr )
-	{
-		SDL_FreeSurface(selected_cursor_bmp);
-	}
 	for ( int i = 0; i < MAXPLAYERS; ++i )
 	{
 		list_FreeAll(&chestInv[i]);
 	}
 	freeInterfaceResources();
 	bookParser_t.deleteBooks();
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		players[c]->inventoryUI.appraisal.timer = 0;
 		players[c]->inventoryUI.appraisal.current_item = 0;
@@ -638,20 +534,20 @@ void deinitGame()
 	}
 	else if ( multiplayer == SERVER )
 	{
-		for ( c = 0; c < MAXPLAYERS; ++c )
+		for ( int c = 0; c < MAXPLAYERS; ++c )
 		{
 			list_FreeAll(&channeledSpells[c]);
 		}
 	}
 
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		list_FreeAll(&players[c]->magic.spellList);
 	}
 	list_FreeAll(&command_history);
 
 	list_FreeAll(&safePacketsSent);
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		safePacketsReceivedMap[c].clear();
 	}
@@ -683,8 +579,10 @@ void deinitGame()
 		bramscastlemusic->release();
 		hamletmusic->release();
 		tutorialmusic->release();
+		gameovermusic->release();
+		introstorymusic->release();
 
-		for ( c = 0; c < NUMMINESMUSIC; c++ )
+		for ( int c = 0; c < NUMMINESMUSIC; c++ )
 		{
 			minesmusic[c]->release();
 		}
@@ -692,7 +590,7 @@ void deinitGame()
 		{
 			free(minesmusic);
 		}
-		for ( c = 0; c < NUMSWAMPMUSIC; c++ )
+		for ( int c = 0; c < NUMSWAMPMUSIC; c++ )
 		{
 			swampmusic[c]->release();
 		}
@@ -700,7 +598,7 @@ void deinitGame()
 		{
 			free(swampmusic);
 		}
-		for ( c = 0; c < NUMLABYRINTHMUSIC; c++ )
+		for ( int c = 0; c < NUMLABYRINTHMUSIC; c++ )
 		{
 			labyrinthmusic[c]->release();
 		}
@@ -708,7 +606,7 @@ void deinitGame()
 		{
 			free(labyrinthmusic);
 		}
-		for ( c = 0; c < NUMRUINSMUSIC; c++ )
+		for ( int c = 0; c < NUMRUINSMUSIC; c++ )
 		{
 			ruinsmusic[c]->release();
 		}
@@ -716,7 +614,7 @@ void deinitGame()
 		{
 			free(ruinsmusic);
 		}
-		for ( c = 0; c < NUMUNDERWORLDMUSIC; c++ )
+		for ( int c = 0; c < NUMUNDERWORLDMUSIC; c++ )
 		{
 			underworldmusic[c]->release();
 		}
@@ -724,7 +622,7 @@ void deinitGame()
 		{
 			free(underworldmusic);
 		}
-		for ( c = 0; c < NUMHELLMUSIC; c++ )
+		for ( int c = 0; c < NUMHELLMUSIC; c++ )
 		{
 			hellmusic[c]->release();
 		}
@@ -732,7 +630,7 @@ void deinitGame()
 		{
 			free(hellmusic);
 		}
-		for ( c = 0; c < NUMMINOTAURMUSIC; c++ )
+		for ( int c = 0; c < NUMMINOTAURMUSIC; c++ )
 		{
 			minotaurmusic[c]->release();
 		}
@@ -740,7 +638,7 @@ void deinitGame()
 		{
 			free(minotaurmusic);
 		}
-		for ( c = 0; c < NUMCAVESMUSIC; c++ )
+		for ( int c = 0; c < NUMCAVESMUSIC; c++ )
 		{
 			cavesmusic[c]->release();
 		}
@@ -748,7 +646,7 @@ void deinitGame()
 		{
 			free(cavesmusic);
 		}
-		for ( c = 0; c < NUMCITADELMUSIC; c++ )
+		for ( int c = 0; c < NUMCITADELMUSIC; c++ )
 		{
 			citadelmusic[c]->release();
 		}
@@ -756,7 +654,7 @@ void deinitGame()
 		{
 			free(citadelmusic);
 		}
-		for ( c = 0; c < NUMINTROMUSIC; c++ )
+		for ( int c = 0; c < NUMINTROMUSIC; c++ )
 		{
 			intromusic[c]->release();
 		}
@@ -773,7 +671,7 @@ void deinitGame()
 
 	// free items
 	printlog( "freeing item data...\n");
-	for ( c = 0; c < NUMITEMS; c++ )
+	for ( int c = 0; c < NUMITEMS; c++ )
 	{
 		list_FreeAll(&items[c].images);
 		node_t* node, *nextnode;
@@ -820,7 +718,7 @@ void deinitGame()
 		cpp_Free_CSteamID(currentLobby); //TODO: Remove these bodges.
 		currentLobby = NULL;
 	}
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		if ( steamIDRemote[c] )
 		{
@@ -828,7 +726,7 @@ void deinitGame()
 			steamIDRemote[c] = NULL;
 		}
 	}
-	for ( c = 0; c < MAX_STEAM_LOBBIES; c++ )
+	for ( int c = 0; c < MAX_STEAM_LOBBIES; c++ )
 	{
 		if ( lobbyIDs[c] )
 		{
@@ -838,30 +736,8 @@ void deinitGame()
 	}
 #endif
 #if defined USE_EOS
-	if ( EOS.CurrentLobbyData.currentLobbyIsValid() )
-	{
-		EOS.leaveLobby();
-
-		Uint32 shutdownTicks = SDL_GetTicks();
-		while ( EOS.CurrentLobbyData.bAwaitingLeaveCallback )
-		{
-#ifdef APPLE
-			SDL_Event event;
-			while ( SDL_PollEvent(&event) != 0 )
-			{
-				//Makes Mac work because Apple had to do it different.
-			}
-#endif
-			EOS_Platform_Tick(EOS.PlatformHandle);
-			SDL_Delay(50);
-			if ( SDL_GetTicks() - shutdownTicks >= 3000 )
-			{
-				break;
-			}
-		}
-	}
-	EOS.AccountManager.deinit();
-	EOS.shutdown();
+	EOS.stop();
+	EOS.quit();
 #endif
 
 	//Close game controller
@@ -896,4 +772,135 @@ void deinitGame()
 #ifdef USE_IMGUI
 	ImGui_t::deinit();
 #endif
+#ifdef USE_PLAYFAB
+	playfabUser.postScoreHandler.deinit();
+#endif
+}
+
+void loadAchievementData(const char* path) {
+	if ( !PHYSFS_getRealDir(path) )
+	{
+		printlog("[JSON]: Error: Could not find file: %s", path);
+		return;
+	}
+
+	std::string inputPath = PHYSFS_getRealDir(path);
+	inputPath.append(path);
+
+	File* fp = FileIO::open(inputPath.c_str(), "rb");
+	if (!fp) {
+		printlog("[JSON]: Error: Could not find file: %s", path);
+		return;
+	}
+
+	char buf[65536];
+	int count = (int)fp->read(buf, sizeof(buf[0]), sizeof(buf));
+	buf[count] = '\0';
+	rapidjson::StringStream is(buf);
+	FileIO::close(fp);
+
+	rapidjson::Document d;
+	d.ParseStream(is);
+
+	if (!d.HasMember("achievements") || !d["achievements"].IsObject()) {
+		printlog("[JSON]: Error: could not parse %s", path);
+		return;
+	}
+	const auto& achievements = d["achievements"].GetObject();
+
+	for (const auto& it : achievements) {
+		if (!it.name.IsString()) {
+			printlog("[JSON]: Error: could not parse %s", path);
+			return;
+		}
+		auto achName = it.name.GetString();
+#ifdef NINTENDO
+		if ( !strcmp(achName, "BARONY_ACH_LOCAL_CUSTOMS") )
+		{
+			continue;
+		}
+#endif
+#ifndef USE_PLAYFAB
+		if ( !strcmp(achName, "BARONY_ACH_BLOOM_PLANTED") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_DUNGEONSEED") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_GROWTH_MINDSET") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_REAP_SOW") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_SPROUTS") )
+		{
+			continue;
+		}
+#endif
+		const auto& ach = it.value.GetObject();
+		if (ach.HasMember("name") && ach["name"].IsString()) {
+			achievementNames[achName] = ach["name"].GetString();
+		}
+		if (ach.HasMember("description") && ach["description"].IsString()) {
+			achievementDesc[achName] = ach["description"].GetString();
+		}
+		if (ach.HasMember("hidden") && ach["hidden"].IsBool()) {
+			if (ach["hidden"].GetBool()) {
+				achievementHidden.emplace(achName);
+			}
+		}
+	}
+
+	sortAchievementsForDisplay();
+}
+
+void sortAchievementsForDisplay()
+{
+	achievementsNeedResort = false;
+
+	// sort achievements list
+	achievementNamesSorted.clear();
+	Comparator compFunctor =
+		[](std::pair<std::string, std::string> lhs, std::pair<std::string, std::string> rhs)
+	{
+		bool ach1 = achievementUnlocked(lhs.first.c_str());
+		bool ach2 = achievementUnlocked(rhs.first.c_str());
+		bool lhsAchIsHidden = (achievementHidden.find(lhs.first) != achievementHidden.end());
+		bool rhsAchIsHidden = (achievementHidden.find(rhs.first) != achievementHidden.end());
+		if ( ach1 && !ach2 )
+		{
+			return true;
+		}
+		else if ( !ach1 && ach2 )
+		{
+			return false;
+		}
+		else if ( !ach1 && !ach2 && (lhsAchIsHidden || rhsAchIsHidden) )
+		{
+			if ( lhsAchIsHidden && rhsAchIsHidden )
+			{
+				return lhs.second < rhs.second;
+			}
+			if ( !lhsAchIsHidden )
+			{
+				return true;
+			}
+			if ( !rhsAchIsHidden )
+			{
+				return false;
+			}
+			return lhs.second < rhs.second;
+		}
+		else
+		{
+			return lhs.second < rhs.second;
+		}
+	};
+	std::set<std::pair<std::string, std::string>, Comparator> sorted(achievementNames.begin(), achievementNames.end(), compFunctor);
+	achievementNamesSorted.swap(sorted);
 }

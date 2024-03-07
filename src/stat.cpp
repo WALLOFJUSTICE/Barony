@@ -22,6 +22,169 @@
 
 Stat* stats[MAXPLAYERS];
 
+int Stat::getGoldWeight() const
+{
+	bool cursedItemIsBuff = false;
+	bool isPlayer = false;
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( this == stats[i] )
+		{
+			isPlayer = true;
+			break;
+		}
+	}
+	if ( isPlayer )
+	{
+		cursedItemIsBuff = shouldInvertEquipmentBeatitude(this);
+	}
+
+	int weight = GOLD / 100;
+	if ( mask && mask->type == MASK_GOLDEN )
+	{
+		real_t equipmentBonus = 100.0;
+		if ( mask->beatitude >= 0 || cursedItemIsBuff )
+		{
+			equipmentBonus -= 50.0 * (1 + abs(mask->beatitude));
+			equipmentBonus = std::max(-50.0, equipmentBonus);
+		}
+		else
+		{
+			equipmentBonus -= 50.0 * (abs(mask->beatitude));
+			equipmentBonus = std::max(0.0, equipmentBonus);
+		}
+
+		weight *= (equipmentBonus / 100.0);
+	}
+
+	return weight;
+}
+
+int Stat::maxEquipmentBonusToSkill = 25;
+Sint32 Stat::getModifiedProficiency(int skill) const
+{
+	if ( !(skill >= 0 && skill < NUMPROFICIENCIES) )
+	{
+		return 0;
+	}
+
+	Sint32 base = std::min(100, std::max(0, PROFICIENCIES[skill]));
+	Sint32 equipmentBonus = 0;
+
+	bool cursedItemIsBuff = false;
+	bool isPlayer = false;
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( this == stats[i] )
+		{
+			isPlayer = true;
+			break;
+		}
+	}
+	if ( isPlayer )
+	{
+		cursedItemIsBuff = shouldInvertEquipmentBeatitude(this);
+	}
+
+	if ( mask )
+	{
+		if ( mask->type == MASK_HAZARD_GOGGLES && skill == PRO_ALCHEMY )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(mask->beatitude) * 10;
+			}
+		}
+		else if ( mask->type == MASK_GOLDEN && skill == PRO_TRADING )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= 999;
+			}
+		}
+		else if ( (mask->type == MASK_STEEL_VISOR || mask->type == MASK_CRYSTAL_VISOR)
+			&& (skill == PRO_SWORD || skill == PRO_AXE || skill == PRO_POLEARM || skill == PRO_MACE) )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 5);
+			}
+			else
+			{
+				equipmentBonus -= abs(mask->beatitude) * 5;
+			}
+		}
+		else if ( (mask->type == MASK_ARTIFACT_VISOR)
+			&& (skill == PRO_SWORD || skill == PRO_AXE || skill == PRO_POLEARM || skill == PRO_MACE) )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(mask->beatitude) * 10;
+			}
+		}
+	}
+	if ( helmet )
+	{
+		if ( helmet->type == HAT_PLUMED_CAP && skill == PRO_LEADERSHIP )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 10;
+			}
+		}
+		else if ( helmet->type == HAT_BOUNTYHUNTER && skill == PRO_RANGED )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 10;
+			}
+		}
+		else if ( helmet->type == HAT_HOOD_WHISPERS && skill == PRO_STEALTH )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 10;
+			}
+		}
+		else if ( (helmet->type == HAT_CIRCLET || helmet->type == HAT_CIRCLET_WISDOM) && skill == PRO_SPELLCASTING )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 10;
+			}
+		}
+	}
+
+	return std::min(100, std::max(0, base + equipmentBonus));
+}
 
 //Destructor
 Stat::~Stat()
@@ -164,8 +327,11 @@ void Stat::clearStats()
 {
 	int x;
 
-	strcpy(this->obituary, language[1500]);
+	strcpy(this->obituary, Language::get(1500));
 	this->killer = KilledBy::UNKNOWN;
+	this->killer_monster = NOTHING;
+	this->killer_item = WOODEN_SHIELD;
+	this->killer_name = "";
 	this->poisonKiller = 0;
 	this->HP = DEFAULT_HP;
 	this->MAXHP = DEFAULT_HP;
@@ -234,6 +400,8 @@ void Stat::clearStats()
 			break;
 		}
 	}
+	this->attributes.clear();
+	this->player_lootbags.clear();
 
 	freePlayerEquipment();
 	list_FreeAll(&this->inventory);
@@ -639,6 +807,7 @@ Stat* Stat::copyStats()
 	newStat->magic_effects.first = NULL;
 	newStat->magic_effects.last = NULL;
 	newStat->attributes = this->attributes;
+	newStat->player_lootbags = this->player_lootbags;
 	return newStat;
 }
 
@@ -689,8 +858,12 @@ int Stat::pickRandomEquippedItemToDegradeOnHit(Item** returnItem, bool excludeWe
 	{
 		excludeShield = true;
 	}
-	Item* maskItem = mask; // exclude mask
-	mask = nullptr;
+	Item* maskItem = mask; 
+	if ( mask && !Item::doesItemProvideBeatitudeAC(mask->type) )
+	{
+		// exclude mask
+		mask = nullptr;
+	}
 	int result = pickRandomEquippedItem(returnItem, excludeWeapon, excludeShield, excludeArmor, excludeJewelry);
 	mask = maskItem;
 	return result;
@@ -819,7 +992,7 @@ int Stat::pickRandomEquippedItem(Item** returnItem, bool excludeWeapon, bool exc
 	return equipNum[roll];
 }
 
-char* getSkillLangEntry(int skill)
+const char* getSkillLangEntry(int skill)
 {
 	int langEntry = 236 + skill;
 	if ( skill == PRO_UNARMED )
@@ -830,7 +1003,7 @@ char* getSkillLangEntry(int skill)
 	{
 		langEntry = 3340;
 	}
-	return language[langEntry];
+	return Language::get(langEntry);
 }
 
 void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
@@ -1230,7 +1403,7 @@ int Stat::getActiveShieldBonus(bool checkShield) const
 {
 	if ( !checkShield )
 	{
-		return (5 + (PROFICIENCIES[PRO_SHIELD] / 5));
+		return (5 + (getModifiedProficiency(PRO_SHIELD) / 5));
 	}
 
 	if ( shield )
@@ -1239,7 +1412,7 @@ int Stat::getActiveShieldBonus(bool checkShield) const
 		{
 			return 0;
 		}
-		return (5 + (PROFICIENCIES[PRO_SHIELD] / 5));
+		return (5 + (getModifiedProficiency(PRO_SHIELD) / 5));
 	}
 	else
 	{
@@ -1251,7 +1424,7 @@ int Stat::getPassiveShieldBonus(bool checkShield) const
 {
 	if ( !checkShield )
 	{
-		return (PROFICIENCIES[PRO_SHIELD] / 25);
+		return (getModifiedProficiency(PRO_SHIELD) / 25);
 	}
 
 	if ( shield )
@@ -1261,10 +1434,157 @@ int Stat::getPassiveShieldBonus(bool checkShield) const
 		{
 			return 0;
 		}
-		return (PROFICIENCIES[PRO_SHIELD] / 25);
+		return (getModifiedProficiency(PRO_SHIELD) / 25);
 	}
 	else
 	{
 		return 0;
 	}
+}
+
+bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
+{
+	switch ( effect )
+	{
+		case EFF_ASLEEP:
+		case EFF_POISONED:
+		case EFF_CONFUSED:
+		case EFF_BLIND:
+		case EFF_GREASY:
+		case EFF_MESSY:
+		case EFF_PARALYZED:
+		case EFF_BLEEDING:
+		case EFF_SLOW:
+		case EFF_PACIFY:
+		case EFF_WEBBED:
+		case EFF_FEAR:
+		case EFF_DISORIENTED:
+			return true;
+			break;
+		case EFF_DRUNK:
+			if ( this->type == GOATMAN
+				|| (my && my->behavior == &actPlayer 
+					&& playerRace == RACE_GOATMAN && appearance == 0) )
+			{
+				return false;
+			}
+			return true;
+			break;
+		default:
+			break;
+	}
+	return false;
+}
+
+Uint32 Stat::getLootingBagKey(const int player)
+{
+	Uint32 lootingBagKey = player & 0xF;
+	Uint16 levelKey = currentlevel & 0xFFF;
+	levelKey |= ((secretlevel ? 1 : 0) << 11);
+	lootingBagKey |= (levelKey << 4);
+
+	return lootingBagKey;
+}
+
+void Stat::addItemToLootingBag(const int player, const real_t x, const real_t y, Item& item)
+{
+	Uint32 lootingBagKey = getLootingBagKey(player);
+	if ( player_lootbags.find(lootingBagKey) == player_lootbags.end() )
+	{
+		player_lootbags[lootingBagKey].spawn_x = x;
+		player_lootbags[lootingBagKey].spawn_y = y;
+
+		if ( !player_lootbags[lootingBagKey].spawnedOnGround )
+		{
+			Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
+			entity->flags[INVISIBLE] = true;
+			entity->flags[UPDATENEEDED] = true;
+			entity->x = x;
+			entity->y = y;
+			entity->sizex = 4;
+			entity->sizey = 4;
+			entity->yaw = (local_rng.rand() % 360) * (PI / 180.f);
+			entity->vel_x = 0.0;
+			entity->vel_y = 0.0;
+			entity->vel_z = -.5;
+			entity->flags[PASSABLE] = true;
+			entity->flags[USERFLAG1] = true;
+			entity->behavior = &actItem;
+			entity->skill[10] = TOOL_PLAYER_LOOT_BAG;
+			entity->skill[11] = WORN;
+			entity->skill[12] = 0;
+			entity->skill[13] = 1;
+			entity->skill[14] = lootingBagKey;
+			entity->skill[15] = true;
+		}
+		
+		player_lootbags[lootingBagKey].spawnedOnGround = true;
+	}
+	auto& loot = player_lootbags[lootingBagKey];
+	loot.items.push_back(Item());
+	auto& i = loot.items.back();
+	copyItem(&i, &item);
+
+	if ( item.type >= ARTIFACT_SWORD && item.type <= ARTIFACT_GLOVES )
+	{
+		if ( itemIsEquipped(&item, player) )
+		{
+			steamAchievementClient(player, "BARONY_ACH_CHOSEN_ONE");
+		}
+	}
+}
+
+bool Stat::emptyLootingBag(const int player, Uint32 key)
+{
+	if ( multiplayer == CLIENT )
+	{
+		return false;
+	}
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( stats[i] && stats[i]->player_lootbags.find(key) != stats[i]->player_lootbags.end() )
+		{
+			messagePlayer(player, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(4332));
+			if ( !stats[i]->player_lootbags[key].looted )
+			{
+				for ( auto& item_loot : stats[i]->player_lootbags[key].items )
+				{
+					//dropItemMonster(&item, players[i]->entity, stats[i], item.count);
+					Item* item2 = newItem(item_loot.type, item_loot.status, 
+						item_loot.beatitude, item_loot.count, item_loot.appearance, item_loot.identified, nullptr);
+					if ( item2 )
+					{
+						int pickedUpCount = item2->count;
+						Item* item = itemPickup(player, item2);
+						if ( item )
+						{
+							if ( players[player]->isLocalPlayer() )
+							{
+								// item is the new inventory stack for server, free the picked up items
+								free(item2);
+								int oldcount = item->count;
+								item->count = pickedUpCount;
+								//messagePlayer(i, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(504), item->description());
+								item->count = oldcount;
+							}
+							else
+							{
+								//messagePlayer(i, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(504), item->description());
+								free(item); // item is the picked up items (item == item2)
+							}
+						}
+					}
+					if ( !stats[i]->player_lootbags[key].looted )
+					{
+						playSoundEntity(players[player]->entity, 558, 64);
+						playSoundEntity(players[player]->entity, 35 + local_rng.rand() % 3, 64);
+					}
+					stats[i]->player_lootbags[key].looted = true;
+				}
+			}
+			stats[i]->player_lootbags.erase(key);
+			return true;
+		}
+	}
+	return false;
 }

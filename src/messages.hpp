@@ -28,9 +28,6 @@ typedef struct Message
 {
 	string_t* text; //Same size as the message in draw.c. Make sure not to overrun it.
 
-	//Its location (durr).
-	int x, y;
-
 	//The time it's been displayed so far.
 	int time_displayed;
 
@@ -48,6 +45,8 @@ typedef struct Message
 	 * To ensure everything always works right. I guess. Maybe not necessary. Whatever. There are much bigger problems to worry about.
 	 */
 	Sint16 alpha;
+
+	static const int CHAT_MESSAGE_SFX = 238;
 } Message;
 
 /*

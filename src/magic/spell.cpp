@@ -19,6 +19,8 @@
 #include "../net.hpp"
 #include "../player.hpp"
 #include "magic.hpp"
+#include "../mod_tools.hpp"
+#include "../ui/GameUI.hpp"
 
 list_t channeledSpells[MAXPLAYERS];
 
@@ -72,6 +74,7 @@ spellElement_t spellElement_salvageItem;
 spellElement_t spellElement_flutter;
 spellElement_t spellElement_dash;
 spellElement_t spellElement_selfPolymorph;
+spellElement_t spellElement_ghostBolt;
 
 spell_t spell_forcebolt;
 spell_t spell_magicmissile;
@@ -126,6 +129,7 @@ spell_t spell_salvageItem;
 spell_t spell_flutter;
 spell_t spell_dash;
 spell_t spell_polymorph;
+spell_t spell_ghost_bolt;
 
 bool addSpell(int spell, int player, bool ignoreSkill)
 {
@@ -303,6 +307,9 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 		case SPELL_CRAB_WEB:
 			new_spell = copySpell(&spell_sprayWeb);
 			break;
+		case SPELL_GHOST_BOLT:
+			new_spell = copySpell(&spell_ghost_bolt);
+			break;
 		default:
 			return false;
 	}
@@ -346,33 +353,39 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 			else if ( foundNormalSpell )
 			{
 				// can't learn, already have it.
-				messagePlayer(player, MESSAGE_STATUS, language[439], new_spell->name);
+				messagePlayer(player, MESSAGE_STATUS, Language::get(439), new_spell->getSpellName());
 				spellDeconstructor((void*)new_spell);
+				playSoundPlayer(player, 90, 64);
 				return false;
 			}
 		}
 		else
 		{
 			// can't learn, already have it.
-			messagePlayer(player, MESSAGE_STATUS, language[439], new_spell->name);
+			if ( !(spell == SPELL_FORCEBOLT && skillCapstoneUnlocked(player, PRO_SPELLCASTING)) )
+			{
+				messagePlayer(player, MESSAGE_STATUS, Language::get(439), new_spell->getSpellName());
+			}
 			spellDeconstructor((void*)new_spell);
 			return false;
 		}
 	}
-	int skillLVL = stats[player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[player], players[player]->entity);
-	if ( stats[player]->PROFICIENCIES[PRO_MAGIC] >= 100 )
+	int skillLVL = stats[player]->getModifiedProficiency(PRO_MAGIC) + statGetINT(stats[player], players[player]->entity);
+	if ( stats[player]->getModifiedProficiency(PRO_MAGIC) >= 100 )
 	{
 		skillLVL = 100;
 	}
 	if ( !ignoreSkill && skillLVL < new_spell->difficulty )
 	{
-		messagePlayer(player, MESSAGE_PROGRESSION, language[440]);
+		messagePlayer(player, MESSAGE_PROGRESSION, Language::get(440));
 		spellDeconstructor((void*)new_spell);
+		playSoundPlayer(player, 90, 64);
 		return false;
 	}
 	if ( !intro )
 	{
-		messagePlayer(player, MESSAGE_PROGRESSION, language[441], new_spell->name);
+		messagePlayer(player, MESSAGE_PROGRESSION, Language::get(441), new_spell->getSpellName());
+		skillUpAnimation[player].addSpellLearned(new_spell->ID);
 	}
 	node = list_AddNodeLast(&players[player]->magic.spellList);
 	node->element = new_spell;
@@ -393,6 +406,21 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 		if ( !intro )
 		{
 			pickedUp->notifyIcon = true;
+			if ( players[player]->magic.spellbookUidFromHotbarSlot != 0 )
+			{
+				if ( autoAddHotbarFilter(*pickedUp) )
+				{
+					for ( auto& slot : players[player]->hotbar.slots() )
+					{
+						if ( slot.item == players[player]->magic.spellbookUidFromHotbarSlot )
+						{
+							slot.item = pickedUp->uid;
+							break;
+						}
+					}
+				}
+				players[player]->magic.spellbookUidFromHotbarSlot = 0;
+			}
 		}
 	}
 	free(item);
@@ -410,7 +438,7 @@ spell_t* newSpell()
 void spellConstructor(spell_t* spell)
 {
 	spell->ID = -1;
-	strcpy(spell->name, "Spell");
+	strcpy(spell->spell_internal_name, "spell_default");
 	spell->elements.first = NULL;
 	spell->elements.last = NULL;
 	spell->sustain = true;
@@ -452,7 +480,7 @@ void spellElementConstructor(spellElement_t* element)
 	element->damage = 0;
 	element->duration = 0;
 	element->can_be_learned = true;
-	strcpy(element->name, "New Element");
+	strcpy(element->element_internal_name, "element_default");
 	element->elements.first = NULL;
 	element->elements.last = NULL;
 	element->node = NULL;
@@ -602,7 +630,7 @@ bool spell_isChanneled(spell_t* spell)
 	return false;
 }
 
-real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spellElement_t* spellElement)
+real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spellElement_t* spellElement, int spellID)
 {
 	if ( caster && caster->behavior != &actPlayer )
 	{
@@ -614,12 +642,71 @@ real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spell
 		casterStats = caster->getStats();
 	}
 
+	real_t bonus = 0.0;
 	int INT = statGetINT(casterStats, caster);
 	if ( INT > 0 )
 	{
-		return INT / 100.0;
+		bonus += INT / 100.0;
 	}
-	return 0.0;
+
+	if ( casterStats )
+	{
+		if ( casterStats->helmet )
+		{
+			if ( casterStats->helmet->type == HAT_MITER )
+			{
+				real_t hatBonus = 0.0;
+				if ( casterStats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(casterStats) )
+				{
+					hatBonus += (0.10 + (0.05 * abs(casterStats->helmet->beatitude)));
+				}
+				else
+				{
+					hatBonus -= ((0.10 * abs(casterStats->helmet->beatitude)));
+				}
+				if ( spellID == SPELL_HEALING || spellID == SPELL_EXTRAHEALING )
+				{
+					hatBonus *= 2;
+				}
+				bonus += hatBonus;
+			}
+			else if ( casterStats->helmet->type == HAT_HEADDRESS )
+			{
+				real_t hatBonus = 0.0;
+				if ( casterStats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(casterStats) )
+				{
+					hatBonus += (0.10 + (0.05 * abs(casterStats->helmet->beatitude)));
+				}
+				else
+				{
+					hatBonus -= ((0.10 * abs(casterStats->helmet->beatitude)));
+				}
+				if ( ItemTooltips.spellItems.find(spellID) != ItemTooltips.spellItems.end() )
+				{
+					auto& entry = ItemTooltips.spellItems[spellID];
+					if ( entry.spellTags.find(ItemTooltips_t::SpellTagTypes::SPELL_TAG_DAMAGE) != entry.spellTags.end() )
+					{
+						hatBonus *= 2;
+					}
+				}
+				bonus += hatBonus;
+			}
+			else if ( casterStats->helmet->type == HAT_CIRCLET
+				|| casterStats->helmet->type == HAT_CIRCLET_WISDOM )
+			{
+				if ( casterStats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(casterStats) )
+				{
+					bonus += (0.05 + (0.05 * abs(casterStats->helmet->beatitude)));
+				}
+				else
+				{
+					bonus -= ((0.05 * abs(casterStats->helmet->beatitude)));
+				}
+			}
+		}
+	}
+	
+	return bonus;
 }
 
 bool spellElement_isChanneled(spellElement_t* spellElement)
@@ -647,9 +734,18 @@ void equipSpell(spell_t* spell, int playernum, Item* spellItem)
 	if ( players[playernum]->isLocalPlayer() )
 	{
 		players[playernum]->magic.equipSpell(spell);
-		messagePlayer(playernum, MESSAGE_MISC, language[442], spell->name);
+		messagePlayer(playernum, MESSAGE_MISC, Language::get(442), spell->getSpellName());
 		players[playernum]->magic.selected_spell_last_appearance = spellItem->appearance; // to keep track of shapeshift/normal spells.
 	}
+}
+
+const char* spell_t::getSpellName()
+{
+	if ( ItemTooltips.spellItems.find(ID) != ItemTooltips.spellItems.end() )
+	{
+		return ItemTooltips.spellItems[ID].name.c_str();
+	}
+	return "";
 }
 
 spell_t* getSpellFromID(int ID)
@@ -822,6 +918,9 @@ spell_t* getSpellFromID(int ID)
 		    break;
 		case SPELL_CRAB_WEB:
 			spell = &spell_sprayWeb;
+			break;
+		case SPELL_GHOST_BOLT:
+			spell = &spell_ghost_bolt;
 			break;
 		default:
 			break;
@@ -997,6 +1096,9 @@ int getSpellbookFromSpellID(int spellID)
 		case SPELL_CRAB_WEB:
 			itemType = SPELLBOOK_10;
 			break;
+		case SPELL_GHOST_BOLT:
+			itemType = SPELLBOOK_9;
+			break;
 		default:
 			break;
 	}
@@ -1167,12 +1269,12 @@ void spell_changeHealth(Entity* entity, int amount, bool overdrewFromHP)
 			if ( overdrewFromHP )
 			{
 				Uint32 color = makeColorRGB(255, 255, 255);
-				messagePlayerColor(player, MESSAGE_STATUS, color, language[3400]);
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3400));
 			}
 			else
 			{
 				Uint32 color = makeColorRGB(0, 255, 0);
-				messagePlayerColor(player, MESSAGE_STATUS, color, language[443]);
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(443));
 			}
 		}
 		else
@@ -1180,11 +1282,11 @@ void spell_changeHealth(Entity* entity, int amount, bool overdrewFromHP)
 			Uint32 color = makeColorRGB(255, 255, 0);
 			if (amount == 0)
 			{
-				messagePlayerColor(player, MESSAGE_COMBAT, color, language[444]);
+				messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(444));
 			}
 			else
 			{
-				messagePlayerColor(player, MESSAGE_COMBAT, color, language[445]);
+				messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(445));
 			}
 		}
 

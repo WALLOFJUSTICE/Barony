@@ -17,6 +17,8 @@
 #define DEFAULT_PORT 57165
 #define LOBBY_CHATBOX_LENGTH 62
 #define PACKET_LIMIT 200
+#define TIMEOUT_TIME 60
+#define TIMEOUT_WARNING_TIME 5
 
 extern char lobbyChatbox[LOBBY_CHATBOX_LENGTH];
 extern list_t lobbyChatboxMessages;
@@ -54,7 +56,7 @@ void serverSendItemToPickupAndEquip(int player, Item* item);
 void serverUpdateAllyStat(int player, Uint32 uidToUpdate, int LVL, int HP, int MAXHP, int type);
 void serverUpdatePlayerSummonStrength(int player);
 void serverUpdateAllyHP(int player, Uint32 uidToUpdate, int HP, int MAXHP, bool guarantee = false);
-void sendMinimapPing(Uint8 player, Uint8 x, Uint8 y);
+void sendMinimapPing(Uint8 player, Uint8 x, Uint8 y, Uint8 pingType = 0);
 void sendAllyCommandClient(int player, Uint32 uid, int command, Uint8 x, Uint8 y, Uint32 targetUid = 0);
 enum NetworkingLobbyJoinRequestResult : int
 {
@@ -86,6 +88,8 @@ const Uint32 SV_FLAG_CLASSIC = 1 << 6;
 const Uint32 SV_FLAG_KEEPINVENTORY = 1 << 7;
 const Uint32 SV_FLAG_LIFESAVING = 1 << 8;
 const Uint32 NUM_SERVER_FLAGS =  9;
+
+extern bool keepInventoryGlobal;
 
 class SteamPacketWrapper
 {
@@ -138,3 +142,44 @@ int EOSPacketThread(void* data);
 void deleteMultiplayerSaveGames(); //Server function, deletes its own save and broadcasts delete packet to clients.
 
 void handleScanPacket(); // when we receive a SCAN packet (request for lobby info)
+
+struct PingNetworkStatus_t
+{
+	std::map<Uint32, Uint32> pings;
+	Uint32 lastPingtime = 0;
+	Uint32 lastSequence = 0;
+	Uint32 oldestSequenceTicks = 0;
+	Uint32 sequence = 0;
+	Uint32 displayMillis = 0;
+	Uint32 displayMillisImmediate = 0;
+	Uint32 hudDisplayOKTicks = 0;
+	bool needsUpdate = true;
+	void saveDisplayMillis(bool forceUpdate = false);
+	void clear()
+	{
+		pings.clear();
+		needsUpdate = true;
+		hudDisplayOKTicks = 0;
+		lastPingtime = 0;
+		lastSequence = 0;
+		oldestSequenceTicks = 0;
+		displayMillis = 0;
+		sequence = 0;
+		displayMillisImmediate = 0;
+	}
+	static bool bEnabled;
+	static int pingLimitGreen;
+	static int pingLimitYellow;
+	static int pingLimitOrange;
+	static bool pingHUDDisplayGreen;
+	static bool pingHUDDisplayYellow;
+	static bool pingHUDDisplayOrange;
+	static bool pingHUDDisplayRed;
+	static bool pingHUDShowOKBriefly;
+	static bool pingHUDShowNumericValue;
+	static void receive();
+	static void respond();
+	static void update();
+	static void reset();
+};
+extern PingNetworkStatus_t PingNetworkStatus[MAXPLAYERS];

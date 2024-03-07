@@ -90,10 +90,11 @@ void actHeadstone(Entity* my)
 
 	if ( !HEADSTONE_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
 		my->createWorldUITooltip();
 		HEADSTONE_INIT = 1;
-		HEADSTONE_MESSAGE = local_rng.rand();
-		HEADSTONE_GHOUL = (local_rng.rand() % 4 == 0);
+		HEADSTONE_MESSAGE = rng.rand();
+		HEADSTONE_GHOUL = (rng.rand() % 4 == 0);
 	}
 
 	bool shouldspawn = false;
@@ -108,16 +109,16 @@ void actHeadstone(Entity* my)
 			{
 				if (inrange[i])
 				{
-					//messagePlayer(i, MESSAGE_INTERACTION, language[485 + HEADSTONE_MESSAGE % 17]);
+					//messagePlayer(i, MESSAGE_INTERACTION, Language::get(485 + HEADSTONE_MESSAGE % 17));
 					players[i]->worldUI.worldTooltipDialogue.createDialogueTooltip(my->getUID(),
 						Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_GRAVE,
-						language[485 + HEADSTONE_MESSAGE % 17]);
+						Language::get(485 + HEADSTONE_MESSAGE % 17));
 
 					if ( HEADSTONE_GHOUL && !HEADSTONE_FIRED )
 					{
 						shouldspawn = true;
 						Uint32 color = makeColorRGB(255, 128, 0);
-						messagePlayerColor(i, MESSAGE_INTERACTION, color, language[502]);
+						messagePlayerColor(i, MESSAGE_INTERACTION, color, Language::get(502));
 					}
 				}
 			}
@@ -135,6 +136,8 @@ void actHeadstone(Entity* my)
 			Entity* monster = summonMonsterNoSmoke(GHOUL, my->x, my->y, false);
 			if ( monster )
 			{
+				auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+				monster->seedEntityRNG(rng.getU32());
 				monster->z = 13;
 				if ( currentlevel >= 15 || !strncmp(map.name, "The Haunted Castle", 18) )
 				{

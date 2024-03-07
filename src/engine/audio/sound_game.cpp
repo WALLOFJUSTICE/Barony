@@ -18,6 +18,7 @@
 #include "../../entity.hpp"
 #include "../../net.hpp"
 #include "../../player.hpp"
+#include "../../ui/GameUI.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -38,6 +39,10 @@ FMOD::ChannelGroup* getChannelGroupForSoundIndex(Uint32 snd)
 	if ( snd == 149 )
 	{
 		return soundAmbient_group;
+	}
+	if ( SkillUpAnimation_t::soundIndexUsedForNotification(snd) )
+	{
+		return soundNotification_group;
 	}
 	return sound_group;
 }
@@ -65,6 +70,41 @@ FMOD::Channel* playSoundPlayer(int player, Uint16 snd, Uint8 vol)
 			return nullptr;
 		}
 		memcpy(net_packet->data, "SNDG", 4);
+		SDLNet_Write16(snd, &net_packet->data[4]);
+		net_packet->data[6] = vol;
+		net_packet->address.host = net_clients[player - 1].host;
+		net_packet->address.port = net_clients[player - 1].port;
+		net_packet->len = 7;
+		sendPacketSafe(net_sock, -1, net_packet, player - 1);
+		return nullptr;
+	}
+
+	return nullptr;
+}
+
+FMOD::Channel* playSoundNotificationPlayer(int player, Uint16 snd, Uint8 vol)
+{
+	if ( no_sound )
+	{
+		return nullptr;
+	}
+
+
+	if ( player < 0 || player >= MAXPLAYERS )   //Perhaps this can be reprogrammed to remove MAXPLAYERS, and use a pointer to the player instead of an int?
+	{
+		return nullptr;
+	}
+	if ( players[player]->isLocalPlayer() )
+	{
+		return playSoundNotification(snd, vol);
+	}
+	else if ( multiplayer == SERVER )
+	{
+		if ( client_disconnected[player] || player <= 0 )
+		{
+			return nullptr;
+		}
+		memcpy(net_packet->data, "SNDN", 4);
 		SDLNet_Write16(snd, &net_packet->data[4]);
 		net_packet->data[6] = vol;
 		net_packet->address.host = net_clients[player - 1].host;
@@ -145,9 +185,9 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 	}
 
 	FMOD_VECTOR position;
-	position.x = -y / 16; //Left/right.
-	position.y = 0; //Up/down. //Should be z, but that's not passed. Ignore? Ignoring. Useful for sounds in the floor and ceiling though.
-	position.z = -x / 16; //Forward/backward.
+	position.x = (float)(x / (real_t)16.0);
+	position.y = (float)(0.0);
+	position.z = (float)(y / (real_t)16.0);
 
 	if ( soundAmbient_group && getChannelGroupForSoundIndex(snd) == soundAmbient_group )
 	{
@@ -158,8 +198,8 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 			FMOD::Channel* c;
 			if ( soundAmbient_group->getChannel(i, &c) == FMOD_RESULT::FMOD_OK )
 			{
-				//float audibility = 0.f;
-				//FMOD_Channel_GetAudibility(c, &audibility);
+				float audibility = 0.f;
+				c->getAudibility(&audibility);
 				float volume = 0.f;
 				c->getVolume(&volume);
 				FMOD_VECTOR playingPosition;
@@ -177,7 +217,7 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 		}
 	}
 
-	fmod_result = fmod_system->playSound(sounds[snd], sound_group, true, &channel);
+	fmod_result = fmod_system->playSound(sounds[snd], getChannelGroupForSoundIndex(snd), true, &channel);
 	if (FMODErrorCheck())
 	{
 		return nullptr;
@@ -185,7 +225,7 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 
 	channel->setVolume(vol / 255.f);
 	channel->set3DAttributes(&position, nullptr);
-	//FMOD_Channel_SetChannelGroup(channel, getChannelGroupForSoundIndex(snd)); //No complement/not needed in FMOD Studio?
+    channel->setMode(FMOD_3D_WORLDRELATIVE);
 	channel->setPaused(false);
 
 	return channel;
@@ -249,20 +289,58 @@ FMOD::Channel* playSound(Uint16 snd, Uint8 vol)
 	{
 		return nullptr;
 	}
+	FMOD::Channel* channel = nullptr;
+	fmod_result = fmod_system->playSound(sounds[snd], getChannelGroupForSoundIndex(snd), true, &channel);
+    if (fmod_result == FMOD_OK && channel) {
+        //Faux 3D. Set to 0 and then set the channel's mode to be relative  to the player's head to achieve global sound.
+        FMOD_VECTOR position;
+        position.x = 0.f;
+        position.y = 0.f;
+        position.z = 0.f;
+        
+        channel->setVolume(vol / 255.f);
+        channel->set3DAttributes(&position, nullptr);
+        channel->setMode(FMOD_3D_HEADRELATIVE);
+        
+        if (FMODErrorCheck())
+        {
+            return nullptr;
+        }
+        channel->setPaused(false);
+    }
+	return channel;
+}
+
+FMOD::Channel* playSoundNotification(Uint16 snd, Uint8 vol)
+{
+	if ( no_sound )
+	{
+		return nullptr;
+	}
+#ifndef SOUND
+	return nullptr;
+#endif
+	if ( !fmod_system || snd < 0 || snd >= numsounds || !getChannelGroupForSoundIndex(snd) )
+	{
+		return nullptr;
+	}
+	if ( sounds[snd] == nullptr || vol == 0 )
+	{
+		return nullptr;
+	}
 	FMOD::Channel* channel;
-	fmod_result = fmod_system->playSound(sounds[snd], sound_group, true, &channel);
+	fmod_result = fmod_system->playSound(sounds[snd], music_notification_group, true, &channel);
 	//Faux 3D. Set to 0 and then set the channel's mode to be relative  to the player's head to achieve global sound.
 	FMOD_VECTOR position;
-	position.x = 0;
-	position.y = 0;
-	position.z = 0;
+	position.x = 0.f;
+	position.y = 0.f;
+	position.z = 0.f;
 
-	channel->set3DAttributes(&position, nullptr);
-	//FMOD_Channel_SetChannelGroup(channel, sound_group);
 	channel->setVolume(vol / 255.f);
+	channel->set3DAttributes(&position, nullptr);
 	channel->setMode(FMOD_3D_HEADRELATIVE);
 
-	if (FMODErrorCheck())
+	if ( FMODErrorCheck() )
 	{
 		return nullptr;
 	}
@@ -1052,4 +1130,43 @@ void* playSoundPlayer(int player, Uint16 snd, Uint8 vol)
 	return NULL;
 }
 
+void* playSoundNotification(Uint16 snd, Uint8 vol)
+{
+	return nullptr;
+}
+
+void* playSoundNotificationPlayer(int player, Uint16 snd, Uint8 vol)
+{
+	if ( no_sound )
+	{
+		return nullptr;
+	}
+
+
+	if ( player < 0 || player >= MAXPLAYERS )   //Perhaps this can be reprogrammed to remove MAXPLAYERS, and use a pointer to the player instead of an int?
+	{
+		return nullptr;
+	}
+	if ( players[player]->isLocalPlayer() )
+	{
+		return playSoundNotification(snd, vol);
+	}
+	else if ( multiplayer == SERVER )
+	{
+		if ( client_disconnected[player] || player <= 0 )
+		{
+			return nullptr;
+		}
+		memcpy(net_packet->data, "SNDN", 4);
+		SDLNet_Write16(snd, &net_packet->data[4]);
+		net_packet->data[6] = vol;
+		net_packet->address.host = net_clients[player - 1].host;
+		net_packet->address.port = net_clients[player - 1].port;
+		net_packet->len = 7;
+		sendPacketSafe(net_sock, -1, net_packet, player - 1);
+		return nullptr;
+	}
+
+	return nullptr;
+}
 #endif

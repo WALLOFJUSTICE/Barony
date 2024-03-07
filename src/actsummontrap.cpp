@@ -34,7 +34,7 @@ See LICENSE for details.
 
 void actSummonTrap(Entity* my)
 {
-	if ( my->skill[28] == 0 || (SUMMONTRAP_INITIALIZED && SUMMONTRAP_FIRED) )
+	if ( !my || my->skill[28] == 0 || (SUMMONTRAP_INITIALIZED && SUMMONTRAP_FIRED) )
 	{
 		return;
 	}
@@ -54,6 +54,8 @@ void actSummonTrap(Entity* my)
 
 			if ( !SUMMONTRAP_FIRED && SUMMONTRAP_SPAWNCYCLES > 0 )
 			{
+				auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 				bool useCustomMonsters = monsterCurveCustomManager.curveExistsForCurrentMapName(map.name);
 				bool fixedCustomMonster = true;
 				Monster customMonsterType = NOTHING;
@@ -95,7 +97,7 @@ void actSummonTrap(Entity* my)
 							possibleTypes.push_back(mon);
 						}
 					}
-	                SUMMONTRAP_MONSTER = possibleTypes.at(local_rng.rand() % possibleTypes.size());
+	                SUMMONTRAP_MONSTER = possibleTypes.at(rng.rand() % possibleTypes.size());
 				}
 
 				int count = 0;
@@ -110,6 +112,7 @@ void actSummonTrap(Entity* my)
 					monster = summonMonster(static_cast<Monster>(typeToSpawn), my->x, my->y);
 					if ( monster && monster->getStats() )
 					{
+						monster->seedEntityRNG(rng.getU32());
 						if ( useCustomMonsters )
 						{
 							std::string variantName = "default";
@@ -140,11 +143,11 @@ void actSummonTrap(Entity* my)
 				{
 					if ( SUMMONTRAP_MONSTER < KOBOLD )
 					{
-						//messagePlayer(clientnum, language[2352], language[90 + SUMMONTRAP_MONSTER]);
+						//messagePlayer(clientnum, Language::get(2352), Language::get(90 + SUMMONTRAP_MONSTER));
 					}
 					else if ( SUMMONTRAP_MONSTER >= KOBOLD )
 					{
-						//messagePlayer(clientnum, language[2352], language[2000 + (SUMMONTRAP_MONSTER - 21)]);
+						//messagePlayer(clientnum, Language::get(2352), Language::get(2000 + (SUMMONTRAP_MONSTER - 21)));
 					}
 					SUMMONTRAP_INITIALIZED = 1; // trap is starting up for the first time.
 				}
@@ -154,11 +157,11 @@ void actSummonTrap(Entity* my)
 					SUMMONTRAP_MONSTER = -1;
 				}
 
-				if ( (SUMMONTRAP_FAILURERATE != 0) && (local_rng.rand() % 100 < SUMMONTRAP_FAILURERATE) )
+				if ( (SUMMONTRAP_FAILURERATE != 0) && (rng.rand() % 100 < SUMMONTRAP_FAILURERATE) )
 				{
 					// trap breaks!
 					SUMMONTRAP_FIRED = 1;
-					playSoundEntity(my, 76, 128);
+					//playSoundEntity(my, 76, 128);
 					return;
 				}
 
@@ -169,7 +172,7 @@ void actSummonTrap(Entity* my)
 					{
 						// trap is finished running
 						SUMMONTRAP_FIRED = 1;
-						playSoundEntity(my, 76, 128);
+						//playSoundEntity(my, 76, 128);
 					}	
 				}
 				else

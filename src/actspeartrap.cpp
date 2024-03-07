@@ -17,6 +17,7 @@
 #include "net.hpp"
 #include "collision.hpp"
 #include "player.hpp"
+#include "mod_tools.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -130,7 +131,7 @@ void actSpearTrap(Entity* my)
 								if ( entity->behavior == &actPlayer )
 								{
 									Uint32 color = makeColorRGB(255, 0, 0);
-									messagePlayerColor(entity->skill[2], MESSAGE_STATUS, color, language[586]);
+									messagePlayerColor(entity->skill[2], MESSAGE_STATUS, color, Language::get(586));
 									if ( players[entity->skill[2]]->isLocalPlayer() )
 									{
 										cameravars[entity->skill[2]].shakex += .1;
@@ -150,19 +151,36 @@ void actSpearTrap(Entity* my)
 										}
 									}
 								}
-								playSoundEntity(entity, 28, 64);
-								spawnGib(entity);
-								entity->modHP(-50);
-								if ( stats->HP <= 0 )
+
+								int damage = 50;
+								if ( gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_STRONG_TRAPS) )
 								{
-									if ( stats->type == AUTOMATON )
-									{
-										entity->playerAutomatonDeathCounter = TICKS_PER_SECOND * 5; // set the death timer to immediately pop for players.
-									}
+									damage *= 1.5;
 								}
-								// set obituary
-								entity->setObituary(language[1507]);
-						        stats->killer = KilledBy::TRAP_SPIKE;
+								int trapResist = entity->getFollowerBonusTrapResist();
+								if ( trapResist != 0 )
+								{
+									real_t mult = std::max(0.0, 1.0 - (trapResist / 100.0));
+									damage *= mult;
+								}
+
+								if ( damage > 0 )
+								{
+									playSoundEntity(entity, 28, 64);
+									spawnGib(entity);
+									entity->modHP(-damage);
+
+									if ( stats->HP <= 0 )
+									{
+										if ( stats->type == AUTOMATON && entity->behavior == &actPlayer )
+										{
+											entity->playerAutomatonDeathCounter = TICKS_PER_SECOND * 5; // set the death timer to immediately pop for players.
+										}
+									}
+									// set obituary
+									entity->setObituary(Language::get(1507));
+									stats->killer = KilledBy::TRAP_SPIKE;
+								}
 							}
 						}
 					}

@@ -19,10 +19,21 @@
 #include "scores.hpp"
 
 //Circuits do not overlap. They connect to all their neighbors, allowing for circuits to interfere with eachother.
+static ConsoleVariable<bool> cvar_wire_debug("/wire_debug", false);
 
 void actCircuit(Entity* my)
 {
 	my->flags[PASSABLE] = true; // these should ALWAYS be passable. No exceptions
+	if ( (svFlags & SV_FLAG_CHEATS) && *cvar_wire_debug )
+	{
+		my->flags[INVISIBLE] = false;
+		my->sprite = 170;
+	}
+	else
+	{
+		my->sprite = 18;
+		my->flags[INVISIBLE] = true;
+	}
 }
 
 void Entity::circuitPowerOn()
@@ -184,7 +195,7 @@ void actSwitch(Entity* my)
 			{
 				if (inrange[i])   //Act on it only if the player (or monster, if/when this is changed to support monster interaction?) is in range.
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[1110]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(1110));
 					playSoundEntity(my, 56, 64);
 					my->toggleSwitch();
 				}
@@ -264,16 +275,16 @@ void actSwitchWithTimer(Entity* my)
 					switch ( my->leverStatus )
 					{
 						case 0:
-							messagePlayer(i, MESSAGE_INTERACTION, language[2360]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2360));
 							break;
 						case 1:
-							messagePlayer(i, MESSAGE_INTERACTION, language[2361]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2361));
 							break;
 						case 2:
-							messagePlayer(i, MESSAGE_INTERACTION, language[2362]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2362));
 							break;
 						default:
-							messagePlayer(i, MESSAGE_INTERACTION, language[2363]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2363));
 							break;
 					}
 
@@ -381,6 +392,15 @@ void actSwitchWithTimer(Entity* my)
 #define TRAP_ON my->skill[0]
 void actTrap(Entity* my)
 {
+	if ( (svFlags & SV_FLAG_CHEATS) && *cvar_wire_debug )
+	{
+		my->flags[INVISIBLE] = false;
+	}
+	else
+	{
+		my->flags[INVISIBLE] = true;
+	}
+
 	// activates circuit when certain entities are occupying its tile
 	node_t* node;
 	Entity* entity;
@@ -400,7 +420,7 @@ void actTrap(Entity* my)
 		{
 			entity = (Entity*)node->element;
 			if ( entity->behavior == &actPlayer || entity->behavior == &actItem 
-				|| entity->behavior == &actMonster || entity->behavior == &actBoulder
+				|| (entity->behavior == &actMonster && !entity->isInertMimic()) || entity->behavior == &actBoulder
 				|| entity->behavior == &actBomb || entity->behavior == &actDecoyBox )
 			{
 				if ( floor(entity->x / 16) == floor(my->x / 16) && floor(entity->y / 16) == floor(my->y / 16) )
@@ -429,6 +449,15 @@ void actTrap(Entity* my)
 #define TRAPPERMANENT_ON my->skill[0]
 void actTrapPermanent(Entity* my)
 {
+	if ( (svFlags & SV_FLAG_CHEATS) && *cvar_wire_debug )
+	{
+		my->flags[INVISIBLE] = false;
+	}
+	else
+	{
+		my->flags[INVISIBLE] = true;
+	}
+
 	// activates circuit when certain entities are occupying its tile
 	// unlike actTrap, never deactivates
 	node_t* node;
@@ -509,7 +538,7 @@ void actTrapPermanent(Entity* my)
 			{
 				entity = (Entity*)node->element;
 				if ( entity->behavior == &actPlayer || entity->behavior == &actItem 
-					|| entity->behavior == &actMonster || entity->behavior == &actBoulder
+					|| (entity->behavior == &actMonster && !entity->isInertMimic()) || entity->behavior == &actBoulder
 					|| entity->behavior == &actBomb || entity->behavior == &actDecoyBox )
 				{
 					if ( floor(entity->x / 16) == floor(my->x / 16) && floor(entity->y / 16) == floor(my->y / 16) )

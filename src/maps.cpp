@@ -31,6 +31,9 @@
 
 int startfloor = 0;
 BaronyRNG map_rng;
+BaronyRNG map_server_rng;
+int numChests = 0;
+int numMimics = 0;
 
 Sint32 doorFrameSprite() {
     if (stringStr(map.name, "Caves", sizeof(map_t::name), 5)) {
@@ -63,7 +66,7 @@ Sint32 doorFrameSprite() {
     if (stringStr(map.name, "Bram", sizeof(map_t::name), 4)) {
         return 1169;
     }
-    if (stringStr(map.name, "Underworld", sizeof(map_t::name), 5)) {
+    if (stringStr(map.name, "Underworld", sizeof(map_t::name), 10)) {
         return 1169;
     }
     return 1; // default door frame
@@ -333,7 +336,7 @@ int monsterCurve(int level)
 			case 0:
 				return KOBOLD;
 			case 1:
-				return SCARAB;
+				return INCUBUS;
 			case 2:
 			case 3:
 			case 4:
@@ -357,6 +360,467 @@ int monsterCurve(int level)
 		}
 	}
 	return SKELETON; // basic monster
+}
+
+struct StartRoomInfo_t
+{
+	int x1 = -1;
+	int x2 = -1;
+	int y1 = -1;
+	int y2 = -1;
+	bool isWall(int x, int y)
+	{
+		if ( x <= 0 || x >= map.width - 1 || y <= 0 || y >= map.height - 1 )
+		{
+			return true;
+		}
+		return map.tiles[OBSTACLELAYER + (y)* MAPLAYERS + (x)* MAPLAYERS * map.height];
+	}
+	bool isWalkable(int x, int y)
+	{
+		if ( x <= 0 || x >= map.width - 1 || y <= 0 || y >= map.height - 1 )
+		{
+			return false;
+		}
+		return map.tiles[(y)* MAPLAYERS + (x)* MAPLAYERS * map.height];
+	}
+	void addCoord(int x, int y)
+	{
+		if ( x1 == -1 )
+		{
+			x1 = x;
+		}
+		else
+		{
+			x1 = std::min(x, x1);
+		}
+		if ( x2 == -1 )
+		{
+			x2 = x;
+		}
+		else
+		{
+			x2 = std::max(x2, x);
+		}
+
+		if ( y1 == -1 )
+		{
+			y1 = y;
+		}
+		else
+		{
+			y1 = std::min(y, y1);
+		}
+		if ( y2 == -1 )
+		{
+			y2 = y;
+		}
+		else
+		{
+			y2 = std::max(y2, y);
+		}
+	}
+	void checkBorderAccessibility()
+	{
+		enum Direction : int
+		{
+			NORTH,
+			EAST,
+			SOUTH,
+			WEST
+		};
+		std::vector<std::pair<std::pair<int, int>, Direction>> potentialExitPoints;
+		std::vector<std::pair<std::pair<int, int>, Direction>> goodTunnelPoints;
+		std::vector<std::pair<std::pair<int, int>, Direction>> badTunnelPoints;
+		std::vector<std::pair<std::pair<int, int>, Direction>> worstTunnelPoints;
+		std::vector<std::pair<std::pair<int, int>, Direction>> exitPoints;
+		if ( x1 - 1 > 0 )
+		{
+			for ( int y = y1; y <= y2; ++y )
+			{
+				if ( !isWall(x1, y) && isWalkable(x1, y) )
+				{
+					potentialExitPoints.push_back(std::make_pair(std::make_pair(x1, y), Direction::WEST));
+					if ( !isWall(x1 - 1, y) && isWalkable(x1 - 1, y) )
+					{
+						// exit point found heading west
+						exitPoints.push_back(std::make_pair(std::make_pair(x1, y), Direction::WEST));
+					}
+					else if ( isWall(x1 - 1, y) && isWalkable(x1 - 1, y) )
+					{
+						if ( isWalkable(x1 - 2, y) )
+						{
+							if ( isWall(x1 - 2, y) )
+							{
+								badTunnelPoints.push_back(std::make_pair(std::make_pair(x1, y), Direction::WEST));
+							}
+							else
+							{
+								if ( pathCheckObstacle(x1 - 2, y, nullptr, nullptr) == 1 ) // check interfering entities
+								{
+									badTunnelPoints.push_back(std::make_pair(std::make_pair(x1, y), Direction::WEST));
+								}
+								else
+								{
+									goodTunnelPoints.push_back(std::make_pair(std::make_pair(x1, y), Direction::WEST));
+								}
+							}
+						}
+						else
+						{
+							worstTunnelPoints.push_back(std::make_pair(std::make_pair(x1, y), Direction::WEST));
+						}
+					}
+				}
+			}
+		}
+		if ( x2 + 1 < (map.width) )
+		{
+			for ( int y = y1; y <= y2; ++y )
+			{
+				if ( !isWall(x2, y) && isWalkable(x2, y) )
+				{
+					potentialExitPoints.push_back(std::make_pair(std::make_pair(x2, y), Direction::EAST));
+					if ( !isWall(x2 + 1, y) && isWalkable(x2 + 1, y) )
+					{
+						// exit point found heading east
+						exitPoints.push_back(std::make_pair(std::make_pair(x2, y), Direction::EAST));
+					}
+					else if ( isWall(x2 + 1, y) && isWalkable(x2 + 1, y) )
+					{
+						if ( isWalkable(x2 + 2, y) )
+						{
+							if ( isWall(x2 + 2, y) )
+							{
+								badTunnelPoints.push_back(std::make_pair(std::make_pair(x2, y), Direction::EAST));
+							}
+							else
+							{
+								if ( pathCheckObstacle(x2 + 2, y, nullptr, nullptr) == 1 ) // check interfering entities
+								{
+									badTunnelPoints.push_back(std::make_pair(std::make_pair(x2, y), Direction::EAST));
+								}
+								else
+								{
+									goodTunnelPoints.push_back(std::make_pair(std::make_pair(x2, y), Direction::EAST));
+								}
+							}
+						}
+						else
+						{
+							worstTunnelPoints.push_back(std::make_pair(std::make_pair(x2, y), Direction::EAST));
+						}
+					}
+				}
+			}
+		}
+		if ( y1 - 1 > 0 )
+		{
+			for ( int x = x1; x <= x2; ++x )
+			{
+				if ( !isWall(x, y1) && isWalkable(x, y1) )
+				{
+					potentialExitPoints.push_back(std::make_pair(std::make_pair(x, y1), Direction::NORTH));
+					if ( !isWall(x, y1 - 1) && isWalkable(x, y1 - 1) )
+					{
+						// exit point found heading north
+						exitPoints.push_back(std::make_pair(std::make_pair(x, y1), Direction::NORTH));
+					}
+					else if ( isWall(x, y1 - 1) && isWalkable(x, y1 - 1) )
+					{
+						if ( isWalkable(x, y1 - 2) )
+						{
+							if ( isWall(x, y1 - 2) )
+							{
+								badTunnelPoints.push_back(std::make_pair(std::make_pair(x, y1), Direction::NORTH));
+							}
+							else
+							{
+								if ( pathCheckObstacle(x, y1 - 2, nullptr, nullptr) == 1 ) // check interfering entities
+								{
+									badTunnelPoints.push_back(std::make_pair(std::make_pair(x, y1), Direction::NORTH));
+								}
+								else
+								{
+									goodTunnelPoints.push_back(std::make_pair(std::make_pair(x, y1), Direction::NORTH));
+								}
+							}
+						}
+						else
+						{
+							worstTunnelPoints.push_back(std::make_pair(std::make_pair(x, y1), Direction::NORTH));
+						}
+					}
+				}
+			}
+		}
+		if ( y2 + 1 < (map.height) )
+		{
+			for ( int x = x1; x <= x2; ++x )
+			{
+				if ( !isWall(x, y2) && isWalkable(x, y2) )
+				{
+					potentialExitPoints.push_back(std::make_pair(std::make_pair(x, y2), Direction::SOUTH));
+					if ( !isWall(x, y2 + 1) && isWalkable(x, y2 + 1) )
+					{
+						// exit point found heading north
+						exitPoints.push_back(std::make_pair(std::make_pair(x, y2), Direction::SOUTH));
+					}
+					else if ( isWall(x, y2 + 1) && isWalkable(x, y2 + 1) )
+					{
+						if ( isWalkable(x, y2 + 2) )
+						{
+							if ( isWall(x, y2 + 2) )
+							{
+								badTunnelPoints.push_back(std::make_pair(std::make_pair(x, y2), Direction::SOUTH));
+							}
+							else
+							{
+								if ( pathCheckObstacle(x, y2 + 2, nullptr, nullptr) == 1 ) // check interfering entities
+								{
+									badTunnelPoints.push_back(std::make_pair(std::make_pair(x, y2), Direction::SOUTH));
+								}
+								else
+								{
+									goodTunnelPoints.push_back(std::make_pair(std::make_pair(x, y2), Direction::SOUTH));
+								}
+							}
+						}
+						else
+						{
+							worstTunnelPoints.push_back(std::make_pair(std::make_pair(x, y2), Direction::SOUTH));
+						}
+					}
+				}
+			}
+		}
+
+		//for ( auto point : exitPoints )
+		//{
+		//	std::string dir = "";
+		//	switch ( point.second )
+		//	{
+		//		case WEST:
+		//			dir = "West";
+		//			break;
+		//		case EAST:
+		//			dir = "East";
+		//			break;
+		//		case NORTH:
+		//			dir = "North";
+		//			break;
+		//		case SOUTH:
+		//			dir = "South";
+		//			break;
+		//		default:
+		//			break;
+		//	}
+		//	printlog("exitPoints %s: (x: %d y: %d)", dir.c_str(), point.first.first, point.first.second);
+		//}
+		if ( exitPoints.empty() )
+		{
+			printlog("[MAP GENERATOR]: Start map does not have accessibility to any other areas!");
+			for ( auto point : goodTunnelPoints )
+			{
+				std::string dir = "";
+				switch ( point.second )
+				{
+					case WEST:
+						dir = "West";
+						break;
+					case EAST:
+						dir = "East";
+						break;
+					case NORTH:
+						dir = "North";
+						break;
+					case SOUTH:
+						dir = "South";
+						break;
+					default:
+						break;
+				}
+				printlog("[MAP GENERATOR]: TunnelPoints1 %s: (x: %d y: %d)", dir.c_str(), point.first.first, point.first.second);
+			}
+			for ( auto point : badTunnelPoints )
+			{
+				std::string dir = "";
+				switch ( point.second )
+				{
+					case WEST:
+						dir = "West";
+						break;
+					case EAST:
+						dir = "East";
+						break;
+					case NORTH:
+						dir = "North";
+						break;
+					case SOUTH:
+						dir = "South";
+						break;
+					default:
+						break;
+				}
+				printlog("[MAP GENERATOR]: TunnelPoints2 %s: (x: %d y: %d)", dir.c_str(), point.first.first, point.first.second);
+			}
+			for ( auto point : worstTunnelPoints )
+			{
+				std::string dir = "";
+				switch ( point.second )
+				{
+					case WEST:
+						dir = "West";
+						break;
+					case EAST:
+						dir = "East";
+						break;
+					case NORTH:
+						dir = "North";
+						break;
+					case SOUTH:
+						dir = "South";
+						break;
+					default:
+						break;
+				}
+				printlog("[MAP GENERATOR]: TunnelPoints3 %s: (x: %d y: %d)", dir.c_str(), point.first.first, point.first.second);
+			}
+			if ( !goodTunnelPoints.empty() )
+			{
+				auto picked = goodTunnelPoints.at(map_rng.rand() % goodTunnelPoints.size());
+				switch ( picked.second )
+				{
+					case WEST:
+						picked.first.first--;
+						break;
+					case EAST:
+						picked.first.first++;
+						break;
+					case NORTH:
+						picked.first.second--;
+						break;
+					case SOUTH:
+						picked.first.second++;
+						break;
+					default:
+						break;
+				}
+				printlog("[MAP GENERATOR]: Dug hole using TunnelPoints1 at x: %d y: %d", picked.first.first, picked.first.second);
+				map.tiles[OBSTACLELAYER + (picked.first.second)* MAPLAYERS + (picked.first.first)* MAPLAYERS * map.height] = 0;
+			}
+			else if ( !badTunnelPoints.empty() )
+			{
+				auto picked = badTunnelPoints.at(map_rng.rand() % badTunnelPoints.size());
+				switch ( picked.second )
+				{
+					case WEST:
+						picked.first.first--;
+						break;
+					case EAST:
+						picked.first.first++;
+						break;
+					case NORTH:
+						picked.first.second--;
+						break;
+					case SOUTH:
+						picked.first.second++;
+						break;
+					default:
+						break;
+				}
+				printlog("[MAP GENERATOR]: Dug hole using TunnelPoints2 at x: %d y: %d", picked.first.first, picked.first.second);
+				map.tiles[OBSTACLELAYER + (picked.first.second)* MAPLAYERS + (picked.first.first)* MAPLAYERS * map.height] = 0;
+			}
+			else if ( !worstTunnelPoints.empty() )
+			{
+				auto picked = worstTunnelPoints.at(map_rng.rand() % worstTunnelPoints.size());
+				switch ( picked.second )
+				{
+					case WEST:
+						picked.first.first--;
+						break;
+					case EAST:
+						picked.first.first++;
+						break;
+					case NORTH:
+						picked.first.second--;
+						break;
+					case SOUTH:
+						picked.first.second++;
+						break;
+					default:
+						break;
+				}
+				printlog("[MAP GENERATOR]: Dug hole using TunnelPoints3 at x: %d y: %d", picked.first.first, picked.first.second);
+				map.tiles[OBSTACLELAYER + (picked.first.second)* MAPLAYERS + (picked.first.first)* MAPLAYERS * map.height] = 0;
+			}
+		}
+	}
+};
+
+bool mapSpriteIsDoorway(int sprite)
+{
+	switch ( sprite )
+	{
+		case 2:
+		case 3:
+			return true;
+			break;
+		case 19:
+		case 20:
+			return true;
+			break;
+		case 113:
+		case 114:
+			return true;
+			break;
+		default:
+			break;
+	}
+	return false;
+}
+
+int getMapPossibleLocationX1()
+{
+	const int perimeter = MFLAG_PERIMETER_GAP;
+	return perimeter;
+}
+
+int getMapPossibleLocationY1()
+{
+	const int perimeter = MFLAG_PERIMETER_GAP;
+	return perimeter;
+}
+
+int getMapPossibleLocationX2()
+{
+	const int perimeter = MFLAG_PERIMETER_GAP;
+	return map.width - perimeter;
+}
+
+int getMapPossibleLocationY2()
+{
+	const int perimeter = MFLAG_PERIMETER_GAP;
+	return map.height - perimeter;
+}
+
+bool mapTileDiggable(const int x, const int y)
+{
+	if ( swimmingtiles[map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height]]
+		|| lavatiles[map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height]] )
+	{
+		return false;
+	}
+	if ( !strncmp(map.name, "Hell", 4) )
+	{
+		if ( x < getMapPossibleLocationX1() || x >= getMapPossibleLocationX2()
+			|| y < getMapPossibleLocationY1() || y >= getMapPossibleLocationY2() )
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 /*-------------------------------------------------------------------------------
@@ -393,9 +857,22 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	map_t shopmap;
 	map_t secretlevelmap;
 	int secretlevelexit = 0;
-	bool *trapexcludelocations;
-	bool *monsterexcludelocations;
-	bool *lootexcludelocations;
+
+	if ( map.trapexcludelocations )
+	{
+		free(map.trapexcludelocations);
+		map.trapexcludelocations = nullptr;
+	}
+	if ( map.monsterexcludelocations )
+	{
+		free(map.monsterexcludelocations);
+		map.monsterexcludelocations = nullptr;
+	}
+	if ( map.lootexcludelocations )
+	{
+		free(map.lootexcludelocations);
+		map.lootexcludelocations = nullptr;
+	}
 
 	if ( std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) == -1
 		&& std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) == -1
@@ -432,7 +909,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		printlog(generationLog, levelset, seed);
 
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 
 	std::string fullMapPath;
@@ -444,18 +921,19 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		printlog("error: no level of set '%s' could be found.\n", levelset);
 		return -1;
 	}
-	if ( checkMapHash == 0 )
+	if ( !verifyMapHash(fullMapPath.c_str(), checkMapHash) )
 	{
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 
 	// store this map's seed
 	mapseed = seed;
 	map_rng.seedBytes(&mapseed, sizeof(mapseed));
+	map_server_rng.seedBytes(&mapseed, sizeof(mapseed));
 
 	// generate a custom monster curve if file exists
-	monsterCurveCustomManager.readFromFile();
+	monsterCurveCustomManager.readFromFile(mapseed);
 
 	// determine whether shop level or not
 	if ( gameplayCustomManager.processedShopFloor(currentlevel, secretlevel, map.name, shoplevel) )
@@ -494,7 +972,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		// function sets dark level for us.
 		if ( darkmap )
 		{
-			messageLocalPlayers(MESSAGE_HINT, language[1108]);
+			messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
 		}
 	}
 	else if ( !secretlevel )
@@ -504,7 +982,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			if ( map_rng.rand() % 100 < std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) )
 			{
 				darkmap = true;
-				messageLocalPlayers(MESSAGE_HINT, language[1108]);
+				messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
 			}
 			else
 			{
@@ -516,7 +994,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			if ( map_rng.rand() % 4 == 0 )
 			{
 				darkmap = true;
-				messageLocalPlayers(MESSAGE_HINT, language[1108]);
+				messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
 			}
 		}
 	}
@@ -612,7 +1090,6 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			fullMapPath = physfsFormatMapName(sublevelname);
 
 			shopmap.tiles = nullptr;
-			shopmap.vismap = nullptr;
 			shopmap.entities = (list_t*) malloc(sizeof(list_t));
 			shopmap.entities->first = nullptr;
 			shopmap.entities->last = nullptr;
@@ -631,10 +1108,10 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					free(shopmap.tiles);
 				}
 			}
-			if ( checkMapHash == 0 )
+			if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 			{
 				conductGameChallenges[CONDUCT_MODDED] = 1;
-				gamemods_disableSteamAchievements = true;
+				Mods::disableSteamAchievements = true;
 			}
 		}
 		else
@@ -662,7 +1139,6 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		// allocate memory for the next sublevel and attempt to load it
 		tempMap = (map_t*) malloc(sizeof(map_t));
 		tempMap->tiles = nullptr;
-		tempMap->vismap = nullptr;
 		tempMap->entities = (list_t*) malloc(sizeof(list_t));
 		tempMap->entities->first = nullptr;
 		tempMap->entities->last = nullptr;
@@ -670,15 +1146,18 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		tempMap->creatures->first = nullptr;
 		tempMap->creatures->last = nullptr;
 		tempMap->worldUI = nullptr;
+		tempMap->trapexcludelocations = nullptr;
+		tempMap->monsterexcludelocations = nullptr;
+		tempMap->lootexcludelocations = nullptr;
 		if ( fullMapPath.empty() || loadMap(fullMapPath.c_str(), tempMap, tempMap->entities, tempMap->creatures, &checkMapHash) == -1 )
 		{
 			mapDeconstructor((void*)tempMap);
 			continue; // failed to load level
 		}
-		if ( checkMapHash == 0 )
+		if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 		{
 			conductGameChallenges[CONDUCT_MODDED] = 1;
-			gamemods_disableSteamAchievements = true;
+			Mods::disableSteamAchievements = true;
 		}
 
 		// level is successfully loaded, add it to the pool
@@ -707,19 +1186,67 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						door->y = y;
 						if ( x == tempMap->width - 1 )
 						{
-							door->dir = 0;
+							door->dir = door_t::DIR_EAST;
+							if ( y == tempMap->height - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHEAST;
+							}
+							else if ( y == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHEAST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_EAST;
+							}
 						}
 						else if ( y == tempMap->height - 1 )
 						{
-							door->dir = 1;
+							door->dir = door_t::DIR_SOUTH;
+							if ( x == tempMap->width - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHEAST;
+							}
+							else if ( x == 0 )
+							{
+								door->edge = door_t::EDGE_SOUTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_SOUTH;
+							}
 						}
 						else if ( x == 0 )
 						{
-							door->dir = 2;
+							door->dir = door_t::DIR_WEST;
+							if ( y == tempMap->height - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHWEST;
+							}
+							else if ( y == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_WEST;
+							}
 						}
 						else if ( y == 0 )
 						{
-							door->dir = 3;
+							door->dir = door_t::DIR_NORTH;
+							if ( x == tempMap->width - 1 )
+							{
+								door->edge = door_t::EDGE_NORTHEAST;
+							}
+							else if ( x == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_NORTH;
+							}
 						}
 						node2 = list_AddNodeLast(newList);
 						node2->element = door;
@@ -768,7 +1295,6 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			// allocate memory for the next subroom and attempt to load it
 			subRoomMap = (map_t*)malloc(sizeof(map_t));
 			subRoomMap->tiles = nullptr;
-			subRoomMap->vismap = nullptr;
 			subRoomMap->entities = (list_t*)malloc(sizeof(list_t));
 			subRoomMap->entities->first = nullptr;
 			subRoomMap->entities->last = nullptr;
@@ -776,15 +1302,18 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			subRoomMap->creatures->first = nullptr;
 			subRoomMap->creatures->last = nullptr;
 			subRoomMap->worldUI = nullptr;
+			subRoomMap->trapexcludelocations = nullptr;
+			subRoomMap->monsterexcludelocations = nullptr;
+			subRoomMap->lootexcludelocations = nullptr;
 			if ( fullMapPath.empty() || loadMap(fullMapPath.c_str(), subRoomMap, subRoomMap->entities, subRoomMap->creatures, &checkMapHash) == -1 )
 			{
 				mapDeconstructor((void*)subRoomMap);
 				continue; // failed to load level
 			}
-			if ( checkMapHash == 0 )
+			if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 			{
 				conductGameChallenges[CONDUCT_MODDED] = 1;
-				gamemods_disableSteamAchievements = true;
+				Mods::disableSteamAchievements = true;
 			}
 
 			// level is successfully loaded, add it to the pool
@@ -798,6 +1327,19 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			node = list_AddNodeLast(subRoomList);
 			node->element = subRoomMap;
 			node->deconstructor = &mapDeconstructor;
+
+			/*if ( subRoomMap->flags[MAP_FLAG_DISABLETRAPS] == 1 )
+			{
+				printlog("%s: no traps", subRoomMap->filename);
+			}
+			if ( subRoomMap->flags[MAP_FLAG_DISABLEMONSTERS] == 1 )
+			{
+				printlog("%s: no monsters", subRoomMap->filename);
+			}
+			if ( subRoomMap->flags[MAP_FLAG_DISABLELOOT] == 1 )
+			{
+				printlog("%s: no loot", subRoomMap->filename);
+			}*/
 
 			// more nodes are created to record the exit points on the sublevel
 			for ( int y = 0; y < subRoomMap->height; y++ )
@@ -813,19 +1355,67 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							door->y = y;
 							if ( x == subRoomMap->width - 1 )
 							{
-								door->dir = 0;
+								door->dir = door_t::DIR_EAST;
+								if ( y == subRoomMap->height - 1 )
+								{
+									door->edge = door_t::EDGE_SOUTHEAST;
+								}
+								else if ( y == 0 )
+								{
+									door->edge = door_t::EDGE_NORTHEAST;
+								}
+								else
+								{
+									door->edge = door_t::EDGE_EAST;
+								}
 							}
 							else if ( y == subRoomMap->height - 1 )
 							{
-								door->dir = 1;
+								door->dir = door_t::DIR_SOUTH;
+								if ( x == subRoomMap->width - 1 )
+								{
+									door->edge = door_t::EDGE_SOUTHEAST;
+								}
+								else if ( x == 0 )
+								{
+									door->edge = door_t::EDGE_SOUTHWEST;
+								}
+								else
+								{
+									door->edge = door_t::EDGE_SOUTH;
+								}
 							}
 							else if ( x == 0 )
 							{
-								door->dir = 2;
+								door->dir = door_t::DIR_WEST;
+								if ( y == subRoomMap->height - 1 )
+								{
+									door->edge = door_t::EDGE_SOUTHWEST;
+								}
+								else if ( y == 0 )
+								{
+									door->edge = door_t::EDGE_NORTHWEST;
+								}
+								else
+								{
+									door->edge = door_t::EDGE_WEST;
+								}
 							}
 							else if ( y == 0 )
 							{
-								door->dir = 3;
+								door->dir = door_t::DIR_NORTH;
+								if ( x == subRoomMap->width - 1 )
+								{
+									door->edge = door_t::EDGE_NORTHEAST;
+								}
+								else if ( x == 0 )
+								{
+									door->edge = door_t::EDGE_NORTHWEST;
+								}
+								else
+								{
+									door->edge = door_t::EDGE_NORTH;
+								}
 							}
 							node2 = list_AddNodeLast(subRoomList);
 							node2->element = door;
@@ -861,7 +1451,6 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		// allocate memory for the next subroom and attempt to load it
 		map_t* subRoomMap = (map_t*)malloc(sizeof(map_t));
 		subRoomMap->tiles = nullptr;
-		subRoomMap->vismap = nullptr;
 		subRoomMap->entities = (list_t*)malloc(sizeof(list_t));
 		subRoomMap->entities->first = nullptr;
 		subRoomMap->entities->last = nullptr;
@@ -869,36 +1458,136 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		subRoomMap->creatures->first = nullptr;
 		subRoomMap->creatures->last = nullptr;
 		subRoomMap->worldUI = nullptr;
+		subRoomMap->trapexcludelocations = nullptr;
+		subRoomMap->monsterexcludelocations = nullptr;
+		subRoomMap->lootexcludelocations = nullptr;
 		if ( fullMapPath.empty() || loadMap(fullMapPath.c_str(), subRoomMap, subRoomMap->entities, subRoomMap->creatures, &checkMapHash) == -1 )
 		{
 			mapDeconstructor((void*)subRoomMap);
 			continue; // failed to load level
 		}
-		if ( checkMapHash == 0 )
+		if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 		{
 			conductGameChallenges[CONDUCT_MODDED] = 1;
-			gamemods_disableSteamAchievements = true;
+			Mods::disableSteamAchievements = true;
 		}
 
 		// level is successfully loaded, add it to the pool
+		subRoomList = (list_t*)malloc(sizeof(list_t));
+		subRoomList->first = nullptr;
+		subRoomList->last = nullptr;
+
 		node = list_AddNodeLast(&shopSubRooms.list);
+		node->element = subRoomList;
+		node->deconstructor = &listDeconstructor;
+
+		node = list_AddNodeLast(subRoomList);
 		node->element = subRoomMap;
 		node->deconstructor = &mapDeconstructor;
+
+		// more nodes are created to record the exit points on the sublevel
+		for ( y = 0; y < subRoomMap->height; y++ )
+		{
+			for ( x = 0; x < subRoomMap->width; x++ )
+			{
+				if ( x == 0 || y == 0 || x == subRoomMap->width - 1 || y == subRoomMap->height - 1 )
+				{
+					if ( !subRoomMap->tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * subRoomMap->height] )
+					{
+						door = (door_t*)malloc(sizeof(door_t));
+						door->x = x;
+						door->y = y;
+						if ( x == subRoomMap->width - 1 )
+						{
+							door->dir = door_t::DIR_EAST;
+							if ( y == subRoomMap->height - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHEAST;
+							}
+							else if ( y == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHEAST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_EAST;
+							}
+						}
+						else if ( y == subRoomMap->height - 1 )
+						{
+							door->dir = door_t::DIR_SOUTH;
+							if ( x == subRoomMap->width - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHEAST;
+							}
+							else if ( x == 0 )
+							{
+								door->edge = door_t::EDGE_SOUTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_SOUTH;
+							}
+						}
+						else if ( x == 0 )
+						{
+							door->dir = door_t::DIR_WEST;
+							if ( y == subRoomMap->height - 1 )
+							{
+								door->edge = door_t::EDGE_SOUTHWEST;
+							}
+							else if ( y == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_WEST;
+							}
+						}
+						else if ( y == 0 )
+						{
+							door->dir = door_t::DIR_NORTH;
+							if ( x == subRoomMap->width - 1 )
+							{
+								door->edge = door_t::EDGE_NORTHEAST;
+							}
+							else if ( x == 0 )
+							{
+								door->edge = door_t::EDGE_NORTHWEST;
+							}
+							else
+							{
+								door->edge = door_t::EDGE_NORTH;
+							}
+						}
+						node2 = list_AddNodeLast(subRoomList);
+						node2->element = door;
+						node2->deconstructor = &defaultDeconstructor;
+					}
+				}
+			}
+		}
 	}
+
+	StartRoomInfo_t startRoomInfo;
 
 	// generate dungeon level...
 	int roomcount = 0;
 	if ( numlevels > 1 )
 	{
 		possiblelocations = (bool*) malloc(sizeof(bool) * map.width * map.height);
-		trapexcludelocations = (bool*)malloc(sizeof(bool) * map.width * map.height);
-		monsterexcludelocations = (bool*)malloc(sizeof(bool) * map.width * map.height);
-		lootexcludelocations = (bool*)malloc(sizeof(bool) * map.width * map.height);
+		map.trapexcludelocations = (bool*)malloc(sizeof(bool) * map.width * map.height);
+		map.monsterexcludelocations = (bool*)malloc(sizeof(bool) * map.width * map.height);
+		map.lootexcludelocations = (bool*)malloc(sizeof(bool) * map.width * map.height);
 		for ( y = 0; y < map.height; y++ )
 		{
 			for ( x = 0; x < map.width; x++ )
 			{
-				if ( x < 2 || y < 2 || x > map.width - 3 || y > map.height - 3 )
+				if ( x < (std::max(2, getMapPossibleLocationX1()))
+					|| y < (std::max(2, getMapPossibleLocationY1())) 
+					|| x > (std::min(getMapPossibleLocationX2(), (int)map.width - 3))
+					|| y > (std::min(getMapPossibleLocationY2(), (int)map.height - 3)) )
 				{
 					possiblelocations[x + y * map.width] = false;
 				}
@@ -906,24 +1595,24 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				{
 					possiblelocations[x + y * map.width] = true;
 				}
-				trapexcludelocations[x + y * map.width] = false;
+				map.trapexcludelocations[x + y * map.width] = false;
 				if ( map.flags[MAP_FLAG_DISABLEMONSTERS] == 1 )
 				{
 					// the base map excludes all monsters
-					monsterexcludelocations[x + y * map.width] = true;
+					map.monsterexcludelocations[x + y * map.width] = true;
 				}
 				else
 				{
-					monsterexcludelocations[x + y * map.width] = false;
+					map.monsterexcludelocations[x + y * map.width] = false;
 				}
 				if ( map.flags[MAP_FLAG_DISABLELOOT] == 1 )
 				{
 					// the base map excludes all monsters
-					lootexcludelocations[x + y * map.width] = true;
+					map.lootexcludelocations[x + y * map.width] = true;
 				}
 				else
 				{
-					lootexcludelocations[x + y * map.width] = false;
+					map.lootexcludelocations[x + y * map.width] = false;
 				}
 			}
 		}
@@ -962,7 +1651,6 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			else if ( c == 1 && secretlevelexit )
 			{
 				secretlevelmap.tiles = nullptr;
-				secretlevelmap.vismap = nullptr;
 				secretlevelmap.entities = (list_t*) malloc(sizeof(list_t));
 				secretlevelmap.entities->first = nullptr;
 				secretlevelmap.entities->last = nullptr;
@@ -1010,10 +1698,10 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						free(secretlevelmap.tiles);
 					}
 				}
-				if ( checkMapHash == 0 )
+				if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
 				{
 					conductGameChallenges[CONDUCT_MODDED] = 1;
-					gamemods_disableSteamAchievements = true;
+					Mods::disableSteamAchievements = true;
 				}
 
 				levelnum = 0;
@@ -1061,7 +1749,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			// find locations where the selected room can be added to the level
 			numpossiblelocations = map.width * map.height;
 
-			bool hellGenerationFix = !strncmp(map.name, "Hell", 4);
+			bool hellGenerationFix = !strncmp(map.name, "Hell", 4) && !MFLAG_GENADJACENTROOMS;
 
 			for ( y0 = 0; y0 < map.height; y0++ )
 			{
@@ -1097,9 +1785,21 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					free(possiblerooms);
 					free(possiblelocations);
 					free(possiblelocations2);
-					free(trapexcludelocations);
-					free(monsterexcludelocations);
-					free(lootexcludelocations);
+					if ( map.trapexcludelocations )
+					{
+						free(map.trapexcludelocations);
+						map.trapexcludelocations = nullptr;
+					}
+					if ( map.monsterexcludelocations )
+					{
+						free(map.monsterexcludelocations);
+						map.monsterexcludelocations = nullptr;
+					}
+					if ( map.lootexcludelocations )
+					{
+						free(map.lootexcludelocations);
+						map.lootexcludelocations = nullptr;
+					}
 					free(firstroomtile);
 					free(sublevelname);
 					free(subRoomName);
@@ -1165,6 +1865,27 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						// 7x7, pick random location across all map.
 						x = 2 + (map_rng.rand() % 7) * 7;
 						y = 2 + (map_rng.rand() % 7) * 7;
+					}
+				}
+				else if ( !strncmp(map.name, "Hell", 4) )
+				{
+					if ( c == 0 )
+					{
+						// 7x7, pick random location across all map.
+						x = getMapPossibleLocationX1() + (1 + map_rng.rand() % 4) * 7;
+						y = getMapPossibleLocationY1() + (1 + map_rng.rand() % 4) * 7;
+					}
+					else if ( secretlevelexit && c == 1 )
+					{
+						// 14x14, pick random location minus 1 from both edges.
+						x = 2 + (map_rng.rand() % 5) * 7;
+						y = 2 + (map_rng.rand() % 5) * 7;
+					}
+					else if ( c == 2 && shoplevel )
+					{
+						// 7x7, pick random location across all map.
+						x = 2 + (map_rng.rand() % 6) * 7;
+						y = 2 + (map_rng.rand() % 6) * 7;
 					}
 				}
 				else
@@ -1281,6 +2002,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					subRoomNode = subRoomNode->next;
 					k++;
 				}
+				subRoomNode = ((list_t*)subRoomNode->element)->first;
 				subRoomMap = (map_t*)subRoomNode->element;
 				subRoomDoorNode = subRoomNode->next;
 			}
@@ -1363,6 +2085,24 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 							map.tiles[z + y0 * MAPLAYERS + x0 * MAPLAYERS * map.height] = subRoomMap->tiles[z + (subRoom_tiley)* MAPLAYERS + (subRoom_tilex)* MAPLAYERS * subRoomMap->height];
 
+							if ( z == 0 )
+							{
+								// apply submap disable flags
+								if ( subRoomMap->flags[MAP_FLAG_DISABLETRAPS] == 1 )
+								{
+									map.trapexcludelocations[x0 + y0 * map.width] = true;
+									//map.tiles[z + y0 * MAPLAYERS + x0 * MAPLAYERS * map.height] = 83;
+								}
+								if ( subRoomMap->flags[MAP_FLAG_DISABLEMONSTERS] == 1 )
+								{
+									map.monsterexcludelocations[x0 + y0 * map.width] = true;
+								}
+								if ( subRoomMap->flags[MAP_FLAG_DISABLELOOT] == 1 )
+								{
+									map.lootexcludelocations[x0 + y0 * map.width] = true;
+								}
+							}
+
 							++subRoom_tilex;
 							if ( subRoom_tilex >= subRoomMap->width )
 							{
@@ -1384,20 +2124,21 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							possiblelocations[x0 + y0 * map.width] = false;
 							if ( tempMap->flags[MAP_FLAG_DISABLETRAPS] == 1 )
 							{
-								trapexcludelocations[x0 + y0 * map.width] = true;
+								map.trapexcludelocations[x0 + y0 * map.width] = true;
 								//map.tiles[z + y0 * MAPLAYERS + x0 * MAPLAYERS * map.height] = 83;
 							}
 							if ( tempMap->flags[MAP_FLAG_DISABLEMONSTERS] == 1 )
 							{
-								monsterexcludelocations[x0 + y0 * map.width] = true;
+								map.monsterexcludelocations[x0 + y0 * map.width] = true;
 							}
 							if ( tempMap->flags[MAP_FLAG_DISABLELOOT] == 1 )
 							{
-								lootexcludelocations[x0 + y0 * map.width] = true;
+								map.lootexcludelocations[x0 + y0 * map.width] = true;
 							}
 							if ( c == 0 )
 							{
 								firstroomtile[y0 + x0 * map.height] = true;
+								startRoomInfo.addCoord(x0, y0);
 							}
 							else if ( c == 2 && shoplevel )
 							{
@@ -1443,7 +2184,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				childEntity->mapGenerationRoomY = y;
 				//printlog("1 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
 
-				if ( entity->behavior == actMonster || entity->behavior == actPlayer )
+				if ( entity->behavior == &actMonster || entity->behavior == &actPlayer )
 				{
 					entity->addToCreatureList(map.creatures);
 				}
@@ -1469,7 +2210,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					childEntity->y = entity->y + subRoom_tileStarty * 16;
 					childEntity->mapGenerationRoomX = subRoom_tileStartx;
 					childEntity->mapGenerationRoomY = subRoom_tileStarty;
-					if ( entity->behavior == actMonster || entity->behavior == actPlayer )
+					if ( entity->behavior == &actMonster || entity->behavior == &actPlayer )
 					{
 						entity->addToCreatureList(map.creatures);
 					}
@@ -1486,6 +2227,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				newDoor->x = door->x + x;
 				newDoor->y = door->y + y;
 				newDoor->dir = door->dir;
+				newDoor->edge = door->edge;
 				node = list_AddNodeLast(&doorList);
 				node->element = newDoor;
 				node->deconstructor = &defaultDeconstructor;
@@ -1502,6 +2244,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					newDoor->x = door->x + subRoom_tileStartx;
 					newDoor->y = door->y + subRoom_tileStarty;
 					newDoor->dir = door->dir;
+					newDoor->edge = door->edge;
 					node = list_AddNodeLast(&doorList);
 					node->element = newDoor;
 					node->deconstructor = &defaultDeconstructor;
@@ -1563,19 +2306,70 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				&& (/*entity->sprite == 2 || entity->sprite == 3 ||*/ entity->sprite == 19 || entity->sprite == 20
 					|| entity->sprite == 113 || entity->sprite == 114) )
 			{
-				switch ( door->dir )
+				int doordir = door->dir;
+
+				// if door is on a corner, then determine the proper facing based on the entity dir
+				if ( doordir == door_t::DIR_EAST || doordir == door_t::DIR_WEST )
 				{
-					case 0: // east
+					if ( (entity->sprite == 3 || entity->sprite == 19 || entity->sprite == 113) ) // north/south sprites
+					{
+						switch ( door->edge )
+						{
+							case door_t::EDGE_SOUTHEAST:
+							case door_t::EDGE_SOUTHWEST:
+								doordir = door_t::DIR_SOUTH;
+								break;
+							case door_t::EDGE_NORTHEAST:
+							case door_t::EDGE_NORTHWEST:
+								doordir = door_t::DIR_NORTH;
+								break;
+							case door_t::EDGE_EAST:
+							case door_t::EDGE_WEST:
+								continue; // no need to process this door as it is facing internal map contents
+							default:
+								break;
+						}
+					}
+				}
+				else if ( doordir == door_t::DIR_SOUTH || doordir == door_t::DIR_NORTH )
+				{
+					if ( (entity->sprite == 2 || entity->sprite == 20 || entity->sprite == 114) ) // east/west sprites
+					{
+						switch ( door->edge )
+						{
+							case door_t::EDGE_SOUTHEAST:
+							case door_t::EDGE_NORTHEAST:
+								doordir = door_t::DIR_EAST;
+								break;
+							case door_t::EDGE_NORTHWEST:
+							case door_t::EDGE_SOUTHWEST:
+								doordir = door_t::DIR_WEST;
+								break;
+							case door_t::EDGE_SOUTH:
+							case door_t::EDGE_NORTH:
+								continue; // no need to process this door as it is facing internal map contents
+							default:
+								break;
+						}
+					}
+				}
+
+				switch ( doordir )
+				{
+					case door_t::DIR_EAST: // east
 						map.tiles[OBSTACLELAYER + door->y * MAPLAYERS + (door->x + 1)*MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x + 1 && (int)(entity->y / 16) == door->y )
+								if ( (int)(entity->x / 16) == door->x + 2 && (int)(entity->y / 16) == door->y 
+									&& (entity->sprite == 3 || entity->sprite == 19 || entity->sprite == 113) ) // north/south doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x + 1 && (int)(entity->y / 16) == door->y )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1590,17 +2384,20 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							}
 						}
 						break;
-					case 1: // south
+					case door_t::DIR_SOUTH: // south
 						map.tiles[OBSTACLELAYER + (door->y + 1)*MAPLAYERS + door->x * MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y + 1 )
+								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y + 2
+									&& (entity->sprite == 2 || entity->sprite == 20 || entity->sprite == 114) ) // east/west doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y + 1 )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1615,17 +2412,20 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							}
 						}
 						break;
-					case 2: // west
+					case door_t::DIR_WEST: // west
 						map.tiles[OBSTACLELAYER + door->y * MAPLAYERS + (door->x - 1)*MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x - 1 && (int)(entity->y / 16) == door->y )
+								if ( (int)(entity->x / 16) == door->x - 2 && (int)(entity->y / 16) == door->y
+									&& (entity->sprite == 3 || entity->sprite == 19 || entity->sprite == 113) ) // north/south doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x - 1 && (int)(entity->y / 16) == door->y )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1640,17 +2440,20 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							}
 						}
 						break;
-					case 3: // north
+					case door_t::DIR_NORTH: // north
 						map.tiles[OBSTACLELAYER + (door->y - 1)*MAPLAYERS + door->x * MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y - 1 )
+								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y - 2
+									&& (entity->sprite == 2 || entity->sprite == 20 || entity->sprite == 114) ) // east/west doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y - 1 )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1681,19 +2484,72 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				&& (entity->sprite == 2 || entity->sprite == 3/* || entity->sprite == 19 || entity->sprite == 20
 															  || entity->sprite == 113 || entity->sprite == 114*/) )
 			{
-				switch ( door->dir )
+				int doordir = door->dir;
+
+				// if door is on a corner, then determine the proper facing based on the entity dir
+				if ( doordir == door_t::DIR_EAST || doordir == door_t::DIR_WEST )
 				{
-					case 0: // east
+					if ( (entity->sprite == 3 || entity->sprite == 19 || entity->sprite == 113) ) // north/south sprites
+					{
+						switch ( door->edge )
+						{
+							case door_t::EDGE_SOUTHEAST:
+							case door_t::EDGE_SOUTHWEST:
+								doordir = door_t::DIR_SOUTH;
+								break;
+							case door_t::EDGE_NORTHEAST:
+							case door_t::EDGE_NORTHWEST:
+								doordir = door_t::DIR_NORTH;
+								break;
+							case door_t::EDGE_EAST:
+							case door_t::EDGE_WEST:
+								continue; // no need to process this door as it is facing internal map contents
+								break;
+							default:
+								break;
+						}
+					}
+				}
+				else if ( doordir == door_t::DIR_SOUTH || doordir == door_t::DIR_NORTH )
+				{
+					if ( (entity->sprite == 2 || entity->sprite == 20 || entity->sprite == 114) ) // east/west sprites
+					{
+						switch ( door->edge )
+						{
+							case door_t::EDGE_SOUTHEAST:
+							case door_t::EDGE_NORTHEAST:
+								doordir = door_t::DIR_EAST;
+								break;
+							case door_t::EDGE_NORTHWEST:
+							case door_t::EDGE_SOUTHWEST:
+								doordir = door_t::DIR_WEST;
+								break;
+							case door_t::EDGE_SOUTH:
+							case door_t::EDGE_NORTH:
+								continue; // no need to process this door as it is facing internal map contents
+								break;
+							default:
+								break;
+						}
+					}
+				}
+
+				switch ( doordir )
+				{
+					case door_t::DIR_EAST: // east
 						map.tiles[OBSTACLELAYER + door->y * MAPLAYERS + (door->x + 1)*MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x + 1 && (int)(entity->y / 16) == door->y )
+								if ( (int)(entity->x / 16) == door->x + 2 && (int)(entity->y / 16) == door->y
+									&& (entity->sprite == 3 || entity->sprite == 19 || entity->sprite == 113) ) // north/south doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x + 1 && (int)(entity->y / 16) == door->y )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1708,17 +2564,20 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							}
 						}
 						break;
-					case 1: // south
+					case door_t::DIR_SOUTH: // south
 						map.tiles[OBSTACLELAYER + (door->y + 1)*MAPLAYERS + door->x * MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y + 1 )
+								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y + 2
+									&& (entity->sprite == 2 || entity->sprite == 20 || entity->sprite == 114) ) // east/west doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y + 1 )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1733,17 +2592,20 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							}
 						}
 						break;
-					case 2: // west
+					case door_t::DIR_WEST: // west
 						map.tiles[OBSTACLELAYER + door->y * MAPLAYERS + (door->x - 1)*MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x - 1 && (int)(entity->y / 16) == door->y )
+								if ( (int)(entity->x / 16) == door->x - 2 && (int)(entity->y / 16) == door->y
+									&& (entity->sprite == 3 || entity->sprite == 19 || entity->sprite == 113) ) // north/south doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x - 1 && (int)(entity->y / 16) == door->y )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1758,17 +2620,20 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							}
 						}
 						break;
-					case 3: // north
+					case door_t::DIR_NORTH: // north
 						map.tiles[OBSTACLELAYER + (door->y - 1)*MAPLAYERS + door->x * MAPLAYERS * map.height] = 0;
 						for ( node3 = map.entities->first; node3 != nullptr; node3 = nextnode )
 						{
 							entity = (Entity*)node3->element;
 							nextnode = node3->next;
-							if ( entity->sprite == 2 || entity->sprite == 3
-								|| entity->sprite == 19 || entity->sprite == 20
-								|| entity->sprite == 113 || entity->sprite == 114 )
+							if ( mapSpriteIsDoorway(entity->sprite) )
 							{
-								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y - 1 )
+								if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y - 2
+									&& (entity->sprite == 2 || entity->sprite == 20 || entity->sprite == 114) ) // east/west doors 2 tiles away
+								{
+									list_RemoveNode(entity->mynode);
+								}
+								else if ( (int)(entity->x / 16) == door->x && (int)(entity->y / 16) == door->y - 1 )
 								{
 									list_RemoveNode(entity->mynode);
 								}
@@ -1895,7 +2760,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	}
 
 	// boulder and arrow traps
-	if ( (svFlags & SV_FLAG_TRAPS) && map.flags[MAP_FLAG_DISABLETRAPS] == 0 
+	if ( (svFlags & SV_FLAG_TRAPS) && map.flags[MAP_FLAG_DISABLETRAPS] == 0
 		&& (!customTrapsForMapInUse || (customTrapsForMapInUse && (customTraps.boulders || customTraps.arrows)) )
 		)
 	{
@@ -1904,6 +2769,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		{
 			possiblelocations[c] = false;
 		}
+		std::unordered_map<int, int> trapLocationAndSide;
 		for ( y = 1; y < map.height - 1; ++y )
 		{
 			for ( x = 1; x < map.width - 1; ++x )
@@ -1929,10 +2795,31 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				{
 					sides++;
 				}
-				if ( sides == 1 && (trapexcludelocations[x + y * map.width] == false) )
+				int side = 0;
+				if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + (x + 1)*MAPLAYERS * map.height] )
+				{
+					side = 0;
+				}
+				else if ( !map.tiles[OBSTACLELAYER + (y + 1)*MAPLAYERS + x * MAPLAYERS * map.height] )
+				{
+					side = 1;
+				}
+				else if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + (x - 1)*MAPLAYERS * map.height] )
+				{
+					side = 2;
+				}
+				else if ( !map.tiles[OBSTACLELAYER + (y - 1)*MAPLAYERS + x * MAPLAYERS * map.height] )
+				{
+					side = 3;
+				}
+				if ( sides == 1 && (map.trapexcludelocations[x + y * map.width] == false) )
 				{
 					possiblelocations[y + x * map.height] = true;
 					numpossiblelocations++;
+
+					int trapTileX = x + (side == 0 ? 1 : 0) + (side == 2 ? -1 : 0);
+					int trapTileY = y + (side == 1 ? 1 : 0) + (side == 3 ? -1 : 0);
+					trapLocationAndSide[trapTileX + trapTileY * 10000] = side;
 				}
 			}
 		}
@@ -1942,8 +2829,8 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		for ( doorNode = doorList.first; doorNode != nullptr; doorNode = doorNode->next )
 		{
 			door_t* door = (door_t*)doorNode->element;
-			int x = std::min<unsigned int>(std::max(0, door->x), map.width); //TODO: Why are const int and unsigned int being compared?
-			int y = std::min<unsigned int>(std::max(0, door->y), map.height); //TODO: Why are const int and unsigned int being compared?
+			int x = std::min<unsigned int>(std::max(0, door->x), map.width - 1); //TODO: Why are const int and unsigned int being compared?
+			int y = std::min<unsigned int>(std::max(0, door->y), map.height - 1); //TODO: Why are const int and unsigned int being compared?
 			if ( possiblelocations[y + x * map.height] == true )
 			{
 				possiblelocations[y + x * map.height] = false;
@@ -1951,20 +2838,86 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			}
 		}
 
+		bool arrowtrappotential = false;
+		if ( !strncmp(map.name, "Hell", 4) )
+		{
+			arrowtrappotential = true;
+		}
+		else if ( currentlevel > 5 && currentlevel <= 25 )
+		{
+			arrowtrappotential = true;
+		}
+
+		std::vector<Entity*> ceilingTilesConflictingWithBoulders;
+		std::vector<Entity*> ceilingTilesToDeleteForBoulders;
+
 		// do a second pass to look for internal doorways
 		for ( node = map.entities->first; node != nullptr; node = node->next )
 		{
 			entity = (Entity*)node->element;
 			int x = entity->x / 16;
 			int y = entity->y / 16;
-			if ( (entity->sprite == 2 || entity->sprite == 3)
-				&& (x >= 0 && x < map.width)
-				&& (y >= 0 && y < map.height) )
+			if ( (x >= 1 && x < map.width - 1)
+				&& (y >= 1 && y < map.height - 1) )
 			{
-				if ( possiblelocations[y + x * map.height] )
+				if ( mapSpriteIsDoorway(entity->sprite) )
 				{
-					possiblelocations[y + x * map.height] = false;
-					--numpossiblelocations;
+					auto find = trapLocationAndSide.find(x + y * 10000);
+					if ( find != trapLocationAndSide.end() )
+					{
+						int side = find->second;
+						int trapx = x + (side == 0 ? -1 : 0) + (side == 2 ? 1 : 0);
+						int trapy = y + (side == 1 ? -1 : 0) + (side == 3 ? 1 : 0);
+						if ( possiblelocations[trapy + trapx * map.height] )
+						{
+							possiblelocations[trapy + trapx * map.height] = false;
+							--numpossiblelocations;
+						}
+					}
+				}
+				else if ( entity->sprite == 119 ) // ceiling tile
+				{
+					if ( entity->ceilingTileAllowTrap == 0 )
+					{
+						if ( !arrowtrappotential )
+						{
+							auto find = trapLocationAndSide.find(x + y * 10000);
+							if ( find != trapLocationAndSide.end() )
+							{
+								int side = find->second;
+								int trapx = x + (side == 0 ? -1 : 0) + (side == 2 ? 1 : 0);
+								int trapy = y + (side == 1 ? -1 : 0) + (side == 3 ? 1 : 0);
+								if ( possiblelocations[trapy + trapx * map.height] )
+								{
+									possiblelocations[trapy + trapx * map.height] = false;
+									--numpossiblelocations;
+								}
+							}
+						}
+						else
+						{
+							ceilingTilesConflictingWithBoulders.push_back(entity);
+						}
+					}
+					else if ( entity->ceilingTileAllowTrap == 1 )
+					{
+						ceilingTilesToDeleteForBoulders.push_back(entity);
+					}
+				}
+				else if ( entity->sprite == 179 && entity->colliderHasCollision == 1 ) // collider
+				{
+					auto find = trapLocationAndSide.find(x + y * 10000);
+					if ( find != trapLocationAndSide.end() )
+					{
+						int side = find->second;
+						int trapx = x + (side == 0 ? -1 : 0) + (side == 2 ? 1 : 0);
+						int trapy = y + (side == 1 ? -1 : 0) + (side == 3 ? 1 : 0);
+						if ( possiblelocations[trapy + trapx * map.height] )
+						{
+							possiblelocations[trapy + trapx * map.height] = false;
+							--numpossiblelocations;
+						}
+					}
 				}
 			}
 		}
@@ -2016,21 +2969,38 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				}
 			}
 			int side = 0;
+			bool nofloor = false;
 			if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + (x + 1)*MAPLAYERS * map.height] )
 			{
 				side = 0;
+				if ( !map.tiles[y * MAPLAYERS + (x + 1)*MAPLAYERS * map.height] )
+				{
+					nofloor = true;
+				}
 			}
 			else if ( !map.tiles[OBSTACLELAYER + (y + 1)*MAPLAYERS + x * MAPLAYERS * map.height] )
 			{
 				side = 1;
+				if ( !map.tiles[(y + 1)*MAPLAYERS + x * MAPLAYERS * map.height] )
+				{
+					nofloor = true;
+				}
 			}
 			else if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + (x - 1)*MAPLAYERS * map.height] )
 			{
 				side = 2;
+				if ( !map.tiles[y * MAPLAYERS + (x - 1)*MAPLAYERS * map.height] )
+				{
+					nofloor = true;
+				}
 			}
 			else if ( !map.tiles[OBSTACLELAYER + (y - 1)*MAPLAYERS + x * MAPLAYERS * map.height] )
 			{
 				side = 3;
+				if ( !map.tiles[(y - 1)*MAPLAYERS + x * MAPLAYERS * map.height] )
+				{
+					nofloor = true;
+				}
 			}
 			bool arrowtrap = false;
 			bool noceiling = false;
@@ -2060,7 +3030,11 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			}
 			else
 			{
-				if ( map_rng.rand() % 2 && (currentlevel > 5 && currentlevel <= 25) )
+				if ( !strncmp(map.name, "Underworld", 10) )
+				{
+					arrowtrapspawn = true; // no boulders in underworld
+				}
+				else if ( map_rng.rand() % 2 && (arrowtrappotential) )
 				{
 					arrowtrapspawn = true;
 				}
@@ -2075,7 +3049,27 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				}
 			}
 
-			if ( arrowtrapspawn || noceiling )
+			// check if ceiling tiles prevent boulders
+			if ( !arrowtrapspawn )
+			{
+				for ( auto itr = ceilingTilesConflictingWithBoulders.begin();
+					itr != ceilingTilesConflictingWithBoulders.end(); ++itr )
+				{
+					auto ceilingTile = *itr;
+					int tx = ceilingTile->x / 16;
+					int ty = ceilingTile->y / 16;
+
+					int trapLocationX = x + ((side == 0) ? 1 : 0) + ((side == 2) ? -1 : 0);
+					int trapLocationY = y + ((side == 1) ? 1 : 0) + ((side == 3) ? -1 : 0);
+					if ( tx == trapLocationX && ty == trapLocationY )
+					{
+						arrowtrapspawn = true;
+						break;
+					}
+				}
+			}
+
+			if ( arrowtrapspawn || noceiling || (nofloor && arrowtrappotential) )
 			{
 				arrowtrap = true;
 				entity = newEntity(32, 1, map.entities, nullptr); // arrow trap
@@ -2087,13 +3081,34 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				//messagePlayer(0, "Included at x: %d, y: %d", x, y);
 				entity = newEntity(38, 1, map.entities, nullptr); // boulder trap
 				entity->behavior = &actBoulderTrap;
+
+				// delete ceiling tiles if need be
+				for ( auto itr = ceilingTilesToDeleteForBoulders.begin();
+					itr != ceilingTilesToDeleteForBoulders.end(); )
+				{
+					auto ceilingTile = *itr;
+					int tx = ceilingTile->x / 16;
+					int ty = ceilingTile->y / 16;
+					
+					int trapLocationX = x + ((side == 0) ? 1 : 0) + ((side == 2) ? -1 : 0);
+					int trapLocationY = y + ((side == 1) ? 1 : 0) + ((side == 3) ? -1 : 0);
+					if ( tx == trapLocationX && ty == trapLocationY )
+					{
+						list_RemoveNode(ceilingTile->mynode);
+						itr = ceilingTilesToDeleteForBoulders.erase(itr);
+					}
+					else
+					{
+						++itr;
+					}
+				}
 			}
 			entity->x = x * 16;
 			entity->y = y * 16;
 			//printlog("2 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",entity->sprite,entity->getUID(),entity->x,entity->y);
-			entity = newEntity(18, 1, map.entities, nullptr); // electricity node
-			entity->x = x * 16 - (side == 3) * 16 + (side == 1) * 16;
-			entity->y = y * 16 - (side == 0) * 16 + (side == 2) * 16;
+			//entity = newEntity(18, 1, map.entities, nullptr); // electricity node
+			//entity->x = x * 16;
+			//entity->y = y * 16;
 			//printlog("4 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",entity->sprite,entity->getUID(),entity->x,entity->y);
 			// make torches
 			if ( arrowtrap )
@@ -2152,21 +3167,24 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						}
 					}
 				}
-				if ( arrowtrap )
-				{
-					entity = newEntity(33, 1, map.entities, nullptr); // pressure plate
-				}
 				else
 				{
-					entity = newEntity(34, 1, map.entities, nullptr); // pressure plate
+					if ( arrowtrap )
+					{
+						entity = newEntity(33, 1, map.entities, nullptr); // pressure plate
+					}
+					else
+					{
+						entity = newEntity(34, 1, map.entities, nullptr); // pressure plate
+					}
+					entity->x = x * 16;
+					entity->y = y * 16;
+					//printlog("7 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",entity->sprite,entity->getUID(),entity->x,entity->y);
+					entity = newEntity(18, 1, map.entities, nullptr); // electricity node
+					entity->x = x * 16;
+					entity->y = y * 16;
+					//printlog("8 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",entity->sprite,entity->getUID(),entity->x,entity->y);
 				}
-				entity->x = x * 16;
-				entity->y = y * 16;
-				//printlog("7 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",entity->sprite,entity->getUID(),entity->x,entity->y);
-				entity = newEntity(18, 1, map.entities, nullptr); // electricity node
-				entity->x = x * 16 - (side == 3) * 16 + (side == 1) * 16;
-				entity->y = y * 16 - (side == 0) * 16 + (side == 2) * 16;
-				//printlog("8 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",entity->sprite,entity->getUID(),entity->x,entity->y);
 				switch ( side )
 				{
 					case 0:
@@ -2182,12 +3200,21 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						y--;
 						break;
 				}
-				i++;
 				testx = std::min(std::max<unsigned int>(0, x), map.width - 1); //TODO: Why are const int and unsigned int being compared?
 				testy = std::min(std::max<unsigned int>(0, y), map.height - 1); //TODO: Why are const int and unsigned int being compared?
+				i++;
 			}
-			while ( !map.tiles[OBSTACLELAYER + testy * MAPLAYERS + testx * MAPLAYERS * map.height] && i <= 10 );
+			while ( !map.tiles[OBSTACLELAYER + testy * MAPLAYERS + testx * MAPLAYERS * map.height] 
+				&& !map.trapexcludelocations[testx + testy * map.width]
+				&& !(!arrowtrap && !map.tiles[testy * MAPLAYERS + testx * MAPLAYERS * map.height]) // boulders stop wiring at pit edges
+				&& i <= 10 );
 		}
+	}
+
+	// check start room for accessibility to rest of level
+	if ( strncmp(map.name, "Underworld", 10) )
+	{
+		startRoomInfo.checkBorderAccessibility();
 	}
 
 	// monsters, decorations, and items
@@ -2213,7 +3240,16 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			}
 			else
 			{
-				possiblelocations[y + x * map.height] = true;
+				if ( x < getMapPossibleLocationX1() || x >= getMapPossibleLocationX2()
+					|| y < getMapPossibleLocationY1() || y >= getMapPossibleLocationY2() )
+				{
+					possiblelocations[y + x * map.height] = false;
+					--numpossiblelocations;
+				}
+				else
+				{
+					possiblelocations[y + x * map.height] = true;
+				}
 			}
 		}
 	}
@@ -2354,16 +3390,38 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			{
 				bool nopath = false;
 				bool hellLadderFix = !strncmp(map.name, "Hell", 4);
-				/*if ( !hellLadderFix )
+				std::vector<Entity*> tempPassableEntities;
+				if ( hellLadderFix )
 				{
-					hellLadderFix = !strncmp(map.name, "Caves", 4);
-				}*/
+					for ( node = map.entities->first; node != NULL; node = node->next )
+					{
+						if ( (entity2 = (Entity*)node->element) )
+						{
+							if ( entity2->sprite == 19 || entity2->sprite == 20
+								|| entity2->sprite == 113 || entity2->sprite == 114 )
+							{
+								int entx = entity2->x / 16;
+								int enty = entity2->y / 16;
+								if ( !entity2->flags[PASSABLE] )
+								{
+									if ( entx >= startRoomInfo.x1 && entx <= startRoomInfo.x2
+										&& enty >= startRoomInfo.y1 && enty <= startRoomInfo.y2 )
+									{
+										tempPassableEntities.push_back(entity2);
+										entity2->flags[PASSABLE] = true;
+									}
+								}
+							}
+						}
+					}
+				}
 				for ( node = map.entities->first; node != NULL; node = node->next )
 				{
 					entity2 = (Entity*)node->element;
-					if ( entity2->sprite == 1 ) // note entity->behavior == nullptr at this point, and door frame not picked. so use default sprite 1
+					if ( entity2->sprite == 1 ) // note entity->behavior == nullptr at this point
 					{
-						list_t* path = generatePath(x, y, entity2->x / 16, entity2->y / 16, entity, entity2, hellLadderFix);
+						list_t* path = generatePath(x, y, entity2->x / 16, entity2->y / 16, 
+							entity, entity2, GeneratePathTypes::GENERATE_PATH_CHECK_EXIT, hellLadderFix);
 						if ( path == NULL )
 						{
 							nopath = true;
@@ -2375,6 +3433,10 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						}
 						break;
 					}
+				}
+				for ( auto ent : tempPassableEntities )
+				{
+					ent->flags[PASSABLE] = false;
 				}
 				if ( nopath )
 				{
@@ -2394,7 +3456,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			//entity = newEntity(68, 1, map.entities, nullptr); // magic (artifact) bow
 		}
 		else if ( *cvar_underworldshrinetest && !strncmp(map.name, "Underworld", 10) 
-			&& (c == 1 && !(secretlevel && currentlevel == 7)) || (c == 2 && secretlevel && currentlevel == 7) )
+			&& ((c == 1 && !(secretlevel && currentlevel == 7)) || (c == 2 && secretlevel && currentlevel == 7)) )
 		{
 			std::set<int> walkableTiles;
 			for ( int isley = 1; isley < map.width - 1; ++isley )
@@ -2588,7 +3650,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			{
 				for ( y2 = -1; y2 <= 1; y2++ )
 				{
-					if ( checkObstacle((x + x2) * 16, (y + y2) * 16, NULL, NULL) )
+					if ( checkObstacle((x + x2) * 16, (y + y2) * 16, NULL, NULL, false) )
 					{
 						obstacles++;
 						if ( obstacles > 1 )
@@ -2612,7 +3674,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				if ( forcedMonsterSpawns > 0 )
 				{
 					--forcedMonsterSpawns;
-					if ( monsterexcludelocations[x + y * map.width] == false )
+					if ( map.monsterexcludelocations[x + y * map.width] == false )
 					{
 						bool doNPC = false;
 						if ( gameplayCustomManager.processedPropertyForFloor(currentlevel, secretlevel, map.name, GameplayCustomManager::PROPERTY_NPC, doNPC) )
@@ -2639,7 +3701,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 								entity = newEntity(27, 1, map.entities, map.creatures);  // human
 								if ( multiplayer != CLIENT && currentlevel > 5 )
 								{
-									entity->monsterStoreType = (currentlevel / 5) * 3 + (local_rng.rand() % 4); // scale humans with depth.  3 LVL each 5 floors, + 0-3.
+									entity->monsterStoreType = (currentlevel / 5) * 3 + (map_server_rng.rand() % 4); // scale humans with depth.  3 LVL each 5 floors, + 0-3.
 								}
 							}
 						}
@@ -2654,7 +3716,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				else if ( forcedLootSpawns > 0 )
 				{
 					--forcedLootSpawns;
-					if ( lootexcludelocations[x + y * map.width] == false )
+					if ( map.lootexcludelocations[x + y * map.width] == false )
 					{
 						if ( map_rng.rand() % 10 == 0 )   // 10% chance
 						{
@@ -2673,7 +3735,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				{
 					--forcedDecorationSpawns;
 					// decorations
-					if ( (map_rng.rand() % 4 == 0 || currentlevel <= 10 && !customTrapsForMapInUse) && strcmp(map.name, "Hell") )
+					if ( (map_rng.rand() % 4 == 0 || (currentlevel <= 10 && !customTrapsForMapInUse)) && strcmp(map.name, "Hell") )
 					{
 						switch ( map_rng.rand() % 7 )
 						{
@@ -2787,7 +3849,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					{
 						if ( map_rng.rand() % balance )
 						{
-							if ( lootexcludelocations[x + y * map.width] == false )
+							if ( map.lootexcludelocations[x + y * map.width] == false )
 							{
 								if ( map_rng.rand() % 10 == 0 )   // 10% chance
 								{
@@ -2804,7 +3866,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						}
 						else
 						{
-							if ( monsterexcludelocations[x + y * map.width] == false )
+							if ( map.monsterexcludelocations[x + y * map.width] == false )
 							{
 								bool doNPC = false;
 								if ( gameplayCustomManager.processedPropertyForFloor(currentlevel, secretlevel, map.name, GameplayCustomManager::PROPERTY_NPC, doNPC) )
@@ -2831,7 +3893,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 										entity = newEntity(27, 1, map.entities, map.creatures);  // human
 										if ( multiplayer != CLIENT && currentlevel > 5 )
 										{
-											entity->monsterStoreType = (currentlevel / 5) * 3 + (local_rng.rand() % 4); // scale humans with depth. 3 LVL each 5 floors, + 0-3.
+											entity->monsterStoreType = (currentlevel / 5) * 3 + (map_server_rng.rand() % 4); // scale humans with depth. 3 LVL each 5 floors, + 0-3.
 										}
 									}
 								}
@@ -2950,9 +4012,6 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	}*/
 
 	free(possiblelocations);
-	free(trapexcludelocations);
-	free(monsterexcludelocations);
-	free(lootexcludelocations);
 	free(firstroomtile);
 	free(subRoomName);
 	free(sublevelname);
@@ -2962,6 +4021,30 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	printlog("successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.\n", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);
 	//messagePlayer(0, "successfully generated a dungeon with %d rooms, %d monsters, %d gold, %d items, %d decorations.", roomcount, nummonsters, numGenGold, numGenItems, numGenDecorations);
 	return secretlevelexit;
+}
+
+bool allowedGenerateMimicOnChest(int x, int y, map_t& map)
+{
+	if ( gameModeManager.getMode() == gameModeManager.GAME_MODE_TUTORIAL
+		|| gameModeManager.getMode() == gameModeManager.GAME_MODE_TUTORIAL_INIT )
+	{
+		return false;
+	}
+	if ( !(svFlags & SV_FLAG_TRAPS) )
+	{
+		return false;
+	}
+	/*if ( map.trapexcludelocations )
+	{
+		if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+		{
+			if ( map.trapexcludelocations[x + y * map.width] )
+			{
+				return false;
+			}
+		}
+	}*/
+	return true;
 }
 
 /*-------------------------------------------------------------------------------
@@ -2974,11 +4057,6 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 void assignActions(map_t* map)
 {
-	Sint32 x, y, c;
-	//Sint32 z;
-	node_t* node, *nextnode;
-	Entity* entity, *childEntity;
-	Item* item;
 	bool itemsdonebefore = false;
 	Entity* vampireQuestChest = nullptr;
 
@@ -2988,16 +4066,17 @@ void assignActions(map_t* map)
 	}
 
 	// update arachnophobia filter
-	arachnophobia_filter = MainMenu::arachnophobia_filter;
+	arachnophobia_filter = GameplayPreferences_t::getGameConfigValue(GameplayPreferences_t::GOPT_ARACHNOPHOBIA);
+	colorblind_lobby = GameplayPreferences_t::getGameConfigValue(GameplayPreferences_t::GOPT_COLORBLIND);
 
 	// add lava lights
-	for ( y = 0; y < map->height; ++y )
+	for ( int y = 0; y < map->height; ++y )
 	{
-		for ( x = 0; x < map->width; ++x )
+		for ( int x = 0; x < map->width; ++x )
 		{
 			if ( lavatiles[map->tiles[y * MAPLAYERS + x * MAPLAYERS * map->height]] )
 			{
-				lightSphereShadow(x, y, 2, 128);
+				addLight(x, y, "lava");
 			}
 		}
 	}
@@ -3005,10 +4084,10 @@ void assignActions(map_t* map)
 	// seed the random generator
 
 	map_rng.seedBytes(&mapseed, sizeof(mapseed));
+	map_server_rng.seedBytes(&mapseed, sizeof(mapseed));
 
 	int balance = 0;
-	int i;
-	for ( i = 0; i < MAXPLAYERS; i++ )
+	for ( int i = 0; i < MAXPLAYERS; i++ )
 	{
 		if ( !client_disconnected[i] )
 		{
@@ -3019,24 +4098,25 @@ void assignActions(map_t* map)
 	bool customMonsterCurveExists = false;
 	if ( !monsterCurveCustomManager.inUse() )
 	{
-		monsterCurveCustomManager.readFromFile();
+		monsterCurveCustomManager.readFromFile(mapseed);
 	}
 	if ( monsterCurveCustomManager.curveExistsForCurrentMapName(map->name) )
 	{
 		customMonsterCurveExists = true;
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 	if ( gameplayCustomManager.inUse() )
 	{
 		conductGameChallenges[CONDUCT_MODDED] = 1;
-		gamemods_disableSteamAchievements = true;
+		Mods::disableSteamAchievements = true;
 	}
 
 	// assign entity behaviors
-	for ( node = map->entities->first; node != nullptr; node = nextnode )
+    node_t* nextnode;
+	for ( auto node = map->entities->first; node != nullptr; node = nextnode )
 	{
-		entity = (Entity*)node->element;
+		auto entity = (Entity*)node->element;
 		nextnode = node->next;
 		if ( !entity )
 		{
@@ -3064,17 +4144,54 @@ void assignActions(map_t* map)
 						entity = nullptr;
 						break;
 					}
-					if ( multiplayer != CLIENT )
-					{
-						if ( stats[numplayers]->HP <= 0 )
-						{
-							messagePlayer(numplayers, MESSAGE_STATUS, language[1109]);
+                    if ( stats[numplayers]->HP <= 0 )
+                    {
+                        if (!keepInventoryGlobal)
+                        {
+                            Item** items[] = {
+                                &stats[numplayers]->helmet,
+                                &stats[numplayers]->breastplate,
+                                &stats[numplayers]->gloves,
+                                &stats[numplayers]->shoes,
+                                &stats[numplayers]->shield,
+                                &stats[numplayers]->weapon,
+                                &stats[numplayers]->cloak,
+                                &stats[numplayers]->amulet,
+                                &stats[numplayers]->ring,
+                                &stats[numplayers]->mask,
+                            };
+                            constexpr int num_slots = sizeof(items) / sizeof(items[0]);
+                            for (int c = 0; c < num_slots; ++c) {
+                                if (*(items[c])) {
+                                    if ((*(items[c]))->node) {
+                                        list_RemoveNode((*(items[c]))->node);
+                                    } else {
+                                        free((*(items[c])));
+                                    }
+                                }
+                                *(items[c]) = nullptr;
+                            }
+                            node_t *node, *nextnode;
+                            for ( node = stats[numplayers]->inventory.first; node != nullptr; node = nextnode )
+                            {
+                                nextnode = node->next;
+                                Item* item = (Item*)node->element;
+                                if ( itemCategory(item) == SPELL_CAT )
+                                {
+                                    continue;    // don't drop spells on death, stupid!
+                                }
+                                list_RemoveNode(node);
+                            }
+                        }
+                        if ( multiplayer != CLIENT )
+                        {
+                            messagePlayer(numplayers, MESSAGE_STATUS, Language::get(1109));
 							stats[numplayers]->HP = stats[numplayers]->MAXHP / 2;
 							stats[numplayers]->MP = stats[numplayers]->MAXMP / 2;
 							stats[numplayers]->HUNGER = 500;
-							for ( c = 0; c < NUMEFFECTS; ++c )
+							for ( int c = 0; c < NUMEFFECTS; ++c )
 							{
-								if ( !(c == EFF_VAMPIRICAURA && stats[numplayers]->EFFECTS_TIMERS[c] == -2) 
+								if ( !(c == EFF_VAMPIRICAURA && stats[numplayers]->EFFECTS_TIMERS[c] == -2)
 									&& c != EFF_WITHDRAWAL && c != EFF_SHAPESHIFT )
 								{
 									stats[numplayers]->EFFECTS[c] = false;
@@ -3085,6 +4202,9 @@ void assignActions(map_t* map)
 					}
 					entity->behavior = &actPlayer;
 					entity->addToCreatureList(map->creatures);
+
+					players[numplayers]->ghost.initStartRoomLocation(entity->x / 16, entity->y / 16);
+
 					entity->x += 8;
 					entity->y += 8;
 					entity->z = -1;
@@ -3119,7 +4239,7 @@ void assignActions(map_t* map)
 					{
 						if ( numplayers == 0 && minotaurlevel )
 						{
-							createMinotaurTimer(entity, map);
+							createMinotaurTimer(entity, map, map_server_rng.getU32());
 						}
 					}
 					++numplayers;
@@ -3146,7 +4266,7 @@ void assignActions(map_t* map)
 				entity->sprite = doorFrameSprite();
 				entity->flags[PASSABLE] = true;
 				entity->behavior = &actDoorFrame;
-				childEntity = newEntity(2, 0, map->entities, nullptr); //Door frame entity.
+				auto childEntity = newEntity(2, 0, map->entities, nullptr); //Door frame entity.
 				childEntity->x = entity->x;
 				childEntity->y = entity->y;
 				TileEntityList.addEntity(*childEntity);
@@ -3156,6 +4276,7 @@ void assignActions(map_t* map)
 				childEntity->behavior = &actDoor;
 				childEntity->flags[BLOCKSIGHT] = true;
 				childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
+				childEntity->seedEntityRNG(map_server_rng.getU32());
 
 				// copy editor options from frame to door itself.
 				childEntity->doorDisableLockpicks = entity->doorDisableLockpicks;
@@ -3194,7 +4315,7 @@ void assignActions(map_t* map)
 				entity->sprite = doorFrameSprite();
 				entity->flags[PASSABLE] = true;
 				entity->behavior = &actDoorFrame;
-				childEntity = newEntity(2, 0, map->entities, nullptr); //Door frame entity.
+				auto childEntity = newEntity(2, 0, map->entities, nullptr); //Door frame entity.
 				childEntity->x = entity->x;
 				childEntity->y = entity->y;
 				TileEntityList.addEntity(*childEntity);
@@ -3205,6 +4326,7 @@ void assignActions(map_t* map)
 				childEntity->behavior = &actDoor;
 				childEntity->flags[BLOCKSIGHT] = true;
 				childEntity->skill[0] = 1; // signify behavior code of DOOR_DIR
+				childEntity->seedEntityRNG(map_server_rng.getU32());
 
 				// copy editor options from frame to door itself.
 				childEntity->doorDisableLockpicks = entity->doorDisableLockpicks;
@@ -3216,6 +4338,7 @@ void assignActions(map_t* map)
 				childEntity->flags[BLOCKSIGHT] = true;
 				childEntity->x = entity->x - 7;
 				childEntity->y = entity->y;
+				childEntity->yaw -= PI / 2.0;
 
 				TileEntityList.addEntity(*childEntity);
 				//printlog("20 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
@@ -3228,6 +4351,8 @@ void assignActions(map_t* map)
 				childEntity->flags[BLOCKSIGHT] = true;
 				childEntity->x = entity->x + 7;
 				childEntity->y = entity->y;
+				childEntity->yaw -= PI / 2.0;
+
 				TileEntityList.addEntity(*childEntity);
 				//printlog("21 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
 				childEntity->sizex = 2;
@@ -3250,7 +4375,6 @@ void assignActions(map_t* map)
 				entity->z -= 1;
 				entity->sprite = 3;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 				// south torch:
 			}
@@ -3269,7 +4393,6 @@ void assignActions(map_t* map)
 				entity->yaw += PI / 2.0;
 				entity->sprite = 3;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			}
 			// west torch:
@@ -3288,7 +4411,6 @@ void assignActions(map_t* map)
 				entity->yaw += PI;
 				entity->sprite = 3;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			}
 			// north torch:
@@ -3307,7 +4429,6 @@ void assignActions(map_t* map)
 				entity->yaw += 3 * PI / 2.0;
 				entity->sprite = 3;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			}
 			// item:
@@ -3379,7 +4500,7 @@ void assignActions(map_t* map)
 									{
 										randType = map_rng.rand() % (NUMCATEGORIES - 1);
 									}
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(randType), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(randType), 0, currentlevel, map_rng);
 								}
 								else
 								{
@@ -3397,12 +4518,12 @@ void assignActions(map_t* map)
 											randType++;
 										}
 									}
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(randType), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(randType), 0, currentlevel, map_rng);
 								}
 							}
 							else
 							{
-								entity->skill[10] = itemLevelCurve(FOOD, 0, currentlevel);
+								entity->skill[10] = itemLevelCurve(FOOD, 0, currentlevel, map_rng);
 							}
 						}
 					}
@@ -3411,7 +4532,7 @@ void assignActions(map_t* map)
 						// editor set the random category of the item to be spawned.
 						if ( entity->skill[16] > 0 && entity->skill[16] <= 13 )
 						{
-							entity->skill[10] = itemLevelCurve(static_cast<Category>(entity->skill[16] - 1), 0, currentlevel);
+							entity->skill[10] = itemLevelCurve(static_cast<Category>(entity->skill[16] - 1), 0, currentlevel, map_rng);
 						}
 						else
 						{
@@ -3422,11 +4543,11 @@ void assignActions(map_t* map)
 								randType = map_rng.rand() % 2;
 								if ( randType == 0 )
 								{
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(WEAPON), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(WEAPON), 0, currentlevel, map_rng);
 								}
 								else if ( randType == 1 )
 								{
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(ARMOR), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(ARMOR), 0, currentlevel, map_rng);
 								}
 							}
 							else if ( entity->skill[16] == 15 )
@@ -3435,11 +4556,11 @@ void assignActions(map_t* map)
 								randType = map_rng.rand() % 2;
 								if ( randType == 0 )
 								{
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(AMULET), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(AMULET), 0, currentlevel, map_rng);
 								}
 								else
 								{
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(RING), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(RING), 0, currentlevel, map_rng);
 								}
 							}
 							else if ( entity->skill[16] == 16 )
@@ -3448,15 +4569,15 @@ void assignActions(map_t* map)
 								randType = map_rng.rand() % 3;
 								if ( randType == 0 )
 								{
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(SCROLL), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(SCROLL), 0, currentlevel, map_rng);
 								}
 								else if ( randType == 1 )
 								{
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(MAGICSTAFF), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(MAGICSTAFF), 0, currentlevel, map_rng);
 								}
 								else
 								{
-									entity->skill[10] = itemLevelCurve(static_cast<Category>(SPELLBOOK), 0, currentlevel);
+									entity->skill[10] = itemLevelCurve(static_cast<Category>(SPELLBOOK), 0, currentlevel, map_rng);
 								}
 							}
 						}
@@ -3543,7 +4664,7 @@ void assignActions(map_t* map)
 				}
 				else
 				{
-					if ( items[entity->skill[10]].category == SCROLL 
+					if ( items[entity->skill[10]].category == SCROLL
 						|| items[entity->skill[10]].variations > 1
 						|| entity->skill[10] == FOOD_TIN )
 					{
@@ -3581,7 +4702,7 @@ void assignActions(map_t* map)
 					entity->skill[11] = std::min(DECREPIT + (entity->skill[10] - BRONZE_TOMAHAWK), static_cast<int>(EXCELLENT));
 				}
 
-				item = newItemFromEntity(entity);
+				auto item = newItemFromEntity(entity);
 				entity->sprite = itemModel(item);
 				if ( !entity->itemNotMoving )
 				{
@@ -3752,6 +4873,14 @@ void assignActions(map_t* map)
 					break;
 				}
 
+				if ( monsterType == MIMIC )
+				{
+					entity->yaw = 90 * (map_rng.rand() % 4) * PI / 180.0;
+					entity->monsterLookDir = entity->yaw;
+				}
+
+				entity->seedEntityRNG(map_server_rng.getU32());
+
 				if ( multiplayer != CLIENT )
 				{
 					if ( myStats == nullptr )
@@ -3784,7 +4913,12 @@ void assignActions(map_t* map)
 						// monster is random, but generated from editor
 						// stat struct is already created, need to set stats
 						setDefaultMonsterStats(myStats, monsterType + 1000);
-						setRandomMonsterStats(myStats);
+
+						Uint32 monsterseed = 0;
+						entity->entity_rng->getSeed(&monsterseed, sizeof(monsterseed));
+						BaronyRNG tmpRng;
+						tmpRng.seedBytes(&monsterseed, sizeof(monsterseed));
+						setRandomMonsterStats(myStats, tmpRng);
 					}
 
 					std::string checkName = myStats->name;
@@ -3819,7 +4953,7 @@ void assignActions(map_t* map)
 					myStats->type = monsterType;
 					if ( myStats->type == DEVIL )
 					{
-						childEntity = newEntity(72, 1, map->entities, nullptr);
+						auto childEntity = newEntity(72, 1, map->entities, nullptr);
 						//printlog("Generated devil spawner. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
 						childEntity->x = entity->x - 8;
 						childEntity->y = entity->y - 8;
@@ -3835,7 +4969,7 @@ void assignActions(map_t* map)
 				entity->sizey = 4;
 				entity->x += 8;
 				entity->y += 8;
-				entity->z = 5.45;
+				entity->z = 5.5;
 				entity->flags[PASSABLE] = true;
 				entity->behavior = &actLadder;
 				entity->sprite = 161; // ladder
@@ -3853,7 +4987,6 @@ void assignActions(map_t* map)
 				entity->x += 8;
 				entity->y += 8;
 				entity->z = 6;
-				entity->flags[BRIGHT] = true;
 				entity->flags[PASSABLE] = true;
 				entity->behavior = &actCampfire;
 				entity->sprite = 162; // firepit
@@ -3869,6 +5002,8 @@ void assignActions(map_t* map)
 				entity->behavior = &actFountain;
 				entity->sprite = 163; //Fountain
 				entity->skill[0] = 1; //Fountain is full.
+				entity->seedEntityRNG(map_server_rng.getU32());
+
 				//Randomly determine effect.
 				int effect = map_rng.rand() % 10; //3 possible effects.
 				entity->skill[28] = 1; //TODO: This is just for testing purposes.
@@ -3909,6 +5044,7 @@ void assignActions(map_t* map)
 			}
 			//Sink.
 			case 15:
+			{
 				entity->sizex = 4;
 				entity->sizey = 4;
 				entity->x += 8;
@@ -3944,31 +5080,36 @@ void assignActions(map_t* map)
 					default:
 						break;
 				}
+
+				entity->seedEntityRNG(map_server_rng.getU32());
 				break;
+			}
 			//Switch.
 			case 17:
-				entity->sizex = 1;
-				entity->sizey = 1;
-				entity->x += 8;
-				entity->y += 8;
-				entity->z = 7.5;
-				entity->sprite = 184; // this is the switch base.
-				entity->flags[PASSABLE] = true;
-				childEntity = newEntity(186, 0, map->entities, nullptr); //Switch entity.
-				childEntity->x = entity->x;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("22 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->z = 8.5;
-				childEntity->focalz = -4.5;
-				childEntity->sizex = 1;
-				childEntity->sizey = 1;
-				childEntity->sprite = 185; // this is the switch handle.
-				childEntity->roll = PI / 4; // "off" position
-				childEntity->flags[PASSABLE] = true;
-				childEntity->behavior = &actSwitch;
-				entity->parent = childEntity->getUID();
-				break;
+            {
+                entity->sizex = 1;
+                entity->sizey = 1;
+                entity->x += 8;
+                entity->y += 8;
+                entity->z = 7.5;
+                entity->sprite = 184; // this is the switch base.
+                entity->flags[PASSABLE] = true;
+                auto childEntity = newEntity(186, 0, map->entities, nullptr); //Switch entity.
+                childEntity->x = entity->x;
+                childEntity->y = entity->y;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("22 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->z = 8.5;
+                childEntity->focalz = -4.5;
+                childEntity->sizex = 1;
+                childEntity->sizey = 1;
+                childEntity->sprite = 185; // this is the switch handle.
+                childEntity->roll = PI / 4; // "off" position
+                childEntity->flags[PASSABLE] = true;
+                childEntity->behavior = &actSwitch;
+                entity->parent = childEntity->getUID();
+                break;
+            }
 			//Circuit.
 			case 18:
 				entity->sizex = 3;
@@ -3985,99 +5126,105 @@ void assignActions(map_t* map)
 				break;
 			//North/South gate: //TODO: Adjust this. It's a copypaste of door.
 			case 19:
-				entity->x += 8;
-				entity->y += 8;
-				entity->yaw -= PI / 2.0;
-				entity->sprite = doorFrameSprite();
-				entity->flags[PASSABLE] = true;
-				entity->behavior = &actDoorFrame;
-
-				//entity->skill[28] = 1; //It's a mechanism.
-				childEntity = newEntity(186, 0, map->entities, nullptr); //Gate entity.
-				childEntity->x = entity->x;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("23 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 8;
-				childEntity->sizey = 1;
+            {
+                entity->x += 8;
+                entity->y += 8;
+                entity->yaw -= PI / 2.0;
+                entity->sprite = doorFrameSprite();
+                entity->flags[PASSABLE] = true;
+                entity->behavior = &actDoorFrame;
+                
+                //entity->skill[28] = 1; //It's a mechanism.
+                auto childEntity = newEntity(186, 0, map->entities, nullptr); //Gate entity.
+                childEntity->x = entity->x;
+                childEntity->y = entity->y;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("23 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 8;
+                childEntity->sizey = 1;
+                childEntity->yaw -= PI / 2.0;
+                childEntity->gateInverted = 0; // non-inverted
+                childEntity->gateStatus = 0; // closed.
+                childEntity->skill[28] = 1; //It's a mechanism.
+                childEntity->behavior = &actGate;
+                childEntity->skill[0] = 1; // signify behavior code of DOOR_DIR
+                
+                // copy editor options from frame to gate itself.
+                childEntity->gateDisableOpening = entity->gateDisableOpening;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x - 7;
+                childEntity->y = entity->y;
 				childEntity->yaw -= PI / 2.0;
-				childEntity->gateInverted = 0; // non-inverted
-				childEntity->gateStatus = 0; // closed.
-				childEntity->skill[28] = 1; //It's a mechanism.
-				childEntity->behavior = &actGate;
-				childEntity->skill[0] = 1; // signify behavior code of DOOR_DIR
-
-				// copy editor options from frame to gate itself.
-				childEntity->gateDisableOpening = entity->gateDisableOpening;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x - 7;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("24 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x + 7;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("25 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-				break;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("24 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x + 7;
+                childEntity->y = entity->y;
+				childEntity->yaw -= PI / 2.0;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("25 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                break;
+            }
 			//East/west gate: //TODO: Adjust this. It's a copypaste of door.
 			case 20:
-				entity->x += 8;
-				entity->y += 8;
-				entity->sprite = doorFrameSprite();
-				entity->flags[PASSABLE] = true;
-				entity->behavior = &actDoorFrame;
-
-				childEntity = newEntity(186, 0, map->entities, nullptr); //Gate entity.
-				childEntity->x = entity->x;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("26 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 1;
-				childEntity->sizey = 8;
-				childEntity->gateInverted = 0; // non-inverted
-				childEntity->gateStatus = 0; // closed.
-				childEntity->skill[28] = 1; //It's a mechanism.
-				childEntity->behavior = &actGate;
-				childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
-
-				// copy editor options from frame to gate itself.
-				childEntity->gateDisableOpening = entity->gateDisableOpening;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x;
-				childEntity->y = entity->y - 7;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("27 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x;
-				childEntity->y = entity->y + 7;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("28 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-				break;
+            {
+                entity->x += 8;
+                entity->y += 8;
+                entity->sprite = doorFrameSprite();
+                entity->flags[PASSABLE] = true;
+                entity->behavior = &actDoorFrame;
+                
+                auto childEntity = newEntity(186, 0, map->entities, nullptr); //Gate entity.
+                childEntity->x = entity->x;
+                childEntity->y = entity->y;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("26 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 1;
+                childEntity->sizey = 8;
+                childEntity->gateInverted = 0; // non-inverted
+                childEntity->gateStatus = 0; // closed.
+                childEntity->skill[28] = 1; //It's a mechanism.
+                childEntity->behavior = &actGate;
+                childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
+                
+                // copy editor options from frame to gate itself.
+                childEntity->gateDisableOpening = entity->gateDisableOpening;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x;
+                childEntity->y = entity->y - 7;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("27 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x;
+                childEntity->y = entity->y + 7;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("28 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                break;
+            }
 			//Chest.
 			case 21:
 			{
@@ -4091,7 +5238,9 @@ void assignActions(map_t* map)
 				entity->sprite = 188;
 				//entity->skill[9] = -1; //Set default chest as random category < 0
 
-				childEntity = newEntity(216, 0, map->entities, nullptr); //Chest lid entity.
+				entity->seedEntityRNG(map_server_rng.getU32());
+
+				auto childEntity = newEntity(216, 0, map->entities, nullptr); //Chest lid entity.
 				childEntity->parent = entity->getUID();
 				entity->parent = childEntity->getUID();
 				if ( entity->yaw == 0 ) //EAST FACING
@@ -4200,6 +5349,7 @@ void assignActions(map_t* map)
 				break;
 			// minotaur spawn trap
 			case 37:
+			{
 				entity->skill[28] = 1; // is a mechanism
 				entity->sizex = 2;
 				entity->sizey = 2;
@@ -4210,9 +5360,12 @@ void assignActions(map_t* map)
 				entity->flags[INVISIBLE] = true;
 				entity->flags[PASSABLE] = true;
 				entity->flags[NOUPDATE] = true;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				break;
+			}
 			// summon monster trap
 			case 97:
+			{
 				entity->skill[28] = 1; // is a mechanism
 				if ( entity->skill[1] == 0 )
 				{
@@ -4248,7 +5401,9 @@ void assignActions(map_t* map)
 				entity->flags[INVISIBLE] = true;
 				entity->flags[PASSABLE] = true;
 				entity->flags[NOUPDATE] = true;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				break;
+			}
 			// boulder trap
 			case 38:
 			{
@@ -4262,8 +5417,9 @@ void assignActions(map_t* map)
 				entity->flags[PASSABLE] = true;
 				entity->flags[NOUPDATE] = true;
 				entity->skill[28] = 1; // is a mechanism
-				for ( c = 0; c < 4; c++ )
+				for ( int c = 0; c < 4; c++ )
 				{
+                    int x, y;
 					switch ( c )
 					{
 						case 0:
@@ -4302,6 +5458,7 @@ void assignActions(map_t* map)
 							{
 								childEntity->z = -10.99;
 							}
+							childEntity->behavior = &actBoulderTrapHole;
 							TileEntityList.addEntity(*childEntity);
 							entity->boulderTrapRocksToSpawn |= (1 << c); // add this location to spawn a boulder below the trapdoor model.
 						}
@@ -4311,6 +5468,7 @@ void assignActions(map_t* map)
 			}
 			// headstone
 			case 39:
+			{
 				entity->sizex = 4;
 				entity->sizey = 4;
 				entity->x += 8;
@@ -4324,7 +5482,9 @@ void assignActions(map_t* map)
 					entity->flags[INVISIBLE] = true;
 					entity->flags[PASSABLE] = true;
 				}
+				entity->seedEntityRNG(map_server_rng.getU32());
 				break;
+			}
 			// model tester
 			case 40:
 				entity->behavior = &actRotate;
@@ -4344,27 +5504,30 @@ void assignActions(map_t* map)
 				break;
 			// ladder hole
 			case 43:
-				entity->x += 8;
-				entity->y += 8;
-				entity->sprite = 253;
-				entity->flags[PASSABLE] = true;
-				entity->behavior = &actLadderUp;
-				x = entity->x / 16;
-				y = entity->y / 16;
-				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
-				{
-					if ( !map->tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map->height] )
-					{
-						entity->z = -21.49;
-					}
-					else
-					{
-						entity->z = -5.49;
-					}
-				}
-				break;
+            {
+                entity->x += 8;
+                entity->y += 8;
+                entity->sprite = 253;
+                entity->flags[PASSABLE] = true;
+                entity->behavior = &actLadderUp;
+                int x = entity->x / 16;
+                int y = entity->y / 16;
+                if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
+                {
+                    if ( !map->tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map->height] )
+                    {
+                        entity->z = -6.25 - 16.0;
+                    }
+                    else
+                    {
+                        entity->z = -6.25;
+                    }
+                }
+                break;
+            }
 			// boulder
 			case 44:
+			{
 				entity->x += 8;
 				entity->y += 8;
 				entity->sprite = 245;
@@ -4372,7 +5535,9 @@ void assignActions(map_t* map)
 				entity->sizey = 7;
 				entity->behavior = &actBoulder;
 				entity->skill[0] = 1; // BOULDER_STOPPED
+				entity->seedEntityRNG(map_server_rng.getU32());
 				break;
+			}
 			// portal
 			case 45:
 				entity->x += 8;
@@ -4387,7 +5552,6 @@ void assignActions(map_t* map)
 					entity->skill[3] = 1; // not secret portal, just aesthetic.
 				}
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			// secret ladder:
 			case 46:
@@ -4395,7 +5559,7 @@ void assignActions(map_t* map)
 				entity->sizey = 4;
 				entity->x += 8;
 				entity->y += 8;
-				entity->z = 5.45;
+				entity->z = 5.5;
 				entity->flags[PASSABLE] = true;
 				entity->behavior = &actLadder;
 				entity->sprite = 161; // ladder
@@ -4412,6 +5576,7 @@ void assignActions(map_t* map)
 				entity->focalz = -3;
 				entity->sprite = 271;
 				entity->behavior = &actFurniture;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				entity->flags[BURNABLE] = true;
 				entity->furnitureType = FURNITURE_TABLE;
 				if ( entity->furnitureDir != -1 )
@@ -4451,7 +5616,7 @@ void assignActions(map_t* map)
 				if ( doItem )
 				{
 					// put an item on the table
-					childEntity = newEntity(8, 1, map->entities, nullptr);
+					auto childEntity = newEntity(8, 1, map->entities, nullptr);
 					setSpriteAttributes(childEntity, nullptr, nullptr);
 					childEntity->x = entity->x - 8;
 					childEntity->y = entity->y - 8;
@@ -4479,7 +5644,6 @@ void assignActions(map_t* map)
 				if ( doChairs )
 				{
 					// surround the table with chairs
-					int c;
 					if ( entity->furnitureTableSpawnChairs == -1 )
 					{
 						numChairs = map_rng.rand() % 4 + 1;
@@ -4488,9 +5652,9 @@ void assignActions(map_t* map)
 					{
 						numChairs = entity->furnitureTableSpawnChairs;
 					}
-					for ( c = 0; c < numChairs; c++ )
+					for ( int c = 0; c < numChairs; c++ )
 					{
-						childEntity = newEntity(60, 1, map->entities, nullptr);
+						auto childEntity = newEntity(60, 1, map->entities, nullptr);
 						setSpriteAttributes(childEntity, nullptr, nullptr);
 						childEntity->x = entity->x - 8;
 						childEntity->y = entity->y - 8;
@@ -4513,6 +5677,7 @@ void assignActions(map_t* map)
 			}
 			// chair
 			case 60:
+			{
 				entity->furnitureType = FURNITURE_CHAIR; // so everything knows I'm a chair
 				entity->sizex = 2;
 				entity->sizey = 2;
@@ -4522,6 +5687,7 @@ void assignActions(map_t* map)
 				entity->focalz = -5;
 				entity->sprite = 272;
 				entity->behavior = &actFurniture;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				entity->flags[BURNABLE] = true;
 				if ( entity->furnitureDir == -1 )
 				{
@@ -4535,6 +5701,7 @@ void assignActions(map_t* map)
 					entity->yaw = entity->furnitureDir * 45 * (PI / 180.f);
 				}
 				break;
+			}
 			// MC easter egg:
 			case 61:
 				entity->sizex = 2;
@@ -4556,7 +5723,6 @@ void assignActions(map_t* map)
 				entity->yaw = PI / 2;
 				entity->behavior = &actWinningPortal;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				if ( strstr(map->name, "Boss") )
 				{
 					entity->flags[INVISIBLE] = true;
@@ -4575,26 +5741,29 @@ void assignActions(map_t* map)
 				break;
 			// speartrap:
 			case 64:
-				entity->sizex = 6;
-				entity->sizey = 6;
-				entity->x += 8;
-				entity->y += 8;
-				entity->z = 16;
-				entity->focalz = 7;
-				entity->sprite = 282;
-				entity->behavior = &actSpearTrap;
-				entity->skill[28] = 1; // is a mechanism
-				entity->flags[PASSABLE] = true;
-				childEntity = newEntity(283, 0, map->entities, nullptr);
-				childEntity->x = entity->x;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("33 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->z = entity->z - 7.75 - 0.01;
-				childEntity->flags[PASSABLE] = true;
-				break;
+            {
+                entity->sizex = 6;
+                entity->sizey = 6;
+                entity->x += 8;
+                entity->y += 8;
+                entity->z = 16;
+                entity->focalz = 7;
+                entity->sprite = 282;
+                entity->behavior = &actSpearTrap;
+                entity->skill[28] = 1; // is a mechanism
+                entity->flags[PASSABLE] = true;
+                auto childEntity = newEntity(283, 0, map->entities, nullptr);
+                childEntity->x = entity->x;
+                childEntity->y = entity->y;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("33 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->z = entity->z - 7.75 - 0.01;
+                childEntity->flags[PASSABLE] = true;
+                break;
+            }
 			// magic trap:
 			case 65:
+			{
 				entity->sizex = 2;
 				entity->sizey = 2;
 				entity->x += 8;
@@ -4604,7 +5773,9 @@ void assignActions(map_t* map)
 				entity->flags[INVISIBLE] = true;
 				entity->flags[PASSABLE] = true;
 				entity->skill[28] = 1; // is a mechanism
+				entity->seedEntityRNG(map_server_rng.getU32());
 				break;
+			}
 			// wall buster:
 			case 66:
 				entity->sizex = 2;
@@ -4662,7 +5833,6 @@ void assignActions(map_t* map)
 				entity->z -= 1;
 				entity->sprite = 587;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			}
 			// south crystal shard:
@@ -4681,7 +5851,6 @@ void assignActions(map_t* map)
 				entity->yaw += PI / 2.0;
 				entity->sprite = 587;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			}
 			// west crystal shard:
@@ -4700,7 +5869,6 @@ void assignActions(map_t* map)
 				entity->yaw += PI;
 				entity->sprite = 587;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			}
 			// north crystal shard:
@@ -4719,7 +5887,6 @@ void assignActions(map_t* map)
 				entity->yaw += 3 * PI / 2.0;
 				entity->sprite = 587;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				break;
 			}
 
@@ -4738,8 +5905,8 @@ void assignActions(map_t* map)
 				entity->skill[28] = 1; // is a mechanism
 				entity->boulderTrapPreDelay = entity->boulderTrapPreDelay * TICKS_PER_SECOND; // convert seconds to ticks from editor
 
-				x = ((int)(entity->x)) >> 4;
-				y = ((int)(entity->y)) >> 4;
+				const int x = ((int)(entity->x)) >> 4;
+				const int y = ((int)(entity->y)) >> 4;
 				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
 				{
 					if ( !map->tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map->height] )
@@ -4757,6 +5924,7 @@ void assignActions(map_t* map)
 						{
 							childEntity->z = -10.99;
 						}
+						childEntity->behavior = &actBoulderTrapHole;
 						TileEntityList.addEntity(*childEntity);
 					}
 				}
@@ -4778,8 +5946,8 @@ void assignActions(map_t* map)
 				entity->skill[28] = 1; // is a mechanism
 				entity->boulderTrapPreDelay = entity->boulderTrapPreDelay * TICKS_PER_SECOND; // convert seconds to ticks from editor
 
-				x = ((int)(entity->x)) >> 4;
-				y = ((int)(entity->y)) >> 4;
+				const int x = ((int)(entity->x)) >> 4;
+				const int y = ((int)(entity->y)) >> 4;
 				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
 				{
 					if ( !map->tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map->height] )
@@ -4797,6 +5965,7 @@ void assignActions(map_t* map)
 						{
 							childEntity->z = -10.99;
 						}
+						childEntity->behavior = &actBoulderTrapHole;
 						TileEntityList.addEntity(*childEntity);
 					}
 				}
@@ -4818,8 +5987,8 @@ void assignActions(map_t* map)
 				entity->skill[28] = 1; // is a mechanism
 				entity->boulderTrapPreDelay = entity->boulderTrapPreDelay * TICKS_PER_SECOND; // convert seconds to ticks from editor
 
-				x = ((int)(entity->x)) >> 4;
-				y = ((int)(entity->y)) >> 4;
+				const int x = ((int)(entity->x)) >> 4;
+				const int y = ((int)(entity->y)) >> 4;
 				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
 				{
 					if ( !map->tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map->height] )
@@ -4837,6 +6006,7 @@ void assignActions(map_t* map)
 						{
 							childEntity->z = -10.99;
 						}
+						childEntity->behavior = &actBoulderTrapHole;
 						TileEntityList.addEntity(*childEntity);
 					}
 				}
@@ -4858,8 +6028,8 @@ void assignActions(map_t* map)
 				entity->skill[28] = 1; // is a mechanism
 				entity->boulderTrapPreDelay = entity->boulderTrapPreDelay * TICKS_PER_SECOND; // convert seconds to ticks from editor
 
-				x = ((int)(entity->x)) >> 4;
-				y = ((int)(entity->y)) >> 4;
+				const int x = ((int)(entity->x)) >> 4;
+				const int y = ((int)(entity->y)) >> 4;
 				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
 				{
 					if ( !map->tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map->height] )
@@ -4877,6 +6047,7 @@ void assignActions(map_t* map)
 						{
 							childEntity->z = -10.99;
 						}
+						childEntity->behavior = &actBoulderTrapHole;
 						TileEntityList.addEntity(*childEntity);
 					}
 				}
@@ -4896,7 +6067,7 @@ void assignActions(map_t* map)
 				entity->yaw = entity->yaw * (PI / 2); // rotate as set in editor
 				entity->flags[PASSABLE] = false;
 
-				childEntity = newEntity(578, 0, map->entities, nullptr); //floating crystal
+				auto childEntity = newEntity(578, 0, map->entities, nullptr); //floating crystal
 				childEntity->parent = entity->getUID();
 
 				childEntity->x = entity->x;
@@ -4993,166 +6164,178 @@ void assignActions(map_t* map)
 				entity->behavior = &actStalagFloor;
 				break;
 			case 111: //stalagtite single
-				entity->x += 8;
-				entity->y += 8;
-				entity->sprite = 583;
-				entity->sizex = 4;
-				entity->sizey = 4;
-				entity->z = -1.75;
-				x = entity->x / 16;
-				y = entity->y / 16;
-				entity->flags[BLOCKSIGHT] = false;
-				entity->behavior = &actStalagCeiling;
-				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
-				{
-					if ( !map->tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map->height] )
-					{
-						entity->flags[PASSABLE] = true;
-						entity->z -= 16;
-					}
-				}
-				break;
+            {
+                entity->x += 8;
+                entity->y += 8;
+                entity->sprite = 583;
+                entity->sizex = 4;
+                entity->sizey = 4;
+                entity->z = -1.75;
+                const int x = entity->x / 16;
+                const int y = entity->y / 16;
+                entity->flags[BLOCKSIGHT] = false;
+                entity->behavior = &actStalagCeiling;
+                if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
+                {
+                    if ( !map->tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map->height] )
+                    {
+                        entity->flags[PASSABLE] = true;
+                        entity->z -= 16;
+                    }
+                }
+                break;
+            }
 			case 112: //stalagtite multiple
-				entity->x += 8;
-				entity->y += 8;
-				entity->sprite = 584;
-				entity->sizex = 7;
-				entity->sizey = 7;
-				entity->z = 1;
-				x = entity->x / 16;
-				y = entity->y / 16;
-				entity->flags[BLOCKSIGHT] = false;
-				entity->behavior = &actStalagCeiling;
-				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
-				{
-					if ( !map->tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map->height] )
-					{
-						entity->flags[PASSABLE] = true;
-						entity->z -= 16;
-					}
-				}
-				break;
+            {
+                entity->x += 8;
+                entity->y += 8;
+                entity->sprite = 584;
+                entity->sizex = 7;
+                entity->sizey = 7;
+                entity->z = 1;
+                const int x = entity->x / 16;
+                const int y = entity->y / 16;
+                entity->flags[BLOCKSIGHT] = false;
+                entity->behavior = &actStalagCeiling;
+                if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
+                {
+                    if ( !map->tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map->height] )
+                    {
+                        entity->flags[PASSABLE] = true;
+                        entity->z -= 16;
+                    }
+                }
+                break;
+            }
 			//North/South gate inverted: //TODO: Adjust this. It's a copypaste of door.
 			case 113:
-				entity->x += 8;
-				entity->y += 8;
-				entity->yaw -= PI / 2.0;
-				entity->sprite = doorFrameSprite();
-				entity->flags[PASSABLE] = true;
-				entity->behavior = &actDoorFrame;
-
-				//entity->skill[28] = 1; //It's a mechanism.
-				childEntity = newEntity(186, 0, map->entities, nullptr);
-				childEntity->x = entity->x;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("23 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 8;
-				childEntity->sizey = 1;
+            {
+                entity->x += 8;
+                entity->y += 8;
+                entity->yaw -= PI / 2.0;
+                entity->sprite = doorFrameSprite();
+                entity->flags[PASSABLE] = true;
+                entity->behavior = &actDoorFrame;
+                
+                //entity->skill[28] = 1; //It's a mechanism.
+                auto childEntity = newEntity(186, 0, map->entities, nullptr);
+                childEntity->x = entity->x;
+                childEntity->y = entity->y;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("23 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 8;
+                childEntity->sizey = 1;
+                childEntity->yaw -= PI / 2.0;
+                childEntity->gateInverted = 1; // inverted.
+                childEntity->gateStatus = 1; // open.
+                childEntity->skill[28] = 1; //It's a mechanism.
+                childEntity->behavior = &actGate;
+                childEntity->skill[0] = 1; // signify behavior code of DOOR_DIR
+                
+                // copy editor options from frame to gate itself.
+                childEntity->gateDisableOpening = entity->gateDisableOpening;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x - 7;
+                childEntity->y = entity->y;
 				childEntity->yaw -= PI / 2.0;
-				childEntity->gateInverted = 1; // inverted.
-				childEntity->gateStatus = 1; // open.
-				childEntity->skill[28] = 1; //It's a mechanism.
-				childEntity->behavior = &actGate;
-				childEntity->skill[0] = 1; // signify behavior code of DOOR_DIR
-
-				// copy editor options from frame to gate itself.
-				childEntity->gateDisableOpening = entity->gateDisableOpening;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x - 7;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("24 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x + 7;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("25 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-				break;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("24 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x + 7;
+                childEntity->y = entity->y;
+				childEntity->yaw -= PI / 2.0;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("25 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                break;
+            }
 			//East/west gate inverted: //TODO: Adjust this. It's a copypaste of door.
 			case 114:
-				entity->x += 8;
-				entity->y += 8;
-				entity->sprite = doorFrameSprite();
-				entity->flags[PASSABLE] = true;
-				entity->behavior = &actDoorFrame;
-
-				childEntity = newEntity(186, 0, map->entities, nullptr);
-				childEntity->x = entity->x;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("26 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 1;
-				childEntity->gateInverted = 1; // inverted.
-				childEntity->gateStatus = 1; // open.
-				childEntity->sizey = 8;
-				childEntity->skill[28] = 1; //It's a mechanism.
-				childEntity->behavior = &actGate;
-				childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
-
-				// copy editor options from frame to gate itself.
-				childEntity->gateDisableOpening = entity->gateDisableOpening;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x;
-				childEntity->y = entity->y - 7;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("27 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-
-				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
-				childEntity->flags[INVISIBLE] = true;
-				childEntity->flags[BLOCKSIGHT] = true;
-				childEntity->x = entity->x;
-				childEntity->y = entity->y + 7;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("28 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->sizex = 2;
-				childEntity->sizey = 2;
-				childEntity->behavior = &actDoorFrame;
-				break;
+            {
+                entity->x += 8;
+                entity->y += 8;
+                entity->sprite = doorFrameSprite();
+                entity->flags[PASSABLE] = true;
+                entity->behavior = &actDoorFrame;
+                
+                auto childEntity = newEntity(186, 0, map->entities, nullptr);
+                childEntity->x = entity->x;
+                childEntity->y = entity->y;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("26 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 1;
+                childEntity->gateInverted = 1; // inverted.
+                childEntity->gateStatus = 1; // open.
+                childEntity->sizey = 8;
+                childEntity->skill[28] = 1; //It's a mechanism.
+                childEntity->behavior = &actGate;
+                childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
+                
+                // copy editor options from frame to gate itself.
+                childEntity->gateDisableOpening = entity->gateDisableOpening;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x;
+                childEntity->y = entity->y - 7;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("27 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                
+                childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr);
+                childEntity->flags[INVISIBLE] = true;
+                childEntity->flags[BLOCKSIGHT] = true;
+                childEntity->x = entity->x;
+                childEntity->y = entity->y + 7;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("28 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->sizex = 2;
+                childEntity->sizey = 2;
+                childEntity->behavior = &actDoorFrame;
+                break;
+            }
 			//Switch with timer.
 			case 115:
-				entity->sizex = 1;
-				entity->sizey = 1;
-				entity->x += 8;
-				entity->y += 8;
-				entity->z = 7.5;
-				entity->sprite = 585; // this is the switch base.
-				entity->flags[PASSABLE] = true;
-				childEntity = newEntity(586, 0, map->entities, nullptr);
-				childEntity->x = entity->x;
-				childEntity->y = entity->y;
-				TileEntityList.addEntity(*childEntity);
-				//printlog("22 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
-				childEntity->z = 8.5;
-				childEntity->leverTimerTicks = std::max(entity->leverTimerTicks, 1) * TICKS_PER_SECOND; // convert seconds to ticks from editor, make sure not less than 1
-				childEntity->leverStatus = 0; // set default to off.
-				childEntity->focalz = -4.5;
-				childEntity->sizex = 1;
-				childEntity->sizey = 1;
-				childEntity->sprite = 586; // this is the switch handle.
-				childEntity->roll = -PI / 4; // "off" position
-				childEntity->flags[PASSABLE] = true;
-				childEntity->behavior = &actSwitchWithTimer;
-				entity->parent = childEntity->getUID();
-				break;
+            {
+                entity->sizex = 1;
+                entity->sizey = 1;
+                entity->x += 8;
+                entity->y += 8;
+                entity->z = 7.5;
+                entity->sprite = 585; // this is the switch base.
+                entity->flags[PASSABLE] = true;
+                auto childEntity = newEntity(586, 0, map->entities, nullptr);
+                childEntity->x = entity->x;
+                childEntity->y = entity->y;
+                TileEntityList.addEntity(*childEntity);
+                //printlog("22 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+                childEntity->z = 8.5;
+                childEntity->leverTimerTicks = std::max(entity->leverTimerTicks, 1) * TICKS_PER_SECOND; // convert seconds to ticks from editor, make sure not less than 1
+                childEntity->leverStatus = 0; // set default to off.
+                childEntity->focalz = -4.5;
+                childEntity->sizex = 1;
+                childEntity->sizey = 1;
+                childEntity->sprite = 586; // this is the switch handle.
+                childEntity->roll = -PI / 4; // "off" position
+                childEntity->flags[PASSABLE] = true;
+                childEntity->behavior = &actSwitchWithTimer;
+                entity->parent = childEntity->getUID();
+                break;
+            }
 			// pedestal
 			case 116:
 			{
@@ -5179,7 +6362,7 @@ void assignActions(map_t* map)
 					entity->flags[PASSABLE] = true;
 				}
 
-				childEntity = newEntity(602 + entity->pedestalOrbType - 1, 0, map->entities, nullptr); //floating orb
+				auto childEntity = newEntity(602 + entity->pedestalOrbType - 1, 0, map->entities, nullptr); //floating orb
 				childEntity->parent = entity->getUID();
 				childEntity->behavior = &actPedestalOrb;
 				childEntity->x = entity->x;
@@ -5214,7 +6397,6 @@ void assignActions(map_t* map)
 				entity->yaw = PI / 2;
 				entity->behavior = &actMidGamePortal;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				if ( strstr(map->name, "Boss") )
 				{
 					entity->flags[INVISIBLE] = true;
@@ -5238,17 +6420,17 @@ void assignActions(map_t* map)
 				{
 					entity->sprite = 618; // ladder hole
 					entity->behavior = &actTeleporter;
-					x = entity->x / 16;
-					y = entity->y / 16;
+					const int x = entity->x / 16;
+					const int y = entity->y / 16;
 					if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
 					{
 						if ( !map->tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map->height] )
 						{
-							entity->z = -21.49;
+							entity->z = -6.25 - 16.0;
 						}
 						else
 						{
-							entity->z = -5.49;
+							entity->z = -6.25;
 						}
 					}
 				}
@@ -5256,7 +6438,7 @@ void assignActions(map_t* map)
 				{
 					entity->sizex = 4;
 					entity->sizey = 4;
-					entity->z = 5.45;
+					entity->z = 5.5;
 					entity->flags[PASSABLE] = true;
 					entity->behavior = &actTeleporter;
 					entity->sprite = 619; // ladder
@@ -5269,7 +6451,6 @@ void assignActions(map_t* map)
 					entity->yaw = PI / 2;
 					entity->behavior = &actTeleporter;
 					entity->flags[PASSABLE] = true;
-					entity->flags[BRIGHT] = true;
 				}
 				break;
 			// ceiling tile:
@@ -5287,11 +6468,10 @@ void assignActions(map_t* map)
 				}
 				entity->sizex = 8;
 				entity->sizey = 8;
-				//entity->yaw = PI / 2;
+				entity->yaw = entity->ceilingTileDir * 90 * (PI / 180.f);
 				entity->behavior = &actCeilingTile;
 				entity->flags[PASSABLE] = true;
 				entity->flags[BLOCKSIGHT] = false;
-				//entity->flags[BRIGHT] = true;
 				break;
 			// spell trap ceiling
 			case 120:
@@ -5307,9 +6487,10 @@ void assignActions(map_t* map)
 				entity->flags[NOUPDATE] = true;
 				entity->skill[28] = 1; // is a mechanism
 				entity->spellTrapRefireRate = entity->spellTrapRefireRate * TICKS_PER_SECOND; // convert seconds to ticks from editor
+				entity->seedEntityRNG(map_server_rng.getU32());
 
-				x = ((int)(entity->x)) >> 4;
-				y = ((int)(entity->y)) >> 4;
+				const int x = ((int)(entity->x)) >> 4;
+				const int y = ((int)(entity->y)) >> 4;
 				//map->tiles[y * MAPLAYERS + x * MAPLAYERS * map->height] = 208; //entity->spellTrapCeilingModel
 				Entity* childEntity = nullptr;
 				if ( x >= 0 && y >= 0 && x < map->width && y < map->height )
@@ -5354,6 +6535,7 @@ void assignActions(map_t* map)
 			}
 			// arcane chair
 			case 121:
+			{
 				entity->furnitureType = FURNITURE_CHAIR; // so everything knows I'm a chair
 				entity->sizex = 2;
 				entity->sizey = 2;
@@ -5363,6 +6545,7 @@ void assignActions(map_t* map)
 				entity->focalz = -5;
 				entity->sprite = 626;
 				entity->behavior = &actFurniture;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				entity->flags[BURNABLE] = true;
 				if ( entity->furnitureDir == -1 && !entity->yaw )
 				{
@@ -5373,14 +6556,17 @@ void assignActions(map_t* map)
 					entity->yaw = entity->furnitureDir * 45 * (PI / 180.f);
 				}
 				break;
+			}
 			// arcane bed
 			case 122:
+			{
 				entity->furnitureType = FURNITURE_BED; // so everything knows I'm a bed
 				entity->x += 8;
 				entity->y += 8;
 				entity->z = 4;
 				entity->sprite = 627;
 				entity->behavior = &actFurniture;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				entity->flags[BURNABLE] = true;
 				if ( entity->furnitureDir == -1 && !entity->yaw )
 				{
@@ -5408,14 +6594,17 @@ void assignActions(map_t* map)
 					entity->sizey = 8;
 				}
 				break;
+			}
 			// bunk bed
 			case 123:
+			{
 				entity->furnitureType = FURNITURE_BUNKBED; // so everything knows I'm a bunkbed
 				entity->x += 8;
 				entity->y += 8;
 				entity->z = 1.75;
 				entity->sprite = 628;
 				entity->behavior = &actFurniture;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				entity->flags[BURNABLE] = true;
 				if ( entity->furnitureDir == -1 && !entity->yaw )
 				{
@@ -5443,6 +6632,7 @@ void assignActions(map_t* map)
 					entity->sizey = 8;
 				}
 				break;
+			}
 			// column.
 			case 124:
 			{
@@ -5467,6 +6657,7 @@ void assignActions(map_t* map)
 				entity->focalz = -3;
 				entity->sprite = 630;
 				entity->behavior = &actFurniture;
+				entity->seedEntityRNG(map_server_rng.getU32());
 				entity->furnitureType = FURNITURE_PODIUM;
 				entity->flags[BURNABLE] = true;
 				if ( entity->furnitureDir == -1 && !entity->yaw )
@@ -5493,7 +6684,7 @@ void assignActions(map_t* map)
 				entity->flags[BLOCKSIGHT] = false;
 				entity->behavior = &actPistonBase;
 
-				childEntity = newEntity(632, 1, map->entities, nullptr); //cam1
+				auto childEntity = newEntity(632, 1, map->entities, nullptr); //cam1
 				childEntity->parent = entity->getUID();
 				childEntity->x = entity->x + 2.25;
 				childEntity->y = entity->y + 2.25;
@@ -5564,7 +6755,6 @@ void assignActions(map_t* map)
 				entity->yaw = PI / 2;
 				entity->behavior = &actExpansionEndGamePortal;
 				entity->flags[PASSABLE] = true;
-				entity->flags[BRIGHT] = true;
 				//entity->flags[INVISIBLE] = true;
 				int victoryType;
 				switch (stats[clientnum]->playerRace) {
@@ -5649,10 +6839,6 @@ void assignActions(map_t* map)
 				entity->yaw = PI / 2;
 				entity->behavior = &actCustomPortal;
 				entity->flags[PASSABLE] = true;
-				if ( entity->portalCustomSpriteAnimationFrames > 0 )
-				{
-					entity->flags[BRIGHT] = true;
-				}
 				if ( entity->portalCustomRequiresPower )
 				{
 					entity->flags[INVISIBLE] = true;
@@ -5747,7 +6933,7 @@ void assignActions(map_t* map)
 					entity->skill[15] = 0; // unidentified.
 				}
 
-				item = newItemFromEntity(entity);
+				auto item = newItemFromEntity(entity);
 				entity->sprite = itemModel(item);
 				if ( !entity->itemNotMoving )
 				{
@@ -5757,8 +6943,8 @@ void assignActions(map_t* map)
 				entity->itemNotMovingClient = 1; // so the item retains its position for clients
 				free(item);
 				item = nullptr;
+                break;
 			}
-				break;
 			case 168: 
 				//Statue Animator
 				entity->sizex = 4;
@@ -5769,7 +6955,6 @@ void assignActions(map_t* map)
 				entity->behavior = &actStatueAnimator;
 				entity->sprite = 995;
 				entity->skill[0] = 0;
-				entity->flags[BRIGHT] = true;
 				break;
 			case 169:
 				//Statue
@@ -5804,8 +6989,45 @@ void assignActions(map_t* map)
 				entity->sprite = 1193;
 				entity->yaw = entity->shrineDir * PI / 2;
 				break;
-			default:
+			case 179:
+				// collider decoration
+				entity->x += 8;
+				entity->y += 8;
+				entity->sprite = entity->colliderDecorationModel;
+				entity->sizex = entity->colliderSizeX;
+				entity->sizey = entity->colliderSizeY;
+				entity->z = 7.5 - entity->colliderDecorationHeightOffset * 0.25;
+				entity->x += entity->colliderDecorationXOffset * 0.25;
+				entity->y += entity->colliderDecorationYOffset * 0.25;
+				if ( entity->colliderDecorationRotation == -1 )
+				{
+					entity->yaw = (map_rng.rand() % 8) * (PI / 4);
+				}
+				else
+				{
+					entity->yaw = entity->colliderDecorationRotation * (PI / 4);
+				}
+				entity->flags[PASSABLE] = entity->colliderHasCollision == 0;
+				entity->flags[BLOCKSIGHT] = false;
+				entity->behavior = &actColliderDecoration;
+				entity->colliderCurrentHP = entity->colliderMaxHP;
+				entity->colliderOldHP = entity->colliderMaxHP;
+				if ( entity->isDamageableCollider() )
+				{
+					entity->flags[UNCLICKABLE] = false;
+				}
+				else
+				{
+					entity->flags[UNCLICKABLE] = true;
+				}
+				/*if ( multiplayer != CLIENT )
+				{
+				entity_uids--;
+				}
+				entity->setUID(-3);*/
 				break;
+            default:
+                break;
 		}
 		if ( entity )
 		{
@@ -5814,7 +7036,7 @@ void assignActions(map_t* map)
 		}
 	}
 
-	for ( node = map->entities->first; node != nullptr; )
+	for ( auto node = map->entities->first; node != nullptr; )
 	{
 		Entity* postProcessEntity = (Entity*)node->element;
 		node = node->next;
@@ -5887,7 +7109,7 @@ void assignActions(map_t* map)
 	}
 	if ( vampireQuestChest )
 	{
-		for ( c = 0; c < MAXPLAYERS; ++c )
+		for ( int c = 0; c < MAXPLAYERS; ++c )
 		{
 			if ( client_classes[c] == CLASS_ACCURSED )
 			{
@@ -5897,7 +7119,9 @@ void assignActions(map_t* map)
 		}
 	}
 
-	for ( node = map->entities->first; node != nullptr; )
+	std::vector<Entity*> chests;
+
+	for ( auto node = map->entities->first; node != nullptr; )
 	{
 		Entity* postProcessEntity = (Entity*)node->element;
 		node = node->next;
@@ -5907,8 +7131,128 @@ void assignActions(map_t* map)
 			{
 				textSourceScript.parseScriptInMapGeneration(*postProcessEntity);
 			}
+			if ( postProcessEntity->behavior == &actChest )
+			{
+				chests.push_back(postProcessEntity);
+			}
 		}
 	}
+
+	if ( true /*currentlevel == 0*/ )
+	{
+		numChests = 0;
+		numMimics = 0;
+	}
+
+	static ConsoleVariable<int> cvar_mimic_chance("/mimic_chance", 2);
+	static ConsoleVariable<bool> cvar_mimic_debug("/mimic_debug", false);
+
+	std::vector<Entity*> mimics;
+	if ( chests.size() > 0 )
+	{
+		if ( mimic_generator.bForceSpawnForCurrentFloor() )
+		{
+			auto chosen = map_rng.rand() % chests.size();
+			if ( allowedGenerateMimicOnChest(chests[chosen]->x / 16, chests[chosen]->y / 16, *map) )
+			{
+				mimics.push_back(chests[chosen]);
+				chests.erase(chests.begin() + chosen);
+			}
+		}
+
+		for ( auto it = chests.begin(); it != chests.end(); )
+		{
+			bool doMimic = false;
+			Entity* chest = *it;
+			if ( allowedGenerateMimicOnChest(chest->x / 16, chest->y / 16, *map) )
+			{
+				int chance = 10;
+				if ( svFlags & SV_FLAG_CHEATS )
+				{
+					chance = std::min(100, std::max(0, *cvar_mimic_chance));
+				}
+				doMimic = chest->entity_rng->rand() % 100 < chance;
+			}
+
+			if ( doMimic )
+			{
+				mimics.push_back(chest);
+				it = chests.erase(it);
+			}
+			else
+			{
+				createChestInventory(chest, chest->chestType);
+				++numChests;
+				++it;
+			}
+		}
+	}
+
+	if ( *cvar_mimic_debug && (svFlags & SV_FLAG_CHEATS) )
+	{
+		messagePlayer(clientnum, MESSAGE_INSPECTION, "Mimics: [%d]", mimics.size());
+	}
+
+	for ( auto chest : mimics )
+	{
+		// mimic
+		numMimics++;
+		Entity* entity = newEntity(10, 1, map->entities, map->creatures);
+		entity->sizex = 4;
+		entity->sizey = 4;
+		entity->x = chest->x;
+		entity->y = chest->y;
+		entity->z = 6;
+		entity->yaw = chest->yaw;
+		entity->behavior = &actMonster;
+		entity->flags[UPDATENEEDED] = true;
+		entity->flags[INVISIBLE] = true;
+		entity->skill[5] = -1;
+		//Assign entity creature list pointer.
+		entity->addToCreatureList(map->creatures);
+
+		Monster monsterType = MIMIC;
+		entity->monsterLookDir = entity->yaw;
+
+		bool monsterIsFixedSprite = true;
+		Stat* myStats = nullptr;
+		if ( multiplayer != CLIENT )
+		{
+			if ( myStats == nullptr )
+			{
+				// need to give the entity its list stuff.
+				// create an empty first node for traversal purposes
+				node_t* node2 = list_AddNodeFirst(&entity->children);
+				node2->element = nullptr;
+				node2->deconstructor = &emptyDeconstructor;
+
+				// Create the stat struct again for the new monster
+				myStats = new Stat(monsterType + 1000);
+				myStats->type = monsterType;
+
+				node2 = list_AddNodeLast(&entity->children);
+				node2->element = myStats;
+				node2->deconstructor = &statDeconstructor;
+				node2->size = sizeof(myStats);
+			}
+
+		}
+
+		Uint32 chestseed = 0;
+		chest->entity_rng->getSeed(&chestseed, sizeof(chestseed));
+		entity->seedEntityRNG(chestseed);
+		createChestInventory(entity, chest->chestType);
+
+		// remove chest entities
+		Entity* parentEntity = uidToEntity(chest->parent);
+		if ( parentEntity )
+		{
+			list_RemoveNode(parentEntity->mynode);    // remove lid
+		}
+		list_RemoveNode(chest->mynode);
+	}
+
+    keepInventoryGlobal = svFlags & SV_FLAG_KEEPINVENTORY;
 }
 
 void mapLevel(int player)
@@ -5970,15 +7314,15 @@ void mapFoodOnLevel(int player)
 	}
 	if ( numFood == 0 && previouslyIdentifiedFood )
 	{
-		messagePlayer(player, MESSAGE_HINT, language[3425]);
+		messagePlayer(player, MESSAGE_HINT, Language::get(3425));
 	}
 	else if ( numFood == 0 )
 	{
-		messagePlayer(player, MESSAGE_HINT, language[3423]);
+		messagePlayer(player, MESSAGE_HINT, Language::get(3423));
 	}
 	else
 	{
-		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(0, 255, 0),language[3424]);
+		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(0, 255, 0),Language::get(3424));
 	}
 }
 
@@ -6099,4 +7443,3 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return -1;
 	}
 }
-

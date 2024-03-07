@@ -14,6 +14,7 @@
 #include "collision.hpp"
 #include "entity.hpp"
 #include "prng.hpp"
+#include "player.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -25,6 +26,7 @@
 -------------------------------------------------------------------------------*/
 
 #define FLAME_LIFE my->skill[0]
+#define FLAME_PLAYER my->skill[1]
 #define FLAME_VELX my->vel_x
 #define FLAME_VELY my->vel_y
 #define FLAME_VELZ my->vel_z
@@ -45,8 +47,8 @@ void actFlame(Entity* my)
 	    }
     }
     if ( !flickerLights &&
-        my->sprite == SPRITE_FLAME ||
-        my->sprite == SPRITE_CRYSTALFLAME )
+        (my->sprite == SPRITE_FLAME ||
+        my->sprite == SPRITE_CRYSTALFLAME) )
     {
         FLAME_ANG += PI / TICKS_PER_SECOND * 2.0;
         if (FLAME_ANG > PI * 2.0)
@@ -79,12 +81,47 @@ void actFlame(Entity* my)
 
 -------------------------------------------------------------------------------*/
 
+static ConsoleVariable<bool> cvar_flame_use_vismap("/flame_use_vismap", true);
+
 Entity* spawnFlame(Entity* parentent, Sint32 sprite )
 {
-	Entity* entity;
-	double vel;
+	if ( !parentent )
+	{
+		return nullptr;
+	}
+	if ( *cvar_flame_use_vismap && !intro )
+	{
+		if ( parentent->behavior != actPlayer 
+			&& parentent->behavior != actPlayerLimb
+			&& !parentent->flags[OVERDRAW]
+			&& !parentent->flags[GENIUS] )
+		{
+			int x = parentent->x / 16.0;
+			int y = parentent->y / 16.0;
+			if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+			{
+				bool anyVismap = false;
+				for ( int i = 0; i < MAXPLAYERS; ++i )
+				{
+					if ( !client_disconnected[i] && players[i]->isLocalPlayer() )
+					{
+                        if ( cameras[i].vismap && cameras[i].vismap[y + x * map.height] )
+                        {
+                            anyVismap = true;
+                            break;
+                        }
+					}
+				}
+				if ( !anyVismap )
+				{
+					return nullptr;
+				}
+			}
+		}
+	}
 
-	entity = newEntity(sprite, 1, map.entities, nullptr); // flame particle
+	double vel;
+	Entity* entity = newEntity(sprite, 1, map.entities, nullptr); // flame particle
 	if ( intro )
 	{
 		entity->setUID(0);
@@ -120,8 +157,10 @@ Entity* spawnFlame(Entity* parentent, Sint32 sprite )
 	entity->flags[NOUPDATE] = true;
 	entity->flags[PASSABLE] = true;
 	entity->flags[SPRITE] = true;
-	entity->flags[BRIGHT] = true;
 	entity->flags[UNCLICKABLE] = true;
+	static ConsoleVariable<float> cvar_flameLightBonus("/flame_light_bonus", 0.5f);
+	entity->lightBonus = vec4(*cvar_flameLightBonus, *cvar_flameLightBonus, *cvar_flameLightBonus, 0.f);
+    entity->ditheringDisabled = true;
 	entity->behavior = &actFlame;
 	if ( multiplayer != CLIENT )
 	{

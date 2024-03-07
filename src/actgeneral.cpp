@@ -69,9 +69,9 @@ void actRotate(Entity* my)
 	my->flags[PASSABLE] = true; // this entity should always be passable
 
 #ifdef TESTSPRITES
-	if ( keystatus[SDL_SCANCODE_HOME] )
+	if ( keystatus[SDLK_HOME] )
 	{
-		keystatus[SDL_SCANCODE_HOME] = 0;
+		keystatus[SDLK_HOME] = 0;
 		my->sprite++;
 		if ( my->sprite >= nummodels )
 		{
@@ -79,9 +79,9 @@ void actRotate(Entity* my)
 		}
 		messagePlayer(clientnum, MESSAGE_MISC, "test sprite: %d", my->sprite);
 	}
-	if ( keystatus[SDL_SCANCODE_END] )
+	if ( keystatus[SDLK_END] )
 	{
-		keystatus[SDL_SCANCODE_END] = 0;
+		keystatus[SDLK_END] = 0;
 		my->sprite += 10;
 		if ( my->sprite >= nummodels )
 		{
@@ -103,50 +103,6 @@ void actLiquid(Entity* my)
 
 	list_RemoveNode(my->mynode);
 	return;
-
-	if ( !LIQUID_INIT )
-	{
-		LIQUID_INIT = 1;
-		LIQUID_TIMER = 60 * (local_rng.rand() % 20);
-		if ( LIQUID_LAVA )
-		{
-			my->light = lightSphereShadow(my->x / 16, my->y / 16, 2, 128);
-		}
-	}
-	LIQUID_TIMER--;
-	if ( LIQUID_TIMER <= 0 )
-	{
-		LIQUID_TIMER = 60 * 20 + 60 * (local_rng.rand() % 20);
-		if ( !LIQUID_LAVA )
-		{
-			playSoundEntityLocal( my, 135, 32 );
-		}
-		else
-		{
-			playSoundEntityLocal( my, 155, 100 );
-		}
-	}
-	if ( LIQUID_LAVA && !LIQUID_LAVANOBUBBLE )
-	{
-		if ( ticks % 40 == my->getUID() % 40 && local_rng.rand() % 3 == 0 )
-		{
-			int c, j = 1 + local_rng.rand() % 2;
-			for ( c = 0; c < j; c++ )
-			{
-				Entity* entity = spawnGib( my );
-				entity->x += local_rng.rand() % 16 - 8;
-				entity->y += local_rng.rand() % 16 - 8;
-				entity->flags[SPRITE] = true;
-				entity->sprite = 42;
-				entity->fskill[3] = 0.01;
-				double vel = (local_rng.rand() % 10) / 20.f;
-				entity->vel_x = vel * cos(entity->yaw);
-				entity->vel_y = vel * sin(entity->yaw);
-				entity->vel_z = -.15 - (local_rng.rand() % 15) / 100.f;
-				entity->z = 7.5;
-			}
-		}
-	}
 }
 
 void actEmpty(Entity* my)
@@ -172,8 +128,10 @@ void actFurniture(Entity* my)
 
 void Entity::actFurniture()
 {
+
 	if ( !furnitureInit )
 	{
+		auto& rng = entity_rng ? *entity_rng : local_rng;
 		if ( furnitureType == FURNITURE_BUNKBED )
 		{
 			this->createWorldUITooltip();
@@ -181,11 +139,11 @@ void Entity::actFurniture()
 		furnitureInit = 1;
 		if ( furnitureType == FURNITURE_TABLE || furnitureType == FURNITURE_BUNKBED || furnitureType == FURNITURE_BED || furnitureType == FURNITURE_PODIUM )
 		{
-			furnitureHealth = 15 + local_rng.rand() % 5;
+			furnitureHealth = 15 + rng.rand() % 5;
 		}
 		else
 		{
-			furnitureHealth = 4 + local_rng.rand() % 4;
+			furnitureHealth = 4 + rng.rand() % 4;
 		}
 		furnitureMaxHealth = furnitureHealth;
 		furnitureOldHealth = furnitureHealth;
@@ -253,29 +211,29 @@ void Entity::actFurniture()
 						switch ( furnitureType )
 						{
 							case FURNITURE_CHAIR:
-								messagePlayer(i, MESSAGE_INTERACTION, language[476]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(476));
 								break;
 							case FURNITURE_TABLE:
-								messagePlayer(i, MESSAGE_INTERACTION, language[477]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(477));
 								break;
 							case FURNITURE_BED:
-								messagePlayer(i, MESSAGE_INTERACTION, language[2493]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(2493));
 								break;
 							case FURNITURE_BUNKBED:
 								if ( i == 0 || i == 2 )
 								{
-									messagePlayer(i, MESSAGE_INTERACTION, language[2494]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2494));
 								}
 								else
 								{
-									messagePlayer(i, MESSAGE_INTERACTION, language[2495]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2495));
 								}
 								break;
 							case FURNITURE_PODIUM:
-								messagePlayer(i, MESSAGE_INTERACTION, language[2496]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(2496));
 								break;
 							default:
-								messagePlayer(i, MESSAGE_INTERACTION, language[477]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(477));
 								break;
 						}
 					}
@@ -313,7 +271,7 @@ void actMCaxe(Entity* my)
 				{
 					if (inrange[i])
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[478 + local_rng.rand() % 5]);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(478 + local_rng.rand() % 5));
 						MCAXE_USED = 1;
 						serverUpdateEntitySkill(my, 0);
 					}
@@ -348,7 +306,11 @@ void actStalagFloor(Entity* my)
 	{
 		return;
 	}
-
+	if ( my->flags[BLOCKSIGHT] 
+		&& (my->sprite == 581 || my->sprite == 582) ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
+	}
 	my->actStalagFloor();
 }
 
@@ -363,6 +325,11 @@ void actStalagCeiling(Entity* my)
 	if ( !my )
 	{
 		return;
+	}
+	if ( my->flags[BLOCKSIGHT] 
+		&& (my->sprite == 583 || my->sprite == 584) ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
 	}
 	my->actStalagCeiling();
 }
@@ -379,7 +346,10 @@ void actStalagColumn(Entity* my)
 	{
 		return;
 	}
-
+	if ( my->flags[BLOCKSIGHT] && my->sprite == 580 ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
+	}
 	my->actStalagColumn();
 }
 
@@ -508,7 +478,7 @@ void actColumn(Entity* my)
 	{
 		return;
 	}
-	if ( my->flags[BLOCKSIGHT] ) // stop the compiler optimising into a different entity.
+	if ( my->flags[BLOCKSIGHT] && my->sprite == 629 ) // stop the compiler optimising into a different entity.
 	{
 		my->flags[BLOCKSIGHT] = false;
 	}
@@ -541,6 +511,10 @@ void actPistonBase(Entity* my)
 	if ( !my )
 	{
 		return;
+	}
+	if ( my->flags[BLOCKSIGHT] && my->sprite == 631 ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
 	}
 }
 
@@ -612,6 +586,238 @@ void Entity::actPistonCam()
 			pistonCamDir = 0; // down
 		}
 	}
+}
+
+bool Entity::isColliderShownAsWallOnMinimap() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.showAsWallOnMinimap;
+}
+
+bool Entity::isColliderWeakToBoulders() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.boulderDestroys;
+}
+
+bool Entity::isColliderWeakToSkill(int proficiency) const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.proficiencyBonusDamage.find(proficiency) != colliderDmgType.proficiencyBonusDamage.end();
+}
+
+bool Entity::isColliderDamageableByMelee() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.meleeAffects;
+}
+
+bool Entity::isColliderDamageableByMagic() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.magicAffects;
+}
+
+bool Entity::isColliderAttachableToBombs() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.bombsAttach;
+}
+
+bool Entity::isDamageableCollider() const 
+{ 
+	return behavior == &actColliderDecoration && colliderMaxHP > 0;
+}
+
+int Entity::getColliderLangName() const
+{
+	if ( !isDamageableCollider() ) { return 1; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.entityLangEntry;
+}
+
+int Entity::getColliderOnHitLangEntry() const
+{
+	if ( !isDamageableCollider() ) { return 1; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.hitMessageLangEntry;
+}
+
+int Entity::getColliderOnBreakLangEntry() const
+{
+	if ( !isDamageableCollider() ) { return 1; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.breakMessageLangEntry;
+}
+
+int Entity::getColliderSfxOnHit() const
+{
+	if ( !isDamageableCollider() ) { return 0; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.sfxHit;
+}
+
+int Entity::getColliderSfxOnBreak() const
+{
+	if ( !isDamageableCollider() ) { return 0; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.sfxBreak;
+}
+
+void actColliderDecoration(Entity* my)
+{
+	if ( !my )
+	{
+		return;
+	}
+
+	if ( !my->colliderInit )
+	{
+		my->colliderInit = 1;
+		if ( my->colliderDiggable != 0 )
+		{
+			my->colliderHasCollision = 1;
+		}
+		if ( my->isDamageableCollider() )
+		{
+			auto& colliderData = EditorEntityData_t::colliderData[my->colliderDamageTypes];
+			auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+			if ( colliderDmgType.burnable )
+			{
+				my->flags[BURNABLE] = true;
+			}
+			if ( colliderDmgType.minotaurPathThroughAndBreak )
+			{
+				my->colliderHasCollision = 2;
+			}
+		}
+	}
+
+	my->flags[PASSABLE] = (my->colliderHasCollision == 0);
+	if ( multiplayer != CLIENT )
+	{
+		bool checkWallDeletion = false;
+		if ( my->colliderHasCollision != 0 )
+		{
+			if ( my->sprite == 1203 || my->sprite == 1204 )
+			{
+				if ( my->z > -8.51 && my->z < -8.49 )
+				{
+					checkWallDeletion = true;
+				}
+			}
+			else if ( my->sprite == 1197 || my->sprite == 1198 )
+			{
+				if ( my->z > 7.49 || my->z < 7.51 )
+				{
+					checkWallDeletion = true;
+				}
+			}
+		}
+		if ( checkWallDeletion )
+		{
+			int x = static_cast<int>(my->x) >> 4;
+			int y = static_cast<int>(my->y) >> 4;
+			if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
+			{
+				//messagePlayer(0, MESSAGE_DEBUG, "[Collider]: Destroyed self at x: %d, y: %d", x, y);
+				list_RemoveNode(my->mynode);
+				return;
+			}
+		}
+	}
+
+	if ( my->isDamageableCollider() )
+	{
+		if ( my->ticks == 1 )
+		{
+			my->createWorldUITooltip();
+		}
+
+		auto& colliderData = EditorEntityData_t::colliderData[my->colliderDamageTypes];
+		if ( my->flags[BURNING] && my->flags[BURNABLE] )
+		{
+			if ( ticks % 30 == 0 )
+			{
+				my->colliderCurrentHP--;
+			}
+		}
+
+		my->colliderOldHP = my->colliderCurrentHP;
+
+		if ( my->colliderCurrentHP <= 0 )
+		{
+			int sprite = colliderData.gib;
+			if ( sprite > 0 )
+			{
+				createParticleRock(my, sprite);
+				if ( multiplayer == SERVER )
+				{
+					serverSpawnMiscParticles(my, PARTICLE_EFFECT_ABILITY_ROCK, sprite);
+				}
+			}
+			if ( colliderData.sfxBreak > 0 )
+			{
+				playSoundEntity(my, colliderData.sfxBreak, 128);
+			}
+			list_RemoveNode(my->mynode);
+			return;
+		}
+	}
+}
+
+void Entity::colliderHandleDamageMagic(int damage, Entity &magicProjectile, Entity *caster)
+{
+	colliderCurrentHP -= damage; //Decrease object health.
+	if ( caster )
+	{
+		if ( caster->behavior == &actPlayer )
+		{
+			if ( colliderCurrentHP <= 0 )
+			{
+				if ( magicProjectile.behavior == &actBomb )
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(3617), items[magicProjectile.skill[21]].getIdentifiedName(), Language::get(getColliderLangName()));
+				}
+				else
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(2508), Language::get(getColliderLangName()));
+				}
+			}
+			else
+			{
+				if ( magicProjectile.behavior == &actBomb )
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT_BASIC, Language::get(3618), items[magicProjectile.skill[21]].getIdentifiedName(), Language::get(getColliderLangName()));
+				}
+				else
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT_BASIC, Language::get(378), Language::get(getColliderLangName()));
+				}
+			}
+			updateEnemyBar(caster, this, Language::get(getColliderLangName()), colliderCurrentHP, colliderMaxHP,
+				false, DamageGib::DMG_DEFAULT);
+		}
+	}
+
+	int sound = 28; //damage.ogg
+	if ( getColliderSfxOnHit() > 0 )
+	{
+		sound = getColliderSfxOnHit();
+	}
+	playSoundEntity(this, sound, 64);
 }
 
 void actFloorDecoration(Entity* my)
@@ -1199,15 +1405,21 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 					intro = true;
 					initClass(player);
 					intro = oldIntro;
-				}
 
-				if ( !applyToEntities.empty() )
-				{
-					for ( int c = 1; c < MAXPLAYERS; ++c )
+					if (multiplayer == SERVER)
 					{
-						if ( !players[c]->isLocalPlayer() )
+						for (int c = 1; c < MAXPLAYERS; ++c)
 						{
-							updateClientInformation(c, false, false, TextSourceScript::CLIENT_UPDATE_CLASS);
+							if (!client_disconnected[c] &&!players[c]->isLocalPlayer())
+							{
+								strcpy((char*)net_packet->data, "SCRC");
+								net_packet->data[4] = (Uint8)player;
+								net_packet->data[5] = (Uint8)client_classes[player];
+								net_packet->address.host = net_clients[c - 1].host;
+								net_packet->address.port = net_clients[c - 1].port;
+								net_packet->len = 6;
+								sendPacketSafe(net_sock, -1, net_packet, c - 1);
+							}
 						}
 					}
 				}
@@ -2572,9 +2784,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							Stat* stats = entity->getStats();
 							if ( stats )
 							{
-								stats->PROFICIENCIES[i] = result;
-								stats->PROFICIENCIES[i] = std::min(stats->PROFICIENCIES[i], 100);
-								stats->PROFICIENCIES[i] = std::max(stats->PROFICIENCIES[i], 0);
+								stats->setProficiency(i, result);
 							}
 						}
 					}
@@ -2619,9 +2829,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							Stat* stats = entity->getStats();
 							if ( stats )
 							{
-								stats->PROFICIENCIES[i] += result;
-								stats->PROFICIENCIES[i] = std::min(stats->PROFICIENCIES[i], 100);
-								stats->PROFICIENCIES[i] = std::max(stats->PROFICIENCIES[i], 0);
+								stats->setProficiency(i, result);
 							}
 						}
 					}
@@ -2903,7 +3111,7 @@ void TextSourceScript::updateClientInformation(int player, bool clearInventory, 
 
 		for ( int i = 0; i < NUMPROFICIENCIES; ++i )
 		{
-			net_packet->data[27 + i] = (Uint8)stats[player]->PROFICIENCIES[i];
+			net_packet->data[27 + i] = (Uint8)stats[player]->getProficiency(i);
 		}
 		net_packet->address.host = net_clients[player - 1].host;
 		net_packet->address.port = net_clients[player - 1].port;
@@ -2914,7 +3122,8 @@ void TextSourceScript::updateClientInformation(int player, bool clearInventory, 
 	}
 	else if ( updateType == CLIENT_UPDATE_CLASS )
 	{
-		strcpy((char*)net_packet->data, "SCRC");
+		// unused
+		/*strcpy((char*)net_packet->data, "SCRC");
 		for ( int i = 0; i < MAXPLAYERS; ++i )
 		{
 			net_packet->data[4 + i] = client_classes[i];
@@ -2922,7 +3131,7 @@ void TextSourceScript::updateClientInformation(int player, bool clearInventory, 
 		net_packet->address.host = net_clients[player - 1].host;
 		net_packet->address.port = net_clients[player - 1].port;
 		net_packet->len = 5 + MAXPLAYERS;
-		sendPacketSafe(net_sock, -1, net_packet, player - 1);
+		sendPacketSafe(net_sock, -1, net_packet, player - 1);*/
 	}
 	else if ( updateType == CLIENT_UPDATE_HUNGER )
 	{

@@ -108,12 +108,12 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 		animation_manager->consumeMana = false;
 	}
 
-	if (stat->PROFICIENCIES[PRO_SPELLCASTING] < SPELLCASTING_BEGINNER)   //There's a chance that caster is newer to magic (and thus takes longer to cast a spell).
+	if (stat->getModifiedProficiency(PRO_SPELLCASTING) < SPELLCASTING_BEGINNER)   //There's a chance that caster is newer to magic (and thus takes longer to cast a spell).
 	{
 		int chance = local_rng.rand() % 10;
-		if (chance >= stat->PROFICIENCIES[PRO_SPELLCASTING] / 15)
+		if (chance >= stat->getModifiedProficiency(PRO_SPELLCASTING) / 15)
 		{
-			int amount = (local_rng.rand() % 50) / std::max(stat->PROFICIENCIES[PRO_SPELLCASTING] + statGetINT(stat, caster), 1);
+			int amount = (local_rng.rand() % 50) / std::max(stat->getModifiedProficiency(PRO_SPELLCASTING) + statGetINT(stat, caster), 1);
 			amount = std::min(amount, CASTING_EXTRA_TIMES_CAP);
 			animation_manager->times_to_circle += amount;
 		}
@@ -123,7 +123,7 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 		if ( !playerLearnedSpellbook(player, stat->shield) || (stat->shield->beatitude < 0 && !shouldInvertEquipmentBeatitude(stat)) )
 		{
 			// for every tier below the spell you are, add 3 circle for 1 tier, or add 2 for every additional tier.
-			int casterAbility = std::min(100, std::max(0, stat->PROFICIENCIES[PRO_SPELLCASTING] + statGetINT(stat, caster))) / 20;
+			int casterAbility = std::min(100, std::max(0, stat->getModifiedProficiency(PRO_SPELLCASTING) + statGetINT(stat, caster))) / 20;
 			if ( stat->shield->beatitude < 0 )
 			{
 				casterAbility = 0; // cursed book has cast penalty.
@@ -134,7 +134,7 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 				animation_manager->times_to_circle += (std::min(5, 1 + 2 * (difficulty - casterAbility)));
 			}
 		}
-		else if ( stat->PROFICIENCIES[PRO_SPELLCASTING] >= SPELLCASTING_BEGINNER )
+		else if ( stat->getModifiedProficiency(PRO_SPELLCASTING) >= SPELLCASTING_BEGINNER )
 		{
 			animation_manager->times_to_circle = (spellCost / 20) + 1; //Circle once for every 20 mana the spell costs.
 		}
@@ -431,11 +431,12 @@ void actLeftHandMagic(Entity* my)
 					entity->flags[NOUPDATE] = true;
 					entity->flags[UPDATENEEDED] = false;
 					entity->flags[OVERDRAW] = true;
-					entity->flags[BRIGHT] = true;
+					entity->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
 					entity->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
 					entity->scaley = 0.25f;
 					entity->scalez = 0.25f;
 					entity->sprite = 16; //TODO: Originally. 22. 16 -- spark sprite instead?
+					entity->z += 3.0;
 					if ( cast_animation[HANDMAGIC_PLAYERNUM].active_spellbook )
 					{
 						entity->y -= 1.5;
@@ -466,7 +467,7 @@ void actLeftHandMagic(Entity* my)
 							cameravars[HANDMAGIC_PLAYERNUM].shakey += 10;
 							playSoundPlayer(HANDMAGIC_PLAYERNUM, 28, 92);
 							Uint32 color = makeColorRGB(255, 255, 0);
-							messagePlayerColor(HANDMAGIC_PLAYERNUM, MESSAGE_STATUS, color, language[621]);
+							messagePlayerColor(HANDMAGIC_PLAYERNUM, MESSAGE_STATUS, color, Language::get(621));
 						}
 					}
 					--cast_animation[HANDMAGIC_PLAYERNUM].mana_left;
@@ -787,7 +788,8 @@ void actRightHandMagic(Entity* my)
 					entity->flags[NOUPDATE] = true;
 					entity->flags[UPDATENEEDED] = false;
 					entity->flags[OVERDRAW] = true;
-					entity->flags[BRIGHT] = true;
+					entity->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
+					entity->z += 3.0;
 					//entity->sizex = 1; //MAKE 'EM SMALL PLEASE!
 					//entity->sizey = 1;
 					entity->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!

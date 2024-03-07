@@ -64,9 +64,10 @@ void Entity::actMagicTrapCeiling()
 	if ( !spellTrapInit )
 	{
 		spellTrapInit = 1;
+		auto& rng = entity_rng ? *entity_rng : local_rng;
 		if ( spellTrapType == -1 )
 		{
-			switch ( local_rng.rand() % 8 )
+			switch ( rng.rand() % 8 )
 			{
 				case 0:
 					spellTrapType = SPELL_FORCEBOLT;
@@ -98,7 +99,6 @@ void Entity::actMagicTrapCeiling()
 					break;
 			}
 		}
-		//light = lightSphere(my->x / 16, my->y / 16, 3, 192);
 	}
 
 	++spellTrapCounter;
@@ -175,7 +175,8 @@ void actMagicTrap(Entity* my)
 	if ( !MAGICTRAP_INIT )
 	{
 		MAGICTRAP_INIT = 1;
-		switch ( local_rng.rand() % 8 )
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+		switch ( rng.rand() % 8 )
 		{
 			case 0:
 				MAGICTRAP_SPELL = SPELL_FORCEBOLT;
@@ -205,7 +206,7 @@ void actMagicTrap(Entity* my)
 				MAGICTRAP_SPELL = SPELL_MAGICMISSILE;
 				break;
 		}
-		my->light = lightSphere(my->x / 16, my->y / 16, 3, 192);
+		my->light = addLight(my->x / 16, my->y / 16, "magictrap");
 	}
 
 	// eliminate traps that have been destroyed.
@@ -292,7 +293,7 @@ void Entity::actTeleportShrine()
 	this->removeLightField();
 	if ( shrineActivateDelay == 0 )
 	{
-		this->light = lightSphereShadow(this->x / 16, this->y / 16, 3, 128);
+		this->light = addLight(this->x / 16, this->y / 16, "teleport_shrine");
 		spawnAmbientParticles(80, 576, 10 + local_rng.rand() % 40, 1.0, false);
 	}
 
@@ -324,15 +325,77 @@ void Entity::actTeleportShrine()
 	}
 
 	// using
+	if ( this->isInteractWithMonster() )
+	{
+		Entity* monsterInteracting = uidToEntity(this->interactedByMonster);
+		if ( monsterInteracting )
+		{
+			if ( shrineActivateDelay == 0 )
+			{
+				std::vector<std::pair<Entity*, std::pair<int, int>>> allShrines;
+				for ( node_t* node = map.entities->first; node; node = node->next )
+				{
+					Entity* entity = (Entity*)node->element;
+					if ( !entity ) { continue; }
+					if ( entity->behavior == &::actTeleportShrine )
+					{
+						allShrines.push_back(std::make_pair(entity, std::make_pair((int)(entity->x / 16), (int)(entity->y / 16))));
+					}
+				}
+
+				Entity* selectedShrine = nullptr;
+				for ( size_t s = 0; s < allShrines.size(); ++s )
+				{
+					if ( allShrines[s].first == this )
+					{
+						// find next one in list
+						if ( (s + 1) >= allShrines.size() )
+						{
+							selectedShrine = allShrines[0].first;
+						}
+						else
+						{
+							selectedShrine = allShrines[s + 1].first;
+						}
+						break;
+					}
+				}
+
+				if ( selectedShrine )
+				{
+					playSoundEntity(this, 252, 128);
+					//messagePlayer(i, MESSAGE_INTERACTION, Language::get(4301));
+					Entity* spellTimer = createParticleTimer(this, 200, 625);
+					spellTimer->particleTimerPreDelay = 0; // wait x ticks before animation.
+					spellTimer->particleTimerEndAction = PARTICLE_EFFECT_SHRINE_TELEPORT; // teleport behavior of timer.
+					spellTimer->particleTimerEndSprite = 625; // sprite to use for end of timer function.
+					spellTimer->particleTimerCountdownAction = 1;
+					spellTimer->particleTimerCountdownSprite = 625;
+					spellTimer->particleTimerTarget = static_cast<Sint32>(selectedShrine->getUID()); // get the target to teleport around.
+					spellTimer->particleTimerVariable1 = 1; // distance of teleport in tiles
+					spellTimer->particleTimerVariable2 = monsterInteracting->getUID(); // which player to teleport
+					if ( multiplayer == SERVER )
+					{
+						serverSpawnMiscParticles(this, PARTICLE_EFFECT_SHRINE_TELEPORT, 625);
+					}
+					shrineActivateDelay = 250;
+					serverUpdateEntitySkill(this, 7);
+				}
+			}
+			this->clearMonsterInteract();
+			return;
+		}
+		this->clearMonsterInteract();
+	}
 	for ( int i = 0; i < MAXPLAYERS; i++ )
 	{
 		if ( selectedEntity[i] == this || client_selected[i] == this )
 		{
-			if ( inrange[i] && players[i]->entity )
+			if ( inrange[i] && Player::getPlayerInteractEntity(i) )
 			{
 				if ( shrineActivateDelay > 0 )
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[4300]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(4300));
 					break;
 				}
 
@@ -367,15 +430,17 @@ void Entity::actTeleportShrine()
 
 				if ( selectedShrine )
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[4301]);
-					Entity* spellTimer = createParticleTimer(players[i]->entity, 200, 625);
-					spellTimer->particleTimerPreDelay = 150; // wait x ticks before animation.
+					playSoundEntity(this, 252, 128);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(4301));
+					Entity* spellTimer = createParticleTimer(this, 200, 625);
+					spellTimer->particleTimerPreDelay = 0; // wait x ticks before animation.
 					spellTimer->particleTimerEndAction = PARTICLE_EFFECT_SHRINE_TELEPORT; // teleport behavior of timer.
 					spellTimer->particleTimerEndSprite = 625; // sprite to use for end of timer function.
 					spellTimer->particleTimerCountdownAction = 1;
 					spellTimer->particleTimerCountdownSprite = 625;
 					spellTimer->particleTimerTarget = static_cast<Sint32>(selectedShrine->getUID()); // get the target to teleport around.
 					spellTimer->particleTimerVariable1 = 1; // distance of teleport in tiles
+					spellTimer->particleTimerVariable2 = Player::getPlayerInteractEntity(i)->getUID(); // which player to teleport
 					if ( multiplayer == SERVER )
 					{
 						serverSpawnMiscParticles(this, PARTICLE_EFFECT_SHRINE_TELEPORT, 625);

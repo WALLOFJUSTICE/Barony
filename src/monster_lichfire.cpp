@@ -47,6 +47,8 @@ void initLichFire(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -55,7 +57,7 @@ void initLichFire(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			for ( int c = 1; c < MAXPLAYERS; ++c )
 			{
@@ -78,10 +80,10 @@ void initLichFire(Entity* my, Stat* myStats)
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -107,7 +109,7 @@ void initLichFire(Entity* my, Stat* myStats)
 			//give weapon
 			if ( myStats->weapon == NULL && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 			{
-				myStats->weapon = newItem(CRYSTAL_SWORD, EXCELLENT, -5, 1, local_rng.rand(), false, NULL);
+				myStats->weapon = newItem(CRYSTAL_SWORD, EXCELLENT, -5, 1, rng.rand(), false, NULL);
 			}
 		}
 	}
@@ -365,6 +367,10 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 			}
 		}
 
+		if ( my->monsterLichBattleState == LICH_BATTLE_IMMOBILE )
+		{
+			my->flags[PASSABLE] = true;
+		}
 		if ( my->monsterLichBattleState == LICH_BATTLE_IMMOBILE && my->ticks > TICKS_PER_SECOND )
 		{
 			int sides = 0;
@@ -393,6 +399,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 			if ( sides != 4 )
 			{
 				my->monsterLichBattleState = LICH_BATTLE_READY;
+				my->flags[PASSABLE] = false;
 				real_t distToPlayer = 0;
 				int c, playerToChase = -1;
 				for ( c = 0; c < MAXPLAYERS; c++ )
@@ -469,7 +476,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 
 	if ( !my->light )
 	{
-		my->light = lightSphereShadow(my->x / 16, my->y / 16, 4, 192);
+		my->light = addLight(my->x / 16, my->y / 16, "fire_lich_glow");
 	}
 
 	//Lich stares you down while he does his special ability windup, and any of his spellcasting animations.

@@ -33,6 +33,7 @@ Stat::Stat(Sint32 sprite) :
 	monsterIsCharmed(MISC_FLAGS[12]),
 	playerShapeshiftStorage(MISC_FLAGS[13]),
 	monsterTinkeringStatus(MISC_FLAGS[14]),
+	monsterMimicLockedBy(MISC_FLAGS[14]),
 	monsterDemonHasBeenExorcised(MISC_FLAGS[15]),
 	bleedInflictedBy(MISC_FLAGS[17]),
 	burningInflictedBy(MISC_FLAGS[18]),
@@ -41,11 +42,15 @@ Stat::Stat(Sint32 sprite) :
 {
 	this->type = NOTHING;
 	strcpy(this->name, "");
-	strcpy(this->obituary, language[1500]);
+	strcpy(this->obituary, Language::get(1500));
 	this->defending = false;
 	this->poisonKiller = 0;
 	this->burningInflictedBy = 0;
 	this->bleedInflictedBy = 0;
+	this->killer = KilledBy::UNKNOWN;
+	this->killer_monster = NOTHING;
+	this->killer_item = WOODEN_SHIELD;
+	this->killer_name = "";
 	this->sex = static_cast<sex_t>(local_rng.rand() % 2);
 	this->appearance = 0;
 	this->HP = 10;
@@ -78,7 +83,7 @@ Stat::Stat(Sint32 sprite) :
 	this->RANDOM_MAXMP = 0;
 	this->RANDOM_MP = 0;
 	int c;
-	for ( c = 0; c < std::max<real_t>(NUMPROFICIENCIES, NUMEFFECTS); c++ )
+	for ( c = 0; c < std::max<int>(NUMPROFICIENCIES, NUMEFFECTS); c++ )
 	{
 		if ( c < NUMPROFICIENCIES )
 		{
@@ -177,12 +182,12 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->GOLD = 40;
 			stats->HUNGER = 900;
 
-			stats->PROFICIENCIES[PRO_SWORD] = 35;
-			stats->PROFICIENCIES[PRO_MACE] = 50;
-			stats->PROFICIENCIES[PRO_AXE] = 45;
-			stats->PROFICIENCIES[PRO_POLEARM] = 25;
-			stats->PROFICIENCIES[PRO_RANGED] = 35;
-			stats->PROFICIENCIES[PRO_SHIELD] = 35;
+			stats->setProficiency(PRO_SWORD, 35);
+			stats->setProficiency(PRO_MACE, 50);
+			stats->setProficiency(PRO_AXE, 45);
+			stats->setProficiency(PRO_POLEARM, 25);
+			stats->setProficiency(PRO_RANGED, 35);
+			stats->setProficiency(PRO_SHIELD, 35);
 
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] = 1;
@@ -223,8 +228,8 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EFFECTS[EFF_LEVITATING] = true;
 			stats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
-			stats->PROFICIENCIES[PRO_MAGIC] = 100;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 100;
+			stats->setProficiency(PRO_MAGIC, 100);
+			stats->setProficiency(PRO_SPELLCASTING, 100);
 
 			break;
 		case 62:
@@ -314,13 +319,14 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_ARMOR] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_HELM] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_MASK] = 1;
 
-			stats->PROFICIENCIES[PRO_SWORD] = 35;
-			stats->PROFICIENCIES[PRO_MACE] = 50;
-			stats->PROFICIENCIES[PRO_AXE] = 45;
-			stats->PROFICIENCIES[PRO_POLEARM] = 25;
-			stats->PROFICIENCIES[PRO_RANGED] = 100;
-			stats->PROFICIENCIES[PRO_SHIELD] = 35;
+			stats->setProficiency(PRO_SWORD, 35);
+			stats->setProficiency(PRO_MACE, 50);
+			stats->setProficiency(PRO_AXE, 45);
+			stats->setProficiency(PRO_POLEARM, 25);
+			stats->setProficiency(PRO_RANGED, 100);
+			stats->setProficiency(PRO_SHIELD, 35);
 
 			break;
 		case 35:
@@ -350,10 +356,10 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 
 			stats->FOLLOWERS.first = NULL;
 			stats->FOLLOWERS.last = NULL;
-			stats->PROFICIENCIES[PRO_MAGIC] = 50;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 50;
-			stats->PROFICIENCIES[PRO_TRADING] = 75;
-			stats->PROFICIENCIES[PRO_APPRAISAL] = 75;
+			stats->setProficiency(PRO_MAGIC, 50);
+			stats->setProficiency(PRO_SPELLCASTING, 50);
+			stats->setProficiency(PRO_TRADING, 75);
+			stats->setProficiency(PRO_APPRAISAL, 75);
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] = 1;
 
@@ -412,7 +418,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->RANDOM_CON = 3;
 			stats->INT = -1;
 			stats->RANDOM_INT = 3;
-			stats->PER = -3;
+			stats->PER = 0;
 			stats->RANDOM_PER = 4;
 			stats->CHR = -3;
 			stats->RANDOM_CHR = 3;
@@ -436,13 +442,14 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_MASK] = 1;
 
-			stats->PROFICIENCIES[PRO_SWORD] = 45;
-			stats->PROFICIENCIES[PRO_MACE] = 35;
-			stats->PROFICIENCIES[PRO_AXE] = 35;
-			stats->PROFICIENCIES[PRO_POLEARM] = 45;
-			//stats->PROFICIENCIES[PRO_RANGED] = 40;
-			stats->PROFICIENCIES[PRO_SHIELD] = 35;
+			stats->setProficiency(PRO_SWORD, 45);
+			stats->setProficiency(PRO_MACE, 35);
+			stats->setProficiency(PRO_AXE, 35);
+			stats->setProficiency(PRO_POLEARM, 45);
+			//stats->setProficiency(PRO_RANGED, 40);
+			stats->setProficiency(PRO_SHIELD, 35);
 
 			break;
 		case 84:
@@ -477,11 +484,11 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->RANDOM_GOLD = 40;
 			stats->HUNGER = 900;
 
-			stats->PROFICIENCIES[PRO_SWORD] = 75;
-			stats->PROFICIENCIES[PRO_AXE] = 50;
-			stats->PROFICIENCIES[PRO_POLEARM] = 50;
-			stats->PROFICIENCIES[PRO_RANGED] = 75;
-			stats->PROFICIENCIES[PRO_SHIELD] = 35;
+			stats->setProficiency(PRO_SWORD, 75);
+			stats->setProficiency(PRO_AXE, 50);
+			stats->setProficiency(PRO_POLEARM, 50);
+			stats->setProficiency(PRO_RANGED, 75);
+			stats->setProficiency(PRO_SHIELD, 35);
 
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] = 1;
@@ -519,8 +526,8 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 50;
 
-			stats->PROFICIENCIES[PRO_MAGIC] = 50;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 50;
+			stats->setProficiency(PRO_MAGIC, 50);
+			stats->setProficiency(PRO_SPELLCASTING, 50);
 
 			break;
 		case 86:
@@ -600,11 +607,11 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			//stats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] = 1;
 			//stats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] = 1;
 
-			stats->PROFICIENCIES[PRO_MACE] = 75;
-			stats->PROFICIENCIES[PRO_POLEARM] = 60;
-			stats->PROFICIENCIES[PRO_RANGED] = 75;
-			stats->PROFICIENCIES[PRO_MAGIC] = 100;
-			stats->PROFICIENCIES[PRO_LEADERSHIP] = 60;
+			stats->setProficiency(PRO_MACE, 75);
+			stats->setProficiency(PRO_POLEARM, 60);
+			stats->setProficiency(PRO_RANGED, 75);
+			stats->setProficiency(PRO_MAGIC, 100);
+			stats->setProficiency(PRO_LEADERSHIP, 60);
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 33; // booze potion
@@ -656,14 +663,14 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] = 1;*/
 
-			//stats->PROFICIENCIES[PRO_SWORD] = 45;
-			//stats->PROFICIENCIES[PRO_MACE] = 35;
-			stats->PROFICIENCIES[PRO_AXE] = 25;
-			//stats->PROFICIENCIES[PRO_POLEARM] = 45;
-			stats->PROFICIENCIES[PRO_RANGED] = 25;
-			stats->PROFICIENCIES[PRO_SHIELD] = 25;
-			stats->PROFICIENCIES[PRO_MAGIC] = 80;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 80;
+			//stats->setProficiency(PRO_SWORD, 45);
+			//stats->setProficiency(PRO_MACE, 35);
+			stats->setProficiency(PRO_AXE, 25);
+			//stats->setProficiency(PRO_POLEARM, 45);
+			stats->setProficiency(PRO_RANGED, 25);
+			stats->setProficiency(PRO_SHIELD, 25);
+			stats->setProficiency(PRO_MAGIC, 80);
+			stats->setProficiency(PRO_SPELLCASTING, 80);
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 10; // doublet
@@ -701,14 +708,17 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->HUNGER = 900;
 			stats->GOLD = 0;
 			stats->RANDOM_GOLD = 0;
-			stats->PROFICIENCIES[PRO_SWORD] = 90;
-			stats->PROFICIENCIES[PRO_MACE] = 90;
-			stats->PROFICIENCIES[PRO_AXE] = 90;
-			stats->PROFICIENCIES[PRO_POLEARM] = 90;
-			stats->PROFICIENCIES[PRO_RANGED] = 60;
-			stats->PROFICIENCIES[PRO_SHIELD] = 25;
-			stats->PROFICIENCIES[PRO_MAGIC] = 80;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 80;
+			stats->setProficiency(PRO_SWORD, 90);
+			stats->setProficiency(PRO_MACE, 90);
+			stats->setProficiency(PRO_AXE, 90);
+			stats->setProficiency(PRO_POLEARM, 90);
+			stats->setProficiency(PRO_RANGED, 60);
+			stats->setProficiency(PRO_SHIELD, 25);
+			stats->setProficiency(PRO_MAGIC, 80);
+			stats->setProficiency(PRO_SPELLCASTING, 80);
+
+			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 5; //Spooky mask
 			break;
 		case 90:
 		case (1000 + COCKATRICE):
@@ -788,12 +798,12 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] = 1;
 			//stats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] = 1;
 
-			stats->PROFICIENCIES[PRO_SWORD] = 50;
-			//stats->PROFICIENCIES[PRO_MACE] = 35;
-			stats->PROFICIENCIES[PRO_AXE] = 35;
-			stats->PROFICIENCIES[PRO_POLEARM] = 60;
-			stats->PROFICIENCIES[PRO_RANGED] = 50;
-			stats->PROFICIENCIES[PRO_SHIELD] = 35;
+			stats->setProficiency(PRO_SWORD, 50);
+			//stats->setProficiency(PRO_MACE, 35);
+			stats->setProficiency(PRO_AXE, 35);
+			stats->setProficiency(PRO_POLEARM, 60);
+			stats->setProficiency(PRO_RANGED, 50);
+			stats->setProficiency(PRO_SHIELD, 35);
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 100; // iron daggers, qty 2-8
@@ -853,14 +863,14 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 5; // spellbook
 
-			//stats->PROFICIENCIES[PRO_SWORD] = 35;
-			stats->PROFICIENCIES[PRO_MACE] = 80;
-			stats->PROFICIENCIES[PRO_AXE] = 60;
-			//stats->PROFICIENCIES[PRO_POLEARM] = 25;
-			stats->PROFICIENCIES[PRO_RANGED] = 60; //Chuck booze at you.
-			//stats->PROFICIENCIES[PRO_SHIELD] = 35;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 60;
-			stats->PROFICIENCIES[PRO_MAGIC] = 60;
+			//stats->setProficiency(PRO_SWORD, 35);
+			stats->setProficiency(PRO_MACE, 80);
+			stats->setProficiency(PRO_AXE, 60);
+			//stats->setProficiency(PRO_POLEARM, 25);
+			stats->setProficiency(PRO_RANGED, 60); //Chuck booze at you.
+			//stats->setProficiency(PRO_SHIELD, 35);
+			stats->setProficiency(PRO_SPELLCASTING, 60);
+			stats->setProficiency(PRO_MAGIC, 60);
 			break;
 		case 93:
 		case (1000 + AUTOMATON):
@@ -888,12 +898,12 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->LVL = 20;
 			stats->HUNGER = 900;
 
-			stats->PROFICIENCIES[PRO_SWORD] = 60;
-			stats->PROFICIENCIES[PRO_MACE] = 60;
-			stats->PROFICIENCIES[PRO_AXE] = 60;
-			stats->PROFICIENCIES[PRO_RANGED] = 60;
-			stats->PROFICIENCIES[PRO_POLEARM] = 60;
-			stats->PROFICIENCIES[PRO_SHIELD] = 60;
+			stats->setProficiency(PRO_SWORD, 60);
+			stats->setProficiency(PRO_MACE, 60);
+			stats->setProficiency(PRO_AXE, 60);
+			stats->setProficiency(PRO_RANGED, 60);
+			stats->setProficiency(PRO_POLEARM, 60);
+			stats->setProficiency(PRO_SHIELD, 60);
 			break;
 		case 94:
 		case (1000 + LICH_ICE):
@@ -919,9 +929,9 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->GOLD = 100;
 			stats->HUNGER = 900;
 			stats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] = 1;
-			stats->PROFICIENCIES[PRO_RANGED] = 100;
-			stats->PROFICIENCIES[PRO_MAGIC] = 100;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 100;
+			stats->setProficiency(PRO_RANGED, 100);
+			stats->setProficiency(PRO_MAGIC, 100);
+			stats->setProficiency(PRO_SPELLCASTING, 100);
 			break;
 		case 95:
 		case (1000 + LICH_FIRE):
@@ -947,9 +957,9 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->GOLD = 100;
 			stats->HUNGER = 900;
 			stats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] = 1;
-			stats->PROFICIENCIES[PRO_SWORD] = 80;
-			stats->PROFICIENCIES[PRO_MAGIC] = 100;
-			stats->PROFICIENCIES[PRO_SPELLCASTING] = 100;
+			stats->setProficiency(PRO_SWORD, 80);
+			stats->setProficiency(PRO_MAGIC, 100);
+			stats->setProficiency(PRO_SPELLCASTING, 100);
 			break;
 		case 83:
 		case (1000 + SKELETON):
@@ -972,12 +982,12 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->GOLD = 0;
 			stats->HUNGER = 900;
 
-			stats->PROFICIENCIES[PRO_SWORD] = 35;
-			stats->PROFICIENCIES[PRO_MACE] = 50;
-			stats->PROFICIENCIES[PRO_AXE] = 45;
-			stats->PROFICIENCIES[PRO_POLEARM] = 25;
-			stats->PROFICIENCIES[PRO_RANGED] = 35;
-			stats->PROFICIENCIES[PRO_SHIELD] = 35;
+			stats->setProficiency(PRO_SWORD, 35);
+			stats->setProficiency(PRO_MACE, 50);
+			stats->setProficiency(PRO_AXE, 45);
+			stats->setProficiency(PRO_POLEARM, 25);
+			stats->setProficiency(PRO_RANGED, 35);
+			stats->setProficiency(PRO_SHIELD, 35);
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] = 1;
@@ -1152,8 +1162,8 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->GOLD = 0;
 			stats->HUNGER = 900;
 
-			stats->PROFICIENCIES[PRO_MAGIC] = 60;
-			stats->PROFICIENCIES[PRO_LEADERSHIP] = 40;
+			stats->setProficiency(PRO_MAGIC, 60);
+			stats->setProficiency(PRO_LEADERSHIP, 40);
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 10; //Magicstaff of charm monster.
@@ -1231,7 +1241,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->MAXMP = 50;
 			stats->MP = stats->MAXMP;
 			stats->OLDHP = stats->HP;
-			stats->PROFICIENCIES[PRO_RANGED] = 80;
+			stats->setProficiency(PRO_RANGED, 80);
 			stats->STR = 0;
 			stats->DEX = 0;
 			stats->CON = 0;
@@ -1272,6 +1282,26 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->LVL = 1;
 			stats->monsterTinkeringStatus = DECREPIT; // store the type of item that was used to summon me.
 			break;
+		case (1000 + MIMIC):
+			stats->type = MIMIC;
+			stats->appearance = local_rng.rand();
+			stats->inventory.first = NULL;
+			stats->inventory.last = NULL;
+			stats->MAXHP = 90;
+			stats->HP = stats->MAXHP;
+			stats->OLDHP = stats->HP;
+			stats->RANDOM_MAXHP = 20;
+			stats->RANDOM_HP = stats->RANDOM_MAXHP;
+			stats->STR = 0;
+			stats->DEX = 0;
+			stats->CON = 0;
+			stats->PER = 5;
+			stats->CHR = 0;
+			stats->EXP = 0;
+			stats->LVL = 10;
+			stats->GOLD = 0;
+			stats->RANDOM_GOLD = 0;
+			break;
 		case 10:
 		default:
 			break;
@@ -1293,7 +1323,7 @@ bool isMonsterStatsDefault(Stat& myStats)
 		&& baseStats.DEX == myStats.DEX
 		&& baseStats.CON == myStats.CON
 		&& baseStats.INT == myStats.INT
-		&& baseStats.PER == myStats.PER
+		&& (baseStats.PER == myStats.PER || (baseStats.PER == -3 && myStats.type == HUMAN)) // increased human PER from -3 to 0.
 		&& baseStats.CHR == myStats.CHR
 		&& baseStats.LVL == myStats.LVL
 		&& baseStats.RANDOM_LVL == myStats.RANDOM_LVL

@@ -57,27 +57,38 @@ void Entity::actTeleporter()
 	// use teleporter
 	if ( multiplayer != CLIENT )
 	{
+		if ( this->isInteractWithMonster() )
+		{
+			Entity* monsterInteracting = uidToEntity(this->interactedByMonster);
+			if ( monsterInteracting )
+			{
+				monsterInteracting->teleporterMove(teleporterX, teleporterY, teleporterType);
+				this->clearMonsterInteract();
+				return;
+			}
+			this->clearMonsterInteract();
+		}
 		for ( i = 0; i < MAXPLAYERS; i++ )
 		{
 			if ( selectedEntity[i] == this || client_selected[i] == this )
 			{
-				if ( inrange[i] )
+				if ( inrange[i] && Player::getPlayerInteractEntity(i) )
 				{
 					switch ( teleporterType )
 					{
 						case 0:
-							messagePlayer(i, MESSAGE_INTERACTION, language[2378]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2378));
 							break;
 						case 1:
-							messagePlayer(i, MESSAGE_INTERACTION, language[506]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(506));
 							break;
 						case 2:
-							messagePlayer(i, MESSAGE_INTERACTION, language[510]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(510));
 							break;
 						default:
 							break;
 					}
-					players[i]->entity->teleporterMove(teleporterX, teleporterY, teleporterType);
+					Player::getPlayerInteractEntity(i)->teleporterMove(teleporterX, teleporterY, teleporterType);
 					return;
 				}
 			}
@@ -88,7 +99,7 @@ void Entity::actTeleporter()
 	{
 		if ( !light )
 		{
-			light = lightSphereShadow(x / 16, y / 16, 3, 255);
+			light = addLight(x / 16, y / 16, "portal_purple");
 		}
 		yaw += 0.01; // rotate slowly on my axis
 		sprite = 620;
