@@ -20,6 +20,7 @@
 #include "interface/interface.hpp"
 #include "items.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -40,13 +41,15 @@ void actDoor(Entity* my)
 	Entity* entity;
 	int i, c;
 
+	auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 	if ( !my->doorInit )
 	{
 		my->createWorldUITooltip();
 
 		my->doorInit = 1;
 		my->doorStartAng = my->yaw;
-		my->doorHealth = 15 + local_rng.rand() % 5;
+		my->doorHealth = 15 + rng.rand() % 5;
 		my->doorMaxHealth = my->doorHealth;
 		my->doorOldHealth = my->doorHealth;
 		my->doorPreventLockpickExploit = 1;
@@ -55,7 +58,7 @@ void actDoor(Entity* my)
 		{
 			my->doorLocked = 0; // force unlocked.
 		}
-		else if ( local_rng.rand() % 20 == 0 || (!strncmp(map.name, "The Great Castle", 16) && local_rng.rand() % 2 == 0) || my->doorForceLockedUnlocked == 1 )   // 5% chance
+		else if ( rng.rand() % 20 == 0 || (!strncmp(map.name, "The Great Castle", 16) && rng.rand() % 2 == 0) || my->doorForceLockedUnlocked == 1 )   // 5% chance
 		{
 			my->doorLocked = 1;
 			my->doorPreventLockpickExploit = 0;
@@ -137,36 +140,40 @@ void actDoor(Entity* my)
 			{
 				if ( selectedEntity[i] == my || client_selected[i] == my )
 				{
-					if ( players[i]->entity && inrange[i])
+					if ( Player::getPlayerInteractEntity(i) && inrange[i])
 					{
+						Entity* playerEntity = Player::getPlayerInteractEntity(i);
 						if ( !my->doorLocked )   // door unlocked
 						{
 							if ( !my->doorDir && !my->doorStatus )
 							{
 								// open door
-								my->doorStatus = 1 + (players[i]->entity->x > my->x);
+								my->doorStatus = 1 + (playerEntity->x > my->x);
 								playSoundEntity(my, 21, 96);
-								messagePlayer(i, MESSAGE_INTERACTION, language[464]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(464));
+								Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_DOOR_OPENED, "door", 1);
 							}
 							else if ( my->doorDir && !my->doorStatus )
 							{
 								// open door
-								my->doorStatus = 1 + (players[i]->entity->y < my->y);
+								my->doorStatus = 1 + (playerEntity->y < my->y);
 								playSoundEntity(my, 21, 96);
-								messagePlayer(i, MESSAGE_INTERACTION, language[464]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(464));
+								Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_DOOR_OPENED, "door", 1);
 							}
 							else
 							{
 								// close door
 								my->doorStatus = 0;
 								playSoundEntity(my, 22, 96);
-								messagePlayer(i, MESSAGE_INTERACTION, language[465]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(465));
+								Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_DOOR_CLOSED, "door", 1);
 							}
 						}
 						else
 						{
 							// door locked
-							messagePlayer(i, MESSAGE_INTERACTION, language[466]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(466));
 							playSoundEntity(my, 152, 64);
 						}
 					}
@@ -220,24 +227,56 @@ void actDoor(Entity* my)
 			// don't set impassable if someone's inside, otherwise do
 			node_t* node;
 			bool somebodyinside = false;
-			std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 2);
+			std::vector<list_t*> entLists;
+			if ( multiplayer == CLIENT )
+			{
+				entLists.push_back(map.entities); // clients use old map.entities method
+			}
+			else
+			{
+				entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 2);
+			}
+			real_t oldmyx = my->x;
+			real_t oldmyy = my->y;
+			my->x = (static_cast<int>(my->x) >> 4) * 16.0 + 8.0; // door positioning isn't centred on tile so adjust
+			my->y = (static_cast<int>(my->y) >> 4) * 16.0 + 8.0;
 			for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !somebodyinside; ++it )
 			{
 				list_t* currentList = *it;
 				for ( node = currentList->first; node != nullptr; node = node->next )
 				{
 					Entity* entity = (Entity*)node->element;
-					if ( entity == my || entity->flags[PASSABLE] || entity->behavior == &actDoorFrame )
+					if ( entity == my || (entity->flags[PASSABLE] && entity->behavior != &actDeathGhost) 
+						|| entity->behavior == &actDoorFrame )
 					{
 						continue;
 					}
-					if ( entityInsideEntity(my, entity) )
+
+					bool insideEntity = false;
+					if ( entity->behavior == &actDoor )
+					{
+						real_t oldx = entity->x;
+						real_t oldy = entity->y;
+						entity->x = (static_cast<int>(entity->x) >> 4) * 16.0 + 8.0; // door positioning isn't centred on tile so adjust
+						entity->y = (static_cast<int>(entity->y) >> 4) * 16.0 + 8.0;
+						insideEntity = entityInsideEntity(my, entity);
+						entity->x = oldx;
+						entity->y = oldy;
+					}
+					else
+					{
+						insideEntity = entityInsideEntity(my, entity);
+					}
+
+					if ( insideEntity )
 					{
 						somebodyinside = true;
 						break;
 					}
 				}
 			}
+			my->x = oldmyx;
+			my->y = oldmyy;
 			if ( !somebodyinside )
 			{
 				my->focaly = 0;
@@ -301,25 +340,27 @@ void Entity::doorHandleDamageMagic(int damage, Entity &magicProjectile, Entity *
 			{
 				if ( magicProjectile.behavior == &actBomb )
 				{
-					messagePlayer(caster->skill[2], MESSAGE_COMBAT, language[3617], items[magicProjectile.skill[21]].name_identified, language[674]);
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(3617), items[magicProjectile.skill[21]].getIdentifiedName(), Language::get(674));
 				}
 				else
 				{
-					messagePlayer(caster->skill[2], MESSAGE_COMBAT, language[387]);
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(387));
 				}
+				Compendium_t::Events_t::eventUpdateWorld(caster->skill[2], Compendium_t::CPDM_DOOR_BROKEN, "door", 1);
 			}
 			else
 			{
 				if ( magicProjectile.behavior == &actBomb )
 				{
-					messagePlayer(caster->skill[2], MESSAGE_COMBAT, language[3618], items[magicProjectile.skill[21]].name_identified, language[674]);
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT_BASIC, Language::get(3618), items[magicProjectile.skill[21]].getIdentifiedName(), Language::get(674));
 				}
 				else
 				{
-					messagePlayer(caster->skill[2], MESSAGE_COMBAT, language[378], language[674]);
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT_BASIC, Language::get(378), Language::get(674));
 				}
 			}
-			updateEnemyBar(caster, this, language[674], doorHealth, doorMaxHealth);
+			updateEnemyBar(caster, this, Language::get(674), doorHealth, doorMaxHealth,
+				false, DamageGib::DMG_DEFAULT);
 		}
 	}
 	if ( !doorDir )

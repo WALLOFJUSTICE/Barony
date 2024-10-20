@@ -82,6 +82,7 @@ public:
     void    setWidgetPageLeft(const char* s) { widgetActions["MenuPageLeft"] = s; }
     void    setWidgetPageRight(const char* s) { widgetActions["MenuPageRight"] = s; }
     void    setWidgetBack(const char* s) { widgetActions["MenuCancel"] = s; }
+    void    removeWidgetAction(const char* binding) { if ( widgetActions.find(binding) != widgetActions.end() ) { widgetActions.erase(binding); } }
     void    setWidgetSearchParent(const char* s) { widgetSearchParent = s; }
     void    addWidgetAction(const char* binding, const char* action) { widgetActions[binding] = action; }
     void    addWidgetMovement(const char* binding, const char* action) { widgetMovements[binding] = action; }
@@ -91,6 +92,15 @@ public:
 	void	setMenuConfirmControlType(int flags) { menuConfirmControlType = flags; }
     void    setGlyphPosition(glyph_position_t p) { glyphPosition = p; }
     void    setAlwaysShowGlyphs(bool b) { alwaysShowGlyphs = b; }
+    void    setDontSearchAncestors(bool b) { dontSearchAncestors = b; }
+    
+    //! removes the widget safely
+    void removeSelf();
+    
+    //! remove an object from the widget
+    //! @param name the name of the object to remove
+    //! @return true if the object was successfully removed, false otherwise
+    virtual bool remove(const char* name);
 
     //! recursively locates the head widget for this widget
     //! @return the head widget, which may be this widget
@@ -190,6 +200,7 @@ protected:
     void (*tickCallback)(Widget&) = nullptr;		                //!< the callback to run each frame for this widget
     void (*drawCallback)(const Widget&, const SDL_Rect) = nullptr;  //!< the callback to run after the widget is drawn
     void* userData = nullptr;                                       //!< user data
+    bool dontSearchAncestors = false;                               //!< if true, doesn't fall back to a full-search if a widget can't be found for a binding
 
     std::unordered_map<std::string, std::string>
         widgetActions;                              //!< widgets to select and activate when input is pressed

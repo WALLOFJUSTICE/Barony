@@ -43,11 +43,11 @@ std::string getShopTypeLangEntry(int shopType)
 {
 	if ( shopType < 10 )
 	{
-		return language[184 + shopType];
+		return Language::get(184 + shopType);
 	}
 	else if ( shopType == 10 )
 	{
-		return language[4128];
+		return Language::get(4128);
 	}
 	return "";
 }
@@ -233,13 +233,13 @@ void updateShopWindow(const int player)
 	// chitchat
 	if ( (ticks - shoptimer[player]) % 600 == 0 && !mysteriousShopkeeper )
 	{
-		shopspeech[player] = language[216 + local_rng.rand() % NUMCHITCHAT];
+		shopspeech[player] = Language::get(216 + local_rng.rand() % NUMCHITCHAT);
 		shoptimer[player]--;
 	}
 
 	// draw speech
 	char buf[1024] = "";
-	//if ( sellitem[clientnum] && shopspeech[player] == language[215] )
+	//if ( sellitem[clientnum] && shopspeech[player] == Language::get(215) )
 	//{
 	//	// "I would sell that for %d gold"
 	//	snprintf(buf, sizeof(buf), shopspeech[player].c_str(), sellitem[player]->sellValue(player));
@@ -252,13 +252,13 @@ void updateShopWindow(const int player)
 	//}
 	//else
 	{
-		if ( shopspeech[player] == language[194] // greetings
-			|| shopspeech[player] == language[195]
-			|| shopspeech[player] == language[196] )
+		if ( shopspeech[player] == Language::get(194) // greetings
+			|| shopspeech[player] == Language::get(195)
+			|| shopspeech[player] == Language::get(196) )
 		{
 			if ( mysteriousShopkeeper )
 			{
-				shopspeech[player] = language[3893 + local_rng.rand() % 3];
+				shopspeech[player] = Language::get(3893 + local_rng.rand() % 3);
 				if ( players[player]->shopGUI.chatStrFull != shopspeech[player] )
 				{
 					players[player]->shopGUI.chatTicks = ticks;
@@ -269,7 +269,7 @@ void updateShopWindow(const int player)
 			else
 			{
 				char shopnamebuf[1024];
-				snprintf(shopnamebuf, sizeof(shopnamebuf), language[358], shopkeepername[player].c_str(), getShopTypeLangEntry(shopkeepertype[player]).c_str());
+				snprintf(shopnamebuf, sizeof(shopnamebuf), Language::get(358), shopkeepername[player].c_str(), getShopTypeLangEntry(shopkeepertype[player]).c_str());
 
 				snprintf(buf, sizeof(buf), "%s\n%s", shopspeech[player].c_str(), shopnamebuf); // greetings, welcome to %s's shop
 				if ( players[player]->shopGUI.chatStrFull != buf )
@@ -385,13 +385,39 @@ void Player::ShopGUI_t::openShop()
 			{
 				if ( shopkeepertype[player.playernum] == 10 ) // mysterious shopkeep
 				{
-					shopName->setText(language[4129]); // '???'s'
+					shopName->setText(Language::get(4129)); // '???'s'
+
+					// opening shop triggers shopkeep compendium reveal
+					auto find = Compendium_t::Events_t::monsterUniqueIDLookup.find("mysterious shop");
+					if ( find != Compendium_t::Events_t::monsterUniqueIDLookup.end() )
+					{
+						auto find2 = Compendium_t::Events_t::monsterIDToString.find(Compendium_t::Events_t::kEventMonsterOffset + find->second);
+						if ( find2 != Compendium_t::Events_t::monsterIDToString.end() )
+						{
+							auto& unlockStatus = Compendium_t::CompendiumMonsters_t::unlocks[find2->second];
+							if ( unlockStatus == Compendium_t::CompendiumUnlockStatus::LOCKED_UNKNOWN )
+							{
+								unlockStatus = Compendium_t::CompendiumUnlockStatus::LOCKED_REVEALED_UNVISITED;
+							}
+						}
+					}
 				}
 				else
 				{
 					char buf[64];
-					snprintf(buf, sizeof(buf), language[4127], shopkeepername[player.playernum].c_str());
+					snprintf(buf, sizeof(buf), Language::get(4127), shopkeepername[player.playernum].c_str());
 					shopName->setText(buf);
+
+					// opening shop triggers shopkeep compendium reveal
+					auto find = Compendium_t::Events_t::monsterIDToString.find(Compendium_t::Events_t::kEventMonsterOffset + SHOPKEEPER);
+					if ( find != Compendium_t::Events_t::monsterIDToString.end() )
+					{
+						auto& unlockStatus = Compendium_t::CompendiumMonsters_t::unlocks[find->second];
+						if ( unlockStatus == Compendium_t::CompendiumUnlockStatus::LOCKED_UNKNOWN )
+						{
+							unlockStatus = Compendium_t::CompendiumUnlockStatus::LOCKED_REVEALED_UNVISITED;
+						}
+					}
 				}
 
 				SDL_Rect pos = shopName->getSize();
@@ -536,7 +562,7 @@ void updatePlayerGold(const int player, const int flipped)
 	auto currentGoldLabelText = bgFrame->findField("current gold label");
 	if ( flipped )
 	{
-		std::string s = language[4119];
+		std::string s = Language::get(4119);
 		if ( flipped )
 		{
 			size_t found = s.find(':'); // remove colon as text to right of box
@@ -549,7 +575,7 @@ void updatePlayerGold(const int player, const int flipped)
 	}
 	else
 	{
-		currentGoldLabelText->setText(language[4119]);
+		currentGoldLabelText->setText(Language::get(4119));
 	}
 	SDL_Rect changeGoldPos = changeGoldText->getSize();
 	const int changePosAnimHeight = 10;
@@ -565,7 +591,7 @@ void updatePlayerGold(const int player, const int flipped)
 	{
 		if ( ((ticks - players[player]->shopGUI.animGoldStartTicks) > TICKS_PER_SECOND / 2) )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.1, (animGold)) / 10.0;
 			animGold -= setpointDiffX;
 			animGold = std::max(0.0, animGold);
@@ -579,7 +605,7 @@ void updatePlayerGold(const int player, const int flipped)
 		{
 			pauseChangeGoldAnim = true;
 
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animGold)) / 10.0;
 			animGold += setpointDiffX;
 			animGold = std::min(1.0, animGold);
@@ -609,7 +635,7 @@ void updatePlayerGold(const int player, const int flipped)
 
 	{ 
 		// constant decay for animation
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * 1.0 / 25.0;
 		animNoDeal -= setpointDiffX;
 		animNoDeal = std::max(0.0, animNoDeal);
@@ -867,7 +893,7 @@ void Player::ShopGUI_t::setItemDisplayNameAndPrice(Item* item)
 		if ( item->itemSpecialShopConsumable )
 		{
 			itemSkillReq = ((int)item->itemRequireTradingSkillInShop) * SHOP_CONSUMABLE_SKILL_REQ_PER_POINT;
-			if ( stats[player.playernum]->PROFICIENCIES[PRO_TRADING] + statGetCHR(stats[player.playernum], players[player.playernum]->entity) < itemSkillReq )
+			if ( stats[player.playernum]->getModifiedProficiency(PRO_TRADING) + statGetCHR(stats[player.playernum], players[player.playernum]->entity) < itemSkillReq )
 			{
 				hiddenItemInGUI = true;
 				itemUnknownPreventPurchase = true;
@@ -875,7 +901,7 @@ void Player::ShopGUI_t::setItemDisplayNameAndPrice(Item* item)
 		}
 		if ( hiddenItemInGUI )
 		{
-			snprintf(buf, sizeof(buf), language[4251], itemSkillReq);
+			snprintf(buf, sizeof(buf), Language::get(4251), itemSkillReq);
 		}
 		else if ( !item->identified )
 		{
@@ -914,7 +940,7 @@ void Player::ShopGUI_t::setItemDisplayNameAndPrice(Item* item)
 		itemDesc = buf;
 		if ( buyOrSellPrompt )
 		{
-			buyOrSellPrompt->setText(language[4113]); // 'buy'
+			buyOrSellPrompt->setText(Language::get(4113)); // 'buy'
 		}
 		if ( shopkeepertype[player.playernum] == 10 )
 		{
@@ -924,8 +950,11 @@ void Player::ShopGUI_t::setItemDisplayNameAndPrice(Item* item)
 				{
 					ItemType oldType = item->type;
 					item->type = (ItemType)orbCategories.first;
-					orbImg->path = getItemSpritePath(player.playernum, *item);
-					orbImg->disabled = false;
+					if ( orbImg )
+					{
+						orbImg->path = getItemSpritePath(player.playernum, *item);
+						orbImg->disabled = false;
+					}
 					item->type = oldType;
 					break;
 				}
@@ -973,7 +1002,7 @@ void Player::ShopGUI_t::setItemDisplayNameAndPrice(Item* item)
 		itemDesc = buf;
 		if ( buyOrSellPrompt )
 		{
-			buyOrSellPrompt->setText(language[4114]); // 'sell'
+			buyOrSellPrompt->setText(Language::get(4114)); // 'sell'
 		}
 	}
 
@@ -1024,7 +1053,7 @@ void Player::ShopGUI_t::updateShop()
 
 	if ( !shopFrame->isDisabled() && bOpen )
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
 		animx += setpointDiffX;
 		animx = std::min(1.0, animx);
@@ -1105,7 +1134,7 @@ void Player::ShopGUI_t::updateShop()
 		}
 	}
 
-	if ( !player.bUseCompactGUIHeight() )
+	if ( !player.bUseCompactGUIHeight() && !player.bUseCompactGUIWidth() )
 	{
 		shopFramePos.y = heightOffsetWhenNotCompact;
 	}
@@ -1144,6 +1173,7 @@ void Player::ShopGUI_t::updateShop()
 			{
 				Input::inputs[player.playernum].consumeBinaryToggle("MenuCancel");
 				::closeShop(player.playernum);
+				Player::soundCancel();
 				return;
 			}
 			else
@@ -1315,11 +1345,11 @@ void Player::ShopGUI_t::updateShop()
 	char buybackText[32];
 	if ( buybackItems > 0 )
 	{
-		snprintf(buybackText, sizeof(buybackText), "%s (%d)", language[4120], buybackItems);
+		snprintf(buybackText, sizeof(buybackText), "%s (%d)", Language::get(4120), buybackItems);
 	}
 	else
 	{
-		snprintf(buybackText, sizeof(buybackText), "%s", language[4120]);
+		snprintf(buybackText, sizeof(buybackText), "%s", Language::get(4120));
 	}
 	if ( !drawGlyphs )
 	{
@@ -1328,7 +1358,7 @@ void Player::ShopGUI_t::updateShop()
 		buybackBtn->setDisabled(!isInteractable);
 		if ( buybackView )
 		{
-			buybackBtn->setText(language[4124]);
+			buybackBtn->setText(Language::get(4124));
 		}
 		else
 		{
@@ -1384,11 +1414,11 @@ void Player::ShopGUI_t::updateShop()
 			buybackBtn->deselect();
 		}
 		closePromptTxt->setDisabled(false);
-		closePromptTxt->setText(language[4121]);
+		closePromptTxt->setText(Language::get(4121));
 		buybackPromptTxt->setDisabled(false);
 		if ( buybackView )
 		{
-			buybackPromptTxt->setText(language[4124]);
+			buybackPromptTxt->setText(Language::get(4124));
 		}
 		else
 		{
@@ -1462,7 +1492,7 @@ void Player::ShopGUI_t::updateShop()
 
 		if ( isInteractable )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
 			animTooltip += setpointDiffX;
 			animTooltip = std::min(1.0, animTooltip);
@@ -1537,11 +1567,11 @@ void Player::ShopGUI_t::updateShop()
 		char priceFormat[64];
 		if ( itemUnknownPreventPurchase )
 		{
-			snprintf(priceFormat, sizeof(priceFormat), language[4261]); // ??? gold
+			snprintf(priceFormat, sizeof(priceFormat), Language::get(4261)); // ??? gold
 		}
 		else
 		{
-			snprintf(priceFormat, sizeof(priceFormat), language[4260], itemPrice);
+			snprintf(priceFormat, sizeof(priceFormat), Language::get(4260), itemPrice);
 		}
 
 		SDL_Rect valuePos = namePos;
@@ -1556,7 +1586,7 @@ void Player::ShopGUI_t::updateShop()
 		{
 			if ( itemPrice > 0 && itemPrice > stats[player.playernum]->GOLD )
 			{
-				if ( !strcmp(buyPromptText->getText(), language[4113]) ) // buy prompt
+				if ( !strcmp(buyPromptText->getText(), Language::get(4113)) ) // buy prompt
 				{
 					displayItemValue->setColor(hudColors.characterSheetRed);
 				}
@@ -1635,7 +1665,7 @@ void Player::ShopGUI_t::updateShop()
 			|| usingGamepad
 			|| animTooltip < 0.9999 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animTooltip)) / 2.0;
 			animTooltip -= setpointDiffX;
 			animTooltip = std::max(0.0, animTooltip);
@@ -1711,7 +1741,7 @@ void Player::ShopGUI_t::updateShop()
 	{
 		if ( player.GUI.activeModule == Player::GUI_t::MODULE_SHOP ) // buy prompt
 		{
-			std::string s = language[4122];
+			std::string s = Language::get(4122);
 			if ( flipped )
 			{
 				size_t found = s.find(':'); // remove colon as text to right of box
@@ -1721,8 +1751,8 @@ void Player::ShopGUI_t::updateShop()
 				}
 			}
 			discountLabelText->setText(s.c_str());
-			shopModifier = 1 / ((50 + stats[player.playernum]->PROFICIENCIES[PRO_TRADING]) / 150.f); // buy value
-			shopModifier /= 1.f + statGetCHR(stats[player.playernum], players[player.playernum]->entity) / 20.f;
+			shopModifier = 1 / ((50 + stats[player.playernum]->getModifiedProficiency(PRO_TRADING)) / 150.f); // buy value
+			//shopModifier /= 1.f + statGetCHR(stats[player.playernum], players[player.playernum]->entity) / 20.f;
 			shopModifier = std::max(1.0, shopModifier);
 			shopModifier = shopModifier * 100.0 - 100.0;
 			char buf[32];
@@ -1731,7 +1761,7 @@ void Player::ShopGUI_t::updateShop()
 		}
 		else
 		{
-			std::string s = language[4123];
+			std::string s = Language::get(4123);
 			if ( flipped )
 			{
 				size_t found = s.find(':'); // remove colon as text to right of box
@@ -1741,7 +1771,7 @@ void Player::ShopGUI_t::updateShop()
 				}
 			}
 			discountLabelText->setText(s.c_str());
-			shopModifier = (50 + stats[player.playernum]->PROFICIENCIES[PRO_TRADING]) / 150.f; // sell value
+			shopModifier = (50 + stats[player.playernum]->getModifiedProficiency(PRO_TRADING)) / 150.f; // sell value
 			shopModifier *= 1.f + statGetCHR(stats[player.playernum], players[player.playernum]->entity) / 20.f;
 			shopModifier = std::min(1.0, shopModifier);
 			shopModifier = shopModifier * 100.0 - 100.0;

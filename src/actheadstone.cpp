@@ -19,6 +19,7 @@
 #include "collision.hpp"
 #include "player.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -71,12 +72,30 @@ void actHeadstone(Entity* my)
 		}
 	}
 
+#ifdef USE_FMOD
+	if ( HEADSTONE_AMBIENCE == 0 )
+	{
+		HEADSTONE_AMBIENCE--;
+		my->stopEntitySound();
+		my->entity_sound = playSoundEntityLocal(my, 149, 32);
+	}
+	if ( my->entity_sound )
+	{
+		bool playing = false;
+		my->entity_sound->isPlaying(&playing);
+		if ( !playing )
+		{
+			my->entity_sound = nullptr;
+		}
+	}
+#else
 	HEADSTONE_AMBIENCE--;
 	if ( HEADSTONE_AMBIENCE <= 0 )
 	{
 		HEADSTONE_AMBIENCE = TICKS_PER_SECOND * 30;
 		playSoundEntityLocal( my, 149, 32 );
 	}
+#endif
 
 	if ( multiplayer == CLIENT )
 	{
@@ -90,34 +109,40 @@ void actHeadstone(Entity* my)
 
 	if ( !HEADSTONE_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
 		my->createWorldUITooltip();
 		HEADSTONE_INIT = 1;
-		HEADSTONE_MESSAGE = local_rng.rand();
-		HEADSTONE_GHOUL = (local_rng.rand() % 4 == 0);
+		HEADSTONE_MESSAGE = rng.rand();
+		HEADSTONE_GHOUL = (rng.rand() % 4 == 0);
 	}
 
 	bool shouldspawn = false;
 
 	// rightclick message
-	int i;
+	int triggeredPlayer = -1;
 	if ( multiplayer != CLIENT )
 	{
-		for (i = 0; i < MAXPLAYERS; i++)
+		for (int i = 0; i < MAXPLAYERS; i++)
 		{
 			if ( selectedEntity[i] == my || client_selected[i] == my )
 			{
 				if (inrange[i])
 				{
-					//messagePlayer(i, MESSAGE_INTERACTION, language[485 + HEADSTONE_MESSAGE % 17]);
+					//messagePlayer(i, MESSAGE_INTERACTION, Language::get(485 + HEADSTONE_MESSAGE % 17));
 					players[i]->worldUI.worldTooltipDialogue.createDialogueTooltip(my->getUID(),
 						Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_GRAVE,
-						language[485 + HEADSTONE_MESSAGE % 17]);
+						Language::get(485 + HEADSTONE_MESSAGE % 17));
+
+					Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_GRAVE_EPITAPHS_READ, "gravestone", 1);
+					Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_GRAVE_EPITAPHS_PERCENT, "gravestone", (1 << (HEADSTONE_MESSAGE % 17)));
+
+					triggeredPlayer = i;
 
 					if ( HEADSTONE_GHOUL && !HEADSTONE_FIRED )
 					{
 						shouldspawn = true;
 						Uint32 color = makeColorRGB(255, 128, 0);
-						messagePlayerColor(i, MESSAGE_INTERACTION, color, language[502]);
+						messagePlayerColor(i, MESSAGE_INTERACTION, color, Language::get(502));
 					}
 				}
 			}
@@ -135,6 +160,8 @@ void actHeadstone(Entity* my)
 			Entity* monster = summonMonsterNoSmoke(GHOUL, my->x, my->y, false);
 			if ( monster )
 			{
+				auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+				monster->seedEntityRNG(rng.getU32());
 				monster->z = 13;
 				if ( currentlevel >= 15 || !strncmp(map.name, "The Haunted Castle", 18) )
 				{
@@ -142,6 +169,18 @@ void actHeadstone(Entity* my)
 					if ( tmpStats )
 					{
 						strcpy(tmpStats->name, "enslaved ghoul");
+						tmpStats->setAttribute("special_npc", "enslaved ghoul");
+					}
+					if ( triggeredPlayer >= 0 )
+					{
+						Compendium_t::Events_t::eventUpdateWorld(triggeredPlayer, Compendium_t::CPDM_GRAVE_GHOULS_ENSLAVED, "gravestone", 1);
+					}
+				}
+				else
+				{
+					if ( triggeredPlayer >= 0 )
+					{
+						Compendium_t::Events_t::eventUpdateWorld(triggeredPlayer, Compendium_t::CPDM_GRAVE_GHOULS, "gravestone", 1);
 					}
 				}
 			}

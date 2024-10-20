@@ -28,7 +28,7 @@ void Slider::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 	const bool focused = (fingerdown && highlighted) || selected;
 #else
 	const int mouseowner = intro || gamePaused ? inputs.getPlayerIDAllowedKeyboard() : owner;
-	const bool focused = highlighted || (selected && !inputs.getVirtualMouse(mouseowner)->draw_cursor);
+	const bool focused = highlighted || (selected && !inputs.getVirtualMouse(mouseowner)->draw_cursor && (intro || !players[owner]->shootmode));
 #endif
 
 	auto white = Image::get("images/system/white.png");
@@ -61,6 +61,8 @@ void Slider::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 			image.pos = {0, 0, railSize.w, railSize.h};
 			image.tiled = false;
 			auto frame = static_cast<Frame*>(parent);
+			//bool isBlitToParent = frame->isBlitToParent();
+			//frame->setBlitToParent(false);
 			frame->drawImage(&image, _railSize,
 				SDL_Rect{
 					std::max(0, _actualSize.x - railSize.x),
@@ -68,6 +70,7 @@ void Slider::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 					0, 0
 				}
 			);
+			//frame->setBlitToParent(isBlitToParent);
 		}
 	}
 	
@@ -106,6 +109,8 @@ void Slider::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 			image.pos = {0, 0, handleSize.w, handleSize.h};
 			image.tiled = false;
 			auto frame = static_cast<Frame*>(parent);
+			//bool isBlitToParent = frame->isBlitToParent();
+			//frame->setBlitToParent(false);
 			frame->drawImage(&image, _handleSize,
 				SDL_Rect{
 					std::max(0, _actualSize.x - handleSize.x),
@@ -113,6 +118,7 @@ void Slider::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 					0, 0
 				}
 			);
+			//frame->setBlitToParent(isBlitToParent);
 		}
 	}
 
@@ -390,4 +396,16 @@ void Slider::scrollParent() {
 		}
 	}
 	fparent->setActualSize(fActualSize);
+}
+
+SDL_Rect Slider::getAbsoluteSize() const
+{
+	SDL_Rect _size{ handleSize.x, handleSize.y, handleSize.w, handleSize.h };
+	auto _parent = static_cast<Frame*>(this->parent);
+	if ( _parent ) {
+		SDL_Rect absoluteSize = _parent->getAbsoluteSize();
+		_size.x += std::max(0, absoluteSize.x);
+		_size.y += std::max(0, absoluteSize.y);
+	}
+	return _size;
 }

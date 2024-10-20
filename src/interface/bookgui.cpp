@@ -25,6 +25,7 @@
 #include "../ui/GameUI.hpp"
 #include "../prng.hpp"
 #include "../mod_tools.hpp"
+#include "../ui/MainMenu.hpp"
 
 void Player::BookGUI_t::createBookGUI()
 {
@@ -75,7 +76,7 @@ void Player::BookGUI_t::createBookGUI()
 	promptBack->setFont(promptFont.c_str());
 	promptBack->setHJustify(Field::justify_t::RIGHT);
 	promptBack->setVJustify(Field::justify_t::CENTER);
-	promptBack->setText(language[4053]);
+	promptBack->setText(Language::get(4053));
 	promptBack->setColor(makeColor(201, 162, 100, 255));
 
 	auto promptBackImg = bookBackground->addImage(SDL_Rect{0, 0, 0, 0}, 0xFFFFFFFF,
@@ -88,7 +89,7 @@ void Player::BookGUI_t::createBookGUI()
 	promptNextPage->setFont(promptFont.c_str());
 	promptNextPage->setHJustify(Field::justify_t::RIGHT);
 	promptNextPage->setVJustify(Field::justify_t::CENTER);
-	promptNextPage->setText(language[4054]);
+	promptNextPage->setText(Language::get(4054));
 	promptNextPage->setColor(makeColor(201, 162, 100, 255));
 
 	auto promptNextPageImg = bookBackground->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF,
@@ -101,7 +102,7 @@ void Player::BookGUI_t::createBookGUI()
 	promptPrevPage->setFont(promptFont.c_str());
 	promptPrevPage->setHJustify(Field::justify_t::LEFT);
 	promptPrevPage->setVJustify(Field::justify_t::CENTER);
-	promptPrevPage->setText(language[4055]);
+	promptPrevPage->setText(Language::get(4055));
 	promptPrevPage->setColor(makeColor(201, 162, 100, 255));
 
 	auto promptPrevPageImg = bookBackground->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF,
@@ -151,11 +152,16 @@ void Player::BookGUI_t::updateBookGUI()
 		createBookGUI();
 	}
 
+	bookFrame->setSize(SDL_Rect{ players[player.playernum]->camera_virtualx1(),
+		players[player.playernum]->camera_virtualy1(),
+		players[player.playernum]->camera_virtualWidth(),
+		players[player.playernum]->camera_virtualHeight() });
+
 	bool errorOpening = false;
 	int bookIndex = getBook(openBookName);
 	if ( !allBooks.empty() && allBooks.size() >= bookIndex )
 	{
-		if ( getBookNameFromIndex(bookIndex) != openBookName )
+		if ( getBookDefaultNameFromIndex(bookIndex) != openBookName )
 		{
 			errorOpening = true;
 		}
@@ -197,7 +203,7 @@ void Player::BookGUI_t::updateBookGUI()
 	SDL_Rect bookSize = innerFrame->getSize();
 	bookSize.x = bookFrame->getSize().w / 2 - bookSize.w / 2;
 
-	const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+	const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 	real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - bookFadeInAnimationY)) / 5.0;
 	bookFadeInAnimationY += setpointDiffX;
 	bookFadeInAnimationY = std::min(1.0, bookFadeInAnimationY);
@@ -207,6 +213,7 @@ void Player::BookGUI_t::updateBookGUI()
 	getColor(fade->color, &r, &g, &b, &a);
 	a = 128 * bookFadeInAnimationY;
 	fade->color = makeColor( r, g, b, a);
+	fade->pos = SDL_Rect{ 0, 0, bookFrame->getSize().w, bookFrame->getSize().h };
 
 	int baseY = (bookFrame->getSize().h / 2 - bookSize.h / 2);
 	bookSize.y = -bookSize.h + bookFadeInAnimationY * (baseY + bookSize.h);
@@ -220,7 +227,7 @@ void Player::BookGUI_t::updateBookGUI()
 	if ( auto promptBack = innerFrame->findField("prompt back txt") )
 	{
 		promptBack->setDisabled(!drawGlyphs);
-		promptBack->setText(language[4053]);
+		promptBack->setText(Language::get(4053));
 		auto promptImg = innerFrame->findImage("prompt back img");
 		promptImg->disabled = !drawGlyphs;
 		SDL_Rect glyphPos = promptImg->pos;
@@ -247,7 +254,7 @@ void Player::BookGUI_t::updateBookGUI()
 	if ( auto promptNext = innerFrame->findField("prompt next txt") )
 	{
 		promptNext->setDisabled(!drawGlyphs || !canAdvanceNextPage);
-		promptNext->setText(language[4054]);
+		promptNext->setText(Language::get(4054));
 		auto promptImg = innerFrame->findImage("prompt next img");
 		promptImg->disabled = promptNext->isDisabled();
 		SDL_Rect glyphPos = promptImg->pos;
@@ -273,7 +280,7 @@ void Player::BookGUI_t::updateBookGUI()
 	if ( auto promptPrev = innerFrame->findField("prompt prev txt") )
 	{
 		promptPrev->setDisabled(!drawGlyphs || !canAdvancePrevPage);
-		promptPrev->setText(language[4055]);
+		promptPrev->setText(Language::get(4055));
 		auto promptImg = innerFrame->findImage("prompt prev img");
 		promptImg->disabled = promptPrev->isDisabled();
 		SDL_Rect glyphPos = promptImg->pos;
@@ -304,7 +311,8 @@ void Player::BookGUI_t::updateBookGUI()
 	auto nextPageBoundary = innerFrame->findFrame("next page mouse boundary");
 
 	// book gui
-	if ( Input::inputs[player.playernum].binaryToggle("MenuLeftClick") )
+	if ( Input::inputs[player.playernum].binaryToggle("MenuLeftClick")
+		&& inputs.bPlayerUsingKeyboardControl(player.playernum) )
 	{
 		//book_t GUI next page button.
 		if ( nextPageBoundary->capturesMouse() )
@@ -314,7 +322,7 @@ void Player::BookGUI_t::updateBookGUI()
 			{
 				canAdvanceNextPage = false;
 				currentBookPage += 2;
-				playSound(83 + local_rng.rand() % 6, 128);
+				playSound(83 + local_rng.rand() % 6, 156);
 			}
 		}
 		else if ( prevPageBoundary->capturesMouse() )
@@ -324,13 +332,17 @@ void Player::BookGUI_t::updateBookGUI()
 			{
 				canAdvancePrevPage = false;
 				currentBookPage -= 2;
-				playSound(83 + local_rng.rand() % 6, 128);
+				playSound(83 + local_rng.rand() % 6, 156);
 			}
 		}
 		if ( !innerFrame->capturesMouse() )
 		{
 			Input::inputs[player.playernum].consumeBinaryToggle("MenuLeftClick");
 			Input::inputs[player.playernum].consumeBindingsSharedWithBinding("MenuLeftClick");
+			if ( bBookOpen )
+			{
+				Player::soundCancel();
+			}
 			closeBookGUI();
 			return;
 		}
@@ -346,7 +358,7 @@ void Player::BookGUI_t::updateBookGUI()
 			if ( canAdvanceNextPage )
 			{
 				currentBookPage += 2;
-				playSound(83 + local_rng.rand() % 6, 128);
+				playSound(83 + local_rng.rand() % 6, 156);
 			}
 		}
 		if ( Input::inputs[player.playernum].binaryToggle("MenuPageLeft") )
@@ -355,12 +367,16 @@ void Player::BookGUI_t::updateBookGUI()
 			if ( canAdvancePrevPage )
 			{
 				currentBookPage -= 2;
-				playSound(83 + local_rng.rand() % 6, 128);
+				playSound(83 + local_rng.rand() % 6, 156);
 			}
 		}
 		if ( Input::inputs[player.playernum].binaryToggle("MenuCancel") )
 		{
 			Input::inputs[player.playernum].consumeBinaryToggle("MenuCancel");
+			if ( bBookOpen )
+			{
+				Player::soundCancel();
+			}
 			closeBookGUI();
 			return;
 		}
@@ -497,14 +513,14 @@ void Player::BookGUI_t::closeBookGUI()
 
 void Player::BookGUI_t::openBook(int index, Item* item)
 {
-	if ( getBookNameFromIndex(index) == "" )
+	if ( getBookDefaultNameFromIndex(index) == "" )
 	{
 		return;
 	}
 
 	for (int c = 0; c < num_banned_books; ++c) {
 		const char* banned_book = banned_books[c];
-		if ( !spawn_blood && getBookNameFromIndex(index, false) == banned_book )
+		if ( !spawn_blood && getBookDefaultNameFromIndex(index, false) == banned_book )
 		{
 			openBook((index + 1) % numbooks, item);
 			return;
@@ -516,9 +532,11 @@ void Player::BookGUI_t::openBook(int index, Item* item)
 	players[player.playernum]->openStatusScreen(GUI_MODE_INVENTORY, 
 		INVENTORY_MODE_ITEM, player.GUI.MODULE_BOOK_VIEW); // Reset the GUI to the inventory.
 	bBookOpen = true;
-	openBookName = getBookNameFromIndex(index);
+	openBookName = getBookDefaultNameFromIndex(index);
 	openBookItem = item;
 	currentBookPage = 0;
+
+	playSound(83 + local_rng.rand() % 6, 156);
 
 	// add the book to the list of read books
 	bool hasreadbook = false;
@@ -540,6 +558,19 @@ void Player::BookGUI_t::openBook(int index, Item* item)
 		node->element = bookName;
 		node->size = sizeof(char) * (strlen(openBookName.c_str()) + 1);
 		node->deconstructor = &defaultDeconstructor;
+	}
+
+	Compendium_t::Events_t::eventUpdate(player.playernum, Compendium_t::CPDM_LORE_READ, READABLE_BOOK, 1);
+	if ( numbooks > 0 )
+	{
+		if ( index % numbooks >= 32 )
+		{
+			Compendium_t::Events_t::eventUpdate(player.playernum, Compendium_t::CPDM_LORE_PERCENT_READ_2, READABLE_BOOK, (1 << ((index % numbooks) - 32)));
+		}
+		else
+		{
+			Compendium_t::Events_t::eventUpdate(player.playernum, Compendium_t::CPDM_LORE_PERCENT_READ, READABLE_BOOK, (1 << (index % numbooks)));
+		}
 	}
 
 	// activate the steam achievement
@@ -579,6 +610,12 @@ void Player::SignGUI_t::openSign(std::string name, Uint32 uid)
 	{
 		signWorldCoordX = entity->x;
 		signWorldCoordY = entity->y;
+	}
+
+	// fix for binding left click to open sign
+	{
+		Input::inputs[player.playernum].consumeBinaryToggle("MenuLeftClick");
+		Input::inputs[player.playernum].consumeBindingsSharedWithBinding("MenuLeftClick");
 	}
 }
 
@@ -651,7 +688,7 @@ void Player::SignGUI_t::createSignGUI()
 	promptBack->setFont(promptFont.c_str());
 	promptBack->setHJustify(Field::justify_t::RIGHT);
 	promptBack->setVJustify(Field::justify_t::CENTER);
-	promptBack->setText(language[4053]);
+	promptBack->setText(Language::get(4053));
 	promptBack->setColor(makeColor(201, 162, 100, 255));
 
 	auto promptBackImg = signBackground->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF,
@@ -760,7 +797,7 @@ void Player::SignGUI_t::updateSignGUI()
 	SDL_Rect bookSize = innerFrame->getSize();
 	bookSize.x = signFrame->getSize().w / 2 - bookSize.w / 2;
 
-	const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+	const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 	real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - signFadeInAnimationY)) / 5.0;
 	signFadeInAnimationY += setpointDiffX;
 	signFadeInAnimationY = std::min(1.0, signFadeInAnimationY);
@@ -780,7 +817,7 @@ void Player::SignGUI_t::updateSignGUI()
 	if ( auto promptBack = innerFrame->findField("prompt back txt") )
 	{
 		promptBack->setDisabled(!drawGlyphs);
-		promptBack->setText(language[4053]);
+		promptBack->setText(Language::get(4053));
 		auto promptImg = innerFrame->findImage("prompt back img");
 		promptImg->disabled = !drawGlyphs;
 		SDL_Rect glyphPos = promptImg->pos;
@@ -824,6 +861,7 @@ void Player::SignGUI_t::updateSignGUI()
 		if ( Input::inputs[player.playernum].binaryToggle("MenuCancel") )
 		{
 			Input::inputs[player.playernum].consumeBinaryToggle("MenuCancel");
+			Input::inputs[player.playernum].consumeBindingsSharedWithBinding("MenuCancel");
 			closeSignGUI();
 			return;
 		}
@@ -840,7 +878,7 @@ void Player::SignGUI_t::updateSignGUI()
 		{
 			VideoManager[player.playernum].loadfile(signEntry.signVideoContent.path.c_str());
 		}
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - signAnimVideo)) / 5.0;
 		signAnimVideo += setpointDiffX;
 		signAnimVideo = std::min(1.0, signAnimVideo);

@@ -125,7 +125,10 @@ static void updateModFolderNames()
 	if ( !modFolderNames.empty() )
 	{
 		std::list<std::string>::iterator it = std::find(modFolderNames.begin(), modFolderNames.end(), "..");
-		modFolderNames.erase(it);
+		if ( it != modFolderNames.end() )
+		{
+			modFolderNames.erase(it);
+		}
 		std::sort(mapNames.begin(), mapNames.end());
 	}
 }
@@ -311,32 +314,20 @@ void buttonNew(button_t* my)
 	snprintf(skyboxtext, 4, "%d", map.skybox);
 	for ( int z = 0; z < MAPFLAGS; ++z )
 	{
-		snprintf(mapflagtext[z], 4, "%d", map.flags[z]);
+		if ( z < MAP_FLAG_GENBYTES1 || z > MAP_FLAG_GENBYTES6 )
+		{
+			snprintf(mapflagtext[z], 4, "%d", map.flags[z]);
+		}
 	}
-	if ( map.flags[MAP_FLAG_DISABLETRAPS] > 0 )
-	{
-		strcpy(mapflagtext[MAP_FLAG_DISABLETRAPS], "[x]");
-	}
-	else
-	{
-		strcpy(mapflagtext[MAP_FLAG_DISABLETRAPS], "[ ]");
-	}
-	if ( map.flags[MAP_FLAG_DISABLEMONSTERS] > 0 )
-	{
-		strcpy(mapflagtext[MAP_FLAG_DISABLEMONSTERS], "[x]");
-	}
-	else
-	{
-		strcpy(mapflagtext[MAP_FLAG_DISABLEMONSTERS], "[ ]");
-	}
-	if ( map.flags[MAP_FLAG_DISABLELOOT] > 0 )
-	{
-		strcpy(mapflagtext[MAP_FLAG_DISABLELOOT], "[x]");
-	}
-	else
-	{
-		strcpy(mapflagtext[MAP_FLAG_DISABLELOOT], "[ ]");
-	}
+	snprintf(mapflagtext[MAP_FLAG_GENTOTALMIN], 4, "%d", (map.flags[MAP_FLAG_GENBYTES1] >> 24) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_GENTOTALMAX], 4, "%d", (map.flags[MAP_FLAG_GENBYTES1] >> 16) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_GENMONSTERMIN], 4, "%d", (map.flags[MAP_FLAG_GENBYTES1] >> 8) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_GENMONSTERMAX], 4, "%d", (map.flags[MAP_FLAG_GENBYTES1] >> 0) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_GENLOOTMIN], 4, "%d", (map.flags[MAP_FLAG_GENBYTES2] >> 24) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_GENLOOTMAX], 4, "%d", (map.flags[MAP_FLAG_GENBYTES2] >> 16) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_GENDECORATIONMIN], 4, "%d", (map.flags[MAP_FLAG_GENBYTES2] >> 8) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_GENDECORATIONMAX], 4, "%d", (map.flags[MAP_FLAG_GENBYTES2] >> 0) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_PERIMETER_GAP], 4, "%d", (map.flags[MAP_FLAG_GENBYTES4] >> 0) & static_cast<int>(0xFF));
 	if ( (map.flags[MAP_FLAG_GENBYTES3] >> 24) & static_cast<int>(0xFF) )
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLEDIGGING], "[x]");
@@ -345,6 +336,7 @@ void buttonNew(button_t* my)
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLEDIGGING], "[ ]");
 	}
+
 	if ( (map.flags[MAP_FLAG_GENBYTES3] >> 16) & static_cast<int>(0xFF) )
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLETELEPORT], "[x]");
@@ -353,6 +345,7 @@ void buttonNew(button_t* my)
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLETELEPORT], "[ ]");
 	}
+
 	if ( (map.flags[MAP_FLAG_GENBYTES3] >> 8) & static_cast<int>(0xFF) )
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLELEVITATION], "[x]");
@@ -361,6 +354,7 @@ void buttonNew(button_t* my)
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLELEVITATION], "[ ]");
 	}
+
 	if ( (map.flags[MAP_FLAG_GENBYTES3] >> 0) & static_cast<int>(0xFF) )
 	{
 		strcpy(mapflagtext[MAP_FLAG_GENADJACENTROOMS], "[x]");
@@ -392,6 +386,31 @@ void buttonNew(button_t* my)
 	else
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLEHUNGER], "[ ]");
+	}
+
+	if ( map.flags[MAP_FLAG_DISABLETRAPS] > 0 )
+	{
+		strcpy(mapflagtext[MAP_FLAG_DISABLETRAPS], "[x]");
+	}
+	else
+	{
+		strcpy(mapflagtext[MAP_FLAG_DISABLETRAPS], "[ ]");
+	}
+	if ( map.flags[MAP_FLAG_DISABLEMONSTERS] > 0 )
+	{
+		strcpy(mapflagtext[MAP_FLAG_DISABLEMONSTERS], "[x]");
+	}
+	else
+	{
+		strcpy(mapflagtext[MAP_FLAG_DISABLEMONSTERS], "[ ]");
+	}
+	if ( map.flags[MAP_FLAG_DISABLELOOT] > 0 )
+	{
+		strcpy(mapflagtext[MAP_FLAG_DISABLELOOT], "[x]");
+	}
+	else
+	{
+		strcpy(mapflagtext[MAP_FLAG_DISABLELOOT], "[ ]");
 	}
 	cursorflash = ticks;
 	menuVisible = 0;
@@ -439,7 +458,7 @@ void buttonNewConfirm(button_t* my)
 	int x, y, z, c;
 	clearUndos();
 	free(map.tiles);
-	free(map.vismap);
+	free(camera.vismap);
 	list_FreeAll(map.entities);
 	strcpy(map.name, nametext);
 	strcpy(map.author, authortext);
@@ -479,24 +498,40 @@ void buttonNewConfirm(button_t* my)
 				map.flags[MAP_FLAG_DISABLELOOT] = 0;
 			}
 		}
+		else if ( z == MAP_FLAG_GENBYTES1 )
+		{
+			map.flags[z] = 0;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENTOTALMIN]) & 0xFF) << 24;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENTOTALMAX]) & 0xFF) << 16;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENMONSTERMIN]) & 0xFF) << 8;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENMONSTERMAX]) & 0xFF) << 0;
+		}
+		else if ( z == MAP_FLAG_GENBYTES2 )
+		{
+			map.flags[z] = 0;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENLOOTMIN]) & 0xFF) << 24;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENLOOTMAX]) & 0xFF) << 16;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENDECORATIONMIN]) & 0xFF) << 8;
+			map.flags[z] |= (atoi(mapflagtext[MAP_FLAG_GENDECORATIONMAX]) & 0xFF) << 0;
+		}
 		else if ( z == MAP_FLAG_GENBYTES3 )
 		{
 			map.flags[z] = 0;
 			if ( !strncmp(mapflagtext[MAP_FLAG_DISABLEDIGGING], "[x]", 3) )
 			{
-				map.flags[z] |= (1 << 24) & 0xFF;
+				map.flags[z] |= (1 << 24);
 			}
 			if ( !strncmp(mapflagtext[MAP_FLAG_DISABLETELEPORT], "[x]", 3) )
 			{
-				map.flags[z] |= (1 << 16) & 0xFF;
+				map.flags[z] |= (1 << 16);
 			}
 			if ( !strncmp(mapflagtext[MAP_FLAG_DISABLELEVITATION], "[x]", 3) )
 			{
-				map.flags[z] |= (1 << 8) & 0xFF;
+				map.flags[z] |= (1 << 8);
 			}
 			if ( !strncmp(mapflagtext[MAP_FLAG_GENADJACENTROOMS], "[x]", 3) )
 			{
-				map.flags[z] |= (1 << 0) & 0xFF;
+				map.flags[z] |= (1 << 0);
 			}
 		}
 		else if ( z == MAP_FLAG_GENBYTES4 )
@@ -504,16 +539,17 @@ void buttonNewConfirm(button_t* my)
 			map.flags[z] = 0;
 			if ( !strncmp(mapflagtext[MAP_FLAG_DISABLEOPENING], "[x]", 3) )
 			{
-				map.flags[z] |= (1 << 24) & 0xFF;
+				map.flags[z] |= (1 << 24);
 			}
 			if ( !strncmp(mapflagtext[MAP_FLAG_DISABLEMESSAGES], "[x]", 3) )
 			{
-				map.flags[z] |= (1 << 16) & 0xFF;
+				map.flags[z] |= (1 << 16);
 			}
 			if ( !strncmp(mapflagtext[MAP_FLAG_DISABLEHUNGER], "[x]", 3) )
 			{
-				map.flags[z] |= (1 << 8) & 0xFF;
+				map.flags[z] |= (1 << 8);
 			}
+			map.flags[z] |= atoi(mapflagtext[MAP_FLAG_PERIMETER_GAP]) & 0xFF;
 		}
 		else
 		{
@@ -525,7 +561,8 @@ void buttonNewConfirm(button_t* my)
 	map.width = std::min(std::max(MINWIDTH, map.width), MAXWIDTH);
 	map.height = std::min(std::max(MINHEIGHT, map.height), MAXHEIGHT);
 	map.tiles = (int*) malloc(sizeof(int) * MAPLAYERS * map.height * map.width);
-	map.vismap = (bool*) malloc(sizeof(bool) * map.height * map.width);
+	camera.vismap = (bool*) malloc(sizeof(bool) * map.height * map.width);
+    memset(camera.vismap, 0, sizeof(bool) * map.height * map.width);
 	for ( z = 0; z < MAPLAYERS; z++ )
 	{
 		for ( y = 0; y < map.height; y++ )
@@ -550,18 +587,12 @@ void buttonNewConfirm(button_t* my)
 			}
 		}
 	}
-	if ( lightmap != NULL )
-	{
-		free(lightmap);
-	}
-	if ( lightmapSmoothed != NULL )
-	{
-		free(lightmapSmoothed);
-	}
-	lightmap = (int*) malloc(sizeof(Sint32) * map.width * map.height);
-	lightmapSmoothed = (int*)malloc(sizeof(Sint32) * (map.width + 2) * (map.height + 2));
-	memset(lightmap, 0, sizeof(Sint32) * map.width * map.height);
-	memset(lightmapSmoothed, 0, sizeof(Sint32) * (map.width + 2) * (map.height + 2));
+    for (int c = 0; c < MAXPLAYERS + 1; ++c) {
+        lightmaps[c].clear();
+        lightmaps[c].resize(map.width * map.height);
+        lightmapsSmoothed[c].clear();
+        lightmapsSmoothed[c].resize((map.width + 2) * (map.height + 2));
+    }
 	strcpy(message, "                             Created a new map.");
 	filename[0] = 0;
 	oldfilename[0] = 0;
@@ -1192,6 +1223,7 @@ void buttonAttributes(button_t* my)
 	snprintf(mapflagtext[MAP_FLAG_GENLOOTMAX], 4, "%d", (map.flags[MAP_FLAG_GENBYTES2] >> 16) & static_cast<int>(0xFF));
 	snprintf(mapflagtext[MAP_FLAG_GENDECORATIONMIN], 4, "%d", (map.flags[MAP_FLAG_GENBYTES2] >> 8) & static_cast<int>(0xFF));
 	snprintf(mapflagtext[MAP_FLAG_GENDECORATIONMAX], 4, "%d", (map.flags[MAP_FLAG_GENBYTES2] >> 0) & static_cast<int>(0xFF));
+	snprintf(mapflagtext[MAP_FLAG_PERIMETER_GAP], 4, "%d", (map.flags[MAP_FLAG_GENBYTES4] >> 0) & static_cast<int>(0xFF));
 	if ( (map.flags[MAP_FLAG_GENBYTES3] >> 24) & static_cast<int>(0xFF) )
 	{
 		strcpy(mapflagtext[MAP_FLAG_DISABLEDIGGING], "[x]");
@@ -1341,7 +1373,7 @@ void buttonAttributesConfirm(button_t* my)
 
 	// allocate memory for a new map
 	free(map.tiles);
-	free(map.vismap);
+	free(camera.vismap);
 	map.width = atoi(widthtext);
 	map.height = atoi(heighttext);
 	map.width = std::min(std::max(MINWIDTH, map.width), MAXWIDTH);
@@ -1424,6 +1456,10 @@ void buttonAttributesConfirm(button_t* my)
 	{
 		map.flags[MAP_FLAG_GENBYTES4] |= (1 << 8); // store in third leftmost byte.
 	}
+	if ( atoi(mapflagtext[MAP_FLAG_PERIMETER_GAP]) >= 0 )
+	{
+		map.flags[MAP_FLAG_GENBYTES4] |= 0xFF & (atoi(mapflagtext[MAP_FLAG_PERIMETER_GAP]) << 0); // store in fourth leftmost byte.
+	}
 
 	if ( !strncmp(mapflagtext[MAP_FLAG_DISABLETRAPS], "[x]", 3) )
 	{
@@ -1451,21 +1487,16 @@ void buttonAttributesConfirm(button_t* my)
 	}
 
 	map.tiles = (int*) malloc(sizeof(int) * MAPLAYERS * map.height * map.width);
-	map.vismap = (bool*) malloc(sizeof(bool) * map.height * map.width);
+	camera.vismap = (bool*) malloc(sizeof(bool) * map.height * map.width);
+    memset(camera.vismap, 0, sizeof(bool) * map.height * map.width);
 	strcpy(map.name, nametext);
 	strcpy(map.author, authortext);
-	if ( lightmap != NULL )
-	{
-		free(lightmap);
-	}
-	if ( lightmapSmoothed != NULL )
-	{
-		free(lightmapSmoothed);
-	}
-	lightmap = (int*)malloc(sizeof(Sint32) * map.width * map.height);
-	lightmapSmoothed = (int*)malloc(sizeof(Sint32) * (map.width + 2) * (map.height + 2));
-	memset(lightmap, 0, sizeof(Sint32) * map.width * map.height);
-	memset(lightmapSmoothed, 0, sizeof(Sint32) * (map.width + 2) * (map.height + 2));
+    for (int c = 0; c < MAXPLAYERS + 1; ++c) {
+        lightmaps[c].clear();
+        lightmaps[c].resize(map.width * map.height);
+        lightmapsSmoothed[c].clear();
+        lightmapsSmoothed[c].resize((map.width + 2) * (map.height + 2));
+    }
 
 	// transfer data from the new map to the old map and fill extra space with empty data
 	for ( z = 0; z < MAPLAYERS; z++ )
@@ -1786,6 +1817,7 @@ void buttonSpriteProperties(button_t* my)
 				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->yaw));
 				snprintf(spriteProperties[1], 4, "%d", selectedEntity[0]->skill[9]);
 				snprintf(spriteProperties[2], 4, "%d", selectedEntity[0]->chestLocked);
+				snprintf(spriteProperties[3], 4, "%d", selectedEntity[0]->chestMimicChance);
 				inputstr = spriteProperties[0];
 				cursorflash = ticks;
 				menuVisible = 0;
@@ -1793,8 +1825,8 @@ void buttonSpriteProperties(button_t* my)
 				newwindow = 3;
 				subx1 = xres / 2 - 160;
 				subx2 = xres / 2 + 160;
-				suby1 = yres / 2 - 105;
-				suby2 = yres / 2 + 105;
+				suby1 = yres / 2 - 125;
+				suby2 = yres / 2 + 125;
 				strcpy(subtext, "Chest Properties:");
 				break;
 			case 3: //items
@@ -1831,13 +1863,14 @@ void buttonSpriteProperties(button_t* my)
 				snprintf(spriteProperties[3], 4, "%d", static_cast<int>(selectedEntity[0]->skill[3])); //Amount of Spawns 
 				snprintf(spriteProperties[4], 4, "%d", static_cast<int>(selectedEntity[0]->skill[4])); //Requires Power
 				snprintf(spriteProperties[5], 4, "%d", static_cast<int>(selectedEntity[0]->skill[5])); //Chance to Stop Working
+				snprintf(spriteProperties[6], 4, "%d", static_cast<int>(selectedEntity[0]->skill[9])); //Autospawn
 				inputstr = spriteProperties[0];
 				cursorflash = ticks;
 				menuVisible = 0;
 				subwindow = 1;
 				newwindow = 6;
-				subx1 = xres / 2 - 210;
-				subx2 = xres / 2 + 210;
+				subx1 = xres / 2 - 220;
+				subx2 = xres / 2 + 220;
 				suby1 = yres / 2 - 140;
 				suby2 = yres / 2 + 140;
 				strcpy(subtext, "Summoning Trap Properties:");
@@ -1920,6 +1953,9 @@ void buttonSpriteProperties(button_t* my)
 				break;
 			case 10:
 				snprintf(spriteProperties[0], 5, "%d", static_cast<int>(selectedEntity[0]->ceilingTileModel));
+				snprintf(spriteProperties[1], 5, "%d", static_cast<int>(selectedEntity[0]->ceilingTileDir));
+				snprintf(spriteProperties[2], 5, "%d", static_cast<int>(selectedEntity[0]->ceilingTileAllowTrap));
+				snprintf(spriteProperties[3], 5, "%d", static_cast<int>(selectedEntity[0]->ceilingTileBreakable));
 				inputstr = spriteProperties[0];
 				cursorflash = ticks;
 				menuVisible = 0;
@@ -1927,8 +1963,8 @@ void buttonSpriteProperties(button_t* my)
 				newwindow = 12;
 				subx1 = xres / 2 - 170;
 				subx2 = xres / 2 + 170;
-				suby1 = yres / 2 - 60;
-				suby2 = yres / 2 + 60;
+				suby1 = yres / 2 - 100;
+				suby2 = yres / 2 + 100;
 				strcpy(subtext, "Ceiling Tile Properties:");
 				break;
 			case 11:
@@ -2103,6 +2139,7 @@ void buttonSpriteProperties(button_t* my)
 				snprintf(spriteProperties[2], 5, "%d", static_cast<int>(selectedEntity[0]->signalTimerInterval));
 				snprintf(spriteProperties[3], 5, "%d", static_cast<int>(selectedEntity[0]->signalTimerRepeatCount));
 				snprintf(spriteProperties[4], 2, "%d", static_cast<int>(selectedEntity[0]->signalTimerLatchInput));
+				snprintf(spriteProperties[5], 2, "%d", static_cast<int>(selectedEntity[0]->signalInvertOutput));
 				inputstr = spriteProperties[0];
 				cursorflash = ticks;
 				menuVisible = 0;
@@ -2286,6 +2323,8 @@ void buttonSpriteProperties(button_t* my)
 			case 25: // teleport shrine
 				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->shrineDir));
 				snprintf(spriteProperties[1], 5, "%d", static_cast<int>(selectedEntity[0]->shrineZ));
+				snprintf(spriteProperties[2], 5, "%d", static_cast<int>(selectedEntity[0]->shrineDestXOffset));
+				snprintf(spriteProperties[3], 5, "%d", static_cast<int>(selectedEntity[0]->shrineDestYOffset));
 				inputstr = spriteProperties[0];
 				cursorflash = ticks;
 				menuVisible = 0;
@@ -2293,8 +2332,8 @@ void buttonSpriteProperties(button_t* my)
 				newwindow = 30;
 				subx1 = xres / 2 - 220;
 				subx2 = xres / 2 + 220;
-				suby1 = yres / 2 - 60;
-				suby2 = yres / 2 + 60;
+				suby1 = yres / 2 - 90;
+				suby2 = yres / 2 + 90;
 				strcpy(subtext, "Teleport Shrine Properties:");
 				break;
 			case 26: // spell shrine
@@ -2310,6 +2349,63 @@ void buttonSpriteProperties(button_t* my)
 				suby1 = yres / 2 - 60;
 				suby2 = yres / 2 + 60;
 				strcpy(subtext, "Spell Shrine Properties:");
+				break;
+			case 27:
+			{
+				snprintf(spriteProperties[0], 5, "%d", static_cast<int>(selectedEntity[0]->colliderDecorationModel));
+				snprintf(spriteProperties[1], 4, "%d", static_cast<int>(selectedEntity[0]->colliderDecorationRotation));
+				snprintf(spriteProperties[2], 5, "%d", static_cast<int>(selectedEntity[0]->colliderDecorationHeightOffset));
+				snprintf(spriteProperties[3], 5, "%d", static_cast<int>(selectedEntity[0]->colliderDecorationXOffset));
+				snprintf(spriteProperties[4], 5, "%d", static_cast<int>(selectedEntity[0]->colliderDecorationYOffset));
+				snprintf(spriteProperties[5], 5, "%d", static_cast<int>(selectedEntity[0]->colliderHasCollision));
+				snprintf(spriteProperties[6], 4, "%d", static_cast<int>(selectedEntity[0]->colliderSizeX));
+				snprintf(spriteProperties[7], 4, "%d", static_cast<int>(selectedEntity[0]->colliderSizeY));
+				snprintf(spriteProperties[8], 5, "%d", static_cast<int>(selectedEntity[0]->colliderMaxHP));
+				snprintf(spriteProperties[9], 4, "%d", static_cast<int>(selectedEntity[0]->colliderDiggable));
+				snprintf(spriteProperties[10], 4, "%d", static_cast<int>(selectedEntity[0]->colliderDamageTypes));
+
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 31;
+				subx1 = xres / 2 - 200;
+				subx2 = xres / 2 + 200;
+				suby1 = yres / 2 - 220;
+				suby2 = yres / 2 + 220;
+				strcpy(subtext, "Collider Model Properties:");
+				break;
+			}
+			case 28:
+				snprintf(spriteProperties[0], 2, "%d", static_cast<int>(selectedEntity[0]->signalInputDirection));
+				snprintf(spriteProperties[1], 5, "%d", static_cast<int>(selectedEntity[0]->signalActivateDelay));
+				snprintf(spriteProperties[2], 5, "%d", static_cast<int>(selectedEntity[0]->signalTimerInterval));
+				snprintf(spriteProperties[3], 5, "%d", static_cast<int>(selectedEntity[0]->signalTimerRepeatCount));
+				snprintf(spriteProperties[4], 2, "%d", static_cast<int>(selectedEntity[0]->signalTimerLatchInput));
+				snprintf(spriteProperties[5], 2, "%d", static_cast<int>(selectedEntity[0]->signalInvertOutput));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 32;
+				subx1 = xres / 2 - 220;
+				subx2 = xres / 2 + 220;
+				suby1 = yres / 2 - 120;
+				suby2 = yres / 2 + 120;
+				strcpy(subtext, "AND Gate Properties:");
+				break;
+			case 29:
+				snprintf(spriteProperties[0], 2, "%d", static_cast<int>(selectedEntity[0]->pressurePlateTriggerType));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 33;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				strcpy(subtext, "Pressure Plate Properties:");
 				break;
 			default:
 				strcpy(message, "No properties available for current sprite.");
@@ -3035,6 +3131,7 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				selectedEntity[0]->yaw = (real_t)atoi(spriteProperties[0]);
 				selectedEntity[0]->skill[9] = (Sint32)atoi(spriteProperties[1]);
 				selectedEntity[0]->chestLocked = (Sint32)atoi(spriteProperties[2]);
+				selectedEntity[0]->chestMimicChance = (Sint32)atoi(spriteProperties[3]);
 				break;
 			case 3: //items
 				if ( strcmp(spriteProperties[0], "0") == 0 )
@@ -3064,7 +3161,7 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				break;
 			case 4: //summoning traps
 				if ( (Sint32)atoi(spriteProperties[0]) < -1 || (Sint32)atoi(spriteProperties[0]) == 6
-					|| (Sint32)atoi(spriteProperties[0]) == 12 || (Sint32)atoi(spriteProperties[0]) == 16 )
+					|| (Sint32)atoi(spriteProperties[0]) == 12 )
 				{
 					selectedEntity[0]->skill[0] = 0;
 				}
@@ -3101,6 +3198,7 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				}
 				selectedEntity[0]->skill[4] = (Sint32)atoi(spriteProperties[4]); //Requires Power
 				selectedEntity[0]->skill[5] = (Sint32)atoi(spriteProperties[5]); //Chance to Stop Working
+				selectedEntity[0]->skill[9] = (Sint32)atoi(spriteProperties[6]); //Autospawn
 				break;
 			case 5: //power crystal
 				selectedEntity[0]->yaw = (real_t)atoi(spriteProperties[0]);
@@ -3151,6 +3249,9 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				break;
 			case 10: //ceiling tile model
 				selectedEntity[0]->ceilingTileModel = (Sint32)atoi(spriteProperties[0]);
+				selectedEntity[0]->ceilingTileDir = (Sint32)atoi(spriteProperties[1]);
+				selectedEntity[0]->ceilingTileAllowTrap = (Sint32)atoi(spriteProperties[2]);
+				selectedEntity[0]->ceilingTileBreakable = (Sint32)atoi(spriteProperties[3]);
 				break;
 			case 11: //spell trap ceiling
 				selectedEntity[0]->spellTrapType = (Sint32)atoi(spriteProperties[0]);
@@ -3303,6 +3404,7 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				selectedEntity[0]->signalTimerInterval = (Sint32)atoi(spriteProperties[2]);
 				selectedEntity[0]->signalTimerRepeatCount = (Sint32)atoi(spriteProperties[3]);
 				selectedEntity[0]->signalTimerLatchInput = (Sint32)atoi(spriteProperties[4]);
+				selectedEntity[0]->signalInvertOutput = (Sint32)atoi(spriteProperties[5]);
 				break;
 			case 18: // custom portal
 			{
@@ -3393,10 +3495,36 @@ void buttonSpritePropertiesConfirm(button_t* my)
 			case 25: // teleport shrine
 				selectedEntity[0]->shrineDir = (Sint32)atoi(spriteProperties[0]);
 				selectedEntity[0]->shrineZ = (Sint32)atoi(spriteProperties[1]);
+				selectedEntity[0]->shrineDestXOffset = (Sint32)atoi(spriteProperties[2]);
+				selectedEntity[0]->shrineDestYOffset = (Sint32)atoi(spriteProperties[3]);
 				break;
 			case 26: // spell shrine
 				selectedEntity[0]->shrineDir = (Sint32)atoi(spriteProperties[0]);
 				selectedEntity[0]->shrineZ = (Sint32)atoi(spriteProperties[1]);
+				break;
+			case 27:
+				selectedEntity[0]->colliderDecorationModel = (Sint32)atoi(spriteProperties[0]);
+				selectedEntity[0]->colliderDecorationRotation = (Sint32)atoi(spriteProperties[1]);
+				selectedEntity[0]->colliderDecorationHeightOffset = (Sint32)atoi(spriteProperties[2]);
+				selectedEntity[0]->colliderDecorationXOffset = (Sint32)atoi(spriteProperties[3]);
+				selectedEntity[0]->colliderDecorationYOffset = (Sint32)atoi(spriteProperties[4]);
+				selectedEntity[0]->colliderHasCollision = (Sint32)atoi(spriteProperties[5]);
+				selectedEntity[0]->colliderSizeX = (Sint32)atoi(spriteProperties[6]);
+				selectedEntity[0]->colliderSizeY = (Sint32)atoi(spriteProperties[7]);
+				selectedEntity[0]->colliderMaxHP = (Sint32)atoi(spriteProperties[8]);
+				selectedEntity[0]->colliderDiggable = (Sint32)atoi(spriteProperties[9]);
+				selectedEntity[0]->colliderDamageTypes = (Sint32)atoi(spriteProperties[10]);
+				break;
+			case 28:
+				selectedEntity[0]->signalInputDirection = (Sint32)atoi(spriteProperties[0]);
+				selectedEntity[0]->signalActivateDelay = (Sint32)atoi(spriteProperties[1]);
+				selectedEntity[0]->signalTimerInterval = (Sint32)atoi(spriteProperties[2]);
+				selectedEntity[0]->signalTimerRepeatCount = (Sint32)atoi(spriteProperties[3]);
+				selectedEntity[0]->signalTimerLatchInput = (Sint32)atoi(spriteProperties[4]);
+				selectedEntity[0]->signalInvertOutput = (Sint32)atoi(spriteProperties[5]);
+				break;
+			case 29: // pressure plate
+				selectedEntity[0]->pressurePlateTriggerType = (Sint32)atoi(spriteProperties[0]);
 				break;
 			default:
 				break;

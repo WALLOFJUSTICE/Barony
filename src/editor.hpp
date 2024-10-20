@@ -14,11 +14,14 @@
 #include <vector>
 #include <string>
 
+#include "draw.hpp"
+
 static const unsigned int MAXWIDTH = 2000;
 static const unsigned int MAXHEIGHT = 2000;
 static const unsigned int MINWIDTH = 1;
 static const unsigned int MINHEIGHT =  1;
 
+extern std::map<int, std::string> modelFileNames;
 extern int drawlayer, drawx, drawy, odrawx, odrawy;
 extern int alllayers;
 extern int scroll;
@@ -214,3 +217,4 @@ void propertyPageError(int rowIndex, int resetValue);
 void propertyPageCursorFlash(int rowSpacing);
 void reselectEntityGroup(); // selects group of entities within current selection
 #define TICKS_PER_SECOND 50
+extern view_t camera;

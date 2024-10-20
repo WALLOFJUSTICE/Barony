@@ -21,6 +21,8 @@
 #include "player.hpp"
 #include "magic/magic.hpp"
 #include "prng.hpp"
+#include "scores.hpp"
+#include "mod_tools.hpp"
 
 void initSkeleton(Entity* my, Stat* myStats)
 {
@@ -42,6 +44,8 @@ void initSkeleton(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 		    if ( myStats->sex == FEMALE )
@@ -65,7 +69,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 				}
 				my->skeletonSummonSetEquipment(myStats, rank);
 				myStats->GOLD = 0;
-				my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 64);
+				my->light = addLight(my->x / 16, my->y / 16, "summoned_skeleton_glow");
 
 				Entity* leader = uidToEntity(myStats->leader_uid);
 				if ( leader )
@@ -225,17 +229,17 @@ void initSkeleton(Entity* my, Stat* myStats)
 			}
 			else
 			{
-				setRandomMonsterStats(myStats);
+				setRandomMonsterStats(myStats, rng);
 
 				// generate 6 items max, less if there are any forced items from boss variants
 				int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
 				// boss variants
 			    const bool boss =
-			        local_rng.rand() % 50 == 0 &&
+			        rng.rand() % 50 == 0 &&
 			        !my->flags[USERFLAG2] &&
 			        !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS];
-			    if ( (boss || *cvar_summonBosses) && myStats->leader_uid == 0 )
+			    if ( (boss || (*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED])) && myStats->leader_uid == 0 )
 			    {
 					myStats->setAttribute("special_npc", "funny bones");
 					strcpy(myStats->name, MonsterData_t::getSpecialNPCName(*myStats).c_str());
@@ -245,8 +249,9 @@ void initSkeleton(Entity* my, Stat* myStats)
 					myStats->MAXHP = 100;
 					myStats->STR += 6;
 					int status = DECREPIT + (currentlevel > 5) + (currentlevel > 15) + (currentlevel > 20);
-					myStats->weapon = newItem(ARTIFACT_AXE, static_cast<Status>(status), 1, 1, local_rng.rand(), true, nullptr);
-					myStats->cloak = newItem(CLOAK_PROTECTION, WORN, 0, 1, 2, true, nullptr);
+					myStats->weapon = newItem(ARTIFACT_AXE, static_cast<Status>(status), 1, 1, rng.rand(), false, nullptr);
+					myStats->cloak = newItem(CLOAK_PROTECTION, WORN, 0, 1, 2, false, nullptr);
+					newItem(MASK_EYEPATCH, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, &myStats->inventory);
 			    }
 				else
 				{
@@ -256,27 +261,27 @@ void initSkeleton(Entity* my, Stat* myStats)
 						//give weapon
 						if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 						{
-							switch ( local_rng.rand() % 10 )
+							switch ( rng.rand() % 10 )
 							{
 								case 0:
 								case 1:
-									myStats->weapon = newItem(BRONZE_AXE, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+									myStats->weapon = newItem(BRONZE_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 2:
 								case 3:
-									myStats->weapon = newItem(BRONZE_SWORD, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+									myStats->weapon = newItem(BRONZE_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 4:
 								case 5:
-									myStats->weapon = newItem(IRON_SPEAR, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+									myStats->weapon = newItem(IRON_SPEAR, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 6:
 								case 7:
-									myStats->weapon = newItem(IRON_AXE, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+									myStats->weapon = newItem(IRON_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 8:
 								case 9:
-									myStats->weapon = newItem(IRON_SWORD, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+									myStats->weapon = newItem(IRON_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 							}
 						}
@@ -286,10 +291,10 @@ void initSkeleton(Entity* my, Stat* myStats)
 				// random effects
 
 				// generates equipment and weapons if available from editor
-				createMonsterEquipment(myStats);
+				createMonsterEquipment(myStats, rng);
 
 				// create any custom inventory items from editor if available
-				createCustomInventory(myStats, customItemsToGenerate);
+				createCustomInventory(myStats, customItemsToGenerate, rng);
 
 				// count if any custom inventory items from editor
 				int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -316,23 +321,23 @@ void initSkeleton(Entity* my, Stat* myStats)
 				//give weapon
 				if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 				{
-					switch ( local_rng.rand() % 10 )
+					switch ( rng.rand() % 10 )
 					{
 						case 0:
 						case 1:
 						case 2:
 						case 3:
-							myStats->weapon = newItem(SHORTBOW, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+							myStats->weapon = newItem(SHORTBOW, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 							break;
 						case 4:
 						case 5:
 						case 6:
 						case 7:
-							myStats->weapon = newItem(CROSSBOW, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+							myStats->weapon = newItem(CROSSBOW, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 							break;
 						case 8:
 						case 9:
-							myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 							break;
 					}
 				}
@@ -340,7 +345,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 				//give helmet
 				if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
 				{
-					switch ( local_rng.rand() % 10 )
+					switch ( rng.rand() % 10 )
 					{
 						case 0:
 						case 1:
@@ -349,13 +354,13 @@ void initSkeleton(Entity* my, Stat* myStats)
 						case 4:
 							break;
 						case 5:
-							myStats->helmet = newItem(LEATHER_HELM, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+							myStats->helmet = newItem(LEATHER_HELM, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 							break;
 						case 6:
 						case 7:
 						case 8:
 						case 9:
-							myStats->helmet = newItem(IRON_HELM, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+							myStats->helmet = newItem(IRON_HELM, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 							break;
 					}
 				}
@@ -369,7 +374,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 					}
 					else
 					{
-						switch ( local_rng.rand() % 10 )
+						switch ( rng.rand() % 10 )
 						{
 							case 0:
 							case 1:
@@ -380,13 +385,13 @@ void initSkeleton(Entity* my, Stat* myStats)
 								break;
 							case 6:
 							case 7:
-								myStats->shield = newItem(WOODEN_SHIELD, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+								myStats->shield = newItem(WOODEN_SHIELD, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 								break;
 							case 8:
-								myStats->shield = newItem(BRONZE_SHIELD, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+								myStats->shield = newItem(BRONZE_SHIELD, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 								break;
 							case 9:
-								myStats->shield = newItem(IRON_SHIELD, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+								myStats->shield = newItem(IRON_SHIELD, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 								break;
 						}
 					}
@@ -499,6 +504,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[SKELETON][6][0]; // 2.5
 	entity->focaly = limbs[SKELETON][6][1]; // 0
 	entity->focalz = limbs[SKELETON][6][2]; // 0
@@ -520,6 +526,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[SKELETON][7][0]; // 2
 	entity->focaly = limbs[SKELETON][7][1]; // 0
 	entity->focalz = limbs[SKELETON][7][2]; // 0
@@ -543,6 +550,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[SKELETON][8][0]; // 0
 	entity->focaly = limbs[SKELETON][8][1]; // 0
 	entity->focalz = limbs[SKELETON][8][2]; // 4
@@ -566,6 +574,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[SKELETON][9][0]; // 0
 	entity->focaly = limbs[SKELETON][9][1]; // 0
 	entity->focalz = limbs[SKELETON][9][2]; // -2
@@ -586,6 +595,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[SKELETON][10][0]; // 0
 	entity->focaly = limbs[SKELETON][10][1]; // 0
 	entity->focalz = limbs[SKELETON][10][2]; // .5
@@ -605,6 +615,36 @@ void initSkeleton(Entity* my, Stat* myStats)
 
 void actSkeletonLimb(Entity* my)
 {
+	Entity* parent = uidToEntity(my->skill[2]);
+
+	if ( parent && parent->behavior == &actMonster )
+	{
+		if ( Stat* stats = parent->getStats() )
+		{
+			const char* lightName = nullptr;
+			if ( MonsterData_t::nameMatchesSpecialNPCName(*stats, "skeleton sentinel") )
+			{
+				lightName = "summoned_skeleton_glow";
+			}
+			else if ( MonsterData_t::nameMatchesSpecialNPCName(*stats, "skeleton knight") )
+			{
+				lightName = "summoned_skeleton_glow";
+			}
+
+			if ( my->light )
+			{
+				list_RemoveNode(my->light->node);
+				my->light = nullptr;
+			}
+
+			if ( lightName )
+			{
+				my->light = addLight(my->x / 16, my->y / 16, lightName);
+				my->actMonsterLimb(false);
+				return;
+			}
+		}
+	}
 	my->actMonsterLimb(true);
 }
 
@@ -621,7 +661,7 @@ void skeletonDie(Entity* my)
 			{
 				// refund mana to caster.
 				int spellCost = getCostOfSpell(&spell_summon, leader);
-				if ( (leader->getINT() + leaderStats->PROFICIENCIES[PRO_MAGIC]) >= SKILL_LEVEL_EXPERT )
+				if ( (leader->getINT() + leaderStats->getModifiedProficiency(PRO_MAGIC)) >= SKILL_LEVEL_EXPERT )
 				{
 					// we summoned 2 units, halve the return rate.
 					spellCost /= 2;
@@ -658,7 +698,7 @@ void skeletonDie(Entity* my)
 						spellEntity->skill[7] = manaToRefund;
 						if ( leader->behavior == &actPlayer )
 						{
-							messagePlayerMonsterEvent(leader->skill[2], 0xFFFFFFFF, *myStats, language[3194], language[3195], MSG_COMBAT);
+							messagePlayerMonsterEvent(leader->skill[2], 0xFFFFFFFF, *myStats, Language::get(3194), Language::get(3195), MSG_COMBAT);
 						}
 					}
 				}
@@ -885,14 +925,22 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -913,14 +961,22 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -941,14 +997,22 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -973,14 +1037,22 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1062,14 +1134,22 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1164,19 +1244,27 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1217,19 +1305,27 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1258,19 +1354,27 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1307,19 +1411,27 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1342,7 +1454,7 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				if ( multiplayer != CLIENT )
 				{
 					bool hasSteelHelm = false;
-					if ( myStats->helmet )
+					/*if ( myStats->helmet )
 					{
 						if ( myStats->helmet->type == STEEL_HELM
 							|| myStats->helmet->type == CRYSTAL_HELM
@@ -1350,7 +1462,7 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						{
 							hasSteelHelm = true;
 						}
-					}
+					}*/
 					if ( myStats->mask == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring || hasSteelHelm ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
@@ -1365,6 +1477,10 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						{
 							entity->sprite = 165; // GlassesWorn.vox
 						}
+						else if ( myStats->mask->type == MONOCLE )
+						{
+							entity->sprite = 1196; // monocleWorn.vox
+						}
 						else
 						{
 							entity->sprite = itemModel(myStats->mask);
@@ -1373,19 +1489,27 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1396,11 +1520,16 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->flags[INVISIBLE] = true;
 					}
 				}
-				if ( entity->sprite != 165 )
+				if ( entity->sprite != 165 && entity->sprite != 1196 )
 				{
 					if ( entity->sprite == items[MASK_SHAMAN].index )
 					{
 						entity->roll = 0;
+						my->setHelmetLimbOffset(entity);
+						my->setHelmetLimbOffsetWithMask(helmet, entity);
+					}
+					else if ( EquipmentModelOffsets.modelOffsetExists(SKELETON, entity->sprite) )
+					{
 						my->setHelmetLimbOffset(entity);
 						my->setHelmetLimbOffsetWithMask(helmet, entity);
 					}
@@ -1918,6 +2047,15 @@ void Entity::skeletonSummonSetEquipment(Stat* myStats, int rank)
 					myStats->helmet->type = HAT_HOOD;
 					myStats->helmet->appearance = 2;
 				}
+				if ( !myStats->mask )
+				{
+					myStats->mask = newItem(MASK_BANDIT, DECREPIT, 0, 1, 0, false, nullptr);
+				}
+				else
+				{
+					myStats->mask->type = MASK_BANDIT;
+					myStats->mask->appearance = 0;
+				}
 				if ( !myStats->cloak )
 				{
 					myStats->cloak = newItem(CLOAK_BLACK, DECREPIT, 0, 1, 1, false, nullptr);
@@ -1945,6 +2083,19 @@ void Entity::skeletonSummonSetEquipment(Stat* myStats, int rank)
 				break;
 			default:
 				break;
+		}
+
+		if ( myStats->helmet )
+		{
+			myStats->helmet->isDroppable = false;
+		}
+		if ( myStats->cloak )
+		{
+			myStats->cloak->isDroppable = false;
+		}
+		if ( myStats->mask )
+		{
+			myStats->mask->isDroppable = false;
 		}
 	}
 }

@@ -11,9 +11,6 @@
 
 #pragma once
 
-// main menu code
-void handleMainMenu(bool mode);
-
 #define NUMSUBTITLES 30
 extern int subtitleCurrent;
 extern bool subtitleVisible;
@@ -89,8 +86,7 @@ void buttonConfirmDeleteMultiplayerFile(button_t* my);
 void buttonLoadSingleplayerGame(button_t* my);
 void buttonLoadMultiplayerGame(button_t* my);
 void buttonRandomCharacter(button_t* my);
-void buttonReplayLastCharacter(button_t* my);
-void buttonDeleteScoreWindow(button_t* my);
+bool replayLastCharacter(const int index, int multiplayer);
 void buttonOpenScoresWindow(button_t* my);
 void buttonRandomName(button_t* my);
 void buttonGamemodsOpenDirectory(button_t* my);
@@ -166,7 +162,7 @@ extern int gamemods_window;
 extern int gamemods_window_scroll;
 extern int gamemods_window_fileSelect;
 extern int gamemods_uploadStatus;
-extern int gamemods_numCurrentModsLoaded;
+//extern int gamemods_numCurrentModsLoaded;
 extern std::list<std::string> currentDirectoryFiles;
 extern std::string directoryPath;
 void gamemodsWindowClearVariables();
@@ -176,11 +172,10 @@ bool gamemodsRemovePathFromMountedFiles(std::string findStr);
 bool gamemodsIsPathInMountedFiles(std::string findStr);
 bool gamemodsClearAllMountedPaths();
 bool gamemodsMountAllExistingPaths();
-extern bool gamemods_disableSteamAchievements;
-extern std::vector<std::pair<std::string, std::string>> gamemods_mountedFilepaths;
-extern bool gamemods_modelsListRequiresReload;
-extern bool gamemods_soundListRequiresReload;
-extern bool gamemods_modPreload;
+//extern std::vector<std::pair<std::string, std::string>> gamemods_mountedFilepaths;
+//extern bool gamemods_modelsListRequiresReload;
+//extern bool gamemods_soundListRequiresReload;
+//extern bool gamemods_modPreload;
 #ifdef STEAMWORKS
 void gamemodsWorkshopPreloadMod(int fileID, std::string modTitle);
 void gamemodsWindowUploadInit(bool creatingNewItem);
@@ -230,7 +225,6 @@ extern int settings_minimap_scale;
 extern int settings_minimap_object_zoom;
 extern char portnumber_char[6];
 extern char connectaddress[64];
-extern bool smoothmouse;
 extern bool usecamerasmoothing;
 extern bool disablemouserotationlimit;
 extern bool broadcast;
@@ -280,16 +274,21 @@ extern Sint32 oldYres;
 extern button_t* revertResolutionButton;
 
 int getNumDisplays();
-typedef std::tuple<int, int> resolution;
+struct resolution {
+	int x;
+	int y;
+	int hz;
+
+	bool operator==(const resolution& rhs) const {
+		return x == rhs.x && y == rhs.y && hz == rhs.hz;
+	}
+};
 void getResolutionList(int device_id, std::list<resolution>&);
 void applySettings();
 void openConfirmResolutionWindow();
 void buttonAcceptResolution(button_t* my);
 void buttonRevertResolution(button_t* my);
 void revertResolution();
-
-extern std::vector<std::pair<std::string, int>> menuOptions;
-void initMenuOptions();
 
 class Stat;
 int isCharacterValidFromDLC(Stat& myStats, int characterClass);
@@ -298,7 +297,8 @@ int isCharacterValidFromDLC(Stat& myStats, int characterClass);
 void doQuitGame();
 void doNewGame(bool makeHighscore);
 void doCredits();
-void doEndgame();
+void doEndgame(bool saveHighscore, bool onServerDisconnect);
+void doEndgameOnDisconnect();
 void doIntro();
 void doEndgameHerx();
 void doEndgameDevil();
@@ -315,3 +315,28 @@ enum CharacterDLCValidation : int
 	INVALID_REQUIREDLC2,
 	INVALID_REQUIRE_ACHIEVEMENT
 };
+
+struct LastCreatedCharacter {
+	static const int NUM_LAST_CHARACTERS = 6;
+	static const int LASTCHAR_LAN_PERSONA_INDEX = 4;
+	static const int LASTCHAR_ONLINE_PERSONA_INDEX = 5;
+	int characterClass[NUM_LAST_CHARACTERS];
+	int characterAppearance[NUM_LAST_CHARACTERS];
+	int characterSex[NUM_LAST_CHARACTERS];
+	int characterRace[NUM_LAST_CHARACTERS];
+	std::string characterName[NUM_LAST_CHARACTERS];
+	LastCreatedCharacter()
+	{
+		for ( int i = 0; i < NUM_LAST_CHARACTERS; ++i )
+		{
+			characterClass[i] = -1;
+			characterAppearance[i] = -1;
+			characterSex[i] = -1;
+			characterRace[i] = -1;
+			characterName[i] = "";
+		}
+	}
+};
+extern LastCreatedCharacter LastCreatedCharacterSettings;
+
+bool isAchievementUnlockedForClassUnlock(int race);

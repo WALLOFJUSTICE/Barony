@@ -12,6 +12,7 @@
 #pragma once
 
 #include "stat.hpp"
+#include "json.hpp"
 
 #ifndef EDITOR
 #include "interface/consolecommand.hpp"
@@ -26,7 +27,7 @@ enum Monster : int
 	GOBLIN,
 	SLIME,
 	TROLL,
-	OCTOPUS,
+	BAT_SMALL,
 	SPIDER,
 	GHOUL,
 	SKELETON,
@@ -57,6 +58,7 @@ enum Monster : int
 	SPELLBOT,
 	GYROBOT,
 	DUMMYBOT,
+	BUGBEAR,
 	MAX_MONSTER
 };
 const int NUMMONSTERS = MAX_MONSTER;
@@ -99,6 +101,9 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
     {
         189, 1108, 1109, 1110, 1111, 1112, // blue
         210, 1113, 1114, 1115, 1116, 1117, // green
+		1380, 1383, 1384, 1385, 1386, 1387, // red
+		1381, 1388, 1389, 1390, 1391, 1392, // tar
+		1382, 1393, 1394, 1395, 1396, 1397, // metal
     },
 
     // TROLL
@@ -108,8 +113,9 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
         1132,   // thumpus
     },
 
-    // OCTOPUS
+    // BAT_SMALL
     {
+		1408
     },
 
     // SPIDER
@@ -154,7 +160,7 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 
     // GNOME
     {
-        295,
+        295, 1426, 1430
     },
 
     // DEMON
@@ -172,6 +178,7 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 
     // MIMIC
     {
+		1247
     },
 
     // LICH
@@ -281,6 +288,11 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
     {
         889,
     },
+
+	// BUGBEAR
+	{
+		1412,
+	},
 };
 
 static char monstertypename[][15] =
@@ -291,7 +303,7 @@ static char monstertypename[][15] =
 	"goblin",
 	"slime",
 	"troll",
-	"octopus",
+	"bat",
 	"spider",
 	"ghoul",
 	"skeleton",
@@ -321,7 +333,8 @@ static char monstertypename[][15] =
 	"sentrybot",
 	"spellbot",
 	"gyrobot",
-	"dummybot"
+	"dummybot",
+	"bugbear"
 };
 
 static char monstertypenamecapitalized[][15] =
@@ -332,7 +345,7 @@ static char monstertypenamecapitalized[][15] =
 	"Goblin",
 	"Slime",
 	"Troll",
-	"Octopus",
+	"Bat",
 	"Spider",
 	"Ghoul",
 	"Skeleton",
@@ -362,7 +375,8 @@ static char monstertypenamecapitalized[][15] =
 	"Sentrybot",
 	"Spellbot",
 	"Gyrobot",
-	"Dummybot"
+	"Dummybot",
+	"Bugbear"
 };
 
 // body part focal points
@@ -380,7 +394,7 @@ static char gibtype[NUMMONSTERS] =
 	1,	//GOBLIN,
 	3,	//SLIME,
 	1,	//TROLL,
-	1,	//OCTOPUS,
+	1,	//BAT_SMALL,
 	2,	//SPIDER,
 	2,	//GHOUL,
 	5,	//SKELETON,
@@ -410,7 +424,8 @@ static char gibtype[NUMMONSTERS] =
 	0,	//SENTRYBOT
 	0,	//SPELLBOT
 	0,  //GYROBOT
-	0	//DUMMYBOT
+	0,	//DUMMYBOT
+	1	//BUGBEAR
 };
 
 // columns go like this:
@@ -424,7 +439,7 @@ static double damagetables[NUMMONSTERS][7] =
 	{ 0.9, 1.f, 1.1, 1.1, 1.1, 1.f, 0.8 }, // goblin
 	{ 1.4, 0.5, 1.3, 0.7, 0.5, 1.3, 0.5 }, // slime
 	{ 1.1, 0.8, 1.1, 0.8, 0.9, 1.f, 0.8 }, // troll
-	{ 1.2, 1.f, 1.1, 0.9, 1.1, 1.f, 1.f }, // octopus
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 0.5 }, // bat
 	{ 1.f, 1.1, 1.f, 1.2, 1.1, 1.f, 1.1 }, // spider
 	{ 1.f, 1.2, 0.8, 1.1, 0.6, 0.8, 1.1 }, // ghoul
 	{ 0.5, 1.4, 0.8, 1.3, 0.5, 0.8, 1.1 }, // skeleton
@@ -434,7 +449,7 @@ static double damagetables[NUMMONSTERS][7] =
 	{ 0.9, 1.f, 1.f, 0.9, 1.1, 1.1, 1.f }, // gnome
 	{ 0.9, 0.8, 1.f, 0.8, 0.9, 1.1, 0.8 }, // demon
 	{ 1.2, 1.f, 1.f, 0.9, 1.f, 0.8, 1.f }, // succubus
-	{ 0.8, 1.1, 1.3, 1.f, 0.7, 1.2, 1.f }, // mimic
+	{ 0.5, 0.5, 1.0, 0.5, 0.5, 1.3, 0.5 }, // mimic
 	{ 2.5, 2.5, 2.5, 2.5, 1.3, 1.f, 1.8 }, // lich
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // minotaur
 	{ 2.f, 2.f, 2.f, 2.f, 1.f, 1.f, 1.f }, // devil
@@ -454,7 +469,8 @@ static double damagetables[NUMMONSTERS][7] =
 	{ 1.f, 1.f, 1.f, 1.f, 0.5, 0.5, 1.f }, // sentrybot
 	{ 1.f, 1.f, 1.f, 1.f, 0.5, 0.5, 1.f }, // sentrybot
 	{ 1.f, 1.f, 1.f, 1.f, 0.5, 0.5, 1.f }, // gyrobot
-	{ 1.f, 1.f, 1.f, 1.f, 0.5, 1.2, 0.5 }  // dummybot
+	{ 1.f, 1.f, 1.f, 1.f, 0.5, 1.2, 0.5 }, // dummybot
+	{ 1.3, 1.2, 1.2, 0.7, 0.8, 1.f, 0.7 }  // bugbear
 };
 
 enum DamageTableType : int
@@ -489,7 +505,7 @@ static std::vector<std::vector<unsigned int>> classStatGrowth =
 	{	3,	2,	4,	6,	4,	4 }, // CONJURER 13
 	{	3,	3,	1,	6,	6,	3 }, // ACCURSED 14
 	{	3,	3,	1,	6,	4,	7 }, // MESMER 15
-	{	4,	4,	3,	5,	3,	5 }, // BREWER 16
+	{	4,	5,	5,	2,	3,	5 }, // BREWER 16
 	{	2,	5,	2,	4,	7,	4 }, // MACHINIST 17
 	{	4,	3,	2,	3,	4,	4 }, // PUNISHER 18
 	{	4,	4,	4,	4,	4,	4 }, // SHAMAN 19
@@ -691,6 +707,9 @@ void initLichIce(Entity* my, Stat* myStats);
 void initSentryBot(Entity* my, Stat* myStats);
 void initGyroBot(Entity* my, Stat* myStats);
 void initDummyBot(Entity* my, Stat* myStats);
+void initMimic(Entity* my, Stat* myStats);
+void initBat(Entity* my, Stat* myStats);
+void initBugbear(Entity* my, Stat* myStats);
 
 //--act*Limb functions--
 void actHumanLimb(Entity* my);
@@ -723,6 +742,9 @@ void actLichIceLimb(Entity* my);
 void actSentryBotLimb(Entity* my);
 void actGyroBotLimb(Entity* my);
 void actDummyBotLimb(Entity* my);
+void actMimicLimb(Entity* my);
+void actBatLimb(Entity* my);
+void actBugbearLimb(Entity* my);
 
 //--*Die functions--
 void humanDie(Entity* my);
@@ -757,12 +779,18 @@ void lichIceDie(Entity* my);
 void sentryBotDie(Entity* my);
 void gyroBotDie(Entity* my);
 void dummyBotDie(Entity* my);
+void mimicDie(Entity* my);
+void batDie(Entity* my);
+void bugbearDie(Entity* my);
 
+void monsterAnimate(Entity* my, Stat* myStats, double dist);
 //--*MoveBodyparts functions--
 void humanMoveBodyparts(Entity* my, Stat* myStats, double dist);
 void ratAnimate(Entity* my, double dist);
 void goblinMoveBodyparts(Entity* my, Stat* myStats, double dist);
-void slimeAnimate(Entity* my, double dist);
+void slimeSetType(Entity* my, Stat* myStats, bool sink, BaronyRNG* rng);
+void slimeSprayAttack(Entity* my);
+void slimeAnimate(Entity* my, Stat* myStats, double dist);
 void scorpionAnimate(Entity* my, double dist);
 void succubusMoveBodyparts(Entity* my, Stat* myStats, double dist);
 void trollMoveBodyparts(Entity* my, Stat* myStats, double dist);
@@ -791,16 +819,20 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist);
 void sentryBotAnimate(Entity* my, Stat* myStats, double dist);
 void gyroBotAnimate(Entity* my, Stat* myStats, double dist);
 void dummyBotAnimate(Entity* my, Stat* myStats, double dist);
+void mimicAnimate(Entity* my, Stat* myStats, double dist);
+void batAnimate(Entity* my, Stat* myStats, double dist);
+void bugbearMoveBodyparts(Entity* my, Stat* myStats, double dist);
 
 //--misc functions--
 void actMinotaurTrap(Entity* my);
+int getMinotaurTimeToArrive();
 void actMinotaurTimer(Entity* my);
 void actMinotaurCeilingBuster(Entity* my);
 void actDemonCeilingBuster(Entity* my);
 
 void actDevilTeleport(Entity* my);
 
-void createMinotaurTimer(Entity* entity, map_t* map);
+void createMinotaurTimer(Entity* entity, map_t* map, Uint32 seed);
 
 void actSummonTrap(Entity* my);
 int monsterCurve(int level);
@@ -829,6 +861,8 @@ static const Sint32 MONSTER_STATE_LICHICE_TELEPORT_STATIONARY = 17;
 static const Sint32 MONSTER_STATE_LICHICE_DODGE = 13;
 static const Sint32 MONSTER_STATE_LICHFIRE_DIE = 18;
 static const Sint32 MONSTER_STATE_LICHICE_DIE = 18;
+static const Sint32 MONSTER_STATE_GENERIC_DODGE = 19;
+static const Sint32 MONSTER_STATE_GENERIC_CHARGE = 20;
 
 //--special monster attack constants
 static const int MONSTER_POSE_MELEE_WINDUP1 = 4;
@@ -864,6 +898,13 @@ static const int MONSTER_POSE_AUTOMATON_MALFUNCTION = 31;
 static const int MONSTER_POSE_LICH_FIRE_SWORD = 32;
 static const int PLAYER_POSE_GOLEM_SMASH = 33;
 static const int MONSTER_POSE_INCUBUS_TAUNT = 34;
+static const int MONSTER_POSE_MIMIC_DISTURBED = 35;
+static const int MONSTER_POSE_MIMIC_DISTURBED2 = 36;
+static const int MONSTER_POSE_MIMIC_LOCKED = 37;
+static const int MONSTER_POSE_MIMIC_LOCKED2 = 38;
+static const int MONSTER_POSE_MIMIC_MAGIC1 = 39;
+static const int MONSTER_POSE_MIMIC_MAGIC2 = 40;
+static const int MONSTER_POSE_BUGBEAR_SHIELD = 41;
 
 //--monster special cooldowns
 static const int MONSTER_SPECIAL_COOLDOWN_GOLEM = 150;
@@ -889,6 +930,9 @@ static const int MONSTER_SPECIAL_COOLDOWN_INCUBUS_TELEPORT_TARGET = 200;
 static const int MONSTER_SPECIAL_COOLDOWN_VAMPIRE_AURA = 500;
 static const int MONSTER_SPECIAL_COOLDOWN_VAMPIRE_DRAIN = 300;
 static const int MONSTER_SPECIAL_COOLDOWN_SUCCUBUS_CHARM = 400;
+static const int MONSTER_SPECIAL_COOLDOWN_MIMIC_EAT = 500;
+static const int MONSTER_SPECIAL_COOLDOWN_SLIME_SPRAY = 250;
+static const int MONSTER_SPECIAL_COOLDOWN_BUGBEAR = 500;
 
 //--monster target search types
 static const int MONSTER_TARGET_ENEMY = 0;
@@ -999,6 +1043,9 @@ static const int SUCCUBUS_CHARM = 1;
 //--Spider--
 static const int SPIDER_CAST = 1;
 
+//--Slime--
+static const int SLIME_CAST = 1;
+
 //--Shadow--
 static const int SHADOW_SPELLCAST = 1;
 static const int SHADOW_TELEPORT_ONLY = 2;
@@ -1006,6 +1053,7 @@ static const int SHADOW_TELEPORT_ONLY = 2;
 //--Generic
 static const int MONSTER_SPELLCAST_GENERIC = 100;
 static const int MONSTER_SPELLCAST_GENERIC2 = 101;
+static const int MONSTER_SPECIAL_SAFEGUARD_TIMER_BASE = 0;
 
 //--Lich Attacks--
 static const int LICH_ATK_VERTICAL_SINGLE = 0;
@@ -1038,13 +1086,33 @@ static const int GYRO_START_FLYING = 4;
 //--Dummybot--
 static const int DUMMYBOT_RETURN_FORM = 1;
 
+//--Mimic--
+static const int MIMIC_ACTIVE = 0;
+static const int MIMIC_INERT = 1;
+static const int MIMIC_MAGIC = 2;
+static const int MIMIC_INERT_SECOND = 3;
+static const int MIMIC_STATUS_IMMOBILE = 4;
+
+//-Bat--
+static const int BAT_REST = 1;
+static const int BAT_REST_DISTURBED = 2;
+
+//-Bugbear--
+static const int BUGBEAR_DEFENSE = 1;
+
 struct MonsterData_t
 {
 	struct MonsterDataEntry_t
 	{
 		int monsterType = NOTHING;
 		std::string defaultIconPath = "";
-		std::map<int, std::string> iconSpritesAndPaths;
+		struct IconLookup_t
+		{
+			std::string key = "";
+			std::string iconPath = "";
+		};
+		std::map<int, IconLookup_t> iconSpritesAndPaths;
+		std::map<std::string, std::vector<int>> keyToSpriteLookup;
 		std::set<int> modelIndexes;
 		std::set<int> playerModelIndexes;
 		std::string defaultShortDisplayName = "";
@@ -1067,11 +1135,140 @@ struct MonsterData_t
 		MonsterDataEntry_t() = default;
 	};
 	static std::string iconDefaultString;
+	static std::string keyDefaultString;
 	static std::map<int, MonsterDataEntry_t> monsterDataEntries;
 	static std::string& getAllyIconFromSprite(int sprite, int type = -1);
+	static std::string& getKeyFromSprite(int sprite, int type = -1);
+	static int getSpriteFromKey(int sprite, std::string key, int type = -1);
 	static int getSpecialNPCBaseModel(Stat& myStats);
 	static std::string getSpecialNPCName(Stat& myStats);
 	static bool nameMatchesSpecialNPCName(Stat& myStats, std::string npcKey);
 	static void loadMonsterDataJSON();
 };
 extern MonsterData_t monsterData;
+
+class ShopkeeperPlayerHostility_t
+{
+public:
+	enum WantedLevel : int
+	{
+		NO_WANTED_LEVEL,
+		FAILURE_TO_IDENTIFY,
+		WANTED_FOR_AGGRESSION_SHOPKEEP_INITIATED,
+		WANTED_FOR_ACCESSORY,
+		WANTED_FOR_AGGRESSION,
+		WANTED_FOR_KILL
+	};
+	struct PlayerRaceHostility_t
+	{
+	public:
+		int numAggressions = 0;
+		int numKills = 0;
+		int numAccessories = 0;
+		Monster playerRace = NOTHING;
+		sex_t sex = sex_t::MALE;
+		Uint8 equipment = 0;
+		Uint32 type = NOTHING;
+		WantedLevel wantedLevel = NO_WANTED_LEVEL;
+		int player = -1;
+		bool bRequiresNetUpdate = false;
+		PlayerRaceHostility_t()
+		{
+			wantedLevel = NO_WANTED_LEVEL;
+			type = NOTHING;
+			playerRace = NOTHING;
+			sex = sex_t::MALE;
+			equipment = 0;
+			player = -1;
+			numAggressions = 0;
+			numKills = 0;
+			numAccessories = 0;
+		};
+		PlayerRaceHostility_t(const Uint32 _type, const WantedLevel _wantedLevel, const int _player) :
+			PlayerRaceHostility_t()
+		{
+			wantedLevel = _wantedLevel;
+			type = _type;
+			playerRace = (Monster)(_type & 0xFF);
+			sex = ((_type >> 8) & 0x1) ? sex_t::MALE : sex_t::FEMALE;
+			equipment = ((_type >> 9) & 0x7F);
+			player = _player;
+		}
+
+		bool serialize(FileInterface* fp);
+	};
+	bool playerRaceCheckHostility(const int player, const Monster type) const;
+	PlayerRaceHostility_t* getPlayerHostility(const int player, Uint32 overrideType = NOTHING);
+	void serverSendClientUpdate(const bool force = false);
+	void reset();
+	void resetPlayerHostility(const int player, bool clearAll = false);
+	ShopkeeperPlayerHostility_t();
+	bool isPlayerEnemy(const int player);
+	void setWantedLevel(PlayerRaceHostility_t& h, WantedLevel wantedLevel, Entity* shopkeeper, bool primaryPlayerCheck);
+	WantedLevel getWantedLevel(const int player);
+	void onShopkeeperDeath(Entity* my, Stat* myStats, Entity* attacker);
+	void onShopkeeperHit(Entity* my, Stat* myStats, Entity* attacker);
+	void updateShopkeeperActMonster(Entity& my, Stat& myStats, bool ringconflict);
+	std::map<Uint32, PlayerRaceHostility_t> playerHostility[MAXPLAYERS];
+};
+extern ShopkeeperPlayerHostility_t ShopkeeperPlayerHostility;
+
+struct MonsterAllyFormation_t
+{
+	struct MonsterAllies_t
+	{
+		struct FormationInfo_t
+		{
+			int x = 0;
+			int y = 0;
+			int pathingDelay = 0;
+			int tryExtendPath = 0;
+			bool init = false;
+			bool expired = false;
+		};
+		std::unordered_map<Uint32, FormationInfo_t> meleeUnits;
+		std::unordered_map<Uint32, FormationInfo_t> rangedUnits;
+		Uint32 updatedOnTick = 0;
+	};
+	void updateFormation(Uint32 leaderUid, Uint32 monsterUpdateUid = 0);
+	bool getFollowLocation(Uint32 uid, Uint32 leaderUid, std::pair<int, int>& outPos);
+	void updateOnPathFail(Uint32 uid, Entity* entity);
+	void updateOnPathSucceed(Uint32 uid, Entity* entity);
+	void updateOnFollowCommand(Uint32 uid, Entity* entity);
+	std::unordered_map<Uint32, MonsterAllies_t> units;
+	std::vector<std::pair<int, int>> formationShape;
+	MonsterAllyFormation_t()
+	{
+		formationShape.push_back(std::make_pair(-2, 0));
+		formationShape.push_back(std::make_pair(2, 0));
+		for ( int i = 1; i < 50; ++i )
+		{
+			if ( i % 2 == 0 )
+			{
+				formationShape.push_back(std::make_pair(-2, -i));
+				formationShape.push_back(std::make_pair(2, -i));
+				formationShape.push_back(std::make_pair(0, -i));
+			}
+			else
+			{
+				formationShape.push_back(std::make_pair(-1, -i));
+				formationShape.push_back(std::make_pair(1, -i));
+			}
+		}
+	}
+	void reset() { units.clear(); }
+	int getFollowerChaseLeaderInterval(Entity& my, Stat& myStats);
+	int getFollowerPathingDelay(Entity& my, Stat& myStats);
+	int getFollowerTryExtendedPathSearch(Entity& my, Stat& myStats);
+};
+extern MonsterAllyFormation_t monsterAllyFormations;
+
+struct MimicGenerator
+{
+	BaronyRNG mimic_rng;
+	std::unordered_set<unsigned int> mimic_floors;
+	std::unordered_set<unsigned int> mimic_secret_floors;
+	void init();
+	bool bForceSpawnForCurrentFloor();
+};
+extern MimicGenerator mimic_generator;

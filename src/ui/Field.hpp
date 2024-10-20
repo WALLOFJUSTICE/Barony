@@ -39,6 +39,8 @@ public:
 		Uint32 highlightTime;			//!< time since field was highlighted
 		bool entered;                   //!< whether or not changes to field were confirmed
 	};
+    
+    bool dirty = false; //!< if true, rebuild text cache
 
 	//! scroll the parent frame (if any) to be within our bounds
 	virtual void scrollParent();
@@ -108,6 +110,9 @@ public:
 	//! reset the line color map
 	void clearLinesToColor() { linesToColor.clear(); }
 
+	//! reset the individual line padding
+	void clearIndividualLinePadding() { individualLinePadding.clear(); }
+
 	static const int TEXT_HIGHLIGHT_WORDS_PER_LINE = 10000;
 
 	virtual type_t              getType() const override { return WIDGET_FIELD; }
@@ -131,13 +136,15 @@ public:
 	const bool					isOntop() const { return ontop; }
 	const bool                  isActivated() const { return activated; }
 	const int					getPaddingPerLine() const { return paddingPerLine; }
+	const int					getIndividualLinePadding(const int line) const { return individualLinePadding.find(line) != individualLinePadding.end() ? individualLinePadding.at(line) : 0; }
+	const Uint32				getlineToColor(const int line) const { return linesToColor.find(line) != linesToColor.end() ? linesToColor.at(line) : 0; }
 
 	void	setText(const char* _text);
 	void	setPos(const int x, const int y) { size.x = x; size.y = y; }
 	void	setSize(const SDL_Rect _size) { size = _size; }
 	void	setColor(const Uint32 _color) { color = _color; }
-	void	setTextColor(const Uint32 _color) { textColor = _color; }
-	void	setOutlineColor(const Uint32 _color) { outlineColor = _color; }
+	void	setTextColor(const Uint32 _color) { if (textColor != _color) { textColor = _color; dirty = true; } }
+	void	setOutlineColor(const Uint32 _color) { if (outlineColor != _color) { outlineColor = _color; dirty = true; } }
 	void	setBackgroundColor(const Uint32 _color) { backgroundColor = _color; }
 	void	setBackgroundActivatedColor(const Uint32 _color) { backgroundActivatedColor = _color; }
 	void	setBackgroundSelectAllColor(const Uint32 _color) { backgroundSelectAllColor = _color; }
@@ -148,13 +155,14 @@ public:
 	void	setVJustify(const int _justify) { vjustify = static_cast<justify_t>(_justify); }
 	void	setScroll(const bool _scroll) { scroll = _scroll; }
 	void	setCallback(void (*const fn)(Field&)) { callback = fn; }
-	void	setFont(const char* _font) { font = _font; }
+	void	setFont(const char* _font) { if (font != _font) { font = _font; dirty = true; } }
 	void	setGuide(const char* _guide) { guide = _guide; }
 	void	setTooltip(const char* _tooltip) { tooltip = _tooltip; }
-	void    reflowTextToFit(const int characterOffset);
+	void    reflowTextToFit(const int characterOffset, bool check = true);
 	void	setOntop(const bool _ontop) { ontop = _ontop; }
 	static char* tokenize(char* str, const char* const delimiters);
 	void	setPaddingPerLine(const int _padding) {	paddingPerLine = _padding; }
+	void	setIndividualLinePadding(const int _line, const int _padding) { individualLinePadding[_line] = _padding; }
 
 private:
 	std::string font = Font::defaultFont;				//!< font to use for rendering the field
@@ -181,4 +189,8 @@ private:
 	std::map<int, Uint32> wordsToHighlight;				//!< word indexes in the field matching the keys in the map will be colored with the mapped value
 	std::map<int, Uint32> linesToColor;                 //!< lines that have a particular color
 	int paddingPerLine = 0;								//!< +/- pixel padding for multiple lines
+	std::map<int, int> individualLinePadding;			//!< lines that have a particular padding
+
+	void buildCache();
+	std::vector<std::pair<std::string,Text*>> cache;	//!< cached lines of text
 };

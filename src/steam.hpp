@@ -11,8 +11,6 @@
 
 #pragma once
 
-#include "game.hpp"
-
 //TODO: Bugger all void pointers and helper funcs on these.
 void steam_OnP2PSessionRequest(void* p_Callback); //TODO: Finalize porting.
 //void steam_OnGameOverlayActivated(void *callback);
@@ -35,8 +33,12 @@ bool processLobbyInvite(void* lobby);
 extern Uint32 numSteamLobbies;
 extern int selectedSteamLobby;
 extern char lobbyText[MAX_STEAM_LOBBIES][64];
+extern char lobbyVersion[MAX_STEAM_LOBBIES][64];
 extern void* lobbyIDs[MAX_STEAM_LOBBIES];
 extern int lobbyPlayers[MAX_STEAM_LOBBIES];
+extern int lobbyNumMods[MAX_STEAM_LOBBIES];
+extern bool lobbyModDisableAchievements[MAX_STEAM_LOBBIES];
+extern char lobbyChallengeRun[MAX_STEAM_LOBBIES][64];
 
 extern void* steamIDRemote[MAXPLAYERS]; //TODO: Bugger void pointer.
 
@@ -49,6 +51,9 @@ extern std::string cmd_line; // for game join requests
 #ifdef STEAMWORKS
 extern char currentLobbyName[32];
 extern ELobbyType currentLobbyType;
+extern ELobbyType steamLobbyTypeUserConfigured;
+extern bool steamLobbyFriendsOnlyUserConfigured;
+extern bool steamLobbyInviteOnlyUserConfigured;
 extern bool connectingToLobby, connectingToLobbyWindow;
 extern bool joinLobbyWaitingForHostResponse;
 extern bool denyLobbyJoinEvent;
@@ -106,6 +111,45 @@ extern void (*cpp_SteamServerClientWrapper_OnLobbyEntered)(void* pCallback, bool
 extern void (*cpp_SteamServerClientWrapper_OnLobbyMatchListCallback)(void* pCallback, bool bIOFailure); //Where pCallback is a pointer to type LobbyMatchList_t.
 extern void (*cpp_SteamServerClientWrapper_OnRequestEncryptedAppTicket)(void* pEncryptedAppTicketResponse, bool bIOFailure); //Where pEncryptedAppTicketResponse is of type
 extern void (*cpp_SteamServerClientWrapper_GameServerPingOnServerResponded)(void* steamID);
+void SteamClientConsumeAuthTicket();
+std::string SteamClientRequestAuthTicket();
+
+enum ESteamLeaderboardTitles : int
+{
+    LEADERBOARD_NONE,
+    LEADERBOARD_NORMAL_TIME,
+    LEADERBOARD_NORMAL_SCORE,
+    LEADERBOARD_MULTIPLAYER_TIME,
+    LEADERBOARD_MULTIPLAYER_SCORE,
+    LEADERBOARD_HELL_TIME,
+    LEADERBOARD_HELL_SCORE,
+    LEADERBOARD_HARDCORE_TIME,
+    LEADERBOARD_HARDCORE_SCORE,
+    LEADERBOARD_CLASSIC_TIME,
+    LEADERBOARD_CLASSIC_SCORE,
+    LEADERBOARD_CLASSIC_HARDCORE_TIME,
+    LEADERBOARD_CLASSIC_HARDCORE_SCORE,
+    LEADERBOARD_MULTIPLAYER_CLASSIC_TIME,
+    LEADERBOARD_MULTIPLAYER_CLASSIC_SCORE,
+    LEADERBOARD_MULTIPLAYER_HELL_TIME,
+    LEADERBOARD_MULTIPLAYER_HELL_SCORE,
+    LEADERBOARD_DLC_NORMAL_TIME,
+    LEADERBOARD_DLC_NORMAL_SCORE,
+    LEADERBOARD_DLC_MULTIPLAYER_TIME,
+    LEADERBOARD_DLC_MULTIPLAYER_SCORE,
+    LEADERBOARD_DLC_HELL_TIME,
+    LEADERBOARD_DLC_HELL_SCORE,
+    LEADERBOARD_DLC_HARDCORE_TIME,
+    LEADERBOARD_DLC_HARDCORE_SCORE,
+    LEADERBOARD_DLC_CLASSIC_TIME,
+    LEADERBOARD_DLC_CLASSIC_SCORE,
+    LEADERBOARD_DLC_CLASSIC_HARDCORE_TIME,
+    LEADERBOARD_DLC_CLASSIC_HARDCORE_SCORE,
+    LEADERBOARD_DLC_MULTIPLAYER_CLASSIC_TIME,
+    LEADERBOARD_DLC_MULTIPLAYER_CLASSIC_SCORE,
+    LEADERBOARD_DLC_MULTIPLAYER_HELL_TIME,
+    LEADERBOARD_DLC_MULTIPLAYER_HELL_SCORE
+};
 
 class CSteamLeaderboards
 {
@@ -234,6 +278,7 @@ class CSteamWorkshop
 private:
 public:
 	SteamUGCDetails_t m_subscribedItemListDetails[50]; // The entries
+	std::array<std::string, 50> m_subscribedItemPreviewURL;
 	SteamUGCDetails_t m_myWorkshopItemToModify;
 	int numSubcribedItemResults = 50;
 	int subscribedCallStatus;

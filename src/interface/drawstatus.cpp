@@ -23,142 +23,7 @@
 #include "../colors.hpp"
 #include "../mod_tools.hpp"
 #include "../ui/GameUI.hpp"
-
-/*-------------------------------------------------------------------------------
-
-	handleDamageIndicators
-
-	draws damage indicators, fades them, culls them, etc.
-
--------------------------------------------------------------------------------*/
-
-void handleDamageIndicators(int player)
-{
-	node_t* node, *nextnode;
-	for ( node = damageIndicators[player].first; node != NULL; node = nextnode )
-	{
-		nextnode = node->next;
-		damageIndicator_t* damageIndicator = (damageIndicator_t*)node->element;
-
-		double tangent = atan2( damageIndicator->y / 16 - cameras[player].y, damageIndicator->x / 16 - cameras[player].x );
-		double angle = tangent - cameras[player].ang;
-		angle += 3 * PI / 2;
-		while ( angle >= PI )
-		{
-			angle -= PI * 2;
-		}
-		while ( angle < -PI )
-		{
-			angle += PI * 2;
-		}
-		SDL_Rect pos;
-		pos.x = players[player]->camera_midx();
-		pos.y = players[player]->camera_midy();
-		pos.x += 200 * cos(angle);
-		pos.y += 200 * sin(angle);
-		pos.w = damage_bmp->w;
-		pos.h = damage_bmp->h;
-		if ( stats[player]->HP > 0 )
-		{
-			drawImageRotatedAlpha( damage_bmp, NULL, &pos, angle, (Uint8)(damageIndicator->alpha * 255) );
-		}
-
-		damageIndicator->alpha = std::min(damageIndicator->ticks, 120) / 120.f;
-		if ( damageIndicator->alpha <= 0 )
-		{
-			list_RemoveNode(node);
-		}
-	}
-}
-
-void handleDamageIndicatorTicks()
-{
-	node_t* node;
-	for ( int i = 0; i < MAXPLAYERS; ++i )
-	{
-		for ( node = damageIndicators[i].first; node != NULL; node = node->next )
-		{
-			damageIndicator_t* damageIndicator = (damageIndicator_t*)node->element;
-			damageIndicator->ticks--;
-		}
-	}
-}
-
-/*-------------------------------------------------------------------------------
-
-	newDamageIndicator
-
-	creates a new damage indicator on the hud
-
--------------------------------------------------------------------------------*/
-
-damageIndicator_t* newDamageIndicator(const int player, double x, double y)
-{
-	damageIndicator_t* damageIndicator;
-
-	// allocate memory for the indicator
-	if ( (damageIndicator = (damageIndicator_t*) malloc(sizeof(damageIndicator_t))) == NULL )
-	{
-		printlog( "failed to allocate memory for new damage indicator!\n" );
-		exit(1);
-	}
-
-	// add the indicator to the list of indicators
-	damageIndicator->node = list_AddNodeLast(&damageIndicators[player]);
-	damageIndicator->node->element = damageIndicator;
-	damageIndicator->node->deconstructor = &defaultDeconstructor;
-	damageIndicator->node->size = sizeof(damageIndicator_t);
-
-	damageIndicator->x = x;
-	damageIndicator->y = y;
-	damageIndicator->alpha = 1.f;
-	damageIndicator->ticks = 120; // two seconds
-
-	return damageIndicator;
-}
-
-/*-------------------------------------------------------------------------------
-
-	updateEnemyBarColor
-
-	updates the enemy hp bar color depending on an entities status effects
-
--------------------------------------------------------------------------------*/
-
-void updateEnemyBarStatusEffectColor(int player, const Entity &target, const Stat &targetStats)
-{
-	if ( targetStats.EFFECTS[EFF_POISONED] )
-	{
-		if ( colorblind )
-		{
-			enemyHPDamageBarHandler[player].enemy_bar_client_color = makeColorRGB(0, 0, 64); // Display blue
-		}
-		else
-		{
-			enemyHPDamageBarHandler[player].enemy_bar_client_color = makeColorRGB(0, 64, 0); // Display green
-		}
-	}
-	else if ( targetStats.EFFECTS[EFF_PARALYZED] )
-	{
-		enemyHPDamageBarHandler[player].enemy_bar_client_color = makeColorRGB(112, 112, 0);
-	}
-	else if ( targetStats.EFFECTS[EFF_CONFUSED] || targetStats.EFFECTS[EFF_DISORIENTED] )
-	{
-		enemyHPDamageBarHandler[player].enemy_bar_client_color = makeColorRGB(92, 0, 92);
-	}
-	else if ( targetStats.EFFECTS[EFF_PACIFY] )
-	{
-		enemyHPDamageBarHandler[player].enemy_bar_client_color = makeColorRGB(128, 32, 80);
-	}
-	else if ( targetStats.EFFECTS[EFF_BLIND] )
-	{
-		enemyHPDamageBarHandler[player].enemy_bar_client_color = makeColorRGB(64, 64, 64);
-	}
-	else
-	{
-		enemyHPDamageBarHandler[player].enemy_bar_client_color = 0;
-	}
-}
+#include "../ui/Image.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -168,7 +33,8 @@ void updateEnemyBarStatusEffectColor(int player, const Entity &target, const Sta
 
 -------------------------------------------------------------------------------*/
 
-void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp, Sint32 maxhp, bool lowPriorityTick)
+void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp, Sint32 maxhp, bool lowPriorityTick, 
+	DamageGib gibType)
 {
 	// server/singleplayer only function.
 	hp = std::max(0, hp); // bounds checking - furniture can go negative
@@ -182,7 +48,7 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 
 	for (c = 0; c < MAXPLAYERS; c++)
 	{
-		if (source == players[c]->entity)
+		if (source == players[c]->entity || source == players[c]->ghost.my )
 		{
 			player = c;
 			break;
@@ -232,50 +98,23 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 	Stat* stats = target->getStats();
 	if ( stats )
 	{
-		if ( stats->HP != stats->OLDHP )
+		bool tookDamage = stats->HP != stats->OLDHP;
+		if ( playertarget >= 0 && players[playertarget]->isLocalPlayer() )
 		{
-			if ( playertarget >= 0 && players[playertarget]->isLocalPlayer() )
-			{
-				newDamageIndicator(playertarget, source->x, source->y);
-			}
-			else if ( playertarget > 0 && multiplayer == SERVER && !players[playertarget]->isLocalPlayer() )
-			{
-				strcpy((char*)net_packet->data, "DAMI");
-				SDLNet_Write32(source->x, &net_packet->data[4]);
-				SDLNet_Write32(source->y, &net_packet->data[8]);
-				net_packet->address.host = net_clients[playertarget - 1].host;
-				net_packet->address.port = net_clients[playertarget - 1].port;
-				net_packet->len = 12;
-				sendPacketSafe(net_sock, -1, net_packet, playertarget - 1);
-			}
+			DamageIndicatorHandler.insert(playertarget, source->x, source->y, tookDamage);
 		}
-
-		if ( player >= 0 )
+		else if ( playertarget > 0 && multiplayer == SERVER && !players[playertarget]->isLocalPlayer() )
 		{
-			updateEnemyBarStatusEffectColor(player, *target, *stats); // set color depending on status effects of the target.
+			strcpy((char*)net_packet->data, "DAMI");
+			SDLNet_Write32(source->x, &net_packet->data[4]);
+			SDLNet_Write32(source->y, &net_packet->data[8]);
+			net_packet->data[12] = tookDamage ? 1 : 0;
+			net_packet->address.host = net_clients[playertarget - 1].host;
+			net_packet->address.port = net_clients[playertarget - 1].port;
+			net_packet->len = 13;
+			sendPacketSafe(net_sock, -1, net_packet, playertarget - 1);
 		}
 	}
-	else if ( player >= 0 && players[player]->isLocalPlayer() )
-	{
-		enemyHPDamageBarHandler[player].enemy_bar_client_color = 0;
-	}
-
-	//if ( player >= 0 )
-	//{
-	//	if ( enemy_lastuid != target->getUID() || enemy_timer == 0 )
-	//	{
-	//		// if new target or timer expired, get new OLDHP value.
-	//		if ( stats )
-	//		{
-	//			enemy_oldhp = stats->OLDHP;
-	//		}
-	//	}
-	//	if ( !stats )
-	//	{
-	//		enemy_oldhp = hp; // chairs/tables and things.
-	//	}
-	//	enemy_lastuid = target->getUID();
-	//}
 
 	int oldhp = 0;
 	if ( stats )
@@ -296,12 +135,22 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 		{
 			oldhp = target->chestOldHealth;
 		}
+		else if ( target->isDamageableCollider() )
+		{
+			oldhp = target->colliderOldHP;
+		}
 		else
 		{
 			oldhp = hp;
 		}
 	}
 
+	if ( !EnemyHPDamageBarHandler::bDamageGibTypesEnabled )
+	{
+		gibType = DamageGib::DMG_DEFAULT;
+	}
+
+	EnemyHPDamageBarHandler::EnemyHPDetails* details = nullptr;
 	if ( player >= 0 /*&& players[player]->isLocalPlayer()*/ )
 	{
 		// add enemy bar to the server
@@ -326,13 +175,11 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 		}
 		if ( stats )
 		{
-			enemyHPDamageBarHandler[p].addEnemyToList(hp, maxhp, oldhp,
-				enemyHPDamageBarHandler[p].enemy_bar_client_color, target->getUID(), name, lowPriorityTick);
+			details = enemyHPDamageBarHandler[p].addEnemyToList(hp, maxhp, oldhp, target->getUID(), name, lowPriorityTick, gibType);
 		}
 		else
 		{
-			enemyHPDamageBarHandler[p].addEnemyToList(hp, maxhp, oldhp,
-				enemyHPDamageBarHandler[p].enemy_bar_client_color, target->getUID(), name, lowPriorityTick);
+			details = enemyHPDamageBarHandler[p].addEnemyToList(hp, maxhp, oldhp, target->getUID(), name, lowPriorityTick, gibType);
 		}
 	}
 	
@@ -360,11 +207,29 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 				}
 				SDLNet_Write32(target->getUID(), &net_packet->data[10]);
 				net_packet->data[14] = lowPriorityTick ? 1 : 0; // 1 == true
-				strcpy((char*)(&net_packet->data[15]), name);
-				net_packet->data[15 + strlen(name)] = 0;
+				if ( EnemyHPDamageBarHandler::bDamageGibTypesEnabled )
+				{
+					net_packet->data[14] |= (gibType << 1) & 0xFE;
+				}
+				if ( stats && details )
+				{
+					SDLNet_Write32(details->enemy_statusEffects1, &net_packet->data[15]);
+					SDLNet_Write32(details->enemy_statusEffects2, &net_packet->data[19]);
+					SDLNet_Write32(details->enemy_statusEffectsLowDuration1, &net_packet->data[23]);
+					SDLNet_Write32(details->enemy_statusEffectsLowDuration2, &net_packet->data[27]);
+				}
+				else
+				{
+					SDLNet_Write32(0, &net_packet->data[15]);
+					SDLNet_Write32(0, &net_packet->data[19]);
+					SDLNet_Write32(0, &net_packet->data[23]);
+					SDLNet_Write32(0, &net_packet->data[27]);
+				}
+				strcpy((char*)(&net_packet->data[31]), name);
+				net_packet->data[31 + strlen(name)] = 0;
 				net_packet->address.host = net_clients[p - 1].host;
 				net_packet->address.port = net_clients[p - 1].port;
-				net_packet->len = 15 + strlen(name) + 1;
+				net_packet->len = 31 + strlen(name) + 1;
 				sendPacketSafe(net_sock, -1, net_packet, p - 1);
 
 			}
@@ -383,18 +248,32 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 
 bool mouseInBoundsRealtimeCoords(int, int, int, int, int); //Defined in playerinventory.cpp. Dirty hack, you should be ashamed of yourself.
 
-void warpMouseToSelectedHotbarSlot(const int player)
+bool warpMouseToSelectedHotbarSlot(const int player)
 {
 	if ( players[player]->shootmode == true)
 	{
-		return;
+		return false;
 	}
 
 	if ( auto hotbarSlotFrame = players[player]->hotbar.getHotbarSlotFrame(players[player]->hotbar.current_hotbar) )
 	{
-		hotbarSlotFrame->warpMouseToFrame(player, (Inputs::SET_CONTROLLER));
-		return;
+		if ( !players[player]->hotbar.isInteractable )
+		{
+			players[player]->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_HOTBAR;
+			players[player]->inventoryUI.cursor.queuedFrameToWarpTo = hotbarSlotFrame;
+			return false;
+		}
+		else
+		{
+			//messagePlayer(0, "[Debug]: select item warped");
+			players[player]->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+			players[player]->inventoryUI.cursor.queuedFrameToWarpTo = nullptr;
+			hotbarSlotFrame->warpMouseToFrame(player, (Inputs::SET_CONTROLLER));
+		}
+		return true;
 	}
+
+	return false;
 }
 
 void drawHPMPBars(int player)
@@ -437,7 +316,7 @@ void drawHPMPBars(int player)
 	}
 
 	// Display "HP" at top of Health bar
-	ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, language[306]);
+	ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, Language::get(306));
 
 	// Display border between actual Health bar and "HP"
 	//pos.x = 76;
@@ -562,22 +441,22 @@ void drawHPMPBars(int player)
 	}
 	Uint32 mpColorBG = makeColorRGB(0, 0, 48);
 	Uint32 mpColorFG = makeColorRGB(0, 24, 128);
-	if ( stats[player] && stats[player]->playerRace == RACE_INSECTOID && stats[player]->appearance == 0 )
+	if ( stats[player] && stats[player]->playerRace == RACE_INSECTOID && stats[player]->stat_appearance == 0 )
 	{
-		ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, language[3768]);
+		ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, Language::get(3768));
 		mpColorBG = makeColorRGB(32, 48, 0);
 		mpColorFG = makeColorRGB(92, 192, 0);
 	}
 	else if ( stats[player] && stats[player]->type == AUTOMATON )
 	{
-		ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, language[3474]);
+		ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, Language::get(3474));
 		mpColorBG = makeColorRGB(64, 32, 0);
 		mpColorFG = makeColorRGB(192, 92, 0);
 	}
 	else
 	{
 		// Display "MP" at the top of Magic bar
-		ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, language[307]);
+		ttfPrintText(ttf12, pos.x + (playerStatusBarWidth / 2 - 10), pos.y + 6, Language::get(307));
 	}
 
 	// Display border between actual Magic bar and "MP"
@@ -658,7 +537,7 @@ void drawStatus(int player)
 	const Sint32 mousexrel = inputs.getMouse(player, Inputs::XREL);
 	const Sint32 mouseyrel = inputs.getMouse(player, Inputs::YREL);
 
-	pos.x = players[player]->statusBarUI.getStartX();
+	//pos.x = players[player]->statusBarUI.getStartX();
 	auto& hotbar_t = players[player]->hotbar;
 	auto& hotbar = hotbar_t.slots();
 
@@ -667,7 +546,7 @@ void drawStatus(int player)
 
 	if ( !hide_statusbar )
 	{
-		pos.y = players[player]->statusBarUI.getStartY();
+		//pos.y = players[player]->statusBarUI.getStartY();
 	}
 	else
 	{
@@ -678,277 +557,277 @@ void drawStatus(int player)
 	initial_position.y = pos.y;
 	initial_position.w = 0;
 	initial_position.h = 0;
-	pos.w = status_bmp->w * uiscale_chatlog;
-	pos.h = status_bmp->h * uiscale_chatlog;
-	if ( !hide_statusbar )
-	{
-		drawImageScaled(status_bmp, NULL, &pos);
-	}
+	//pos.w = status_bmp->w * uiscale_chatlog;
+	//pos.h = status_bmp->h * uiscale_chatlog;
+	//if ( !hide_statusbar )
+	//{
+	//	drawImageScaled(status_bmp, NULL, &pos);
+	//}
 
-	players[player]->statusBarUI.messageStatusBarBox.x = pos.x;
-	players[player]->statusBarUI.messageStatusBarBox.y = pos.y;
-	players[player]->statusBarUI.messageStatusBarBox.w = pos.w;
-	players[player]->statusBarUI.messageStatusBarBox.h = pos.h;
+	////players[player]->statusBarUI.messageStatusBarBox.x = pos.x;
+	////players[player]->statusBarUI.messageStatusBarBox.y = pos.y;
+	////players[player]->statusBarUI.messageStatusBarBox.w = pos.w;
+	////players[player]->statusBarUI.messageStatusBarBox.h = pos.h;
 
-	// enemy health
-	enemyHPDamageBarHandler[player].displayCurrentHPBar(player);
+	//// enemy health
+	//enemyHPDamageBarHandler[player].displayCurrentHPBar(player);
 
-	// messages
-	if ( !hide_statusbar )
-	{
-		x = players[player]->statusBarUI.getStartX() + 24 * uiscale_chatlog;
-		y = players[player]->camera_y2();
-		textscroll = std::min<Uint32>(list_Size(&messages) - 3, textscroll);
-		c = 0;
-		for ( node = messages.last; node != NULL; node = node->prev )
-		{
-			c++;
-			if ( c <= textscroll )
-			{
-				continue;
-			}
-			string = (string_t*)node->element;
-			if ( uiscale_chatlog >= 1.5 )
-			{
-				y -= TTF16_HEIGHT * string->lines;
-				if ( y < y2 - (status_bmp->h * uiscale_chatlog) + 8 * uiscale_chatlog )
-				{
-					break;
-				}
-			}
-			else if ( uiscale_chatlog != 1.f )
-			{
-				y -= TTF12_HEIGHT * string->lines;
-				if ( y < y2 - status_bmp->h * 1.1 + 4 )
-				{
-					break;
-				}
-			}
-			else
-			{
-				y -= TTF12_HEIGHT * string->lines;
-				if ( y < y2 - status_bmp->h + 4 )
-				{
-					break;
-				}
-			}
-			z = 0;
-			for ( i = 0; i < strlen(string->data); i++ )
-			{
-				if ( string->data[i] != 10 )   // newline
-				{
-					z++;
-				}
-				else
-				{
-					z = 0;
-				}
-				if ( z == 65 )
-				{
-					if ( string->data[i] != 10 )
-					{
-						char* tempString = (char*)malloc(sizeof(char) * (strlen(string->data) + 2));
-						strcpy(tempString, string->data);
-						strcpy((char*)(tempString + i + 1), (char*)(string->data + i));
-						tempString[i] = 10;
-						free(string->data);
-						string->data = tempString;
-						string->lines++;
-					}
-					z = 0;
-				}
-			}
-			Uint32 color = makeColor( 0, 0, 0, 255); // black color
-			if ( uiscale_chatlog >= 1.5 )
-			{
-				ttfPrintTextColor(ttf16, x, y, color, false, string->data);
-			}
-			else
-			{
-				ttfPrintTextColor(ttf12, x, y, color, false, string->data);
-			}
-		}
-		if ( inputs.bMouseLeft(player) )
-		{
-			if ( omousey >= y2 - status_bmp->h * uiscale_chatlog + 7 && omousey < y2 - status_bmp->h * uiscale_chatlog + (7 + 27) * uiscale_chatlog )
-			{
-				if ( omousex >= players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog
-					&& omousex < players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog + 11 * uiscale_chatlog )
-				{
-					// text scroll up
-					buttonclick = 3;
-					textscroll++;
-					inputs.mouseClearLeft(player);
-				}
-			}
-			else if ( omousey >= y2 - status_bmp->h * uiscale_chatlog + 34 && omousey < y2 - status_bmp->h * uiscale_chatlog + (34 + 28) * uiscale_chatlog )
-			{
-				if ( omousex >= players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog
-					&& omousex < players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog + 11 * uiscale_chatlog )
-				{
-					// text scroll down
-					buttonclick = 12;
-					textscroll--;
-					if ( textscroll < 0 )
-					{
-						textscroll = 0;
-					}
-					inputs.mouseClearLeft(player);
-				}
-			}
-			else if ( omousey >= y2 - status_bmp->h * uiscale_chatlog + 62 && omousey < y2 - status_bmp->h * uiscale_chatlog + (62 + 31) * uiscale_chatlog )
-			{
-				if ( omousex >= players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog
-					&& omousex < players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog + 11 * uiscale_chatlog )
-				{
-					// text scroll down all the way
-					buttonclick = 4;
-					textscroll = 0;
-					inputs.mouseClearLeft(player);
-				}
-			}
-			/*else if( omousey>=y2-status_bmp->h+8 && omousey<y2-status_bmp->h+8+30 ) {
-				if( omousex>=players[player]->statusBarUI.getStartX()+618 && omousex<players[player]->statusBarUI.getStartX()+618+11 ) {
-					// text scroll up all the way
-					buttonclick=13;
-					textscroll=list_Size(&messages)-4;
-					mousestatus[SDL_BUTTON_LEFT]=0;
-				}
-			}*/
-		}
+	//// messages
+	//if ( !hide_statusbar )
+	//{
+	//	x = players[player]->statusBarUI.getStartX() + 24 * uiscale_chatlog;
+	//	y = players[player]->camera_y2();
+	//	textscroll = std::min<Uint32>(list_Size(&messages) - 3, textscroll);
+	//	c = 0;
+	//	for ( node = messages.last; node != NULL; node = node->prev )
+	//	{
+	//		c++;
+	//		if ( c <= textscroll )
+	//		{
+	//			continue;
+	//		}
+	//		string = (string_t*)node->element;
+	//		if ( uiscale_chatlog >= 1.5 )
+	//		{
+	//			y -= TTF16_HEIGHT * string->lines;
+	//			if ( y < y2 - (status_bmp->h * uiscale_chatlog) + 8 * uiscale_chatlog )
+	//			{
+	//				break;
+	//			}
+	//		}
+	//		else if ( uiscale_chatlog != 1.f )
+	//		{
+	//			y -= TTF12_HEIGHT * string->lines;
+	//			if ( y < y2 - status_bmp->h * 1.1 + 4 )
+	//			{
+	//				break;
+	//			}
+	//		}
+	//		else
+	//		{
+	//			y -= TTF12_HEIGHT * string->lines;
+	//			if ( y < y2 - status_bmp->h + 4 )
+	//			{
+	//				break;
+	//			}
+	//		}
+	//		z = 0;
+	//		for ( i = 0; i < strlen(string->data); i++ )
+	//		{
+	//			if ( string->data[i] != 10 )   // newline
+	//			{
+	//				z++;
+	//			}
+	//			else
+	//			{
+	//				z = 0;
+	//			}
+	//			if ( z == 65 )
+	//			{
+	//				if ( string->data[i] != 10 )
+	//				{
+	//					char* tempString = (char*)malloc(sizeof(char) * (strlen(string->data) + 2));
+	//					strcpy(tempString, string->data);
+	//					strcpy((char*)(tempString + i + 1), (char*)(string->data + i));
+	//					tempString[i] = 10;
+	//					free(string->data);
+	//					string->data = tempString;
+	//					string->lines++;
+	//				}
+	//				z = 0;
+	//			}
+	//		}
+	//		Uint32 color = makeColor( 0, 0, 0, 255); // black color
+	//		if ( uiscale_chatlog >= 1.5 )
+	//		{
+	//			ttfPrintTextColor(ttf16, x, y, color, false, string->data);
+	//		}
+	//		else
+	//		{
+	//			ttfPrintTextColor(ttf12, x, y, color, false, string->data);
+	//		}
+	//	}
+	//	if ( inputs.bMouseLeft(player) )
+	//	{
+	//		if ( omousey >= y2 - status_bmp->h * uiscale_chatlog + 7 && omousey < y2 - status_bmp->h * uiscale_chatlog + (7 + 27) * uiscale_chatlog )
+	//		{
+	//			if ( omousex >= players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog
+	//				&& omousex < players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog + 11 * uiscale_chatlog )
+	//			{
+	//				// text scroll up
+	//				buttonclick = 3;
+	//				textscroll++;
+	//				inputs.mouseClearLeft(player);
+	//			}
+	//		}
+	//		else if ( omousey >= y2 - status_bmp->h * uiscale_chatlog + 34 && omousey < y2 - status_bmp->h * uiscale_chatlog + (34 + 28) * uiscale_chatlog )
+	//		{
+	//			if ( omousex >= players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog
+	//				&& omousex < players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog + 11 * uiscale_chatlog )
+	//			{
+	//				// text scroll down
+	//				buttonclick = 12;
+	//				textscroll--;
+	//				if ( textscroll < 0 )
+	//				{
+	//					textscroll = 0;
+	//				}
+	//				inputs.mouseClearLeft(player);
+	//			}
+	//		}
+	//		else if ( omousey >= y2 - status_bmp->h * uiscale_chatlog + 62 && omousey < y2 - status_bmp->h * uiscale_chatlog + (62 + 31) * uiscale_chatlog )
+	//		{
+	//			if ( omousex >= players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog
+	//				&& omousex < players[player]->statusBarUI.getStartX() + 618 * uiscale_chatlog + 11 * uiscale_chatlog )
+	//			{
+	//				// text scroll down all the way
+	//				buttonclick = 4;
+	//				textscroll = 0;
+	//				inputs.mouseClearLeft(player);
+	//			}
+	//		}
+	//		/*else if( omousey>=y2-status_bmp->h+8 && omousey<y2-status_bmp->h+8+30 ) {
+	//			if( omousex>=players[player]->statusBarUI.getStartX()+618 && omousex<players[player]->statusBarUI.getStartX()+618+11 ) {
+	//				// text scroll up all the way
+	//				buttonclick=13;
+	//				textscroll=list_Size(&messages)-4;
+	//				mousestatus[SDL_BUTTON_LEFT]=0;
+	//			}
+	//		}*/
+	//	}
 
-		// mouse wheel
-		if ( !shootmode )
-		{
-			if ( mousex >= players[player]->statusBarUI.getStartX() && mousex < players[player]->statusBarUI.getStartX() + status_bmp->w * uiscale_chatlog )
-			{
-				if ( mousey >= initial_position.y && mousey < initial_position.y + status_bmp->h * uiscale_chatlog )
-				{
-					if ( mousestatus[SDL_BUTTON_WHEELDOWN] )
-					{
-						mousestatus[SDL_BUTTON_WHEELDOWN] = 0;
-						textscroll--;
-						if ( textscroll < 0 )
-						{
-							textscroll = 0;
-						}
-					}
-					else if ( mousestatus[SDL_BUTTON_WHEELUP] )
-					{
-						mousestatus[SDL_BUTTON_WHEELUP] = 0;
-						textscroll++;
-					}
-				}
-			}
-		}
-		if (showfirst)
-		{
-			textscroll = list_Size(&messages) - 3;
-		}
+	//	// mouse wheel
+	//	if ( !shootmode )
+	//	{
+	//		if ( mousex >= players[player]->statusBarUI.getStartX() && mousex < players[player]->statusBarUI.getStartX() + status_bmp->w * uiscale_chatlog )
+	//		{
+	//			if ( mousey >= initial_position.y && mousey < initial_position.y + status_bmp->h * uiscale_chatlog )
+	//			{
+	//				if ( mousestatus[SDL_BUTTON_WHEELDOWN] )
+	//				{
+	//					mousestatus[SDL_BUTTON_WHEELDOWN] = 0;
+	//					textscroll--;
+	//					if ( textscroll < 0 )
+	//					{
+	//						textscroll = 0;
+	//					}
+	//				}
+	//				else if ( mousestatus[SDL_BUTTON_WHEELUP] )
+	//				{
+	//					mousestatus[SDL_BUTTON_WHEELUP] = 0;
+	//					textscroll++;
+	//				}
+	//			}
+	//		}
+	//	}
+	//	if (showfirst)
+	//	{
+	//		textscroll = list_Size(&messages) - 3;
+	//	}
 
 
-		//Text scroll up button.
-		if ( buttonclick == 3 )
-		{
-			pos.x = players[player]->statusBarUI.getStartX() + 617 * uiscale_chatlog;
-			pos.y = y2 - status_bmp->h * uiscale_chatlog + 7 * uiscale_chatlog;
-			pos.w = 11 * uiscale_chatlog;
-			pos.h = 27 * uiscale_chatlog;
-			drawRect(&pos, makeColorRGB(255, 255, 255), 80);
-			//drawImage(textup_bmp, NULL, &pos);
-		}
-		//Text scroll down all the way button.
-		if ( buttonclick == 4 )
-		{
-			pos.x = players[player]->statusBarUI.getStartX() + 617 * uiscale_chatlog;
-			pos.y = y2 - status_bmp->h * uiscale_chatlog + 62 * uiscale_chatlog;
-			pos.w = 11 * uiscale_chatlog;
-			pos.h = 31 * uiscale_chatlog;
-			drawRect(&pos, makeColorRGB(255, 255, 255), 80);
-			//drawImage(textdown_bmp, NULL, &pos);
-		}
-		//Text scroll down button.
-		if ( buttonclick == 12 )
-		{
-			pos.x = players[player]->statusBarUI.getStartX() + 617 * uiscale_chatlog;
-			pos.y = y2 - status_bmp->h * uiscale_chatlog + 34 * uiscale_chatlog;
-			pos.w = 11 * uiscale_chatlog;
-			pos.h = 28 * uiscale_chatlog;
-			drawRect(&pos, makeColorRGB(255, 255, 255), 80);
-			//drawImage(textup_bmp, NULL, &pos);
-		}
-		//Text scroll up all the way button.
-		/*if( buttonclick==13 ) {
-			pos.x=players[player]->statusBarUI.getStartX()+617; pos.y=y2-status_bmp->h+8;
-			pos.w=11; pos.h=30;
-			drawRect(&pos,0xffffffff,80);
-			//drawImage(textdown_bmp, NULL, &pos);
-		}*/
-	}
+	//	//Text scroll up button.
+	//	if ( buttonclick == 3 )
+	//	{
+	//		pos.x = players[player]->statusBarUI.getStartX() + 617 * uiscale_chatlog;
+	//		pos.y = y2 - status_bmp->h * uiscale_chatlog + 7 * uiscale_chatlog;
+	//		pos.w = 11 * uiscale_chatlog;
+	//		pos.h = 27 * uiscale_chatlog;
+	//		drawRect(&pos, makeColorRGB(255, 255, 255), 80);
+	//		//drawImage(textup_bmp, NULL, &pos);
+	//	}
+	//	//Text scroll down all the way button.
+	//	if ( buttonclick == 4 )
+	//	{
+	//		pos.x = players[player]->statusBarUI.getStartX() + 617 * uiscale_chatlog;
+	//		pos.y = y2 - status_bmp->h * uiscale_chatlog + 62 * uiscale_chatlog;
+	//		pos.w = 11 * uiscale_chatlog;
+	//		pos.h = 31 * uiscale_chatlog;
+	//		drawRect(&pos, makeColorRGB(255, 255, 255), 80);
+	//		//drawImage(textdown_bmp, NULL, &pos);
+	//	}
+	//	//Text scroll down button.
+	//	if ( buttonclick == 12 )
+	//	{
+	//		pos.x = players[player]->statusBarUI.getStartX() + 617 * uiscale_chatlog;
+	//		pos.y = y2 - status_bmp->h * uiscale_chatlog + 34 * uiscale_chatlog;
+	//		pos.w = 11 * uiscale_chatlog;
+	//		pos.h = 28 * uiscale_chatlog;
+	//		drawRect(&pos, makeColorRGB(255, 255, 255), 80);
+	//		//drawImage(textup_bmp, NULL, &pos);
+	//	}
+	//	//Text scroll up all the way button.
+	//	/*if( buttonclick==13 ) {
+	//		pos.x=players[player]->statusBarUI.getStartX()+617; pos.y=y2-status_bmp->h+8;
+	//		pos.w=11; pos.h=30;
+	//		drawRect(&pos,0xffffffff,80);
+	//		//drawImage(textdown_bmp, NULL, &pos);
+	//	}*/
+	//}
 
-	int playerStatusBarWidth = 38 * uiscale_playerbars;
-	int playerStatusBarHeight = 156 * uiscale_playerbars;
+	//int playerStatusBarWidth = 38 * uiscale_playerbars;
+	//int playerStatusBarHeight = 156 * uiscale_playerbars;
 
-	if ( !players[player]->hud.hpFrame )
-	{
-		drawHPMPBars(player);
-	}
-	
-	// hunger icon
-	if ( stats[player] && stats[player]->type != AUTOMATON
-		&& (svFlags & SV_FLAG_HUNGER) && stats[player]->HUNGER <= 250 && (ticks % 50) - (ticks % 25) )
-	{
-		pos.x = /*xoffset*/ + playerStatusBarWidth + 10; // was pos.x = 128;
-		pos.y = y2 - 160;
-		pos.w = 64;
-		pos.h = 64;
-		if ( playerRequiresBloodToSustain(player) )
-		{
-			drawImageScaled(hunger_blood_bmp, NULL, &pos);
-		}
-		else
-		{
-			drawImageScaled(hunger_bmp, NULL, &pos);
-		}
-	}
+	//if ( !players[player]->hud.hpFrame )
+	//{
+	//	drawHPMPBars(player);
+	//}
+	//
+	//// hunger icon
+	//if ( stats[player] && stats[player]->type != AUTOMATON
+	//	&& (svFlags & SV_FLAG_HUNGER) && stats[player]->HUNGER <= 250 && (ticks % 50) - (ticks % 25) )
+	//{
+	//	pos.x = /*xoffset*/ + playerStatusBarWidth + 10; // was pos.x = 128;
+	//	pos.y = y2 - 160;
+	//	pos.w = 64;
+	//	pos.h = 64;
+	//	if ( playerRequiresBloodToSustain(player) )
+	//	{
+	//		drawImageScaled(hunger_blood_bmp, NULL, &pos);
+	//	}
+	//	else
+	//	{
+	//		drawImageScaled(hunger_bmp, NULL, &pos);
+	//	}
+	//}
 
-	if ( stats[player] && stats[player]->type == AUTOMATON )
-	{
-		if ( stats[player]->HUNGER > 300 || (ticks % 50) - (ticks % 25) )
-		{
-			pos.x = /*xoffset*/ + playerStatusBarWidth + 10; // was pos.x = 128;
-			pos.y = y2 - 160;
-			pos.w = 64;
-			pos.h = 64;
-			if ( stats[player]->HUNGER > 1200 )
-			{
-				drawImageScaled(hunger_boiler_hotflame_bmp, nullptr, &pos);
-			}
-			else
-			{
-				if ( stats[player]->HUNGER > 600 )
-				{
-					drawImageScaledPartial(hunger_boiler_flame_bmp, nullptr, &pos, 1.f);
-				}
-				else
-				{
-					float percent = (stats[player]->HUNGER - 300) / 300.f; // always show a little bit more at the bottom (10-20%)
-					drawImageScaledPartial(hunger_boiler_flame_bmp, nullptr, &pos, percent);
-				}
-			}
-			drawImageScaled(hunger_boiler_bmp, nullptr, &pos);
-		}
-	}
+	//if ( stats[player] && stats[player]->type == AUTOMATON )
+	//{
+	//	if ( stats[player]->HUNGER > 300 || (ticks % 50) - (ticks % 25) )
+	//	{
+	//		pos.x = /*xoffset*/ + playerStatusBarWidth + 10; // was pos.x = 128;
+	//		pos.y = y2 - 160;
+	//		pos.w = 64;
+	//		pos.h = 64;
+	//		if ( stats[player]->HUNGER > 1200 )
+	//		{
+	//			drawImageScaled(hunger_boiler_hotflame_bmp, nullptr, &pos);
+	//		}
+	//		else
+	//		{
+	//			if ( stats[player]->HUNGER > 600 )
+	//			{
+	//				drawImageScaledPartial(hunger_boiler_flame_bmp, nullptr, &pos, 1.f);
+	//			}
+	//			else
+	//			{
+	//				float percent = (stats[player]->HUNGER - 300) / 300.f; // always show a little bit more at the bottom (10-20%)
+	//				drawImageScaledPartial(hunger_boiler_flame_bmp, nullptr, &pos, percent);
+	//			}
+	//		}
+	//		drawImageScaled(hunger_boiler_bmp, nullptr, &pos);
+	//	}
+	//}
 
-	// minotaur icon
-	if ( minotaurlevel && (ticks % 50) - (ticks % 25) )
-	{
-		pos.x = /*xoffset*/ + playerStatusBarWidth + 10; // was pos.x = 128;
-		pos.y = y2 - 160 + 64 + 2;
-		pos.w = 64;
-		pos.h = 64;
-		drawImageScaled(minotaur_bmp, nullptr, &pos);
-	}
+	//// minotaur icon
+	//if ( minotaurlevel && (ticks % 50) - (ticks % 25) )
+	//{
+	//	pos.x = /*xoffset*/ + playerStatusBarWidth + 10; // was pos.x = 128;
+	//	pos.y = y2 - 160 + 64 + 2;
+	//	pos.w = 64;
+	//	pos.h = 64;
+	//	drawImageScaled(minotaur_bmp, nullptr, &pos);
+	//}
 
 	// draw action prompts.
 	/*if ( players[player]->hud.bShowActionPrompts )
@@ -1009,7 +888,7 @@ void drawStatus(int player)
 			pos.y = players[player]->hotbar.faceButtonPositions[num].y;
 		}
 
-		drawImageScaledColor(hotbar_img, NULL, &pos, color);
+		//drawImageScaledColor(hotbar_img, NULL, &pos, color);
 		item = uidToItem(hotbar[num].item);
 		if ( item )
 		{
@@ -1103,9 +982,10 @@ void drawStatus(int player)
 						&& !selectedItem )
 					{
 						inputs.getUIInteraction(player)->toggleclick = false;
-						if ( keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT] )
+						if ( keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT] )
 						{
 							hotbar[num].item = 0;
+							hotbar[num].resetLastItem();
 						}
 						else
 						{
@@ -1116,6 +996,7 @@ void drawStatus(int player)
 								playSound(139, 64); // click sound
 							}
 							hotbar[num].item = 0;
+							hotbar[num].resetLastItem();
 
 							if ( inputs.bControllerInputPressed(player, INJOY_MENU_LEFT_CLICK) && !openedChest[player] && gui_mode != (GUI_MODE_SHOP) )
 							{
@@ -1152,14 +1033,14 @@ void drawStatus(int player)
 							learnedSpell = (playerLearnedSpellbook(player, item) || itemIsEquipped(item, player));
 						}
 
-						if ( keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT] )
+						if ( keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT] )
 						{
 							players[player]->inventoryUI.appraisal.appraiseItem(item);
 						}
 						else
 						{
 							if ( (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK || item->type == FOOD_CREAMPIE )
-								&& (keystatus[SDL_SCANCODE_LALT] || keystatus[SDL_SCANCODE_RALT]) )
+								&& (keystatus[SDLK_LALT] || keystatus[SDLK_RALT]) )
 							{
 								badpotion = true;
 								learnedSpell = true;
@@ -1172,8 +1053,8 @@ void drawStatus(int player)
 								spell_t* currentSpell = getSpellFromID(getSpellIDFromSpellbook(item->type));
 								if ( currentSpell )
 								{
-									int skillLVL = stats[player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[player], players[player]->entity);
-									if ( stats[player]->PROFICIENCIES[PRO_MAGIC] >= 100 )
+									int skillLVL = stats[player]->getModifiedProficiency(PRO_MAGIC) + statGetINT(stats[player], players[player]->entity);
+									if ( stats[player]->getModifiedProficiency(PRO_MAGIC) >= 100 )
 									{
 										skillLVL = 100;
 									}
@@ -1185,7 +1066,9 @@ void drawStatus(int player)
 								}
 							}
 
-							if ( itemCategory(item) == SPELLBOOK && stats[player] && stats[player]->type == GOBLIN )
+							if ( itemCategory(item) == SPELLBOOK && stats[player] 
+								&& (stats[player]->type == GOBLIN
+									|| (stats[player]->playerRace == RACE_GOBLIN && stats[player]->stat_appearance == 0)) )
 							{
 								learnedSpell = true; // goblinos can't learn spells but always equip books.
 							}
@@ -1226,12 +1109,13 @@ void drawStatus(int player)
 									{
 										if ( client_classes[player] == CLASS_SHAMAN && item->type == SPELL_ITEM )
 										{
-											messagePlayer(player, MESSAGE_COMBAT, language[3488]); // unable to use with current level.
+											messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3488)); // unable to use with current level.
 										}
 										else
 										{
-											messagePlayer(player, MESSAGE_COMBAT, language[3432]); // unable to use in current form message.
+											messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3432)); // unable to use in current form message.
 										}
+										playSoundPlayer(player, 90, 64);
 									}
 								}
 							}
@@ -1245,12 +1129,13 @@ void drawStatus(int player)
 								{
 									if ( client_classes[player] == CLASS_SHAMAN && item->type == SPELL_ITEM )
 									{
-										messagePlayer(player, MESSAGE_COMBAT, language[3488]); // unable to use with current level.
+										messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3488)); // unable to use with current level.
 									}
 									else
 									{
-										messagePlayer(player, MESSAGE_COMBAT, language[3432]); // unable to use in current form message.
+										messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3432)); // unable to use in current form message.
 									}
+									playSoundPlayer(player, 90, 64);
 								}
 							}
 							used = true;
@@ -1292,20 +1177,20 @@ void drawStatus(int player)
 				{
 					if ( itemIsEquipped(item, player) )
 					{
-						drawImageScaled(equipped_bmp, NULL, &src);
+						//drawImageScaled(equipped_bmp, NULL, &src);
 					}
 					else if ( item->status == BROKEN )
 					{
-						drawImageScaled(itembroken_bmp, NULL, &src);
+						//drawImageScaled(itembroken_bmp, NULL, &src);
 					}
 				}
 				else
 				{
-					spell_t* spell = getSpellFromItem(player, item);
+					spell_t* spell = getSpellFromItem(player, item, false);
 					if ( players[player]->magic.selectedSpell() == spell
 						&& (players[player]->magic.selected_spell_last_appearance == item->appearance || players[player]->magic.selected_spell_last_appearance == -1 ) )
 					{
-						drawImageScaled(equipped_bmp, NULL, &src);
+						//drawImageScaled(equipped_bmp, NULL, &src);
 					}
 				}
 			}
@@ -1444,14 +1329,14 @@ void drawStatus(int player)
 
 					if ( itemCategory(item) == SPELL_CAT )
 					{
-						spell_t* spell = getSpellFromItem(player, item);
+						spell_t* spell = getSpellFromItem(player, item, false);
 						if ( drawHotBarTooltipOnCycle )
 						{
-							drawSpellTooltip(player, spell, item, &src);
+							//drawSpellTooltip(player, spell, item, &src);
 						}
 						else
 						{
-							drawSpellTooltip(player, spell, item, nullptr);
+							//drawSpellTooltip(player, spell, item, nullptr);
 						}
 					}
 					else
@@ -1468,7 +1353,7 @@ void drawStatus(int player)
 								if ( !learnedSpellbook && stats[player] && players[player] && players[player]->entity )
 								{
 									// spellbook tooltip shows if you have the magic requirement as well (for goblins)
-									int skillLVL = stats[player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[player], players[player]->entity);
+									int skillLVL = stats[player]->getModifiedProficiency(PRO_MAGIC) + statGetINT(stats[player], players[player]->entity);
 									spell_t* spell = getSpellFromID(getSpellIDFromSpellbook(item->type));
 									if ( spell && skillLVL >= spell->difficulty )
 									{
@@ -1485,16 +1370,16 @@ void drawStatus(int player)
 							else if ( itemCategory(item) == SCROLL && item->identified )
 							{
 								src.h += TTF12_HEIGHT;
-								src.w = std::max((2 + longestline(language[3862]) + longestline(item->getScrollLabel())) * TTF12_WIDTH + 8, src.w);
+								src.w = std::max((2 + longestline(Language::get(3862)) + longestline(item->getScrollLabel())) * TTF12_WIDTH + 8, src.w);
 							}
 							else if ( itemCategory(item) == SPELLBOOK && learnedSpellbook )
 							{
 								int height = 1;
 								char effectType[32] = "";
 								int spellID = getSpellIDFromSpellbook(item->type);
-								int damage = drawSpellTooltip(player, getSpellFromID(spellID), item, nullptr);
+								int damage = 0;;// drawSpellTooltip(player, getSpellFromID(spellID), item, nullptr);
 								real_t dummy = 0.f;
-								getSpellEffectString(spellID, spellEffectText, effectType, damage, &height, &dummy);
+								//getSpellEffectString(spellID, spellEffectText, effectType, damage, &height, &dummy);
 								int width = longestline(spellEffectText) * TTF12_WIDTH + 8;
 								if ( width > src.w )
 								{
@@ -1511,7 +1396,7 @@ void drawStatus(int player)
 						}
 
 						int furthestX = players[player]->camera_x2();
-						if ( players[player]->characterSheet.proficienciesPage == 0 )
+						/*if ( players[player]->characterSheet.proficienciesPage == 0 )
 						{
 							if ( src.y < players[player]->characterSheet.skillsSheetBox.y + players[player]->characterSheet.skillsSheetBox.h )
 							{
@@ -1524,7 +1409,7 @@ void drawStatus(int player)
 							{
 								furthestX = players[player]->camera_x2() - players[player]->characterSheet.partySheetBox.w;
 							}
-						}
+						}*/
 
 						if ( drawHotBarTooltipOnCycle && players[player]->hotbar.useHotbarFaceMenu )
 						{
@@ -1555,24 +1440,24 @@ void drawStatus(int player)
 						if ( !item->identified )
 						{
 							color = makeColorRGB(255, 255, 0);
-							ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, language[309]);
+							ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, Language::get(309));
 						}
 						else
 						{
 							if ( item->beatitude < 0 )
 							{
 								color = makeColorRGB(255, 0, 0);
-								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, language[310]);
+								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, Language::get(310));
 							}
 							else if ( item->beatitude == 0 )
 							{
 								color = 0xFFFFFFFF;
-								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, language[311]);
+								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, Language::get(311));
 							}
 							else
 							{
 								color = makeColorRGB(0, 255, 0);
-								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, language[312]);
+								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT, color, Language::get(312));
 							}
 						}
 						if ( item->beatitude == 0 || !item->identified )
@@ -1603,8 +1488,8 @@ void drawStatus(int player)
 							ttfPrintTextFormattedColor(ttf12, src.x + 4, src.y + 4, color, "%s", item->description());
 						}
 						int itemWeight = item->getWeight();
-						ttfPrintTextFormatted(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 2, language[313], itemWeight);
-						ttfPrintTextFormatted(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 3, language[314], item->sellValue(player));
+						ttfPrintTextFormatted(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 2, Language::get(313), itemWeight);
+						ttfPrintTextFormatted(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 3, Language::get(314), item->sellValue(player));
 						if ( strcmp(spellEffectText, "") )
 						{
 							ttfPrintTextFormattedColor(ttf12, src.x + 4, src.y + 4 + TTF12_HEIGHT * 4, makeColorRGB(0, 255, 255), spellEffectText);
@@ -1638,7 +1523,7 @@ void drawStatus(int player)
 									color = makeColorRGB(127, 127, 127); // grey out the text if monster doesn't benefit.
 								}
 
-								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, language[315], item->weaponGetAttack(stats[player]));
+								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, Language::get(315), item->weaponGetAttack(stats[player]));
 								stats[player]->type = tmpRace;
 							}
 							else if ( itemCategory(item) == ARMOR )
@@ -1666,85 +1551,85 @@ void drawStatus(int player)
 									color = makeColorRGB(127, 127, 127); // grey out the text if monster doesn't benefit.
 								}
 
-								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, language[316], item->armorGetAC(stats[player]));
+								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, Language::get(316), item->armorGetAC(stats[player]));
 								stats[player]->type = tmpRace;
 							}
 							else if ( itemCategory(item) == SCROLL )
 							{
 								color = makeColorRGB(0, 255, 255);
-								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, "%s%s", language[3862], item->getScrollLabel());
+								ttfPrintTextFormattedColor(ttf12, src.x + 4 + TTF12_WIDTH, src.y + 4 + TTF12_HEIGHT * 4, color, "%s%s", Language::get(3862), item->getScrollLabel());
 							}
 						}
 					}
-					if ( !drawHotBarTooltipOnCycle && hotbar_numkey_quick_add && inputs.bPlayerUsingKeyboardControl(player) )
+					if ( !drawHotBarTooltipOnCycle && playerSettings[multiplayer ? 0 : player].hotbar_numkey_quick_add && inputs.bPlayerUsingKeyboardControl(player) )
 					{
 						Uint32 swapItem = 0;
-						if ( keystatus[SDL_SCANCODE_1] )
+						if ( keystatus[SDLK_1] )
 						{
-							keystatus[SDL_SCANCODE_1] = 0;
+							keystatus[SDLK_1] = 0;
 							swapItem = hotbar[0].item;
 							hotbar[0].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_2] )
+						if ( keystatus[SDLK_2] )
 						{
-							keystatus[SDL_SCANCODE_2] = 0;
+							keystatus[SDLK_2] = 0;
 							swapItem = hotbar[1].item;
 							hotbar[1].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_3] )
+						if ( keystatus[SDLK_3] )
 						{
-							keystatus[SDL_SCANCODE_3] = 0;
+							keystatus[SDLK_3] = 0;
 							swapItem = hotbar[2].item;
 							hotbar[2].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_4] )
+						if ( keystatus[SDLK_4] )
 						{
-							keystatus[SDL_SCANCODE_4] = 0;
+							keystatus[SDLK_4] = 0;
 							swapItem = hotbar[3].item;
 							hotbar[3].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_5] )
+						if ( keystatus[SDLK_5] )
 						{
-							keystatus[SDL_SCANCODE_5] = 0;
+							keystatus[SDLK_5] = 0;
 							swapItem = hotbar[4].item;
 							hotbar[4].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_6] )
+						if ( keystatus[SDLK_6] )
 						{
-							keystatus[SDL_SCANCODE_6] = 0;
+							keystatus[SDLK_6] = 0;
 							swapItem = hotbar[5].item;
 							hotbar[5].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_7] )
+						if ( keystatus[SDLK_7] )
 						{
-							keystatus[SDL_SCANCODE_7] = 0;
+							keystatus[SDLK_7] = 0;
 							swapItem = hotbar[6].item;
 							hotbar[6].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_8] )
+						if ( keystatus[SDLK_8] )
 						{
-							keystatus[SDL_SCANCODE_8] = 0;
+							keystatus[SDLK_8] = 0;
 							swapItem = hotbar[7].item;
 							hotbar[7].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_9] )
+						if ( keystatus[SDLK_9] )
 						{
-							keystatus[SDL_SCANCODE_9] = 0;
+							keystatus[SDLK_9] = 0;
 							swapItem = hotbar[8].item;
 							hotbar[8].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
 						}
-						if ( keystatus[SDL_SCANCODE_0] )
+						if ( keystatus[SDLK_0] )
 						{
-							keystatus[SDL_SCANCODE_0] = 0;
+							keystatus[SDLK_0] = 0;
 							swapItem = hotbar[9].item;
 							hotbar[9].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
@@ -1760,8 +1645,8 @@ void drawStatus(int player)
 	if ( !command && stats[player] && stats[player]->HP > 0 )
 	{
 		Item* item = NULL;
-		const auto& inventoryUI = players[player]->inventoryUI;
-		if ( !(!shootmode && hotbar_numkey_quick_add 
+		const auto& inventoryUI = players[multiplayer ? 0 : player]->inventoryUI;
+		if ( !(!shootmode && playerSettings[multiplayer ? 0 : player].hotbar_numkey_quick_add
 			/*&&	(
 					(omousex >= inventoryUI.getStartX()
 						&& omousex <= inventoryUI.getStartX() + inventoryUI.getSizeX() * inventoryUI.getSlotSize()
@@ -1781,63 +1666,63 @@ void drawStatus(int player)
 			// skips equipping items if the mouse is in the hotbar or inventory area. otherwise the below code runs.
 			if ( inputs.bPlayerUsingKeyboardControl(player) && !StatueManager.activeEditing )
 			{
-				if ( keystatus[SDL_SCANCODE_1] )
+				if ( keystatus[SDLK_1] )
 				{
-					keystatus[SDL_SCANCODE_1] = 0;
+					keystatus[SDLK_1] = 0;
 					item = uidToItem(hotbar[0].item);
 					hotbar_t.current_hotbar = 0;
 				}
-				if ( keystatus[SDL_SCANCODE_2] )
+				if ( keystatus[SDLK_2] )
 				{
-					keystatus[SDL_SCANCODE_2] = 0;
+					keystatus[SDLK_2] = 0;
 					item = uidToItem(hotbar[1].item);
 					hotbar_t.current_hotbar = 1;
 				}
-				if ( keystatus[SDL_SCANCODE_3] )
+				if ( keystatus[SDLK_3] )
 				{
-					keystatus[SDL_SCANCODE_3] = 0;
+					keystatus[SDLK_3] = 0;
 					item = uidToItem(hotbar[2].item);
 					hotbar_t.current_hotbar = 2;
 				}
-				if ( keystatus[SDL_SCANCODE_4] )
+				if ( keystatus[SDLK_4] )
 				{
-					keystatus[SDL_SCANCODE_4] = 0;
+					keystatus[SDLK_4] = 0;
 					item = uidToItem(hotbar[3].item);
 					hotbar_t.current_hotbar = 3;
 				}
-				if ( keystatus[SDL_SCANCODE_5] )
+				if ( keystatus[SDLK_5] )
 				{
-					keystatus[SDL_SCANCODE_5] = 0;
+					keystatus[SDLK_5] = 0;
 					item = uidToItem(hotbar[4].item);
 					hotbar_t.current_hotbar = 4;
 				}
-				if ( keystatus[SDL_SCANCODE_6] )
+				if ( keystatus[SDLK_6] )
 				{
-					keystatus[SDL_SCANCODE_6] = 0;
+					keystatus[SDLK_6] = 0;
 					item = uidToItem(hotbar[5].item);
 					hotbar_t.current_hotbar = 5;
 				}
-				if ( keystatus[SDL_SCANCODE_7] )
+				if ( keystatus[SDLK_7] )
 				{
-					keystatus[SDL_SCANCODE_7] = 0;
+					keystatus[SDLK_7] = 0;
 					item = uidToItem(hotbar[6].item);
 					hotbar_t.current_hotbar = 6;
 				}
-				if ( keystatus[SDL_SCANCODE_8] )
+				if ( keystatus[SDLK_8] )
 				{
-					keystatus[SDL_SCANCODE_8] = 0;
+					keystatus[SDLK_8] = 0;
 					item = uidToItem(hotbar[7].item);
 					hotbar_t.current_hotbar = 7;
 				}
-				if ( keystatus[SDL_SCANCODE_9] )
+				if ( keystatus[SDLK_9] )
 				{
-					keystatus[SDL_SCANCODE_9] = 0;
+					keystatus[SDLK_9] = 0;
 					item = uidToItem(hotbar[8].item);
 					hotbar_t.current_hotbar = 8;
 				}
-				if ( keystatus[SDL_SCANCODE_0] )
+				if ( keystatus[SDLK_0] )
 				{
-					keystatus[SDL_SCANCODE_0] = 0;
+					keystatus[SDLK_0] = 0;
 					item = uidToItem(hotbar[9].item);
 					hotbar_t.current_hotbar = 9;
 				}
@@ -1971,7 +1856,7 @@ void drawStatus(int player)
 				if ( pressed != Player::Hotbar_t::GROUP_NONE 
 					&& players[player]->hotbar.faceMenuQuickCastEnabled && item && itemCategory(item) == SPELL_CAT )
 				{
-					spell_t* spell = getSpellFromItem(player, item);
+					spell_t* spell = getSpellFromItem(player, item, false);
 					if ( spell && players[player]->magic.selectedSpell() == spell )
 					{
 						players[player]->hotbar.faceMenuQuickCast = true;
@@ -2003,7 +1888,7 @@ void drawStatus(int player)
 
 		Input& input = Input::inputs[player];
 
-		if ( input.consumeBinaryToggle("Hotbar Scroll Right")
+		if ( !players[player]->hotbar.useHotbarFaceMenu && input.consumeBinaryToggle("Hotbar Right")
 			&& players[player]->bControlEnabled && !gamePaused && !players[player]->usingCommand() )
 		{
 			if ( shootmode && !inputs.getUIInteraction(player)->itemMenuOpen && !openedChest[player]
@@ -2019,7 +1904,7 @@ void drawStatus(int player)
 				hotbar_t.hotbarTooltipLastGameTick = 0;
 			}
 		}
-		if ( input.consumeBinaryToggle("Hotbar Scroll Left")
+		if ( !players[player]->hotbar.useHotbarFaceMenu && input.consumeBinaryToggle("Hotbar Left")
 			&& players[player]->bControlEnabled && !gamePaused && !players[player]->usingCommand() )
 		{
 			if ( shootmode && !inputs.getUIInteraction(player)->itemMenuOpen && !openedChest[player]
@@ -2046,7 +1931,8 @@ void drawStatus(int player)
 
 		if ( !inputs.getUIInteraction(player)->itemMenuOpen && !inputs.getUIInteraction(player)->selectedItem && !openedChest[player] && gui_mode != (GUI_MODE_SHOP) )
 		{
-			if ( shootmode && input.consumeBinaryToggle("Hotbar Select")
+			if ( shootmode && input.consumeBinaryToggle("Hotbar Up / Select")
+                && (!hotbar_t.useHotbarFaceMenu || (hotbar_t.useHotbarFaceMenu && !inputs.hasController(player)))
 				&& players[player]->bControlEnabled && !gamePaused
 				&& !players[player]->usingCommand()
 				&& !openedChest[player] && gui_mode != (GUI_MODE_SHOP)
@@ -2073,17 +1959,17 @@ void drawStatus(int player)
 
 			pos.x = initial_position.x + (hotbar_t.current_hotbar * hotbar_t.getSlotSize());
 			pos.y = initial_position.y - hotbar_t.getSlotSize();
-			if ( !shootmode && !players[player]->bookGUI.bBookOpen && !openedChest[player] && inputs.bControllerInputPressed(player, INJOY_MENU_DROP_ITEM)
-				&& mouseInBounds(player, pos.x, pos.x + hotbar_img->w * uiscale_hotbar, pos.y, pos.y + hotbar_img->h * uiscale_hotbar) )
-			{
-				//Drop item if this hotbar is currently active & the player pressed the cancel button on the gamepad (typically "b").
-				inputs.controllerClearInput(player, INJOY_MENU_DROP_ITEM);
-				Item* itemToDrop = uidToItem(hotbar[hotbar_t.current_hotbar].item);
-				if ( itemToDrop )
-				{
-					dropItem(itemToDrop, player);
-				}
-			}
+			//if ( !shootmode && !players[player]->bookGUI.bBookOpen && !openedChest[player] && inputs.bControllerInputPressed(player, INJOY_MENU_DROP_ITEM)
+			//	&& mouseInBounds(player, pos.x, pos.x + hotbar_img->w * uiscale_hotbar, pos.y, pos.y + hotbar_img->h * uiscale_hotbar) )
+			//{
+			//	//Drop item if this hotbar is currently active & the player pressed the cancel button on the gamepad (typically "b").
+			//	inputs.controllerClearInput(player, INJOY_MENU_DROP_ITEM);
+			//	Item* itemToDrop = uidToItem(hotbar[hotbar_t.current_hotbar].item);
+			//	if ( itemToDrop )
+			//	{
+			//		dropItem(itemToDrop, player);
+			//	}
+			//}
 		}
 
 		if ( item )
@@ -2101,7 +1987,7 @@ void drawStatus(int player)
 				learnedSpell = (playerLearnedSpellbook(player, item) || itemIsEquipped(item, player));
 			}
 
-			if ( (keystatus[SDL_SCANCODE_LALT] || keystatus[SDL_SCANCODE_RALT]) 
+			if ( (keystatus[SDLK_LALT] || keystatus[SDLK_RALT]) 
 				&& (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK || item->type == FOOD_CREAMPIE) )
 			{
 				badpotion = true;
@@ -2115,8 +2001,8 @@ void drawStatus(int player)
 				spell_t* currentSpell = getSpellFromID(getSpellIDFromSpellbook(item->type));
 				if ( currentSpell && stats[player] )
 				{
-					int skillLVL = stats[player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[player], players[player]->entity);
-					if ( stats[player]->PROFICIENCIES[PRO_MAGIC] >= 100 )
+					int skillLVL = stats[player]->getModifiedProficiency(PRO_MAGIC) + statGetINT(stats[player], players[player]->entity);
+					if ( stats[player]->getModifiedProficiency(PRO_MAGIC) >= 100 )
 					{
 						skillLVL = 100;
 					}
@@ -2130,7 +2016,8 @@ void drawStatus(int player)
 
 			if ( itemCategory(item) == SPELLBOOK && stats[player] )
 			{
-				if ( stats[player]->type == GOBLIN || stats[player]->type == CREATURE_IMP )
+				if ( stats[player]->type == GOBLIN || stats[player]->type == CREATURE_IMP
+						|| (stats[player]->playerRace == RACE_GOBLIN && stats[player]->stat_appearance == 0) )
 				{
 					learnedSpell = true; // goblinos can't learn spells but always equip books.
 				}
@@ -2207,45 +2094,46 @@ void drawStatus(int player)
 			{
 				if ( client_classes[player] == CLASS_SHAMAN && item->type == SPELL_ITEM )
 				{
-					messagePlayer(player, MESSAGE_COMBAT, language[3488]); // unable to use with current level.
+					messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3488)); // unable to use with current level.
 				}
 				else
 				{
-					messagePlayer(player, MESSAGE_COMBAT, language[3432]); // unable to use in current form message.
+					messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3432)); // unable to use in current form message.
 				}
+				playSoundPlayer(player, 90, 64);
 			}
 		}
 	}
 
 	FollowerMenu[player].drawFollowerMenu();
 
-	// stat increase icons
-	pos.w = 64;
-	pos.h = 64;
-	pos.x = players[player]->camera_x2() - pos.w * 3 - 9;
-	pos.y = players[player]->characterSheet.skillsSheetBox.h + (32 + pos.h * 2 + 3); // 131px from end of prof window.
+	//// stat increase icons
+	//pos.w = 64;
+	//pos.h = 64;
+	//pos.x = players[player]->camera_x2() - pos.w * 3 - 9;
+	//pos.y = players[player]->characterSheet.skillsSheetBox.h + (32 + pos.h * 2 + 3); // 131px from end of prof window.
 
-	if ( (!shootmode || players[player]->characterSheet.lock_right_sidebar) && players[player]->characterSheet.proficienciesPage == 1
-		&& pos.y < (players[player]->characterSheet.partySheetBox.y + players[player]->characterSheet.partySheetBox.h + 16) )
-	{
-		pos.y = players[player]->characterSheet.partySheetBox.y + players[player]->characterSheet.partySheetBox.h + 16;
-	}
+	//if ( (!shootmode || players[player]->characterSheet.lock_right_sidebar) && players[player]->characterSheet.proficienciesPage == 1
+	//	&& pos.y < (players[player]->characterSheet.partySheetBox.y + players[player]->characterSheet.partySheetBox.h + 16) )
+	//{
+	//	pos.y = players[player]->characterSheet.partySheetBox.y + players[player]->characterSheet.partySheetBox.h + 16;
+	//}
 
-	if ( splitscreen )
-	{
-		// todo - adjust position.
-		pos.w = 48;
-		pos.h = 48;
-		pos.x = players[player]->camera_x2() - pos.w * 3 - 9;
-		pos.y = players[player]->characterSheet.skillsSheetBox.h + (16 + pos.h * 2 + 3);
-	}
-	else
-	{
-		if ( pos.y + pos.h > (players[player]->camera_y2() - minimaps[player].y - minimaps[player].h) ) // check if overlapping minimap
-		{
-			pos.y = (players[player]->camera_y2() - minimaps[player].y - minimaps[player].h) - (64 + 3); // align above minimap
-		}
-	}
+	//if ( splitscreen )
+	//{
+	//	// todo - adjust position.
+	//	pos.w = 48;
+	//	pos.h = 48;
+	//	pos.x = players[player]->camera_x2() - pos.w * 3 - 9;
+	//	pos.y = players[player]->characterSheet.skillsSheetBox.h + (16 + pos.h * 2 + 3);
+	//}
+	//else
+	//{
+	//	if ( pos.y + pos.h > (players[player]->camera_y2() - minimaps[player].y - minimaps[player].h) ) // check if overlapping minimap
+	//	{
+	//		pos.y = (players[player]->camera_y2() - minimaps[player].y - minimaps[player].h) - (64 + 3); // align above minimap
+	//	}
+	//}
 	
 	SDL_Surface *tmp_bmp = NULL;
 
@@ -2255,30 +2143,30 @@ void drawStatus(int player)
 		{
 			stats[player]->PLAYER_LVL_STAT_TIMER[i]--;
 
-			switch ( i )
-			{
-				// prepare the stat image.
-				case STAT_STR:
-					tmp_bmp = str_bmp64u;
-					break;
-				case STAT_DEX:
-					tmp_bmp = dex_bmp64u;
-					break;
-				case STAT_CON:
-					tmp_bmp = con_bmp64u;
-					break;
-				case STAT_INT:
-					tmp_bmp = int_bmp64u;
-					break;
-				case STAT_PER:
-					tmp_bmp = per_bmp64u;
-					break;
-				case STAT_CHR:
-					tmp_bmp = chr_bmp64u;
-					break;
-				default:
-					break;
-			}
+			//switch ( i )
+			//{
+			//	// prepare the stat image.
+			//	case STAT_STR:
+			//		tmp_bmp = str_bmp64u;
+			//		break;
+			//	case STAT_DEX:
+			//		tmp_bmp = dex_bmp64u;
+			//		break;
+			//	case STAT_CON:
+			//		tmp_bmp = con_bmp64u;
+			//		break;
+			//	case STAT_INT:
+			//		tmp_bmp = int_bmp64u;
+			//		break;
+			//	case STAT_PER:
+			//		tmp_bmp = per_bmp64u;
+			//		break;
+			//	case STAT_CHR:
+			//		tmp_bmp = chr_bmp64u;
+			//		break;
+			//	default:
+			//		break;
+			//}
 			drawImageScaled(tmp_bmp, NULL, &pos);
 			if ( stats[player]->PLAYER_LVL_STAT_TIMER[i + NUMSTATS] > 0 )
 			{
@@ -2487,10 +2375,11 @@ void drawStatusNew(const int player)
 						&& (players[player]->inventoryUI.bFirstTimeSnapCursor) )
 					{
 						toggleclick = false;
-						if ( (keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT])
+						if ( (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT])
 							&& Input::inputs[player].binaryToggle("MenuLeftClick") && inputs.bPlayerUsingKeyboardControl(player) )
 						{
 							hotbar[num].item = 0;
+							hotbar[num].resetLastItem();
 							Input::inputs[player].consumeBinaryToggle("MenuLeftClick");
 						}
 						else
@@ -2502,6 +2391,7 @@ void drawStatusNew(const int player)
 								playSound(139, 64); // click sound
 							}
 							hotbar[num].item = 0;
+							hotbar[num].resetLastItem();
 
 							if ( inputs.getVirtualMouse(player)->draw_cursor )
 							{
@@ -2548,14 +2438,14 @@ void drawStatusNew(const int player)
 					if ( Input::inputs[player].binaryToggle("MenuRightClick") && inputs.bPlayerUsingKeyboardControl(player)
 						&& !players[player]->GUI.isDropdownActive() && !selectedItem )
 					{
-						if ( (keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT]) ) //TODO: selected shop slot, identify, remove curse?
+						if ( (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT]) ) //TODO: selected shop slot, identify, remove curse?
 						{
 							// auto-appraise the item
 							players[player]->inventoryUI.appraisal.appraiseItem(item);
 							Input::inputs[player].consumeBinaryToggle("MenuRightClick");
 						}
 						else if ( !disableItemUsage && (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK || item->type == FOOD_CREAMPIE) &&
-							(keystatus[SDL_SCANCODE_LALT] || keystatus[SDL_SCANCODE_RALT]) )
+							(keystatus[SDLK_LALT] || keystatus[SDLK_RALT]) )
 						{
 							Input::inputs[player].consumeBinaryToggle("MenuRightClick");
 							// force equip potion/spellbook
@@ -2636,13 +2526,17 @@ void drawStatusNew(const int player)
 		{
 			drawHotBarTooltipOnCycle = false;
 		}
+		if ( FollowerMenu[player].followerMenuIsOpen() || CalloutMenu[player].calloutMenuIsOpen() )
+		{
+			drawHotBarTooltipOnCycle = false;
+		}
 	}
 
 	bool tooltipOpen = false;
 	Frame* tooltipSlotFrame = nullptr;
 	bool tooltipPromptFrameWasDisabled = true;
 
-	if ( !shootmode || drawHotBarTooltipOnCycle )
+	if ( (!shootmode && !FollowerMenu[player].followerMenuIsOpen() && !CalloutMenu[player].calloutMenuIsOpen()) || drawHotBarTooltipOnCycle)
 	{
 		//Go back through all of the hotbar slots and draw the tooltips.
 		for ( int num = 0; num < NUM_HOTBAR_SLOTS; ++num )
@@ -2734,9 +2628,58 @@ void drawStatusNew(const int player)
 						tooltipOpen = true;
 						tooltipSlotFrame = hotbarSlotFrame;
 						players[player]->hud.updateFrameTooltip(item, src.x, src.y, players[player]->PANEL_JUSTIFY_LEFT);
-						SDL_Rect tooltipPos = players[player]->inventoryUI.tooltipFrame->getSize();
+
+						auto tooltipFrame = players[player]->inventoryUI.tooltipFrame;
+						if ( players[player]->inventoryUI.itemTooltipDisplay.displayingTitleOnlyTooltip )
+						{
+							tooltipFrame = players[player]->inventoryUI.titleOnlyTooltipFrame;
+						}
+
+						SDL_Rect tooltipPos = tooltipFrame->getSize();
 						tooltipPos.x = src.x - tooltipPos.w / 2;
 						tooltipPos.y = src.y - tooltipPos.h;
+						if ( players[player]->inventoryUI.itemTooltipDisplay.displayingTitleOnlyTooltip )
+						{
+							int highestSlotY = players[player]->camera_virtualy2();
+							for ( int num2 = 0; num2 < NUM_HOTBAR_SLOTS; ++num2 )
+							{
+								if ( auto slotFrame = hotbar_t.getHotbarSlotFrame(num2) )
+								{
+									if ( !slotFrame->isDisabled() )
+									{
+										highestSlotY = std::min(highestSlotY, slotFrame->getSize().y);
+									}
+								}
+							}
+							if ( hotbar_t.useHotbarFaceMenu )
+							{
+								static ConsoleVariable<int> cvar_tooltip_title_only_facemenu_y("/tooltip_title_only_facemenu_y", 4);
+								if ( inputs.hasController(player) )
+								{
+									tooltipPos.y -= 12 * hotbar_t.selectedSlotAnimateCurrentValue;
+								}
+								else
+								{
+									tooltipPos.y = highestSlotY - tooltipPos.h - 8;
+									tooltipPos.x = hotbar_t.hotbarFrame->getSize().w / 2 - tooltipPos.w / 2;
+									if ( tooltipPos.x % 2 == 1 )
+									{
+										++tooltipPos.x;
+									}
+								}
+								tooltipPos.y += *cvar_tooltip_title_only_facemenu_y;
+							}
+							else
+							{
+								static ConsoleVariable<int> cvar_tooltip_title_only_y("/tooltip_title_only_y", 8);
+								tooltipPos.x = hotbar_t.hotbarFrame->getSize().w / 2 - tooltipPos.w / 2;
+								tooltipPos.y += *cvar_tooltip_title_only_y;
+								if ( tooltipPos.x % 2 == 1 )
+								{
+									++tooltipPos.x;
+								}
+							}
+						}
 						if ( tooltipPos.x < 0 )
 						{
 							tooltipPos.x = 0;
@@ -2745,7 +2688,7 @@ void drawStatusNew(const int player)
 						{
 							tooltipPos.x -= (tooltipPos.x + tooltipPos.w) - players[player]->inventoryUI.tooltipContainerFrame->getSize().w;
 						}
-						players[player]->inventoryUI.tooltipFrame->setSize(tooltipPos);
+						tooltipFrame->setSize(tooltipPos);
 						if ( players[player]->inventoryUI.tooltipPromptFrame
 							&& !players[player]->inventoryUI.tooltipPromptFrame->isDisabled()
 							&& !(players[player]->inventoryUI.useItemDropdownOnGamepad == Player::Inventory_t::GAMEPAD_DROPDOWN_FULL 
@@ -2775,83 +2718,163 @@ void drawStatusNew(const int player)
 						}
 					}
 
-					if ( !drawHotBarTooltipOnCycle && hotbar_numkey_quick_add
+					if ( !drawHotBarTooltipOnCycle && playerSettings[multiplayer ? 0 : player].hotbar_numkey_quick_add
 						&& players[player]->bControlEnabled && !gamePaused
 						&& !players[player]->usingCommand()
 						&& inputs.bPlayerUsingKeyboardControl(player) )
 					{
 						Uint32 swapItem = 0;
-						if ( Input::inputs[player].binaryToggle("HotbarSlot1") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 1") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot1");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 1");
 							swapItem = hotbar[0].item;
 							hotbar[0].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[0].item == 0 || !uidToItem(hotbar[0].item) )
+							{
+								hotbar[0].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot2") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 2") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot2");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 2");
 							swapItem = hotbar[1].item;
 							hotbar[1].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[1].item == 0 || !uidToItem(hotbar[1].item) )
+							{
+								hotbar[1].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot3") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 3") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot3");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 3");
 							swapItem = hotbar[2].item;
 							hotbar[2].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[2].item == 0 || !uidToItem(hotbar[2].item) )
+							{
+								hotbar[2].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot4") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 4") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot4");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 4");
 							swapItem = hotbar[3].item;
 							hotbar[3].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[3].item == 0 || !uidToItem(hotbar[3].item) )
+							{
+								hotbar[3].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot5") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 5") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot5");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 5");
 							swapItem = hotbar[4].item;
 							hotbar[4].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[4].item == 0 || !uidToItem(hotbar[4].item) )
+							{
+								hotbar[4].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot6") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 6") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot6");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 6");
 							swapItem = hotbar[5].item;
 							hotbar[5].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[5].item == 0 || !uidToItem(hotbar[5].item) )
+							{
+								hotbar[5].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot7") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 7") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot7");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 7");
 							swapItem = hotbar[6].item;
 							hotbar[6].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[6].item == 0 || !uidToItem(hotbar[6].item) )
+							{
+								hotbar[6].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot8") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 8") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot8");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 8");
 							swapItem = hotbar[7].item;
 							hotbar[7].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[7].item == 0 || !uidToItem(hotbar[7].item) )
+							{
+								hotbar[7].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot9") )
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 9") )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot9");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 9");
 							swapItem = hotbar[8].item;
 							hotbar[8].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[8].item == 0 || !uidToItem(hotbar[8].item) )
+							{
+								hotbar[8].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
-						if ( Input::inputs[player].binaryToggle("HotbarSlot10")
+						if ( Input::inputs[player].binaryToggle("Hotbar Slot 10")
 							&& hotbar_t.getHotbarSlotFrame(9)
 							&& !hotbar_t.getHotbarSlotFrame(9)->isDisabled() )
 						{
-							Input::inputs[player].consumeBinaryToggle("HotbarSlot10");
+							Input::inputs[player].consumeBinaryToggle("Hotbar Slot 10");
 							swapItem = hotbar[9].item;
 							hotbar[9].item = hotbar[num].item;
 							hotbar[num].item = swapItem;
+							if ( hotbar[9].item == 0 || !uidToItem(hotbar[9].item) )
+							{
+								hotbar[9].resetLastItem();
+							}
+							if ( hotbar[num].item == 0 || !uidToItem(hotbar[num].item) )
+							{
+								hotbar[num].resetLastItem();
+							}
 						}
 					}
 				}
@@ -2882,69 +2905,69 @@ void drawStatusNew(const int player)
 		const auto& inventoryUI = players[player]->inventoryUI;
 		if ( inputs.bPlayerUsingKeyboardControl(player)
 			&& players[player]->gui_mode != GUI_MODE_SIGN
-			&& (shootmode || (!shootmode && !(hotbar_numkey_quick_add && (mouseInsidePlayerHotbar(player) || mouseInsidePlayerInventory(player))))) )
+			&& (shootmode || (!shootmode && !(playerSettings[multiplayer ? 0 : player].hotbar_numkey_quick_add && (mouseInsidePlayerHotbar(player) || mouseInsidePlayerInventory(player))))) )
 		{
 			// if hotbar_numkey_quick_add is enabled, then the number keys won't do the default equip function
 			// skips equipping items if the mouse is in the hotbar or inventory area. otherwise the below code runs.
-			if ( Input::inputs[player].binaryToggle("HotbarSlot1") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 1") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot1");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 1");
 				item = uidToItem(hotbar[0].item);
 				hotbar_t.current_hotbar = 0;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot2") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 2") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot2");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 2");
 				item = uidToItem(hotbar[1].item);
 				hotbar_t.current_hotbar = 1;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot3") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 3") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot3");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 3");
 				item = uidToItem(hotbar[2].item);
 				hotbar_t.current_hotbar = 2;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot4") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 4") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot4");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 4");
 				item = uidToItem(hotbar[3].item);
 				hotbar_t.current_hotbar = 3;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot5") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 5") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot5");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 5");
 				item = uidToItem(hotbar[4].item);
 				hotbar_t.current_hotbar = 4;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot6") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 6") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot6");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 6");
 				item = uidToItem(hotbar[5].item);
 				hotbar_t.current_hotbar = 5;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot7") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 7") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot7");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 7");
 				item = uidToItem(hotbar[6].item);
 				hotbar_t.current_hotbar = 6;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot8") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 8") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot8");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 8");
 				item = uidToItem(hotbar[7].item);
 				hotbar_t.current_hotbar = 7;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot9") )
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 9") )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot9");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 9");
 				item = uidToItem(hotbar[8].item);
 				hotbar_t.current_hotbar = 8;
 			}
-			if ( Input::inputs[player].binaryToggle("HotbarSlot10")
+			if ( Input::inputs[player].binaryToggle("Hotbar Slot 10")
 				&& hotbar_t.getHotbarSlotFrame(9)
 				&& !hotbar_t.getHotbarSlotFrame(9)->isDisabled() )
 			{
-				Input::inputs[player].consumeBinaryToggle("HotbarSlot10");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Slot 10");
 				item = uidToItem(hotbar[9].item);
 				hotbar_t.current_hotbar = 9;
 			}
@@ -2965,13 +2988,13 @@ void drawStatusNew(const int player)
 				switch ( i )
 				{
 					case 0:
-						inputName = "HotbarFacebarLeft";
+						inputName = "Hotbar Left";
 						break;
 					case 1:
-						inputName = "HotbarFacebarUp";
+						inputName = "Hotbar Up / Select";
 						break;
 					case 2:
-						inputName = "HotbarFacebarRight";
+						inputName = "Hotbar Right";
 						break;
 					default:
 						break;
@@ -2979,11 +3002,11 @@ void drawStatusNew(const int player)
 
 				if ( Input::inputs[player].binaryToggle(inputName.c_str()) )
 				{
-					if ( Input::inputs[player].binaryToggle("HotbarFacebarCancel") )
+					if ( Input::inputs[player].binaryToggle("Hotbar Down / Cancel") )
 					{
 						Input::inputs[player].consumeBinaryToggle(inputName.c_str());
-						Input::inputs[player].consumeBinaryToggle("HotbarFacebarCancel");
-						Input::inputs[player].consumeBindingsSharedWithBinding("HotbarFacebarCancel");
+						Input::inputs[player].consumeBinaryToggle("Hotbar Down / Cancel");
+						Input::inputs[player].consumeBindingsSharedWithBinding("Hotbar Down / Cancel");
 
 						for ( auto& slot : players[player]->hotbar.slots() )
 						{
@@ -2999,24 +3022,24 @@ void drawStatusNew(const int player)
 								}
 							}
 						}
-
+						Player::soundCancel();
 						players[player]->hotbar.faceMenuButtonHeld = Player::Hotbar_t::GROUP_NONE;
 						break;
 					}
 
 					int centerSlot = 1;
 					std::array<int, 3> slotOrder = { 0, 1, 2 };
-					if ( inputName == "HotbarFacebarLeft" )
+					if ( inputName == "Hotbar Left" )
 					{
 						pressed = Player::Hotbar_t::GROUP_LEFT;
 					}
-					else if ( inputName == "HotbarFacebarUp" )
+					else if ( inputName == "Hotbar Up / Select" )
 					{
 						pressed = Player::Hotbar_t::GROUP_MIDDLE;
 						centerSlot = 4;
 						slotOrder = { 3, 4, 5 };
 					}
-					else if ( inputName == "HotbarFacebarRight" )
+					else if ( inputName == "Hotbar Right" )
 					{
 						pressed = Player::Hotbar_t::GROUP_RIGHT;
 						centerSlot = 7;
@@ -3036,11 +3059,13 @@ void drawStatusNew(const int player)
 					{
 						hotbar_t.selectHotbarSlot(std::max(centerSlot - 1, hotbar_t.current_hotbar - 1));
 						Input::inputs[player].consumeBinaryToggle("HotbarFacebarModifierLeft");
+						Player::soundHotbarShootmodeMovement();
 					}
 					else if ( Input::inputs[player].binaryToggle("HotbarFacebarModifierRight") )
 					{
 						hotbar_t.selectHotbarSlot(std::min(centerSlot + 1, hotbar_t.current_hotbar + 1));
 						Input::inputs[player].consumeBinaryToggle("HotbarFacebarModifierRight");
+						Player::soundHotbarShootmodeMovement();
 					}
 					else if ( players[player]->hotbar.faceMenuButtonHeld == Player::Hotbar_t::GROUP_NONE )
 					{
@@ -3064,7 +3089,7 @@ void drawStatusNew(const int player)
 					// quickcasting spells
 					if (item && itemCategory(item) == SPELL_CAT )
 					{
-						spell_t* spell = getSpellFromItem(player, item);
+						spell_t* spell = getSpellFromItem(player, item, false);
 						if ( spell && players[player]->magic.selectedSpell() == spell )
 						{
 							players[player]->hotbar.faceMenuQuickCast = true;
@@ -3100,13 +3125,11 @@ void drawStatusNew(const int player)
 			}
 		}
 
-		bool bumper_moved = false;
-
 		//Gamepad change hotbar selection.
-		if ( Input::inputs[player].binaryToggle("Hotbar Scroll Right") )
+		if ( !players[player]->hotbar.useHotbarFaceMenu && Input::inputs[player].binaryToggle("Hotbar Right") )
 		{
 			bool usingMouseWheel = false;
-			const auto binding = Input::inputs[player].input("Hotbar Scroll Right");
+			const auto binding = Input::inputs[player].input("Hotbar Right");
 			if ( binding.type == Input::binding_t::bindtype_t::MOUSE_BUTTON )
 			{
 				if ( binding.mouseButton == Input::MOUSE_WHEEL_DOWN || binding.mouseButton == Input::MOUSE_WHEEL_UP )
@@ -3116,9 +3139,9 @@ void drawStatusNew(const int player)
 			}
 			if ( !usingMouseWheel )
 			{
-				Input::inputs[player].consumeBinaryToggle("Hotbar Scroll Right");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Right");
 			}
-			bool gamepadControl = Input::inputs[player].input("Hotbar Scroll Right").isBindingUsingGamepad();
+			bool gamepadControl = Input::inputs[player].input("Hotbar Right").isBindingUsingGamepad();
 			if ( gamepadControl && players[player]->hotbar.useHotbarFaceMenu )
 			{
 				// no action, gamepads can't scroll when useHotbarFaceMenu
@@ -3143,6 +3166,7 @@ void drawStatusNew(const int player)
 						warpMouseToSelectedHotbarSlot(player); // controller only functionality
 					}
 					hotbar_t.hotbarTooltipLastGameTick = ticks;
+					//Player::soundHotbarShootmodeMovement();
 				}
 			}
 			else
@@ -3150,10 +3174,10 @@ void drawStatusNew(const int player)
 				hotbar_t.hotbarTooltipLastGameTick = 0;
 			}
 		}
-		if ( Input::inputs[player].binaryToggle("Hotbar Scroll Left") )
+		if ( !players[player]->hotbar.useHotbarFaceMenu && Input::inputs[player].binaryToggle("Hotbar Left") )
 		{
 			bool usingMouseWheel = false;
-			const auto binding = Input::inputs[player].input("Hotbar Scroll Left");
+			const auto binding = Input::inputs[player].input("Hotbar Left");
 			if ( binding.type == Input::binding_t::bindtype_t::MOUSE_BUTTON )
 			{
 				if ( binding.mouseButton == Input::MOUSE_WHEEL_DOWN || binding.mouseButton == Input::MOUSE_WHEEL_UP )
@@ -3163,9 +3187,9 @@ void drawStatusNew(const int player)
 			}
 			if ( !usingMouseWheel )
 			{
-				Input::inputs[player].consumeBinaryToggle("Hotbar Scroll Left");
+				Input::inputs[player].consumeBinaryToggle("Hotbar Left");
 			}
-			bool gamepadControl = Input::inputs[player].input("Hotbar Scroll Left").isBindingUsingGamepad();
+			bool gamepadControl = Input::inputs[player].input("Hotbar Left").isBindingUsingGamepad();
 			if ( gamepadControl && players[player]->hotbar.useHotbarFaceMenu )
 			{
 				// no action, gamepads can't scroll when useHotbarFaceMenu
@@ -3190,6 +3214,7 @@ void drawStatusNew(const int player)
 						warpMouseToSelectedHotbarSlot(player); // controller only functionality
 					}
 					hotbar_t.hotbarTooltipLastGameTick = ticks;
+					//Player::soundHotbarShootmodeMovement();
 				}
 			}
 			else
@@ -3200,9 +3225,8 @@ void drawStatusNew(const int player)
 
 		if ( !players[player]->GUI.isDropdownActive() && !inputs.getUIInteraction(player)->selectedItem && !openedChest[player] && gui_mode != (GUI_MODE_SHOP) )
 		{
-			if ( input.consumeBinaryToggle("Hotbar Select") 
-				&& shootmode 
-				&& (!hotbar_t.useHotbarFaceMenu || (hotbar_t.useHotbarFaceMenu && !inputs.hasController(player)))
+			if ( (!hotbar_t.useHotbarFaceMenu || (hotbar_t.useHotbarFaceMenu && !inputs.hasController(player)))
+                && input.consumeBinaryToggle("Hotbar Up / Select") && shootmode
 				&& !openedChest[player] && gui_mode != (GUI_MODE_SHOP)
 				&& !players[player]->bookGUI.bBookOpen
 				&& !players[player]->signGUI.bSignOpen
@@ -3248,6 +3272,13 @@ void drawStatusNew(const int player)
 						if ( Input::inputs[player].binaryToggle(getContextMenuOptionBindingName(player, option).c_str()) )
 						{
 							bindingPressed = true;
+
+							if ( Input::inputs[player].getPlayerControlType() == Input::PLAYER_CONTROLLED_BY_KEYBOARD )
+							{
+								// rare bug causes rogue activations on keyboard controls holding space + opening inventory
+								// skip this section and consume presses
+								break;
+							}
 
 							if ( option == ItemContextMenuPrompts::PROMPT_DROP && players[player]->paperDoll.isItemOnDoll(*item) )
 							{
@@ -3346,8 +3377,9 @@ void drawStatusNew(const int player)
 				learnedSpell = (playerLearnedSpellbook(player, item) || itemIsEquipped(item, player));
 			}
 
-			if ( (keystatus[SDL_SCANCODE_LALT] || keystatus[SDL_SCANCODE_RALT])
-				&& (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK || item->type == FOOD_CREAMPIE) )
+			if ( ((keystatus[SDLK_LALT] || keystatus[SDLK_RALT])
+				&& (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK)) 
+				|| item->type == FOOD_CREAMPIE )
 			{
 				badpotion = true;
 				learnedSpell = true;
@@ -3360,8 +3392,8 @@ void drawStatusNew(const int player)
 				spell_t* currentSpell = getSpellFromID(getSpellIDFromSpellbook(item->type));
 				if ( currentSpell && stats[player] )
 				{
-					int skillLVL = stats[player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[player], players[player]->entity);
-					if ( stats[player]->PROFICIENCIES[PRO_MAGIC] >= 100 )
+					int skillLVL = stats[player]->getModifiedProficiency(PRO_MAGIC) + statGetINT(stats[player], players[player]->entity);
+					if ( stats[player]->getModifiedProficiency(PRO_MAGIC) >= 100 )
 					{
 						skillLVL = 100;
 					}
@@ -3375,7 +3407,8 @@ void drawStatusNew(const int player)
 
 			if ( itemCategory(item) == SPELLBOOK && stats[player] )
 			{
-				if ( stats[player]->type == GOBLIN || stats[player]->type == CREATURE_IMP )
+				if ( stats[player]->type == GOBLIN || stats[player]->type == CREATURE_IMP
+					|| (stats[player]->playerRace == RACE_GOBLIN && stats[player]->stat_appearance == 0) )
 				{
 					learnedSpell = true; // goblinos can't learn spells but always equip books.
 				}
@@ -3439,7 +3472,12 @@ void drawStatusNew(const int player)
 						}
 						else
 						{
+							if ( itemCategory(item) == SPELLBOOK )
+							{
+								players[player]->magic.spellbookUidFromHotbarSlot = item->uid;
+							}
 							useItem(item, player);
+							players[player]->magic.spellbookUidFromHotbarSlot = 0;
 						}
 					}
 				}
@@ -3452,12 +3490,13 @@ void drawStatusNew(const int player)
 			{
 				if ( client_classes[player] == CLASS_SHAMAN && item->type == SPELL_ITEM )
 				{
-					messagePlayer(player, MESSAGE_COMBAT, language[3488]); // unable to use with current level.
+					messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3488)); // unable to use with current level.
 				}
 				else
 				{
-					messagePlayer(player, MESSAGE_COMBAT, language[3432]); // unable to use in current form message.
+					messagePlayer(player, MESSAGE_INVENTORY | MESSAGE_HINT | MESSAGE_EQUIPMENT, Language::get(3432)); // unable to use in current form message.
 				}
+				playSoundPlayer(player, 90, 64);
 			}
 		}
 	}
@@ -3480,563 +3519,23 @@ void drawStatusNew(const int player)
 		FollowerMenu[player].followerFrame->setDisabled(true);
 	}
 	FollowerMenu[player].drawFollowerMenu();
-	
-	// stat increase icons
 
-	SDL_Rect pos;
-	pos.w = 64;
-	pos.h = 64;
-	pos.x = players[player]->camera_x2() - pos.w * 3 - 9;
-	pos.y = players[player]->characterSheet.skillsSheetBox.h + (32 + pos.h * 2 + 3); // 131px from end of prof window.
-
-	if ( (!shootmode || players[player]->characterSheet.lock_right_sidebar) && players[player]->characterSheet.proficienciesPage == 1
-		&& pos.y < (players[player]->characterSheet.partySheetBox.y + players[player]->characterSheet.partySheetBox.h + 16) )
+	if ( !CalloutMenu[player].calloutFrame )
 	{
-		pos.y = players[player]->characterSheet.partySheetBox.y + players[player]->characterSheet.partySheetBox.h + 16;
-	}
-
-	if ( splitscreen )
-	{
-		// todo - adjust position.
-		pos.w = 48;
-		pos.h = 48;
-		pos.x = players[player]->camera_x2() - pos.w * 3 - 9;
-		pos.y = players[player]->characterSheet.skillsSheetBox.h + (16 + pos.h * 2 + 3);
-	}
-	else
-	{
-		if ( pos.y + pos.h > (players[player]->camera_y2() - minimaps[player].y - minimaps[player].h) ) // check if overlapping minimap
+		auto frame = gameUIFrame[player]->findFrame("callout");
+		if ( !frame )
 		{
-			pos.y = (players[player]->camera_y2() - minimaps[player].y - minimaps[player].h) - (64 + 3); // align above minimap
-		}
-	}
-
-	SDL_Surface *tmp_bmp = NULL;
-
-	for ( i = 0; i < NUMSTATS; i++ )
-	{
-		if ( stats[player] && stats[player]->PLAYER_LVL_STAT_TIMER[i] > 0 && ((ticks % 50) - (ticks % 10)) )
-		{
-			stats[player]->PLAYER_LVL_STAT_TIMER[i]--;
-
-			switch ( i )
-			{
-				// prepare the stat image.
-				case STAT_STR:
-					tmp_bmp = str_bmp64u;
-					break;
-				case STAT_DEX:
-					tmp_bmp = dex_bmp64u;
-					break;
-				case STAT_CON:
-					tmp_bmp = con_bmp64u;
-					break;
-				case STAT_INT:
-					tmp_bmp = int_bmp64u;
-					break;
-				case STAT_PER:
-					tmp_bmp = per_bmp64u;
-					break;
-				case STAT_CHR:
-					tmp_bmp = chr_bmp64u;
-					break;
-				default:
-					break;
-			}
-			drawImageScaled(tmp_bmp, NULL, &pos);
-			if ( stats[player]->PLAYER_LVL_STAT_TIMER[i + NUMSTATS] > 0 )
-			{
-				// bonus stat acheived, draw additional stat icon above.
-				pos.y -= 64 + 3;
-				drawImageScaled(tmp_bmp, NULL, &pos);
-				pos.y += 64 + 3;
-				stats[player]->PLAYER_LVL_STAT_TIMER[i + NUMSTATS]--;
-			}
-
-			pos.x += pos.h + 3;
-		}
-	}
-}
-
-int drawSpellTooltip(const int player, spell_t* spell, Item* item, SDL_Rect* src)
-{
-	const Sint32 mousex = inputs.getMouse(player, Inputs::X);
-	const Sint32 mousey = inputs.getMouse(player, Inputs::Y);
-
-	SDL_Rect pos;
-	if ( src )
-	{
-		pos.x = src->x;
-		pos.y = src->y;
-	}
-	else
-	{
-		pos.x = mousex + 16;
-		pos.y = mousey + 8;
-	}
-	bool spellbook = false;
-	if ( item && itemCategory(item) == SPELLBOOK )
-	{
-		spellbook = true;
-	}
-	if ( spell )
-	{
-		node_t* rootNode = spell->elements.first;
-		spellElement_t* elementRoot = nullptr;
-		if ( rootNode )
-		{
-			elementRoot = (spellElement_t*)(rootNode->element);
-		}
-		int damage = 0;
-		int mana = 0;
-		int heal = 0;
-		spellElement_t* primaryElement = nullptr;
-		if ( elementRoot )
-		{
-			node_t* primaryNode = elementRoot->elements.first;
-			mana = elementRoot->mana;
-			heal = mana;
-			if ( primaryNode )
-			{
-				primaryElement = (spellElement_t*)(primaryNode->element);
-				if ( primaryElement )
-				{
-					damage = primaryElement->damage;
-				}
-			}
-			if ( players[player] )
-			{
-				int bonus = 0;
-				if ( spellbook )
-				{
-					bonus = 25 * ((shouldInvertEquipmentBeatitude(stats[player]) ? abs(item->beatitude) : item->beatitude));
-					if ( stats[player] )
-					{
-						if ( players[player] && players[player]->entity )
-						{
-							bonus += players[player]->entity->getINT() * 0.5;
-						}
-						else
-						{
-							bonus += statGetINT(stats[player], nullptr) * 0.5;
-						}
-					}
-					if ( bonus < 0 )
-					{
-						bonus = 0;
-					}
-				}
-				damage += (damage * (bonus * 0.01 + getBonusFromCasterOfSpellElement(players[player]->entity, stats[player], primaryElement)));
-				heal += (heal * (bonus * 0.01 + getBonusFromCasterOfSpellElement(players[player]->entity, stats[player], primaryElement)));
-			}
-			if ( spell->ID == SPELL_HEALING || spell->ID == SPELL_EXTRAHEALING )
-			{
-				damage = heal;
-			}
-		}
-		int spellInfoLines = 1;
-		char spellType[32] = "";
-		char spellEffectText[256] = "";
-		real_t sustainCostPerSecond = 0.f;
-		getSpellEffectString(spell->ID, spellEffectText, spellType, damage, &spellInfoLines, &sustainCostPerSecond);
-		char tempstr[64] = "";
-		char spellNameString[128] = "";
-		if ( item && item->appearance >= 1000 )
-		{
-			// shapeshift spells, append the form name here.
-			switch ( spell->ID )
-			{
-				case SPELL_SPEED:
-				case SPELL_DETECT_FOOD:
-					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3408]);
-					break;
-				case SPELL_POISON:
-				case SPELL_SPRAY_WEB:
-					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3409]);
-					break;
-				case SPELL_STRIKE:
-				case SPELL_FEAR:
-				case SPELL_TROLLS_BLOOD:
-					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3410]);
-					break;
-				case SPELL_LIGHTNING:
-				case SPELL_CONFUSE:
-				case SPELL_AMPLIFY_MAGIC:
-					snprintf(spellNameString, 127, "%s (%s)", spell->name, language[3411]);
-					break;
-				default:
-					strncpy(spellNameString, spell->name, 127);
-					break;
-			}
+			CalloutMenu[player].calloutFrame = gameUIFrame[player]->addFrame("callout");
 		}
 		else
 		{
-			strncpy(spellNameString, spell->name, 127);
+			CalloutMenu[player].calloutFrame = frame;
 		}
-
-		if ( spell->ID == SPELL_DOMINATE )
-		{
-			snprintf(tempstr, 63, language[2977], getCostOfSpell(spell));
-		}
-		else if ( spell->ID == SPELL_DEMON_ILLUSION )
-		{
-			snprintf(tempstr, 63, language[3853], getCostOfSpell(spell));
-		}
-		else
-		{
-			if ( players[player] && players[player]->entity )
-			{
-				if ( sustainCostPerSecond > 0.01 )
-				{
-					snprintf(tempstr, 31, language[3325],
-						getCostOfSpell(spell, players[player]->entity), sustainCostPerSecond);
-				}
-				else
-				{
-					snprintf(tempstr, 31, language[308], getCostOfSpell(spell, players[player]->entity));
-				}
-			}
-			else
-			{
-				if ( sustainCostPerSecond > 0.01 )
-				{
-					snprintf(tempstr, 31, language[3325],
-						getCostOfSpell(spell), sustainCostPerSecond);
-				}
-				else
-				{
-					snprintf(tempstr, 31, language[308], getCostOfSpell(spell));
-				}
-			}
-		}
-		if ( strcmp(spellEffectText, "") )
-		{
-			pos.w = (longestline(spellEffectText) + 1) * TTF12_WIDTH + 8;
-		}
-		else
-		{
-			pos.w = std::max(longestline(spellNameString), longestline(tempstr)) * TTF12_WIDTH + 8;
-		}
-
-		if ( src )
-		{
-			pos.x -= pos.w / 2;
-		}
-
-		int furthestX = players[player]->camera_x2();
-		if ( players[player]->characterSheet.proficienciesPage == 0 )
-		{
-			if ( pos.y < players[player]->characterSheet.skillsSheetBox.y + players[player]->characterSheet.skillsSheetBox.h )
-			{
-				furthestX = players[player]->camera_x2() - players[player]->characterSheet.skillsSheetBox.w;
-			}
-		}
-		else
-		{
-			if ( pos.y < players[player]->characterSheet.partySheetBox.y + players[player]->characterSheet.partySheetBox.h )
-			{
-				furthestX = players[player]->camera_x2() - players[player]->characterSheet.partySheetBox.w;
-			}
-		}
-
-		if ( pos.x + pos.w + 16 > furthestX ) // overflow right side of screen
-		{
-			pos.x -= (pos.w + 32);
-		}
-		pos.h = TTF12_HEIGHT * (2 + spellInfoLines + 1) + 8;
-		if ( spellInfoLines >= 4 )
-		{
-			pos.h += 4;
-		}
-		else if ( spellInfoLines == 3 )
-		{
-			pos.h += 2;
-		}
-
-		if ( src )
-		{
-			pos.y -= pos.h;
-		}
-
-		if ( pos.y + pos.h + 16 > players[player]->camera_y2() ) // overflow bottom of screen
-		{
-			pos.y -= (pos.y + pos.h + 16 - players[player]->camera_y2());
-		}
-		if ( spellbook )
-		{
-			return damage;
-		}
-
-		drawTooltip(&pos);
-		ttfPrintTextFormatted(ttf12, pos.x + 4, pos.y + 4, "%s\n%s\n%s",
-			spellNameString, tempstr, spellType);
-		Uint32 effectColor = uint32ColorLightBlue;
-		ttfPrintTextFormattedColor(ttf12, pos.x + 4, pos.y + 4, effectColor,
-			"\n\n\n%s", spellEffectText);
+		CalloutMenu[player].calloutFrame->setHollow(true);
+		CalloutMenu[player].calloutFrame->setBorder(0);
+		CalloutMenu[player].calloutFrame->setOwner(player);
+		CalloutMenu[player].calloutFrame->setInheritParentFrameOpacity(false);
+		CalloutMenu[player].calloutFrame->setDisabled(true);
 	}
-	else
-	{
-		pos.w = longestline("Error: Spell doesn't exist!") * TTF12_WIDTH + 8;
-		pos.h = TTF12_HEIGHT + 8;
-		drawTooltip(&pos);
-		ttfPrintTextFormatted(ttf12, pos.x + 4, pos.y + 4, "%s", "Error: Spell doesn't exist!");
-	}
-	return 0;
-}
-
-void getSpellEffectString(int spellID, char effectTextBuffer[256], char spellType[32], int value, int* spellInfoLines, real_t* sustainCostPerSecond)
-{
-	if ( !spellInfoLines || !sustainCostPerSecond )
-	{
-		return;
-	}
-	switch ( spellID )
-	{
-		case SPELL_FORCEBOLT:
-		case SPELL_MAGICMISSILE:
-		case SPELL_LIGHTNING:
-			snprintf(effectTextBuffer, 255, language[3289], value);
-			snprintf(spellType, 31, language[3303]);
-			break;
-		case SPELL_COLD:
-			snprintf(effectTextBuffer, 255, language[3290], value, language[3294]);
-			snprintf(spellType, 31, language[3303]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_POISON:
-			snprintf(effectTextBuffer, 255, language[3290], value, language[3300]);
-			snprintf(spellType, 31, language[3303]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_FIREBALL:
-			snprintf(effectTextBuffer, 255, language[3290], value, language[3295]);
-			snprintf(spellType, 31, language[3303]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_BLEED:
-			snprintf(effectTextBuffer, 255, language[3291], value, language[3297], language[3294]);
-			*spellInfoLines = 2;
-			snprintf(spellType, 31, language[3303]);
-			break;
-		case SPELL_SLOW:
-			snprintf(effectTextBuffer, 255, language[3292], language[3294]);
-			snprintf(spellType, 31, language[3303]);
-			break;
-		case SPELL_SLEEP:
-			snprintf(effectTextBuffer, 255, language[3292], language[3298]);
-			snprintf(spellType, 31, language[3303]);
-			break;
-		case SPELL_CONFUSE:
-			snprintf(effectTextBuffer, 255, language[3292], language[3299]);
-			snprintf(spellType, 31, language[3303]);
-			break;
-		case SPELL_ACID_SPRAY:
-			snprintf(effectTextBuffer, 255, language[3293], value, language[3300]);
-			snprintf(spellType, 31, language[3304]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_HEALING:
-		case SPELL_EXTRAHEALING:
-		{
-			snprintf(spellType, 31, language[3301]);
-			snprintf(effectTextBuffer, 255, language[3307], value);
-			*spellInfoLines = 2;
-			break;
-		}
-		case SPELL_REFLECT_MAGIC:
-			snprintf(spellType, 31, language[3302]);
-			snprintf(effectTextBuffer, 255, language[3308]);
-			*spellInfoLines = 2;
-			*sustainCostPerSecond = 6.f;
-			break;
-		case SPELL_LEVITATION:
-			snprintf(spellType, 31, language[3302]);
-			snprintf(effectTextBuffer, 255, language[3309]);
-			*sustainCostPerSecond = 0.6;
-			break;
-		case SPELL_INVISIBILITY:
-			snprintf(spellType, 31, language[3302]);
-			snprintf(effectTextBuffer, 255, language[3310]);
-			*sustainCostPerSecond = 1.f;
-			break;
-		case SPELL_LIGHT:
-			snprintf(spellType, 31, language[3302]);
-			snprintf(effectTextBuffer, 255, language[3311]);
-			*sustainCostPerSecond = 15.f;
-			break;
-		case SPELL_REMOVECURSE:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3312]);
-			break;
-		case SPELL_IDENTIFY:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3313]);
-			break;
-		case SPELL_MAGICMAPPING:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3314]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_TELEPORTATION:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3315]);
-			break;
-		case SPELL_OPENING:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3316]);
-			break;
-		case SPELL_LOCKING:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3317]);
-			break;
-		case SPELL_CUREAILMENT:
-			snprintf(spellType, 31, language[3301]);
-			snprintf(effectTextBuffer, 255, language[3318]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_DIG:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3319]);
-			break;
-		case SPELL_SUMMON:
-			snprintf(spellType, 31, language[3306]);
-			snprintf(effectTextBuffer, 255, language[3320]);
-			*spellInfoLines = 3;
-			break;
-		case SPELL_STONEBLOOD:
-			snprintf(spellType, 31, language[3304]);
-			snprintf(effectTextBuffer, 255, language[3292], language[3296]);
-			break;
-		case SPELL_DOMINATE:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3321]);
-			*spellInfoLines = 4;
-			break;
-		case SPELL_STEAL_WEAPON:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3322]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_DRAIN_SOUL:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3323], value);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_VAMPIRIC_AURA:
-			snprintf(spellType, 31, language[3302]);
-			snprintf(effectTextBuffer, 255, language[3324]);
-			*spellInfoLines = 4;
-			*sustainCostPerSecond = 0.33;
-			break;
-		case SPELL_CHARM_MONSTER:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3326]);
-			*spellInfoLines = 3;
-			break;
-		case SPELL_REVERT_FORM:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3851]);
-			*spellInfoLines = 1;
-			break;
-		case SPELL_RAT_FORM:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3847]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_SPIDER_FORM:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3848]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_TROLL_FORM:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3849]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_IMP_FORM:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3850]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_SPRAY_WEB:
-			snprintf(spellType, 31, language[3304]);
-			snprintf(effectTextBuffer, 255, language[3834]);
-			*spellInfoLines = 4;
-			break;
-		case SPELL_SPEED:
-			snprintf(spellType, 31, language[3301]);
-			snprintf(effectTextBuffer, 255, language[3835]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_FEAR:
-			snprintf(spellType, 31, language[3301]);
-			snprintf(effectTextBuffer, 255, language[3836]);
-			*spellInfoLines = 3;
-			break;
-		case SPELL_STRIKE:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3838]);
-			*spellInfoLines = 4;
-			break;
-		case SPELL_DETECT_FOOD:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3839]);
-			*spellInfoLines = 1;
-			break;
-		case SPELL_WEAKNESS:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3837]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_AMPLIFY_MAGIC:
-			snprintf(spellType, 31, language[3302]);
-			snprintf(effectTextBuffer, 255, language[3852]);
-			*spellInfoLines = 2;
-			*sustainCostPerSecond = 0.25;
-			break;
-		case SPELL_SHADOW_TAG:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3843]);
-			*spellInfoLines = 3;
-			break;
-		case SPELL_TELEPULL:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3844]);
-			*spellInfoLines = 3;
-			break;
-		case SPELL_DEMON_ILLUSION:
-			snprintf(spellType, 31, language[3303]);
-			snprintf(effectTextBuffer, 255, language[3845]);
-			*spellInfoLines = 3;
-			break;
-		case SPELL_TROLLS_BLOOD:
-			snprintf(spellType, 31, language[3301]);
-			snprintf(effectTextBuffer, 255, language[3840]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_SALVAGE:
-			snprintf(spellType, 31, language[3301]);
-			snprintf(effectTextBuffer, 255, language[3846]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_FLUTTER:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3841]);
-			*spellInfoLines = 1;
-			break;
-		case SPELL_DASH:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3842]);
-			*spellInfoLines = 3;
-			break;
-		case SPELL_SELF_POLYMORPH:
-			snprintf(spellType, 31, language[3305]);
-			snprintf(effectTextBuffer, 255, language[3886]);
-			*spellInfoLines = 2;
-			break;
-		case SPELL_CRAB_FORM:
-		case SPELL_CRAB_WEB:
-		default:
-			break;
-	}
+	CalloutMenu[player].drawCalloutMenu();
 }

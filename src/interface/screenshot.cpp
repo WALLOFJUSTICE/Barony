@@ -37,22 +37,18 @@ void takeScreenshot(const char* output_path)
     if (output_path) {
         (void)completePath(filename, output_path, outputdir);
     } else {
+        char buffer[32];
 	    char filename2[PATH_MAX];
-	    strcpy( filename2, "Screenshot " );
-	    time_t timer;
-	    char buffer[32];
-	    struct tm* tm_info;
-	    time(&timer);
-	    tm_info = localtime(&timer);
-	    strftime( buffer, 32, "%Y-%m-%d %H-%M-%S", tm_info );
-	    strcat( filename2, buffer );
-	    strcat( filename2, ".png" );
+	    strcpy(filename2, "Screenshot ");
+        getTimeAndDateFormatted(getTime(), buffer, sizeof(buffer));
+	    strcat(filename2, buffer);
+	    strcat(filename2, ".png");
         (void)completePath(filename, filename2, outputdir);
 	}
 
 	temp = SDL_CreateRGBSurface(0, xres, yres, 32, 0, 0, 0, 0);
 	SDL_LockSurface(temp);
-	glReadPixels(0, 0, xres, yres, GL_BGRA, GL_UNSIGNED_BYTE, temp->pixels);
+    GL_CHECK_ERR(glReadPixels(0, 0, xres, yres, GL_BGRA, GL_UNSIGNED_BYTE, temp->pixels));
 	SDL_UnlockSurface(temp);
 	temp2 = flipSurface( temp, FLIP_VERTICAL );
 	SDL_FreeSurface( temp );

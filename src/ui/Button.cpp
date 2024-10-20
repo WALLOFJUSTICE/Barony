@@ -80,7 +80,7 @@ void Button::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 	const bool focused = (fingerdown && highlighted) || selected;
 #else
 	const int mouseowner = intro || gamePaused ? inputs.getPlayerIDAllowedKeyboard() : owner;
-	const bool focused = highlighted || (selected && !inputs.getVirtualMouse(mouseowner)->draw_cursor);
+	const bool focused = highlighted || (selected && !inputs.getVirtualMouse(mouseowner)->draw_cursor && (intro || !players[owner]->shootmode));
 #endif
 
 	SDL_Rect scaledSize;
@@ -119,6 +119,7 @@ void Button::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 	image.ontop = false;
 	image.pos = {0, 0, size.w, size.h};
 	image.tiled = false;
+	image.noBlitParent = true;
 	auto frame = static_cast<Frame*>(parent);
 	frame->drawImage(&image, _size,
 		SDL_Rect{
@@ -185,7 +186,7 @@ void Button::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 					++lines;
 				}
 			}
-			int fullH = lines * _font->height(false) + _font->getOutline() * 2;
+			int fullH = lines * (_font->height(false) + paddingPerTextLine) + _font->getOutline() * 2;
 
 			char* buf = (char*)malloc(text.size() + 1);
 			memcpy(buf, text.c_str(), text.size() + 1);
@@ -222,7 +223,7 @@ void Button::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const 
 				x += textOffset.x;
 				y += textOffset.y;
 
-				yoff += _font->height(false);
+				yoff += _font->height(false) + paddingPerTextLine;
 
 				SDL_Rect pos = _size;
 				pos.x += std::max(0, x - scroll.x);
@@ -438,17 +439,23 @@ void Button::scrollParent() {
 	Frame* fparent = static_cast<Frame*>(parent);
 	auto fActualSize = fparent->getActualSize();
 	auto fSize = fparent->getSize();
-	if (size.y < fActualSize.y) {
-		fActualSize.y = size.y;
+
+	const auto y = size.y + scrollParentOffset.y;
+	const auto h = size.h + scrollParentOffset.h;
+	const auto x = size.x + scrollParentOffset.x;
+	const auto w = size.w + scrollParentOffset.w;
+
+	if ( y < fActualSize.y) {
+		fActualSize.y = y;
 	}
-	else if (size.y + size.h >= fActualSize.y + fSize.h) {
-		fActualSize.y = (size.y + size.h) - fSize.h;
+	else if ( size.y + h >= fActualSize.y + fSize.h) {
+		fActualSize.y = (size.y + h) - fSize.h;
 	}
-	if (size.x < fActualSize.x) {
-		fActualSize.x = size.x;
+	if (x < fActualSize.x) {
+		fActualSize.x = x;
 	}
-	else if (size.x + size.w >= fActualSize.x + fSize.w) {
-		fActualSize.x = (size.x + size.w) - fSize.w;
+	else if (size.x + w >= fActualSize.x + fSize.w) {
+		fActualSize.x = (size.x + w) - fSize.w;
 	}
 	fparent->setActualSize(fActualSize);
 }

@@ -31,6 +31,7 @@
 #endif
 
 #define STEAMDEBUG
+//#define DEBUG_ACHIEVEMENTS
 
 #ifdef STEAMWORKS
 
@@ -38,8 +39,12 @@ static std::string roomkey_cached;
 Uint32 numSteamLobbies = 0;
 int selectedSteamLobby = 0;
 char lobbyText[MAX_STEAM_LOBBIES][64];
+char lobbyVersion[MAX_STEAM_LOBBIES][64];
 void* lobbyIDs[MAX_STEAM_LOBBIES] = { NULL };
 int lobbyPlayers[MAX_STEAM_LOBBIES] = { 0 };
+int lobbyNumMods[MAX_STEAM_LOBBIES] = { 0 };
+char lobbyChallengeRun[MAX_STEAM_LOBBIES][64];
+bool lobbyModDisableAchievements[MAX_STEAM_LOBBIES] = { false };
 bool steamAwaitingLobbyCreation = false;
 
 const char* getRoomCode() {
@@ -51,7 +56,10 @@ void* steamIDRemote[MAXPLAYERS] = {NULL, NULL, NULL, NULL};
 char currentLobbyName[32] = { 0 };
 Uint32 currentSvFlags = 0;
 #ifdef STEAMWORKS
-ELobbyType currentLobbyType = k_ELobbyTypePrivate;
+ELobbyType currentLobbyType = k_ELobbyTypePublic;
+ELobbyType steamLobbyTypeUserConfigured = k_ELobbyTypePublic;
+bool steamLobbyFriendsOnlyUserConfigured = true;
+bool steamLobbyInviteOnlyUserConfigured = false;
 #endif
 static bool handlingInvite = false;
 
@@ -187,17 +195,11 @@ public:
 	}
 
 	STEAM_GAMESERVER_CALLBACK(SteamServerWrapper, OnSteamServersConnected, SteamServersConnected_t, m_CallbackSteamServersConnected);
-
 	STEAM_GAMESERVER_CALLBACK(SteamServerWrapper, OnSteamServersDisconnected, SteamServersDisconnected_t, m_CallbackSteamServersDisconnected);
-
 	STEAM_GAMESERVER_CALLBACK(SteamServerWrapper, OnSteamServersConnectFailure, SteamServerConnectFailure_t, m_CallbackSteamServersConnectFailure);
-
 	STEAM_GAMESERVER_CALLBACK(SteamServerWrapper, OnPolicyResponse, GSPolicyResponse_t, m_CallbackPolicyResponse);
-
 	STEAM_GAMESERVER_CALLBACK(SteamServerWrapper, OnValidateAuthTicketResponse, ValidateAuthTicketResponse_t, m_CallbackGSAuthTicketResponse);
-
 	STEAM_GAMESERVER_CALLBACK(SteamServerWrapper, OnP2PSessionRequest, P2PSessionRequest_t, m_CallbackP2PSessionRequest);
-
 	STEAM_GAMESERVER_CALLBACK(SteamServerWrapper, OnP2PSessionConnectFail, P2PSessionConnectFail_t, m_CallbackP2PSessionConnectFail);
 }* steam_server_wrapper;
 
@@ -310,34 +312,18 @@ public:
 
 	STEAM_CALLBACK(SteamServerClientWrapper, OnLobbyDataUpdate, LobbyDataUpdate_t, m_CallbackLobbyDataUpdate);
 	STEAM_CALLBACK(SteamServerClientWrapper, OnLobbyMemberUpdate, LobbyChatUpdate_t, m_CallbackLobbyMemberUpdate);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnLobbyGameCreated, LobbyGameCreated_t, m_LobbyGameCreated);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnGameJoinRequested, GameLobbyJoinRequested_t, m_GameJoinRequested);
-
-	//STEAM_CALLBACK( CSpaceWarClient, OnAvatarImageLoaded, AvatarImageLoaded_t, m_AvatarImageLoadedCreated );
 	STEAM_CALLBACK(SteamServerClientWrapper, OnAvatarImageLoaded, AvatarImageLoaded_t, m_AvatarImageLoadedCreated); //TODO: Finish.
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnSteamServersConnected, SteamServersConnected_t, m_SteamServersConnected);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnSteamServersDisconnected, SteamServersDisconnected_t, m_SteamServersDisconnected);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnSteamServerConnectFailure, SteamServerConnectFailure_t, m_SteamServerConnectFailure);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnGameOverlayActivated, GameOverlayActivated_t, m_CallbackGameOverlayActivated);
-
-	//STEAM_CALLBACK( CSpaceWarClient, OnGameWebCallback, GameWebCallback_t, m_CallbackGameWebCallback );
 	STEAM_CALLBACK(SteamServerClientWrapper, OnGameWebCallback, GameWebCallback_t, m_CallbackGameWebCallback); //TODO: Finish.
-
-	//STEAM_CALLBACK(CSpaceWarClient, OnWorkshopItemInstalled, ItemInstalled_t, m_CallbackWorkshopItemInstalled);
 	STEAM_CALLBACK(SteamServerClientWrapper, OnWorkshopItemInstalled, ItemInstalled_t, m_CallbackWorkshopItemInstalled); //TODO: Finish.
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnP2PSessionConnectFail, P2PSessionConnectFail_t, m_CallbackP2PSessionConnectFail);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnIPCFailure, IPCFailure_t, m_IPCFailureCallback);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnSteamShutdown, SteamShutdown_t, m_SteamShutdownCallback);
-
 	STEAM_CALLBACK(SteamServerClientWrapper, OnP2PSessionRequest, P2PSessionRequest_t, m_CallbackP2PSessionRequest);
 
 	void OnLobbyCreated(LobbyCreated_t* pCallback, bool bIOFailure);
@@ -358,55 +344,83 @@ public:
 	void m_SteamCallResultEncryptedAppTicket_Set(SteamAPICall_t hSteamAPICall);
 	void RetrieveSteamIDFromGameServer( uint32_t m_unServerIP, uint16_t m_usServerPort );
 	void GetNumberOfCurrentPlayers();
+	std::string requestAuthTicket();
+	void consumeAuthTicket();
+	std::string authTicket = "";
+	HAuthTicket authTicketHandle = 0;
 private:
 	void OnGetNumberOfCurrentPlayers( NumberOfCurrentPlayers_t *pCallback, bool bIOFailure );
 	CCallResult< SteamServerClientWrapper, NumberOfCurrentPlayers_t > m_NumberOfCurrentPlayersCallResult;
-	// simple class to marshal callbacks from pinging a game server
-	class CGameServerPing : public ISteamMatchmakingPingResponse
-	{
-	public:
-		CGameServerPing()
-		{
-			m_hGameServerQuery = HSERVERQUERY_INVALID;
-			m_pClient = NULL;
-		}
-
-		void RetrieveSteamIDFromGameServer( SteamServerClientWrapper* pClient, uint32_t unIP, uint16_t unPort )
-		{
-			m_pClient = pClient;
-			m_hGameServerQuery = SteamMatchmakingServers()->PingServer( unIP, unPort, this );
-		}
-
-		void CancelPing()
-		{
-			m_hGameServerQuery = HSERVERQUERY_INVALID;
-		}
-
-		// Server has responded successfully and has updated data
-		virtual void ServerResponded( gameserveritem_t& server )
-		{
-			if ( m_hGameServerQuery != HSERVERQUERY_INVALID && server.m_steamID.IsValid() )
-			{
-				(*cpp_SteamServerClientWrapper_GameServerPingOnServerResponded)( static_cast<void*>(&server.m_steamID) );
-			}
-
-			m_hGameServerQuery = HSERVERQUERY_INVALID;
-		}
-
-		// Server failed to respond to the ping request
-		virtual void ServerFailedToRespond()
-		{
-			m_hGameServerQuery = HSERVERQUERY_INVALID;
-		}
-
-	private:
-		HServerQuery m_hGameServerQuery;	// we're pinging a game server so we can convert IP:Port to a steamID
-		SteamServerClientWrapper* m_pClient;
-	};
-	CGameServerPing m_GameServerPing;
 }* steam_server_client_wrapper; //TODO: Initialize this...where?
 
+void SteamClientConsumeAuthTicket()
+{
+	if ( steam_server_client_wrapper )
+	{
+		steam_server_client_wrapper->consumeAuthTicket();
+	}
+}
 
+void SteamServerClientWrapper::consumeAuthTicket()
+{
+	if ( authTicketHandle != k_HAuthTicketInvalid )
+	{
+		SteamUser()->CancelAuthTicket(authTicketHandle);
+	}
+	authTicketHandle = k_HAuthTicketInvalid;
+	authTicket = "";
+}
+
+std::string SteamClientRequestAuthTicket()
+{
+	if ( steam_server_client_wrapper )
+	{
+		return steam_server_client_wrapper->requestAuthTicket();
+	}
+	return "";
+}
+
+std::string SteamServerClientWrapper::requestAuthTicket()
+{
+	if ( !SteamUser()->BLoggedOn() )
+	{
+		printlog("[STEAM]: requestAuthTicket() not logged in");
+		return "";
+	}
+
+	uint8 rgubTicket[1024];
+	memset(rgubTicket, 0, sizeof(rgubTicket));
+	uint32 cubTicket;
+
+	consumeAuthTicket();
+
+#if defined(LINUX) || defined(APPLE)
+    // TODO update steamworks SDK for linux and mac
+    authTicketHandle = SteamUser()->GetAuthSessionTicket(rgubTicket, sizeof(rgubTicket), &cubTicket);
+#else
+    authTicketHandle = SteamUser()->GetAuthSessionTicket(rgubTicket, sizeof(rgubTicket), &cubTicket, nullptr);
+#endif
+ 
+	if ( authTicketHandle )
+	{
+		char buf[1024] = "";
+		Uint32 len = cubTicket;
+		memcpy(buf, rgubTicket, cubTicket);
+		buf[cubTicket] = 0;
+		printlog("[STEAM]: GetAuthSessionTicket() request success");
+
+		authTicket = "";
+		char hexBuf[32];
+		memset(hexBuf, 0, sizeof(hexBuf));
+		for ( int i = 0; i < cubTicket; ++i )
+		{
+			snprintf(hexBuf, sizeof(hexBuf), "%02hhx", buf[i]);
+			authTicket += hexBuf;
+		}
+	}
+
+	return authTicket;
+}
 
 void SteamServerClientWrapper::OnLobbyDataUpdate(LobbyDataUpdate_t* pCallback)
 {
@@ -493,16 +507,6 @@ void SteamServerClientWrapper::OnP2PSessionRequest(P2PSessionRequest_t* pCallbac
 	}
 }
 
-void c_RetrieveSteamIDFromGameServer( uint32_t m_unServerIP, uint16_t m_usServerPort )
-{
-	steam_server_client_wrapper->RetrieveSteamIDFromGameServer( m_unServerIP, m_usServerPort );
-}
-
-void SteamServerClientWrapper::RetrieveSteamIDFromGameServer( uint32_t m_unServerIP, uint16_t m_usServerPort )
-{
-	m_GameServerPing.RetrieveSteamIDFromGameServer( this, m_unServerIP, m_usServerPort );
-}
-
 void SteamServerClientWrapper::OnLobbyGameCreated(LobbyGameCreated_t* pCallback)
 {
 	if (cpp_SteamServerClientWrapper_OnLobbyGameCreated)
@@ -575,6 +579,18 @@ void SteamServerClientWrapper::OnGameOverlayActivated(GameOverlayActivated_t* ca
 			if ( players[i]->isLocalPlayer() && inputs.bPlayerUsingKeyboardControl(i) 
 				&& players[i]->shootmode && !gamePaused)
 			{
+                // fix for macOS: put mouse back in window before recapturing mouse
+                if (EnableMouseCapture) {
+                    int mouse_x, mouse_y;
+                    SDL_GetGlobalMouseState(&mouse_x, &mouse_y);
+                    int x, y, w, h;
+                    SDL_GetWindowPosition(screen, &x, &y);
+                    SDL_GetWindowSize(screen, &w, &h);
+                    if (mouse_x < x || mouse_x >= x + w ||
+                        mouse_y < y || mouse_y >= y + h) {
+                        SDL_WarpMouseInWindow(screen, w/2, h/2);
+                    }
+                }
 				SDL_SetRelativeMouseMode(EnableMouseCapture); //Recapture mouse.
 			}
 		}
@@ -757,8 +773,6 @@ void SteamServerClientWrapper::OnGetNumberOfCurrentPlayers(NumberOfCurrentPlayer
 /* ***** END UTTER BODGE ***** */
 
 
-
-
 /*-------------------------------------------------------------------------------
 
 	achievementUnlocked
@@ -771,7 +785,12 @@ void SteamServerClientWrapper::OnGetNumberOfCurrentPlayers(NumberOfCurrentPlayer
 bool achievementUnlocked(const char* achName)
 {
 	// check internal achievement record
-	return (achievementUnlockedLookup.find(achName) != achievementUnlockedLookup.end());
+	auto find = Compendium_t::achievements.find(achName);
+	if ( find == Compendium_t::achievements.end() )
+	{
+		return false;
+	}
+	return find->second.unlocked;
 }
 
 /*-------------------------------------------------------------------------------
@@ -785,7 +804,11 @@ bool achievementUnlocked(const char* achName)
 void steamAchievement(const char* achName)
 {
 #ifdef DEBUG_ACHIEVEMENTS
-	messagePlayer(clientnum, MESSAGE_DEBUG, "%s", achName);
+	static ConsoleVariable<bool> cvar_achievements_debug("/achievements_debug", false);
+	if ( *cvar_achievements_debug )
+	{
+		messagePlayer(clientnum, MESSAGE_DEBUG, "%s", achName);
+	}
 #endif
 
 	if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_TUTORIAL )
@@ -794,16 +817,24 @@ void steamAchievement(const char* achName)
 		{
 			return;
 		}
-		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] )
+		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED]
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS])
 		{
 			return;
 		}
 	}
 	else
 	{
+		if ( !gameModeManager.allowsStatisticsOrAchievements(achName, -1) )
+		{
+#ifndef DEBUG_ACHIEVEMENTS
+			return;
+#endif
+		}
 		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] 
 			|| conductGameChallenges[CONDUCT_LIFESAVING]
-			|| gamemods_disableSteamAchievements )
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS]
+			|| Mods::disableSteamAchievements )
 		{
 		// cheats/mods have been enabled on savefile, disallow achievements.
 #ifndef DEBUG_ACHIEVEMENTS
@@ -816,7 +847,6 @@ void steamAchievement(const char* achName)
 	{
 		conductGameChallenges[CONDUCT_BOOTS_SPEED] = 1; // to cover bases when lich or devil dies as we can't remotely update this for clients.
 	}
-	//messagePlayer(clientnum, "%s", achName);
 
 	if ( !achievementUnlocked(achName) )
 	{
@@ -826,11 +856,35 @@ void steamAchievement(const char* achName)
 		SteamUserStats()->SetAchievement(achName);
 		SteamUserStats()->StoreStats();
 #else
-#ifdef USE_EOS
+
+#if defined(LOCAL_ACHIEVEMENTS)
+		LocalAchievements.updateAchievement(achName, true);
+#elif defined(USE_EOS)
 		EOS.unlockAchievement(achName);
 #endif
+
 #endif
-		achievementUnlockedLookup.insert(std::string(achName));
+		auto find = Compendium_t::achievements.find(achName);
+		if ( find != Compendium_t::achievements.end() )
+		{
+			find->second.unlocked = true;
+			find->second.unlockTime = getTime();
+			auto& unlockStatus = Compendium_t::AchievementData_t::unlocks[find->second.category];
+			if ( unlockStatus == Compendium_t::CompendiumUnlockStatus::LOCKED_UNKNOWN )
+			{
+				unlockStatus = Compendium_t::CompendiumUnlockStatus::LOCKED_REVEALED_UNVISITED;
+			}
+			else if ( unlockStatus == Compendium_t::CompendiumUnlockStatus::LOCKED_REVEALED_VISITED )
+			{
+				unlockStatus = Compendium_t::CompendiumUnlockStatus::LOCKED_REVEALED_UNVISITED;
+			}
+			else if ( unlockStatus == Compendium_t::CompendiumUnlockStatus::UNLOCKED_VISITED )
+			{
+				unlockStatus = Compendium_t::CompendiumUnlockStatus::UNLOCKED_UNVISITED;
+			}
+			Compendium_t::AchievementData_t::achievementUnlockedLookup.insert(achName);
+			Compendium_t::AchievementData_t::achievementsNeedResort = true;
+		}
 	}
 }
 
@@ -907,16 +961,26 @@ void steamStatisticUpdate(int statisticNum, ESteamStatTypes type, int value)
 		{
 			return;
 		}
-		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] )
+		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] 
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS] )
 		{
+#ifndef DEBUG_ACHIEVEMENTS
 			return;
+#endif
 		}
 	}
 	else
 	{
+		if ( !gameModeManager.allowsStatisticsOrAchievements(nullptr, statisticNum) )
+		{
+#ifndef DEBUG_ACHIEVEMENTS
+			return;
+#endif
+		}
 		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED]
 			|| conductGameChallenges[CONDUCT_LIFESAVING]
-			|| gamemods_disableSteamAchievements )
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS]
+			|| Mods::disableSteamAchievements )
 		{
 		// cheats/mods have been enabled on savefile, disallow statistics update.
 #ifndef DEBUG_ACHIEVEMENTS
@@ -972,8 +1036,20 @@ void steamStatisticUpdate(int statisticNum, ESteamStatTypes type, int value)
 				case STEAM_STAT_GUERILLA_RADIO:
 				case STEAM_STAT_ITS_A_LIVING:
 				case STEAM_STAT_FASCIST:
+				case STEAM_STAT_I_NEEDED_THAT:
+				case STEAM_STAT_DUNGEONSEED:
+				case STEAM_STAT_RUNG_OUT:
 					g_SteamStats[statisticNum].m_iValue =
 						std::min(g_SteamStats[statisticNum].m_iValue, steamStatAchStringsAndMaxVals[statisticNum].second);
+					break;
+				case STEAM_STAT_PITCH_PERFECT:
+					indicateProgress = false;
+					g_SteamStats[statisticNum].m_iValue =
+						std::min(g_SteamStats[statisticNum].m_iValue, steamStatAchStringsAndMaxVals[statisticNum].second);
+					if ( g_SteamStats[statisticNum].m_iValue == steamStatAchStringsAndMaxVals[statisticNum].second )
+					{
+						indicateProgress = true;
+					}
 					break;
 				case STEAM_STAT_ALTER_EGO:
 					indicateProgress = false;
@@ -1018,6 +1094,7 @@ void steamStatisticUpdate(int statisticNum, ESteamStatTypes type, int value)
 					}
 					break;
 				case STEAM_STAT_SUPER_SHREDDER:
+				case STEAM_STAT_SMASH_MELEE:
 					indicateProgress = false;
 					g_SteamStats[statisticNum].m_iValue =
 						std::min(g_SteamStats[statisticNum].m_iValue, steamStatAchStringsAndMaxVals[statisticNum].second);
@@ -1090,6 +1167,29 @@ void steamStatisticUpdate(int statisticNum, ESteamStatTypes type, int value)
 						std::min(g_SteamStats[statisticNum].m_iValue, steamStatAchStringsAndMaxVals[statisticNum].second);
 					indicateProgress = false;
 					break;
+				case STEAM_STAT_DAPPER_1:
+				case STEAM_STAT_DAPPER_2:
+				case STEAM_STAT_DAPPER_3:
+					g_SteamStats[statisticNum].m_iValue =
+						std::min((Uint32)g_SteamStats[statisticNum].m_iValue, (Uint32)steamStatAchStringsAndMaxVals[statisticNum].second);
+					indicateProgress = false;
+					break;
+				case STEAM_STAT_DAPPER:
+					g_SteamStats[statisticNum].m_iValue =
+						std::min(g_SteamStats[statisticNum].m_iValue, steamStatAchStringsAndMaxVals[statisticNum].second);
+					if ( g_SteamStats[statisticNum].m_iValue == steamStatAchStringsAndMaxVals[statisticNum].second )
+					{
+						indicateProgress = true;
+					}
+					else if ( oldValue == g_SteamStats[statisticNum].m_iValue )
+					{
+						indicateProgress = false;
+					}
+					else
+					{
+						indicateProgress = true;
+					}
+					break;
 				case STEAM_STAT_DIPLOMA:
 				case STEAM_STAT_EXTRA_CREDIT:
 					g_SteamStats[statisticNum].m_iValue =
@@ -1129,14 +1229,26 @@ void steamStatisticUpdate(int statisticNum, ESteamStatTypes type, int value)
 #ifdef STEAMWORKS
 	g_SteamStatistics->StoreStats(); // update server's stat counter.
 #else
-#ifdef USE_EOS
+
+#if defined(LOCAL_ACHIEVEMENTS)
+	LocalAchievements.updateStatistic(statisticNum, g_SteamStats[statisticNum].m_iValue);
+#elif defined(USE_EOS)
 	EOS.ingestStat(statisticNum, g_SteamStats[statisticNum].m_iValue);
 #endif
+
 #endif
 	if ( indicateProgress )
 	{
 		steamIndicateStatisticProgress(statisticNum, type);
 	}
+#ifdef DEBUG_ACHIEVEMENTS
+	static ConsoleVariable<bool> cvar_statistics_debug("/statistics_debug", false);
+	if ( *cvar_statistics_debug )
+	{
+		messagePlayer(clientnum, MESSAGE_DEBUG, "%s: %d, %d", steamStatAchStringsAndMaxVals[statisticNum].first.c_str(),
+			g_SteamStats[statisticNum].m_iValue, steamStatAchStringsAndMaxVals[statisticNum].second);
+	}
+#endif
 }
 
 void steamStatisticUpdateClient(int player, int statisticNum, ESteamStatTypes type, int value)
@@ -1147,16 +1259,26 @@ void steamStatisticUpdateClient(int player, int statisticNum, ESteamStatTypes ty
 		{
 			return;
 		}
-		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] )
+		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED]
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS] )
 		{
+#ifndef DEBUG_ACHIEVEMENTS
 			return;
+#endif
 		}
 	}
 	else
 	{
+		if ( !gameModeManager.allowsStatisticsOrAchievements(nullptr, statisticNum) )
+		{
+#ifndef DEBUG_ACHIEVEMENTS
+			return;
+#endif
+		}
 		if ( conductGameChallenges[CONDUCT_CHEATS_ENABLED] 
 			|| conductGameChallenges[CONDUCT_LIFESAVING]
-			|| gamemods_disableSteamAchievements )
+			|| conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS]
+			|| Mods::disableSteamAchievements )
 		{
 			// cheats/mods have been enabled on savefile, disallow statistics update.
 #ifndef DEBUG_ACHIEVEMENTS
@@ -1205,7 +1327,7 @@ void indicateAchievementProgressAndUnlock(const char* achName, int currentValue,
 {
 #ifdef STEAMWORKS
 	SteamUserStats()->IndicateAchievementProgress(achName, currentValue, maxValue);
-#elif defined USE_EOS
+#elif (defined USE_EOS || defined LOCAL_ACHIEVEMENTS)
 	UIToastNotificationManager.createStatisticUpdateNotification(achName, currentValue, maxValue);
 #endif
 	if ( currentValue == maxValue )
@@ -1216,7 +1338,7 @@ void indicateAchievementProgressAndUnlock(const char* achName, int currentValue,
 
 void steamIndicateStatisticProgress(int statisticNum, ESteamStatTypes type)
 {
-#if (!defined STEAMWORKS && !defined USE_EOS)
+#if (!defined STEAMWORKS && !defined USE_EOS && !defined LOCAL_ACHIEVEMENTS)
 	return;
 #else
 
@@ -1271,6 +1393,7 @@ void steamIndicateStatisticProgress(int statisticNum, ESteamStatTypes type)
 			case STEAM_STAT_MONARCH:
 			case STEAM_STAT_RAGE_AGAINST:
 			case STEAM_STAT_GUERILLA_RADIO:
+			case STEAM_STAT_RUNG_OUT:
 				if ( !achievementUnlocked(steamStatAchStringsAndMaxVals[statisticNum].first.c_str()) )
 				{
 					if ( iVal == 1 || (iVal > 0 && iVal % 4 == 0) )
@@ -1293,6 +1416,8 @@ void steamIndicateStatisticProgress(int statisticNum, ESteamStatTypes type)
 			case STEAM_STAT_TRASH_COMPACTOR:
 			case STEAM_STAT_TORCHERER:
 			case STEAM_STAT_FIXER_UPPER:
+			case STEAM_STAT_SMASH_MELEE:
+			case STEAM_STAT_PITCH_PERFECT:
 			// below are 1000 max value
 			case STEAM_STAT_SUPER_SHREDDER:
 				if ( !achievementUnlocked(steamStatAchStringsAndMaxVals[statisticNum].first.c_str()) )
@@ -1323,6 +1448,7 @@ void steamIndicateStatisticProgress(int statisticNum, ESteamStatTypes type)
 			// below are 10 max value
 			case STEAM_STAT_TAKE_THIS_OUTSIDE:
 			case STEAM_STAT_SPICY:
+			case STEAM_STAT_I_NEEDED_THAT:
 				if ( !achievementUnlocked(steamStatAchStringsAndMaxVals[statisticNum].first.c_str()) )
 				{
 					if ( iVal == 1 || (iVal > 0 && iVal % 2 == 0) )
@@ -1334,18 +1460,33 @@ void steamIndicateStatisticProgress(int statisticNum, ESteamStatTypes type)
 				break;
 			case STEAM_STAT_DIPLOMA:
 			case STEAM_STAT_EXTRA_CREDIT:
+			case STEAM_STAT_DUNGEONSEED:
 				if ( !achievementUnlocked(steamStatAchStringsAndMaxVals[statisticNum].first.c_str()) )
 				{
 					indicateAchievementProgressAndUnlock(steamStatAchStringsAndMaxVals[statisticNum].first.c_str(),
 						iVal, steamStatAchStringsAndMaxVals[statisticNum].second);
 				}
 				break;
+			case STEAM_STAT_DAPPER:
+				if ( !achievementUnlocked(steamStatAchStringsAndMaxVals[statisticNum].first.c_str()) )
+				{
+					if ( iVal >= 5 && iVal % 5 == 0 )
+					{
+						indicateAchievementProgressAndUnlock(steamStatAchStringsAndMaxVals[statisticNum].first.c_str(),
+							iVal, steamStatAchStringsAndMaxVals[statisticNum].second);
+					}
+				}
+				break;
 			default:
 				break;
 		}
 #ifdef DEBUG_ACHIEVEMENTS
-		messagePlayer(clientnum, MESSAGE_DEBUG, "%s: %d, %d", steamStatAchStringsAndMaxVals[statisticNum].first.c_str(),
-			iVal, steamStatAchStringsAndMaxVals[statisticNum].second);
+		static ConsoleVariable<bool> cvar_statistics_indicate_debug("/statistics_indicate_debug", false);
+		if ( *cvar_statistics_indicate_debug )
+		{
+			messagePlayer(clientnum, MESSAGE_DEBUG, "%s: %d, %d", steamStatAchStringsAndMaxVals[statisticNum].first.c_str(),
+				iVal, steamStatAchStringsAndMaxVals[statisticNum].second);
+		}
 #endif
 	}
 #endif // !STEAMWORKS
@@ -1432,47 +1573,29 @@ void steam_OnLobbyMatchListCallback( void* pCallback, bool bIOFailure )
 		const char* lobbyName = SteamMatchmaking()->GetLobbyData(lobby, "name");
 		const char* lobbyVersion = SteamMatchmaking()->GetLobbyData(lobby, "ver");
 		const int numPlayers = SteamMatchmaking()->GetNumLobbyMembers(lobby);
-		const char* lobbyNumMods = SteamMatchmaking()->GetLobbyData(lobby, "svNumMods");
-		int numMods = atoi(lobbyNumMods);
-		string versionText = lobbyVersion;
-		if ( versionText ==  "" )
-		{
-			//If the lobby version is null
-			versionText = "Unknown version";
-		}
+		const char* svNumMods = SteamMatchmaking()->GetLobbyData(lobby, "svNumMods");
+		const char* svModsDisableAchievements = SteamMatchmaking()->GetLobbyData(lobby, "svModDisableAch");
+		const char* lobbyChallengeRun = SteamMatchmaking()->GetLobbyData(lobby, "challengelid");
 
-		const Uint32 maxCharacters = 54;
-		if ( lobbyName && lobbyName[0] && numPlayers )
+		if ( lobbyName && lobbyName[0] && lobbyVersion && lobbyVersion[0] && numPlayers )
 		{
-			// set the lobby data
-			const Uint32 lobbyNameSize = strlen(lobbyName);
-			std::string lobbyDetailText = " ";
-			lobbyDetailText += "(";
-			lobbyDetailText += versionText;
-			lobbyDetailText += ") ";
-			if ( numMods > 0 )
-			{
-				lobbyDetailText += "[MODDED]";
-			}
-
-			std::string displayedLobbyName = lobbyName;
-			if ( displayedLobbyName.size() > (maxCharacters - lobbyDetailText.size()) )
-			{
-				// no room, need to truncate lobbyName
-				displayedLobbyName = displayedLobbyName.substr(0, (maxCharacters - lobbyDetailText.size()) - 2);
-				displayedLobbyName += "..";
-			}
-			snprintf( lobbyText[iLobby], maxCharacters - 1, "%s%s", displayedLobbyName.c_str(), lobbyDetailText.c_str()); //TODO: Perhaps a better method would be to print the name and the version as two separate strings ( because some steam names are ridiculously long).
+            stringCopyUnsafe(lobbyText[iLobby], lobbyName, sizeof(lobbyText[iLobby]));
+            stringCopyUnsafe(::lobbyVersion[iLobby], lobbyVersion, sizeof(::lobbyVersion[iLobby]));
 			lobbyPlayers[iLobby] = numPlayers;
+			lobbyNumMods[iLobby] = atoi(svNumMods);
+			lobbyModDisableAchievements[iLobby] = atoi(svModsDisableAchievements);
+			stringCopyUnsafe(::lobbyChallengeRun[iLobby], lobbyChallengeRun, sizeof(::lobbyChallengeRun[iLobby]));
 		}
 		else
 		{
 			// we don't have info about the lobby yet, request it
-			SteamMatchmaking()->RequestLobbyData(*static_cast<CSteamID*>(steamIDLobby));
+			SteamMatchmaking()->RequestLobbyData(lobby);
 
 			// results will be returned via LobbyDataUpdate_t callback
-			snprintf( lobbyText[iLobby], maxCharacters - 1, "Lobby %d", static_cast<CSteamID*>(steamIDLobby)->GetAccountID() ); //TODO: MORE VOID POINTER BUGGERY.
+			snprintf(lobbyText[iLobby], sizeof(lobbyText[iLobby]), "Lobby %d", lobby.GetAccountID());
 			lobbyPlayers[iLobby] = 0;
+			::lobbyNumMods[iLobby] = 0;
+			::lobbyModDisableAchievements[iLobby] = false;
 		}
 	}
 	if (!roomkey_cached.empty()) {
@@ -1481,6 +1604,12 @@ void steam_OnLobbyMatchListCallback( void* pCallback, bool bIOFailure )
 	        multiplayer = SINGLE;
 	        MainMenu::receivedInvite(lobbyIDs[0]);
 	    }
+		else
+		{
+			multiplayer = SINGLE;
+			connectingToLobbyStatus = k_EResultNoMatch;
+			joinLobbyWaitingForHostResponse = true;
+		}
 	}
 }
 
@@ -1547,7 +1676,14 @@ void steam_OnLobbyDataUpdatedCallback( void* pCallback )
 			const char* svFlagsChar = SteamMatchmaking()->GetLobbyData( *lobby, "svFlags" );
 			if ( svFlagsChar )
 			{
-				svFlags = atoi(svFlagsChar);
+				if ( multiplayer == CLIENT )
+				{
+					lobbyWindowSvFlags = atoi(svFlagsChar);
+				}
+				else
+				{
+					svFlags = atoi(svFlagsChar);
+				}
 			}
 		}
 	}
@@ -1557,7 +1693,9 @@ void steam_OnLobbyDataUpdatedCallback( void* pCallback )
 	    // this is where invites are actually processed on steam.
 	    // we do it here to ensure info about the savegame in the lobby is up-to-date.
 		handlingInvite = false;
-		MainMenu::receivedInvite(tempSteamID);
+		static CSteamID storedID;
+		storedID = *static_cast<CSteamID*>(tempSteamID);
+		MainMenu::receivedInvite(&storedID);
 	}
 	
 	cpp_Free_CSteamID(tempSteamID);
@@ -1573,7 +1711,7 @@ void* cpp_LobbyCreated_Lobby(void* pCallback)
 
 static std::string generateRoomKey(Uint32 key)
 {
-	const char allChars[37] = "0123456789abcdefghijklmnopqrstuvwxyz";
+	const char allChars[37] = "0123456789abcdefghijklmnppqrstuvwxyz";
 	std::string code = "";
 	while ( key != 0 )
 	{
@@ -1622,13 +1760,52 @@ void steam_OnLobbyCreated( void* pCallback, bool bIOFailure )
 		snprintf(svFlagsChar, 15, "%d", svFlags);
 		SteamMatchmaking()->SetLobbyData(*lobby, "svFlags", svFlagsChar);
 
+		// set the lobby open for friends only by default, or public if it's a savegame
+		if ( loadingsavegame )
+		{
+			SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "false");
+			SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "false");
+		}
+		else
+		{
+			if ( steamLobbyFriendsOnlyUserConfigured )
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "true");
+			}
+			else
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "friends_only", "false");
+			}
+			if ( steamLobbyInviteOnlyUserConfigured )
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "true");
+			}
+			else
+			{
+				SteamMatchmaking()->SetLobbyData(*lobby, "invite_only", "false");
+			}
+		}
+
 		// set load game status on lobby
 		char loadingsavegameChar[16];
 		snprintf(loadingsavegameChar, 15, "%d", loadingsavegame);
 		SteamMatchmaking()->SetLobbyData(*lobby, "loadingsavegame", loadingsavegameChar);
 
+		char loadinglobbykeyChar[16];
+		snprintf(loadinglobbykeyChar, 15, "%d", loadinglobbykey);
+		SteamMatchmaking()->SetLobbyData(*lobby, "lobbyuniquekey", loadinglobbykeyChar);
+
+		if ( gameModeManager.currentSession.challengeRun.isActive() )
+		{
+			SteamMatchmaking()->SetLobbyData(*lobby, "challengelid", gameModeManager.currentSession.challengeRun.lid.c_str());
+		}
+		else
+		{
+			SteamMatchmaking()->SetLobbyData(*lobby, "challengelid", "");
+		}
+
 		char svNumMods[16];
-		snprintf(svNumMods, 15, "%d", gamemods_numCurrentModsLoaded);
+		snprintf(svNumMods, 15, "%d", Mods::numCurrentModsLoaded);
 		SteamMatchmaking()->SetLobbyData(*lobby, "svNumMods", svNumMods);
 
 		char modifiedTime[32];
@@ -1636,13 +1813,13 @@ void steam_OnLobbyCreated( void* pCallback, bool bIOFailure )
 		SteamMatchmaking()->SetLobbyData(*lobby, "lobbyModifiedTime", modifiedTime);
 		SteamMatchmaking()->SetLobbyData(*lobby, "lobbyCreationTime", modifiedTime);
 
-		if ( gamemods_numCurrentModsLoaded > 0 )
+		/*if ( Mods::numCurrentModsLoaded > 0 )
 		{
 			int count = 0;
-			for ( std::vector<std::pair<std::string, std::string>>::iterator it = gamemods_mountedFilepaths.begin(); it != gamemods_mountedFilepaths.end(); ++it )
+			for ( std::vector<std::pair<std::string, std::string>>::iterator it = Mods::mountedFilepaths.begin(); it != Mods::mountedFilepaths.end(); ++it )
 			{
-				for ( std::vector<std::pair<std::string, uint64>>::iterator itMap = gamemods_workshopLoadedFileIDMap.begin();
-					itMap != gamemods_workshopLoadedFileIDMap.end(); ++itMap )
+				for ( std::vector<std::pair<std::string, uint64>>::iterator itMap = Mods::workshopLoadedFileIDMap.begin();
+					itMap != Mods::workshopLoadedFileIDMap.end(); ++itMap )
 				{
 					if ( (itMap->first).compare(it->second) == 0 )
 					{
@@ -1656,7 +1833,7 @@ void steam_OnLobbyCreated( void* pCallback, bool bIOFailure )
 					}
 				}
 			}
-		}
+		}*/
 	}
 	else
 	{
@@ -1734,18 +1911,25 @@ bool processLobbyInvite(void* lobbyToConnectTo)
 	const char* pchLoadingSaveGame = SteamMatchmaking()->GetLobbyData(*lobby, "loadingsavegame");
 	assert(pchLoadingSaveGame && pchLoadingSaveGame[0]);
 
+	const char* pchLobbyUniqueKey = SteamMatchmaking()->GetLobbyData(*lobby, "lobbyuniquekey");
+	assert(pchLoadingSaveGame && pchLoadingSaveGame[0]);
+
 	SaveGameInfo savegameinfo;
 	if (loadingsavegame) {
 		savegameinfo = getSaveGameInfo(false);
 	}
 
 	Uint32 saveGameKey = atoi(pchLoadingSaveGame);      // get the savegame key of the server.
-	Uint32 gameKey = getSaveGameUniqueGameKey(savegameinfo);   // maybe we were already loading a compatible save.
-	if (saveGameKey && saveGameKey == gameKey) {
+	Uint32 lobbyUniqueKey = pchLobbyUniqueKey ? atoi(pchLobbyUniqueKey) : 0;      // get the lobby key of the server.
+	Uint32 gameKey = savegameinfo.gamekey;   // maybe we were already loading a compatible save.
+	Uint32 lobbyKey = savegameinfo.lobbykey;
+	if ( gameKey && saveGameKey && saveGameKey == gameKey && lobbyUniqueKey == lobbyKey ) {
 		loadingsavegame = saveGameKey; // save game matches! load game.
+		loadinglobbykey = lobbyUniqueKey;
 	}
 	else if (!saveGameKey) {
 		loadingsavegame = 0; // cancel our savegame load. when we enter the lobby, our character will be flushed.
+		loadinglobbykey = 0;
 	}
 	else {
 		// try reload from your other savefiles since this didn't match the default savegameIndex.
@@ -1753,7 +1937,7 @@ bool processLobbyInvite(void* lobbyToConnectTo)
 		for (int c = 0; c < SAVE_GAMES_MAX; ++c) {
 			auto info = getSaveGameInfo(false, c);
 			if (info.game_version != -1) {
-				if (info.gamekey == gameKey) {
+				if (info.gamekey == saveGameKey && info.lobbykey == lobbyUniqueKey ) {
 					savegameCurrentFileIndex = c;
 					foundSave = true;
 					break;
@@ -1762,6 +1946,7 @@ bool processLobbyInvite(void* lobbyToConnectTo)
 		}
 		if (foundSave) {
 			loadingsavegame = saveGameKey;
+			loadinglobbykey = lobbyUniqueKey;
 		} else {
 			printlog("warning: received invitation to lobby with which you have no compatible save game.\n");
 			return false;
@@ -1931,7 +2116,14 @@ void steam_OnLobbyEntered( void* pCallback, bool bIOFailure )
 
 	const char* svflagsChar = SteamMatchmaking()->GetLobbyData(lobby, "svFlags");
 	if (svflagsChar) {
-		svFlags = atoi(svflagsChar);
+		if ( multiplayer == CLIENT )
+		{
+			lobbyWindowSvFlags = atoi(svflagsChar);
+		}
+		else
+		{
+			svFlags = atoi(svflagsChar);
+		}
 	}
 }
 

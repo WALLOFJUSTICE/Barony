@@ -10,9 +10,9 @@
 
 -------------------------------------------------------------------------------*/
 
+#include "main.hpp"
 #include "draw.hpp"
 #include "messages.hpp"
-#include "main.hpp"
 #include "player.hpp"
 #include <regex>
 
@@ -121,31 +121,27 @@ void Player::MessageZone_t::addMessage(Uint32 color, const char* content)
 
 	notification_messages.push_front(new_message);
 
-	//Set the message location.
-	new_message->x = getMessageZoneStartX();
-	new_message->y = getMessageZoneStartY() - fontSize() * new_message->text->lines;
-
 	//Update the position of the other messages;
 	Message *prev = nullptr;
 	for (Message *m : notification_messages)
 	{
-		m->y = (prev ? prev->y : getMessageZoneStartY()) - fontSize() * m -> text->lines;
 		prev = m;
 	}
 }
 
-int Player::MessageZone_t::getMessageZoneStartX()
-{
-	return players[player.playernum]->camera_x1() + MESSAGE_X_OFFSET;
-}
-int Player::MessageZone_t::getMessageZoneStartY()
-{
-	return ((players[player.playernum]->camera_y2() - (status_bmp->h * uiscale_chatlog)) - fontSize() - 20 - (60 * uiscale_playerbars * uiscale_playerbars));
-}
+static ConsoleVariable<int> cvar_messages_max_lines("/messages_max_lines", 7);
+
 int Player::MessageZone_t::getMaxTotalLines()
 {
-	//return ((players[player.playernum]->camera_y2() - (status_bmp->h * uiscale_chatlog)) / fontSize());
-	return 7;
+	return *cvar_messages_max_lines;
+}
+
+void Player::MessageZone_t::startMessages()
+{
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		players[i]->messageZone.old_sdl_ticks = SDL_GetTicks();
+	}
 }
 
 void Player::MessageZone_t::updateMessages()
@@ -162,13 +158,14 @@ void Player::MessageZone_t::updateMessages()
 
 	// limit the number of onscreen messages to reduce spam
 	int c = 0;
+	int currentline = 0;
 	for (auto it = notification_messages.begin(); it != notification_messages.end(); it++)
 	{
 		Message *msg = *it;
 
-		// Start fading all messages beyond index 10 immediately
+		// Start fading all messages beyond index immediately
 		c++;
-		if (c > 10 && msg->time_displayed < MESSAGE_PREFADE_TIME)
+		if ( currentline >= MESSAGE_MAX_ENTRIES - 2 && msg->time_displayed < MESSAGE_PREFADE_TIME)
 		{
 			msg->time_displayed = MESSAGE_PREFADE_TIME;
 		}
@@ -180,6 +177,15 @@ void Player::MessageZone_t::updateMessages()
 		if (msg->time_displayed >= MESSAGE_PREFADE_TIME)
 		{
 			msg->alpha -= MESSAGE_FADE_RATE;
+		}
+
+		if ( msg->text )
+		{
+			currentline += msg->text->lines;
+		}
+		else
+		{
+			++currentline;
 		}
 	}
 	// Remove all completely faded messages
@@ -201,61 +207,61 @@ void Player::MessageZone_t::updateMessages()
 void Player::MessageZone_t::drawMessages()
 {
 	return;
-	for ( Message *current : notification_messages )
-	{
-		Uint32 color = (current->text->color & 0x00ffffff) | ((Uint32)current->alpha << 24);
+	//for ( Message *current : notification_messages )
+	//{
+	//	Uint32 color = (current->text->color & 0x00ffffff) | ((Uint32)current->alpha << 24);
 
-		// highlights in messages.
-		std::string data = current->text->data;
-		size_t findHighlight = data.find("[");
-		bool doHighlight = false;
-		if ( findHighlight != std::string::npos )
-		{
-			std::string highlightedWords = data;
-			for ( int i = 0; i < highlightedWords.size(); ++i )
-			{
-				if ( highlightedWords[i] != '\n' && highlightedWords[i] != '\0' )
-				{
-					highlightedWords[i] = ' '; // replace all characters with a space.
-				}
-			}
-			size_t highlightedIndex = 0;
-			while ( findHighlight != std::string::npos )
-			{
-				size_t findHighlightEnd = data.find("]", findHighlight);
-				if ( findHighlightEnd != std::string::npos )
-				{
-					doHighlight = true;
-					size_t numChars = findHighlightEnd - findHighlight + 1;
+	//	// highlights in messages.
+	//	std::string data = current->text->data;
+	//	size_t findHighlight = data.find("[");
+	//	bool doHighlight = false;
+	//	if ( findHighlight != std::string::npos )
+	//	{
+	//		std::string highlightedWords = data;
+	//		for ( int i = 0; i < highlightedWords.size(); ++i )
+	//		{
+	//			if ( highlightedWords[i] != '\n' && highlightedWords[i] != '\0' )
+	//			{
+	//				highlightedWords[i] = ' '; // replace all characters with a space.
+	//			}
+	//		}
+	//		size_t highlightedIndex = 0;
+	//		while ( findHighlight != std::string::npos )
+	//		{
+	//			size_t findHighlightEnd = data.find("]", findHighlight);
+	//			if ( findHighlightEnd != std::string::npos )
+	//			{
+	//				doHighlight = true;
+	//				size_t numChars = findHighlightEnd - findHighlight + 1;
 
-					// add in the highlighed words.
-					highlightedWords.replace(findHighlight, numChars, data.substr(findHighlight, numChars));
+	//				// add in the highlighed words.
+	//				highlightedWords.replace(findHighlight, numChars, data.substr(findHighlight, numChars));
 
-					std::string padding(numChars, ' ');
-					// replace the words in the old string with spacing.
-					data.replace(findHighlight, numChars, padding);
-					findHighlight += numChars;
-				}
-				else
-				{
-					break;
-				}
-				findHighlight = data.find("[", findHighlight);
-				highlightedIndex = findHighlight;
-			}
-			if ( doHighlight )
-			{
-				ttfPrintTextFormattedColor(font, current->x, current->y, color, "%s", data.c_str());
+	//				std::string padding(numChars, ' ');
+	//				// replace the words in the old string with spacing.
+	//				data.replace(findHighlight, numChars, padding);
+	//				findHighlight += numChars;
+	//			}
+	//			else
+	//			{
+	//				break;
+	//			}
+	//			findHighlight = data.find("[", findHighlight);
+	//			highlightedIndex = findHighlight;
+	//		}
+	//		if ( doHighlight )
+	//		{
+	//			ttfPrintTextFormattedColor(font, current->x, current->y, color, "%s", data.c_str());
 
-				Uint32 color = (makeColorRGB(0, 192, 255) & 0x00ffffff) | ((Uint32)current->alpha << 24);
-				ttfPrintTextFormattedColor(font, current->x, current->y, color, "%s", highlightedWords.c_str());
-			}
-		}
-		if ( !doHighlight )
-		{
-			ttfPrintTextFormattedColor(font, current->x, current->y, color, current->text->data);
-		}
-	}
+	//			Uint32 color = (makeColorRGB(0, 192, 255) & 0x00ffffff) | ((Uint32)current->alpha << 24);
+	//			ttfPrintTextFormattedColor(font, current->x, current->y, color, "%s", highlightedWords.c_str());
+	//		}
+	//	}
+	//	if ( !doHighlight )
+	//	{
+	//		ttfPrintTextFormattedColor(font, current->x, current->y, color, current->text->data);
+	//	}
+	//}
 }
 
 void Player::MessageZone_t::deleteAllNotificationMessages()
@@ -273,6 +279,15 @@ std::string messageSanitizePercentSign(std::string src, int* percentSignsFound)
 	{
 		while ( found != std::string::npos )
 		{
+			if ( found + 1 < commandString.size() )
+			{
+				if ( commandString.at(found + 1) == '%' )
+				{
+					// this command has already been escaped, no need for more %
+					found = commandString.find('%', found + 2);
+					continue;
+				}
+			}
 			commandString.insert(found, "%");
 			found = commandString.find('%', found + 2);
 			if ( percentSignsFound )
