@@ -47,37 +47,66 @@ void Entity::actTeleporter()
 		createWorldUITooltip();
 	}
 
+#ifdef USE_FMOD
+	if ( teleporterAmbience == 0 )
+	{
+		teleporterAmbience--;
+		stopEntitySound();
+		entity_sound = playSoundEntityLocal(this, 149, 64);
+	}
+	if ( entity_sound )
+	{
+		bool playing = false;
+		entity_sound->isPlaying(&playing);
+		if ( !playing )
+		{
+			entity_sound = nullptr;
+		}
+	}
+#else
 	teleporterAmbience--;
 	if ( teleporterAmbience <= 0 )
 	{
 		teleporterAmbience = TICKS_PER_SECOND * 30;
 		playSoundEntityLocal(this, 149, 64);
 	}
+#endif
 
 	// use teleporter
 	if ( multiplayer != CLIENT )
 	{
+		if ( this->isInteractWithMonster() )
+		{
+			Entity* monsterInteracting = uidToEntity(this->interactedByMonster);
+			if ( monsterInteracting )
+			{
+				monsterInteracting->teleporterMove(teleporterX, teleporterY, teleporterType);
+				this->clearMonsterInteract();
+				return;
+			}
+			this->clearMonsterInteract();
+		}
 		for ( i = 0; i < MAXPLAYERS; i++ )
 		{
 			if ( selectedEntity[i] == this || client_selected[i] == this )
 			{
-				if ( inrange[i] )
+				if ( inrange[i] && Player::getPlayerInteractEntity(i) )
 				{
 					switch ( teleporterType )
 					{
 						case 0:
-							messagePlayer(i, MESSAGE_INTERACTION, language[2378]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2378));
 							break;
 						case 1:
-							messagePlayer(i, MESSAGE_INTERACTION, language[506]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(506));
 							break;
 						case 2:
-							messagePlayer(i, MESSAGE_INTERACTION, language[510]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(510));
 							break;
 						default:
 							break;
 					}
-					players[i]->entity->teleporterMove(teleporterX, teleporterY, teleporterType);
+					Player::getPlayerInteractEntity(i)->teleporterMove(teleporterX, teleporterY, teleporterType);
 					return;
 				}
 			}
@@ -88,7 +117,7 @@ void Entity::actTeleporter()
 	{
 		if ( !light )
 		{
-			light = lightSphereShadow(x / 16, y / 16, 3, 255);
+			light = addLight(x / 16, y / 16, "portal_purple");
 		}
 		yaw += 0.01; // rotate slowly on my axis
 		sprite = 620;

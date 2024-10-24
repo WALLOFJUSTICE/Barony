@@ -20,6 +20,7 @@
 #include "collision.hpp"
 #include "player.hpp"
 #include "prng.hpp"
+#include "scores.hpp"
 
 void initDemon(Entity* my, Stat* myStats)
 {
@@ -39,6 +40,8 @@ void initDemon(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -47,17 +50,17 @@ void initDemon(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
 			// boss variants
 			const bool boss =
-			    local_rng.rand() % 50 == 0 &&
+			    rng.rand() % 50 == 0 &&
 			    !my->flags[USERFLAG2] &&
 			    !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS];
-			if ( (boss || *cvar_summonBosses) && myStats->leader_uid == 0 )
+			if ( (boss || (*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED])) && myStats->leader_uid == 0)
 			{
 				myStats->setAttribute("special_npc", "deudebreau");
 				strcpy(myStats->name, MonsterData_t::getSpecialNPCName(*myStats).c_str());
@@ -74,6 +77,7 @@ void initDemon(Entity* my, Stat* myStats)
 						{
 							followerStats->leader_uid = entity->parent;
 						}
+						entity->seedEntityRNG(rng.getU32());
 					}
 				}
 			}
@@ -81,10 +85,10 @@ void initDemon(Entity* my, Stat* myStats)
 			// random effects
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats);
@@ -104,7 +108,7 @@ void initDemon(Entity* my, Stat* myStats)
 				case 3:
 				case 2:
 				case 1:
-					if ( local_rng.rand() % 2 == 0 )
+					if ( rng.rand() % 2 == 0 )
 					{
 						myStats->weapon = newItem(SPELLBOOK_FIREBALL, EXCELLENT, 0, 1, 0, false, nullptr);
 					}
@@ -576,16 +580,22 @@ void demonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				break;
 			// right arm
 			case 5:
-				entity->x += 5 * cos(my->yaw + PI / 2) - 1 * cos(my->yaw);
-				entity->y += 5 * sin(my->yaw + PI / 2) - 1 * sin(my->yaw);
-				entity->z += 2.75;
+				entity->x += (limbs[DEMON][7][0]) * cos(my->yaw + PI / 2) - (limbs[DEMON][7][1]) * cos(my->yaw);
+				entity->y += (limbs[DEMON][7][0]) * sin(my->yaw + PI / 2) - (limbs[DEMON][7][1]) * sin(my->yaw);
+				entity->z += 2.75 + limbs[DEMON][7][2];
 				entity->yaw += MONSTER_WEAPONYAW;
+				entity->focalx = limbs[DEMON][4][0];
+				entity->focaly = limbs[DEMON][4][1];
+				entity->focalz = limbs[DEMON][4][2];
 				break;
 			// left arm
 			case 6:
-				entity->x -= 5 * cos(my->yaw + PI / 2) + 1 * cos(my->yaw);
-				entity->y -= 5 * sin(my->yaw + PI / 2) + 1 * sin(my->yaw);
-				entity->z += 2.75;
+				entity->x -= (limbs[DEMON][7][0]) * cos(my->yaw + PI / 2) + (limbs[DEMON][7][1]) * cos(my->yaw);
+				entity->y -= (limbs[DEMON][7][0]) * sin(my->yaw + PI / 2) + (limbs[DEMON][7][1]) * sin(my->yaw);
+				entity->z += 2.75 + limbs[DEMON][7][2];
+				entity->focalx = limbs[DEMON][5][0];
+				entity->focaly = limbs[DEMON][5][1];
+				entity->focalz = limbs[DEMON][5][2];
 				break;
 			default:
 				break;
@@ -607,6 +617,8 @@ void demonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 
 void actDemonCeilingBuster(Entity* my)
 {
+    return; // don't do this anymore jan 16 2023
+    
 	double x, y;
 
 	// bust ceilings

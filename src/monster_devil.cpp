@@ -227,7 +227,7 @@ void devilDie(Entity* my)
 			//messagePlayer(c, "completion time: %d", completionTime);
 			steamAchievementClient(c, "BARONY_ACH_BOOTS_OF_SPEED");
 		}
-		//messagePlayer(c, language[1112]);
+		//messagePlayer(c, Language::get(1112));
 		//playSoundPlayer(c, 97, 128);
 		//stats[c]->STR += 20;
 		//stats[c]->DEX += 5;
@@ -693,6 +693,8 @@ bool Entity::devilSummonMonster(Entity* summonOnEntity, Monster creature, int ra
 		timer->particleTimerVariable1 = creature;
 		timer->particleTimerVariable2 = playerToTarget;
 		serverSpawnMiscParticlesAtLocation(static_cast<Sint16>(chosen.first), static_cast<Sint16>(chosen.second), 0, PARTICLE_EFFECT_DEVIL_SUMMON_MONSTER, 174);
+
+		monsterDevilNumSummons++;
 		return true;
 	}
 	return false;

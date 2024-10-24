@@ -51,7 +51,6 @@ public:
 	LobbyServiceType searchType = LOBBY_DISABLE;
 	LobbyServiceType P2PType = LOBBY_DISABLE;
 	void handleLobbyListRequests();
-	void handleLobbyBrowser();
 	void updateSearchResults();
 	static void filterLobbyButton(button_t* my);
 	static void searchLobbyWithFilter(button_t* my);
@@ -132,6 +131,7 @@ public:
 		LOBBY_NOT_ALLOWED,              // server won't allow you in for one reason or another
 		LOBBY_YOU_ARE_BANNED,           // can't join lobby because you are banned
         LOBBY_TOO_MANY_JOINS,           // overloaded lobby with join requests
+		LOBBY_SAVEGAME_REQUIRES_DLC		// our client does not have DLC detected for their savefile
 	};
 };
 extern LobbyHandler_t LobbyHandler;

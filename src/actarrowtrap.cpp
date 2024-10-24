@@ -18,6 +18,7 @@
 #include "items.hpp"
 #include "net.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -59,7 +60,8 @@ void actArrowTrap(Entity* my)
 		{
 			ItemType quiver = static_cast<ItemType>(ARROWTRAP_TYPE);
 			int qty = 2 + (5 - ARROWTRAP_FIRED / 2); // 2 to 7
-			Entity* dropped = dropItemMonster(newItem(quiver, EXCELLENT, 0, qty, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr), my, nullptr, qty);
+			Compendium_t::Events_t::eventUpdateWorld(ARROWTRAP_DISABLED - 1, Compendium_t::CPDM_ARROWS_PILFERED, "arrow trap", qty);
+			Entity* dropped = dropItemMonster(newItem(quiver, SERVICABLE, 0, qty, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr), my, nullptr, qty);
 			std::vector<std::pair<int, int>> freeTiles;
 			int x = my->x / 16;
 			int y = my->y / 16;
@@ -112,12 +114,29 @@ void actArrowTrap(Entity* my)
 		return;
 	}
 
+#ifdef USE_FMOD
+	if ( ARROWTRAP_AMBIENCE == 0 )
+	{
+		ARROWTRAP_AMBIENCE--;
+		my->entity_sound = playSoundEntityLocal(my, 149, 64);
+	}
+	if ( my->entity_sound )
+	{
+		bool playing = false;
+		my->entity_sound->isPlaying(&playing);
+		if ( !playing )
+		{
+			my->entity_sound = nullptr;
+		}
+	}
+#else
 	ARROWTRAP_AMBIENCE--;
 	if ( ARROWTRAP_AMBIENCE <= 0 )
 	{
 		ARROWTRAP_AMBIENCE = TICKS_PER_SECOND * 30;
-		playSoundEntity( my, 149, 64 );
+		playSoundEntityLocal( my, 149, 64 );
 	}
+#endif
 
 	if ( !my->skill[28] )
 	{
@@ -131,7 +150,7 @@ void actArrowTrap(Entity* my)
 	{
 		if ( ARROWTRAP_FIRED % 2 == 1 ) // not ready to fire.
 		{
-			if ( ARROWTRAP_TYPE == QUIVER_LIGHTWEIGHT )
+			if ( ARROWTRAP_TYPE == QUIVER_LIGHTWEIGHT || (gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_STRONG_TRAPS)) )
 			{
 				if ( ARROWTRAP_REFIRE > 0 )
 				{
@@ -217,32 +236,44 @@ void actArrowTrap(Entity* my)
 					{
 						entity->arrowPower += currentlevel - 10;
 					}
+					bool stronger = false;
+					if ( gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_STRONG_TRAPS) )
+					{
+						stronger = true;
+					}
 					switch ( ARROWTRAP_TYPE )
 					{
 						case QUIVER_SILVER:
 							entity->sprite = 924;
+							if ( stronger ) { ARROWTRAP_REFIRE = 50; }
 							break;
 						case QUIVER_PIERCE:
 							entity->arrowArmorPierce = 2;
 							entity->sprite = 925;
+							if ( stronger ) { ARROWTRAP_REFIRE = 50; }
 							break;
 						case QUIVER_LIGHTWEIGHT:
 							entity->sprite = 926;
 							ARROWTRAP_REFIRE = 50;
+							if ( stronger ) { ARROWTRAP_REFIRE = 25; }
 							break;
 						case QUIVER_FIRE:
 							entity->sprite = 927;
+							if ( stronger ) { ARROWTRAP_REFIRE = 25; }
 							break;
 						case QUIVER_KNOCKBACK:
 							entity->sprite = 928;
+							if ( stronger ) { ARROWTRAP_REFIRE = 25; }
 							break;
 						case QUIVER_CRYSTAL:
 							entity->sprite = 929;
+							if ( stronger ) { ARROWTRAP_REFIRE = 25; }
 							break;
 						case QUIVER_HUNTING:
 							entity->sprite = 930;
 							// causes poison for six seconds
 							entity->arrowPoisonTime = 360;
+							if ( stronger ) { ARROWTRAP_REFIRE = 25; }
 							break;
 						default:
 							break;
@@ -253,7 +284,11 @@ void actArrowTrap(Entity* my)
 					entity->vel_y = sin(entity->yaw) * entity->arrowSpeed;
 					if ( multiplayer == SERVER )
 					{
-						entity->skill[2] = -(1000 + TOOL_SENTRYBOT); // invokes actArrow for clients.
+						Sint32 val = (1 << 31);
+						val |= (Uint8)(17);
+						val |= (((Uint16)(TOOL_SENTRYBOT) & 0xFFF) << 8);
+						val |= (8) << 20;
+						entity->skill[2] = val;//-(1000 + TOOL_SENTRYBOT); // invokes actArrow for clients.
 						entity->arrowShotByWeapon = TOOL_SENTRYBOT;
 					}
 					if ( targetToAutoHit )

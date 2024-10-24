@@ -136,8 +136,13 @@ extern bool autoLimbReload;
   #endif
   #include <GL/gl.h>
   #include <GL/glu.h>
+  #ifdef LINUX
+  	typedef uint16_t GLhalf;
+  #endif
  #endif
+#ifndef WINDOWS
  #include <GL/glext.h>
+#endif
  #include "SDL_opengl.h"
 #endif // !APPLE
 
@@ -190,6 +195,91 @@ extern bool autoLimbReload;
 #endif
 
 #define PI 3.14159265358979323846
+
+void printlog(const char* str, ...);
+const char* gl_error_string(GLenum err);
+#ifdef _MSC_VER
+#define GL_CHECK_ERR(expression) expression;\
+    {\
+		GLenum err;\
+		while((err = glGetError()) != GL_NO_ERROR) {\
+			printlog("[OpenGL]: ERROR type = 0x%x, message = %s",\
+				err, gl_error_string(err));\
+		}\
+	}
+#define GL_CHECK_ERR_RET(expression) expression;\
+    {\
+		GLenum err;\
+		while((err = glGetError()) != GL_NO_ERROR) {\
+			printlog("[OpenGL]: ERROR type = 0x%x, message = %s",\
+				err, gl_error_string(err));\
+		}\
+	}
+#else
+#define GL_CHECK_ERR(expression) ({ \
+    expression;\
+    GLenum err;\
+    while((err = glGetError()) != GL_NO_ERROR) {\
+        printlog("[OpenGL]: ERROR type = 0x%x, message = %s",\
+            err, gl_error_string(err));\
+    }\
+})
+#define GL_CHECK_ERR_RET(expression) ({ \
+    auto retval = expression;\
+    GLenum err;\
+    while((err = glGetError()) != GL_NO_ERROR) {\
+        printlog("[OpenGL]: ERROR type = 0x%x, message = %s",\
+            err, gl_error_string(err));\
+    }\
+    retval;\
+})
+#endif
+
+typedef struct vec4 {
+    vec4(float f):
+        x(f),
+        y(f),
+        z(f),
+        w(f)
+    {}
+    vec4(float _x, float _y, float _z, float _w):
+        x(_x),
+        y(_y),
+        z(_z),
+        w(_w)
+    {}
+    vec4() = default;
+    float x;
+    float y;
+    float z;
+    float w;
+} vec4_t;
+
+typedef struct mat4x4 {
+    mat4x4(float f):
+        x(f, 0.f, 0.f, 0.f),
+        y(0.f, f, 0.f, 0.f),
+        z(0.f, 0.f, f, 0.f),
+        w(0.f, 0.f, 0.f, f)
+    {}
+    mat4x4(
+        float xx, float xy, float xz, float xw,
+        float yx, float yy, float yz, float yw,
+        float zx, float zy, float zz, float zw,
+        float wx, float wy, float wz, float ww):
+        x(xx, xy, xz, xw),
+        y(yx, yy, yz, yw),
+        z(zx, zy, zz, zw),
+        w(wx, wy, wz, ww)
+    {}
+    mat4x4():
+        mat4x4(1.f)
+    {}
+    vec4_t x;
+    vec4_t y;
+    vec4_t z;
+    vec4_t w;
+} mat4x4_t;
 
 extern FILE* logfile;
 extern SDL_bool EnableMouseCapture; // can disable this in main.cpp if mouse capture is causing problems with debugging on Linux
@@ -335,18 +425,6 @@ enum LightModifierValues : int
 	GLOBAL_LIGHT_MODIFIER_DISSIPATING
 };
 
-// view structure
-typedef struct view_t
-{
-	real_t x, y, z;
-	real_t ang;
-	real_t vang;
-	Sint32 winx, winy, winw, winh;
-    real_t globalLightModifier = 0.0;
-    real_t globalLightModifierEntities = 0.0;
-    int globalLightModifierActive = GLOBAL_LIGHT_MODIFIER_STOPPED;
-} view_t;
-
 class Entity; //TODO: Bugger?
 
 // node structure
@@ -376,19 +454,40 @@ typedef struct map_t
 	char author[32]; // author of the map
 	unsigned int width, height, skybox;  // size of the map + skybox
 	Sint32 flags[16];
-	Sint32* tiles;
-	bool* vismap;
+	Sint32* tiles = nullptr;
 	std::unordered_map<Sint32, node_t*> entities_map;
-	list_t* entities;
-	list_t* creatures; //A list of Entity* pointers.
-	list_t* worldUI; //A list of Entity* pointers.
+	list_t* entities = nullptr;
+	list_t* creatures = nullptr; //A list of Entity* pointers.
+	list_t* worldUI = nullptr; //A list of Entity* pointers.
+	bool* trapexcludelocations = nullptr;
+	bool* monsterexcludelocations = nullptr;
+	bool* lootexcludelocations = nullptr;
+	std::set<int> liquidSfxPlayedTiles;
 	char filename[256];
+	~map_t()
+	{
+		if ( trapexcludelocations )
+		{
+			free(trapexcludelocations);
+			trapexcludelocations = nullptr;
+		}
+		if ( monsterexcludelocations )
+		{
+			free(monsterexcludelocations);
+			monsterexcludelocations = nullptr;
+		}
+		if ( lootexcludelocations )
+		{
+			free(lootexcludelocations);
+			lootexcludelocations = nullptr;
+		}
+	}
 } map_t;
 
 #define MAPLAYERS 3 // number of layers contained in a single map
 #define OBSTACLELAYER 1 // obstacle layer in map
 #define MAPFLAGS 16 // map flags for custom properties
-#define MAPFLAGTEXTS 19 // map flags for custom properties
+#define MAPFLAGTEXTS 20 // map flags for custom properties
 // names for the flag indices
 static const int MAP_FLAG_CEILINGTILE = 0;
 static const int MAP_FLAG_DISABLETRAPS = 1;
@@ -416,6 +515,7 @@ static const int MAP_FLAG_GENADJACENTROOMS = 15;
 static const int MAP_FLAG_DISABLEOPENING = 16;
 static const int MAP_FLAG_DISABLEMESSAGES = 17;
 static const int MAP_FLAG_DISABLEHUNGER = 18;
+static const int MAP_FLAG_PERIMETER_GAP = 19;
 
 #define MFLAG_DISABLEDIGGING ((map.flags[MAP_FLAG_GENBYTES3] >> 24) & 0xFF) // first leftmost byte
 #define MFLAG_DISABLETELEPORT ((map.flags[MAP_FLAG_GENBYTES3] >> 16) & 0xFF) // second leftmost byte
@@ -424,6 +524,7 @@ static const int MAP_FLAG_DISABLEHUNGER = 18;
 #define MFLAG_DISABLEOPENING ((map.flags[MAP_FLAG_GENBYTES4] >> 24) & 0xFF) // first leftmost byte
 #define MFLAG_DISABLEMESSAGES ((map.flags[MAP_FLAG_GENBYTES4] >> 16) & 0xFF) // second leftmost byte
 #define MFLAG_DISABLEHUNGER ((map.flags[MAP_FLAG_GENBYTES4] >> 8) & 0xFF) // third leftmost byte
+#define MFLAG_PERIMETER_GAP ((map.flags[MAP_FLAG_GENBYTES4] >> 0) & 0xFF) // fourth leftmost byte
 
 // delete entity structure
 typedef struct deleteent_t
@@ -433,15 +534,6 @@ typedef struct deleteent_t
 } deleteent_t;
 #define MAXTRIES 6 // max number of attempts on a packet
 #define MAXDELETES 2 // max number of packets resent in a frame
-
-// pathnode struct
-typedef struct pathnode_t
-{
-	struct pathnode_t* parent;
-	Sint32 x, y;
-	Uint32 g, h;
-	node_t* node;
-} pathnode_t;
 
 // hit structure
 #define HORIZONTAL 1
@@ -501,6 +593,7 @@ typedef struct polyquad_t
 typedef struct polytriangle_t
 {
 	vertex_t vertex[3];
+    vertex_t normal;
 	Uint8 r, g, b;
 } polytriangle_t;
 
@@ -509,12 +602,15 @@ typedef struct polymodel_t
 {
 	polytriangle_t* faces;
 	uint64_t numfaces;
-	GLuint vbo;
+    GLuint vao;
+    
+    // vbos
+	GLuint positions;
 	GLuint colors;
-	GLuint colors_shifted;
-	GLuint grayscale_colors;
-	GLuint grayscale_colors_shifted;
-	GLuint va;
+    GLuint normals;
+	//GLuint colors_shifted;
+	//GLuint grayscale_colors;
+	//GLuint grayscale_colors_shifted;
 } polymodel_t;
 
 // string structure
@@ -525,23 +621,43 @@ typedef struct string_t
 	node_t* node;
 	Uint32 color;
 	Uint32 time;
+	int player = -1;
 } string_t;
 
 // door structure (used for map generation)
 typedef struct door_t
 {
+	enum DoorDir : Sint32
+	{
+		DIR_EAST,
+		DIR_SOUTH,
+		DIR_WEST,
+		DIR_NORTH
+	};
+	enum DoorEdge : Sint32
+	{
+		EDGE_EAST,
+		EDGE_SOUTHEAST,
+		EDGE_SOUTH,
+		EDGE_SOUTHWEST,
+		EDGE_WEST,
+		EDGE_NORTHWEST,
+		EDGE_NORTH,
+		EDGE_NORTHEAST
+	};
 	Sint32 x, y;
-	Sint32 dir; // 0: east, 1: south, 2: west, 3: north
+	DoorDir dir;
+	DoorEdge edge;
 } door_t;
 
 #define CLIPNEAR 2
-#define CLIPFAR 1024
+#define CLIPFAR 4000
 #define TEXTURESIZE 32
 #define TEXTUREPOWER 5 // power of 2 that texture size is, ie pow(2,TEXTUREPOWER) = TEXTURESIZE
-#ifndef BARONY_SUPER_MULTIPLAYER
-#define MAXPLAYERS 4
+#ifdef BARONY_SUPER_MULTIPLAYER
+#define MAXPLAYERS 8
 #else
-#define MAXPLAYERS 16
+#define MAXPLAYERS 4
 #endif
 
 // shaking/bobbing, that sort of thing
@@ -569,17 +685,13 @@ extern Sint32 yres;
 extern int mainloop;
 extern Uint32 ticks;
 extern Uint32 lastkeypressed;
-extern Sint8 keystatus[512];
+extern std::unordered_map<SDL_Keycode, bool> keystatus;
 extern Sint32 mousex, mousey;
 extern Sint32 omousex, omousey;
 extern Sint32 mousexrel, mouseyrel;
 extern char* inputstr;
 extern int inputlen;
 extern string lastname;
-extern int lastCreatedCharacterClass;
-extern int lastCreatedCharacterAppearance;
-extern int lastCreatedCharacterSex;
-extern int lastCreatedCharacterRace;
 extern bool fingerdown;
 extern int fingerx;
 extern int fingery;
@@ -609,14 +721,12 @@ extern int minimapTransparencyForeground;
 extern int minimapTransparencyBackground;
 extern int minimapScale;
 extern int minimapObjectZoom;
-extern Sint32* lightmap;
-extern Sint32* lightmapSmoothed;
+extern std::vector<vec4_t> lightmaps[MAXPLAYERS + 1];
+extern std::vector<vec4_t> lightmapsSmoothed[MAXPLAYERS + 1];
 extern list_t entitiesdeleted;
 extern Sint32 multiplayer;
 extern bool directConnect;
 extern bool client_disconnected[MAXPLAYERS];
-extern view_t cameras[MAXPLAYERS];
-extern view_t menucam;
 extern int minotaurlevel;
 #define SINGLE 0
 #define SERVER 1
@@ -627,14 +737,22 @@ extern int minotaurlevel;
 #define SPLITSCREEN 6
 
 // language stuff
-#define NUMLANGENTRIES 4399
-extern char languageCode[32];
-extern char** language;
+struct Language
+{
+	static const char* get(const int line);
+	static std::map<int, std::string> entries;
+	static std::map<int, std::string> tmpEntries;
+	static void reset();
+	static int loadLanguage(char const* const lang, bool forceLoadBaseDirectory);
+	static int reloadLanguage();
+	static std::string languageCode;
+};
 
 // random game defines
 extern bool movie;
 extern bool genmap;
 extern char classtoquickstart[256];
+extern bool splitscreen;
 
 // commands
 extern list_t messages;
@@ -672,19 +790,9 @@ extern TTF_Font* ttf16;
 extern SDL_Surface* font8x8_bmp;
 extern SDL_Surface* font12x12_bmp;
 extern SDL_Surface* font16x16_bmp;
-extern SDL_Surface* fancyWindow_bmp;
-extern SDL_Surface* backdrop_loading_bmp;
 extern SDL_Surface** sprites;
 extern SDL_Surface** tiles;
-extern std::unordered_map<std::string, SDL_Surface*> achievementImages;
-extern std::unordered_map<std::string, std::string> achievementNames;
-extern std::unordered_map<std::string, std::string> achievementDesc;
-extern std::unordered_set<std::string> achievementHidden;
-typedef std::function<bool(std::pair<std::string, std::string>, std::pair<std::string, std::string>)> Comparator;
-extern std::set<std::pair<std::string, std::string>, Comparator> achievementNamesSorted;
-extern std::unordered_map<std::string, int> achievementProgress;
-extern std::unordered_map<std::string, int64_t> achievementUnlockTime;
-extern std::unordered_set<std::string> achievementUnlockedLookup;
+
 extern voxel_t** models;
 extern polymodel_t* polymodels;
 extern bool useModelCache;
@@ -705,6 +813,8 @@ extern real_t musvolume;
 extern real_t sfxvolume;
 extern real_t sfxAmbientVolume;
 extern real_t sfxEnvironmentVolume;
+extern real_t sfxNotificationVolume;
+extern bool musicPreload;
 extern bool *animatedtiles, *swimmingtiles, *lavatiles;
 extern char tempstr[1024];
 static const int MINIMAP_MAX_DIMENSION = 512;
@@ -712,12 +822,16 @@ extern Sint8 minimap[MINIMAP_MAX_DIMENSION][MINIMAP_MAX_DIMENSION];
 extern Uint32 mapseed;
 extern bool* shoparea;
 
+struct AnimatedTile {
+    int indices[8] = { 0 };
+};
+extern std::unordered_map<int, AnimatedTile> tileAnimations;
+
 // function prototypes for main.c:
 int sgn(real_t x);
 int numdigits_sint16(Sint16 x);
 int longestline(char const * const str);
 int concatedStringLength(char* str, ...);
-void printlog(const char* str, ...);
 
 // function prototypes for list.c:
 void list_FreeAll(list_t* list);
@@ -754,20 +868,7 @@ void stringDeconstructor(void* data);
 void listDeconstructor(void* data);
 Entity* newEntity(Sint32 sprite, Uint32 pos, list_t* entlist, list_t* creaturelist);
 button_t* newButton(void);
-string_t* newString(list_t* list, Uint32 color, Uint32 time, char const * const content, ...);
-pathnode_t* newPathnode(list_t* list, Sint32 x, Sint32 y, pathnode_t* parent, Sint8 pos);
-
-// function prototypes for opengl.c:
-#define REALCOLORS 0
-#define ENTITYUIDS 1
-real_t getLightForEntity(real_t x, real_t y);
-void glDrawVoxel(view_t* camera, Entity* entity, int mode);
-void glDrawSprite(view_t* camera, Entity* entity, int mode);
-void glDrawWorldUISprite(view_t* camera, Entity* entity, int mode);
-void glDrawWorldDialogueSprite(view_t* camera, void* worldDialogue, int mode);
-bool glDrawEnemyBarSprite(view_t* camera, int mode, void* enemyHPBarDetails, bool doVisibilityCheckOnly);
-void glDrawSpriteFromImage(view_t* camera, Entity* entity, std::string text, int mode);
-void glDrawWorld(view_t* camera, int mode);
+string_t* newString(list_t* list, Uint32 color, Uint32 time, int player, char const * const content, ...);
 
 // function prototypes for cursors.c:
 SDL_Cursor* newCursor(char const * const image[]);
@@ -787,19 +888,10 @@ GLuint create_shader(const char* filename, GLenum type);
 extern bool no_sound; //False means sound initialized properly. True means sound failed to initialize.
 extern bool initialized; //So that messagePlayer doesn't explode before the game is initialized. //TODO: Does the editor need this set too and stuff?
 
-#ifdef PANDORA
- // Pandora: FBO variables
- extern GLuint fbo_fbo;
- extern GLuint fbo_tex;
- extern GLuint fbo_ren;
-#endif // PANDORA
 void GO_SwapBuffers(SDL_Window* screen);
-unsigned int GO_GetPixelU32(int x, int y, view_t& camera);
 
-static const int NUM_STEAM_STATISTICS = 49;
+static const int NUM_STEAM_STATISTICS = 58;
 extern SteamStat_t g_SteamStats[NUM_STEAM_STATISTICS];
-static const int NUM_GLOBAL_STEAM_STATISTICS = 66;
-extern SteamStat_t g_SteamGlobalStats[NUM_GLOBAL_STEAM_STATISTICS];
 
 #ifdef STEAMWORKS
  #include <steam/steam_api.h>
@@ -841,7 +933,26 @@ extern SteamGlobalStat_t g_SteamAPIGlobalStats[1];
  #define getHeightOfFont(A) TTF_FontHeight(A)
 #endif // NINTENDO
 
+#if defined(NINTENDO) || (!defined(USE_EOS) && !defined(STEAMWORKS))
+ #define LOCAL_ACHIEVEMENTS
+#endif
+
 std::string stackTrace();
 void stackTraceUnique();
 void finishStackTraceUnique();
 extern bool ENABLE_STACK_TRACES;
+
+time_t getTime();
+void getTimeAndDate(time_t t, int* year, int* month, int* day, int* hour, int* min, int* second);
+char* getTimeFormatted(time_t t, char* buf, size_t size);
+char* getTimeAndDateFormatted(time_t t, char* buf, size_t size);
+
+// I can't believe windows still defines these...
+#ifdef far
+#undef far
+#endif
+#ifdef near
+#undef near
+#endif
+
+#define VERTEX_ARRAYS_ENABLED

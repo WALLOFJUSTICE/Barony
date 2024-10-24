@@ -16,14 +16,16 @@
 #include "entity.hpp"
 #include "player.hpp"
 #include "ui/Frame.hpp"
-#ifndef NINTENDO
+#ifdef EDITOR
 #include "editor.hpp"
+#include "mod_tools.hpp"
 #endif
 #include "items.hpp"
 #include "ui/Image.hpp"
 #include "interface/consolecommand.hpp"
 #include "colors.hpp"
 #include "ui/Text.hpp"
+#include "ui/GameUI.hpp"
 
 #include <cassert>
 
@@ -42,190 +44,940 @@ Mesh framebuffer::mesh{
 		-1.f, -1.f,  0.f,
 		 1.f, -1.f,  0.f,
 		 1.f,  1.f,  0.f,
+        -1.f, -1.f,  0.f,
+         1.f,  1.f,  0.f,
 		-1.f,  1.f,  0.f,
 	},
 	{ // texcoords
 		0.f,  0.f,
 		1.f,  0.f,
 		1.f,  1.f,
+        0.f,  0.f,
+        1.f,  1.f,
 		0.f,  1.f,
 	},
 	{ // colors
 		1.f, 1.f, 1.f, 1.f,
 		1.f, 1.f, 1.f, 1.f,
 		1.f, 1.f, 1.f, 1.f,
+        1.f, 1.f, 1.f, 1.f,
+        1.f, 1.f, 1.f, 1.f,
 		1.f, 1.f, 1.f, 1.f,
-	},
-	{ // indices
-		0, 1, 2,
-		0, 2, 3,
 	}
 };
 
 Shader framebuffer::shader;
+Shader framebuffer::hdrShader;
+Shader voxelShader;
+Shader voxelBrightShader;
+Shader voxelDitheredShader;
+Shader voxelBrightDitheredShader;
+Shader worldShader;
+Shader worldDitheredShader;
+Shader worldDarkShader;
+Shader skyShader;
+Shader spriteShader;
+Shader spriteDitheredShader;
+Shader spriteBrightShader;
+Shader spriteUIShader;
+TempTexture* lightmapTexture[MAXPLAYERS + 1];
+
+static Shader gearShader;
+static Shader lineShader;
+static Mesh lineMesh = {
+    {
+        1.f, 1.f, 0.f, 1.f,
+        1.f, 1.f, 0.f, 1.f,
+    }, // positions
+    {}, // texcoords
+    {} // colors
+};
+
+static void buildVoxelShader(
+    Shader& shader, const char* name, bool lightmap,
+	const char* v, size_t size_v,
+	const char* f, size_t size_f)
+{
+	shader.init(name);
+	shader.compile(v, size_v, Shader::Type::Vertex);
+	shader.compile(f, size_f, Shader::Type::Fragment);
+	shader.bindAttribLocation("iPosition", 0);
+	shader.bindAttribLocation("iColor", 1);
+	shader.bindAttribLocation("iNormal", 2);
+	shader.link();
+    if (lightmap) {
+        shader.bind();
+        GL_CHECK_ERR(glUniform1i(shader.uniform("uLightmap"), 1));
+    }
+}
+
+static void buildWorldShader(
+    Shader& shader, const char* name, bool textures,
+    const char* v, size_t size_v,
+    const char* f, size_t size_f)
+{
+    shader.init(name);
+    shader.compile(v, size_v, Shader::Type::Vertex);
+    shader.compile(f, size_f, Shader::Type::Fragment);
+    shader.bindAttribLocation("iPosition", 0);
+    shader.bindAttribLocation("iTexCoord", 1);
+    shader.bindAttribLocation("iColor", 2);
+    shader.link();
+    if (textures) {
+        shader.bind();
+        GL_CHECK_ERR(glUniform1i(shader.uniform("uTextures"), 2));
+        GL_CHECK_ERR(glUniform1i(shader.uniform("uLightmap"), 1));
+    }
+}
+
+static void buildSpriteShader(
+    Shader& shader, const char* name, bool lightmap,
+    const char* v, size_t size_v,
+    const char* f, size_t size_f)
+{
+    shader.init(name);
+    shader.compile(v, size_v, Shader::Type::Vertex);
+    shader.compile(f, size_f, Shader::Type::Fragment);
+    shader.bindAttribLocation("iPosition", 0);
+    shader.bindAttribLocation("iTexCoord", 1);
+    shader.bindAttribLocation("iColor", 2);
+    shader.link();
+    shader.bind();
+    GL_CHECK_ERR(glUniform1i(shader.uniform("uTexture"), 0));
+    if (lightmap) {
+        GL_CHECK_ERR(glUniform1i(shader.uniform("uLightmap"), 1));
+    }
+}
 
 void createCommonDrawResources() {
-	static const char vertex_glsl[] =
-        "#version 120\n"
-		"attribute vec3 iPosition;"
-		"attribute vec2 iTexCoord;"
-        "varying vec2 TexCoord;"
+    // framebuffer shader:
+    
+    framebuffer::mesh.init();
+    
+	static const char fb_vertex_glsl[] =
+		"in vec3 iPosition;"
+		"in vec2 iTexCoord;"
+        "out vec2 TexCoord;"
 		"void main() {"
 		"gl_Position = vec4(iPosition, 1.0);"
         "TexCoord = iTexCoord;"
 		"}";
 
-	static const char fragment_glsl[] =
-		"#version 120\n"
-        "varying vec2 TexCoord;"
+	static const char fb_fragment_glsl[] =
+        "in vec2 TexCoord;"
 		"uniform sampler2D uTexture;"
-		"uniform float uGamma;"
-		"uniform int uTicks;"
+		"uniform float uBrightness;"
+        "out vec4 FragColor;"
 		"void main() {"
-		"gl_FragColor = texture2D(uTexture, TexCoord) * uGamma * vec4(1.0, 1.0, 1.0, 1.0);"
+        "vec4 color = texture(uTexture, TexCoord);"
+		"FragColor = vec4(color.rgb * uBrightness, color.a);"
+		"}";
+    
+    framebuffer::shader.init("framebuffer");
+    framebuffer::shader.compile(fb_vertex_glsl, sizeof(fb_vertex_glsl), Shader::Type::Vertex);
+    framebuffer::shader.compile(fb_fragment_glsl, sizeof(fb_fragment_glsl), Shader::Type::Fragment);
+    framebuffer::shader.bindAttribLocation("iPosition", 0);
+    framebuffer::shader.bindAttribLocation("iTexCoord", 1);
+    framebuffer::shader.link();
+    framebuffer::shader.bind();
+    GL_CHECK_ERR(glUniform1i(framebuffer::shader.uniform("uTexture"), 0));
+    
+    static const char fb_hdr_fragment_glsl[] =
+        "in vec2 TexCoord;"
+        "uniform sampler2D uTexture;"
+        "uniform vec4 uBrightness;"
+        "uniform float uGamma;"
+        "uniform float uExposure;"
+        "out vec4 FragColor;"
+    
+        "void main() {"
+        "vec4 color = texture(uTexture, TexCoord);"
+        "vec3 mapped = color.rgb;"
+    
+        // reinhard tone-mapping
+        "mapped = vec3(1.0) - exp(-mapped * uExposure);"
+    
+        // another kind of reinhard tone mapping (pick one)
+        //"mapped = mapped * (uExposure / (1.0 + mapped / uExposure));"
+
+        // luma-based reinhard tone mapping (does not use exposure)
+        //"float luma = dot(mapped, vec3(0.2126, 0.7152, 0.0722));"
+        //"float toneMappedLuma = luma / (1.0 + luma);"
+        //"mapped = mapped * (toneMappedLuma / luma);"
+    
+        // additional tone-mapping examples
+        //https://www.shadertoy.com/view/lslGzl
+    
+        // gamma correction
+        "mapped = pow(mapped, vec3(1.0 / uGamma));"
+    
+        "FragColor = vec4(mapped, color.a) * uBrightness;"
+        "}";
+    
+    framebuffer::hdrShader.init("hdr framebuffer");
+    framebuffer::hdrShader.compile(fb_vertex_glsl, sizeof(fb_vertex_glsl), Shader::Type::Vertex);
+    framebuffer::hdrShader.compile(fb_hdr_fragment_glsl, sizeof(fb_hdr_fragment_glsl), Shader::Type::Fragment);
+    framebuffer::hdrShader.bindAttribLocation("iPosition", 0);
+    framebuffer::hdrShader.bindAttribLocation("iTexCoord", 1);
+    framebuffer::hdrShader.link();
+    framebuffer::hdrShader.bind();
+    GL_CHECK_ERR(glUniform1i(framebuffer::hdrShader.uniform("uTexture"), 0));
+    
+    // create lightmap textures
+    for (int c = 0; c < MAXPLAYERS + 1; ++c) {
+        lightmapTexture[c] = new TempTexture();
+    }
+    
+    // voxel shader:
+    
+    static const char vox_vertex_glsl[] =
+        "in vec3 iPosition;"
+        "in vec3 iColor;"
+        "in vec3 iNormal;"
+        "uniform mat4 uProj;"
+        "uniform mat4 uView;"
+        "uniform mat4 uModel;"
+        "out vec3 Color;"
+        "out vec4 WorldPos;"
+        "out vec3 Normal;"
+    
+        "void main() {"
+        "WorldPos = uModel * vec4(iPosition, 1.0);"
+        "gl_Position = uProj * uView * WorldPos;"
+        "Color = iColor;"
+        "Normal = (uModel * vec4(iNormal, 0.0)).xyz;"
+        "}";
+
+    static const char vox_fragment_glsl[] =
+        "in vec3 Color;"
+        "in vec3 Normal;"
+        "in vec4 WorldPos;"
+        "uniform mat4 uColorRemap;"
+        "uniform vec4 uLightFactor;"
+        "uniform vec4 uLightColor;"
+        "uniform vec4 uColorAdd;"
+        "uniform vec4 uCameraPos;"
+        "uniform sampler2D uLightmap;"
+        "uniform vec2 uMapDims;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void main() {"
+        "vec3 Remapped ="
+        "    (uColorRemap[0].rgb * Color.r)+"
+        "    (uColorRemap[1].rgb * Color.g)+"
+        "    (uColorRemap[2].rgb * Color.b);"
+        "vec2 TexCoord = WorldPos.xz / (uMapDims.xy * 32.0);"
+        "vec4 Lightmap = texture(uLightmap, TexCoord);"
+        "FragColor = vec4(Remapped, 1.0) * uLightFactor * (Lightmap + uLightColor) + uColorAdd;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
+        "}";
+
+	buildVoxelShader(voxelShader, "voxelShader", true,
+		vox_vertex_glsl, sizeof(vox_vertex_glsl),
+		vox_fragment_glsl, sizeof(vox_fragment_glsl));
+    
+    static const char vox_bright_fragment_glsl[] =
+        "in vec3 Color;"
+        "in vec3 Normal;"
+        "in vec4 WorldPos;"
+        "uniform mat4 uColorRemap;"
+        "uniform vec4 uLightFactor;"
+        "uniform vec4 uLightColor;"
+        "uniform vec4 uColorAdd;"
+        "uniform vec4 uCameraPos;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void main() {"
+        "vec3 Remapped ="
+        "    (uColorRemap[0].rgb * Color.r)+"
+        "    (uColorRemap[1].rgb * Color.g)+"
+        "    (uColorRemap[2].rgb * Color.b);"
+        "FragColor = vec4(Remapped, 1.0) * uLightFactor * uLightColor + uColorAdd;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
+        "}";
+
+    buildVoxelShader(voxelBrightShader, "voxelBrightShader", false,
+        vox_vertex_glsl, sizeof(vox_vertex_glsl),
+        vox_bright_fragment_glsl, sizeof(vox_bright_fragment_glsl));
+
+	static const char vox_dithered_fragment_glsl[] =
+		"in vec3 Color;"
+        "in vec3 Normal;"
+		"in vec4 WorldPos;"
+        "uniform float uDitherAmount;"
+		"uniform mat4 uColorRemap;"
+        "uniform vec4 uLightFactor;"
+        "uniform vec4 uLightColor;"
+        "uniform vec4 uColorAdd;"
+        "uniform vec4 uCameraPos;"
+        "uniform sampler2D uLightmap;"
+		"uniform vec2 uMapDims;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void dither(ivec2 pos, float amount) {"
+        "if (amount > 1.0) {"
+        "int d = int(amount) - 1;"
+        "if ((pos.x & d) == 0 && (pos.y & d) == 0) { discard; }"
+        "} else if (amount == 1.0) {"
+        "if (((pos.x + pos.y) & 1) == 0) { discard; }"
+        "} else if (amount < 1.0) {"
+        "int d = int(1.0 / amount) - 1;"
+        "if ((pos.x & d) != 0 || (pos.y & d) != 0) { discard; }"
+        "}"
+        "}"
+
+		"void main() {"
+		"dither(ivec2(gl_FragCoord), uDitherAmount);"
+		"vec3 Remapped ="
+		"    (uColorRemap[0].rgb * Color.r)+"
+		"    (uColorRemap[1].rgb * Color.g)+"
+		"    (uColorRemap[2].rgb * Color.b);"
+		"vec2 TexCoord = WorldPos.xz / (uMapDims.xy * 32.0);"
+        "vec4 Lightmap = texture(uLightmap, TexCoord);"
+        "FragColor = vec4(Remapped, 1.0) * uLightFactor * (Lightmap + uLightColor) + uColorAdd;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
 		"}";
 
-	framebuffer::mesh.init();
-	framebuffer::shader.init();
-	framebuffer::shader.compile(vertex_glsl, sizeof(vertex_glsl), Shader::Type::Vertex);
-	framebuffer::shader.compile(fragment_glsl, sizeof(fragment_glsl), Shader::Type::Fragment);
-	framebuffer::shader.link();
-	glUniform1i(framebuffer::shader.uniform("uTexture"), 0);
+	buildVoxelShader(voxelDitheredShader, "voxelDitheredShader", true,
+		vox_vertex_glsl, sizeof(vox_vertex_glsl),
+		vox_dithered_fragment_glsl, sizeof(vox_dithered_fragment_glsl));
+
+	static const char vox_bright_dithered_fragment_glsl[] =
+		"in vec3 Color;"
+		"in vec3 Normal;"
+		"in vec4 WorldPos;"
+		"uniform float uDitherAmount;"
+		"uniform mat4 uColorRemap;"
+		"uniform vec4 uLightFactor;"
+		"uniform vec4 uLightColor;"
+		"uniform vec4 uColorAdd;"
+		"uniform vec4 uCameraPos;"
+		"uniform sampler2D uLightmap;"
+		"uniform vec2 uMapDims;"
+		"uniform float uFogDistance;"
+		"uniform vec4 uFogColor;"
+		"out vec4 FragColor;"
+
+		"void dither(ivec2 pos, float amount) {"
+		"if (amount > 1.0) {"
+		"int d = int(amount) - 1;"
+		"if ((pos.x & d) == 0 && (pos.y & d) == 0) { discard; }"
+		"} else if (amount == 1.0) {"
+		"if (((pos.x + pos.y) & 1) == 0) { discard; }"
+		"} else if (amount < 1.0) {"
+		"int d = int(1.0 / amount) - 1;"
+		"if ((pos.x & d) != 0 || (pos.y & d) != 0) { discard; }"
+		"}"
+		"}"
+
+		"void main() {"
+		"dither(ivec2(gl_FragCoord), uDitherAmount);"
+		"vec3 Remapped ="
+		"    (uColorRemap[0].rgb * Color.r)+"
+		"    (uColorRemap[1].rgb * Color.g)+"
+		"    (uColorRemap[2].rgb * Color.b);"
+		"FragColor = vec4(Remapped, 1.0) * uLightFactor * uLightColor + uColorAdd;"
+
+		"if (uFogDistance > 0.0) {"
+		"float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+		"float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+		"vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+		"FragColor = vec4(mixed, FragColor.a);"
+		"}"
+		"}";
+
+	buildVoxelShader(voxelBrightDitheredShader, "voxelBrightDitheredShader", true,
+		vox_vertex_glsl, sizeof(vox_vertex_glsl),
+		vox_bright_dithered_fragment_glsl, sizeof(vox_bright_dithered_fragment_glsl));
+    
+    // world shader:
+    
+    static const char world_vertex_glsl[] =
+        "in vec3 iPosition;"
+        "in vec2 iTexCoord;"
+        "in vec3 iColor;"
+        "uniform mat4 uProj;"
+        "uniform mat4 uView;"
+        "out vec2 TexCoord;"
+        "out vec3 Color;"
+        "out vec4 WorldPos;"
+    
+        "void main() {"
+        "WorldPos = vec4(iPosition, 1.0);"
+        "gl_Position = uProj * uView * WorldPos;"
+        "TexCoord = iTexCoord;"
+        "Color = iColor;"
+        "}";
+    
+    static const char world_fragment_glsl[] =
+        "in vec2 TexCoord;"
+        "in vec3 Color;"
+        "in vec4 WorldPos;"
+        "uniform vec4 uLightFactor;"
+        "uniform sampler2D uTextures;"
+        "uniform sampler2D uLightmap;"
+        "uniform vec2 uMapDims;"
+        "uniform vec4 uCameraPos;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void main() {"
+        "vec2 LightCoord = WorldPos.xz / (uMapDims.xy * 32.0);"
+        "vec4 Lightmap = texture(uLightmap, LightCoord);"
+        "FragColor = texture(uTextures, TexCoord) * vec4(Color, 1.f) * uLightFactor * Lightmap;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
+        "}";
+    
+    buildWorldShader(worldShader, "worldShader", true,
+        world_vertex_glsl, sizeof(world_vertex_glsl),
+        world_fragment_glsl, sizeof(world_fragment_glsl));
+    
+    static const char world_dithered_fragment_glsl[] =
+        "in vec2 TexCoord;"
+        "in vec3 Color;"
+        "in vec4 WorldPos;"
+        "uniform float uDitherAmount;"
+        "uniform vec4 uLightFactor;"
+        "uniform sampler2D uTextures;"
+        "uniform sampler2D uLightmap;"
+        "uniform vec2 uMapDims;"
+        "uniform vec4 uCameraPos;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void dither(ivec2 pos, float amount) {"
+        "if (amount > 1.0) {"
+        "int d = int(amount) - 1;"
+        "if ((pos.x & d) == 0 && (pos.y & d) == 0) { discard; }"
+        "} else if (amount == 1.0) {"
+        "if (((pos.x + pos.y) & 1) == 0) { discard; }"
+        "} else if (amount < 1.0) {"
+        "int d = int(1.0 / amount) - 1;"
+        "if ((pos.x & d) != 0 || (pos.y & d) != 0) { discard; }"
+        "}"
+        "}"
+    
+        "void main() {"
+        "dither(ivec2(gl_FragCoord), uDitherAmount);"
+        "vec2 LightCoord = WorldPos.xz / (uMapDims.xy * 32.0);"
+        "vec4 Lightmap = texture(uLightmap, LightCoord);"
+        "FragColor = texture(uTextures, TexCoord) * vec4(Color, 1.f) * uLightFactor * Lightmap;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
+        "}";
+    
+    buildWorldShader(worldDitheredShader, "worldDitheredShader", true,
+        world_vertex_glsl, sizeof(world_vertex_glsl),
+        world_dithered_fragment_glsl, sizeof(world_dithered_fragment_glsl));
+    
+    static const char world_dark_fragment_glsl[] =
+        "in vec2 TexCoord;"
+        "in vec3 Color;"
+        "in vec4 WorldPos;"
+        "out vec4 FragColor;"
+        "void main() {"
+        "FragColor = vec4(0.0, 0.0, 0.0, 1.0);"
+        "}";
+    
+    buildWorldShader(worldDarkShader, "worldDarkShader", false,
+        world_vertex_glsl, sizeof(world_vertex_glsl),
+        world_dark_fragment_glsl, sizeof(world_dark_fragment_glsl));
+    
+    // sky shader:
+    
+    static const char sky_vertex_glsl[] =
+        "in vec3 iPosition;"
+        "in vec2 iTexCoord;"
+        "in vec4 iColor;"
+        "uniform mat4 uProj;"
+        "uniform mat4 uView;"
+        "uniform vec2 uScroll;"
+        "out vec2 TexCoord;"
+        "out vec2 Scroll;"
+        "out vec4 Color;"
+    
+        "void main() {"
+        "mat4 View = uView;"
+        "View[3] = vec4(0.f, 0.f, 0.f, 1.f);"
+        "gl_Position = uProj * View * vec4(iPosition, 1.0);"
+        "TexCoord = iTexCoord;"
+        "Color = iColor;"
+        "Scroll = (Color.a > 0.75) ? uScroll.xx : uScroll.yy;"
+        "}";
+    
+    static const char sky_fragment_glsl[] =
+        "in vec2 TexCoord;"
+        "in vec2 Scroll;"
+        "in vec4 Color;"
+        "uniform vec4 uLightFactor;"
+        "uniform sampler2D uTexture;"
+        "out vec4 FragColor;"
+        "void main() {"
+        "FragColor = texture(uTexture, TexCoord + Scroll) * Color * uLightFactor;"
+        "}";
+    
+    skyShader.init("skyShader");
+    skyShader.compile(sky_vertex_glsl, sizeof(sky_vertex_glsl), Shader::Type::Vertex);
+    skyShader.compile(sky_fragment_glsl, sizeof(sky_fragment_glsl), Shader::Type::Fragment);
+    skyShader.bindAttribLocation("iPosition", 0);
+    skyShader.bindAttribLocation("iTexCoord", 1);
+    skyShader.bindAttribLocation("iColor", 2);
+    skyShader.link();
+    skyShader.bind();
+    GL_CHECK_ERR(glUniform1i(skyShader.uniform("uTexture"), 0));
+    
+    skyMesh.init();
+    
+    // sprite shader:
+    
+    static const char sprite_vertex_glsl[] =
+        "in vec3 iPosition;"
+        "in vec2 iTexCoord;"
+        "uniform mat4 uProj;"
+        "uniform mat4 uView;"
+        "uniform mat4 uModel;"
+        "out vec4 WorldPos;"
+        "out vec2 TexCoord;"
+    
+        "void main() {"
+        "WorldPos = uModel * vec4(iPosition, 1.0);"
+        "TexCoord = iTexCoord;"
+        "gl_Position = uProj * uView * WorldPos;"
+        "}";
+
+    static const char sprite_fragment_glsl[] =
+        "in vec4 WorldPos;"
+        "in vec2 TexCoord;"
+        "uniform vec4 uLightFactor;"
+        "uniform vec4 uLightColor;"
+        "uniform vec4 uColorAdd;"
+        "uniform vec4 uCameraPos;"
+        "uniform sampler2D uTexture;"
+        "uniform sampler2D uLightmap;"
+        "uniform vec2 uMapDims;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void main() {"
+        "vec4 Texture = texture(uTexture, TexCoord);"
+        "vec2 LightCoord = WorldPos.xz / (uMapDims.xy * 32.0);"
+        "vec4 Lightmap = texture(uLightmap, LightCoord);"
+        "FragColor = Texture * uLightFactor * (Lightmap + uLightColor) + uColorAdd;"
+        "if (FragColor.a <= 0) discard;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
+        "}";
+
+    buildSpriteShader(spriteShader, "spriteShader", true,
+        sprite_vertex_glsl, sizeof(sprite_vertex_glsl),
+        sprite_fragment_glsl, sizeof(sprite_fragment_glsl));
+    
+    static const char sprite_dithered_fragment_glsl[] =
+        "in vec4 WorldPos;"
+        "in vec2 TexCoord;"
+        "uniform float uDitherAmount;"
+        "uniform vec4 uLightFactor;"
+        "uniform vec4 uLightColor;"
+        "uniform vec4 uColorAdd;"
+        "uniform vec4 uCameraPos;"
+        "uniform sampler2D uTexture;"
+        "uniform sampler2D uLightmap;"
+        "uniform vec2 uMapDims;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void dither(ivec2 pos, float amount) {"
+        "if (amount > 1.0) {"
+        "int d = int(amount) - 1;"
+        "if ((pos.x & d) == 0 && (pos.y & d) == 0) { discard; }"
+        "} else if (amount == 1.0) {"
+        "if (((pos.x + pos.y) & 1) == 0) { discard; }"
+        "} else if (amount < 1.0) {"
+        "int d = int(1.0 / amount) - 1;"
+        "if ((pos.x & d) != 0 || (pos.y & d) != 0) { discard; }"
+        "}"
+        "}"
+
+        "void main() {"
+        "dither(ivec2(gl_FragCoord), uDitherAmount);"
+        "vec4 Texture = texture(uTexture, TexCoord);"
+        "vec2 LightCoord = WorldPos.xz / (uMapDims.xy * 32.0);"
+        "vec4 Lightmap = texture(uLightmap, LightCoord);"
+        "FragColor = Texture * uLightFactor * (Lightmap + uLightColor) + uColorAdd;"
+        "if (FragColor.a <= 0) discard;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
+        "}";
+
+    buildSpriteShader(spriteDitheredShader, "spriteDitheredShader", true,
+        sprite_vertex_glsl, sizeof(sprite_vertex_glsl),
+        sprite_dithered_fragment_glsl, sizeof(sprite_dithered_fragment_glsl));
+
+    static const char sprite_bright_fragment_glsl[] =
+        "in vec4 WorldPos;"
+        "in vec2 TexCoord;"
+        "uniform vec4 uLightFactor;"
+        "uniform vec4 uLightColor;"
+        "uniform vec4 uColorAdd;"
+        "uniform vec4 uCameraPos;"
+        "uniform sampler2D uTexture;"
+        "uniform float uFogDistance;"
+        "uniform vec4 uFogColor;"
+        "out vec4 FragColor;"
+    
+        "void main() {"
+        "vec4 Texture = texture(uTexture, TexCoord);"
+        "FragColor = Texture * uLightFactor * uLightColor + uColorAdd;"
+        "if (FragColor.a <= 0) discard;"
+        
+        "if (uFogDistance > 0.0) {"
+        "float dist = length(uCameraPos.xyz - WorldPos.xyz);"
+        "float lerp = (min(dist, uFogDistance) / uFogDistance) * uFogColor.a;"
+        "vec3 mixed = mix(FragColor.rgb, uFogColor.rgb, lerp);"
+        "FragColor = vec4(mixed, FragColor.a);"
+        "}"
+        "}";
+
+    buildSpriteShader(spriteBrightShader, "spriteBrightShader", false,
+        sprite_vertex_glsl, sizeof(sprite_vertex_glsl),
+        sprite_bright_fragment_glsl, sizeof(sprite_bright_fragment_glsl));
+
+    buildSpriteShader(spriteUIShader, "spriteUIShader", false,
+        sprite_vertex_glsl, sizeof(sprite_vertex_glsl),
+        sprite_bright_fragment_glsl, sizeof(sprite_bright_fragment_glsl));
+    
+    spriteMesh.init();
+    
+    // 2d lines
+    lineMesh.init();
 }
 
 void destroyCommonDrawResources() {
 	framebuffer::mesh.destroy();
 	framebuffer::shader.destroy();
+    framebuffer::hdrShader.destroy();
+    voxelShader.destroy();
+    voxelBrightShader.destroy();
+	voxelDitheredShader.destroy();
+	voxelBrightDitheredShader.destroy();
+    worldShader.destroy();
+    worldDitheredShader.destroy();
+    worldDarkShader.destroy();
+    skyShader.destroy();
+    skyMesh.destroy();
+    spriteShader.destroy();
+    spriteDitheredShader.destroy();
+    spriteBrightShader.destroy();
+    spriteUIShader.destroy();
+    spriteMesh.destroy();
+    lineShader.destroy();
+    lineMesh.destroy();
+    gearShader.destroy();
 #ifndef EDITOR
 	cleanupMinimapTextures();
 #endif
+    clearChunks();
+    for (int c = 0; c < MAXPLAYERS + 1; ++c) {
+        delete lightmapTexture[c];
+    }
 }
 
 void Mesh::init() {
-	if (vao) {
+	if (isInitialized()) {
 		return;
 	}
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+    
+    // NOTE: OpenGL 2.1 does not support vertex array functions
+#ifdef VERTEX_ARRAYS_ENABLED
+    GL_CHECK_ERR(glGenVertexArrays(1, &vao));
+    GL_CHECK_ERR(glBindVertexArray(vao));
+#endif
 
 	// data buffers
-	glGenBuffers((GLsizei)BufferType::Max, vbo);
-	for (unsigned int c = 0; c < (unsigned int)BufferType::Index; ++c) {
-		const auto& find = ElementsPerVBO.find((BufferType)c);
-		assert(find != ElementsPerVBO.end());
-		glBindBuffer(GL_ARRAY_BUFFER, vbo[c]);
-		glBufferData(GL_ARRAY_BUFFER, data[c].size() * sizeof(float), data[c].data(), GL_STATIC_DRAW);
-		glVertexAttribPointer(c, find->second, GL_FLOAT, GL_FALSE, 0, nullptr);
-		glEnableVertexAttribArray(c);
+    numVertices = 0;
+    GL_CHECK_ERR(glGenBuffers((GLsizei)BufferType::Max, vbo));
+	for (unsigned int c = 0; c < (unsigned int)BufferType::Max; ++c) {
+        if (data[c].size()) {
+            const auto& find = ElementsPerVBO.find((BufferType)c);
+            assert(find != ElementsPerVBO.end());
+            numVertices = std::max(numVertices, (unsigned int)data[c].size() / find->second);
+            GL_CHECK_ERR(glBindBuffer(GL_ARRAY_BUFFER, vbo[c]));
+            GL_CHECK_ERR(glBufferData(GL_ARRAY_BUFFER, data[c].size() * sizeof(float), data[c].data(), GL_STATIC_DRAW));
+#ifdef VERTEX_ARRAYS_ENABLED
+            GL_CHECK_ERR(glVertexAttribPointer(c, find->second, GL_FLOAT, GL_FALSE, 0, nullptr));
+            GL_CHECK_ERR(glEnableVertexAttribArray(c));
+#endif
+        }
 	}
+#ifndef VERTEX_ARRAYS_ENABLED
+    GL_CHECK_ERR(glBindBuffer(GL_ARRAY_BUFFER, 0));
+#endif
 
-	// index buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[(int)BufferType::Index]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, index.size() * sizeof(unsigned int), index.data(), GL_STATIC_DRAW);
-	glBindVertexArray(0);
-
-	printlog("initialized mesh with %llu vertices", index.size());
+	printlog("initialized mesh with %llu vertices", numVertices);
 }
 
 void Mesh::destroy() {
+    if (vao) {
+        GL_CHECK_ERR(glDeleteVertexArrays(1, &vao));
+        vao = 0;
+    }
 	for (int c = 0; c < (int)BufferType::Max; ++c) {
 		if (vbo[c]) {
-			glDeleteBuffers(1, &vbo[c]);
+            GL_CHECK_ERR(glDeleteBuffers(1, &vbo[c]));
 			vbo[c] = 0;
 		}
 	}
-	if (vao) {
-		glDeleteVertexArrays(1, &vao);
-		vao = 0;
-	}
 }
 
-void Mesh::draw() const {
-	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, index.size(), GL_UNSIGNED_INT, nullptr);
-	glBindVertexArray(0);
+void Mesh::draw(GLenum type, int numVertices) const {
+    // NOTE: OpenGL 2.1 does not support vertex arrays!
+#ifdef VERTEX_ARRAYS_ENABLED
+	GL_CHECK_ERR(glBindVertexArray(vao));
+#endif
+    
+    if (numVertices == 0) {
+        numVertices = this->numVertices;
+    }
+    
+    // bind buffers
+#ifndef VERTEX_ARRAYS_ENABLED
+    for (unsigned int c = 0; c < (unsigned int)BufferType::Max; ++c) {
+        if (data[c].size()) {
+            const auto& find = ElementsPerVBO.find((BufferType)c);
+            assert(find != ElementsPerVBO.end());
+            GL_CHECK_ERR(glBindBuffer(GL_ARRAY_BUFFER, vbo[c]));
+            GL_CHECK_ERR(glVertexAttribPointer(c, find->second, GL_FLOAT, GL_FALSE, 0, nullptr));
+            GL_CHECK_ERR(glEnableVertexAttribArray(c));
+        }
+    }
+#endif
+    
+    // draw elements
+    if (numVertices) {
+        GL_CHECK_ERR(glDrawArrays(type, 0, numVertices));
+    }
+    
+    // disable buffers
+#ifndef VERTEX_ARRAYS_ENABLED
+    for (unsigned int c = 0; c < (unsigned int)BufferType::Max; ++c) {
+        if (data[c].size()) {
+            GL_CHECK_ERR(glDisableVertexAttribArray(c));
+        }
+    }
+    GL_CHECK_ERR(glBindBuffer(GL_ARRAY_BUFFER, 0));
+#endif
 }
 
 void framebuffer::init(unsigned int _xsize, unsigned int _ysize, GLint minFilter, GLint magFilter) {
+    if (fbo) {
+        if (xsize == _xsize && ysize == _ysize) {
+            return;
+        }
+        destroy();
+    }
 	xsize = _xsize;
 	ysize = _ysize;
+    
+    GL_CHECK_ERR(glGenTextures(1, &fbo_color));
+    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, fbo_color));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter));
+	GL_CHECK_ERR(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, xsize, ysize, 0, GL_RGBA, GL_HALF_FLOAT, nullptr));
+    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, 0));
 
-	glGenFramebuffers(1, &fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    GL_CHECK_ERR(glGenTextures(1, &fbo_depth));
+    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, fbo_depth));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter));
+    GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter));
+    GL_CHECK_ERR(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH32F_STENCIL8,
+        xsize, ysize, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, nullptr));
+    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, 0));
+    
+    GL_CHECK_ERR(glGenFramebuffers(1, &fbo));
+    GL_CHECK_ERR(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
+    GL_CHECK_ERR(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_color, 0));
+    GL_CHECK_ERR(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fbo_depth, 0));
+    static const GLenum attachments[] = {GL_COLOR_ATTACHMENT0};
+    GL_CHECK_ERR(glDrawBuffers(sizeof(attachments) / sizeof(GLenum), attachments));
+    GL_CHECK_ERR(glReadBuffer(GL_COLOR_ATTACHMENT0));
 
-	glGenTextures(1, &fbo_color);
-	glBindTexture(GL_TEXTURE_2D, fbo_color);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, xsize, ysize, 0, GL_RGBA, GL_FLOAT, nullptr);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_color, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+    GL_CHECK_ERR(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
 
-	glGenTextures(1, &fbo_depth);
-	glBindTexture(GL_TEXTURE_2D, fbo_depth);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH32F_STENCIL8, xsize, ysize, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, nullptr);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fbo_depth, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+GLhalf* framebuffer::lock() {
+    if (!fbo || mapped) {
+        return nullptr;
+    }
+    
+    // map data from the current pixel buffer
+    if (pbos[pboindex]) {
+		GL_CHECK_ERR(glBindBuffer(GL_PIXEL_PACK_BUFFER, pbos[pboindex]));
+		auto result = GL_CHECK_ERR_RET(glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY));
+		if (result) {
+			mapped = true;
+		}
+		return (GLhalf*)result;
+	} else {
+		return nullptr;
+	}
+}
 
-	static const GLenum attachments[] = {GL_COLOR_ATTACHMENT0};
-	glDrawBuffers(sizeof(attachments) / sizeof(GLenum), attachments);
-	glReadBuffer(GL_NONE);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+void framebuffer::unlock() {
+    if (!fbo) {
+        return;
+    }
+    
+    // unmap pixel pack buffer
+	if (mapped) {
+		GL_CHECK_ERR(glUnmapBuffer(GL_PIXEL_PACK_BUFFER));
+		mapped = false;
+	}
+    
+    // select next pbo
+    pboindex = (pboindex + 1) % NUM_PBOS;
+    
+    // start filling a new pixel buffer
+    if (pbos[pboindex] == 0) {
+        GL_CHECK_ERR(glGenBuffers(1, &pbos[pboindex]));
+        GL_CHECK_ERR(glBindBuffer(GL_PIXEL_PACK_BUFFER, pbos[pboindex]));
+        GL_CHECK_ERR(glBufferData(GL_PIXEL_PACK_BUFFER, xsize * ysize * 4 * sizeof(GLhalf), nullptr, GL_STREAM_READ));
+    }
+    GL_CHECK_ERR(glBindBuffer(GL_PIXEL_PACK_BUFFER, pbos[pboindex]));
+    GL_CHECK_ERR(glReadPixels(0, 0, xsize, ysize, GL_RGBA, GL_HALF_FLOAT, nullptr));
+    GL_CHECK_ERR(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
 }
 
 void framebuffer::destroy() {
-	if (fbo) {
-		glDeleteFramebuffers(1, &fbo);
-		fbo = 0;
+	if (mapped) {
+		GL_CHECK_ERR(glUnmapBuffer(GL_PIXEL_PACK_BUFFER));
+		mapped = false;
 	}
-	if (fbo_color) {
-		glDeleteTextures(1, &fbo_color);
-		fbo_color = 0;
-	}
-	if (fbo_depth) {
-		glDeleteTextures(1, &fbo_depth);
-		fbo_depth = 0;
-	}
+    if (fbo) {
+        GL_CHECK_ERR(glDeleteFramebuffers(1, &fbo));
+        fbo = 0;
+    }
+    if (fbo_color) {
+        GL_CHECK_ERR(glDeleteTextures(1, &fbo_color));
+        fbo_color = 0;
+    }
+    if (fbo_depth) {
+        GL_CHECK_ERR(glDeleteTextures(1, &fbo_depth));
+        fbo_depth = 0;
+    }
+    for (int c = 0; c < NUM_PBOS; ++c) {
+        if (pbos[c]) {
+            GL_CHECK_ERR(glDeleteBuffers(1, &pbos[c]));
+            pbos[c] = 0;
+        }
+    }
 }
 
+static std::vector<framebuffer*> fbStack;
+
 void framebuffer::bindForWriting() {
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_color, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fbo_depth, 0);
-	glViewport(0, 0, xsize, ysize);
+    if (fbo) {
+        GL_CHECK_ERR(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
+        GL_CHECK_ERR(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_color, 0));
+        GL_CHECK_ERR(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fbo_depth, 0));
+        GL_CHECK_ERR(glViewport(0, 0, xsize, ysize));
+        fbStack.push_back(this);
+    }
 }
 
 void framebuffer::bindForReading() const {
-	glBindTexture(GL_TEXTURE_2D, fbo_color);
+    GL_CHECK_ERR(glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo));
+    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, fbo_color));
 }
 
-void framebuffer::blit(float gamma) {
+void framebuffer::draw(float brightness) {
 	shader.bind();
-	glUniform1f(shader.uniform("uGamma"), gamma);
-	glUniform1i(shader.uniform("uTicks"), ticks);
+    GL_CHECK_ERR(glUniform1f(shader.uniform("uBrightness"), brightness));
 	mesh.draw();
-	shader.unbind();
+}
+
+void framebuffer::hdrDraw(const Vector4& brightness, float gamma, float exposure) {
+    hdrShader.bind();
+    GL_CHECK_ERR(glUniform4fv(hdrShader.uniform("uBrightness"), 1, (float*)&brightness));
+    GL_CHECK_ERR(glUniform1f(hdrShader.uniform("uGamma"), gamma));
+    GL_CHECK_ERR(glUniform1f(hdrShader.uniform("uExposure"), exposure));
+    mesh.draw();
 }
 
 void framebuffer::unbindForWriting() {
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (!fbStack.empty()) {
+        fbStack.pop_back();
+    }
+    if (fbStack.empty()) {
+        GL_CHECK_ERR(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        GL_CHECK_ERR(glViewport(0, 0, xres, yres));
+    } else {
+        auto fb = fbStack.back();
+        fbStack.pop_back();
+        fb->bindForWriting();
+    }
 }
 
 void framebuffer::unbindForReading() {
-	glBindTexture(GL_TEXTURE_2D, 0);
+    GL_CHECK_ERR(glBindFramebuffer(GL_READ_FRAMEBUFFER, 0));
+    GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 void framebuffer::unbindAll() {
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glViewport(0, 0, xres, yres);
+    unbindForWriting();
+    unbindForReading();
 }
 
 /*-------------------------------------------------------------------------------
@@ -403,36 +1155,7 @@ void drawCircle( int x, int y, real_t radius, Uint32 color, Uint8 alpha )
 
 void drawArc( int x, int y, real_t radius, real_t angle1, real_t angle2, Uint32 color, Uint8 alpha )
 {
-	// update projection
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// set color
-	Uint8 r, g, b, a;
-	getColor(color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, alpha / 255.f);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	// draw arc
-	GLint lineWidth;
-	glGetIntegerv(GL_LINE_WIDTH, &lineWidth);
-	glLineWidth(2);
-	glEnable(GL_LINE_SMOOTH);
-	glBegin(GL_LINE_STRIP);
-	for (real_t c = angle1; c <= angle2; c += (real_t)1)
-	{
-		real_t degInRad = c * (real_t)PI / (real_t)180;
-		glVertex2f(x + ceil(cos(degInRad)*radius) + 1, yres - (y + ceil(sin(degInRad)*radius)));
-	}
-	glEnd();
-	glDisable(GL_LINE_SMOOTH);
-	glLineWidth(lineWidth);
+	// deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -443,36 +1166,110 @@ draws an arc with a changing radius
 
 -------------------------------------------------------------------------------*/
 
-static void drawScalingFilledArc( int x, int y, real_t radius1, real_t radius2, real_t angle1, real_t angle2, Uint32 outer_color, Uint32 inner_color )
+static void drawScalingFilledArc(int x, int y, real_t radius1, real_t radius2, real_t angle1, real_t angle2, Uint32 inner_color, Uint32 outer_color)
 {
-	// set state
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	Uint8 r, g, b, a;
-
-	// draw arc
-	glBegin(GL_TRIANGLE_FAN);
-	getColor(inner_color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, a / 255.f);
-	glVertex2f(x, yres - y);
-	getColor(outer_color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, a / 255.f);
-	for (real_t c = angle2; c >= angle1; c -= (real_t)1)
-	{
-		real_t degInRad = c * (real_t)PI / (real_t)180;
-		real_t factor = (c - angle1) / (angle2 - angle1);
-		real_t radius = radius2 * factor + radius1 * (1 - factor);
-		glVertex2f(x + cos(degInRad) * radius, yres - (y + sin(degInRad) * radius));
-	}
-	glEnd();
+    // initialize shader if needed, then bind
+    if (!gearShader.isInitialized()) {
+        static const char v_glsl[] =
+            "in vec4 iPosition;"
+            "void main() {"
+            "gl_Position = iPosition;"
+            "}";
+        
+        static const char g_glsl[] =
+            "layout (points) in;"
+            "layout (triangle_strip, max_vertices = 64) out;"
+        
+            "uniform mat4 uProj;"
+            "uniform mat4 uView;"
+            "uniform vec4 uInnerColor;"
+            "uniform vec4 uOuterColor;"
+            "uniform float uRadius1;"
+            "uniform float uRadius2;"
+            "uniform float uAngle1;"
+            "uniform float uAngle2;"
+            "out vec4 Color;"
+        
+            "void Emit(vec2 position, vec4 color) {"
+            "gl_Position = uProj * uView * vec4(position.x, -position.y, 0.0, 1.0);"
+            "Color = color;"
+            "EmitVertex();"
+            "}"
+        
+            "void main() {"
+            "vec2 position = gl_in[0].gl_Position.xy;"
+			"float step = 2.0;"
+            "for (float c = uAngle2; c > uAngle1; c -= step) {"
+            "Emit(position, uInnerColor);"
+        
+            "float factor1 = (c - uAngle1) / (uAngle2 - uAngle1);"
+            "float radius1 = uRadius2 * factor1 + uRadius1 * (1.0 - factor1);"
+            "Emit(position + vec2(cos(radians(c)) * radius1, sin(radians(c)) * radius1), uOuterColor);"
+        
+            "float factor2 = (c - uAngle1 - step) / (uAngle2 - uAngle1);"
+            "float radius2 = uRadius2 * factor2 + uRadius1 * (1.0 - factor2);"
+            "Emit(position + vec2(cos(radians(c - step)) * radius2, sin(radians(c - step)) * radius2), uOuterColor);"
+        
+            "EndPrimitive();"
+            "}"
+            "}";
+        
+        static const char f_glsl[] =
+            "in vec4 Color;"
+            "out vec4 FragColor;"
+            "void main() {"
+            "FragColor = Color;"
+            "}";
+        
+        gearShader.init("gear shader");
+        gearShader.compile(v_glsl, sizeof(v_glsl), Shader::Type::Vertex);
+        gearShader.compile(g_glsl, sizeof(g_glsl), Shader::Type::Geometry);
+        gearShader.compile(f_glsl, sizeof(f_glsl), Shader::Type::Fragment);
+        gearShader.bindAttribLocation("iPosition", 0);
+        
+        //gearShader.setParameter(GL_GEOMETRY_VERTICES_OUT, 64);
+        //gearShader.setParameter(GL_GEOMETRY_INPUT_TYPE, GL_POINTS);
+        //gearShader.setParameter(GL_GEOMETRY_OUTPUT_TYPE, GL_TRIANGLES);
+        gearShader.link();
+    }
+    gearShader.bind();
+    GL_CHECK_ERR(glEnable(GL_BLEND));
+    
+    // upload radii and angles
+    GL_CHECK_ERR(glUniform1f(gearShader.uniform("uRadius1"), (float)radius1));
+    GL_CHECK_ERR(glUniform1f(gearShader.uniform("uRadius2"), (float)radius2));
+    GL_CHECK_ERR(glUniform1f(gearShader.uniform("uAngle1"), (float)angle1));
+    GL_CHECK_ERR(glUniform1f(gearShader.uniform("uAngle2"), (float)angle2));
+    
+    Uint8 r, g, b, a;
+    
+    // upload color
+    getColor(inner_color, &r, &g, &b, &a);
+    float icv[] = {r / 255.f, g / 255.f, b / 255.f, a / 255.f};
+    GL_CHECK_ERR(glUniform4fv(gearShader.uniform("uInnerColor"), 1, icv));
+    getColor(outer_color, &r, &g, &b, &a);
+    float ocv[] = {r / 255.f, g / 255.f, b / 255.f, a / 255.f};
+    GL_CHECK_ERR(glUniform4fv(gearShader.uniform("uOuterColor"), 1, ocv));
+    
+    vec4_t v;
+    mat4x4 m;
+    
+    // projection matrix
+    mat4x4 proj(1.f);
+    (void)ortho(&proj, 0, xres, 0, yres, -1.f, 1.f);
+    GL_CHECK_ERR(glUniformMatrix4fv(gearShader.uniform("uProj"), 1, GL_FALSE, (float*)&proj));
+    
+    // point matrix
+    mat4x4 view(1.f);
+    v = {(float)x, (float)(yres - y), 0.f, 0.f};
+    (void)translate_mat(&m, &view, &v); view = m;
+    GL_CHECK_ERR(glUniformMatrix4fv(gearShader.uniform("uView"), 1, GL_FALSE, (float*)&view));
+    
+    // draw line
+    lineMesh.draw(GL_POINTS, 1);
+    
+    // reset GL state
+    GL_CHECK_ERR(glDisable(GL_BLEND));
 }
 
 /*-------------------------------------------------------------------------------
@@ -485,40 +1282,7 @@ draws an arc in either an opengl or SDL context
 
 void drawArcInvertedY(int x, int y, real_t radius, real_t angle1, real_t angle2, Uint32 color, Uint8 alpha)
 {
-	int c;
-
-	// update projection
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// set line width
-	GLint lineWidth;
-	glGetIntegerv(GL_LINE_WIDTH, &lineWidth);
-	glLineWidth(2);
-
-	// draw line
-	Uint8 r, g, b, a;
-	getColor(color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, alpha / 255.f);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glEnable(GL_LINE_SMOOTH);
-	glBegin(GL_LINE_STRIP);
-	for ( c = angle1; c <= angle2; c++ )
-	{
-		float degInRad = c * PI / 180.f;
-		glVertex2f(x + ceil(cos(degInRad)*radius) + 1, yres - (y - ceil(sin(degInRad)*radius)));
-	}
-	glEnd();
-	glDisable(GL_LINE_SMOOTH);
-
-	// reset line width
-	glLineWidth(lineWidth);
+    // deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -531,35 +1295,70 @@ void drawArcInvertedY(int x, int y, real_t radius, real_t angle1, real_t angle2,
 
 void drawLine( int x1, int y1, int x2, int y2, Uint32 color, Uint8 alpha )
 {
-	// update projection
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// set line width
-	GLint lineWidth;
-	glGetIntegerv(GL_LINE_WIDTH, &lineWidth);
-	glLineWidth(2);
-
-	// draw line
-	Uint8 r, g, b, a;
-	getColor(color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, alpha / 255.f);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glEnable(GL_LINE_SMOOTH);
-	glBegin(GL_LINES);
-	glVertex2f(x1 + 1, yres - y1);
-	glVertex2f(x2 + 1, yres - y2);
-	glEnd();
-	glDisable(GL_LINE_SMOOTH);
-
-	// reset line width
-	glLineWidth(lineWidth);
+    // read color
+    Uint8 r, g, b, a;
+    getColor(color, &r, &g, &b, &a);
+    if (!alpha) {
+        return;
+    }
+    
+    // initialize shader if needed, then bind
+    if (!lineShader.isInitialized()) {
+        static const char v_glsl[] =
+            "in vec4 iPosition;"
+            "uniform mat4 uProj;"
+            "uniform mat4 uMatrix0;"
+            "uniform mat4 uMatrix1;"
+            "void main() {"
+            "if (gl_VertexID == 0) { gl_Position = uProj * uMatrix0 * iPosition; }"
+            "else { gl_Position = uProj * uMatrix1 * iPosition; }"
+            "}";
+        
+        static const char f_glsl[] =
+            "uniform vec4 uColor;"
+            "out vec4 FragColor;"
+            "void main() {"
+            "FragColor = uColor;"
+            "}";
+        
+        lineShader.init("line shader");
+        lineShader.compile(v_glsl, sizeof(v_glsl), Shader::Type::Vertex);
+        lineShader.compile(f_glsl, sizeof(f_glsl), Shader::Type::Fragment);
+        lineShader.bindAttribLocation("iPosition", 0);
+        lineShader.link();
+    }
+    lineShader.bind();
+    GL_CHECK_ERR(glEnable(GL_BLEND));
+    
+    // upload color
+    float cv[] = {r / 255.f, g / 255.f, b / 255.f, alpha / 255.f};
+    GL_CHECK_ERR(glUniform4fv(lineShader.uniform("uColor"), 1, cv));
+    
+    vec4_t v;
+    mat4x4 m;
+    
+    // projection matrix
+    mat4x4 proj(1.f);
+    (void)ortho(&proj, 0, xres, 0, yres, -1.f, 1.f);
+    GL_CHECK_ERR(glUniformMatrix4fv(lineShader.uniform("uProj"), 1, GL_FALSE, (float*)&proj));
+    
+    // point 1 matrix
+    mat4x4 view0(1.f);
+    v = {(float)x1, (float)(yres - y1), 0.f, 0.f};
+    (void)translate_mat(&m, &view0, &v); view0 = m;
+    GL_CHECK_ERR(glUniformMatrix4fv(lineShader.uniform("uMatrix0"), 1, GL_FALSE, (float*)&view0));
+    
+    // point 2 matrix
+    mat4x4 view1(1.f);
+    v = {(float)x2, (float)(yres - y2), 0.f, 0.f};
+    (void)translate_mat(&m, &view1, &v); view1 = m;
+    GL_CHECK_ERR(glUniformMatrix4fv(lineShader.uniform("uMatrix1"), 1, GL_FALSE, (float*)&view1));
+    
+    // draw line
+    lineMesh.draw(GL_LINES, 2);
+    
+    // reset GL state
+    GL_CHECK_ERR(glDisable(GL_BLEND));
 }
 
 /*-------------------------------------------------------------------------------
@@ -628,30 +1427,32 @@ void drawGear(Sint16 x, Sint16 y, real_t size, Sint32 rotation)
 		drawScalingFilledArc(x, y, size, size,
 			r,
 			r + p,
-			color, color_bright);
+            color_bright, color);
 		drawScalingFilledArc(x, y, size, teeth_size,
 			r + p,
 			r + p + t,
-			color, color_bright);
+            color_bright, color);
 		drawScalingFilledArc(x, y, teeth_size, teeth_size,
 			r + p + t,
 			r + p * 2 - t,
-			color, color_bright);
+            color_bright, color);
 		drawScalingFilledArc(x, y, teeth_size, size,
 			r + p * 2 - t,
 			r + p * 2,
-			color, color_bright);
+            color_bright, color);
 	}
-	drawScalingFilledArc(x, y,
-		size * 1 / 3,
-		size * 1 / 3,
-		0, 360,
-		color, color_dark);
-	drawScalingFilledArc(x, y,
-		size * 1 / 6,
-		size * 1 / 6,
-		0, 360,
-		black, black);
+	for (int c = 0; c < 360; c += 10) {
+		drawScalingFilledArc(x, y,
+			size * 1 / 3,
+			size * 1 / 3,
+			c, c + 10,
+			color_dark, color);
+		drawScalingFilledArc(x, y,
+			size * 1 / 6,
+			size * 1 / 6,
+			c, c + 10,
+			black, black);
+	}
 }
 
 /*-------------------------------------------------------------------------------
@@ -665,45 +1466,12 @@ void drawGear(Sint16 x, Sint16 y, real_t size, Sint32 rotation)
 
 void drawImageRotatedAlpha( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, real_t angle, Uint8 alpha )
 {
-	SDL_Rect secondsrc;
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-	glTranslatef(pos->x, yres - pos->y, 0);
-	glRotatef(-angle * 180 / PI, 0.f, 0.f, 1.f);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	glColor4f(1, 1, 1, alpha / 255.1);
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(-src->w / 2, src->h / 2);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(-src->w / 2, -src->h / 2);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(src->w / 2, -src->h / 2);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(src->w / 2, src->h / 2);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
+    if (!image || !pos) {
+        return;
+    }
+    Uint32 color = makeColor(255, 255, 255, alpha);
+    Image::draw(texid[(long int)image->userdata], image->w, image->h,
+        src, *pos, SDL_Rect{0, 0, xres, yres}, color, angle);
 }
 
 /*-------------------------------------------------------------------------------
@@ -716,46 +1484,11 @@ void drawImageRotatedAlpha( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, re
 
 void drawImageColor( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, Uint32 color )
 {
-	SDL_Rect secondsrc;
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	Uint8 r, g, b, a;
-	getColor(color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, a/ 255.f);
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	glPushMatrix();
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(pos->x, yres - pos->y);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x + src->w, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(pos->x + src->w, yres - pos->y);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
+    if (!image || !pos) {
+        return;
+    }
+    Image::draw(texid[(long int)image->userdata], image->w, image->h,
+        src, *pos, SDL_Rect{0, 0, xres, yres}, color);
 }
 
 /*-------------------------------------------------------------------------------
@@ -768,44 +1501,7 @@ void drawImageColor( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, Uint32 co
 
 void drawImageAlpha( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, Uint8 alpha )
 {
-	SDL_Rect secondsrc;
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	glColor4f(1, 1, 1, alpha / 255.1);
-	glPushMatrix();
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(pos->x, yres - pos->y);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x + src->w, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(pos->x + src->w, yres - pos->y);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
+	// deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -818,44 +1514,11 @@ void drawImageAlpha( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, Uint8 alp
 
 void drawImage( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos )
 {
-	SDL_Rect secondsrc;
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	glColor4f(1, 1, 1, 1);
-	glPushMatrix();
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(pos->x, yres - pos->y);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x + src->w, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(pos->x + src->w, yres - pos->y);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
+    if (!image || !pos) {
+        return;
+    }
+    Image::draw(texid[(long int)image->userdata], image->w, image->h,
+        src, *pos, SDL_Rect{0, 0, xres, yres}, 0xffffffff);
 }
 
 /*-------------------------------------------------------------------------------
@@ -868,114 +1531,7 @@ blits an image in either an opengl or SDL context into a 2d ring.
 
 void drawImageRing(SDL_Surface* image, SDL_Rect* src, int radius, int thickness, int segments, real_t angStart, real_t angEnd, Uint8 alpha)
 {
-	SDL_Rect secondsrc;
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	glColor4f(1, 1, 1, alpha / 255.f);
-	glPushMatrix();
-
-	double s;
-	real_t arcAngle = angStart;
-	int first = segments / 2;
-	real_t distance = std::round((angEnd - angStart) * segments / (2 * PI));
-	for ( int i = 0; i < first; ++i ) 
-	{
-		glBegin(GL_QUAD_STRIP);
-		for ( int j = 0; j <= static_cast<int>(distance); ++j )
-		{
-			s = i % first + 0.01;
-			arcAngle = ((j % segments) * 2 * PI / segments) + angStart; // angle of the line.
-
-			real_t arcx1 = (radius + thickness * cos(s * 2 * PI / first)) * cos(arcAngle);
-			real_t arcy1 = (radius + thickness * cos(s * 2 * PI / first)) * sin(arcAngle);
-
-			s = (i + 1) % first + 0.01;
-			real_t arcx2 = (radius + thickness * cos(s * 2 * PI / first)) * cos(arcAngle);
-			real_t arcy2 = (radius + thickness * cos(s * 2 * PI / first)) * sin(arcAngle);
-			//glTexCoord2f(1.f, 0.f);
-			glVertex2f(src->x + arcx1, yres - src->y + arcy1);
-			//glTexCoord2f(0.f, 1.f);
-			glVertex2f(src->x + arcx2, yres - src->y + arcy2);
-			//s = i % first + 0.01;
-			//arcAngle = (((j + 1) % segments) * 2 * PI / segments) + angStart; // angle of the line.
-			//real_t arcx3 = (radius + thickness * cos(s * 2 * PI / first)) * cos(arcAngle);
-			//real_t arcy3 = (radius + thickness * cos(s * 2 * PI / first)) * sin(arcAngle);
-
-			//s = (i + 1) % first + 0.01;
-			//real_t arcx4 = (radius + thickness * cos(s * 2 * PI / first)) * cos(arcAngle);
-			//real_t arcy4 = (radius + thickness * cos(s * 2 * PI / first)) * sin(arcAngle);
-
-			//std::vector<std::pair<real_t, real_t>> xycoords;
-			//xycoords.push_back(std::make_pair(arcx1, arcy1));
-			//xycoords.push_back(std::make_pair(arcx2, arcy2));
-			//xycoords.push_back(std::make_pair(arcx3, arcy3));
-			//xycoords.push_back(std::make_pair(arcx4, arcy4));
-			//std::sort(xycoords.begin(), xycoords.end());
-			//if ( xycoords.at(2).second < xycoords.at(3).second )
-			//{
-			//	glTexCoord2f(1.f, 0.f);
-			//	glVertex2f(xres / 2 + xycoords.at(2).first, yres / 2 + xycoords.at(2).second); // lower right.
-			//	glTexCoord2f(1.f, 1.f);
-			//	glVertex2f(xres / 2 + xycoords.at(3).first, yres / 2 + xycoords.at(3).second); // upper right.
-			//}
-			//else
-			//{
-			//	glTexCoord2f(1.f, 0.f);
-			//	glVertex2f(xres / 2 + xycoords.at(3).first, yres / 2 + xycoords.at(3).second); // lower right.
-			//	glTexCoord2f(1.f, 1.f);
-			//	glVertex2f(xres / 2 + xycoords.at(2).first, yres / 2 + xycoords.at(2).second); // upper right.
-			//}
-			//if ( xycoords.at(0).second < xycoords.at(1).second )
-			//{
-			//	glTexCoord2f(0.f, 0.f);
-			//	glVertex2f(xres / 2 + xycoords.at(0).first, yres / 2 + xycoords.at(0).second); // lower left.
-			//	glTexCoord2f(0.f, 1.f);
-			//	glVertex2f(xres / 2 + xycoords.at(1).first, yres / 2 + xycoords.at(1).second); // upper left.
-			//}
-			//else
-			//{
-			//	glTexCoord2f(0.f, 0.f);
-			//	glVertex2f(xres / 2 + xycoords.at(1).first, yres / 2 + xycoords.at(1).second); // lower left.
-			//	glTexCoord2f(0.f, 1.f);
-			//	glVertex2f(xres / 2 + xycoords.at(0).first, yres / 2 + xycoords.at(0).second); // upper left.
-			//}
-			
-
-			//glVertex2f(xres / 2 + arcx3, yres / 2 + arcy3);
-			//glVertex2f(xres / 2 + arcx4, yres / 2 + arcy4);
-		}
-		glEnd();
-	}
-	glPopMatrix();
-	// debug lines
-	/*real_t x1 = xres / 2 + 300 * cos(angStart);
-	real_t y1 = yres / 2 - 300 * sin(angStart);
-	real_t x2 = xres / 2 + 300 * cos(angEnd);
-	real_t y2 = yres / 2 - 300 * sin(angEnd);
-	drawLine(xres / 2, yres / 2, x1, y1, 0xFFFFFFFF, 255);
-	drawLine(xres / 2, yres / 2, x2, y2, 0xFFFFFFFF, 255);*/
-	glEnable(GL_DEPTH_TEST);
+    // deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -988,62 +1544,11 @@ void drawImageRing(SDL_Surface* image, SDL_Rect* src, int radius, int thickness,
 
 void drawImageScaled( SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos )
 {
-	SDL_Rect secondsrc;
-
-	if ( !image )
-	{
-		return;
-	}
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	glColor4f(1, 1, 1, 1);
-	glPushMatrix();
-	glBegin(GL_QUADS);
-
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * ((real_t)src->y / image->h));
-	glVertex2f(pos->x, yres - pos->y);
-	glTexCoord2f(1.0 * ((real_t)src->x / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x, yres - pos->y - pos->h);
-	//glVertex2f(pos->x, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * (((real_t)src->y + src->h) / image->h));
-	glVertex2f(pos->x + pos->w, yres - pos->y - pos->h);
-	//glVertex2f(pos->x + src->w, yres - pos->y - src->h);
-	glTexCoord2f(1.0 * (((real_t)src->x + src->w) / image->w), 1.0 * ((real_t)src->y / image->h));
-	//glVertex2f(pos->x + src->w, yres - pos->y);
-	glVertex2f(pos->x + pos->w, yres - pos->y);
-
-	//glTexCoord2f(0.f, 0.f);
-	//glVertex2f(pos->x, yres - pos->y);
-	//glTexCoord2f(0.f, 1.f);
-	//glVertex2f(pos->x, yres - pos->y - pos->h);
-	//glTexCoord2f(1.f, 1.f);
-	//glVertex2f(pos->x + pos->w, yres - pos->y - pos->h);
-	//glTexCoord2f(1.f, 0.f);
-	//glVertex2f(pos->x + pos->w, yres - pos->y);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
+    if (!image || !pos) {
+        return;
+    }
+    Image::draw(texid[(long int)image->userdata], image->w, image->h,
+        src, *pos, SDL_Rect{0, 0, xres, yres}, 0xffffffff);
 }
 
 /*-------------------------------------------------------------------------------
@@ -1056,62 +1561,7 @@ blits an image in either an opengl or SDL context, scaling it
 
 void drawImageScaledPartial(SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, float percentY)
 {
-	SDL_Rect secondsrc;
-
-	if ( !image )
-	{
-		return;
-	}
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	glColor4f(1, 1, 1, 1);
-	glPushMatrix();
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.f, 1.f - 1.f * percentY); // top left. 
-	glVertex2f(pos->x, yres - pos->y - pos->h + pos->h * percentY);
-
-	glTexCoord2f(0.f, 1.f); // bottom left
-	glVertex2f(pos->x, yres - pos->y - pos->h);
-
-	glTexCoord2f(1.f, 1.f); // bottom right
-	glVertex2f(pos->x + pos->w, yres - pos->y - pos->h);
-
-	glTexCoord2f(1.f, 1.f - 1.f * percentY); // top right
-	glVertex2f(pos->x + pos->w, yres - pos->y - pos->h + pos->h * percentY);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
-
-	// debug corners
-	//Uint32 color = uint32ColorPlayer1; // green
-	//drawCircle(pos->x, pos->y + (pos->h - (pos->h * percentY)), 5, color, 255);
-	//color = uint32ColorPlayer2; // pink
-	//drawCircle(pos->x, pos->y + pos->h, 5, color, 255);
-	//color = uint32ColorPlayer3; // sky blue
-	//drawCircle(pos->x + pos->w, pos->y + pos->h, 5, color, 255);
-	//color = uint32ColorPlayer4; // yellow
-	//drawCircle(pos->x + pos->w, pos->y + (pos->h - (pos->h * percentY)), 5, color, 255);
+    // deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -1124,46 +1574,7 @@ blits an image in either an opengl or SDL context while colorizing and scaling i
 
 void drawImageScaledColor(SDL_Surface* image, SDL_Rect* src, SDL_Rect* pos, Uint32 color)
 {
-	SDL_Rect secondsrc;
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	Uint8 r, g, b, a;
-	getColor(color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, a / 255.f);
-	glPushMatrix();
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.f, 0.f);
-	glVertex2f(pos->x, yres - pos->y);
-	glTexCoord2f(0.f, 1.f);
-	glVertex2f(pos->x, yres - pos->y - pos->h);
-	glTexCoord2f(1.f, 1.f);
-	glVertex2f(pos->x + pos->w, yres - pos->y - pos->h);
-	glTexCoord2f(1.f, 0.f);
-	glVertex2f(pos->x + pos->w, yres - pos->y);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
+	// deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -1211,53 +1622,7 @@ SDL_Surface* scaleSurface(SDL_Surface* Surface, Uint16 Width, Uint16 Height)
 
 void drawImageFancy( SDL_Surface* image, Uint32 color, real_t angle, SDL_Rect* src, SDL_Rect* pos )
 {
-	SDL_Rect secondsrc;
-
-	if ( !image )
-	{
-		return;
-	}
-
-	// update projection
-	glPushMatrix();
-	glDisable(GL_DEPTH_TEST);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-	glTranslatef(pos->x, yres - pos->y, 0);
-	glRotatef(-angle * 180 / PI, 0.f, 0.f, 1.f);
-
-	// for the use of a whole image
-	if ( src == NULL )
-	{
-		secondsrc.x = 0;
-		secondsrc.y = 0;
-		secondsrc.w = image->w;
-		secondsrc.h = image->h;
-		src = &secondsrc;
-	}
-
-	// draw a textured quad
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)image->userdata]);
-	Uint8 r, g, b, a;
-	getColor(color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, a / 255.f);
-	glPushMatrix();
-	glBegin(GL_QUADS);
-	glTexCoord2f(((real_t)src->x) / ((real_t)image->w), ((real_t)src->y) / ((real_t)image->h));
-	glVertex2f(0, 0);
-	glTexCoord2f(((real_t)src->x) / ((real_t)image->w), ((real_t)(src->y + src->h)) / ((real_t)image->h));
-	glVertex2f(0, -pos->h);
-	glTexCoord2f(((real_t)(src->x + src->w)) / ((real_t)image->w), ((real_t)(src->y + src->h)) / ((real_t)image->h));
-	glVertex2f(pos->w, -pos->h);
-	glTexCoord2f(((real_t)(src->x + src->w)) / ((real_t)image->w), ((real_t)src->y) / ((real_t)image->h));
-	glVertex2f(pos->w, 0);
-	glEnd();
-	glPopMatrix();
-	glEnable(GL_DEPTH_TEST);
+	// deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -1271,42 +1636,7 @@ void drawImageFancy( SDL_Surface* image, Uint32 color, real_t angle, SDL_Rect* s
 
 void drawSky3D( view_t* camera, SDL_Surface* tex )
 {
-	real_t screenfactor;
-	int skyx, skyy;
-	SDL_Rect dest;
-	SDL_Rect src;
-
-	// move the images differently depending upon the screen size
-	screenfactor = xres / 320.0;
-
-	// bitmap offsets
-	skyx = -camera->ang * ((320 * screenfactor) / (PI / 2.0));
-	skyy = (-114 * screenfactor - camera->vang);
-
-	src.x = -skyx;
-	src.y = -skyy;
-	src.w = (-skyx) + xres; // clip to the screen width
-	src.h = (-skyy) + yres; // clip to the screen height
-	dest.x = 0;
-	dest.y = 0;
-	dest.w = xres;
-	dest.h = yres;
-
-	drawImage(tex, &src, &dest);
-
-	// draw the part of the last part of the sky (only appears when angle > 270 deg.)
-	if ( skyx < -960 * screenfactor )
-	{
-		dest.x = 1280 * screenfactor + skyx;
-		dest.y = 0;
-		dest.w = xres;
-		dest.h = yres;
-		src.x = 0;
-		src.y = -skyy;
-		src.w = xres - (-skyx - 1280 * screenfactor);
-		src.h = src.y + yres;
-		drawImage(tex, &src, &dest);
-	}
+	// deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -1335,8 +1665,8 @@ void drawLayer(long camx, long camy, int z, map_t* map)
 			index = map->tiles[z + y * MAPLAYERS + x * MAPLAYERS * map->height];
 			if ( index > 0)
 			{
-				pos.x = (x << TEXTUREPOWER) - camx;
-				pos.y = (y << TEXTUREPOWER) - camy;
+				pos.x = (int)((x << TEXTUREPOWER) - camx);
+				pos.y = (int)((y << TEXTUREPOWER) - camy);
 				pos.w = TEXTURESIZE;
 				pos.h = TEXTURESIZE;
 				if ( index >= 0 && index < numtiles )
@@ -1361,8 +1691,7 @@ void drawLayer(long camx, long camy, int z, map_t* map)
 
 void drawBackground(long camx, long camy)
 {
-	long z;
-	for ( z = 0; z < OBSTACLELAYER; z++ )
+	for ( int z = 0; z < OBSTACLELAYER; z++ )
 	{
 		drawLayer(camx, camy, z, &map);
 	}
@@ -1370,8 +1699,7 @@ void drawBackground(long camx, long camy)
 
 void drawForeground(long camx, long camy)
 {
-	long z;
-	for ( z = OBSTACLELAYER; z < MAPLAYERS; z++ )
+	for ( int z = OBSTACLELAYER; z < MAPLAYERS; z++ )
 	{
 		drawLayer(camx, camy, z, &map);
 	}
@@ -1387,8 +1715,8 @@ void drawForeground(long camx, long camy)
 
 void drawClearBuffers()
 {
-	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	//drawRect(NULL, 0, 255);
+    GL_CHECK_ERR(glClearColor(0.f, 0.f, 0.f, 1.f));
+    GL_CHECK_ERR(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
 /*-------------------------------------------------------------------------------
@@ -1400,189 +1728,293 @@ void drawClearBuffers()
 
 -------------------------------------------------------------------------------*/
 
-void raycast(view_t* camera, Sint8 (*minimap)[MINIMAP_MAX_DIMENSION])
+#include <future>
+
+#ifndef EDITOR
+#include "net.hpp"
+#endif
+
+void raycast(const view_t& camera, Sint8 (*minimap)[MINIMAP_MAX_DIMENSION], bool fillWithColor)
 {
-	long posx, posy;
-	real_t fracx, fracy;
-	long inx, iny, inx2, iny2;
-	real_t rx, ry;
-	real_t d, dstart, dend;
-	long sx;
-	real_t arx, ary;
-	long dincx, dincy;
-	real_t dval0, dval1;
+    // originally we cast a ray for every column of pixels in the
+    // camera viewport. now we just shoot out a few hundred rays to
+    // save time. this makes this function less accurate at distance,
+    // but that's good enough!
+#ifdef EDITOR
+    static constexpr int NumRays = 100;
+    static constexpr int NumRaysPerJob = 50;
+    static constexpr bool DoRaysInParallel = true;
+    static constexpr bool WriteOutsSequentially = false;
+#else
+    static ConsoleVariable<int> cvar_numRays("/raycast_num", 100);
+    static ConsoleVariable<int> cvar_numRaysPerJob("/raycast_num_per_job", 50);
+    static ConsoleVariable<bool> cvar_parallelRays("/raycast_multithread", false); // note: crashes on nintendo
+    static ConsoleVariable<bool> cvar_writeOutsSequentially("/raycast_write_outs_sequentially", false);
+    
+    static int NumRays;
+    NumRays = *cvar_numRays;
+    static int NumRaysPerJob;
+    NumRaysPerJob = *cvar_numRaysPerJob;
+    static bool DoRaysInParallel;
+    DoRaysInParallel = *cvar_parallelRays;
+    static bool WriteOutsSequentially;
+    WriteOutsSequentially = *cvar_writeOutsSequentially;
+    
+    static bool TimeTest = false;
+    static ConsoleCommand ccmd_raycastTime("/raycast_time", "Time the raycast() function", [](int argc, const char** argv){
+        TimeTest = true;
+    });
+#endif
+    
+    // ray shooting functor
+    struct outs_t {
+        int x;
+        int y;
+        int value;
+    };
+    struct ins_t {
+        const int sx;
+        const int mw;
+        const int mh;
+        const view_t camera;
+        const Sint32* tiles;
+        const vec4_t* lights;
+        Sint8 (*minimap)[MINIMAP_MAX_DIMENSION];
+		bool fillWithColor;
+    };
+    auto shoot_ray = [](const ins_t&& ins) -> std::vector<outs_t>{
+        std::vector<outs_t> result;
+        
+        const int& mw = ins.mw;
+        const int& mh = ins.mh;
+        const view_t& camera = ins.camera;
+        const auto& tiles = ins.tiles;
+        const auto& lights = ins.lights;
+        const auto& minimap = ins.minimap;
+        
+        const int posx = (int)camera.x;
+        const int posy = (int)camera.y; // integer coordinates
+		if ( posx == 0 && posy == 0 ) { return result; } // camera not initialized
+        const real_t fracx = camera.x - posx;
+        const real_t fracy = camera.y - posy; // fraction coordinates
 
-	Uint8 light;
-	Sint32 z;
-	bool zhit[MAPLAYERS], wallhit;
-
-	posx = floor(camera->x);
-	posy = floor(camera->y); // integer coordinates
-	fracx = camera->x - posx;
-	fracy = camera->y - posy; // fraction coordinates
-
-	real_t wfov = (fov * camera->winw / camera->winh) * PI / 180.f;
-	dstart = CLIPNEAR / 16.0;
-
-	// ray vector
-	rx = cos(camera->ang - wfov / 2.f);
-	ry = sin(camera->ang - wfov / 2.f);
-
-	// originally we cast a ray for every column of pixels in the
-	// camera viewport. now we just shoot out 300 rays to save time.
-	// this makes this function less accurate at distance, but right
-	// now it's good enough!
-	static const int NUMRAYS = 300;
-
-	// TODO replace this with a simple line algorithm that performs
-	// a basic line check from the camera origin through every tile.
-
-	for ( sx = 0; sx < NUMRAYS; sx++ )
-	{
-		inx = posx;
-		iny = posy;
-		inx2 = inx;
-		iny2 = iny;
-
-		arx = 0;
-		if (rx)
-		{
-			arx = 1.0 / fabs(rx);  // distance increments
-		}
-		ary = 0;
-		if (ry)
-		{
-			ary = 1.0 / fabs(ry);
-		}
-
-		// dval0=dend+1 is there to prevent infinite loops when ray is parallel to axis
-		dincx = 0;
-		dval0 = 1e32;
-		dincy = 0;
-		dval1 = 1e32;
-
-		// calculate integer coordinate increments
-		// x-axis:
-		if (rx < 0)
-		{
-			dincx = -1;
-			dval0 = fracx * arx;
-		}
-		else if (rx > 0)
-		{
-			dincx = 1;
-			dval0 = (1 - fracx) * arx;
-		}
-
-		// y-axis:
-		if (ry < 0)
-		{
-			dincy = -1;
-			dval1 = fracy * ary;
-		}
-		else if (ry > 0)
-		{
-			dincy = 1;
-			dval1 = (1 - fracy) * ary;
-		}
-
-		d = 0;
-		dend = CLIPFAR / 16;
-		do
-		{
-			inx2 = inx;
-			iny2 = iny;
-
-			// move the ray one square forward
-			if (dval1 > dval0)
-			{
-				inx += dincx;
-				d = dval0;
-				dval0 += arx;
-			}
-			else
-			{
-				iny += dincy;
-				d = dval1;
-				dval1 += ary;
-			}
-
-			if ( inx >= 0 && iny >= 0 && inx < map.width && iny < map.height )
-			{
-				for ( z = 0; z < MAPLAYERS; z++ )
-				{
-					zhit[z] = false;
-					if ( map.tiles[z + iny * MAPLAYERS + inx * MAPLAYERS * map.height] && d > dstart )   // hit something solid
-					{
-						zhit[z] = true;
-
-						// collect light information
-						if ( inx2 >= 0 && iny2 >= 0 && inx2 < map.width && iny2 < map.height )
+        const real_t wfov = (fov * camera.winw / camera.winh) * PI / 180.f;
+        constexpr real_t dstart = CLIPNEAR / 16.0;
+        constexpr real_t dend = CLIPFAR / 16;
+        
+        for (int sx = ins.sx; sx < ins.sx + NumRaysPerJob; ++sx) {
+            int inx = posx;
+            int iny = posy;
+            int inx2 = inx;
+            int iny2 = iny;
+            
+            // new ray vector for next column
+            const real_t rx = cos(camera.ang - wfov / 2.f + (wfov / NumRays) * sx);
+            const real_t ry = sin(camera.ang - wfov / 2.f + (wfov / NumRays) * sx);
+            const real_t arx = rx ? 1.0 / fabs(rx) : 0.0;
+            const real_t ary = ry ? 1.0 / fabs(ry) : 0.0;
+            
+            // dval0=dend+1 is there to prevent infinite loops when ray is parallel to axis
+            long dincx = 0;
+            long dincy = 0;
+            real_t dval0 = 1e32;
+            real_t dval1 = 1e32;
+            
+            // calculate integer coordinate increments
+            // x-axis:
+            if (rx < 0) {
+                dincx = -1;
+                dval0 = fracx * arx;
+            } else if (rx > 0) {
+                dincx = 1;
+                dval0 = (1 - fracx) * arx;
+            }
+            
+            // y-axis:
+            if (ry < 0) {
+                dincy = -1;
+                dval1 = fracy * ary;
+            } else if (ry > 0) {
+                dincy = 1;
+                dval1 = (1 - fracy) * ary;
+            }
+            
+            real_t d = 0;
+            do {
+                // record previous ray position
+                inx2 = inx;
+                iny2 = iny;
+                
+                // move the ray one square forward
+                if (dval1 > dval0) {
+                    inx += dincx;
+                    d = dval0;
+                    dval0 += arx;
+                } else {
+                    iny += dincy;
+                    d = dval1;
+                    dval1 += ary;
+                }
+                
+                // check ray is within map bounds
+                if (inx < 0 || iny < 0 || inx >= mw || iny >= mh) {
+                    // out of map bounds
+                    break;
+                }
+                
+                // check against tiles in each map layer
+                bool zhit[MAPLAYERS] = { false };
+                for (int z = 0; z < MAPLAYERS; z++) {
+                    if (tiles[z + iny * MAPLAYERS + inx * MAPLAYERS * mh] && d > dstart) { // hit something solid
+                        zhit[z] = true;
+                        
+                        // collect light information
+                        if (tiles[z + iny2 * MAPLAYERS + inx2 * MAPLAYERS * mh]) {
+                            continue;
+                        }
+                        auto& l = lights[iny2 + inx2 * mh];
+                        const auto light = std::max({0.f, l.x, l.y, l.z});
+						bool visible = light > 1.f;
+						if ( !visible && !ins.fillWithColor )
 						{
-							if ( map.tiles[z + iny2 * MAPLAYERS + inx2 * MAPLAYERS * map.height] )
+							// remote players fill in the map within 3x3 area, as they do not have ambient light
+							real_t dist = pow(posx - inx2, 2) + pow(posy - iny2, 2);
+							if ( dist < 10.0 )
 							{
-								continue;
-							}
-							light = std::min(std::max(0, lightmap[iny2 + inx2 * map.height]), 255);
-						}
-						else
-						{
-							light = 128;
-						}
-
-						// update minimap
-						if ( d < 16 && z == OBSTACLELAYER )
-						{
-							if ( light > 0 )
-							{
-								minimap[iny][inx] = 2;  // wall space
-							}
-						}
-					}
-					else if ( z == OBSTACLELAYER )
-					{
-						// update minimap to show empty region
-						if ( inx >= 0 && iny >= 0 && inx < map.width && iny < map.height )
-						{
-							light = std::min(std::max(0, lightmap[iny + inx * map.height]), 255);
-						}
-						else
-						{
-							light = 128;
-						}
-						if ( d < 16 )
-						{
-							if ( light > 0 && map.tiles[iny * MAPLAYERS + inx * MAPLAYERS * map.height] )
-							{
-								minimap[iny][inx] = 1;  // walkable space
-							}
-							else if ( map.tiles[z + iny * MAPLAYERS + inx * MAPLAYERS * map.height] )
-							{
-								minimap[iny][inx] = 0;  // no floor
+								visible = true;
 							}
 						}
-					}
-				}
-				wallhit = true;
-				for ( z = 0; z < MAPLAYERS; z++ )
-				{
-					if ( zhit[z] == false )
-					{
-						wallhit = false;
-					}
-				}
-				if ( wallhit == true )
-				{
-					break;
-				}
-			}
-		}
-		while (d < dend);
+                        
+                        // update minimap
+                        if (d < 16 && z == OBSTACLELAYER) {
+                            if ( visible ) {
+                                // wall space
+                                if (WriteOutsSequentially) {
+									if ( ins.fillWithColor )
+									{
+										result.push_back({inx, iny, 2});
+									}
+									else if ( minimap[iny][inx] != 2 )
+									{
+										result.push_back({inx, iny, 4});
+									}
+                                } else {
+									if ( ins.fillWithColor )
+									{
+										minimap[iny][inx] = 2;
+									}
+									else if ( minimap[iny][inx] != 2 )
+									{
+										minimap[iny][inx] = 4;
+									}
+                                }
+                            }
+                        }
+                    } else if (z == OBSTACLELAYER) {
+                        // update minimap to show empty region
+                        auto& l = lights[iny2 + inx2 * mh];
+                        const auto light = std::max({0.f, l.x, l.y, l.z});
+						bool visible = light > 1.f;
+						if ( !visible && !ins.fillWithColor )
+						{
+							// remote players fill in the map within 3x3 area, as they do not have ambient light
+							real_t dist = pow(posx - inx2, 2) + pow(posy - iny2, 2);
+							if ( dist < 10.0 )
+							{
+								visible = true;
+							}
+						}
 
-		// new ray vector for next column
-		rx = cos(camera->ang - wfov / 2.f + (wfov / NUMRAYS) * sx);
-		ry = sin(camera->ang - wfov / 2.f + (wfov / NUMRAYS) * sx);
-	}
+                        if (d < 16) {
+                            if ( visible && tiles[iny * MAPLAYERS + inx * MAPLAYERS * mh]) {
+                                // walkable space
+                                if (WriteOutsSequentially) {
+									if ( ins.fillWithColor )
+									{
+										result.push_back({inx, iny, 1});
+									}
+									else if ( minimap[iny][inx] != 1 )
+									{
+										result.push_back({inx, iny, 3});
+									}
+                                } else {
+									if ( ins.fillWithColor )
+									{
+										minimap[iny][inx] = 1;
+									}
+									else if ( minimap[iny][inx] != 1 )
+									{
+										minimap[iny][inx] = 3;
+									}
+                                }
+                            } else if (tiles[z + iny * MAPLAYERS + inx * MAPLAYERS * mh]) {
+                                // no floor
+                                /*if (WriteOutsSequentially) {
+                                    result.push_back({inx, iny, 0});
+                                } else {
+                                    minimap[iny][inx] = 0;
+                                }*/
+                            }
+                        }
+                    }
+                }
+                
+                // if a wall was hit (full column of map layers) stop the ray
+                bool wallhit = true;
+                for (int z = 0; z < MAPLAYERS; z++) {
+                    if (zhit[z] == false) {
+                        wallhit = false;
+                    }
+                }
+                if (wallhit == true) {
+                    break;
+                }
+            }
+            while (d < dend);
+        }
+        return result;
+    };
+    
+    auto t = std::chrono::high_resolution_clock::now();
+
+    // shoot the rays
+    const vec4_t* lightmap = lightmaps[0].data();
+    for (int c = 0; c < MAXPLAYERS; ++c) {
+        if (&camera == &cameras[c]) {
+            lightmap = lightmaps[c + 1].data();
+            break;
+        }
+    }
+    if (DoRaysInParallel) {
+        std::vector<std::future<std::vector<outs_t>>> tasks;
+        for (int x = 0; x < NumRays; x += NumRaysPerJob) {
+            tasks.emplace_back(std::async(std::launch::async, shoot_ray,
+                ins_t{x, (int)map.width, (int)map.height, camera, map.tiles, lightmap, minimap, fillWithColor}));
+        }
+        for (int x = (int)tasks.size() - 1; x >= 0; --x) {
+            auto out_list = tasks[x].get();
+            for (auto& it : out_list) {
+                minimap[it.y][it.x] = it.value;
+            }
+            tasks.pop_back();
+        }
+    } else {
+        for (int x = 0; x < NumRays; x += NumRaysPerJob) {
+            auto out_list = shoot_ray(ins_t{x, (int)map.width, (int)map.height, camera, map.tiles, lightmap, minimap, fillWithColor});
+            for (auto& it : out_list) {
+                minimap[it.y][it.x] = it.value;
+            }
+        }
+    }
+    
+#ifndef EDITOR
+    if (TimeTest) {
+        TimeTest = false;
+        auto duration = std::chrono::high_resolution_clock::now() - t;
+        auto timer = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+        messageLocalPlayers(MESSAGE_DEBUG, "Raycast took ~%llu microseconds", timer);
+    }
+#endif
 }
 
 /*-------------------------------------------------------------------------------
@@ -1593,20 +2025,19 @@ void raycast(view_t* camera, Sint8 (*minimap)[MINIMAP_MAX_DIMENSION])
 
 -------------------------------------------------------------------------------*/
 
+Uint32 ditherDisabledTime = 0;
+void temporarilyDisableDithering() {
+    ditherDisabledTime = ticks;
+}
+
 void drawEntities3D(view_t* camera, int mode)
 {
-	node_t* node;
-	Entity* entity;
-	long x, y;
-
-	static bool draw_ents = true;
-	if (keystatus[SDL_SCANCODE_P] && !command && enableDebugKeys) {
-	    keystatus[SDL_SCANCODE_P] = 0;
-	    draw_ents = (draw_ents==false);
-	}
-	if (!draw_ents) {
+#ifndef EDITOR
+    static ConsoleVariable<bool> cvar_drawEnts("/draw_entities", true);
+	if (!*cvar_drawEnts) {
 	    return;
 	}
+#endif
 
 	if ( map.entities->first == nullptr )
 	{
@@ -1630,112 +2061,180 @@ void drawEntities3D(view_t* camera, int mode)
 			break;
 		}
 	}
+    
+    const bool ditheringDisabled = ticks - ditherDisabledTime < TICKS_PER_SECOND;
 
-	glEnable(GL_SCISSOR_TEST);
-	glScissor(camera->winx, yres - camera->winh - camera->winy, camera->winw, camera->winh);
 	node_t* nextnode = nullptr;
-	for ( node = map.entities->first; node != nullptr; node = nextnode )
-	{
-		entity = (Entity*)node->element;
-		nextnode = node->next;
-		if ( node->next == nullptr && node->list == map.entities )
-		{
-			if ( map.worldUI && map.worldUI->first )
-			{
-				// quick way to attach worldUI to the end of map.entities.
-				nextnode = map.worldUI->first;
-			}
-		}
-
-        if ( !entity->flags[OVERDRAW] )
+	for ( node_t* node = map.entities->first; node != nullptr; node = nextnode )
+    {
+        Entity* entity = (Entity*)node->element;
+        nextnode = node->next;
+        if ( node->next == nullptr && node->list == map.entities )
         {
-            const real_t rx = entity->x / 16.0;
-            const real_t ry = entity->y / 16.0;
-	        if ( behindCamera(*camera, rx, ry) )
-	        {
-	            continue;
-	        }
-	    }
-		if ( entity->flags[INVISIBLE] )
-		{
-			continue;
-		}
-		if ( entity->flags[UNCLICKABLE] && mode == ENTITYUIDS )
-		{
-			continue;
-		}
-		if ( entity->flags[GENIUS] )
-		{
+            if ( map.worldUI && map.worldUI->first )
+            {
+                // quick way to attach worldUI to the end of map.entities.
+                nextnode = map.worldUI->first;
+            }
+        }
+        
+        if ( entity->flags[INVISIBLE] && !entity->flags[INVISIBLE_DITHER] )
+        {
+            continue;
+        }
+        if ( entity->flags[UNCLICKABLE] && mode == ENTITYUIDS )
+        {
+            continue;
+        }
+        if ( entity->flags[GENIUS] )
+        {
 			// genius entities are not drawn when the camera is inside their bounding box
-			if ( camera->x >= (entity->x - entity->sizex) / 16 && camera->x <= (entity->x + entity->sizex) / 16 )
-				if ( camera->y >= (entity->y - entity->sizey) / 16 && camera->y <= (entity->y + entity->sizey) / 16 )
-				{
-					continue;
-				}
-		}
-		if ( entity->flags[OVERDRAW] && splitscreen )
-		{
-			// need to skip some HUD models in splitscreen.
-			if ( currentPlayerViewport >= 0 )
+#ifndef EDITOR
+			if ( entity->behavior == &actDeathGhost )
 			{
-				if ( entity->behavior == &actHudWeapon 
-					|| entity->behavior == &actHudArm 
-					|| entity->behavior == &actGib
-					|| entity->behavior == &actFlame )
-				{
-					// the gibs are from casting magic in the HUD
-					if ( entity->skill[11] != currentPlayerViewport )
+				// ghost have small collision box
+				if ( camera->x >= (entity->x - std::max(4, entity->sizex)) / 16 && camera->x <= (entity->x + std::max(4, entity->sizex)) / 16 )
+					if ( camera->y >= (entity->y - std::max(4, entity->sizey)) / 16 && camera->y <= (entity->y + std::max(4, entity->sizey)) / 16 )
 					{
 						continue;
 					}
-				}
-				else if ( entity->behavior == &actHudAdditional
-					|| entity->behavior == &actHudArrowModel
-					|| entity->behavior == &actHudShield
-					|| entity->behavior == &actLeftHandMagic
-					|| entity->behavior == &actRightHandMagic )
-				{
-					if ( entity->skill[2] != currentPlayerViewport )
-					{
-						continue;
-					}
-				}
-			}
-		}
-		x = entity->x / 16;
-		y = entity->y / 16;
-		if ( x >= 0 && y >= 0 && x < map.width && y < map.height )
-		{
-		    if ( !entity->flags[OVERDRAW] )
-		    {
-		        if ( !map.vismap[y + x * map.height] && !entity->monsterEntityRenderAsTelepath )
-		        {
-		            continue;
-		        }
-		    }
-			if ( entity->flags[SPRITE] == false )
-			{
-				glDrawVoxel(camera, entity, mode);
 			}
 			else
+#endif
 			{
-				if ( entity->behavior == &actSpriteNametag )
-				{
-					int playersTag = playerEntityMatchesUid(entity->parent);
-					if ( playersTag >= 0 )
+				if ( camera->x >= (entity->x - entity->sizex) / 16 && camera->x <= (entity->x + entity->sizex) / 16 )
+					if ( camera->y >= (entity->y - entity->sizey) / 16 && camera->y <= (entity->y + entity->sizey) / 16 )
 					{
-						real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
-							+ pow(camera->y * 16.0 - entity->y, 2));
-						spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
+						continue;
 					}
-				}
-				else if ( entity->behavior == &actSpriteWorldTooltip )
+			}
+        }
+        if ( entity->flags[OVERDRAW] && splitscreen )
+        {
+            // need to skip some HUD models in splitscreen.
+            if ( currentPlayerViewport >= 0 )
+            {
+                if ( entity->behavior == &actHudWeapon
+                    || entity->behavior == &actHudArm
+                    || entity->behavior == &actGib
+                    || entity->behavior == &actFlame
+					|| entity->behavior == &actHUDMagicParticle
+					|| entity->behavior == &actHUDMagicParticleCircling )
+                {
+                    // the gibs are from casting magic in the HUD
+                    if ( entity->skill[11] != currentPlayerViewport )
+                    {
+                        continue;
+                    }
+                }
+                else if ( entity->behavior == &actHudAdditional
+                         || entity->behavior == &actHudArrowModel
+                         || entity->behavior == &actHudShield
+                         || entity->behavior == &actLeftHandMagic
+                         || entity->behavior == &actRightHandMagic )
+                {
+                    if ( entity->skill[2] != currentPlayerViewport )
+                    {
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        // update dithering
+        auto& dither = entity->dithering[camera];
+        if (ticks != dither.lastUpdateTick) {
+            dither.lastUpdateTick = ticks;
+            bool decrease = false;
+            if ( !entity->flags[OVERDRAW] )
+            {
+                const int x = entity->x / 16;
+                const int y = entity->y / 16;
+                if (x >= 0 && y >= 0 && x < map.width && y < map.height)
+                {
+                    if ( !camera->vismap[y + x * map.height] 
+						&& entity->monsterEntityRenderAsTelepath != 1
+						&& !(entity->behavior == &actSpriteNametag && entity->ditheringDisabled) )
+                    {
+                        decrease = true;
+                        goto end;
+                    }
+                }
+                const real_t rx = entity->x / 16.0;
+                const real_t ry = entity->y / 16.0;
+                if ( behindCamera(*camera, rx, ry) )
+                {
+                    decrease = true;
+                    goto end;
+                }
+            }
+            end:
+            if (entity->ditheringDisabled) {
+                dither.value = decrease ? 0 : Entity::Dither::MAX;
+            } else {
+                if (ditheringDisabled) {
+                    dither.value = decrease ? 0 : Entity::Dither::MAX;
+                } else {
+					if ( entity->flags[INVISIBLE] && entity->flags[INVISIBLE_DITHER] )
+					{
+#ifndef EDITOR
+						static ConsoleVariable<int> cvar_dither_invisibility("/dither_invisibility", 5);
+						dither.value = decrease ? std::max(0, dither.value - 2) :
+							std::min(*cvar_dither_invisibility, dither.value + 1);
+#else
+						dither.value = decrease ? std::max(0, dither.value - 2) :
+							dither.value + 1;
+#endif
+					}
+					else
+					{
+						dither.value = decrease ? std::max(0, dither.value - 2) :
+						    std::min(Entity::Dither::MAX, dither.value + 2);
+					}
+                }
+            }
+        }
+        if (dither.value == 0) {
+            continue;
+        }
+
+		// don't draw hud weapons if we're being a telepath. they get in the way of world models
+		if (entity->flags[OVERDRAW] && currentPlayerViewport >= 0) {
+			if (stats[currentPlayerViewport]->EFFECTS[EFF_TELEPATH]) {
+				continue;
+			}
+		}
+        
+		if ( entity->flags[SPRITE] == false )
+		{
+            GL_CHECK_ERR(glDrawVoxel(camera, entity, mode));
+		}
+		else
+		{
+			if ( entity->behavior == &actSpriteNametag )
+			{
+                real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
+                    + pow(camera->y * 16.0 - entity->y, 2));
+                spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
+			}
+			else if ( entity->behavior == &actSpriteWorldTooltip )
+			{
+				real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
+					+ pow(camera->y * 16.0 - entity->y, 2));
+				spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
+			}
+			else if ( entity->behavior == &actDamageGib )
+			{
+				if ( currentPlayerViewport != entity->skill[1] ) // skill[1] is player num, don't draw gibs on me
 				{
 					real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
 						+ pow(camera->y * 16.0 - entity->y, 2));
 					spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
 				}
-				else if ( entity->behavior == &actDamageGib )
+			}
+			else
+			{
+				if ( !entity->flags[OVERDRAW] )
 				{
 					real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
 						+ pow(camera->y * 16.0 - entity->y, 2));
@@ -1743,32 +2242,10 @@ void drawEntities3D(view_t* camera, int mode)
 				}
 				else
 				{
-					if ( !entity->flags[OVERDRAW] )
-					{
-						real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
-							+ pow(camera->y * 16.0 - entity->y, 2));
-						spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
-					}
-					else
-					{
-						glDrawSprite(camera, entity, mode);
-					}
+					real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
+						+ pow(camera->y * 16.0 - entity->y, 2));
+					spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
 				}
-			}
-		}
-		else
-		{
-			if ( entity->flags[SPRITE] == false )
-			{
-				glDrawVoxel(camera, entity, mode);
-			}
-			else if ( entity->behavior == &actSpriteWorldTooltip )
-			{
-				glDrawWorldUISprite(camera, entity, mode);
-			}
-			else 
-			{
-				glDrawSprite(camera, entity, mode);
 			}
 		}
 	}
@@ -1818,18 +2295,79 @@ void drawEntities3D(view_t* camera, int mode)
 			Entity* entity = (Entity*)std::get<1>(distSpriteType);
 			if ( entity->behavior == &actSpriteNametag )
 			{
-				int playersTag = playerEntityMatchesUid(entity->parent);
-				if ( playersTag >= 0 )
-				{
-					glDrawSpriteFromImage(camera, entity, stats[playersTag]->name, mode);
-				}
+				if ( intro ) { continue; } // don't draw on main menu
+#ifndef EDITOR
+                auto parent = uidToEntity(entity->parent);
+                if (parent) {
+                    if (multiplayer == CLIENT) {
+                        auto stats = parent->behavior == &actPlayer ?
+                            parent->getStats() : (parent->clientsHaveItsStats ? parent->clientStats : nullptr);
+                        if (stats && stats->name[0]) {
+							if ( parent->behavior == &actMonster && entity->skill[0] == clientnum && (!players[clientnum]->entity || parent->monsterAllyIndex != clientnum) )
+							{
+								// previous ally but we are dead (lost the ally) or someone stole our mon
+							}
+							else
+							{
+								if ( parent->getMonsterTypeFromSprite() == SLIME )
+								{
+									if ( !strcmp(stats->name, getMonsterLocalizedName(SLIME).c_str()) )
+									{
+										std::string name = stats->name;
+										camelCaseString(name);
+										glDrawSpriteFromImage(camera, entity, name.c_str(), mode);
+									}
+									else
+									{
+										glDrawSpriteFromImage(camera, entity, stats->name, mode);
+									}
+								}
+								else
+								{
+									glDrawSpriteFromImage(camera, entity, stats->name, mode);
+								}
+							}
+                        }
+                    } else {
+                        auto stats = parent->getStats();
+                        if (stats && stats->name[0]) {
+                            auto player = stats->leader_uid ?
+                                playerEntityMatchesUid(stats->leader_uid):
+                                playerEntityMatchesUid(entity->parent);
+                            if (player >= 0 && (!stats->leader_uid || camera == &players[player]->camera())) {
+								if ( stats->type == SLIME )
+								{
+									if ( !strcmp(stats->name, getMonsterLocalizedName(SLIME).c_str()) )
+									{
+										std::string name = stats->name;
+										camelCaseString(name);
+										glDrawSpriteFromImage(camera, entity, name.c_str(), mode);
+									}
+									else
+									{
+										glDrawSpriteFromImage(camera, entity, stats->name, mode);
+									}
+								}
+								else
+								{
+									glDrawSpriteFromImage(camera, entity, stats->name, mode);
+								}
+                            }
+                        }
+                    }
+                }
+#else // EDITOR
+                glDrawSpriteFromImage(camera, entity, entity->string ? entity->string : "", mode);
+#endif
 			}
 			else if ( entity->behavior == &actSpriteWorldTooltip )
 			{
+				if ( intro ) { continue; } // don't draw on main menu
 				glDrawWorldUISprite(camera, entity, mode);
 			}
 			else if ( entity->behavior == &actDamageGib )
 			{
+				if ( intro ) { continue; } // don't draw on main menu
 				char buf[16];
 				if ( entity->skill[0] < 0 )
 				{
@@ -1838,8 +2376,19 @@ void drawEntities3D(view_t* camera, int mode)
 				}
 				else
 				{
-					snprintf(buf, sizeof(buf), "%d", entity->skill[0]);
-					glDrawSpriteFromImage(camera, entity, buf, mode);
+					if ( entity->skill[7] == 1 )
+					{
+						glDrawSpriteFromImage(camera, entity, Language::get(6249), mode);
+					}
+					else if ( entity->skill[7] == 2 )
+					{
+						glDrawSprite(camera, entity, mode);
+					}
+					else
+					{
+						snprintf(buf, sizeof(buf), "%d", entity->skill[0]);
+						glDrawSpriteFromImage(camera, entity, buf, mode);
+					}
 				}
 			}
 			else
@@ -1850,21 +2399,20 @@ void drawEntities3D(view_t* camera, int mode)
 		else if ( std::get<2>(distSpriteType) == SpriteTypes::SPRITE_HPBAR )
 		{
 #ifndef EDITOR
+			if ( intro ) { continue; } // don't draw on main menu
 			auto enemybar = (std::pair<Uint32, EnemyHPDamageBarHandler::EnemyHPDetails>*)std::get<1>(distSpriteType);
-			glDrawEnemyBarSprite(camera, mode, &enemybar->second, false);
+			glDrawEnemyBarSprite(camera, mode, currentPlayerViewport, &enemybar->second);
 #endif
 		}
 		else if ( std::get<2>(distSpriteType) == SpriteTypes::SPRITE_DIALOGUE )
 		{
 #ifndef EDITOR
+			if ( intro ) { continue; } // don't draw on main menu
 			auto dialogue = (Player::WorldUI_t::WorldTooltipDialogue_t::Dialogue_t*)std::get<1>(distSpriteType);
 			glDrawWorldDialogueSprite(camera, dialogue, mode);
 #endif
 		}
 	}
-
-	glDisable(GL_SCISSOR_TEST);
-	glScissor(0, 0, xres, yres);
 }
 
 /*-------------------------------------------------------------------------------
@@ -1878,6 +2426,9 @@ void drawEntities3D(view_t* camera, int mode)
 
 void drawEntities2D(long camx, long camy)
 {
+	// editor only
+#ifndef EDITOR
+#else
 	node_t* node;
 	Entity* entity;
 	SDL_Rect pos, box;
@@ -1937,17 +2488,45 @@ void drawEntities2D(long camx, long camy)
 					switch ( entity->signalInputDirection )
 					{
 						case 0:
+							pos.x -= pos.w;
 							drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, 0.f, 255);
 							break;
 						case 1:
+							pos.y += pos.h;
 							drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, 3 * PI / 2, 255);
 							break;
 						case 2:
+							pos.x += pos.w;
 							drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, PI, 255);
 							break;
 						case 3:
+							pos.y -= pos.h;
 							drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, PI / 2, 255);
 							break;
+					}
+				}
+				else if ( entity->sprite == 185 || entity->sprite == 186 || entity->sprite == 187 )
+				{
+					pos.y += sprites[entity->sprite]->h / 2;
+					pos.x += sprites[entity->sprite]->w / 2;
+					switch ( entity->signalInputDirection )
+					{
+					case 0:
+						pos.x -= pos.w;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, 0.f, 255);
+						break;
+					case 1:
+						pos.y -= pos.h;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, PI / 2, 255);
+						break;
+					case 2:
+						pos.x += pos.w;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, PI, 255);
+						break;
+					case 3:
+						pos.y += pos.h;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, 3 * PI / 2, 255);
+						break;
 					}
 				}
 				else
@@ -1998,10 +2577,8 @@ void drawEntities2D(long camx, long camy)
 	// draw hover text for entities over the top of sprites.
 	for ( node = map.entities->first;
 		  node != nullptr
-#ifndef NINTENDO
 			&& (openwindow == 0
 			&& savewindow == 0)
-#endif
 		  ;
 		  node = node->next
 		)
@@ -2107,7 +2684,37 @@ void drawEntities2D(long camx, long camy)
 							}
 							ttfPrintText(ttf8, padx, pady + 20, tmpStr);
 							break;
+						case 27: // collider
+						{
+							pady += 5;
+							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							ttfPrintText(ttf8, padx, pady - 10, tmpStr);
+							int model = selectedEntity[0]->colliderDecorationModel;
+							if ( EditorEntityData_t::colliderData.find(selectedEntity[0]->colliderDamageTypes)
+								!= EditorEntityData_t::colliderData.end() )
+							{
+								if ( EditorEntityData_t::colliderData[selectedEntity[0]->colliderDamageTypes].hasOverride("model") )
+								{
+									model = EditorEntityData_t::colliderData[selectedEntity[0]->colliderDamageTypes].getOverride("model");
+								}
+							}
+							snprintf(tmpStr, sizeof(tmpStr), "Model: %s", modelFileNames[model].c_str());
+							ttfPrintTextColor(ttf8, padx, pady, makeColorRGB(0, 255, 0), true, tmpStr);
 
+							if ( EditorEntityData_t::colliderData.find(selectedEntity[0]->colliderDamageTypes)
+								!= EditorEntityData_t::colliderData.end() )
+							{
+
+								auto& colliderData = EditorEntityData_t::colliderData[selectedEntity[0]->colliderDamageTypes];
+								snprintf(tmpStr, sizeof(tmpStr), "Collider Type: %s", colliderData.name.c_str());
+							}
+							else
+							{
+								snprintf(tmpStr, sizeof(tmpStr), "Collider Type: ???");
+							}
+							ttfPrintTextColor(ttf8, padx, pady + 10, makeColorRGB(255, 255, 0), true, tmpStr);
+							break;
+						}
 						case 3: //Items
 							pady += 5;
 							strcpy(tmpStr, itemNameStrings[selectedEntity[0]->skill[10]]);
@@ -2203,35 +2810,35 @@ void drawEntities2D(long camx, long camy)
 
 							offsety += 10;
 							strcpy(tmpStr, "Type: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							strcpy(tmpStr2, monsterEditorNameStrings[entity->skill[0]]);
 							ttfPrintText(ttf8, padx + offsetx, pady + offsety, tmpStr2);
 
 							offsety += 10;
 							strcpy(tmpStr, "Qty: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							snprintf(tmpStr2, 10, "%d", selectedEntity[0]->skill[1]);
 							ttfPrintText(ttf8, padx + offsetx, pady + offsety, tmpStr2);
 
 							offsety += 10;
 							strcpy(tmpStr, "Time: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							snprintf(tmpStr2, 10, "%d", selectedEntity[0]->skill[2]);
 							ttfPrintText(ttf8, padx + offsetx, pady + offsety, tmpStr2);
 
 							offsety += 10;
 							strcpy(tmpStr, "Amount: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							snprintf(tmpStr2, 10, "%d", selectedEntity[0]->skill[3]);
 							ttfPrintText(ttf8, padx + offsetx, pady + offsety, tmpStr2);
 
 							offsety += 10;
 							strcpy(tmpStr, "Power to: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							if ( selectedEntity[0]->skill[4] == 1 )
 							{
@@ -2245,7 +2852,7 @@ void drawEntities2D(long camx, long camy)
 
 							offsety += 10;
 							strcpy(tmpStr, "Stop Chance: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							snprintf(tmpStr2, 10, "%d", selectedEntity[0]->skill[5]);
 							ttfPrintText(ttf8, padx + offsetx, pady + offsety, tmpStr2);
@@ -2259,7 +2866,7 @@ void drawEntities2D(long camx, long camy)
 							offsety += 10;
 							strcpy(tmpStr, "Facing: ");
 							ttfPrintText(ttf8, padx, pady + offsety, tmpStr);
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							switch ( (int)entity->yaw )
 							{
 								case 0:
@@ -2283,14 +2890,14 @@ void drawEntities2D(long camx, long camy)
 
 							offsety += 10;
 							strcpy(tmpStr, "Nodes: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							snprintf(tmpStr2, 10, "%d", selectedEntity[0]->crystalNumElectricityNodes);
 							ttfPrintText(ttf8, padx + offsetx, pady + offsety, tmpStr2);
 
 							offsety += 10;
 							strcpy(tmpStr, "Rotation: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							switch ( (int)entity->crystalTurnReverse )
 							{
@@ -2309,7 +2916,7 @@ void drawEntities2D(long camx, long camy)
 
 							offsety += 10;
 							strcpy(tmpStr, "Spell to Activate: ");
-							offsetx = strlen(tmpStr) * 8 - 8;
+							offsetx = (int)strlen(tmpStr) * 8 - 8;
 							ttfPrintTextColor(ttf8, padx, pady + offsety, colorWhite, 1, tmpStr);
 							switch ( (int)entity->crystalSpellToActivate )
 							{
@@ -2354,7 +2961,6 @@ void drawEntities2D(long camx, long camy)
 							{
 								buf[totalChars] = '\0';
 							}
-							int numLines = 0;
 							std::vector<std::string> lines;
 							lines.push_back(spriteEditorNameStrings[selectedEntity[0]->sprite]);
 
@@ -2396,9 +3002,42 @@ void drawEntities2D(long camx, long camy)
 
 							SDL_Rect tooltip;
 							tooltip.x = padx + offsetx - 4;
-							tooltip.w = TTF8_WIDTH * longestLine + 8;
+							tooltip.w = TTF8_WIDTH * (int)longestLine + 8;
 							tooltip.y = pady + offsety - 4;
-							tooltip.h = lines.size() * TTF8_HEIGHT + 8;
+							tooltip.h = (int)lines.size() * TTF8_HEIGHT + 8;
+
+							if ( lines.size() <= 1 )
+							{
+								offsety += 20;
+							}
+
+							if ( spriteType == 13 )
+							{
+								if ( modelFileNames.find(selectedEntity[0]->floorDecorationModel) != modelFileNames.end() )
+								{
+									snprintf(tmpStr, sizeof(tmpStr), "Model: %s", modelFileNames[selectedEntity[0]->floorDecorationModel].c_str());
+									if ( lines.size() > 1 )
+									{
+										ttfPrintTextColor(ttf8, padx + offsetx, tooltip.y - 16, makeColorRGB(0, 255, 0), true, tmpStr);
+									}
+									else
+									{
+										ttfPrintTextColor(ttf8, padx + offsetx, pady + offsety - 10, makeColorRGB(0, 255, 0), true, tmpStr);
+									}
+								}
+								else
+								{
+									if ( lines.size() > 1 )
+									{
+										ttfPrintText(ttf8, padx + offsetx, tooltip.y - 16, "Model: Invalid Index");
+									}
+									else
+									{
+										ttfPrintText(ttf8, padx + offsetx, pady + offsety - 10, "Model: Invalid Index");
+									}
+								}
+							}
+
 							if ( lines.size() > 1 )
 							{
 								drawTooltip(&tooltip);
@@ -2420,9 +3059,7 @@ void drawEntities2D(long camx, long camy)
 				else if ( (omousex / TEXTURESIZE) * 32 == pos.x
 						&& (omousey / TEXTURESIZE) * 32 == pos.y
 						&& selectedEntity[0] == NULL
-#ifndef NINTENDO
 						&& hovertext
-#endif
 						)
 				{
 					// handle mouseover sprite name tooltip in main editor screen
@@ -2459,6 +3096,7 @@ void drawEntities2D(long camx, long camy)
 			}
 		}
 	}
+#endif
 }
 
 /*-------------------------------------------------------------------------------
@@ -2469,15 +3107,14 @@ void drawEntities2D(long camx, long camy)
 
 -------------------------------------------------------------------------------*/
 
-void drawGrid(long camx, long camy)
+void drawGrid(int camx, int camy)
 {
-	long x, y;
 	Uint32 color = makeColorRGB(127, 127, 127);
 	drawLine(-camx, (map.height << TEXTUREPOWER) - camy, (map.width << TEXTUREPOWER) - camx, (map.height << TEXTUREPOWER) - camy, color, 255);
 	drawLine((map.width << TEXTUREPOWER) - camx, -camy, (map.width << TEXTUREPOWER) - camx, (map.height << TEXTUREPOWER) - camy, color, 255);
-	for ( y = 0; y < map.height; y++ )
+	for ( int y = 0; y < map.height; y++ )
 	{
-		for ( x = 0; x < map.width; x++ )
+		for ( int x = 0; x < map.width; x++ )
 		{
 			drawLine((x << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, ((x + 1) << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, color, 255);
 			drawLine((x << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, (x << TEXTUREPOWER) - camx, ((y + 1) << TEXTUREPOWER) - camy, color, 255);
@@ -2597,45 +3234,17 @@ void drawDepressed(int x1, int y1, int x2, int y2)
 
 void drawWindowFancy(int x1, int y1, int x2, int y2)
 {
-	// update projection
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, xres, yres);
-	glLoadIdentity();
-	glOrtho(0, xres, 0, yres, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glEnable(GL_BLEND);
-
-	// draw quads
-	glColor3f(.25, .25, .25);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glBegin(GL_QUADS);
-	glVertex2f(x1, yres - y1);
-	glVertex2f(x1, yres - y2);
-	glVertex2f(x2, yres - y2);
-	glVertex2f(x2, yres - y1);
-	glEnd();
-	glColor3f(.5, .5, .5);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glBegin(GL_QUADS);
-	glVertex2f(x1 + 1, yres - y1 - 1);
-	glVertex2f(x1 + 1, yres - y2 + 1);
-	glVertex2f(x2 - 1, yres - y2 + 1);
-	glVertex2f(x2 - 1, yres - y1 - 1);
-	glEnd();
-	glColor3f(.75, .75, .75);
-	glBindTexture(GL_TEXTURE_2D, texid[(long int)fancyWindow_bmp->userdata]); // wood texture
-	glBegin(GL_QUADS);
-	glTexCoord2f(0, 0);
-	glVertex2f(x1 + 2, yres - y1 - 2);
-	glTexCoord2f(0, (y2 - y1 - 4) / (real_t)tiles[30]->h);
-	glVertex2f(x1 + 2, yres - y2 + 2);
-	glTexCoord2f((x2 - x1 - 4) / (real_t)tiles[30]->w, (y2 - y1 - 4) / (real_t)tiles[30]->h);
-	glVertex2f(x2 - 2, yres - y2 + 2);
-	glTexCoord2f((x2 - x1 - 4) / (real_t)tiles[30]->w, 0);
-	glVertex2f(x2 - 2, yres - y1 - 2);
-	glEnd();
+    auto white = Image::get("images/system/white.png");
+    auto backdrop = Image::get("images/system/fancyWindow.png");
+    
+    white->drawColor(nullptr, SDL_Rect{x1, y1, x2 - x1, y2 - y1},
+         SDL_Rect{0, 0, xres, yres}, makeColorRGB(63, 63, 63));
+    
+    white->drawColor(nullptr, SDL_Rect{x1 + 1, y1 + 1, x2 - x1 - 2, y2 - y1 - 2},
+         SDL_Rect{0, 0, xres, yres}, makeColorRGB(127, 127, 127));
+    
+    backdrop->drawColor(nullptr, SDL_Rect{x1 + 2, y1 + 2, x2 - x1 - 4, y2 - y1 - 4},
+         SDL_Rect{0, 0, xres, yres}, makeColorRGB(191, 191, 191));
 }
 
 /*-------------------------------------------------------------------------------
@@ -2678,21 +3287,29 @@ SDL_Rect ttfPrintTextColor( TTF_Font* font, int x, int y, Uint32 color, bool out
             filename = "lang/en.ttf#22#0";
         }
     }
-    char buf[1024];
+	int w = 0;
+	int h = 0;
+	char buf[1024] = { '\0' };
     char* ptr = buf;
-    snprintf(buf, sizeof(buf), str);
-    for (int c = 0; ptr[c] != '\0'; ++c) {
+    snprintf(buf, sizeof(buf), "%s", str);
+    for (int c = 0; c < sizeof(buf) && ptr[c] != '\0'; ++c) {
         if (ptr[c] == '\n') {
             ptr[c] = '\0';
             auto text = Text::get(ptr, filename, uint32ColorWhite, uint32ColorBlack);
             text->drawColor(SDL_Rect{0, 0, 0, 0}, SDL_Rect{x, y, 0, 0}, SDL_Rect{0, 0, xres, yres}, color);
+			w = std::max(w, (int)text->getWidth());
+			h = std::max(h, (int)text->getHeight());
             y += text->getHeight();
             ptr += c + 1;
         }
     }
-    auto text = Text::get(ptr, filename, uint32ColorWhite, uint32ColorBlack);
-    text->drawColor(SDL_Rect{0, 0, 0, 0}, SDL_Rect{x, y, 0, 0}, SDL_Rect{0, 0, xres, yres}, color);
-    return SDL_Rect{x, y, (int)text->getWidth(), (int)text->getHeight()};
+	if (ptr < buf + sizeof(buf)) {
+		auto text = Text::get(ptr, filename, uint32ColorWhite, uint32ColorBlack);
+		text->drawColor(SDL_Rect{ 0, 0, 0, 0 }, SDL_Rect{ x, y, 0, 0 }, SDL_Rect{ 0, 0, xres, yres }, color);
+		w = std::max(w, (int)text->getWidth());
+		h = std::max(h, (int)text->getHeight());
+	}
+    return SDL_Rect{x, y, w, h};
 }
 
 static SDL_Rect errorRect = { 0 };
@@ -2774,7 +3391,7 @@ void printText( SDL_Surface* font_bmp, int x, int y, const char* str )
 	}
 
 	// format the string
-	numbytes = strlen(str);
+	numbytes = (int)strlen(str);
 
 	// define font dimensions
 	dest.x = x;
@@ -2812,6 +3429,46 @@ void printText( SDL_Surface* font_bmp, int x, int y, const char* str )
 	Prints formatted text to the screen using a font bitmap
 
 -------------------------------------------------------------------------------*/
+
+void debugPrintText(int x, int y, const SDL_Rect& viewport, char const * const fmt, ...)
+{
+    const auto font = font16x16_bmp;
+
+	// format the string
+	va_list argptr;
+	va_start(argptr, fmt);
+	char str[1024] = {'\0'};
+	int size = vsnprintf(str, sizeof(str), fmt, argptr);
+	va_end(argptr);
+
+	// define font dimensions
+    SDL_Rect src, dest;
+	dest.x = x;
+	dest.y = y;
+	dest.w = font->w / 16;
+	dest.h = font->h / 16;
+	src.w = font->w / 16;
+	src.h = font->h / 16;
+
+	// print the characters in the string
+	for (int c = 0; c < size; ++c) {
+		src.x = (str[c] * src.w) % font->w;
+		src.y = (int)((str[c] * src.w) / font->w) * src.h;
+		if (str[c] != '\n' && str[c] != '\r') {
+            SDL_Rect odest;
+			odest.x = dest.x;
+			odest.y = dest.y;
+            Image::draw(texid[(long int)font->userdata], font->w, font->h,
+                &src, dest, viewport, 0xffffffff);
+			dest.x = odest.x + src.w;
+			dest.y = odest.y;
+		}
+		else if (str[c] == '\n') {
+			dest.x = x;
+			dest.y += src.h;
+		}
+	}
+}
 
 void printTextFormatted( SDL_Surface* font_bmp, int x, int y, char const * const fmt, ... )
 {
@@ -2866,44 +3523,7 @@ void printTextFormatted( SDL_Surface* font_bmp, int x, int y, char const * const
 
 void printTextFormattedAlpha(SDL_Surface* font_bmp, int x, int y, Uint8 alpha, char const * const fmt, ...)
 {
-	int c;
-	int numbytes;
-	char str[1024] = { 0 };
-	va_list argptr;
-	SDL_Rect src, dest, odest;
-
-	// format the string
-	va_start( argptr, fmt );
-	numbytes = vsnprintf( str, 1023, fmt, argptr );
-	va_end( argptr );
-
-	// define font dimensions
-	dest.x = x;
-	dest.y = y;
-	dest.w = font_bmp->w / 16;
-	src.w = font_bmp->w / 16;
-	dest.h = font_bmp->h / 16;
-	src.h = font_bmp->h / 16;
-
-	// print the characters in the string
-	for ( c = 0; c < numbytes; c++ )
-	{
-		src.x = (str[c] * src.w) % font_bmp->w;
-		src.y = (int)((str[c] * src.w) / font_bmp->w) * src.h;
-		if ( str[c] != 10 && str[c] != 13 )   // LF/CR
-		{
-			odest.x = dest.x;
-			odest.y = dest.y;
-			drawImageAlpha( font_bmp, &src, &dest, alpha );
-			dest.x = odest.x + src.w;
-			dest.y = odest.y;
-		}
-		else if ( str[c] == 10 )
-		{
-			dest.x = x;
-			dest.y += src.h;
-		}
-	}
+    // deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -2968,46 +3588,7 @@ void printTextFormattedColor(SDL_Surface* font_bmp, int x, int y, Uint32 color, 
 
 void printTextFormattedFancy(SDL_Surface* font_bmp, int x, int y, Uint32 color, real_t angle, real_t scale, char* fmt, ...)
 {
-	int c;
-	int numbytes;
-	char str[1024] = { 0 };
-	va_list argptr;
-	SDL_Rect src, dest;
-
-	// format the string
-	va_start( argptr, fmt );
-	numbytes = vsnprintf( str, 1023, fmt, argptr );
-	va_end( argptr );
-
-	// define font dimensions
-	real_t newX = x;
-	real_t newY = y;
-	dest.w = ((real_t)font_bmp->w / 16.f) * scale;
-	src.w = font_bmp->w / 16;
-	dest.h = ((real_t)font_bmp->h / 16.f) * scale;
-	src.h = font_bmp->h / 16;
-
-	// print the characters in the string
-	int line = 0;
-	for ( c = 0; c < numbytes; c++ )
-	{
-		src.x = (str[c] * src.w) % font_bmp->w;
-		src.y = (int)((str[c] * src.w) / font_bmp->w) * src.h;
-		if ( str[c] != 10 && str[c] != 13 )   // LF/CR
-		{
-			dest.x = newX;
-			dest.y = newY;
-			drawImageFancy( font_bmp, color, angle, &src, &dest );
-			newX += (real_t)dest.w * cos(angle);
-			newY += (real_t)dest.h * sin(angle);
-		}
-		else if ( str[c] == 10 )
-		{
-			line++;
-			dest.x = x + dest.h * cos(angle + PI / 2) * line;
-			dest.y = y + dest.h * sin(angle + PI / 2) * line;
-		}
-	}
+	// deprecated
 }
 
 /*-------------------------------------------------------------------------------
@@ -3036,224 +3617,395 @@ void drawTooltip(SDL_Rect* src, Uint32 optionalColor)
 }
 
 void getColor(Uint32 color, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a) {
-	*r = (color & 0x000000ff) >> 0;
-	*g = (color & 0x0000ff00) >> 8;
-	*b = (color & 0x00ff0000) >> 16;
-	*a = (color & 0xff000000) >> 24;
+	r ? (*r = (color & 0x000000ff) >> 0) : 0;
+	g ? (*g = (color & 0x0000ff00) >> 8) : 0;
+	b ? (*b = (color & 0x00ff0000) >> 16) : 0;
+	a ? (*a = (color & 0xff000000) >> 24) : 0;
 }
 
 bool behindCamera(const view_t& camera, real_t x, real_t y)
 {
-    const real_t dx = x - camera.x;
-    const real_t dy = y - camera.y;
-    const real_t len = sqrt(dx*dx + dy*dy);
-    if (len < 4) {
+    const float dx = x - camera.x;
+    const float dy = y - camera.y;
+    const float len2 = dx*dx + dy*dy;
+    if (len2 < 4) {
         return false;
     }
-    const real_t alen = 1.0 / len;
+    const float alen = 1.0f / sqrtf(len2); // normalize direction to x/y
 
-    const real_t v0x = cos(camera.ang);
-    const real_t v0y = sin(camera.ang);
-    const real_t v1x = dx * alen;
-    const real_t v1y = dy * alen;
+	// camera direction vector
+	const float a = camera.ang;
+    const float v0x = cosf(a);
+    const float v0y = sinf(a);
 
-    const real_t dot = v0x * v1x + v0y * v1y;
+	// direction vector to x/y
+    const float v1x = dx * alen;
+    const float v1y = dy * alen;
 
-    const real_t aspect = (real_t)camera.winw / (real_t)camera.winh;
-    const real_t wfov = std::max((real_t)90.0, ((real_t)(fov + 30.0) * aspect)) * PI / 180.0;
-    const real_t c = cos(wfov * 0.5);
+	// dot product of camera direction and normalized direction vector to x/y
+    const float dot = v0x * v1x + v0y * v1y;
+
+	// cosine of FOV lets us see if the object is outside the view frustum.
+	// however, there is an inaccuracy: the above algorithm only operates in
+	// 2D, so when the camera tilts up or down, broadening the WFOV, this is
+	// unaccounted for. therefore a margin of error of 30* is added to fov
+	const uint32_t error = 30;
+    const float aspect = (float)camera.winw / (float)camera.winh;
+    const float wfov = std::max(90.f, (float)(fov + error) * aspect) * ((float)PI) / 180.f;
+    const float c = cosf(wfov * 0.5f);
 
     return dot < c;
 }
 
-bool testTileOccludes(map_t& map, int index) {
+static inline bool testTileOccludes(const map_t& map, int index) {
     assert(index >= 0 && index <= map.width * map.height * MAPLAYERS - MAPLAYERS);
-	for (int z = 0; z < MAPLAYERS; z++) {
-		if (!map.tiles[index + z]) {
-			return false;
-		}
-	}
-	return true;
+    const Uint64& t0 = *(Uint64*)&map.tiles[index];
+    const Uint32& t1 = *(Uint32*)&map.tiles[index + 2];
+    return (t0 & 0xffffffff00000000) && (t0 & 0x00000000ffffffff) && t1;
 }
 
-void occlusionCulling(map_t& map, const view_t& camera)
+void occlusionCulling(map_t& map, view_t& camera)
 {
 	// cvars
 #ifndef EDITOR
-    static ConsoleVariable<int> max_distance("/culling_max_distance", CLIPFAR / 16);
-    static ConsoleVariable<int> max_walls_hit("/culling_max_walls", 2);
-	static ConsoleVariable<bool> diagonalCulling("/culling_expand_diagonal", true);
     static ConsoleVariable<bool> disabled("/skipculling", false);
+	static ConsoleVariable<bool> disableInWalls("/disable_culling_in_walls", false);
 #else
-	static int ed_distance = CLIPFAR / 16;
-	static int ed_walls_hit = 2;
-	static bool ed_culling = true;
 	static bool ed_disabled = false;
-	auto* max_distance = &ed_distance;
-	auto* max_walls_hit = &ed_walls_hit;
-	auto* diagonalCulling = &ed_culling;
+	static bool ed_disableInWalls = true;
     auto* disabled = &ed_disabled;
+	auto* disableInWalls = &ed_disableInWalls;
 #endif
 
 	const int size = map.width * map.height;
 	
-    if (*disabled)
-    {
-        memset(map.vismap, 1, sizeof(bool) * size);
+    if (*disabled) {
+        memset(camera.vismap, 1, sizeof(bool) * size);
         return;
     }
 
-    // clear vismap
     const int camx = std::min(std::max(0, (int)camera.x), (int)map.width - 1);
     const int camy = std::min(std::max(0, (int)camera.y), (int)map.height - 1);
 
     // don't do culling if camera in wall
-    if ( map.tiles[OBSTACLELAYER + camy * MAPLAYERS + camx * MAPLAYERS * map.height] != 0 )
-	{
-		memset(map.vismap, 1, sizeof(bool) * size);
-		return;
+	if (*disableInWalls) {
+		if (map.tiles[OBSTACLELAYER + camy * MAPLAYERS + camx * MAPLAYERS * map.height] != 0) {
+			memset(camera.vismap, 1, sizeof(bool) * size);
+			return;
+		}
 	}
 
-    memset(map.vismap, 0, sizeof(bool) * size);
-    map.vismap[camy + camx * map.height] = true;
+    // clear vismap
+    memset(camera.vismap, 0, sizeof(bool) * size);
+	camera.vismap[camy + camx * map.height] = true;
 
     const int hoff = MAPLAYERS;
     const int woff = MAPLAYERS * map.height;
+    
+	// making these static saves a lot of redundant
+	// putting up / pulling down of structures in
+	// memory, which saves measurable time on more
+	// constrained platforms like nintendo.
+	// plus this function isn't threaded so who cares.
+    static std::vector<std::pair<int, int>> open;
+    static std::set<std::pair<int, int>> closed;
+	open.clear();
+	open.reserve(size);
+	closed.clear();
+    open.emplace_back(camx, camy);
+    closed.emplace(camx, camy);
 
     // do line tests throughout the map
-	const int beginx = std::max(0, camx - *max_distance);
-	const int beginy = std::max(0, camy - *max_distance);
-	const int endx = std::min((int)map.width - 1, camx + *max_distance);
-	const int endy = std::min((int)map.height - 1, camy + *max_distance);
-	for ( int u = beginx; u <= endx; u++ ) {
-		for ( int v = beginy; v <= endy; v++ ) {
-			if (map.vismap[v + u * map.height]) {
-				continue;
-			}
-			const int uvindex = v * hoff + u * woff;
-			if (testTileOccludes(map, uvindex)) {
-				continue;
-			}
-			if (behindCamera(camera, (real_t)u + 0.5, (real_t)v + 0.5)) {
-				continue;
-			}
-			for (int foo = -1; foo <= 1; ++foo) {
-				for (int bar = -1; bar <= 1; ++bar) {
-					if (!*diagonalCulling && foo && bar) {
-						continue;
-					}
-					const int x = std::min(std::max(0, camx + foo), (int)map.width - 1);
-					const int y = std::min(std::max(0, camy + bar), (int)map.height - 1);
-					const int xyindex = y * hoff + x * woff;
-					if (testTileOccludes(map, xyindex)) {
-						continue;
-					}
-			        const int dx = u - x;
-			        const int dy = v - y;
-			        const int sdx = sgn(dx);
-			        const int sdy = sgn(dy);
-			        const int dxabs = abs(dx);
-			        const int dyabs = abs(dy);
-			        int wallshit = 0;
-			        if (dxabs >= dyabs) { // the line is more horizontal than vertical
-			            int a = dxabs >> 1;
-			            int index = uvindex;
-				        for (int i = 1; i < dxabs; ++i) {
-					        index -= woff * sdx;
-					        a += dyabs;
-					        if (a >= dxabs) {
-						        a -= dxabs;
-						        index -= hoff * sdy;
-					        }
-					        if (testTileOccludes(map, index)) {
-						        ++wallshit;
-						        if (wallshit >= *max_walls_hit) {
-						            break;
-						        }
-					        }
-				        }
-			        } else { // the line is more vertical than horizontal
-			            int a = dyabs >> 1;
-			            int index = uvindex;
-				        for (int i = 1; i < dyabs; ++i) {
-					        index -= hoff * sdy;
-					        a += dxabs;
-					        if (a >= dyabs) {
-						        a -= dyabs;
-					            index -= woff * sdx;
-					        }
-					        if (testTileOccludes(map, index)) {
-						        ++wallshit;
-						        if (wallshit >= *max_walls_hit) {
-						            break;
-						        }
-					        }
-				        }
-			        }
-			        if (wallshit < *max_walls_hit) {
-                        map.vismap[v + u * map.height] = true;
-						goto next;
-			        }
-		        }
-	        }
-next:;
+    while (!open.empty()) {
+        const int u = open.back().first;
+        const int v = open.back().second;
+        const int uvindex = v * hoff + u * woff;
+        open.pop_back();
+        if (camera.vismap[v + u * map.height]) {
+            goto next;
+        }
+        if (behindCamera(camera, (real_t)u + 0.5, (real_t)v + 0.5)) {
+            goto next;
+        }
+        for (int foo = -1; foo <= 1; ++foo) {
+            for (int bar = -1; bar <= 1; ++bar) {
+                const int x = std::min(std::max(0, camx + foo), (int)map.width - 1);
+                const int y = std::min(std::max(0, camy + bar), (int)map.height - 1);
+                const int xyindex = y * hoff + x * woff;
+                if (testTileOccludes(map, xyindex)) {
+                    continue;
+                }
+                const int dx = u - x;
+                const int dy = v - y;
+                const int sdx = sgn(dx);
+                const int sdy = sgn(dy);
+                const int dxabs = abs(dx);
+                const int dyabs = abs(dy);
+                bool wallhit = false;
+                if (dxabs >= dyabs) { // the line is more horizontal than vertical
+                    int a = dxabs >> 1;
+                    int index = uvindex;
+                    for (int i = 1; i < dxabs; ++i) {
+                        index -= woff * sdx;
+                        a += dyabs;
+                        if (a >= dxabs) {
+                            a -= dxabs;
+                            index -= hoff * sdy;
+                        }
+                        if (testTileOccludes(map, index)) {
+                            wallhit = true;
+                            break;
+                        }
+                    }
+                } else { // the line is more vertical than horizontal
+                    int a = dyabs >> 1;
+                    int index = uvindex;
+                    for (int i = 1; i < dyabs; ++i) {
+                        index -= hoff * sdy;
+                        a += dxabs;
+                        if (a >= dyabs) {
+                            a -= dyabs;
+                            index -= woff * sdx;
+                        }
+                        if (testTileOccludes(map, index)) {
+                            wallhit = true;
+                            break;
+                        }
+                    }
+                }
+                if (!wallhit) {
+                    camera.vismap[v + u * map.height] = true;
+                    goto next;
+                }
+            }
+        }
+        
+    next:
+        // if the vis check succeeded, explore adjacent tiles
+        if (camera.vismap[v + u * map.height]) {
+            if (u < map.width - 1) { // check tiles to the east
+                if (closed.emplace(u + 1, v).second) {
+                    if (!testTileOccludes(map, uvindex + woff)) {
+                        open.emplace_back(u + 1, v);
+                    }
+                }
+            }
+            if (v < map.height - 1) { // check tiles to the south
+                if (closed.emplace(u, v + 1).second) {
+                    if (!testTileOccludes(map, uvindex + hoff)) {
+                        open.emplace_back(u, v + 1);
+                    }
+                }
+            }
+            if (u > 0) { // check tiles to the west
+                if (closed.emplace(u - 1, v).second) {
+                    if (!testTileOccludes(map, uvindex - woff)) {
+                        open.emplace_back(u - 1, v);
+                    }
+                }
+            }
+            if (v > 0) { // check tiles to the north
+                if (closed.emplace(u, v - 1).second) {
+                    if (!testTileOccludes(map, uvindex - hoff)) {
+                        open.emplace_back(u, v - 1);
+                    }
+                }
+            }
         }
     }
 
 	// expand vismap one tile in each direction
+	constexpr int VMAP_MAX_DIMENSION = 128;
+	static bool vmap[VMAP_MAX_DIMENSION * VMAP_MAX_DIMENSION];
+	assert(size <= sizeof(vmap) / sizeof(vmap[0]));
 	const int w = map.width;
 	const int w1 = map.width - 1;
 	const int h = map.height;
 	const int h1 = map.height - 1;
-	bool* vmap = (bool*)malloc(sizeof(bool) * size);
-    for ( int u = 0; u < w; u++ ) {
-        for ( int v = 0; v < h; v++ ) {
+    for (int u = 0; u < w; u++) {
+        for (int v = 0; v < h; v++) {
             const int index = v + u * h;
-	        vmap[index] = map.vismap[index];
+	        vmap[index] = camera.vismap[index];
 		    if (!vmap[index]) {
 		        if (v >= 1) {
-		            if (map.vismap[index - 1]) {
+		            if (camera.vismap[index - 1]) {
 		                vmap[index] = true;
 		                continue;
 		            }
-		            if (*diagonalCulling) {
-		                if (u >= 1 && map.vismap[index - h - 1]) {
-		                    vmap[index] = true;
-		                    continue;
-		                }
-		                if (u < w1 && map.vismap[index + h - 1]) {
-		                    vmap[index] = true;
-		                    continue;
-		                }
-		            }
+                    if (u >= 1 && camera.vismap[index - h - 1]) {
+                        vmap[index] = true;
+                        continue;
+                    }
+                    if (u < w1 && camera.vismap[index + h - 1]) {
+                        vmap[index] = true;
+                        continue;
+                    }
 		        }
 		        if (v < h1) {
-		            if (map.vismap[index + 1]) {
+		            if (camera.vismap[index + 1]) {
 		                vmap[index] = true;
 		                continue;
 		            }
-		            if (*diagonalCulling) {
-		                if (u >= 1 && map.vismap[index - h + 1]) {
-		                    vmap[index] = true;
-		                    continue;
-		                }
-		                if (u < w1 && map.vismap[index + h + 1]) {
-		                    vmap[index] = true;
-		                    continue;
-		                }
-		            }
+                    if (u >= 1 && camera.vismap[index - h + 1]) {
+                        vmap[index] = true;
+                        continue;
+                    }
+                    if (u < w1 && camera.vismap[index + h + 1]) {
+                        vmap[index] = true;
+                        continue;
+                    }
 		        }
-		        if (u >= 1 && map.vismap[index - h]) {
+		        if (u >= 1 && camera.vismap[index - h]) {
 		            vmap[index] = true;
 		            continue;
 		        }
-		        if (u < w1 && map.vismap[index + h]) {
+		        if (u < w1 && camera.vismap[index + h]) {
 		            vmap[index] = true;
 		            continue;
 		        }
 		    }
 		}
 	}
-	free(map.vismap);
-	map.vismap = vmap;
+	memcpy(camera.vismap, vmap, size);
+}
+
+float foverflow() {
+	float f = 1e10;
+	for (int i = 0; i < 10; ++i) {
+		f = f * f; // this will overflow before the for loop terminates
+	}
+	return f;
+}
+
+float toFloat32(GLhalf value) {
+	int s = (value >> 15) & 0x00000001;
+	int e = (value >> 10) & 0x0000001f;
+	int m = value & 0x000003ff;
+
+	if (e == 0) {
+		if (m == 0) {
+			// Plus or minus zero
+			uif32 result;
+			result.i = static_cast<unsigned int>(s << 31);
+			return result.f;
+		}
+		else {
+			// Denormalized number -- renormalize it
+			while (!(m & 0x00000400)) {
+				m <<= 1;
+				e -= 1;
+			}
+			e += 1;
+			m &= ~0x00000400;
+		}
+	}
+	else if (e == 31) {
+		if (m == 0) {
+			// Positive or negative infinity
+			uif32 result;
+			result.i = static_cast<unsigned int>((s << 31) | 0x7f800000);
+			return result.f;
+		}
+		else {
+			// Nan -- preserve sign and significand bits
+			uif32 result;
+			result.i = static_cast<unsigned int>((s << 31) | 0x7f800000 | (m << 13));
+			return result.f;
+		}
+	}
+
+	// Normalized number
+	e = e + (127 - 15);
+	m = m << 13;
+
+	// Assemble s, e and m.
+	uif32 result;
+	result.i = static_cast<unsigned int>((s << 31) | (e << 23) | m);
+	return result.f;
+}
+
+GLhalf toFloat16(float f) {
+	uif32 entry;
+	entry.f = f;
+	int i = static_cast<int>(entry.i);
+
+	// Our floating point number, f, is represented by the bit
+	// pattern in integer i.  Disassemble that bit pattern into
+	// the sign, s, the exponent, e, and the significand, m.
+	// Shift s into the position where it will go in the
+	// resulting half number.
+	// Adjust e, accounting for the different exponent bias
+	// of float and half (127 versus 15).
+	int s = (i >> 16) & 0x00008000;
+	int e = ((i >> 23) & 0x000000ff) - (127 - 15);
+	int m = i & 0x007fffff;
+
+	// Now reassemble s, e and m into a half:
+	if (e <= 0) {
+		if (e < -10) {
+			// E is less than -10.  The absolute value of f is
+			// less than half_MIN (f may be a small normalized
+			// float, a denormalized float or a zero).
+			// We convert f to a half zero.
+			return GLhalf(s);
+		}
+
+		// E is between -10 and 0.  F is a normalized float,
+		// whose magnitude is less than __half_NRM_MIN.
+		// We convert f to a denormalized half.
+		m = (m | 0x00800000) >> (1 - e);
+
+		// Round to nearest, round "0.5" up.
+		// Rounding may cause the significand to overflow and make
+		// our number normalized.  Because of the way a half's bits
+		// are laid out, we don't have to treat this case separately;
+		// the code below will handle it correctly.
+		if (m & 0x00001000) {
+			m += 0x00002000;
+		}
+
+		// Assemble the half from s, e (zero) and m.
+		return GLhalf(s | (m >> 13));
+	}
+	else if (e == 0xff - (127 - 15)) {
+		if (m == 0) {
+			// F is an infinity; convert f to a half
+			// infinity with the same sign as f.
+			return GLhalf(s | 0x7c00);
+		}
+		else {
+			// F is a NAN; we produce a half NAN that preserves
+			// the sign bit and the 10 leftmost bits of the
+			// significand of f, with one exception: If the 10
+			// leftmost bits are all zero, the NAN would turn
+			// into an infinity, so we have to set at least one
+			// bit in the significand.
+			m >>= 13;
+			return GLhalf(s | 0x7c00 | m | (m == 0));
+		}
+	}
+	else {
+		// E is greater than zero.  F is a normalized float.
+		// We try to convert f to a normalized half.
+		// Round to nearest, round "0.5" up
+		if (m & 0x00001000) {
+			m += 0x00002000;
+			if (m & 0x00800000) {
+				m = 0;      // overflow in significand,
+				e += 1;     // adjust exponent
+			}
+		}
+
+		// Handle exponent overflow
+		if (e > 30) {
+			foverflow();        // Cause a hardware floating point overflow;
+
+			// if this returns, the half becomes an
+			// infinity with the same sign as f.
+			return GLhalf(s | 0x7c00);
+		}
+
+		// Assemble the half from s, e and m.
+		return GLhalf(s | (e << 10) | (m >> 13));
+	}
 }

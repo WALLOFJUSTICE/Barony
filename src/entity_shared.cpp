@@ -53,6 +53,13 @@ int checkSpriteType(Sint32 sprite)
 	case 164:
 	case 165:
 	case 166:
+	case 188:
+	case 189:
+	case 193:
+	case 194:
+	case 195:
+	case 196:
+	case 197:
 		//monsters
 		return 1;
 		break;
@@ -151,6 +158,17 @@ int checkSpriteType(Sint32 sprite)
 	case 178:
 		// generic spell shrine
 		return 26;
+	case 179:
+		return 27;
+	case 185:
+	case 186:
+	case 187:
+		// AND gate
+		return 28;
+	case 33:
+	case 34:
+		// act trap
+		return 29;
 	default:
 		return 0;
 		break;
@@ -450,6 +468,48 @@ char itemNameStrings[NUM_ITEM_STRINGS][32] =
 	"heavy_crossbow",
 	"boomerang",
 	"scroll_conjurearrow",
+	"monocle",
+	"tool_player_loot_bag",
+	"mask_bandit",
+	"mask_eyepatch",
+	"mask_masquerade",
+	"mask_mouth_rose",
+	"mask_golden",
+	"mask_spooky",
+	"mask_tech_goggles",
+	"mask_hazard_goggles",
+	"mask_phantom",
+	"mask_pipe",
+	"mask_grass_sprig",
+	"mask_plague",
+	"mask_mouthknife",
+	"hat_silken_bow",
+	"hat_plumed_cap",
+	"hat_bycocket",
+	"hat_tophat",
+	"hat_bandana",
+	"hat_circlet",
+	"hat_crown",
+	"hat_laurels",
+	"hat_turban",
+	"hat_crowned_helm",
+	"hat_warm",
+	"hat_wolf_hood",
+	"hat_bear_hood",
+	"hat_stag_hood",
+	"hat_bunny_hood",
+	"hat_bountyhunter",
+	"hat_miter",
+	"hat_headdress",
+	"hat_chef",
+	"helm_mining",
+	"mask_steel_visor",
+	"mask_crystal_visor",
+	"mask_artifact_visor",
+	"hat_circlet_wisdom",
+	"hat_hood_apprentice",
+	"hat_hood_assassin",
+	"hat_hood_whispers",
 	""
 };
 
@@ -471,7 +531,31 @@ char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32] =
 		"iron_helm",
 		"steel_helm",
 		"crystal_helm",
-		"artifact_helm"
+		"artifact_helm",
+		"hat_silken_bow",
+		"hat_plumed_cap",
+		"hat_bycocket",
+		"hat_tophat",
+		"hat_bandana",
+		"hat_circlet",
+		"hat_crown",
+		"hat_laurels",
+		"hat_turban",
+		"hat_crowned_helm",
+		"hat_warm",
+		"hat_wolf_hood",
+		"hat_bear_hood",
+		"hat_stag_hood",
+		"hat_bunny_hood",
+		"hat_bountyhunter",
+		"hat_miter",
+		"hat_headdress",
+		"hat_chef",
+		"helm_mining",
+		"hat_circlet_wisdom",
+		"hat_hood_apprentice",
+		"hat_hood_assassin",
+		"hat_hood_whispers",
 		""
 	},
 	{
@@ -706,6 +790,23 @@ char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32] =
 		"tool_glasses",
 		"tool_blindfold_focus",
 		"tool_blindfold_telepathy",
+		"monocle",
+		"mask_bandit",
+		"mask_eyepatch",
+		"mask_masquerade",
+		"mask_mouth_rose",
+		"mask_golden",
+		"mask_spooky",
+		"mask_tech_goggles",
+		"mask_hazard_goggles",
+		"mask_phantom",
+		"mask_pipe",
+		"mask_grass_sprig",
+		"mask_plague",
+		"mask_mouthknife",
+		"mask_steel_visor",
+		"mask_crystal_visor",
+		"mask_artifact_visor",
 		""
 	},
 	{
@@ -908,7 +1009,29 @@ char spriteEditorNameStrings[NUM_EDITOR_SPRITES][64] =
 	"NOT USED",
 	"NOT USED",
 	"TELEPORT SHRINE",
-	"SPELL SHRINE"
+	"SPELL SHRINE",
+	"COLLIDER DECORATION",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"AND GATE",
+	"AND GATE",
+	"AND GATE",
+	"BAT",
+	"BUGBEAR",
+	"DAEDALUS SHRINE",
+	"BELL",
+	"NOT USED",
+	"SLIME (GREEN)",
+	"SLIME (BLUE)",
+	"SLIME (RED)",
+	"SLIME (TAR)",
+	"SLIME (METAL)",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED"
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][16] =
@@ -919,7 +1042,7 @@ char monsterEditorNameStrings[NUMMONSTERS][16] =
 	"goblin",
 	"slime",
 	"troll",
-	"invalid",
+	"bat",
 	"spider",
 	"ghoul",
 	"skeleton",
@@ -929,7 +1052,7 @@ char monsterEditorNameStrings[NUMMONSTERS][16] =
 	"gnome",
 	"demon",
 	"succubus",
-	"invalid",
+	"mimic",
 	"lich",
 	"minotaur",
 	"devil",
@@ -949,7 +1072,8 @@ char monsterEditorNameStrings[NUMMONSTERS][16] =
 	"sentrybot",
 	"spellbot",
 	"gyrobot",
-	"dummybot"
+	"dummybot",
+	"bugbear"
 };
 
 char tileEditorNameStrings[NUM_EDITOR_TILES][44] =
@@ -1240,6 +1364,7 @@ int canWearEquip(Entity* entity, int category)
 				case SCARAB:
 				case CRYSTALGOLEM:
 				case COCKATRICE:
+				case MIMIC:
 					equipType = 0;
 					break;
 
@@ -1251,7 +1376,7 @@ int canWearEquip(Entity* entity, int category)
 					break;
 
 				//monsters with cloak/weapon/shield/boots/mask/gloves (no helm)
-				case GNOME:
+				case BUGBEAR:
 				case INCUBUS:
 				case SUCCUBUS:
 				case LICH_FIRE:
@@ -1260,6 +1385,7 @@ int canWearEquip(Entity* entity, int category)
 					break;
 
 				//monsters with cloak/weapon/shield/boots/helm/armor/mask/gloves
+				case GNOME:
 				case GOBLIN:
 				case HUMAN:
 				case VAMPIRE:
@@ -1368,6 +1494,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->yaw = entityToCopy->yaw;
 			entityNew->skill[9] = entityToCopy->skill[9];
 			entityNew->chestLocked = entityToCopy->chestLocked;
+			entityNew->chestMimicChance = entityToCopy->chestMimicChance;
 		}
 		else
 		{
@@ -1375,6 +1502,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->yaw = 1;
 			entityNew->skill[9] = 0;
 			entityNew->chestLocked = -1;
+			entityNew->chestMimicChance = -1;
 		}
 	}
 	// items.
@@ -1413,6 +1541,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->skill[3] = entityToCopy->skill[3];
 			entityNew->skill[4] = entityToCopy->skill[4];
 			entityNew->skill[5] = entityToCopy->skill[5];
+			entityNew->skill[9] = entityToCopy->skill[9];
 		}
 		else
 		{
@@ -1423,6 +1552,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->skill[3] = 1;
 			entityNew->skill[4] = 0;
 			entityNew->skill[5] = 0;
+			entityNew->skill[9] = 0;
 		}
 	}
 	// power crystal
@@ -1524,11 +1654,17 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 		{
 			// copy old entity attributes to newly created.
 			entityNew->ceilingTileModel = entityToCopy->ceilingTileModel;
+			entityNew->ceilingTileDir = entityToCopy->ceilingTileDir;
+			entityNew->ceilingTileAllowTrap = entityToCopy->ceilingTileAllowTrap;
+			entityNew->ceilingTileBreakable = entityToCopy->ceilingTileBreakable;
 		}
 		else
 		{
 			// set default new entity attributes.
 			entityNew->ceilingTileModel = 0;
+			entityNew->ceilingTileDir = 0;
+			entityNew->ceilingTileAllowTrap = 0;
+			entityNew->ceilingTileBreakable = 0;
 		}
 	}
 	// spell trap
@@ -1688,6 +1824,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->signalTimerInterval = entityToCopy->signalTimerInterval;
 			entityNew->signalTimerRepeatCount = entityToCopy->signalTimerRepeatCount;
 			entityNew->signalTimerLatchInput = entityToCopy->signalTimerLatchInput;
+			entityNew->signalInvertOutput = entityToCopy->signalInvertOutput;
 		}
 		else
 		{
@@ -1697,6 +1834,30 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->signalTimerInterval = 0;
 			entityNew->signalTimerRepeatCount = 0;
 			entityNew->signalTimerLatchInput = 0;
+			entityNew->signalInvertOutput = 0;
+		}
+	}
+	else if ( spriteType == 28 )
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->signalInputDirection = entityToCopy->signalInputDirection;
+			entityNew->signalActivateDelay = entityToCopy->signalActivateDelay;
+			entityNew->signalTimerInterval = entityToCopy->signalTimerInterval;
+			entityNew->signalTimerRepeatCount = entityToCopy->signalTimerRepeatCount;
+			entityNew->signalTimerLatchInput = entityToCopy->signalTimerLatchInput;
+			entityNew->signalInvertOutput = entityToCopy->signalInvertOutput;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->signalInputDirection = 0;
+			entityNew->signalActivateDelay = 0;
+			entityNew->signalTimerInterval = 0;
+			entityNew->signalTimerRepeatCount = 0;
+			entityNew->signalTimerLatchInput = 0;
+			entityNew->signalInvertOutput = 0;
 		}
 	}
 	else if ( spriteType == 18 )
@@ -1837,12 +1998,16 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			// copy old entity attributes to newly created.
 			entityNew->shrineDir = entityToCopy->shrineDir;
 			entityNew->shrineZ = entityToCopy->shrineZ;
+			entityNew->shrineDestXOffset = entityToCopy->shrineDestXOffset;
+			entityNew->shrineDestYOffset = entityToCopy->shrineDestYOffset;
 		}
 		else
 		{
 			// set default new entity attributes.
 			entityNew->shrineDir = 0;
 			entityNew->shrineZ = 0;
+			entityNew->shrineDestXOffset = 0;
+			entityNew->shrineDestYOffset = 0;
 		}
 	}
 	else if ( spriteType == 26 ) // spell shrine
@@ -1852,12 +2017,62 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			// copy old entity attributes to newly created.
 			entityNew->shrineDir = entityToCopy->shrineDir;
 			entityNew->shrineZ = entityToCopy->shrineZ;
+			entityNew->shrineDestXOffset = entityToCopy->shrineDestXOffset;
+			entityNew->shrineDestYOffset = entityToCopy->shrineDestYOffset;
 		}
 		else
 		{
 			// set default new entity attributes.
 			entityNew->shrineDir = 0;
 			entityNew->shrineZ = 0;
+			entityNew->shrineDestXOffset = 0;
+			entityNew->shrineDestYOffset = 0;
+		}
+	}
+	else if ( spriteType == 27 ) // collider deco
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->colliderDecorationModel = entityToCopy->colliderDecorationModel;
+			entityNew->colliderDecorationRotation = entityToCopy->colliderDecorationRotation;
+			entityNew->colliderDecorationHeightOffset = entityToCopy->colliderDecorationHeightOffset;
+			entityNew->colliderDecorationXOffset = entityToCopy->colliderDecorationXOffset;
+			entityNew->colliderDecorationYOffset = entityToCopy->colliderDecorationYOffset;
+			entityNew->colliderHasCollision = entityToCopy->colliderHasCollision;
+			entityNew->colliderSizeX = entityToCopy->colliderSizeX;
+			entityNew->colliderSizeY = entityToCopy->colliderSizeY;
+			entityNew->colliderMaxHP = entityToCopy->colliderMaxHP;
+			entityNew->colliderDiggable = entityToCopy->colliderDiggable;
+			entityNew->colliderDamageTypes = entityToCopy->colliderDamageTypes;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->colliderDecorationModel = 0;
+			entityNew->colliderDecorationRotation = 0;
+			entityNew->colliderDecorationHeightOffset = 0;
+			entityNew->colliderDecorationXOffset = 0;
+			entityNew->colliderDecorationYOffset = 0;
+			entityNew->colliderHasCollision = 1;
+			entityNew->colliderSizeX = 0;
+			entityNew->colliderSizeY = 0;
+			entityNew->colliderMaxHP = 0;
+			entityNew->colliderDiggable = 0;
+			entityNew->colliderDamageTypes = 0;
+		}
+	}
+	else if ( spriteType == 29 ) // pressure plates
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->pressurePlateTriggerType = entityToCopy->pressurePlateTriggerType;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->pressurePlateTriggerType = 0;
 		}
 	}
 

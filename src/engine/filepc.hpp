@@ -1,12 +1,5 @@
 #pragma once
 
-#include "../files.hpp"
-
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <vector>
-
 /*-------------------------------------------------------------------------------
 
 	BARONY
@@ -17,6 +10,12 @@
 	See LICENSE for details.
 
 -------------------------------------------------------------------------------*/
+
+#include "../files.hpp"
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <vector>
 
 //Don't create a FileBase or derivative class (such as this one) directly, use FileIO::open to get one...
 class FilePC : public FileBase
@@ -50,22 +49,22 @@ public:
 		return readSize / size;
 	}
 
-	size_t size()
+	size_t size() override
 	{
 		return data.size();
 	}
 
-	bool eof()
+	bool eof() override
 	{
 		return pos >= size();
 	}
 
-	int seek(ptrdiff_t offset, SeekMode mode)
+	int seek(ptrdiff_t offset, SeekMode mode) override
 	{
 		switch (mode) {
-			case SeekMode::SET: pos = offset; break;
-			case SeekMode::ADD: pos += offset; break;
-			case SeekMode::SETEND: pos = size() + offset; break;
+		case SeekMode::SET: pos = offset; break;
+		case SeekMode::ADD: pos += offset; break;
+		case SeekMode::SETEND: pos = size() + offset; break;
 		}
 		if (eof()) {
 			return -1;
@@ -74,7 +73,7 @@ public:
 		}
 	}
 
-	long int tell()
+	long int tell() override
 	{
 		return (long int)pos;
 	}

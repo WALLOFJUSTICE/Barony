@@ -34,8 +34,6 @@ extern Entity* lastSelectedEntity[MAXPLAYERS];
  * I believe one of the splitscreen layouts included a version where all of the messages were communal and were in the center of the screen or summat.
  */
 
-extern bool splitscreen;
-
 extern int gamepad_deadzone;
 extern int gamepad_trigger_deadzone;
 extern real_t gamepad_leftx_sensitivity;
@@ -52,9 +50,35 @@ extern bool gamepad_righty_invert;
 extern bool gamepad_menux_invert;
 extern bool gamepad_menuy_invert;
 
+struct PlayerSettings_t
+{
+	int player = -1;
+	int shootmodeCrosshair = 0;
+	int shootmodeCrosshairOpacity = 50;
+    real_t mousespeed = 32.0;
+    bool mkb_world_tooltips_enabled = true;
+    bool gamepad_facehotbar = true;
+    bool hotbar_numkey_quick_add = true;
+    bool reversemouse = 0;
+    bool smoothmouse = false;
+    real_t gamepad_rightx_sensitivity = 1.0;
+    real_t gamepad_righty_sensitivity = 1.0;
+    bool gamepad_rightx_invert = false;
+    bool gamepad_righty_invert = false;
+	float quick_turn_speed = 1.f;
+	float quick_turn_speed_mkb = 1.f;
+	void init(const int _player)
+	{
+		player = _player;
+	}
+};
+extern PlayerSettings_t playerSettings[MAXPLAYERS];
+
 //Game Controller 1 handler
 //TODO: Joystick support?
 //extern SDL_GameController* game_controller;
+
+#include <chrono>
 
 class GameController
 {
@@ -64,6 +88,13 @@ class GameController
 	int id;
 	std::string name;
 	static const int BUTTON_HELD_TICKS = TICKS_PER_SECOND / 4;
+
+#ifdef NINTENDO
+	using time_unit = std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::milliseconds>;
+	time_unit timeNow;
+	time_unit timeStart = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now());
+#endif
+
 public:
 	GameController();
 	~GameController();
@@ -81,8 +112,17 @@ public:
 			RUMBLE_TMP
 		};
 		int hapticEffectId = -1;
-		SDL_HapticEffect hapticEffect;
+		struct HapticEffect
+		{
+			Uint16 type = SDL_HAPTIC_LEFTRIGHT;
+			Uint32 length = 0;
+			Uint16 large_magnitude = 0;
+			Uint16 small_magnitude = 0;
+			Sint32 leftRightBalance = 0;
+		};
+		HapticEffect hapticEffect;
 		Uint32 hapticTick;
+		Uint32 oscillatorTick;
 		Haptic_t();
 		~Haptic_t() {};
 
@@ -212,8 +252,8 @@ public:
 	SDL_Haptic* getHaptic() { return sdl_haptic; }
 	const bool isActive();
 	void addRumble(Haptic_t::RumblePattern pattern, Uint16 smallMagnitude, Uint16 largeMagnitude, Uint32 length, Uint32 srcEntityUid);
-	SDL_HapticEffect* doRumble(Haptic_t::Rumble* r);
-	SDL_HapticEffect* handleRumble();
+	GameController::Haptic_t::HapticEffect* doRumble(Haptic_t::Rumble* r);
+	GameController::Haptic_t::HapticEffect* handleRumble();
 	void stopRumble();
 	void reinitHaptic();
 
@@ -283,12 +323,6 @@ public:
 	float x_forceMaxForwardThreshold = 0.7;
 	float x_forceMaxBackwardThreshold = 0.5;
 	float y_forceMaxStrafeThreshold = 0.7;
-
-	/*
-	* Uses dpad to move the cursor through the item context menu and select entries.
-	* Returns true if moved.
-	*/
-	bool handleRepairGUIMovement(const int player);
 };
 const int MAX_GAME_CONTROLLERS = 16;
 extern std::array<GameController, MAX_GAME_CONTROLLERS> game_controllers;
@@ -321,9 +355,9 @@ class Inputs
 		Uint32 mouseRightHeldTicks = 0;
 		bool mouseRightHeld = false;
 
-		bool draw_cursor = true; //True if the gamepad's d-pad has been used to navigate menus and such. //TODO: Off by default on consoles and the like.
+		bool draw_cursor = false; //True if the gamepad's d-pad has been used to navigate menus and such. //TODO: Off by default on consoles and the like.
 		bool moved = false;
-		bool lastMovementFromController = false;
+		bool lastMovementFromController = true;
 		real_t mouseAnimationPercent = 0.0;
 		VirtualMouse() {};
 		~VirtualMouse() {};
@@ -597,6 +631,12 @@ public:
 	}
 	void addRumbleForPlayerHPLoss(const int player, Sint32 damageAmount);
 	SDL_Rect getGlyphRectForInput(const int player, bool pressed, const unsigned keyboardImpulse, const unsigned controllerImpulse);
+	void addRumbleForHapticType(const int player, Uint32 hapticType, Uint32 uid);
+	static const Uint32 HAPTIC_SFX_BOULDER_BOUNCE_VOL;
+	static const Uint32 HAPTIC_SFX_BOULDER_ROLL_LOW_VOL;
+	static const Uint32 HAPTIC_SFX_BOULDER_ROLL_HIGH_VOL;
+	static const Uint32 HAPTIC_SFX_BOULDER_LAUNCH_VOL;
+	void addRumbleRemotePlayer(const int player, Uint32 hapticType, Uint32 uid);
 };
 extern Inputs inputs;
 void initGameControllers();
@@ -655,8 +695,10 @@ public:
 	const bool isLocalPlayerAlive() const;
 	const bool bUseCompactGUIWidth() const;
 	const bool bUseCompactGUIHeight() const;
+	const bool bAlignGUINextToInventoryCompact() const; // if chest/shop etc appears alongside inventory as opposed to opposite of viewport in compact view
 	const bool usingCommand() const;
 	void clearGUIPointers();
+	static Entity* getPlayerInteractEntity(const int playernum);
 
 	enum PanelJustify_t
 	{
@@ -742,7 +784,8 @@ public:
 			MODULE_LOG,
 			MODULE_MAP,
 			MODULE_SIGN_VIEW,
-			MODULE_ITEMEFFECTGUI
+			MODULE_ITEMEFFECTGUI,
+			MODULE_PORTRAIT
 		};
 		GUIModules activeModule = MODULE_NONE;
 		GUIModules previousModule = MODULE_NONE;
@@ -788,6 +831,7 @@ public:
 		Frame* frame = nullptr;
 		Frame* tooltipContainerFrame = nullptr;
 		Frame* tooltipFrame = nullptr;
+		Frame* titleOnlyTooltipFrame = nullptr;
 		Frame* interactFrame = nullptr;
 		Frame* interactBlockClickFrame = nullptr;
 		Frame* tooltipPromptFrame = nullptr;
@@ -808,10 +852,17 @@ public:
 		void openInventory();
 		void closeInventory();
 
+		int miscTooltipOpacitySetpoint = 100;
+		real_t miscTooltipOpacityAnimate = 1.0;
+		Uint32 miscTooltipDeselectedTick = 0;
+		Frame* miscTooltipFrame = nullptr;
+
 		PanelJustify_t inventoryPanelJustify = PANEL_JUSTIFY_LEFT;
 		PanelJustify_t paperDollPanelJustify = PANEL_JUSTIFY_LEFT;
 		void setCompactView(bool bCompact);
 		void resizeAndPositionInventoryElements();
+		bool paperDollContextMenuActive();
+		void updateInventoryMiscTooltip();
 		enum GamepadDropdownTypes : int
 		{
 			GAMEPAD_DROPDOWN_DISABLE,
@@ -924,21 +975,31 @@ public:
 
 			int opacitySetpoint = 100;
 			real_t opacityAnimate = 1.0;
+			int titleOnlyOpacitySetpoint = 100;
+			real_t titleOnlyOpacityAnimate = 1.0;
 			real_t expandAnimate = 1.0;
 			int expandSetpoint = 1;
 			real_t expandCurrent = 1.0;
 			bool expanded = false;
+			real_t frameTooltipScrollAnim = 0.0;
+			real_t frameTooltipScrollSetpoint = 0.0;
+			int scrolledToMax = 0;
+			real_t frameTooltipScrollPrevSetpoint = 0.0;
+			bool scrollable = false;
 
 			int tooltipDescriptionHeight = 0;
+			int tooltipAttributeHeight = 0;
 			int tooltipWidth = 0;
 			int tooltipHeight = 0;
 
 			bool isItemSameAsCurrent(const int player, Item* newItem);
 			void updateItem(const int player, Item* newItem);
 			bool displayingShortFormTooltip = false;
+			bool displayingTitleOnlyTooltip = false;
 			ItemTooltipDisplay_t();
 		};
 		ItemTooltipDisplay_t itemTooltipDisplay;
+		ItemTooltipDisplay_t compendiumItemTooltipDisplay;
 
 		int DEFAULT_INVENTORY_SIZEX = 12;
 		int DEFAULT_INVENTORY_SIZEY = 3;
@@ -978,13 +1039,13 @@ public:
 		bool warpMouseToSelectedItem(Item* snapToItem, Uint32 flags);
 		bool warpMouseToSelectedSpell(Item* snapToItem, Uint32 flags);
 		bool warpMouseToSelectedChestSlot(Item* snapToItem, Uint32 flags);
-		bool guiAllowDropItems() const;
+		bool guiAllowDropItems(Item* itemToDrop) const;
 		bool guiAllowDefaultRightClick() const;
 		void processInventory();
 		void updateInventory();
 		void updateCursor();
 		void updateItemContextMenuClickFrame();
-		void updateInventoryItemTooltip();
+		void updateInventoryItemTooltip(Frame* parentFrame = nullptr);
 		void updateSelectedItemAnimation();
 		void updateItemContextMenu();
 		void cycleInventoryTab();
@@ -1054,6 +1115,7 @@ public:
 			Uint32 old_item = 0;
 			int getAppraisalTime(Item* item); // Return time in ticks needed to appraise an item
 			void appraiseItem(Item* item); // start appraise process
+			bool appraisalPossible(Item* item); // if possible with current skill and stats
 			real_t animAppraisal = 0.0;
 			Uint32 animStartTick = 0;
 			Uint32 itemNotifyUpdatedThisTick = 0;
@@ -1123,25 +1185,6 @@ public:
 	};
 	ShopGUI_t shopGUI;
 
-	class StatusBar_t
-	{
-		Player& player;
-	public:
-		StatusBar_t(Player& p) : player(p)
-		{};
-		~StatusBar_t() {};
-		SDL_Rect messageStatusBarBox;
-		const int getStartX() const 
-		{ 
-			return (player.camera_midx() - status_bmp->w * uiscale_chatlog / 2);
-		}
-		const int getStartY() const
-		{
-			return (player.camera_y2() - getOffsetY());
-		}
-		const int getOffsetY() const { return (status_bmp->h * uiscale_chatlog * (hide_statusbar ? 0 : 1)); }
-	} statusBarUI;
-
 	class BookGUI_t
 	{
 		Player& player;
@@ -1161,16 +1204,6 @@ public:
 		Item* openBookItem = nullptr;
 		std::string openBookName = "";
 		int currentBookPage = 0;
-		const int getStartX() const
-		{
-			return ((player.camera_midx() - (getBookWidth() / 2)) + offsetx);
-		}
-		const int getStartY() const
-		{
-			return ((player.camera_midy() - (getBookHeight() / 2)) + offsety);
-		}
-		const int getBookWidth() const { return bookgui_img->w; }
-		const int getBookHeight() const { return bookgui_img->h; }
 		void updateBookGUI();
 		void closeBookGUI();
 		void createBookGUI();
@@ -1209,16 +1242,8 @@ public:
 		CharacterSheet_t(Player& p) : player(p)
 		{};
 		~CharacterSheet_t() {};
-		SDL_Rect skillsSheetBox;
-		SDL_Rect partySheetBox;
-		SDL_Rect characterSheetBox;
-		SDL_Rect statsSheetBox;
 
 		Player::PanelJustify_t panelJustify = PANEL_JUSTIFY_RIGHT;
-
-		void setDefaultSkillsSheetBox();
-		void setDefaultPartySheetBox();
-		void setDefaultCharacterSheetBox();
 
 		bool lock_right_sidebar = false;
 		int proficienciesPage = 0;
@@ -1267,6 +1292,7 @@ public:
 		Frame* sheetFrame = nullptr;
 		SheetElements selectedElement = SHEET_UNSELECTED;
 		SheetElements queuedElement = SHEET_UNSELECTED;
+		SheetElements cachedElementTooltip = SHEET_UNSELECTED;
 		void selectElement(SheetElements element, bool usingMouse, bool moveCursor = false);
 		void createCharacterSheet();
 		void processCharacterSheet();
@@ -1325,6 +1351,7 @@ public:
 				std::string statIconPath;
 				std::string description;
 				std::string legendaryDescription;
+				int skillSfx = 552;
 				int effectStartOffsetX = 72;
 				int effectBackgroundOffsetX = 8;
 				int effectBackgroundWidth = 80;
@@ -1343,6 +1370,9 @@ public:
 					Uint32 marqueeTicks[MAXPLAYERS] = { 0 };
 					bool marqueeCompleted[MAXPLAYERS] = { false };
 					int effectUpdatedAtSkillLevel = -1;
+					int effectUpdatedAtBaseSkillLevel = -1;
+					int effectUpdatedAtMonsterType = -1;
+					int cachedWidth = -1;
 				};
 				std::vector<SkillEffect_t> effects;
 			};
@@ -1381,6 +1411,8 @@ public:
 	    Frame* controllerFrame = nullptr;
 		Frame* hudFrame = nullptr;
 		Frame* xpFrame = nullptr;
+		Frame* levelupFrame = nullptr;
+		Frame* skillupFrame = nullptr;
 		Frame* hpFrame = nullptr;
 		Frame* mpFrame = nullptr;
 		Frame* minimapFrame = nullptr;
@@ -1390,21 +1422,22 @@ public:
 		Frame* minotaurSharedDisplay = nullptr;
 		Frame* minotaurDisplay = nullptr;
 		Frame* mapPromptFrame = nullptr;
-		Frame* mapWindow = nullptr;
-		Frame* logWindow = nullptr;
 		Frame* allyFollowerFrame = nullptr;
 		Frame* allyFollowerTitleFrame = nullptr;
 		Frame* allyFollowerGlyphFrame = nullptr;
 		Frame* allyPlayerFrame = nullptr;
+		Frame* calloutPromptFrame = nullptr;
 		Frame* enemyBarFrame = nullptr;
 		Frame* enemyBarFrameHUD = nullptr;
 		Frame* actionPromptsFrame = nullptr;
 		Frame* worldTooltipFrame = nullptr;
+		Frame* statusEffectFocusedWindow = nullptr;
 		Frame* uiNavFrame = nullptr;
 		Frame* cursorFrame = nullptr;
 		real_t hudDamageTextVelocityX = 0.0;
 		real_t hudDamageTextVelocityY = 0.0;
 		real_t animHideXP = 0.0;
+		real_t animHideActionPrompts = 0.0;
 
 		Entity* weapon = nullptr;
 		Entity* arm = nullptr;
@@ -1482,6 +1515,29 @@ public:
 			int flashAnimState = -1;
 			AnimateFlashEffects_t flashType = FLASH_ON_DAMAGE;
 		};
+		struct XPInfo_t
+		{
+			enum XPCycleInfo : int
+			{
+				CYCLE_NONE,
+				CYCLE_LVL,
+				CYCLE_XP
+			};
+			XPCycleInfo cycleStatus = CYCLE_NONE;
+			real_t fade = 1.0;
+			Uint32 cycleTicks = 0;
+			Uint32 cycleProcessedOnTick = 0;
+			bool fadeIn = true;
+		};
+		XPInfo_t xpInfo;
+		struct InteractPrompt_t
+		{
+			real_t promptAnim = 0.0;
+			Uint32 activeTicks = 0;
+			Uint32 processedOnTick = 0;
+			real_t cycleAnim = 1.0;
+		};
+		InteractPrompt_t interactPrompt;
 		Bar_t xpBar;
 		Bar_t HPBar;
 		Bar_t MPBar;
@@ -1541,6 +1597,8 @@ public:
 		};
 		CompactLayoutModes compactLayoutMode = COMPACT_LAYOUT_CHARSHEET;
 		bool bShowUINavigation = false;
+		void closeStatusFxWindow();
+		bool statusFxFocusedWindowActive = false;
 
 		HUD_t(Player& p) : player(p)
 		{};
@@ -1560,6 +1618,8 @@ public:
 			shieldSwitch = false;
 		}
 		bool bShowActionPrompts = true;
+		bool bShortHPMPForActionBars = false;
+		bool bOpenCalloutsMenuDisabled = false;
 		enum ActionPrompts : int
 		{
 			ACTION_PROMPT_MAINHAND,
@@ -1586,23 +1646,30 @@ public:
 		const int ENEMYBAR_FRAME_START_Y = 182;
 		const int ENEMYBAR_FRAME_HEIGHT = 44;
 		static int actionPromptOffsetX;
+		static int actionPromptOffsetXGhostPrompts;
 		static int actionPromptOffsetY;
 		static int actionPromptBackingSize;
 		static int actionPromptIconSize;
 		static int actionPromptIconOpacity;
 		static int actionPromptIconBackingOpacity;
+		real_t animDeadPrompt = 0.0;
+		bool animDeadPromptDisplay = false;
+		int offsetHUDAboveHotbarHeight = 0;
 		void updateEnemyBar(Frame* whichFrame);
 		void updateEnemyBar2(Frame* whichFrame, void* enemyHPDetails);
 		void resetBars();
-		void updateFrameTooltip(Item* item, const int x, const int y, int justify);
+		void updateFrameTooltip(Item* item, const int x, const int y, int justify, Frame* parentFrame = nullptr);
+        void finalizeFrameTooltip(Item* item, const int x, const int y, int justify, Frame* parentFrame = nullptr);
 		void updateStatusEffectTooltip();
 		void updateCursor();
 		void updateActionPrompts();
 		void updateWorldTooltipPrompts();
 		void updateUINavigation();
 		void updateMinotaurWarning();
+		void updateStatusEffectFocusedWindow();
 		void updateCursorAnimation(int destx, int desty, int width, int height, bool usingMouse);
 		void setCursorDisabled(bool disabled) { if ( cursorFrame ) { cursorFrame->setDisabled(disabled); } };
+		const char* getCrosshairPath();
 	} hud;
 
 	class Magic_t
@@ -1614,7 +1681,15 @@ public:
 		spell_t* selected_spell_alternate[NUM_HOTBAR_ALTERNATES] = { nullptr, nullptr, nullptr, nullptr, nullptr };
 		int selected_spell_last_appearance = -1;
 		list_t spellList; //All of the player's spells are stored here.
-
+		bool bHasUnreadNewSpell = false;
+		Uint32 noManaFeedbackTicks = 0;
+		Uint32 noManaProcessedOnTick = 0;
+		Uint32 spellbookUidFromHotbarSlot = 0;
+		void flashNoMana()
+		{
+			noManaFeedbackTicks = 0;
+			noManaProcessedOnTick = ticks;
+		}
 		Magic_t(Player& p) : player(p)
 		{
 			spellList.first = nullptr;
@@ -1683,21 +1758,91 @@ public:
 		void reset();
 	} movement;
 
+	class Ghost_t
+	{
+		real_t quickTurnRotation = 0.0;
+		Uint32 quickTurnStartTicks = 0;
+		bool bDoingQuickTurn = false;
+		enum GhostSpells_t : int
+		{
+			GHOST_SPELL_NONE,
+			GHOST_SPELL_TELEPORT,
+			GHOST_SPELL_BOLT,
+			GHOST_SPELL_POST_CASTING
+		};
+		GhostSpells_t castingSpellAnimation = GHOST_SPELL_NONE;
+		Uint32 castingHeldDuration = 0;
+		Player& player;
+	public:
+		Ghost_t(Player& p) : player(p)
+		{};
+		~Ghost_t() {};
+
+		Entity* my = nullptr;
+		int spawnX = -1;
+		int spawnY = -1;
+		int startRoomX = -1;
+		int startRoomY = -1;
+		int teleportToPlayer = -1;
+		Uint32 uid = 0;
+		Uint32 cooldownPush = 0;
+		Uint32 cooldownChill = 0;
+		Uint32 cooldownTeleport = 0;
+		Uint32 errorFlashPushTicks = 0;
+		Uint32 errorFlashTeleportTicks = 0;
+		Uint32 errorFlashChillTicks = 0;
+		static constexpr int errorFlashTicks = TICKS_PER_SECOND * 2.5;
+		static constexpr int MAX_PUSH_POINTS = 5;
+		int pushPoints = MAX_PUSH_POINTS;
+		static Uint32 cooldownPushDelay;
+		static Uint32 cooldownChillDelay;
+		static Uint32 cooldownTeleportDelay;
+
+		bool handleQuickTurn(bool useRefreshRateDelta);
+		void startQuickTurn();
+		void handleGhostCameraUpdate(bool useRefreshRateDelta);
+		void handleGhostCameraBobbing(bool useRefreshRateDelta);
+		void handleGhostMovement(bool useRefreshRateDelta);
+		void handleActions();
+		void handleAttack();
+		bool isActive();
+		void setActive(bool active);
+		void initTeleportLocations(int x, int y);
+		void initStartRoomLocation(int x, int y);
+		bool isControllable();
+		Entity* spawnGhost();
+		static void pauseMenuSpectate(const int player);
+		static void pauseMenuSpawnGhost(const int player);
+		static bool gameoverOnDismiss(const int player);
+		static bool gamemodeAllowsGhosts();
+		void reset();
+		bool allowedInteractEntity(Entity& entity);
+		static const int GHOST_MODEL_P1 = 1238;
+		static const int GHOST_MODEL_P2 = 1239;
+		static const int GHOST_MODEL_P3 = 1240;
+		static const int GHOST_MODEL_P4 = 1241;
+		static const int GHOST_MODEL_PX = 1242;
+		static const int GHOST_SQUISH_START_ANGLE = 75;
+		static int getSpriteForPlayer(const int player);
+		void createBounceAnimate();
+	} ghost;
+
 	class MessageZone_t
 	{
-		static const int MESSAGE_X_OFFSET = 5;
 		//Time in seconds before the message starts fading.
 		static const int MESSAGE_PREFADE_TIME = 3600;
 		//How fast the alpha value de-increments
 		static const int MESSAGE_FADE_RATE = 10;
 		TTF_Font* font = ttf16;
-		Uint32 old_sdl_ticks;
+		Uint32 old_sdl_ticks = 0;
 		Player& player;
 	public:
 		static const int ADD_MESSAGE_BUFFER_LENGTH = 256;
 		MessageZone_t(Player& p) : player(p) {};
 		~MessageZone_t() {};
 		std::list<Message*> notification_messages;
+		//Init old_sdl_ticks to determine when to fade messages
+		static void startMessages();
 		//Adds a message to the list of messages.
 		void addMessage(Uint32 color, const char* content);
 		//Updates all the messages; fades them & removes them.
@@ -1707,18 +1852,30 @@ public:
 		//Used on program deinitialization.
 		void deleteAllNotificationMessages();
 
-		// leftmost x-anchored location
-		int getMessageZoneStartX();
-		// bottommost y-anchored location
-		int getMessageZoneStartY();
 		//Maximum number of messages displayed on screen at once before the oldest message is automatically deleted.
 		int getMaxTotalLines();
 
-		static const int MESSAGE_MAX_ENTRIES = 20;
+		int MESSAGE_MAX_ENTRIES = 20;
 		Frame* chatFrame = nullptr;
+		real_t animFade = 1.0;
+		bool bottomAlignedMessages = false;
+		bool useBigFont = false;
+		static const char* bigfont;
+		static const char* smallfont;
+		enum ChatAlignment_t : int
+		{
+			ALIGN_CENTER_BOTTOM,
+			ALIGN_LEFT_BOTTOM,
+			ALIGN_LEFT_TOP
+		};
+		ChatAlignment_t messageAlignment = ALIGN_CENTER_BOTTOM;
+		ChatAlignment_t actualAlignment = ALIGN_CENTER_BOTTOM;
 		void createChatbox();
 		void processChatbox();
 
+		Frame* logParentFrame = nullptr;
+		Frame* logWindow = nullptr;
+		void processLogFrame();
 		int fontSize() { return getHeightOfFont(font); }
 	} messageZone;
 
@@ -1728,13 +1885,13 @@ public:
 		bool bEnabled = true;
 		static const int UID_TOOLTIP_ACTIVE = -21;
 		static const int UID_TOOLTIP_DISABLED = -20;
+	public:
 		enum TooltipView
 		{
 			TOOLTIP_VIEW_FREE,
 			TOOLTIP_VIEW_LOCKED,
 			TOOLTIP_VIEW_RESCAN
 		};
-	public:
 		struct WorldTooltipItem_t
 		{
 			Player& player;
@@ -1866,6 +2023,7 @@ public:
 		std::vector<std::pair<Entity*, real_t>> tooltipsInRange;
 		static real_t tooltipHeightOffsetZ;
 		real_t playerLastYaw = 0.0;
+		real_t playerLastPitch = 0.0;
 		int gimpDisplayTimer = 0;
 		void reset();
 		void setTooltipActive(Entity& tooltip);
@@ -1952,6 +2110,16 @@ public:
 		void selectPaperDollCoordinatesFromSlotType(PaperDollSlotType slot) const;
 		std::vector<Uint32> returningItemsToInventory;
 		void warpMouseToMostRecentReturnedInventoryItem();
+		bool portraitActiveToEdit = false;
+		real_t portraitRotationInertia = 0.0;
+		real_t portraitRotationPercent = 0.0;
+		real_t portraitYaw = (330) * PI / 180;
+		void resetPortrait()
+		{
+			portraitRotationInertia = 0.0;
+			portraitRotationPercent = 0.0;
+			portraitYaw = (330) * PI / 180;
+		}
 	} paperDoll;
 
 	class Hotbar_t {
@@ -1969,6 +2137,7 @@ public:
 		SDL_Rect hotbarBox;
 		Frame* hotbarFrame = nullptr;
 		real_t selectedSlotAnimateCurrentValue = 0.0;
+		bool isInteractable = false;
 
 		struct Cursor_t
 		{
@@ -2044,15 +2213,11 @@ public:
 			for ( int i = 0; i < NUM_HOTBAR_SLOTS; ++i )
 			{
 				hotbar[i].item = 0;
-				hotbar[i].lastItemUid = 0;
-				hotbar[i].lastItemCategory = -1;
-				hotbar[i].lastItemType = -1;
+				hotbar[i].resetLastItem();
 				for ( int j = 0; j < NUM_HOTBAR_ALTERNATES; ++j )
 				{
 					hotbar_alternate[j][i].item = 0;
-					hotbar_alternate[j][i].lastItemUid = 0;
-					hotbar_alternate[j][i].lastItemCategory = -1;
-					hotbar_alternate[j][i].lastItemType = -1;
+					hotbar_alternate[j][i].resetLastItem();
 				}
 			}
 		}
@@ -2060,19 +2225,7 @@ public:
 		auto& slots() { return hotbar; };
 		auto& slotsAlternate(int alternate) { return hotbar_alternate[alternate]; };
 		auto& slotsAlternate() { return hotbar_alternate; }
-		void selectHotbarSlot(int slot)
-		{
-			if ( slot < 0 )
-			{
-				slot = NUM_HOTBAR_SLOTS - 1;
-			}
-			if ( slot >= NUM_HOTBAR_SLOTS )
-			{
-				slot = 0;
-			}
-			current_hotbar = slot;
-			player.GUI.activateModule(GUI_t::MODULE_HOTBAR);
-		}
+		void selectHotbarSlot(int slot);
 		void initFaceButtonHotbar();
 		FaceMenuGroup getFaceMenuGroupForSlot(int hotbarSlot);
 		void processHotbar();
@@ -2099,7 +2252,66 @@ public:
 		bool animating = false;		// if in the middle of scaling animation
 		SDL_Rect minimapPos;
 		static SDL_Rect sharedMinimapPos;
+		Frame* mapParentFrame = nullptr;
+		Frame* mapWindow = nullptr;
+		bool bScalePromptEnabled = false;
+		bool bExpandPromptEnabled = false;
+		void processMapFrame();
+		static int fullSize;
+		static int compactSize;
+		static bool bUpdateMainMenuSettingScale;
+		static real_t mainMenuSettingScale;
+		static int compact2pVerticalSize;
+		static real_t fullBigScale;
+		static real_t compactBigScale;
+		static real_t compact2pVerticalBigScale;
 	} minimap;
+
+	class CompendiumProgress_t
+	{
+		Player& player;
+	public:
+		std::map<std::string, std::map<int, Sint32>> itemEvents;
+		std::map<int, std::map<std::string, std::map<int, Sint32>>> floorEvents;
+		real_t playerDistAccum = 0.0;
+		Uint32 playerSneakTime = 0;
+		Uint32 playerAliveTimeMoving = 0;
+		Uint32 playerAliveTimeStopped = 0;
+		Uint32 playerAliveTimeTotal = 0;
+		Uint32 playerGameTimeTotal = 0;
+		std::map<int, Uint32> playerEquipSlotTime;
+		std::map<int, Uint32> allyTimeSpent;
+		CompendiumProgress_t(Player& p) : player(p)
+		{};
+		~CompendiumProgress_t() {};
+		void updateFloorEvents();
+	} compendiumProgress;
+
+	class PlayerMechanics_t
+	{
+		Player& player;
+	public:
+		std::map<int, int> itemDegradeRng;
+		bool itemDegradeRoll(Item* item, int* checkInterval = nullptr);
+		void onItemDegrade(Item* item);
+		int sustainedSpellMPUsed = 0;
+		Uint32 defendTicks = 0;
+		bool sustainedSpellLevelChance();
+		void sustainedSpellIncrementMP(int mpChange);
+		std::map<Uint32, int> enemyRaisedBlockingAgainst;
+		bool allowedRaiseBlockingAgainstEntity(Entity& attacker);
+		PlayerMechanics_t(Player& p) : player(p)
+		{};
+		~PlayerMechanics_t() {};
+	} mechanics;
+
+	static void soundMovement();
+	static void soundActivate();
+	static void soundCancel();
+	static void soundModuleNavigation();
+	static void soundStatusOpen();
+	static void soundStatusClose();
+	static void soundHotbarShootmodeMovement();
 };
 
 extern Player* players[MAXPLAYERS];

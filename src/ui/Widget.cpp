@@ -7,6 +7,7 @@
 #include "../player.hpp"
 #include "../input.hpp"
 #include "../engine/audio/sound.hpp"
+#include "../mod_tools.hpp"
 
 #include <queue>
 
@@ -26,6 +27,25 @@ Widget::~Widget() {
 		}
 	}
 	deselect();
+}
+
+bool Widget::remove(const char* name) {
+    for (auto widget : widgets) {
+        if (strcmp(widget->getName(), name) == 0) {
+            widget->removeSelf();
+            return true;
+        }
+    }
+    return false;
+}
+
+void Widget::removeSelf() {
+    toBeDeleted = true;
+    
+    // also mark children deleted so they don't get processed.
+    for (auto widget : widgets) {
+        widget->removeSelf();
+    }
 }
 
 void Widget::select() {
@@ -114,7 +134,7 @@ Widget* Widget::handleInput() {
 				if (input.consumeBinaryToggle(move.first.c_str())) {
 					root = root ? root : findSearchRoot();
 					Widget* result = root->findWidget(move.second.c_str(), true);
-					if (!result) {
+					if (!result && !dontSearchAncestors) {
 						result = head ? head->findWidget(move.second.c_str(), true) : nullptr;
 					}
 					//printlog("%s: %p", move.second.c_str(), (void*)result);
@@ -140,7 +160,7 @@ Widget* Widget::handleInput() {
 				if (input.consumeBinaryToggle(action.first.c_str()) && !inputstr) {
 					root = root ? root : findSearchRoot();
 					Widget* result = root->findWidget(action.second.c_str(), true);
-					if (!result) {
+					if (!result && !dontSearchAncestors) {
 						result = head ? head->findWidget(action.second.c_str(), true) : nullptr;
 					}
 					//printlog("%s: %p", action.second.c_str(), (void*)result);
@@ -289,7 +309,9 @@ void Widget::findSelectedWidgets(std::vector<Widget*>& outResult) {
 	for (int c = 0; c < MAXPLAYERS; ++c) {
 	    if (_selectedWidgets[c] && _selectedWidgets[c]->isChildOf(*this)) {
 	        outResult.push_back(_selectedWidgets[c]);
-	    }
+        } else {
+            outResult.push_back(nullptr);
+        }
 	}
 }
 
@@ -297,7 +319,9 @@ void Widget::findSelectedWidgets(std::vector<const Widget*>& outResult) const {
 	for (int c = 0; c < MAXPLAYERS; ++c) {
 	    if (_selectedWidgets[c] && _selectedWidgets[c]->isChildOf(*this)) {
 	        outResult.push_back(_selectedWidgets[c]);
-	    }
+	    } else {
+            outResult.push_back(nullptr);
+        }
 	}
 }
 
@@ -305,7 +329,7 @@ Widget* Widget::findSelectedWidget(int owner) {
     std::vector<Widget*> selectedWidgets;
     findSelectedWidgets(selectedWidgets);
     for (auto widget : selectedWidgets) {
-        if (widget->owner == owner) {
+        if (widget && widget->owner == owner) {
             return widget;
         }
     }
@@ -350,7 +374,7 @@ void Widget::drawPost(const SDL_Rect size,
 	const Widget* searchParent = nullptr;
 	for (int c = 0; c < selectedWidgets.size(); ++c) {
 	    auto widget = selectedWidgets[c];
-		if (widget->owner == owner) {
+		if (widget && widget->owner == owner) {
 		    searchParent = searchParents[c];
 			selectedWidget = widget;
 			break;
@@ -365,7 +389,7 @@ void Widget::drawPost(const SDL_Rect size,
 	}
 
 	// draw selector widgets
-	if (!hideSelectors && selectedWidget == this) {
+	if (!hideSelectors && selectedWidget == this && !Mods::isLoading) {
 		{
 			auto image = Image::get("*images/ui/Main Menus/Selector_TL.png");
 			int w = image->getWidth();
@@ -410,7 +434,7 @@ void Widget::drawPost(const SDL_Rect size,
 
 	// button prompts
 #ifndef EDITOR
-    if (!*cvar_hideGlyphs && !hideGlyphs && (inputs.hasController(owner) || !hideKeyboardGlyphs)) {
+    if (!*cvar_hideGlyphs && !hideGlyphs && !Mods::isLoading && (inputs.hasController(owner) || !hideKeyboardGlyphs)) {
         auto& actions = selectedWidget->getWidgetActions();
         auto action = actions.begin();
 
@@ -424,6 +448,8 @@ void Widget::drawPost(const SDL_Rect size,
             "MenuBack",
             "MenuPageLeft",
             "MenuPageRight",
+			"MenuPageLeftAlt",
+			"MenuPageRightAlt",
         };
         static const int actionListSize = sizeof(actionList) / sizeof(actionList[0]);
 
@@ -433,22 +459,22 @@ void Widget::drawPost(const SDL_Rect size,
         if (glyphPosition == CENTERED ||
             glyphPosition == CENTERED_TOP ||
             glyphPosition == CENTERED_BOTTOM) {
-            x += size.w / 2;
+            x += (size.w + buttonsOffset.w) / 2;
         }
         if (glyphPosition == CENTERED_RIGHT ||
             glyphPosition == UPPER_RIGHT ||
             glyphPosition == BOTTOM_RIGHT) {
-            x += size.w;
+            x += size.w + buttonsOffset.w;
         }
         if (glyphPosition == CENTERED_LEFT ||
             glyphPosition == CENTERED ||
             glyphPosition == CENTERED_RIGHT) {
-            y += size.h / 2;
+            y += (size.h + buttonsOffset.h) / 2;
         }
         if (glyphPosition == CENTERED_BOTTOM ||
             glyphPosition == BOTTOM_LEFT ||
             glyphPosition == BOTTOM_RIGHT) {
-            y += size.h;
+            y += size.h + buttonsOffset.h;
         }
 
         // draw glyphs

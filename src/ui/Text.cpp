@@ -6,29 +6,10 @@
 #include "../draw.hpp"
 #include "Text.hpp"
 #include "Font.hpp"
+#include "Frame.hpp"
+#include "Image.hpp"
 
-GLuint Text::vao = 0;
-GLuint Text::vbo[BUFFER_TYPE_LENGTH] = { 0 };
 constexpr int resolution_factor = 1;
-
-const GLfloat Text::positions[8]{
-	0.f, 0.f,
-	0.f, 1.f,
-	1.f, 1.f,
-	1.f, 0.f
-};
-
-const GLfloat Text::texcoords[8]{
-	0.f, 0.f,
-	0.f, 1.f,
-	1.f, 1.f,
-	1.f, 0.f
-};
-
-const GLuint Text::indices[6]{
-	0, 1, 2,
-	0, 2, 3
-};
 
 Text::Text(const char* _name) {
 	name = _name;
@@ -41,7 +22,7 @@ Text::~Text() {
 		surf = nullptr;
 	}
 	if (texid) {
-		glDeleteTextures(1, &texid);
+        GL_CHECK_ERR(glDeleteTextures(1, &texid));
 		texid = 0;
 	}
 }
@@ -54,13 +35,18 @@ size_t getNumTextLines(std::string& str)
 	return numLines + newlines;
 }
 
+#ifndef EDITOR
+static ConsoleVariable<bool> cvar_text_render_addspace("/text_render_addspace", true);
+static ConsoleVariable<bool> cvar_text_delay_dumpcache("/text_delay_dumpcache", false);
+#endif
+
 void Text::render() {
-	if ( surf ) {
+	if (surf) {
 		SDL_FreeSurface(surf);
 		surf = nullptr;
 	}
-	if ( texid ) {
-		glDeleteTextures(1, &texid);
+	if (texid) {
+        GL_CHECK_ERR(glDeleteTextures(1, &texid));
 		texid = 0;
 	}
 
@@ -78,15 +64,15 @@ void Text::render() {
 			fontName = rest.substr(0, index);
 			rest = rest.substr(index + 1);
 			if ((index = rest.find(fontBreak)) != std::string::npos) {
-				textColor = strtoul(rest.substr(0, index).c_str(), nullptr, 16);
+				textColor = (uint32_t)strtoul(rest.substr(0, index).c_str(), nullptr, 16);
 				rest = rest.substr(index + 1);
 				if ((index = rest.find(fontBreak)) != std::string::npos) {
-					outlineColor = strtoul(rest.substr(0, index).c_str(), nullptr, 16);
+					outlineColor = (uint32_t)strtoul(rest.substr(0, index).c_str(), nullptr, 16);
 				} else {
-					outlineColor = strtoul(rest.c_str(), nullptr, 16);
+					outlineColor = (uint32_t)strtoul(rest.c_str(), nullptr, 16);
 				}
 			} else {
-				textColor = strtoul(rest.c_str(), nullptr, 16);
+				textColor = (uint32_t)strtoul(rest.c_str(), nullptr, 16);
 			}
 		} else {
 			fontName = rest;
@@ -102,6 +88,8 @@ void Text::render() {
 	}
 	TTF_Font* ttf = font->getTTF();
 
+	bool addedSpace = false;
+
 #ifdef NINTENDO
 	// fixes weird crash in SDL_ttf when string length < 2
 	std::string spaces;
@@ -115,9 +103,20 @@ void Text::render() {
 		TTF_SizeUTF8(ttf, spaces.c_str(), &spaces_width, nullptr);
 		spaces_width += spaces.size();
 		strToRender.append(spaces);
+		if (spaces.size() == 2) {
+			addedSpace = true;
+		}
 	}
 #else
 	const int spaces_width = 0;
+#ifndef EDITOR
+	if ( *cvar_text_render_addspace ) {
+		if ( strToRender == "" ) {
+			addedSpace = true;
+			strToRender += ' ';
+		}
+	}
+#endif
 #endif
 
 	SDL_Color colorText;
@@ -129,9 +128,19 @@ void Text::render() {
 	int outlineSize = font->getOutline();
 	if ( outlineSize > 0 ) {
 		TTF_SetFontOutline(ttf, outlineSize);
+		SDL_ClearError();
 		surf = TTF_RenderUTF8_Blended(ttf, strToRender.c_str(), colorOutline);
+		if ( !surf )
+		{
+			printlog("[TTF]: Error: surf = TTF_RenderUTF8_Blended: %s", TTF_GetError());
+		}
 		TTF_SetFontOutline(ttf, 0);
+		SDL_ClearError();
 		SDL_Surface* text = TTF_RenderUTF8_Blended(ttf, strToRender.c_str(), colorText);
+		if ( !text )
+		{
+			printlog("[TTF]: Error: text = TTF_RenderUTF8_Blended: %s", TTF_GetError());
+		}
 		SDL_Rect rect;
 		rect.x = outlineSize; rect.y = outlineSize;
 		SDL_BlitSurface(text, NULL, surf, &rect);
@@ -143,13 +152,25 @@ void Text::render() {
 	}
 
 	if (!surf) {
+		num_text_lines = 1;
 	    width = 4;
 	    height = font->height(true);
 	    return;
 	}
 
-	width = surf->w - spaces_width;
-	height = surf->h;
+	if ( addedSpace )
+	{
+		width = 4;
+		height = surf->h;
+	}
+	else
+	{
+		width = std::max(0, surf->w - spaces_width);
+		height = surf->h;
+#ifndef WINDOWS
+		width -= outlineSize;
+#endif
+	}
 
 	// Fields break multi-lines anyway, and we're not using TTF_RenderUTF8_Blended_Wrapped()
 	// So calculating width/height ourselves is redundant and buggy (it doesn't factor trailing spaces)
@@ -201,7 +222,6 @@ void Text::render() {
 			for ( int x = 0; x < surf->w; x++ )
 			{
 				bool isEmptyRow = true && checkForEmptyRow;
-				bool foundTextColorThisRow = false;
 				bool doFillRow = false;
 				for ( int y = 0; y < surf->h; y++ )
 				{
@@ -238,14 +258,28 @@ void Text::render() {
 				}
 			}
 		}
-
-	    glGenTextures(1, &texid);
-		glBindTexture(GL_TEXTURE_2D, texid);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf->w, surf->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surf->pixels);
+        
+        // create GL texture object
+        GL_CHECK_ERR(glGenTextures(1, &texid));
+        GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, texid));
+        GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+        GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+        GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+        GL_CHECK_ERR(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+        
+        // check whether we can fit the surf data into the texture
+        GLint maxSize;
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
+        if (surf->w <= GL_MAX_TEXTURE_SIZE && surf->h <= GL_MAX_TEXTURE_SIZE) {
+            // we can fit the texture
+            GL_CHECK_ERR(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf->w, surf->h,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, surf->pixels));
+        } else {
+            // we cannot fit the texture
+            GL_CHECK_ERR(glDeleteTextures(1, &texid));
+            texid = 0;
+        }
+        
 		SDL_UnlockSurface(surf);
 	}
 
@@ -257,57 +291,24 @@ void Text::draw(const SDL_Rect src, const SDL_Rect dest, const SDL_Rect viewport
 }
 
 void Text::drawColor(const SDL_Rect _src, const SDL_Rect _dest, const SDL_Rect viewport, const Uint32& color) const {
-	if (!surf) {
+	if (!surf || !texid) {
 	    return;
 	}
 
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LIGHTING);
-	glMatrixMode(GL_PROJECTION);
-	glViewport(viewport.x, viewport.y, viewport.w, viewport.h);
-	glLoadIdentity();
-	glOrtho(viewport.x, viewport.w, viewport.y, viewport.h, -1, 1);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
 	auto src = _src;
 	auto dest = _dest;
-
 	if (resolution_factor != 1) {
 		src.x *= resolution_factor;
 		src.y *= resolution_factor;
 		src.w *= resolution_factor;
 		src.h *= resolution_factor;
 	}
-
 	src.w = src.w <= 0 ? surf->w : src.w;
 	src.h = src.h <= 0 ? surf->h : src.h;
 	dest.w = dest.w <= 0 ? surf->w : dest.w;
 	dest.h = dest.h <= 0 ? surf->h : dest.h;
-
-	// bind texture
-	glBindTexture(GL_TEXTURE_2D, texid);
-
-	// consume color
-	Uint8 r, g, b, a;
-	getColor(color, &r, &g, &b, &a);
-	glColor4f(r / 255.f, g / 255.f, b / 255.f, a / 255.f);
-
-	// draw quad
-	glBegin(GL_QUADS);
-	glTexCoord2f(1.0 * ((real_t)src.x / surf->w), 1.0 * ((real_t)src.y / surf->h));
-	glVertex2f(dest.x, viewport.h - dest.y);
-	glTexCoord2f(1.0 * ((real_t)src.x / surf->w), 1.0 * (((real_t)src.y + src.h) / surf->h));
-	glVertex2f(dest.x, viewport.h - dest.y - dest.h);
-	glTexCoord2f(1.0 * (((real_t)src.x + src.w) / surf->w), 1.0 * (((real_t)src.y + src.h) / surf->h));
-	glVertex2f(dest.x + dest.w, viewport.h - dest.y - dest.h);
-	glTexCoord2f(1.0 * (((real_t)src.x + src.w) / surf->w), 1.0 * ((real_t)src.y / surf->h));
-	glVertex2f(dest.x + dest.w, viewport.h - dest.y);
-	glEnd();
-
-	// unbind texture
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glColor4f(1.f, 1.f, 1.f, 1.f);
+    
+    Image::draw(texid, surf->w, surf->h, &src, dest, viewport, color);
 }
 
 int Text::countNumTextLines() const {
@@ -326,6 +327,7 @@ int Text::countNumTextLines() const {
 static std::unordered_map<std::string, Text*> hashed_text;
 static const size_t TEXT_BUDGET = 1 * 1024 * 1024 * 128; // in bytes
 static size_t TEXT_VOLUME = 0; // in bytes
+static bool bRequireTextDump = false;
 
 static inline void uint32tox(uint32_t value, char* out) {
 	for (int i = 28; i >= 0; i -= 4) {
@@ -335,13 +337,14 @@ static inline void uint32tox(uint32_t value, char* out) {
 	}
 }
 
-Text* Text::get(const char* str, const char* font, Uint32 textColor, Uint32 outlineColor) {
+std::pair<size_t, const char*> Text::hash(const char* str, const char* font, Uint32 textColor, Uint32 outlineColor) {
 	if (!str) {
-		return nullptr;
+		return std::make_pair((size_t)0, (const char*)nullptr);
 	}
 	if (font == nullptr || font[0] == '\0') {
 		font = Font::defaultFont;
 	}
+
 	// NOTE the following static buffer makes this function NOT thread safe!!
 	// better not try to render more than 64kb of text...
 	static char textAndFont[65536] = { '\0' };
@@ -355,9 +358,10 @@ Text* Text::get(const char* str, const char* font, Uint32 textColor, Uint32 outl
 		sizeof('\0');
 	if (totalLen > sizeof(textAndFont)) {
 		assert(0 && "Trying to render > 64kb of ttf text");
-		return nullptr;
+		return std::make_pair((size_t)0, (const char*)nullptr);
 	}
 
+	// build format string
 	char* ptr = textAndFont;
 	memcpy(ptr, str, len0); ptr += len0;
 	*ptr = fontBreak; ++ptr;
@@ -373,36 +377,79 @@ Text* Text::get(const char* str, const char* font, Uint32 textColor, Uint32 outl
 	*ptr = fontBreak; ++ptr;
 	*ptr = '\0'; ++ptr;
 
-	/*snprintf(textAndFont, sizeof(textAndFont), "%s%c%s%c%#010x%c%#010x%c",
-		str, Text::fontBreak,
-		font, Text::fontBreak,
-		textColor, Text::fontBreak,
-		outlineColor, Text::fontBreak);*/
+	// compute hash
+	const auto& hash = hashed_text.hash_function();
+	return std::make_pair(hash(textAndFont), textAndFont);
+}
 
-	Text* text = nullptr;
-	auto search = hashed_text.find(textAndFont);
-	if (search == hashed_text.end()) {
-		if (TEXT_VOLUME > TEXT_BUDGET) {
+Text* Text::get(size_t hash, const char* key) {
+	if (!key) {
+		return nullptr;
+	}
+
+	// search for text using precomputed hash
+	auto& map = hashed_text;
+	auto bc = map.bucket_count();
+	if (bc) {
+		const auto& hash_fn = map.hash_function();
+		auto chash = !(bc & (bc - 1)) ? hash & (bc - 1) :
+			(hash < bc ? hash : hash % bc);
+		for (auto it = map.begin(chash); it != map.end(chash); ++it) {
+			if (hash == hash_fn(it->first) && it->first == key) {
+				return it->second;
+			}
+		}
+	}
+
+	// check if cache is full
+	if (TEXT_VOLUME > TEXT_BUDGET) {
+#ifdef EDITOR
+		dumpCache();
+#else
+		if (*cvar_text_delay_dumpcache)
+		{
+			bRequireTextDump = true;
+		}
+		else
+		{
 			dumpCache();
 		}
-		text = new Text(textAndFont);
-		hashed_text.insert(std::make_pair(textAndFont, text));
-		TEXT_VOLUME += sizeof(Text) + sizeof(SDL_Surface); // header data
-		TEXT_VOLUME += text->getWidth() * text->getHeight() * 4; // 32-bpp pixel data
-		TEXT_VOLUME += text->wordsToHighlight.size() * sizeof(int) * sizeof(Uint32); // word highlight map
-		TEXT_VOLUME += 1024; // 1-kB buffer
-	} else {
-		text = search->second;
+#endif
 	}
+
+	// text not found, add it to cache
+	auto text = new Text(key);
+	hashed_text.insert(std::make_pair(key, text));
+	TEXT_VOLUME += sizeof(Text) + sizeof(SDL_Surface); // header data
+	TEXT_VOLUME += text->getWidth() * text->getHeight() * 4; // 32-bpp pixel data
+	TEXT_VOLUME += text->wordsToHighlight.size() * sizeof(int) * sizeof(Uint32); // word highlight map
+	TEXT_VOLUME += 1024; // 1-kB buffer
+
 	return text;
 }
 
+Text* Text::get(const char* str, const char* font, Uint32 textColor, Uint32 outlineColor) {
+	auto h = hash(str, font, textColor, outlineColor);
+	return get(h.first, h.second);
+}
+
 void Text::dumpCache() {
+	printlog("[Text Cache]: dumping...");
 	for (auto text : hashed_text) {
+		//printlog("%s", text.second->getName());
 		delete text.second;
 	}
 	hashed_text.clear();
 	TEXT_VOLUME = 0;
+	bRequireTextDump = false;
+}
+
+void Text::dumpCacheInMainLoop()
+{
+	if ( bRequireTextDump )
+	{
+		dumpCache();
+	}
 }
 
 #ifndef EDITOR

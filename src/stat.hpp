@@ -60,7 +60,14 @@ static const int EFF_TROLLS_BLOOD = 35;
 static const int EFF_FLUTTER = 36;
 static const int EFF_DASH = 37;
 static const int EFF_DISTRACTED_COOLDOWN = 38;
-static const int NUMEFFECTS = 40;
+static const int EFF_MIMIC_LOCKED = 39;
+static const int EFF_ROOTED = 40;
+static const int EFF_NAUSEA_PROTECTION = 41;
+static const int EFF_CON_BONUS = 42;
+static const int EFF_PWR = 43;
+static const int EFF_AGILITY = 44;
+static const int EFF_RALLY = 45;
+static const int NUMEFFECTS = 64;
 
 // stats
 static const int STAT_STR = 0;
@@ -203,14 +210,17 @@ enum KilledBy {
     FOUNTAIN,
     SINK,
     FAILED_ALCHEMY,
+	FAILED_CHALLENGE,
+	BELL
 };
 
 class Stat
 {
+	Sint32 PROFICIENCIES[NUMPROFICIENCIES];
 public:
 	Monster type;
 	sex_t sex;
-	Uint32 appearance;
+	Uint32 stat_appearance = 0;
 	char name[128];
 
 	// uid of the entity which killed me via burning/poison (for rewarding XP to them)
@@ -218,10 +228,11 @@ public:
 
 	// Obituary stuff
 	char obituary[128];
-	KilledBy killer;
+	KilledBy killer = KilledBy::UNKNOWN;
+	Uint32 killer_uid = 0;
 	Monster killer_monster;
 	ItemType killer_item;
-	std::string killer_name;
+	std::string killer_name = "";
 
 	// attributes
 	Sint32 HP, MAXHP, OLDHP;
@@ -242,7 +253,27 @@ public:
 	Sint32 PLAYER_LVL_STAT_TIMER[NUMSTATS * 2];
 
 	// skills and effects
-	Sint32 PROFICIENCIES[NUMPROFICIENCIES];
+	Sint32 getProficiency(int skill) const
+	{
+		if ( skill >= 0 && skill < NUMPROFICIENCIES )
+		{
+			return PROFICIENCIES[skill];
+		}
+		return 0;
+	}
+	Sint32 getModifiedProficiency(int skill) const;
+	void setProficiency(int skill, int value)
+	{
+		if ( skill >= 0 && skill < NUMPROFICIENCIES )
+		{
+			PROFICIENCIES[skill] = std::min(std::max(0, value), 100);
+		}
+	}
+	void setProficiencyUnsafe(int skill, int value)
+	{
+		PROFICIENCIES[skill] = value;
+	}
+	int getGoldWeight() const;
 	bool EFFECTS[NUMEFFECTS];
 	Sint32 EFFECTS_TIMERS[NUMEFFECTS];
 	bool defending;
@@ -260,6 +291,7 @@ public:
 	Sint32& monsterIsCharmed; // MISC_FLAGS[12]
 	Sint32& playerShapeshiftStorage; // MISC_FLAGS[13]
 	Sint32& monsterTinkeringStatus; // MISC_FLAGS[14]
+	Sint32& monsterMimicLockedBy; // MISC_FLAGS[14]
 	Sint32& monsterDemonHasBeenExorcised; // MISC_FLAGS[15]
 	Sint32& bleedInflictedBy; // MISC_FLAGS[17]
 	Sint32& burningInflictedBy; // MISC_FLAGS[18]
@@ -293,6 +325,15 @@ public:
 #endif
 	int monster_idlevar;
 	std::map<std::string, std::string> attributes;
+	struct Lootbag_t
+	{
+		int spawn_x = 0;
+		int spawn_y = 0;
+		bool spawnedOnGround = false;
+		bool looted = false;
+		std::vector<Item> items;
+	};
+	std::map<Uint32, Lootbag_t> player_lootbags;
 	list_t magic_effects; //Makes things like the invisibility spell work.
 	Stat(Sint32 sprite);
 	~Stat();
@@ -311,8 +352,8 @@ public:
 		MONSTER_FORCE_PLAYER_ENEMY,
 		MONSTER_FORCE_PLAYER_RECRUITABLE
 	};
-	int getPassiveShieldBonus(bool checkShield) const;
-	int getActiveShieldBonus(bool checkShield) const;
+	int getPassiveShieldBonus(bool checkShield, bool excludeSkill) const;
+	int getActiveShieldBonus(bool checkShield, bool excludeSkill, Item* shieldItem = nullptr, bool checkNonShieldBonus = false) const;
 	std::string getAttribute(std::string key) const
 	{ 
 		if ( attributes.find(key) != attributes.end() )
@@ -325,14 +366,19 @@ public:
 		}
 	}
 	void setAttribute(std::string key, std::string value);
+	bool statusEffectRemovedByCureAilment(const int effect, Entity* my);
+	void addItemToLootingBag(const int player, const real_t x, const real_t y, Item& item);
+	Uint32 getLootingBagKey(const int player);
+	static bool emptyLootingBag(const int player, Uint32 key);
+	static int maxEquipmentBonusToSkill;
 };
 extern Stat* stats[MAXPLAYERS];
 
 inline bool skillCapstoneUnlocked(int player, int proficiency)
 {
-	return (stats[player]->PROFICIENCIES[proficiency] >= CAPSTONE_UNLOCK_LEVEL[proficiency]);
+	return (stats[player]->getModifiedProficiency(proficiency) >= CAPSTONE_UNLOCK_LEVEL[proficiency]);
 }
-
+static const int MAX_PLAYER_STAT_VALUE = 248;
 void setDefaultMonsterStats(Stat* stats, int sprite);
 bool isMonsterStatsDefault(Stat& myStats);
-char* getSkillLangEntry(int skill);
+const char* getSkillLangEntry(int skill);

@@ -20,7 +20,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     # Actually does the build...
     - name: Update apt repository
@@ -28,7 +28,7 @@ jobs:
 
     # Actually does the build...
     - name: Install Ubuntu package dependencies
-      run: sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-net-dev libsdl2-ttf-dev libpng-dev libz-dev libphysfs-dev rapidjson-dev
+      run: sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-net-dev libsdl2-ttf-dev libpng-dev libz-dev libphysfs-dev rapidjson-dev libcurl4-openssl-dev libjsoncpp-dev
 
     # First build Barony.
     - name: Compile Barony
@@ -50,7 +50,7 @@ jobs:
         mv ../build/ ../build-editor/
         
     - name: Upload Game Build Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         # Artifact name
         name: Game_fmod_steam_eos # optional
@@ -58,7 +58,7 @@ jobs:
         path: build-barony/release/barony
         
     - name: Upload Editor Build Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         # Artifact name
         name: Editor_fmod_steam # optional

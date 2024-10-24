@@ -19,7 +19,7 @@ FMOD::System* fmod_system = nullptr;
 
 FMOD_RESULT fmod_result;
 
-int fmod_maxchannels = 100;
+int fmod_maxchannels = 256;
 int fmod_flags;
 
 FMOD::Sound** sounds = nullptr;
@@ -53,6 +53,8 @@ FMOD::Sound* caveslairmusic = nullptr;
 FMOD::Sound* bramscastlemusic = nullptr;
 FMOD::Sound* hamletmusic = nullptr;
 FMOD::Sound* tutorialmusic = nullptr;
+FMOD::Sound* gameovermusic = nullptr;
+FMOD::Sound* introstorymusic = nullptr;
 bool levelmusicplaying = false;
 
 FMOD::Channel* music_channel = nullptr;
@@ -60,9 +62,11 @@ FMOD::Channel* music_channel2 = nullptr;
 FMOD::Channel* music_resume = nullptr;
 
 FMOD::ChannelGroup* sound_group = nullptr;
-FMOD::ChannelGroup* soundAmbient_group = NULL;
-FMOD::ChannelGroup* soundEnvironment_group = NULL;
+FMOD::ChannelGroup* soundAmbient_group = nullptr;
+FMOD::ChannelGroup* soundEnvironment_group = nullptr;
+FMOD::ChannelGroup* soundNotification_group = nullptr;
 FMOD::ChannelGroup* music_group = nullptr;
+FMOD::ChannelGroup* music_notification_group = nullptr;
 
 float fadein_increment = 0.002f;
 float default_fadein_increment = 0.002f;

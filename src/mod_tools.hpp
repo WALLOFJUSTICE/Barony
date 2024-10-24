@@ -25,6 +25,10 @@ See LICENSE for details.
 #include "entity.hpp"
 #include "ui/Widget.hpp"
 
+#ifdef USE_LIBCURL
+#include <curl/curl.h>
+#endif
+
 class CustomHelpers
 {
 public:
@@ -71,6 +75,7 @@ public:
 	static const std::vector<std::string> itemStatusStrings;
 	static const std::vector<std::string> shopkeeperTypeStrings;
 	MonsterStatCustomManager() = default;
+	static BaronyRNG monster_stat_rng;
 
 	int getSlotFromKeyName(std::string keyName)
 	{
@@ -174,7 +179,7 @@ public:
 			{
 				return invalidEntry;
 			}
-			return (arr[rapidjson::SizeType(local_rng.rand() % arr.Size())].GetString());
+			return (arr[rapidjson::SizeType(monster_stat_rng.rand() % arr.Size())].GetString());
 		}
 		int getRandomArrayInt(const rapidjson::GenericArray<true, rapidjson::GenericValue<rapidjson::UTF8<>>>& arr, int invalidEntry)
 		{
@@ -182,7 +187,7 @@ public:
 			{
 				return invalidEntry;
 			}
-			return (arr[rapidjson::SizeType(local_rng.rand() % arr.Size())].GetInt());
+			return (arr[rapidjson::SizeType(monster_stat_rng.rand() % arr.Size())].GetInt());
 		}
 
 		bool readKeyToItemEntry(rapidjson::Value::ConstMemberIterator& itr)
@@ -262,7 +267,7 @@ public:
 			{
 				if ( itr->value.IsArray() )
 				{
-					this->appearance = static_cast<Uint32>(getRandomArrayInt(itr->value.GetArray(), local_rng.rand()));
+					this->appearance = static_cast<Uint32>(getRandomArrayInt(itr->value.GetArray(), monster_stat_rng.rand()));
 				}
 				else if ( itr->value.IsInt() )
 				{
@@ -273,7 +278,7 @@ public:
 					std::string str = itr->value.GetString();
 					if ( str.compare("random") == 0 )
 					{
-						this->appearance = local_rng.rand();
+						this->appearance = monster_stat_rng.rand();
 					}
 				}
 				return true;
@@ -291,7 +296,7 @@ public:
 			else if ( name.compare("drop_percent_chance") == 0 )
 			{
 				this->dropChance = itr->value.GetInt();
-				if ( local_rng.rand() % 100 >= this->dropChance )
+				if ( monster_stat_rng.rand() % 100 >= this->dropChance )
 				{
 					this->dropItemOnDeath = false;
 				}
@@ -400,7 +405,7 @@ public:
 					++index;
 				}
 
-				int result = local_rng.discrete(variantChances.data(), variantChances.size());
+				int result = monster_stat_rng.discrete(variantChances.data(), variantChances.size());
 				return followerVariants.at(result).first;
 			}
 			return "none";
@@ -411,7 +416,7 @@ public:
 			strcpy(name, myStats->name);
 			type = myStats->type;
 			sex = myStats->sex;
-			appearance = myStats->appearance;
+			appearance = myStats->stat_appearance;
 			HP = myStats->HP;
 			MAXHP = myStats->MAXHP;
 			OLDHP = HP;
@@ -446,7 +451,7 @@ public:
 			}
 			for ( int i = 0; i < NUMPROFICIENCIES; ++i )
 			{
-				PROFICIENCIES[i] = myStats->PROFICIENCIES[i];
+				PROFICIENCIES[i] = myStats->getProficiency(i);
 			}
 		}
 
@@ -455,7 +460,7 @@ public:
 			strcpy(myStats->name, name);
 			myStats->type = static_cast<Monster>(type);
 			myStats->sex = static_cast<sex_t>(sex);
-			myStats->appearance = appearance;
+			myStats->stat_appearance = appearance;
 			myStats->HP = HP;
 			myStats->MAXHP = MAXHP;
 			myStats->OLDHP = myStats->HP;
@@ -486,7 +491,7 @@ public:
 
 			for ( int i = 0; i < NUMPROFICIENCIES; ++i )
 			{
-				myStats->PROFICIENCIES[i] = PROFICIENCIES[i];
+				myStats->setProficiency(i, PROFICIENCIES[i]);
 			}
 		}
 
@@ -498,7 +503,7 @@ public:
 				equippedSlots.insert(it.second);
 				if ( it.first.percentChance < 100 )
 				{
-					if ( local_rng.rand() % 100 >= it.first.percentChance )
+					if ( monster_stat_rng.rand() % 100 >= it.first.percentChance )
 					{
 						continue;
 					}
@@ -607,7 +612,7 @@ public:
 				}
 				if ( it.percentChance < 100 )
 				{
-					if ( local_rng.rand() % 100 >= it.percentChance )
+					if ( monster_stat_rng.rand() % 100 >= it.percentChance )
 					{
 						continue;
 					}
@@ -681,7 +686,7 @@ public:
 				{
 					if ( shopkeeperMinItems >= 0 && shopkeeperMaxItems >= 0 )
 					{
-						numItems = shopkeeperMinItems + local_rng.rand() % std::max(1, (shopkeeperMaxItems - shopkeeperMinItems + 1));
+						numItems = shopkeeperMinItems + monster_stat_rng.rand() % std::max(1, (shopkeeperMaxItems - shopkeeperMinItems + 1));
 						myStats->MISC_FLAGS[STAT_FLAG_SHOPKEEPER_CUSTOM_PROPERTIES] |= numItems + 1;
 					}
 					if ( shopkeeperMaxGeneratedBlessing >= 0 )
@@ -1134,44 +1139,41 @@ public:
 			for ( rapidjson::Value::ConstMemberIterator itemSlot_itr = equipped_items.MemberBegin(); itemSlot_itr != equipped_items.MemberEnd(); ++itemSlot_itr )
 			{
 				std::string slotName = itemSlot_itr->name.GetString();
-				if ( itemSlot_itr->value.MemberCount() > 0 )
+				if ( itemSlot_itr->value.IsArray() )
 				{
-					if ( itemSlot_itr->value.IsArray() )
-					{
-						std::vector<std::pair<ItemEntry, int>> itemsToChoose;
-						// a selection of items in the slot. need to choose 1.
-						for ( rapidjson::Value::ConstValueIterator itemArray_itr = itemSlot_itr->value.Begin(); itemArray_itr != itemSlot_itr->value.End(); ++itemArray_itr )
-						{
-							ItemEntry item;
-							for ( rapidjson::Value::ConstMemberIterator item_itr = itemArray_itr->MemberBegin(); item_itr != itemArray_itr->MemberEnd(); ++item_itr )
-							{
-								item.readKeyToItemEntry(item_itr);
-							}
-							itemsToChoose.push_back(std::make_pair(item, getSlotFromKeyName(slotName)));
-						}
-						if ( itemsToChoose.size() > 0 )
-						{
-							std::vector<unsigned int> itemChances(itemsToChoose.size(), 0);
-							int index = 0;
-							for ( auto& pair : itemsToChoose )
-							{
-								itemChances.at(index) = pair.first.weightedChance;
-								++index;
-							}
-
-							int result = local_rng.discrete(itemChances.data(), itemChances.size());
-							statEntry->equipped_items.push_back(std::make_pair(itemsToChoose.at(result).first, itemsToChoose.at(result).second));
-						}
-					}
-					else
+					std::vector<std::pair<ItemEntry, int>> itemsToChoose;
+					// a selection of items in the slot. need to choose 1.
+					for ( rapidjson::Value::ConstValueIterator itemArray_itr = itemSlot_itr->value.Begin(); itemArray_itr != itemSlot_itr->value.End(); ++itemArray_itr )
 					{
 						ItemEntry item;
-						for ( rapidjson::Value::ConstMemberIterator item_itr = itemSlot_itr->value.MemberBegin(); item_itr != itemSlot_itr->value.MemberEnd(); ++item_itr )
+						for ( rapidjson::Value::ConstMemberIterator item_itr = itemArray_itr->MemberBegin(); item_itr != itemArray_itr->MemberEnd(); ++item_itr )
 						{
 							item.readKeyToItemEntry(item_itr);
 						}
-						statEntry->equipped_items.push_back(std::make_pair(item, getSlotFromKeyName(slotName)));
+						itemsToChoose.push_back(std::make_pair(item, getSlotFromKeyName(slotName)));
 					}
+					if ( itemsToChoose.size() > 0 )
+					{
+						std::vector<unsigned int> itemChances(itemsToChoose.size(), 0);
+						int index = 0;
+						for ( auto& pair : itemsToChoose )
+						{
+							itemChances.at(index) = pair.first.weightedChance;
+							++index;
+						}
+
+						int result = monster_stat_rng.discrete(itemChances.data(), itemChances.size());
+						statEntry->equipped_items.push_back(std::make_pair(itemsToChoose.at(result).first, itemsToChoose.at(result).second));
+					}
+				}
+				else if ( itemSlot_itr->value.MemberCount() > 0 )
+				{
+					ItemEntry item;
+					for ( rapidjson::Value::ConstMemberIterator item_itr = itemSlot_itr->value.MemberBegin(); item_itr != itemSlot_itr->value.MemberEnd(); ++item_itr )
+					{
+						item.readKeyToItemEntry(item_itr);
+					}
+					statEntry->equipped_items.push_back(std::make_pair(item, getSlotFromKeyName(slotName)));
 				}
 			}
 			const rapidjson::Value& inventory_items = d["inventory_items"];
@@ -1200,7 +1202,7 @@ public:
 							++index;
 						}
 
-						int result = local_rng.discrete(itemChances.data(), itemChances.size());
+						int result = monster_stat_rng.discrete(itemChances.data(), itemChances.size());
 						statEntry->inventory_items.push_back(itemsToChoose.at(result));
 					}
 				}
@@ -1292,7 +1294,7 @@ public:
 							++index;
 						}
 
-						std::string result = statEntry->shopkeeperStoreTypes.at(local_rng.discrete(storeChances.data(), storeChances.size())).first;
+						std::string result = statEntry->shopkeeperStoreTypes.at(monster_stat_rng.discrete(storeChances.data(), storeChances.size())).first;
 						index = 0;
 						for ( auto& lookup : shopkeeperTypeStrings )
 						{
@@ -1339,6 +1341,7 @@ class MonsterCurveCustomManager
 	bool usingCustomManager = false;
 public:
 	MonsterCurveCustomManager() = default;
+	BaronyRNG monster_curve_rng;
 
 	class MonsterCurveEntry
 	{
@@ -1372,10 +1375,23 @@ public:
 	};
 
 	std::vector<LevelCurve> allLevelCurves;
+
+	struct FollowerGenerateDetails_t
+	{
+		real_t x = 0.0;
+		real_t y = 0.0;
+		int leaderType = NOTHING;
+		Uint32 uid = 0;
+		std::string followerName = "";
+	};
+	std::vector<FollowerGenerateDetails_t> followersToGenerateForLeaders;
 	inline bool inUse() { return usingCustomManager; };
 
-	void readFromFile()
+	void readFromFile(Uint32 seed)
 	{
+		monster_curve_rng.seedBytes(&seed, sizeof(seed));
+		MonsterStatCustomManager::monster_stat_rng.seedBytes(&seed, sizeof(seed));
+
 		allLevelCurves.clear();
 		usingCustomManager = false;
 		if ( PHYSFS_getRealDir("/data/monstercurve.json") )
@@ -1412,25 +1428,28 @@ public:
 				{
 					LevelCurve newCurve;
 					newCurve.mapName = map_itr->name.GetString();
-					const rapidjson::Value& randomGeneration = map_itr->value["random_generation_monsters"];
-					for ( rapidjson::Value::ConstValueIterator monsters_itr = randomGeneration.Begin(); monsters_itr != randomGeneration.End(); ++monsters_itr )
+					if ( map_itr->value.HasMember("random_generation_monsters") )
 					{
-						const rapidjson::Value& monster = *monsters_itr;
-						MonsterCurveEntry newMonster(monster["name"].GetString(),
-							monster["dungeon_depth_minimum"].GetInt(),
-							monster["dungeon_depth_maximum"].GetInt(),
-							monster["weighted_chance"].GetInt(),
-							"");
-
-						if ( monster.HasMember("variants") )
+						const rapidjson::Value& randomGeneration = map_itr->value["random_generation_monsters"];
+						for ( rapidjson::Value::ConstValueIterator monsters_itr = randomGeneration.Begin(); monsters_itr != randomGeneration.End(); ++monsters_itr )
 						{
-							for ( rapidjson::Value::ConstMemberIterator var_itr = monster["variants"].MemberBegin();
-								var_itr != monster["variants"].MemberEnd(); ++var_itr )
+							const rapidjson::Value& monster = *monsters_itr;
+							MonsterCurveEntry newMonster(monster["name"].GetString(),
+								monster["dungeon_depth_minimum"].GetInt(),
+								monster["dungeon_depth_maximum"].GetInt(),
+								monster["weighted_chance"].GetInt(),
+								"");
+
+							if ( monster.HasMember("variants") )
 							{
-								newMonster.addVariant(var_itr->name.GetString(), var_itr->value.GetInt());
+								for ( rapidjson::Value::ConstMemberIterator var_itr = monster["variants"].MemberBegin();
+									var_itr != monster["variants"].MemberEnd(); ++var_itr )
+								{
+									newMonster.addVariant(var_itr->name.GetString(), var_itr->value.GetInt());
+								}
 							}
+							newCurve.monsterCurve.push_back(newMonster);
 						}
-						newCurve.monsterCurve.push_back(newMonster);
 					}
 
 					if ( map_itr->value.HasMember("fixed_monsters") )
@@ -1533,7 +1552,7 @@ public:
 						}
 					}
 				}
-				int result = local_rng.discrete(monsterCurveChances.data(), monsterCurveChances.size());
+				int result = monster_curve_rng.discrete(monsterCurveChances.data(), monsterCurveChances.size());
 				//printlog("[MonsterCurveCustomManager]: Rolled: %d", result);
 				return result;
 			}
@@ -1575,7 +1594,7 @@ public:
 				}
 				if ( !variantResults.empty() )
 				{
-					int result = local_rng.discrete(variantChances.data(), variantChances.size());
+					int result = monster_curve_rng.discrete(variantChances.data(), variantChances.size());
 					return variantResults[result];
 				}
 			}
@@ -1600,7 +1619,7 @@ public:
 							++index;
 						}
 
-						int result = local_rng.discrete(variantChances.data(), variantChances.size());
+						int result = monster_curve_rng.discrete(variantChances.data(), variantChances.size());
 						return monster.variants.at(result).first;
 					}
 				}
@@ -1621,36 +1640,56 @@ public:
 				std::string followerName = statEntry->getFollowerVariant();
 				if ( followerName.compare("") && followerName.compare("none") )
 				{
-					MonsterStatCustomManager::StatEntry* followerEntry = monsterStatCustomManager.readFromFile(followerName.c_str());
-					if ( followerEntry )
-					{
-						Entity* summonedFollower = summonMonster(static_cast<Monster>(followerEntry->type), entity->x, entity->y);
-						if ( summonedFollower )
-						{
-							if ( summonedFollower->getStats() )
-							{
-								followerEntry->setStatsAndEquipmentToMonster(summonedFollower->getStats());
-								summonedFollower->getStats()->leader_uid = entity->getUID();
-							}
-						}
-						delete followerEntry;
-					}
-					else
-					{
-						Entity* summonedFollower = summonMonster(myStats->type, entity->x, entity->y);
-						if ( summonedFollower )
-						{
-							if ( summonedFollower->getStats() )
-							{
-								summonedFollower->getStats()->leader_uid = entity->getUID();
-							}
-						}
-					}
+					followersToGenerateForLeaders.push_back(FollowerGenerateDetails_t());
+					auto& entry = followersToGenerateForLeaders.back();
+					entry.followerName = followerName;
+					entry.x = entity->x;
+					entry.y = entity->y;
+					entry.uid = entity->getUID();
+					entry.leaderType = myStats->type;
 				}
 				--statEntry->numFollowers;
 			}
 			delete statEntry;
 		}
+	}
+
+	void generateFollowersForLeaders()
+	{
+		if ( multiplayer != CLIENT )
+		{
+			for ( auto& entry : followersToGenerateForLeaders )
+			{
+				MonsterStatCustomManager::StatEntry* followerEntry = monsterStatCustomManager.readFromFile(entry.followerName.c_str());
+				if ( followerEntry )
+				{
+					Entity* summonedFollower = summonMonsterNoSmoke(static_cast<Monster>(followerEntry->type), entry.x, entry.y);
+					if ( summonedFollower )
+					{
+						if ( summonedFollower->getStats() )
+						{
+							followerEntry->setStatsAndEquipmentToMonster(summonedFollower->getStats());
+							summonedFollower->getStats()->leader_uid = entry.uid;
+						}
+						summonedFollower->seedEntityRNG(monster_curve_rng.getU32());
+					}
+					delete followerEntry;
+				}
+				else
+				{
+					Entity* summonedFollower = summonMonsterNoSmoke(static_cast<Monster>(entry.leaderType), entry.x, entry.y);
+					if ( summonedFollower )
+					{
+						if ( summonedFollower->getStats() )
+						{
+							summonedFollower->getStats()->leader_uid = entry.uid;
+						}
+						summonedFollower->seedEntityRNG(monster_curve_rng.getU32());
+					}
+				}
+			}
+		}
+		followersToGenerateForLeaders.clear();
 	}
 
 	void writeSampleToDocument()
@@ -1815,7 +1854,7 @@ public:
 	int globalGoldPercent = 100;
 	bool minimapShareProgress = false;
 	int playerWeightPercent = 100;
-	double playerSpeedMax = 18.0;
+	double playerSpeedMax = 12.5;
 	inline bool inUse() { return usingCustomManager; };
 	void resetValues()
 	{
@@ -1825,7 +1864,7 @@ public:
 		globalGoldPercent = 100;
 		minimapShareProgress = false;
 		playerWeightPercent = 100;
-		playerSpeedMax = 18.0;
+		playerSpeedMax = 12.5;
 
 		minotaurForceEnableFloors.first.clear();
 		minotaurForceEnableFloors.second.clear();
@@ -2412,11 +2451,20 @@ public:
 	{
 		GAME_MODE_DEFAULT,
 		GAME_MODE_TUTORIAL_INIT,
-		GAME_MODE_TUTORIAL
+		GAME_MODE_TUTORIAL,
+		GAME_MODE_CUSTOM_RUN_ONESHOT,
+		GAME_MODE_CUSTOM_RUN
 	};
 	GameModes currentMode = GAME_MODE_DEFAULT;
 	GameModes getMode() const { return currentMode; };
-	void setMode(const GameModes mode) { currentMode = mode; };
+	void setMode(const GameModes mode);
+	bool allowsSaves();
+	bool isFastDeathGrave();
+	bool allowsBoulderBreak();
+	bool allowsHiscores();
+	bool allowsStatisticsOrAchievements(const char* achName, int statIndex);
+	bool allowsGlobalHiscores();
+
 	class CurrentSession_t
 	{
 	public:
@@ -2437,14 +2485,77 @@ public:
 			bHasSavedServerFlags = true;
 			printlog("[SESSION]: Saving server flags\n");
 		}
+
+		class SeededRun_t
+		{
+		public:
+			std::string seedString = "";
+			Uint32 seed = 0;
+			void setup(std::string _seedString);
+			void reset();
+
+			static std::vector<std::string> prefixes;
+			static std::vector<std::string> suffixes;
+			static void readSeedNamesFromFile();
+		} seededRun;
+
+		class ChallengeRun_t
+		{
+			bool inUse = false;
+		public:
+			enum ChallengeEvents_t
+			{
+				CHEVENT_XP_250,
+				CHEVENT_NOXP_LVL_20,
+				CHEVENT_SHOPPING_SPREE,
+				CHEVENT_BFG,
+				CHEVENT_KILLS_FURNITURE,
+				CHEVENT_KILLS_MONSTERS,
+				CHEVENT_NOSKILLS,
+				CHEVENT_STRONG_TRAPS,
+				CHEVENT_ENUM_END
+			};
+
+			bool isActive() { return inUse; }
+			bool isActive(ChallengeEvents_t _eventType) { return inUse && (eventType == _eventType); }
+			std::string scenarioStr = "";
+			std::string lid = "";
+			int lid_version = -1;
+			Uint32 seed = 0;
+			std::string seed_word = "";
+			Uint32 lockedFlags = 0;
+			Uint32 setFlags = 0;
+			int classnum = -1;
+			int race = -1;
+			bool customBaseStats = false;
+			bool customAddStats = false;
+			Stat* baseStats = nullptr;
+			Stat* addStats = nullptr;
+			int eventType = -1;
+			int winLevel = -1;
+			int startLevel = -1;
+			int winCondition = -1;
+			int globalXPPercent = 100;
+			int globalGoldPercent = 100;
+			int playerWeightPercent = 100;
+			double playerSpeedMax = 12.5;
+			int numKills = -1;
+
+			void setup(std::string _scenario);
+			void reset();
+			bool loadScenario();
+			void applySettings();
+			void updateKillEvent(Entity* entity);
+		} challengeRun;
 	} currentSession;
+
 	bool isServerflagDisabledForCurrentMode(int i)
 	{
 		if ( getMode() == GAME_MODE_DEFAULT )
 		{
 			return false;
 		}
-		else if ( getMode() == GAME_MODE_TUTORIAL )
+		/*else if ( getMode() == GAME_MODE_TUTORIAL )
 		{
 			int flag = power(2, i);
 			switch ( flag )
@@ -2463,9 +2574,19 @@ public:
 					break;
 			}
 			return false;
+		}*/
+		else if ( getMode() == GAME_MODE_CUSTOM_RUN_ONESHOT
+			|| getMode() == GAME_MODE_CUSTOM_RUN )
+		{
+			if ( currentSession.challengeRun.lockedFlags & i )
+			{
+				return true;
+			}
+			return false;
 		}
 		return false;
 	}
+
 	class Tutorial_t
 	{
 		std::string currentMap = "";
@@ -2476,6 +2597,9 @@ public:
 			readFromFile();
 		}
 		int dungeonLevel = -1;
+		bool showFirstTutorialCompletedPrompt = false;
+		bool firstTutorialCompleted = false;
+		void createFirstTutorialCompletedPrompt();
 		void setTutorialMap(std::string& mapname)
 		{
 			loadCustomNextMap = mapname;
@@ -2493,8 +2617,10 @@ public:
 		void openGameoverWindow();
 		void onMapRestart(int levelNum)
 		{
+#ifndef EDITOR
 			achievementObserver.updateGlobalStat(
 				std::min(STEAM_GSTAT_TUTORIAL1_ATTEMPTS - 1 + levelNum, static_cast<int>(STEAM_GSTAT_TUTORIAL10_ATTEMPTS)));
+#endif // !EDITOR
 		}
 
 		class Menu_t
@@ -2544,12 +2670,16 @@ public:
 
 		void readFromFile();
 		void writeToDocument();
+
+#if defined(LINUX)
+		const std::string tutorialScoresFilename = "/savegames/tutorial_scores_2.json";
+#else
+		const std::string tutorialScoresFilename = "/savegames/tutorial_scores.json";
+#endif
 		void writeToFile(rapidjson::Document& d)
 		{
 			std::string outputPath = outputdir;
-			outputPath.append(PHYSFS_getDirSeparator());
-			std::string fileName = "data/tutorial_scores.json";
-			outputPath.append(fileName.c_str());
+			outputPath.append(tutorialScoresFilename.c_str());
 
 			File* fp = FileIO::open(outputPath.c_str(), "wb");
 			if ( !fp )
@@ -2560,6 +2690,7 @@ public:
 			rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(os);
 			d.Accept(writer);
 			fp->write(os.GetString(), sizeof(char), os.GetSize());
+			fp->write("", sizeof(char), 1);
 
 			FileIO::close(fp);
 		}
@@ -2606,10 +2737,11 @@ class ItemTooltips_t
 {
 	struct tmpItem_t
 	{
-		std::string itemName = "nothing";
+		std::string internalName = "nothing";
 		Sint32 itemId = -1;
 		Sint32 fpIndex = -1;
 		Sint32 tpIndex = -1;
+		Sint32 tpShortIndex = -1;
 		Sint32 gold = 0;
 		Sint32 weight = 0;
 		Sint32 itemLevel = -1;
@@ -2621,6 +2753,7 @@ class ItemTooltips_t
 		std::string iconLabelPath = "";
 	};
 
+public:
 	enum SpellItemTypes : int
 	{
 		SPELL_TYPE_DEFAULT,
@@ -2630,16 +2763,17 @@ class ItemTooltips_t
 		SPELL_TYPE_AREA,
 		SPELL_TYPE_SELF_SUSTAIN
 	};
-
 	enum SpellTagTypes : int
 	{
 		SPELL_TAG_DAMAGE,
 		SPELL_TAG_UTILITY,
 		SPELL_TAG_STATUS_EFFECT,
 		SPELL_TAG_HEALING,
-		SPELL_TAG_CURE
+		SPELL_TAG_CURE,
+		SPELL_TAG_BASIC_HIT_MESSAGE,
+		SPELL_TAG_TRACK_HITS
 	};
-
+private:
 	struct spellItem_t
 	{
 		Sint32 id;
@@ -2705,12 +2839,28 @@ public:
 		void setColorFaintText(Uint32 color) { faintTextColor = color; }
 	};
 	void readItemsFromFile();
-	void readTooltipsFromFile();
+	static const Uint32 kItemsJsonHash = 2419644190;
+	static Uint32 itemsJsonHashRead;
+	void readItemLocalizationsFromFile(bool forceLoadBaseDirectory = false);
+	void readTooltipsFromFile(bool forceLoadBaseDirectory = false);
+	void readBookLocalizationsFromFile(bool forceLoadBaseDirectory = false);
 	std::vector<tmpItem_t> tmpItems;
 	std::map<Sint32, spellItem_t> spellItems;
 	std::map<std::string, ItemTooltip_t> tooltips;
 	std::map<std::string, std::map<std::string, std::string>> adjectives;
 	std::map<std::string, std::vector<std::string>> templates;
+	//std::vector<std::pair<int, Sint32>> itemValueTable;
+	//std::map<int, std::vector<std::pair<int, Sint32>>> itemValueTableByCategory;
+	struct ItemLocalization_t
+	{
+		std::string name_identified = "";
+		std::string name_unidentified = "";
+	};
+	std::map<std::string, ItemLocalization_t> itemNameLocalizations;
+	std::map<std::string, std::string> bookNameLocalizations;
+	std::map<std::string, std::string> spellNameLocalizations;
+	std::map<std::string, int> itemNameStringToItemID;
+	std::map<std::string, int> spellNameStringToSpellID;
 	std::string defaultString = "";
 	char buf[2048];
 	bool autoReload = false;
@@ -2721,24 +2871,26 @@ public:
 	std::string& getItemPotionHarmAllyAdjective(Item& item);
 	std::string& getItemProficiencyName(int proficiency);
 	std::string& getItemSlotName(ItemEquippableSlot slotname);
-	std::string& getItemStatShortName(std::string& attribute);
-	std::string& getItemStatFullName(std::string& attribute);
+	std::string& getItemStatShortName(const char* attribute);
+	std::string& getItemStatFullName(const char* attribute);
 	std::string& getItemEquipmentEffectsForIconText(std::string& attribute);
 	std::string& getItemEquipmentEffectsForAttributesText(std::string& attribute);
 	std::string& getProficiencyLevelName(Sint32 proficiencyLevel);
 	std::string& getIconLabel(Item& item);
-	std::string getSpellIconText(const int player, Item& item);
+	std::string getSpellIconText(const int player, Item& item, const bool excludePlayerStats);
 	std::string getSpellDescriptionText(const int player, Item& item);
-	std::string getSpellIconPath(const int player, Item& item);
+	std::string getSpellIconPath(const int player, Item& item, int spellID);
 	std::string getCostOfSpellString(const int player, Item& item);
 	std::string& getSpellTypeString(const int player, Item& item);
+	node_t* getSpellNodeFromSpellID(int spellID);
 	real_t getSpellSustainCostPerSecond(int spellID);
-	int getSpellDamageOrHealAmount(const int player, spell_t* spell, Item* spellbook);
+	int getSpellDamageOrHealAmount(const int player, spell_t* spell, Item* spellbook, const bool excludePlayerStats);
 	bool bIsSpellDamageOrHealingType(spell_t* spell);
+	bool bSpellHasBasicHitMessage(const int spellID);
 
-	void formatItemIcon(const int player, std::string tooltipType, Item& item, std::string& str, int iconIndex, std::string& conditionalAttribute);
+	void formatItemIcon(const int player, std::string tooltipType, Item& item, std::string& str, int iconIndex, std::string& conditionalAttribute, Frame* parentFrame = nullptr);
 	void formatItemDescription(const int player, std::string tooltipType, Item& item, std::string& str);
-	void formatItemDetails(const int player, std::string tooltipType, Item& item, std::string& str, std::string detailTag);
+	void formatItemDetails(const int player, std::string tooltipType, Item& item, std::string& str, std::string detailTag, Frame* parentFrame = nullptr);
 	void stripOutPositiveNegativeItemDetails(std::string& str, std::string& positiveValues, std::string& negativeValues);
 	void stripOutHighlightBracketText(std::string& str, std::string& bracketText);
 	void getWordIndexesItemDetails(void* field, std::string& str, std::string& highlightValues, std::string& positiveValues, std::string& negativeValues,
@@ -2759,6 +2911,7 @@ public:
 	real_t statueEditorHeightOffset = 0.0;
 	bool drawGreyscale = false;
 	void readStatueFromFile(int index, std::string filename);
+	void readAllStatues();
 	void refreshAllStatues();
 	void resetStatueEditor();
 	static Uint32 statueId;
@@ -2832,7 +2985,7 @@ public:
 		std::string pressedGlyphPath = "";
 		int render_offsetx = 0;
 		int render_offsety = 0;
-		int scancode = SDL_SCANCODE_UNKNOWN;
+		int keycode = SDLK_UNKNOWN;
 	};
 	std::map<int, GlyphData_t> allGlyphs;
 
@@ -2923,18 +3076,18 @@ extern ScriptTextParser_t ScriptTextParser;
 //#define USE_THEORA_VIDEO
 #endif // !EDITOR
 #ifdef USE_THEORA_VIDEO
-#include <theoraplayer/Manager.h>
 #include <theoraplayer/theoraplayer.h>
+#include <theoraplayer/Manager.h>
 #include <theoraplayer/VideoFrame.h>
 class VideoManager_t
 {
 	theoraplayer::VideoClip* clip = NULL;
-	theoraplayer::OutputMode outputMode = theoraplayer::FORMAT_RGB;
 	static bool isInit;
 	bool started = false;
-	GLuint textureId = 0;
-	unsigned int textureFormat = GL_RGB;
-	void drawTexturedQuad(unsigned int texID, float x, float y, float w, float h, float sw, float sh, float sx, float sy, float alpha);
+	bool whichTexture = false;
+	GLuint textureId1 = 0;
+	GLuint textureId2 = 0;
+	void drawTexturedQuad(unsigned int texID, int tw, int th, const SDL_Rect& src, const SDL_Rect& dest, float alpha);
 	GLuint createTexture(int w, int h, unsigned int format);
 	int potCeil(int value)
 	{
@@ -2993,6 +3146,7 @@ public:
 	static ImGuiIO& getIO() { return ImGui::GetIO(); }
 	static bool show_demo_window;
 	static void showConsoleCommands();
+	static void showHUDTimers();
 	static void buttonConsoleCommandHighlight(const char* cmd, bool flag);
 	static void update();
 	static void render();
@@ -3042,4 +3196,1087 @@ struct ShopkeeperConsumables_t
 	static std::map<int, std::vector<StoreSlots_t>> entries; // shop type as key
 	static void readFromFile();
 };
-#endif // !EDITOR
+
+struct ClassHotbarConfig_t
+{
+	struct HotbarEntry_t
+	{
+		std::vector<int> itemTypes;
+		std::vector<int> itemCategories;
+		int slotnum = -1;
+		HotbarEntry_t(int _slotnum)
+		{
+			slotnum = _slotnum;
+		};
+	};
+	struct ClassHotbar_t
+	{
+		struct ClassHotbarLayout_t
+		{
+			std::vector<HotbarEntry_t> hotbar;
+			std::vector<std::vector<HotbarEntry_t>> hotbar_alternates;
+			void init();
+			bool hasData = false;
+		};
+		ClassHotbarLayout_t layoutClassic;
+		ClassHotbarLayout_t layoutModern;
+	};
+	static ClassHotbar_t ClassHotbarsDefault[NUMCLASSES];
+	static ClassHotbar_t ClassHotbars[NUMCLASSES];
+	static void assignHotbarSlots(const int player);
+	enum HotbarConfigType : int
+	{
+		HOTBAR_LAYOUT_DEFAULT_CONFIG,
+		HOTBAR_LAYOUT_CUSTOM_CONFIG
+	};
+	enum HotbarConfigWriteMode : int
+	{
+		HOTBAR_CONFIG_WRITE,
+		HOTBAR_CONFIG_DELETE
+	};
+	static void readFromFile(HotbarConfigType fileReadType);
+	static void writeToFile(HotbarConfigType fileWriteType, HotbarConfigWriteMode writeMode);
+	static void init();
+};
+
+struct LocalAchievements_t
+{
+	struct Achievement_t
+	{
+		std::string name;
+		bool unlocked = false;
+		int64_t unlockTime = 0;
+	};
+	struct Statistic_t
+	{
+		std::string name;
+		int value = 0;
+	};
+	std::map<std::string, Achievement_t> achievements;
+	std::map<int, Statistic_t> statistics;
+	static void readFromFile();
+	static void writeToFile();
+	static void init();
+	void updateAchievement(const char* name, const bool unlocked);
+	void updateStatistic(const int stat_num, const int value);
+};
+extern LocalAchievements_t LocalAchievements;
+
+class GameplayPreferences_t
+{
+	//Player& player;
+	int player = -1;
+public:
+	enum GameplayerPrefIndexes : int
+	{
+		GPREF_ARACHNOPHOBIA = 0,
+		GPREF_COLORBLIND,
+		GPREF_ENUM_END
+	};
+	struct GameplayPreference_t
+	{
+		int value = 0;
+		bool needsUpdate = true;
+		void set(const int _value);
+		void reset()
+		{
+			value = 0;
+			needsUpdate = true;
+		}
+	};
+	GameplayPreference_t preferences[GPREF_ENUM_END];
+	bool isInit = false;
+	/*GameplayPreferences_t(Player& p) : player(p)
+	{};*/
+	GameplayPreferences_t() {};
+	~GameplayPreferences_t() {};
+	Uint32 lastUpdateTick = 0;
+	void requestUpdateFromClient();
+	void sendToClients(const int targetPlayer);
+	void process();
+	void sendToServer();
+	static void receivePacket();
+
+	enum GameConfigIndexes : int
+	{
+		GOPT_ARACHNOPHOBIA = 0,
+		GOPT_COLORBLIND,
+		GOPT_ENUM_END
+	};
+	static GameplayPreference_t gameConfig[GOPT_ENUM_END];
+	static int getGameConfigValue(GameConfigIndexes index)
+	{
+		if ( index >= 0 && index < GOPT_ENUM_END )
+		{
+			return gameConfig[index].value;
+		}
+		return 0;
+	}
+	static void serverProcessGameConfig();
+	static void serverUpdateGameConfig();
+	static void receiveGameConfig();
+	static Uint32 lastGameConfigUpdateTick;
+	static void reset();
+};
+
+extern GameplayPreferences_t gameplayPreferences[MAXPLAYERS];
+#endif
+
+struct EditorEntityData_t
+{
+	struct EntityColliderData_t
+	{
+		int gib = 0;
+		std::vector<int> gib_hit;
+		std::vector<int> sfxBreak;
+		int sfxHit = 0;
+		std::string damageCalculationType = "default";
+		std::string name = "";
+		std::string hpbarLookupName = "object";
+		int entityLangEntry = 4335;
+		int hitMessageLangEntry = 2509;
+		int breakMessageLangEntry = 2510;
+		std::map<std::string, std::vector<int>> hideMonsters;
+		std::map<std::string, int> overrideProperties;
+		bool hasOverride(std::string key)
+		{
+			auto find = overrideProperties.find(key);
+			if ( find != overrideProperties.end() )
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		int getOverride(std::string key)
+		{
+			auto find = overrideProperties.find(key);
+			if ( find != overrideProperties.end() )
+			{
+				return find->second;
+			}
+			return 0;
+		}
+	};
+	struct ColliderDmgProperties_t
+	{
+		bool burnable = false;
+		bool minotaurPathThroughAndBreak = false;
+		bool meleeAffects = false;
+		bool magicAffects = false;
+		bool bombsAttach = false;
+		bool boulderDestroys = false;
+		bool showAsWallOnMinimap = false;
+		bool allowNPCPathing = false;
+		std::unordered_set<int> proficiencyBonusDamage;
+		std::unordered_set<int> proficiencyResistDamage;
+	};
+	static const int COLLIDER_COLLISION_FLAG_MINO = 2;
+	static const int COLLIDER_COLLISION_FLAG_NPC = 4;
+	static std::map<std::string, ColliderDmgProperties_t> colliderDmgTypes;
+	static std::map<int, EntityColliderData_t> colliderData;
+	static std::map<std::string, std::map<int, int>> colliderRandomGenPool;
+	static void readFromFile();
+};
+extern EditorEntityData_t editorEntityData;
+
+struct Mods
+{
+	static std::vector<int> modelsListModifiedIndexes;
+	static std::vector<int> soundsListModifiedIndexes;
+	static std::vector<std::pair<SDL_Surface**, std::string>> systemResourceImagesToReload;
+	static std::vector<std::pair<std::string, std::string>> mountedFilepaths;
+	static std::vector<std::pair<std::string, std::string>> mountedFilepathsSaved; // saved from config file
+	static std::set<std::string> mods_loaded_local;
+	static std::set<std::string> mods_loaded_workshop;
+	static std::list<std::string> localModFoldernames;
+	static int numCurrentModsLoaded;
+	static bool modelsListRequiresReloadUnmodded;
+	static bool soundListRequiresReloadUnmodded;
+	static bool tileListRequireReloadUnmodded;
+	static bool spriteImagesRequireReloadUnmodded;
+	static bool booksRequireReloadUnmodded;
+	static bool musicRequireReloadUnmodded;
+	static bool langRequireReloadUnmodded;
+	static bool monsterLimbsRequireReloadUnmodded;
+	static bool systemImagesReloadUnmodded;
+	static bool customContentLoadedFirstTime;
+	static bool disableSteamAchievements;
+	static bool lobbyDisableSteamAchievements;
+	static bool isLoading;
+#ifdef STEAMWORKS
+	static std::vector<SteamUGCDetails_t*> workshopSubscribedItemList;
+	static std::vector<std::pair<std::string, uint64>> workshopLoadedFileIDMap;
+	struct WorkshopTags_t
+	{
+		std::string tag;
+		std::string text;
+		WorkshopTags_t(const char* _tag, const char* _text)
+		{
+			tag = _tag;
+			text = _text;
+		}
+	};
+	static std::vector<WorkshopTags_t> tag_settings;
+	static int uploadStatus;
+	static int uploadErrorStatus;
+	static PublishedFileId_t uploadingExistingItem;
+	static Uint32 uploadTicks;
+	static Uint32 processedOnTick;
+	static int uploadNumRetries;
+	static std::string getFolderFullPath(std::string input);
+	static bool forceDownloadCachedImages;
+#endif
+	static void updateModCounts();
+	static bool mountAllExistingPaths();
+	static bool clearAllMountedPaths();
+	static bool removePathFromMountedFiles(std::string findStr);
+	static bool isPathInMountedFiles(std::string findStr);
+	static void unloadMods(bool force = false);
+	static void loadMods();
+	static void loadModels(int start, int end);
+	static void verifyAchievements(const char* fullpath, bool ignoreBaseFolder);
+	static bool verifyMapFiles(const char* file, bool ignoreBaseFolder);
+	static int createBlankModDirectory(std::string foldername);
+	static void writeLevelsTxtAndPreview(std::string modFolder);
+};
+
+#ifdef USE_LIBCURL
+struct LibCURL_t
+{
+	bool bInit = false;
+	CURL* handle = nullptr;
+	void init()
+	{
+		curl_global_init(CURL_GLOBAL_DEFAULT);
+		if ( handle = curl_easy_init() )
+		{
+			bInit = true;
+		}
+	}
+	void download(std::string filename, std::string url);
+
+	~LibCURL_t()
+	{
+		curl_easy_cleanup(handle);
+		handle = nullptr;
+	}
+
+	static size_t write_data_fp(void* ptr, size_t size, size_t nmemb, File* stream);
+	static size_t write_data_string(void* ptr, size_t size, size_t nmemb, std::string* s);
+};
+extern LibCURL_t LibCURL;
+#endif
+
+struct EquipmentModelOffsets_t
+{
+	struct ModelOffset_t
+	{
+		real_t focalx = 0.0;
+		real_t focaly = 0.0;
+		real_t focalz = 0.0;
+		real_t scalex = 0.0;
+		real_t scaley = 0.0;
+		real_t scalez = 0.0;
+		real_t rotation = 0.0;
+		real_t pitch = 0.0;
+		int limbsIndex = 0;
+		bool oversizedMask = false;
+		bool expandToFitMask = false;
+
+		struct AdditionalOffset_t
+		{
+			real_t focalx = 0.0;
+			real_t focaly = 0.0;
+			real_t focalz = 0.0;
+			real_t scalex = 0.0;
+			real_t scaley = 0.0;
+			real_t scalez = 0.0;
+		};
+		std::map<int, AdditionalOffset_t> adjustToOversizeMask;
+		std::map<int, AdditionalOffset_t> adjustToExpandedHelm;
+	};
+	std::map<int, std::map<int, ModelOffset_t>> monsterModelsMap;
+	void readFromFile(std::string monsterName, int monsterType = NOTHING);
+	bool modelOffsetExists(int monster, int sprite);
+	bool expandHelmToFitMask(int monster, int helmSprite, int maskSprite);
+	bool maskHasAdjustmentForExpandedHelm(int monster, int helmSprite, int maskSprite);
+	ModelOffset_t::AdditionalOffset_t getExpandHelmOffset(int monster, int helmSprite, int maskSprite);
+	ModelOffset_t::AdditionalOffset_t getMaskOffsetForExpandHelm(int monster, int helmSprite, int maskSprite);
+	ModelOffset_t& getModelOffset(int monster, int sprite);
+};
+extern EquipmentModelOffsets_t EquipmentModelOffsets;
+
+struct Compendium_t
+{
+	struct CompendiumView_t
+	{
+		real_t ang = 0.0;
+		real_t vang = 0.0;
+		real_t pan = 0.0;
+		real_t zoom = 0.0;
+		real_t height = 0.0;
+		real_t rotate = 0.0;
+		int rotateState = 0;
+		real_t rotateLimitMin = 0.0;
+		real_t rotateLimitMax = 0.0;
+		real_t rotateSpeed = 1.0;
+		bool rotateLimit = true;
+		bool inUse = false;
+	};
+
+	struct PointsAnim_t
+	{
+		static real_t anim;
+		static Uint32 startTicks;
+		static Sint32 pointsCurrent;
+		static Sint32 pointsChange;
+		static Sint32 txtCurrentPoints;
+		static Sint32 txtChangePoints;
+		static real_t animNoFunds;
+		static Uint32 noFundsTick;
+		static bool firstLoad;
+		static bool noFundsAnimate;
+		static bool showChanged;
+		static void reset();
+		static void tickAnimate();
+		static void noFundsEvent();
+		static bool mainMenuAlert;
+		static Uint32 countUnreadLastTicks;
+		static void countUnreadNotifs();
+		static void pointsChangeEvent(Sint32 amount);
+	};
+
+	static void readContentsLang(std::string name, std::map<std::string, std::vector<std::pair<std::string, std::string>>>& contents,
+		std::map<std::string, std::string>& contentsMap);
+	enum CompendiumUnlockStatus : int {
+		LOCKED_UNKNOWN,
+		LOCKED_REVEALED_UNVISITED,
+		LOCKED_REVEALED_VISITED,
+		UNLOCKED_UNVISITED,
+		UNLOCKED_VISITED,
+		COMPENDIUMUNLOCKSTATUS_MAX
+	};
+
+	class AchievementData_t
+	{
+	public:
+		static int compendiumAchievementPoints;
+		enum AchievementDLCType
+		{
+			ACH_TYPE_NORMAL,
+			ACH_TYPE_DLC1,
+			ACH_TYPE_DLC2,
+			ACH_TYPE_DLC1_DLC2
+		};
+		std::string name;
+		std::string desc;
+		std::string desc_formatted;
+		bool hidden = false;
+		AchievementDLCType dlcType = ACH_TYPE_NORMAL;
+		std::string category = "";
+		int lorePoints = 0;
+		int64_t unlockTime = 0;
+		bool unlocked = false;
+		int achievementProgress = -1; // ->second is the associated achievement stat index
+
+		static bool achievementsNeedResort;
+		static bool achievementsNeedFirstData;
+		typedef std::function<bool(std::pair<std::string, std::string>, std::pair<std::string, std::string>)> Comparator;
+		static std::set<std::pair<std::string, std::string>, Comparator> achievementNamesSorted;
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> achievementCategories;
+		static std::unordered_set<std::string> achievementUnlockedLookup;
+		static void onAchievementUnlock(const char* ach);
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> contents;
+		static std::map<std::string, std::string> contentsMap;
+		static std::map<std::string, CompendiumUnlockStatus> unlocks;
+		static int completionPercent;
+		static int numUnread;
+		static void readContentsLang();
+
+		struct CompendiumAchievementsDisplay
+		{
+			std::vector<std::vector<std::string>> pages;
+			int currentPage = 0;
+			int numHidden = 0;
+		};
+		static std::map<std::string, CompendiumAchievementsDisplay> achievementsBookDisplay;
+		static bool sortAlphabetical;
+	};
+	static std::unordered_map<std::string, AchievementData_t> achievements;
+	static std::string compendium_sorting;
+	static bool compendium_sorting_hide_undiscovered;
+	static bool compendium_sorting_hide_ach_unlocked;
+
+	enum EventTags
+	{
+		CPDM_BLOCKED_ATTACKS,
+		CPDM_BROKEN_BY_BLOCKING,
+		CPDM_BROKEN,
+		CPDM_BLESSED_MAX,
+		CPDM_ATTACKS,
+		CPDM_THROWN,
+		CPDM_SHOTS_FIRED,
+		CPDM_AMMO_FIRED,
+		CPDM_CONSUMED,
+		CPDM_TOWEL_USES,
+		CPDM_PICKAXE_WALLS_DUG,
+		CPDM_SINKS_TAPPED,
+		CPDM_ALEMBIC_BREWED,
+		CPDM_TINKERKIT_CRAFTS,
+		CPDM_TORCH_WALLS,
+		CPDM_SHIELD_REFLECT,
+		CPDM_BLESSED_TOTAL,
+		CPDM_DMG_MAX,
+		CPDM_TRADING_GOLD_EARNED,
+		CPDM_FOUNTAINS_TAPPED,
+		CPDM_ALEMBIC_DECANTED,
+		CPDM_TINKERKIT_REPAIRS,
+		CPDM_MIRROR_TELEPORTS,
+		CPDM_BLOCKED_HIGHEST_DMG,
+		CPDM_TRADING_SOLD,
+		CPDM_DMG_0,
+		CPDM_BOTTLE_FROM_BREWING,
+		CPDM_ALEMBIC_DUPLICATED,
+		CPDM_TINKERKIT_METAL_SCRAPPED,
+		CPDM_INSPIRATION_XP,
+		CPDM_CLOAK_BURNED,
+		CPDM_BOTTLES_FROM_CONSUME,
+		CPDM_ALEMBIC_BROKEN,
+		CPDM_TINKERKIT_MAGIC_SCRAPPED,
+		CPDM_TINKERKIT_SALVAGED,
+		CPDM_APPRAISED,
+		CPDM_TOWEL_BLEEDING,
+		CPDM_TOWEL_MESSY,
+		CPDM_TOWEL_GREASY,
+		CPDM_RUNS_COLLECTED,
+		CPDM_ATTACKS_MISSES,
+		CPDM_THROWN_HITS,
+		CPDM_SHOTS_HIT,
+		CPDM_AMMO_HIT,
+		CPDM_MAGICSTAFF_RECHARGED,
+		CPDM_MAGICSTAFF_CASTS,
+		CPDM_FEATHER_ENSCRIBED,
+		CPDM_FEATHER_CHARGE_USED,
+		CPDM_FEATHER_SPELLBOOKS,
+		CPDM_CONSUMED_UNIDENTIFIED,
+		CPDM_SPELL_CASTS,
+		CPDM_SPELL_FAILURES,
+		CPDM_SPELLBOOK_CASTS,
+		CPDM_SPELLBOOK_LEARNT,
+		CPDM_KILLED_SOLO,
+		CPDM_KILLED_PARTY,
+		CPDM_KILLED_BY,
+		CPDM_GHOST_SPAWNED,
+		CPDM_GHOST_TELEPORTS,
+		CPDM_GHOST_PINGS,
+		CPDM_GHOST_PUSHES,
+		CPDM_MINEHEAD_ENTER,
+		CPDM_MINEHEAD_RETURN,
+		CPDM_GATE_OPENED_SPELL,
+		CPDM_GATE_MINOTAUR,
+		CPDM_LEVER_PULLED,
+		CPDM_LEVER_FOLLOWER_PULLED,
+		CPDM_DOOR_BROKEN,
+		CPDM_DOOR_OPENED,
+		CPDM_DOOR_UNLOCKED,
+		CPDM_LEVELS_ENTERED,
+		CPDM_LEVELS_EXITED,
+		CPDM_LEVELS_MAX_LVL,
+		CPDM_LEVELS_MAX_GOLD,
+		CPDM_SINKS_USED,
+		CPDM_SINKS_RINGS,
+		CPDM_SINKS_SLIMES,
+		CPDM_FOUNTAIN_FOOCUBI,
+		CPDM_FOUNTAIN_DRUNK,
+		CPDM_FOUNTAIN_BLESS,
+		CPDM_FOUNTAIN_BLESS_ALL,
+		CPDM_CHESTS_OPENED,
+		CPDM_CHESTS_MIMICS_AWAKENED,
+		CPDM_CHESTS_UNLOCKED,
+		CPDM_CHESTS_DESTROYED,
+		CPDM_BARRIER_DESTROYED,
+		CPDM_GRAVE_GHOULS,
+		CPDM_GRAVE_EPITAPHS_READ,
+		CPDM_GRAVE_EPITAPHS_PERCENT,
+		CPDM_GRAVE_GHOULS_ENSLAVED,
+		CPDM_SHOP_BOUGHT,
+		CPDM_SHOP_SOLD,
+		CPDM_SHOP_GOLD_EARNED,
+		CPDM_TRAP_KILLED_BY,
+		CPDM_TRAP_DAMAGE,
+		CPDM_TRAP_FOLLOWERS_KILLED,
+		CPDM_BOULDERS_PUSHED,
+		CPDM_ARROWS_PILFERED,
+		CPDM_SWIM_TIME,
+		CPDM_SWIM_KILLED_WHILE,
+		CPDM_SWIM_BURN_CURED,
+		CPDM_LAVA_DAMAGE,
+		CPDM_LAVA_ITEMS_BURNT,
+		CPDM_SOKOBAN_SOLVES,
+		CPDM_SOKOBAN_FASTEST_SOLVE,
+		CPDM_TRAP_MAGIC_STATUSED,
+		CPDM_OBELISK_USES,
+		CPDM_OBELISK_FOLLOWER_USES,
+		CPDM_TRIALS_ATTEMPTS,
+		CPDM_TRIALS_PASSED,
+		CPDM_TRIALS_DEATHS,
+		CPDM_LEVELS_BIOME_CLEAR,
+		CPDM_DOOR_CLOSED,
+		CPDM_SINKS_HEALTH_RESTORED,
+		CPDM_FOUNTAIN_USED,
+		CPDM_CHESTS_MIMICS_AWAKENED1ST,
+		CPDM_SHOP_SPENT,
+		CPDM_SOKOBAN_PERFECT_SOLVES,
+		CPDM_PITS_ITEMS_LOST,
+		CPDM_PITS_LEVITATED,
+		CPDM_PITS_DEATHS,
+		CPDM_PITS_ITEMS_VALUE_LOST,
+		CPDM_KILLED_MULTIPLAYER,
+		CPDM_RECRUITED,
+		CPDM_RACE_GAMES_STARTED,
+		CPDM_RACE_RECRUITS,
+		CPDM_RACE_GAMES_WON,
+		CPDM_DISTANCE_TRAVELLED,
+		CPDM_DISTANCE_MAX_RUN,
+		CPDM_XP_KILLS,
+		CPDM_XP_SKILLS,
+		CPDM_XP_MAX_IN_FLOOR,
+		CPDM_XP_MAX_INSTANCE,
+		CPDM_CLASS_LVL_MAX,
+		CPDM_CLASS_LVL_GAINED,
+		CPDM_CLASS_GAMES_STARTED,
+		CPDM_CLASS_GAMES_WON,
+		CPDM_CLASS_GAMES_SOLO,
+		CPDM_CLASS_GAMES_MULTI,
+		CPDM_STAT_MAX,
+		CPDM_CLASS_STAT_STR_MAX,
+		CPDM_STAT_INCREASES,
+		CPDM_STAT_DOUBLED,
+		CPDM_HP_MAX,
+		CPDM_CLASS_HP_MAX,
+		CPDM_MP_MAX,
+		CPDM_CLASS_MP_MAX,
+		CPDM_CLASS_SKILL_UPS,
+		CPDM_CLASS_SKILL_MAX,
+		CPDM_CLASS_SKILL_UPS_RUN_MAX,
+		CPDM_CLASS_STAT_DEX_MAX,
+		CPDM_CLASS_STAT_CON_MAX,
+		CPDM_CLASS_STAT_INT_MAX,
+		CPDM_CLASS_STAT_PER_MAX,
+		CPDM_CLASS_STAT_CHR_MAX,
+		CPDM_RES_MAX,
+		CPDM_CLASS_RES_MAX,
+		CPDM_RES_DMG_RESISTED,
+		CPDM_RES_DMG_RESISTED_RUN,
+		CPDM_AC_MAX,
+		CPDM_CLASS_AC_MAX,
+		CPDM_AC_MAX_FROM_BLESS,
+		CPDM_HP_LOST_RUN,
+		CPDM_MP_SPENT_RUN,
+		CPDM_MP_SPENT_TOTAL,
+		CPDM_CLASS_LVL_WON_MAX,
+		CPDM_CLASS_LVL_WON_MIN,
+		CPDM_CLASS_GAMES_WON_CLASSIC,
+		CPDM_CLASS_GAMES_WON_HELL,
+		CPDM_CLASS_LVL_WON_CLASSIC_MAX,
+		CPDM_CLASS_LVL_WON_HELL_MIN,
+		CPDM_RACE_GAMES_WON_CLASSIC,
+		CPDM_RACE_GAMES_WON_HELL,
+		CPDM_CLASS_LVL_WON_CLASSIC_MIN,
+		CPDM_CLASS_LVL_WON_HELL_MAX,
+		CPDM_DISTANCE_MAX_FLOOR,
+		CPDM_PWR_MAX,
+		CPDM_CLASS_PWR_MAX,
+		CPDM_RGN_HP_SUM,
+		CPDM_RGN_HP_RUN,
+		CPDM_RGN_MP_SUM,
+		CPDM_RGN_MP_RUN,
+		CPDM_RGN_HP_RATE_MAX,
+		CPDM_RGN_MP_RATE_MAX,
+		CPDM_CLASS_WGT_MAX,
+		CPDM_CLASS_WGT_MAX_MOVE_100,
+		CPDM_MELEE_HITS,
+		CPDM_MELEE_DMG_TOTAL,
+		CPDM_CLASS_MELEE_HITS_RUN,
+		CPDM_MELEE_KILLS,
+		CPDM_CRIT_HITS,
+		CPDM_CRITS_DMG_TOTAL,
+		CPDM_CLASS_CRITS_HITS_RUN,
+		CPDM_CRIT_KILLS,
+		CPDM_CLASS_WGT_SLOWEST,
+		CPDM_CLASS_SKILL_LEGENDS,
+		CPDM_SKILL_LEGENDARY_PROCS,
+		CPDM_DEGRADED,
+		CPDM_REPAIRS,
+		CPDM_RANGED_HITS,
+		CPDM_RANGED_DMG_TOTAL,
+		CPDM_CLASS_RANGED_HITS_RUN,
+		CPDM_RANGED_KILLS,
+		CPDM_THROWN_TOTAL_HITS,
+		CPDM_THROWN_DMG_TOTAL,
+		CPDM_CLASS_THROWN_HITS_RUN,
+		CPDM_THROWN_KILLS,
+		CPDM_FLANK_HITS,
+		CPDM_FLANK_DMG,
+		CPDM_CLASS_FLANK_HITS_RUN,
+		CPDM_CLASS_FLANK_DMG_RUN,
+		CPDM_BACKSTAB_HITS,
+		CPDM_CLASS_BACKSTAB_KILLS_RUN,
+		CPDM_CLASS_BACKSTAB_HITS_RUN,
+		CPDM_BACKSTAB_KILLS,
+		CPDM_CLASS_BACKSTAB_DMG_RUN,
+		CPDM_CLASS_BLOCK_DEFENDED,
+		CPDM_CLASS_BLOCK_UNDEFENDED,
+		CPDM_CLASS_BLOCK_DEFENDED_RUN,
+		CPDM_CLASS_BLOCK_UNDEFENDED_RUN,
+		CPDM_CLASS_SPELL_CASTS_RUN,
+		CPDM_CLASS_SPELL_FIZZLES_RUN,
+		CPDM_CLASS_SNEAK_TIME,
+		CPDM_CLASS_SNEAK_SKILLUP_FLOOR,
+		CPDM_WANTED_RUNS,
+		CPDM_WANTED_TIMES_RUN,
+		CPDM_WANTED_INFLUENCE,
+		CPDM_WANTED_CRIMES_RUN,
+		CPDM_CUSTOM_TAG,
+		CPDM_SPELLBOOK_CAST_DEGRADES,
+		CPDM_CLASS_SPELLBOOK_CASTS_RUN,
+		CPDM_CLASS_SPELLBOOK_FIZZLES_RUN,
+		CPDM_CLASS_MOVING_TIME,
+		CPDM_CLASS_IDLING_TIME,
+		CPDM_CLASS_SKILL_UPS_ALL_RUN,
+		CPDM_CLASS_WGT_EQUIPPED_MAX,
+		CPDM_CLASS_PWR_MAX_CASTED,
+		CPDM_PWR_MAX_EQUIP,
+		CPDM_PWR_MAX_SPELLBOOK,
+		CPDM_RES_DMG_TAKEN,
+		CPDM_RES_SPELLS_HIT,
+		CPDM_HP_MOST_DMG_LOST_ONE_HIT,
+		CPDM_HP_LOST_TOTAL,
+		CPDM_AC_EFFECTIVENESS_MAX,
+		CPDM_AC_EQUIPMENT_MAX,
+		CPDM_LEVELS_MIN_COMPLETION,
+		CPDM_LEVELS_MAX_COMPLETION,
+		CPDM_LEVELS_DEATHS,
+		CPDM_LEVELS_DEATHS_FASTEST,
+		CPDM_LEVELS_DEATHS_SLOWEST,
+		CPDM_LEVELS_MIN_LVL,
+		CPDM_BIOMES_MIN_COMPLETION,
+		CPDM_BIOMES_MAX_COMPLETION,
+		CPDM_LEVELS_TIME_SPENT,
+		CPDM_MINEHEAD_ENTER_SOLO,
+		CPDM_MINEHEAD_ENTER_ONLINE_MP,
+		CPDM_MINEHEAD_ENTER_LAN_MP,
+		CPDM_MINEHEAD_TOTAL_PLAYTIME,
+		CPDM_MINEHEAD_ENTER_SPLIT_MP,
+		CPDM_TOTAL_TIME_SPENT,
+		CPDM_TRAP_SUMMONED_MONSTERS,
+		CPDM_LORE_READ,
+		CPDM_LORE_BURNT,
+		CPDM_LORE_PERCENT_READ,
+		CPDM_LORE_PERCENT_READ_2,
+		CPDM_MERCHANT_ORBS,
+		CPDM_SPELL_DMG,
+		CPDM_SPELL_HEAL,
+		CPDM_TIME_WORN,
+		CPDM_LOCKPICK_DOOR_UNLOCK,
+		CPDM_LOCKPICK_DOOR_LOCK,
+		CPDM_LOCKPICK_ARROWTRAPS,
+		CPDM_LOCKPICK_TINKERTRAPS,
+		CPDM_LOCKPICK_CHESTS_UNLOCK,
+		CPDM_LOCKPICK_MIMICS_LOCKED,
+		CPDM_LOCKPICK_CHESTS_LOCK,
+		CPDM_ALEMBIC_DUPLICATION_FAIL,
+		CPDM_ALEMBIC_EXPLOSIONS,
+		CPDM_BEARTRAP_DEPLOYED,
+		CPDM_BEARTRAP_TRAPPED,
+		CPDM_BEARTRAP_DMG,
+		CPDM_GADGET_CRAFTED,
+		CPDM_GADGET_DEPLOYED,
+		CPDM_NOISEMAKER_LURED,
+		CPDM_NOISEMAKER_MOST_LURED,
+		CPDM_DUMMY_HITS_TAKEN,
+		CPDM_DUMMY_DMG_TAKEN,
+		CPDM_SENTRY_DEPLOY_KILLS,
+		CPDM_SENTRY_DEPLOY_DMG,
+		CPDM_GYROBOT_BOULDERS,
+		CPDM_GYROBOT_TIME_SPENT,
+		CPDM_BOMB_DMG,
+		CPDM_BOMB_DETONATED,
+		CPDM_BOMB_DETONATED_ALLY,
+		CPDM_DETONATOR_SCRAPPED,
+		CPDM_DETONATOR_SCRAPPED_METAL,
+		CPDM_DETONATOR_SCRAPPED_MAGIC,
+		CPDM_DEATHBOX_OPEN_OWN,
+		CPDM_DEATHBOX_OPEN_OTHERS,
+		CPDM_DEATHBOX_TO_EXIT,
+		CPDM_DEATHBOX_MOST_CARRIED,
+		CPDM_PICKAXE_BOULDERS_DUG,
+		CPDM_TIN_GREASY,
+		CPDM_TIN_REGEN_HP,
+		CPDM_TIN_REGEN_MP,
+		CPDM_SPELL_TARGETS,
+		CPDM_GYROBOT_FLIPS,
+		CPDM_KILL_XP,
+		CPDM_CONTAINER_BROKEN,
+		CPDM_CONTAINER_ITEMS,
+		CPDM_CONTAINER_GOLD,
+		CPDM_CONTAINER_MONSTERS,
+		CPDM_DAED_USES,
+		CPDM_DAED_EXIT_REVEALS,
+		CPDM_DAED_SPEED_BUFFS,
+		CPDM_DAED_KILLED_MINO,
+		CPDM_BELL_RUNG_TIMES,
+		CPDM_BELL_LOOT_ITEMS,
+		CPDM_BELL_BROKEN,
+		CPDM_BELL_BUFFS_AGILITY,
+		CPDM_BELL_BUFFS_STAMINA,
+		CPDM_BELL_BUFFS_STRENGTH,
+		CPDM_BELL_BUFFS_MENTALITY,
+		CPDM_BELL_BUFFS_HEALS,
+		CPDM_BELL_LOOT_GOLD,
+		CPDM_BELL_LOOT_BATS,
+		CPDM_BELL_CLAPPER_BROKEN,
+		CPDM_CLASS_SKILL_NOVICES,
+		CPDM_FOLLOWER_KILLS,
+		CPDM_COMBAT_MASONRY_BOULDERS,
+		CPDM_MERLINS,
+		CPDM_RITUALS_COMPLETED,
+		CPDM_HUMANS_SAVED,
+		CPDM_SPELLS_LEARNED,
+		CPDM_ALLIES_FED,
+		CPDM_COMBAT_MASONRY_GEMS,
+		CPDM_COMBAT_MASONRY_ROCKS,
+		CPDM_GOLD_LEFT_BEHIND,
+		MONSTERS_LEFT_BEHIND,
+		ITEMS_LEFT_BEHIND,
+		ITEM_VALUE_LEFT_BEHIND,
+		CPDM_EVENT_TAGS_MAX
+	};
+
+	struct CompendiumMonsters_t
+	{
+		enum MonsterSpecies
+		{
+			SPECIES_NONE,
+			SPECIES_HUMANOID,
+			SPECIES_BEAST,
+			SPECIES_BEASTFOLK,
+			SPECIES_UNDEAD,
+			SPECIES_DEMONOID,
+			SPECIES_CONSTRUCT,
+			SPECIES_ELEMENTAL
+		};
+		struct Monster_t
+		{
+			int monsterType = NOTHING;
+			std::string unique_npc = "";
+			std::vector<std::string> blurb;
+			std::vector<Sint32> hp;
+			std::vector<Sint32> spd;
+			std::vector<Sint32> ac;
+			std::vector<Sint32> atk;
+			std::vector<Sint32> rangeatk;
+			std::vector<Sint32> pwr;
+			std::vector<Sint32> str;
+			std::vector<Sint32> con;
+			std::vector<Sint32> dex;
+			MonsterSpecies species;
+			std::vector<Sint32> lvl;
+			std::array<int, 7> resistances;
+			std::vector<std::string> abilities;
+			std::vector<std::string> inventory;
+			std::string imagePath = "";
+			std::vector<std::string> models;
+			std::set<std::string> unlockAchievements;
+			int lorePoints = 0;
+			std::vector<Sint32> getDisplayStat(const char* name);
+		};
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> contents;
+		static std::map<std::string, std::string> contentsMap;
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> contents_unfiltered;
+		static void readContentsLang();
+		static std::map<std::string, CompendiumUnlockStatus> unlocks;
+		static int completionPercent;
+		static int numUnread;
+	};
+	std::map<std::string, CompendiumMonsters_t::Monster_t> monsters;
+	void readMonstersFromFile(bool forceLoadBaseDirectory = false);
+	void readMonstersTranslationsFromFile(bool forceLoadBaseDirectory = false);
+	void exportCurrentMonster(Entity* monster);
+	void readModelLimbsFromFile(std::string section);
+	CompendiumView_t defaultCamera;
+	struct ObjectLimbs_t
+	{
+		CompendiumView_t baseCamera;
+		CompendiumView_t currentCamera;
+		std::vector<Entity> entities;
+	};
+	std::map<std::string, ObjectLimbs_t> compendiumObjectLimbs;
+	CompendiumView_t currentView;
+	struct CompendiumMap_t
+	{
+		Uint32 width = 0;
+		Uint32 height = 0;
+		Uint32 ceiling = -1;
+	};
+	std::map<std::string, std::pair<CompendiumMap_t, std::vector<int>>> compendiumObjectMapTiles;
+	map_t compendiumMap;
+	struct CompendiumWorld_t
+	{
+		struct World_t
+		{
+			int modelIndex = -1;
+			std::string imagePath = "";
+			std::vector<std::string> models;
+			std::vector<std::string> blurb;
+			std::vector<Uint32> linesToHighlight;
+			std::vector<std::string> details;
+			std::set<std::string> unlockAchievements;
+			std::set<EventTags> unlockTags;
+			std::string featureImg = "";
+			int id = -1;
+			int lorePoints = 0;
+		};
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> contents;
+		static std::map<std::string, std::string> contentsMap;
+		static void readContentsLang();
+		static std::map<std::string, CompendiumUnlockStatus> unlocks;
+		static int completionPercent;
+		static int numUnread;
+	};
+	std::map<std::string, CompendiumWorld_t::World_t> worldObjects;
+	void readWorldFromFile(bool forceLoadBaseDirectory = false);
+	void readWorldTranslationsFromFile(bool forceLoadBaseDirectory = false);
+
+	struct CompendiumCodex_t
+	{
+		struct Codex_t
+		{
+			int modelIndex = -1;
+			std::string imagePath = "";
+			std::vector<std::string> renderedImagePaths;
+			std::vector<std::string> blurb;
+			std::vector<Uint32> linesToHighlight;
+			std::vector<std::string> details;
+			std::vector<std::string> models;
+			std::string featureImg = "";
+			int id = -1;
+			CompendiumView_t view;
+			int lorePoints = 0;
+			bool enableTutorial = false;
+		};
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> contents;
+		static std::map<std::string, std::string> contentsMap;
+		static void readContentsLang();
+		static std::map<std::string, CompendiumUnlockStatus> unlocks;
+		static int completionPercent;
+		static int numUnread;
+	};
+	std::map<std::string, CompendiumCodex_t::Codex_t> codex;
+	void readCodexFromFile(bool forceLoadBaseDirectory = false);
+	void readCodexTranslationsFromFile(bool forceLoadBaseDirectory = false);
+	static const char* compendiumCurrentLevelToWorldString(const int currentlevel, const bool secretlevel);
+
+	struct CompendiumItems_t
+	{
+		struct Codex_t
+		{
+			struct CodexItem_t
+			{
+				std::string name = "";
+				int rotation = 0;
+				int spellID = -1;
+				int effectID = -1;
+				int itemID = -1;
+			};
+			int modelIndex = -1;
+			std::string imagePath = "";
+			std::vector<std::string> blurb;
+			std::vector<CodexItem_t> items_in_category;
+			int lorePoints = 0;
+		};
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> contents;
+		static std::map<std::string, std::string> contentsMap;
+		static void readContentsLang();
+		static std::map<std::string, CompendiumUnlockStatus> unlocks;
+		static std::map<int, CompendiumUnlockStatus> itemUnlocks;
+		static int completionPercent;
+		static int numUnread;
+	};
+	std::map<std::string, CompendiumItems_t::Codex_t> items;
+	void readItemsFromFile(bool forceLoadBaseDirectory = false);
+	void readItemsTranslationsFromFile(bool forceLoadBaseDirectory = false);
+
+	struct CompendiumMagic_t
+	{
+		static std::map<std::string, std::vector<std::pair<std::string, std::string>>> contents;
+		static std::map<std::string, std::string> contentsMap;
+		static void readContentsLang();
+		static int completionPercent;
+		static int numUnread;
+	};
+	std::map<std::string, CompendiumItems_t::Codex_t> magic;
+	void readMagicFromFile(bool forceLoadBaseDirectory = false);
+	void readMagicTranslationsFromFile(bool forceLoadBaseDirectory = false);
+	static Item compendiumItem;
+	static bool tooltipNeedUpdate;
+	static void updateTooltip();
+	static SDL_Rect tooltipPos;
+	static Entity compendiumItemModel;
+	static Uint32 lastTickUpdate;
+	static int lorePointsFromAchievements;
+	static int lorePointsAchievementsTotal;
+	static int lorePointsSpent;
+	static bool lorePointsFirstLoad;
+	static void updateLorePointCounts();
+	static void writeUnlocksSaveData();
+	static void readUnlocksSaveData();
+
+	static const char* getSkillStringForCompendium(const int skill)
+	{
+		switch ( skill )
+		{
+		case PRO_LOCKPICKING: return "tinkering skill";
+		case PRO_STEALTH: return "stealth skill";
+		case PRO_TRADING: return "trading skill";
+		case PRO_APPRAISAL: return "appraisal skill";
+		case PRO_SWIMMING: return "swimming skill";
+		case PRO_LEADERSHIP: return "leadership skill";
+		case PRO_SPELLCASTING: return "casting skill";
+		case PRO_MAGIC: return "magic skill";
+		case PRO_RANGED: return "ranged skill";
+		case PRO_SWORD: return "sword skill";
+		case PRO_MACE: return "mace skill";
+		case PRO_AXE: return "axe skill";
+		case PRO_POLEARM: return "polearm skill";
+		case PRO_SHIELD: return "blocking skill";
+		case PRO_UNARMED: return "unarmed skill";
+		case PRO_ALCHEMY: return "alchemy skill";
+		default:
+			break;
+		}
+		return "";
+	}
+
+	struct CompendiumEntityCurrent
+	{
+		std::string contentsName = "";
+		std::string modelName = "";
+		int modelIndex = -1;
+		Uint32 modelRNG = 0;
+		void set(std::string _contentsName, std::string _modelName, int _modelIndex = -1)
+		{
+			contentsName = _contentsName;
+			modelName = _modelName;
+			modelIndex = _modelIndex;
+			++modelRNG;
+		}
+	};
+	static CompendiumEntityCurrent compendiumEntityCurrent;
+
+	struct Events_t
+	{
+		enum Type
+		{
+			SUM,
+			MAX,
+			AVERAGE_RANGE,
+			BITFIELD,
+			MIN
+		};
+		enum ClientUpdateType
+		{
+			SERVER_ONLY,
+			CLIENT_ONLY,
+			CLIENT_AND_SERVER,
+			CLIENT_UPDATETYPE_MAX
+		};
+		enum EventTrackingType
+		{
+			ALWAYS_UPDATE,
+			ONCE_PER_RUN,
+			UNIQUE_PER_RUN,
+			UNIQUE_PER_FLOOR
+		};
+		struct Event_t
+		{
+			Type type = SUM;
+			EventTrackingType eventTrackingType = ALWAYS_UPDATE;
+			ClientUpdateType clienttype = CLIENT_ONLY;
+			std::string name = "";
+			int id = CPDM_EVENT_TAGS_MAX;
+			std::set<std::string> attributes;
+		};
+		struct EventVal_t
+		{
+			Type type = SUM;
+			int id = CPDM_EVENT_TAGS_MAX;
+			Sint32 value = 0;
+			bool firstValue = true;
+			bool applyValue(const Sint32 val);
+			EventVal_t() = default;
+			EventVal_t(EventTags tag)
+			{
+				auto& def = events[tag];
+				type = def.type;
+				id = def.id;
+				value = 0;
+				firstValue = true;
+			}
+		};
+		static std::map<EventTags, Event_t> events;
+		static std::map<std::string, EventTags> eventIdLookup;
+		static std::map<int, std::set<EventTags>> itemEventLookup;
+		static std::map<std::string, int> monsterUniqueIDLookup;
+		static std::map<int, std::string> itemIDToString;
+		static std::map<int, std::string> monsterIDToString;
+		static std::map<int, std::string> codexIDToString;
+		static std::map<int, std::string> worldIDToString;
+		static std::map<int, std::vector<EventTags>> itemDisplayedEventsList;
+		static std::map<int, std::vector<std::string>> itemDisplayedCustomEventsList;
+		static std::map<std::string, std::string> customEventsValues;
+		static std::map<EventTags, std::set<int>> eventItemLookup;
+		static std::map<EventTags, std::set<int>> eventMonsterLookup;
+		static std::map<EventTags, std::set<std::string>> eventWorldLookup;
+		static std::map<EventTags, std::set<std::string>> eventCodexLookup;
+		static std::map<std::string, int> eventWorldIDLookup;
+		static std::map<std::string, int> eventCodexIDLookup;
+		static std::map<EventTags, std::map<int, int>> eventClassIds;
+		static const int kEventClassesMax = 40;
+		static std::map<EventTags, std::map<std::string, std::string>> eventLangEntries;
+		static std::map<std::string, std::map<std::string, std::string>> eventCustomLangEntries;
+		static std::vector<std::pair<std::string, Sint32>> getCustomEventValue(std::string key, std::string compendiumSection, std::string compendiumContentsSelected, int specificClass = -1);
+		static std::string formatEventRecordText(Sint32 value, const char* formatType, int formatVal, std::map<std::string, std::string>& langMap);
+		static void readEventsFromFile();
+		static void writeItemsSaveData();
+		static void loadItemsSaveData();
+		static void readEventsTranslations();
+		static void createDummyClientData(const int playernum);
+		static void eventUpdate(int playernum, const EventTags tag, const ItemType type, Sint32 value, const bool loadingValue = false, const int spellID = -1);
+		static void eventUpdateMonster(int playernum, const EventTags tag, const Entity* entity, Sint32 value, const bool loadingValue = false, const int entryID = -1);
+		static void eventUpdateWorld(int playernum, const EventTags tag, const char* category, Sint32 value, const bool loadingValue = false, const int entryID = -1, const bool commitUniqueValue = true);
+		static void eventUpdateCodex(int playernum, const EventTags tag, const char* category, Sint32 value, const bool loadingValue = false, const int entryID = -1, const bool floorEvent = false);
+		static std::map<EventTags, std::map<int, EventVal_t>> playerEvents;
+		static std::map<EventTags, std::map<int, EventVal_t>> serverPlayerEvents[MAXPLAYERS];
+		static void onLevelChangeEvent(const int playernum, const int prevlevel, const bool prevsecretfloor, const std::string prevmapname, const bool died);
+		static void onEndgameEvent(const int playernum, const bool tutorialend, const bool saveHighscore, const bool died);
+		static void sendClientDataOverNet(const int playernum);
+		static void updateEventsInMainLoop(const int playernum);
+		static std::map<int, std::string> clientDataStrings[MAXPLAYERS];
+		static std::map<int, std::map<int, std::string>> clientReceiveData;
+		static Uint8 clientSequence;
+		static const int kEventSpellOffset = 10000;
+		static const int kEventMonsterOffset = 1000;
+		static const int kEventWorldOffset = 2000;
+		static const int kEventCodexOffset = 3000;
+		static const int kEventCodexClassOffset = 3500;
+		static const int kEventCodexOffsetMax = 9999;
+		static int previousCurrentLevel;
+		static bool previousSecretlevel;
+	};
+};
+
+extern Compendium_t CompendiumEntries;

@@ -28,7 +28,7 @@ char* stringCopy(char* dest, const char* src, size_t dest_size, size_t src_size)
     // verify input
     assert(dest);
     assert(src);
-    if (!dest || !src || !dest_size || !src_size) {
+    if (!dest || !src || !dest_size) {
 	    return dest;
     }
 
@@ -96,7 +96,7 @@ int stringCmp(const char* str1, const char* str2, size_t str1_size, size_t str2_
     // verify input
     assert(str1);
     assert(str2);
-    if (!str1 || !str2 || !str1_size || !str2_size) {
+    if (!str1 || !str2) {
 	    return 0;
     }
 
@@ -151,7 +151,7 @@ const char* stringStr(const char* str1, const char* str2, size_t str1_size, size
     // verify input
     assert(str1);
     assert(str2);
-    if (!str1 || !str2 || !str1_size || !str2_size) {
+    if (!str1 || !str2) {
 	    return nullptr;
     }
 
@@ -171,7 +171,7 @@ char* stringStr(char* str1, const char* str2, size_t str1_size, size_t str2_size
     // verify input
     assert(str1);
     assert(str2);
-    if (!str1 || !str2 || !str1_size || !str2_size) {
+    if (!str1 || !str2) {
 	    return nullptr;
     }
 
@@ -198,28 +198,27 @@ static ConsoleVariable<bool> cvar_enableDebugKeys("/enabledebugkeys", false, "if
 
 // main definitions
 Sint32 display_id = 0;
+#if defined(APPLE) && !defined(EDITOR)
+// retina displays have higher DPI so we need a higher display resolution
+Sint32 xres = 2560;
+Sint32 yres = 1440;
+#else
 Sint32 xres = 1280;
 Sint32 yres = 720;
+#endif
 int mainloop = 1;
 bool initialized = false;
 Uint32 ticks = 0;
 bool stop = false;
-char datadir[PATH_MAX];
-char outputdir[PATH_MAX];
 SDL_bool EnableMouseCapture = SDL_TRUE; // disable if mouse capture causes problem debugging in Linux
 bool& enableDebugKeys = cvar_enableDebugKeys.data;
 
-// language stuff
-char languageCode[32] = { 0 };
-char** language = nullptr;
 
 // input stuff
-int reversemouse = 0;
-real_t mousespeed = 32;
 Uint32 impulses[NUMIMPULSES];
 Uint32 joyimpulses[NUM_JOY_IMPULSES];
 Uint32 lastkeypressed = 0;
-Sint8 keystatus[512];
+std::unordered_map<SDL_Keycode, bool> keystatus;
 char* inputstr = nullptr;
 int inputlen = 0;
 bool fingerdown = false;
@@ -230,13 +229,8 @@ int ofingery = 0;
 Sint8 mousestatus[6];
 bool capture_mouse = true;
 string lastname;
-int lastCreatedCharacterClass = -1;
-int lastCreatedCharacterAppearance = -1;
-int lastCreatedCharacterSex = -1;
-int lastCreatedCharacterRace = -1;
 
 // net stuff
-Uint32 clientplayer = 0;
 int numplayers = 0;
 int clientnum = 0;
 int multiplayer = 0;
@@ -295,77 +289,16 @@ SteamStat_t g_SteamStats[NUM_STEAM_STATISTICS] =
 	{ 46, STEAM_STAT_INT, "STAT_EXTRA_CREDIT_LVLS" },
 	{ 47, STEAM_STAT_INT, "STAT_DIPLOMA" },
 	{ 48, STEAM_STAT_INT, "STAT_DIPLOMA_LVLS" },
-	{ 49, STEAM_STAT_INT, "STAT_TUTORIAL_ENTERED" }
-};
-
-SteamStat_t g_SteamGlobalStats[NUM_GLOBAL_STEAM_STATISTICS] =
-{
-	{ 1, STEAM_STAT_INT,  "STAT_GLOBAL_GAMES_STARTED" },
-	{ 2, STEAM_STAT_INT,  "STAT_GLOBAL_GAMES_WON" },
-	{ 3, STEAM_STAT_INT,  "STAT_GLOBAL_BOULDER_DEATHS" },
-	{ 4, STEAM_STAT_INT,  "STAT_GLOBAL_HERX_SLAIN" },
-	{ 5, STEAM_STAT_INT,  "STAT_GLOBAL_BAPHOMET_SLAIN" },
-	{ 6, STEAM_STAT_INT,  "STAT_GLOBAL_TWINSICE_SLAIN" },
-	{ 7, STEAM_STAT_INT,  "STAT_GLOBAL_DEATHS_HUMAN" },
-	{ 8, STEAM_STAT_INT,  "STAT_GLOBAL_DEATHS_RAT" },
-	{ 9, STEAM_STAT_INT,  "STAT_GLOBAL_DEATHS_GOBLIN" },
-	{ 10, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SLIME" },
-	{ 11, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_TROLL" },
-	{ 12, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SPIDER" },
-	{ 13, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_GHOUL" },
-	{ 14, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SKELETON" },
-	{ 15, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SCORPION" },
-	{ 16, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_IMP" },
-	{ 17, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_GNOME" },
-	{ 18, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_DEMON" },
-	{ 19, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SUCCUBUS" },
-	{ 20, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_LICH" },
-	{ 21, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_MINOTAUR" },
-	{ 22, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_DEVIL" },
-	{ 23, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SHOPKEEPER" },
-	{ 24, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_KOBOLD" },
-	{ 25, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SCARAB" },
-	{ 26, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_CRYSTALGOLEM" },
-	{ 27, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_INCUBUS" },
-	{ 28, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_VAMPIRE" },
-	{ 29, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SHADOW" },
-	{ 30, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_COCKATRICE" },
-	{ 31, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_INSECTOID" },
-	{ 32, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_GOATMAN" },
-	{ 33, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_AUTOMATON" },
-	{ 34, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_LICHICE" },
-	{ 35, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_LICHFIRE" },
-	{ 36, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SENTRYBOT" },
-	{ 37, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_SPELLBOT" },
-	{ 38, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_GYROBOT" },
-	{ 39, STEAM_STAT_INT, "STAT_GLOBAL_DEATHS_DUMMYBOT" },
-	{ 40, STEAM_STAT_INT, "STAT_GLOBAL_TWINSFIRE_SLAIN" },
-	{ 41, STEAM_STAT_INT, "STAT_GLOBAL_SHOPKEEPERS_SLAIN" },
-	{ 42, STEAM_STAT_INT, "STAT_GLOBAL_MINOTAURS_SLAIN" },
-	{ 43, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL_ENTERED" },
-	{ 44, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL1_COMPLETED" },
-	{ 45, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL2_COMPLETED" },
-	{ 46, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL3_COMPLETED" },
-	{ 47, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL4_COMPLETED" },
-	{ 48, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL5_COMPLETED" },
-	{ 49, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL6_COMPLETED" },
-	{ 50, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL7_COMPLETED" },
-	{ 51, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL8_COMPLETED" },
-	{ 52, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL9_COMPLETED" },
-	{ 53, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL10_COMPLETED" },
-	{ 54, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL1_ATTEMPTS" },
-	{ 55, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL2_ATTEMPTS" },
-	{ 56, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL3_ATTEMPTS" },
-	{ 57, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL4_ATTEMPTS" },
-	{ 58, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL5_ATTEMPTS" },
-	{ 59, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL6_ATTEMPTS" },
-	{ 60, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL7_ATTEMPTS" },
-	{ 61, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL8_ATTEMPTS" },
-	{ 62, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL9_ATTEMPTS" },
-	{ 63, STEAM_STAT_INT, "STAT_GLOBAL_TUTORIAL10_ATTEMPTS" },
-	{ 64, STEAM_STAT_INT, "STAT_GLOBAL_DISABLE" },
-	{ 65, STEAM_STAT_INT, "STAT_GLOBAL_PROMO" },
-	{ 66, STEAM_STAT_INT, "STAT_GLOBAL_PROMO_INTERACT" }
+	{ 49, STEAM_STAT_INT, "STAT_TUTORIAL_ENTERED" },
+	{ 50, STEAM_STAT_INT, "STAT_I_NEEDED_THAT" },
+	{ 51, STEAM_STAT_INT, "STAT_DAPPER_1"},
+	{ 52, STEAM_STAT_INT, "STAT_DAPPER_2"},
+	{ 53, STEAM_STAT_INT, "STAT_DAPPER_3"},
+	{ 54, STEAM_STAT_INT, "STAT_DAPPER"},
+	{ 55, STEAM_STAT_INT, "STAT_DUNGEONSEED" },
+	{ 56, STEAM_STAT_INT, "STAT_PITCH_PERFECT" },
+	{ 57, STEAM_STAT_INT, "STAT_RUNG_OUT" },
+	{ 58, STEAM_STAT_INT, "STAT_SMASH_MELEE" }
 };
 
 #ifdef STEAMWORKS
@@ -402,7 +335,7 @@ bool inrange[MAXPLAYERS];
 Sint32 client_classes[MAXPLAYERS];
 Uint32 client_keepalive[MAXPLAYERS];
 Uint16 portnumber;
-bool client_disconnected[MAXPLAYERS];
+bool client_disconnected[MAXPLAYERS] = { false };
 list_t entitiesdeleted;
 
 // fps
@@ -509,24 +442,14 @@ TTF_Font* ttf16 = nullptr;
 SDL_Surface* font8x8_bmp = nullptr;
 SDL_Surface* font12x12_bmp = nullptr;
 SDL_Surface* font16x16_bmp = nullptr;
-SDL_Surface* fancyWindow_bmp = nullptr;
-SDL_Surface* backdrop_loading_bmp = nullptr;
 SDL_Surface** sprites = nullptr;
 SDL_Surface** tiles = nullptr;
-std::unordered_map<std::string, SDL_Surface*> achievementImages;
-std::unordered_map<std::string, std::string> achievementNames;
-std::unordered_map<std::string, std::string> achievementDesc;
-std::unordered_set<std::string> achievementHidden;
-std::set<std::pair<std::string, std::string>, Comparator> achievementNamesSorted;
-std::unordered_map<std::string, int> achievementProgress; // ->second is the associated achievement stat index
-std::unordered_map<std::string, int64_t> achievementUnlockTime;
 
-std::unordered_set<std::string> achievementUnlockedLookup;
 Uint32 imgref = 1, vboref = 1;
 const Uint32 ttfTextCacheLimit = 9000;
 GLuint* texid = nullptr;
 bool disablevbos = false;
-Uint32 fov = 65;
+Uint32 fov = 60;
 Uint32 fpsLimit = 60;
 //GLuint *vboid=nullptr, *vaoid=nullptr;
 SDL_Surface** allsurfaces;
@@ -536,8 +459,8 @@ bool *lavatiles = nullptr;
 bool *swimmingtiles = nullptr;
 int rscale = 1;
 real_t vidgamma = 1.0f;
-Sint32* lightmap = nullptr;
-Sint32* lightmapSmoothed = nullptr;
+std::vector<vec4_t> lightmaps[MAXPLAYERS + 1];
+std::vector<vec4_t> lightmapsSmoothed[MAXPLAYERS + 1];
 bool mode3d = false;
 bool verticalSync = false;
 bool showStatusEffectIcons = true;
@@ -548,6 +471,7 @@ int minimapTransparencyForeground = 0;
 int minimapTransparencyBackground = 0;
 int minimapScale = 4;
 int minimapObjectZoom = 0;
+std::unordered_map<int, AnimatedTile> tileAnimations;
 
 // audio definitions
 int audio_rate = 22050;
@@ -557,7 +481,9 @@ int audio_buffers = 512;
 real_t sfxvolume = 1.0;
 real_t sfxAmbientVolume = 1.0;
 real_t sfxEnvironmentVolume = 1.0;
+real_t sfxNotificationVolume = 1.0;
 real_t musvolume = 1.0;
+bool musicPreload = false;
 
 // fun stuff
 SDL_Surface* title_bmp = nullptr;
@@ -576,6 +502,7 @@ char maptoload[256], configtoload[256];
 bool loadingmap = false, genmap = false, loadingconfig = false;
 bool deleteallbuttons = false;
 Uint32 cursorflash = 0;
+bool splitscreen = false;
 
 bool no_sound = false;
 
@@ -676,27 +603,23 @@ void printlog(const char* str, ...)
 	va_end( argptr );
 
 	// timestamp the message
-	time_t timer;
 	char buffer[32];
-	struct tm* tm_info;
-	time(&timer);
-	tm_info = localtime(&timer);
-	strftime( buffer, 32, "%H-%M-%S", tm_info );
+    getTimeFormatted(getTime(), buffer, sizeof(buffer));
 
 	// print to the log
 	if ( newstr[strlen(newstr) - 1] != '\n' )
 	{
-		int c = strlen(newstr);
+		int c = (int)strlen(newstr);
 		newstr[c] = '\n';
 		newstr[c + 1] = 0;
 	}
 #ifndef NINTENDO
-	fprintf( stderr, "%s", newstr );
-	//fprintf( stderr, "[%s] %s", buffer, newstr );
+	//fprintf( stderr, "%s", newstr );
+	fprintf( stderr, "[%s] %s", buffer, newstr );
 	fflush( stderr );
 #endif
-	fprintf( stdout, "%s", newstr );
-	//fprintf( stdout, "[%s] %s", buffer, newstr );
+	//fprintf( stdout, "%s", newstr );
+	fprintf( stdout, "[%s] %s", buffer, newstr );
 	fflush( stdout );
 }
 
@@ -805,3 +728,49 @@ static ConsoleCommand purgeStackTraces("/purge_stack_traces", "purge stack trace
     finishStackTraceUnique();
     });
 #endif
+
+#ifdef NINTENDO
+time_t getTime() {
+    return nxGetTime();
+}
+
+char* getTimeFormatted(time_t t, char* buf, size_t size) {
+    return nxGetTimeFormatted(t, buf, size);
+}
+
+char* getTimeAndDateFormatted(time_t t, char* buf, size_t size) {
+    return nxGetTimeAndDateFormatted(t, buf, size);
+}
+#else // NINTENDO
+time_t getTime() {
+    return time(nullptr);
+}
+
+char* getTimeFormatted(time_t t, char* buf, size_t size) {
+    struct tm* tm = localtime(&t);
+    strftime(buf, size, "%H-%M-%S", tm);
+    return buf;
+}
+
+char* getTimeAndDateFormatted(time_t t, char* buf, size_t size) {
+    struct tm* tm = localtime(&t);
+    strftime(buf, size, "%Y-%m-%d %H-%M-%S", tm);
+    return buf;
+}
+#endif
+
+void getTimeAndDate(time_t t, int* year, int* month, int* day, int* hour, int* min, int* second) {
+    char buf[32];
+    getTimeAndDateFormatted(t, buf, sizeof(buf));
+    
+    int _year, _month, _day, _hour, _min, _second;
+    const int result = sscanf(buf, "%d-%d-%d %d-%d-%d", &_year, &_month, &_day, &_hour, &_min, &_second);
+    assert(result == 6);
+    
+    if (year) { *year = _year; }
+    if (month) { *month = _month; }
+    if (day) { *day = _day; }
+    if (hour) { *hour = _hour; }
+    if (min) { *min = _min; }
+    if (second) { *second = _second; }
+}

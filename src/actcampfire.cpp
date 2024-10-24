@@ -35,7 +35,6 @@
 
 void actCampfire(Entity* my)
 {
-	Entity* entity;
 	int i;
 
 	// init
@@ -49,39 +48,63 @@ void actCampfire(Entity* my)
 	// crackling sounds
 	if ( CAMPFIRE_HEALTH > 0 )
 	{
+#ifdef USE_FMOD
+		if ( CAMPFIRE_SOUNDTIME == 0 )
+		{
+			CAMPFIRE_SOUNDTIME--;
+			my->stopEntitySound();
+			my->entity_sound = playSoundEntityLocal(my, 133, 32);
+		}
+		if ( my->entity_sound )
+		{
+			bool playing = false;
+			my->entity_sound->isPlaying(&playing);
+			if ( !playing )
+			{
+				my->entity_sound = nullptr;
+			}
+		}
+#else
 		CAMPFIRE_SOUNDTIME--;
 		if ( CAMPFIRE_SOUNDTIME <= 0 )
 		{
 			CAMPFIRE_SOUNDTIME = 480;
 			playSoundEntityLocal( my, 133, 128 );
 		}
+#endif
 
 		// spew flame particles
 		if ( flickerLights )
 		{
 		    for ( i = 0; i < 3; i++ )
 		    {
-			    entity = spawnFlame(my, SPRITE_FLAME);
-			    entity->x += ((local_rng.rand() % 30) - 10) / 10.f;
-			    entity->y += ((local_rng.rand() % 30) - 10) / 10.f;
-			    entity->z -= 1;
+				if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
+				{
+					entity->x += ((local_rng.rand() % 30) - 10) / 10.f;
+					entity->y += ((local_rng.rand() % 30) - 10) / 10.f;
+					entity->z -= 1;
+				}
 		    }
-		    entity = spawnFlame(my, SPRITE_FLAME);
-		    entity->z -= 2;
+			if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
+			{
+				entity->z -= 2;
+			}
 		}
 		else
 		{
 		    if ( ticks % TICKS_PER_SECOND == 0 )
 		    {
-		        entity = spawnFlame(my, SPRITE_FLAME);
-		        entity->z -= 2;
+				if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
+				{
+					entity->z -= 2;
+				}
 		    }
 		}
 
 		// light environment
 		if ( !CAMPFIRE_LIGHTING )
 		{
-			my->light = lightSphereShadow(my->x / 16, my->y / 16, 6, 160);
+			my->light = addLight(my->x / 16, my->y / 16, "campfire");
 			CAMPFIRE_LIGHTING = 1;
 		}
 		if ( flickerLights )
@@ -96,12 +119,12 @@ void actCampfire(Entity* my)
 			if (CAMPFIRE_LIGHTING == 1)
 			{
 				my->removeLightField();
-				my->light = lightSphereShadow(my->x / 16, my->y / 16, 6, 160);
+				my->light = addLight(my->x / 16, my->y / 16, "campfire");
 			}
 			else
 			{
 				my->removeLightField();
-				my->light = lightSphereShadow(my->x / 16, my->y / 16, 6, 152);
+				my->light = addLight(my->x / 16, my->y / 16, "campfire_flicker");
 			}
 			CAMPFIRE_FLICKER = 2 + local_rng.rand() % 7;
 		}
@@ -110,7 +133,8 @@ void actCampfire(Entity* my)
 	{
 		my->removeLightField();
 		my->light = NULL;
-		my->flags[BRIGHT] = false;
+
+		my->stopEntitySound();
 	}
 
 	if ( multiplayer != CLIENT )
@@ -124,12 +148,12 @@ void actCampfire(Entity* my)
 				{
 					if ( CAMPFIRE_HEALTH > 0 )
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[457]);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(457));
 						CAMPFIRE_HEALTH--;
 						if ( CAMPFIRE_HEALTH <= 0 )
 						{
 							serverUpdateEntitySkill(my, 3); // extinguish for all clients
-							messagePlayer(i, MESSAGE_INTERACTION, language[458]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(458));
 							my->removeLightField();
 							my->light = NULL;
 						}
@@ -139,7 +163,7 @@ void actCampfire(Entity* my)
 					}
 					else
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[458]);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(458));
 					}
 				}
 			}

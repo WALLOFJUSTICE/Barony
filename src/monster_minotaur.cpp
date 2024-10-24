@@ -22,6 +22,7 @@
 #include "player.hpp"
 #include "colors.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 void initMinotaur(Entity* my, Stat* myStats)
 {
@@ -40,6 +41,8 @@ void initMinotaur(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != NULL )
 		{
 			if ( !myStats->leader_uid )
@@ -48,7 +51,7 @@ void initMinotaur(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
@@ -78,10 +81,10 @@ void initMinotaur(Entity* my, Stat* myStats)
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -103,7 +106,7 @@ void initMinotaur(Entity* my, Stat* myStats)
 				case 3:
 				case 2:
 				case 1:
-					switch ( local_rng.rand() % 4 )
+					switch ( rng.rand() % 4 )
 					{
 						case 0:
 							gemtype = GEM_RUBY;
@@ -118,7 +121,7 @@ void initMinotaur(Entity* my, Stat* myStats)
 							gemtype = GEM_DIAMOND;
 							break;
 					}
-					newItem(gemtype, EXCELLENT, 0, 1, local_rng.rand(), true, &myStats->inventory);
+					newItem(gemtype, EXCELLENT, 0, 1, rng.rand(), true, &myStats->inventory);
 					break;
 				default:
 					break;
@@ -261,9 +264,23 @@ void minotaurDie(Entity* my)
 
 	my->spawnBlood();
 
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	if ( multiplayer == SINGLE )
 	{
-		playSoundPlayer(c, 114, 128);
+		for ( c = 0; c < MAXPLAYERS; c++ )
+		{
+			if ( players[c]->isLocalPlayer() )
+			{
+				playSoundPlayer(c, 114, 128);
+				break;
+			}
+		}
+	}
+	else
+	{
+		for ( c = 0; c < MAXPLAYERS; c++ )
+		{
+			playSoundPlayer(c, 114, 128);
+		}
 	}
 
 	my->removeMonsterDeathNodes();
@@ -612,6 +629,8 @@ void actMinotaurTrap(Entity* my)
 		return;
 	}
 
+	auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 	// received on signal
 	if ( my->skill[28] == 2)
 	{
@@ -623,14 +642,29 @@ void actMinotaurTrap(Entity* my)
 				MINOTAURTRAP_FIRED = 1;
 				if ( strcmp(map.name, "Hell Boss") )
 				{
-					int c;
-					for ( c = 0; c < MAXPLAYERS; c++ )
+					bool playedSound = false;
+					for ( int c = 0; c < MAXPLAYERS; c++ )
 					{
-						playSoundPlayer( c, 107 + local_rng.rand() % 3, 128 );
+						if ( multiplayer == SINGLE )
+						{
+							if ( players[c]->isLocalPlayer() )
+							{
+								if ( !playedSound )
+								{
+									playSoundPlayer(c, 107 + local_rng.rand() % 3, 128);
+								}
+								playedSound = true;
+							}
+						}
+						else
+						{
+							playSoundPlayer( c, 107 + local_rng.rand() % 3, 128 );
+						}
 						Uint32 color = makeColorRGB(255, 128, 0);
-						messagePlayerColor(c, MESSAGE_HINT, color, language[1113]);
+						messagePlayerColor(c, MESSAGE_HINT, color, Language::get(1113));
 					}
 				}
+				monster->seedEntityRNG(rng.getU32());
 			}
 		}
 	}
@@ -638,14 +672,24 @@ void actMinotaurTrap(Entity* my)
 
 #define MINOTAURTIMER_LIFE my->skill[0]
 #define MINOTAURTIMER_ACTIVE my->skill[1]
+int getMinotaurTimeToArrive()
+{
+	int minotaurDuration = TICKS_PER_SECOND * 150;
+	if ( currentlevel >= 25 || currentlevel < 5 || (currentlevel >= 10 && currentlevel < 15) )
+	{
+		minotaurDuration = TICKS_PER_SECOND * 210;
+	}
+	return minotaurDuration;
+}
 
 void actMinotaurTimer(Entity* my)
 {
+	if ( !my ) { return; }
+	auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 	MINOTAURTIMER_LIFE++;
-	if (( (currentlevel < 25 && MINOTAURTIMER_LIFE == TICKS_PER_SECOND * 120)
-			|| (currentlevel >= 25 && MINOTAURTIMER_LIFE == TICKS_PER_SECOND * 180)
-		)
-		&& local_rng.rand() % 5 == 0 )   // two minutes if currentlevel < 25, else 3 minutes.
+	if ( MINOTAURTIMER_LIFE == (getMinotaurTimeToArrive() - (TICKS_PER_SECOND * 30))
+		&& rng.rand() % 5 == 0 )
 	{
 		int c;
 		bool spawnedsomebody = false;
@@ -666,67 +710,107 @@ void actMinotaurTimer(Entity* my)
 					Stat* monsterStats = monster->getStats();
 					monsterStats->leader_uid = zapLeaderUid;
 				}
+				monster->seedEntityRNG(rng.getU32());
 			}
 		}
 
 		if ( spawnedsomebody )
 		{
-#ifdef MUSIC
-			fadein_increment = default_fadein_increment * 20;
-			fadeout_increment = default_fadeout_increment * 5;
-			playMusic( sounds[175], false, true, false);
-#endif
+			playSoundNotification(175, 128);
 			for ( c = 0; c < MAXPLAYERS; c++ )
 			{
 				Uint32 color = makeColorRGB(0, 255, 255);
 				if ( stats[c]->type == HUMAN )
 				{
-					messagePlayerColor(c, MESSAGE_WORLD, color, language[1114], stats[c]->name);
+					messagePlayerColor(c, MESSAGE_WORLD, color, Language::get(1114), stats[c]->name);
 				}
 				else
 				{
-					messagePlayerColor(c, MESSAGE_WORLD, color, language[3285]);
+					messagePlayerColor(c, MESSAGE_WORLD, color, Language::get(3285));
 				}
 			}
 		}
 	}
-	else if (( (currentlevel < 25 && MINOTAURTIMER_LIFE >= TICKS_PER_SECOND * 150)
-					|| (currentlevel >= 25 && MINOTAURTIMER_LIFE >= TICKS_PER_SECOND * 210)
-				)
-		&& !MINOTAURTIMER_ACTIVE )     // two and a half minutes if currentlevel < 25, else 3.5 minutes
+	else if ( (MINOTAURTIMER_LIFE >= getMinotaurTimeToArrive()) && !MINOTAURTIMER_ACTIVE )
 	{
 		Entity* monster = summonMonster(MINOTAUR, my->x, my->y);
 		if ( monster )
 		{
 			int c;
+			bool playedSound = false;
 			for ( c = 0; c < MAXPLAYERS; c++ )
 			{
-				playSoundPlayer( c, 107 + local_rng.rand() % 3, 128 );
+				if ( multiplayer == SINGLE )
+				{
+					if ( players[c]->isLocalPlayer() )
+					{
+						if ( !playedSound )
+						{
+							playSoundPlayer(c, 107 + local_rng.rand() % 3, 128);
+						}
+						playedSound = true;
+					}
+				}
+				else
+				{
+					playSoundPlayer( c, 107 + local_rng.rand() % 3, 128 );
+				}
 				Uint32 color = makeColorRGB(255, 128, 0);
-				messagePlayerColor(c, MESSAGE_HINT, color, language[1115]);
+				messagePlayerColor(c, MESSAGE_HINT, color, Language::get(1115));
 			}
 			MINOTAURTIMER_ACTIVE = MINOTAURTIMER_LIFE;
+			monster->seedEntityRNG(rng.getU32());
 		}
 	}
 	if ( MINOTAURTIMER_ACTIVE && MINOTAURTIMER_LIFE >= MINOTAURTIMER_ACTIVE + TICKS_PER_SECOND * 3 )
 	{
 		int c;
+		bool playedSound = false;
 		for ( c = 0; c < MAXPLAYERS; c++ )
 		{
 			if ( currentlevel < 25 )
 			{
-				playSoundPlayer(c, 120 + local_rng.rand() % 3, 128);
+				if ( multiplayer == SINGLE )
+				{
+					if ( players[c]->isLocalPlayer() )
+					{
+						if ( !playedSound )
+						{
+							playSoundPlayer(c, 120 + local_rng.rand() % 3, 128);
+						}
+						playedSound = true;
+					}
+				}
+				else
+				{
+					playSoundPlayer(c, 120 + local_rng.rand() % 3, 128);
+				}
 				Uint32 color = makeColorRGB(255, 0, 255);
-				messagePlayerColor(c, MESSAGE_WORLD, color, language[1116]);
-				messagePlayerColor(c, MESSAGE_WORLD, color, language[73]);
+				messagePlayerColor(c, MESSAGE_WORLD, color, Language::get(1116));
+				messagePlayerColor(c, MESSAGE_WORLD, color, Language::get(73));
 			}
 			else
 			{
-				playSoundPlayer(c, 375, 128);
-				playSoundPlayer(c, 379, 128);
-				messagePlayerColor(c, MESSAGE_WORLD, uint32ColorOrange, language[1116]);
-				messagePlayerColor(c, MESSAGE_WORLD, uint32ColorOrange, language[73]);
-				messagePlayerColor(c, MESSAGE_WORLD, uint32ColorBaronyBlue, language[73]);
+				if ( multiplayer == SINGLE )
+				{
+					if ( players[c]->isLocalPlayer() )
+					{
+						if ( !playedSound )
+						{
+							playSoundPlayer(c, 375, 128);
+							playSoundPlayer(c, 379, 128);
+						}
+						playedSound = true;
+					}
+				}
+				else
+				{
+					playSoundPlayer(c, 375, 128);
+					playSoundPlayer(c, 379, 128);
+				}
+				messagePlayerColor(c, MESSAGE_WORLD, uint32ColorOrange, Language::get(1116));
+				messagePlayerColor(c, MESSAGE_WORLD, uint32ColorOrange, Language::get(73));
+				messagePlayerColor(c, MESSAGE_WORLD, uint32ColorBaronyBlue, Language::get(73));
 			}
 		}
 		list_RemoveNode(my->mynode);
@@ -757,7 +841,6 @@ void actMinotaurCeilingBuster(Entity* my)
 			entity->sizey = 1;
 			entity->yaw = (local_rng.rand() % 360) * PI / 180.f;
 			entity->flags[PASSABLE] = true;
-			entity->flags[BRIGHT] = true;
 			entity->flags[NOUPDATE] = true;
 			entity->flags[UNCLICKABLE] = true;
 			entity->behavior = &actMagicParticle;
@@ -889,7 +972,53 @@ void actMinotaurCeilingBuster(Entity* my)
 							{
 								if ( multiplayer != CLIENT )
 								{
-									entity->skill[4] = 0; // destroy the door
+									entity->doorHealth = 0; // destroy the door
+								}
+							}
+							else if ( entity->behavior == &actCeilingTile && entity->ceilingTileBreakable != 0 )
+							{
+								Entity *childEntity = nullptr;
+								if ( multiplayer == SERVER )
+								{
+									childEntity = spawnGib(my);
+								}
+								else
+								{
+									childEntity = spawnGibClient(my->x, my->y, my->z, 5);
+								}
+								if ( childEntity )
+								{
+									childEntity->x = ((int)(my->x / 16)) * 16 + local_rng.rand() % 16;
+									childEntity->y = ((int)(my->y / 16)) * 16 + local_rng.rand() % 16;
+									childEntity->z = -8;
+									childEntity->flags[PASSABLE] = true;
+									childEntity->flags[INVISIBLE] = false;
+									childEntity->flags[NOUPDATE] = true;
+									childEntity->flags[UPDATENEEDED] = false;
+									childEntity->sprite = items[GEM_ROCK].index;
+									childEntity->yaw = local_rng.rand() % 360 * PI / 180;
+									childEntity->pitch = local_rng.rand() % 360 * PI / 180;
+									childEntity->roll = local_rng.rand() % 360 * PI / 180;
+									childEntity->vel_x = (local_rng.rand() % 20 - 10) / 10.0;
+									childEntity->vel_y = (local_rng.rand() % 20 - 10) / 10.0;
+									childEntity->vel_z = -.25;
+									childEntity->fskill[3] = 0.03;
+								}
+								list_RemoveNode(entity->mynode);
+							}
+							else if ( entity->isDamageableCollider() )
+							{
+								if ( multiplayer != CLIENT )
+								{
+									entity->colliderCurrentHP = 0;
+									entity->colliderKillerUid = 0;
+								}
+							}
+							else if ( entity->behavior == &actBell )
+							{
+								if ( multiplayer != CLIENT )
+								{
+									bellBreakBulb(entity, true);
 								}
 							}
 							else if ( entity->behavior == &actGate )
@@ -898,7 +1027,25 @@ void actMinotaurCeilingBuster(Entity* my)
 								{
 									playSoundEntity(entity, 76, 64);
 									list_RemoveNode(entity->mynode);
+									for ( int i = 0; i < MAXPLAYERS; ++i )
+									{
+										if ( !client_disconnected[i] )
+										{
+											Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_GATE_MINOTAUR, "portcullis", 1);
+										}
+									}
 								}
+							}
+							else if ( entity->behavior == &::actDaedalusShrine )
+							{
+								Entity* ohitentity = hit.entity;
+								hit.entity = entity;
+								magicDig(my, nullptr, 0, 1);
+								hit.entity = ohitentity;
+							}
+							else if ( entity->sprite == 1480 ) // daedalus base
+							{
+								list_RemoveNode(entity->mynode);
 							}
 							else if (	entity->behavior == &actStalagCeiling	||
 										entity->behavior == &actStalagFloor		||
@@ -919,7 +1066,7 @@ void actMinotaurCeilingBuster(Entity* my)
 									{
 										childEntity = spawnGibClient(my->x, my->y, my->z, 5);
 									}
-									if ( entity )
+									if ( childEntity )
 									{
 										childEntity->x = ((int)(my->x / 16)) * 16 + local_rng.rand() % 16;
 										childEntity->y = ((int)(my->y / 16)) * 16 + local_rng.rand() % 16;
@@ -948,7 +1095,7 @@ void actMinotaurCeilingBuster(Entity* my)
 	}
 }
 
-void createMinotaurTimer(Entity* entity, map_t* map)
+void createMinotaurTimer(Entity* entity, map_t* map, Uint32 seed)
 {
 	if ( !entity )
 	{
@@ -966,4 +1113,7 @@ void createMinotaurTimer(Entity* entity, map_t* map)
 	childEntity->flags[NOUPDATE] = true;
 	childEntity->setUID(-3);
 	entity_uids--;
+
+	childEntity->entity_rng = new BaronyRNG();
+	childEntity->entity_rng->seedBytes(&seed, sizeof(seed));
 }

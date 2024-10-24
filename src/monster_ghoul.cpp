@@ -20,6 +20,7 @@
 #include "collision.hpp"
 #include "player.hpp"
 #include "prng.hpp"
+#include "scores.hpp"
 
 void initGhoul(Entity* my, Stat* myStats)
 {
@@ -42,6 +43,8 @@ void initGhoul(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -71,7 +74,7 @@ void initGhoul(Entity* my, Stat* myStats)
 						myStats->LVL = 15;
 					}
 					myStats->PER = 10;
-					if ( local_rng.rand() % 2 == 0 )
+					if ( rng.rand() % 2 == 0 )
 					{
 						myStats->EFFECTS[EFF_VAMPIRICAURA] = true;
 						myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
@@ -81,17 +84,23 @@ void initGhoul(Entity* my, Stat* myStats)
 
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
+			int bosschance = 50;
+			if ( !strncmp(map.name, "The Haunted Castle", 18) )
+			{
+				bosschance = 100;
+			}
+
 			// boss variants
 			const bool boss =
-			    local_rng.rand() % 50 == 0 &&
+				rng.rand() % bosschance == 0 &&
 			    !my->flags[USERFLAG2] &&
 			    !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS];
-			if ( (boss || *cvar_summonBosses) && myStats->leader_uid == 0 )
+			if ( (boss || (*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED])) && myStats->leader_uid == 0 )
 			{
 				myStats->setAttribute("special_npc", "coral grimes");
 				strcpy(myStats->name, MonsterData_t::getSpecialNPCName(*myStats).c_str());
@@ -106,6 +115,7 @@ void initGhoul(Entity* my, Stat* myStats)
 						{
 							followerStats->leader_uid = entity->parent;
 						}
+						entity->seedEntityRNG(rng.getU32());
 					}
 				}
 				myStats->sex = MALE;
@@ -115,8 +125,9 @@ void initGhoul(Entity* my, Stat* myStats)
 				myStats->LVL = 15;
 				myStats->DEX = 2;
 				myStats->STR = 13;
-				newItem(GEM_GARNET, EXCELLENT, 0, 1, local_rng.rand(), false, &myStats->inventory);
-				customItemsToGenerate -= 1;
+				newItem(GEM_GARNET, EXCELLENT, 0, 1, rng.rand(), false, &myStats->inventory);
+				newItem(HAT_BOUNTYHUNTER, EXCELLENT, -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
+				customItemsToGenerate -= 2;
 			}
 			else
 			{
@@ -130,10 +141,10 @@ void initGhoul(Entity* my, Stat* myStats)
 			// random effects
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			// max limit of 6 custom items per entity.
@@ -151,19 +162,19 @@ void initGhoul(Entity* my, Stat* myStats)
 				case 5:
 				case 4:
 				case 3:
-					if ( local_rng.rand() % 20 == 0 )
+					if ( rng.rand() % 20 == 0 )
 					{
-						newItem(POTION_WATER, SERVICABLE, 2, 1, local_rng.rand(), false, &myStats->inventory);
+						newItem(POTION_WATER, SERVICABLE, 2, 1, rng.rand(), false, &myStats->inventory);
 					}
 				case 2:
-					if ( local_rng.rand() % 10 == 0 )
+					if ( rng.rand() % 10 == 0 )
 					{
-						newItem(itemLevelCurve(TOOL, 0, currentlevel), DECREPIT, 1, 1, local_rng.rand(), false, &myStats->inventory);
+						newItem(itemLevelCurve(TOOL, 0, currentlevel, rng), DECREPIT, 1, 1, rng.rand(), false, &myStats->inventory);
 					}
 				case 1:
-					if ( local_rng.rand() % 4 == 0 )
+					if ( rng.rand() % 4 == 0 )
 					{
-						newItem(FOOD_MEAT, DECREPIT, -1, 1, local_rng.rand(), false, &myStats->inventory);
+						newItem(FOOD_MEAT, DECREPIT, -1, 1, rng.rand(), false, &myStats->inventory);
 					}
 					break;
 				default:

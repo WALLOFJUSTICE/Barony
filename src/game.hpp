@@ -21,21 +21,25 @@
 
 #include "interface/consolecommand.hpp"
 
+#include "Config.hpp"
+
 // REMEMBER TO CHANGE THIS WITH EVERY NEW OFFICIAL VERSION!!!
-static const char VERSION[] = "v3.8.4";
+#ifdef NINTENDO
+static const char VERSION[] = "v4.3.0";
+#else
+static const char VERSION[] = "v4.3.0";
+#endif
 #define GAME_CODE
 
 class Entity;
 
 #define DEBUG 1
-#define ENTITY_PACKET_LENGTH 46
+#define ENTITY_PACKET_LENGTH 47
 #define NET_PACKET_SIZE 512
 
 // impulses (bound keystrokes, mousestrokes, and joystick/game controller strokes) //TODO: Player-by-player basis.
 extern Uint32 impulses[NUMIMPULSES];
 extern Uint32 joyimpulses[NUM_JOY_IMPULSES]; //Joystick/gamepad only impulses.
-extern int reversemouse;
-extern real_t mousespeed;
 
 bool handleEvents(void);
 void startMessages();
@@ -54,7 +58,6 @@ extern list_t safePacketsSent;
 extern std::unordered_map<int, Uint32> safePacketsReceivedMap[MAXPLAYERS];
 extern bool receivedclientnum;
 
-extern Uint32 clientplayer;
 extern Sint32 numplayers;
 extern Sint32 clientnum;
 extern bool intro;
@@ -86,7 +89,9 @@ extern bool loadingmap, loadingconfig;
 extern int startfloor;
 extern bool skipintro;
 extern Uint32 uniqueGameKey;
+extern Uint32 uniqueLobbyKey;
 extern bool arachnophobia_filter;
+extern bool colorblind_lobby;
 
 // definitions
 extern bool showfps;
@@ -107,12 +112,6 @@ extern int currentlevel;
 extern bool secretlevel;
 extern bool darkmap;
 extern int shaking, bobbing;
-extern SDL_Surface* title_bmp;
-extern SDL_Surface* titleDefault_bmp;
-extern SDL_Surface* logo_bmp;
-extern SDL_Surface* cursor_bmp;
-extern SDL_Surface* cross_bmp;
-extern SDL_Surface* selected_cursor_bmp;
 
 enum MessageType : Uint32 {
 	MESSAGE_COMBAT = 1u << 0, // damage received or given in combat
@@ -127,6 +126,8 @@ enum MessageType : Uint32 {
 	MESSAGE_HINT = 1u << 9, // special text cues and descriptive messages
 	MESSAGE_OBITUARY = 1u << 10, // character death announcement
 	MESSAGE_CHATTER = 1u << 11, // NPC chatter
+	MESSAGE_SPAM_MISC = 1u << 28, // misc spammy messages "dropped item" "it burns!" 
+	MESSAGE_COMBAT_BASIC = 1u << 29, // basic combat 'the skeleton hits!' 'you hit the skeleton!'
 	MESSAGE_DEBUG = 1u << 30, // debug only messages
 	MESSAGE_MISC = 1u << 31, // miscellaneous messages
 };
@@ -157,6 +158,30 @@ enum PlayerClasses : int
 	CLASS_HUNTER
 };
 
+static const std::vector<std::string> playerClassInternalNames = {
+	"class_barbarian",
+	"class_warrior",
+	"class_healer",
+	"class_rogue",
+	"class_wanderer",
+	"class_cleric",
+	"class_merchant",
+	"class_wizard",
+	"class_arcanist",
+	"class_joker",
+	"class_sexton",
+	"class_ninja",
+	"class_monk",
+	"class_conjurer",
+	"class_accursed",
+	"class_mesmer",
+	"class_brewer",
+	"class_machinist",
+	"class_punisher",
+	"class_shaman",
+	"class_hunter"
+};
+
 static const int CLASS_SHAMAN_NUM_STARTING_SPELLS = 15;
 
 enum PlayerRaces : int
@@ -176,43 +201,6 @@ enum PlayerRaces : int
 	RACE_IMP
 };
 
-enum ESteamLeaderboardTitles : int
-{
-	LEADERBOARD_NONE,
-	LEADERBOARD_NORMAL_TIME,
-	LEADERBOARD_NORMAL_SCORE,
-	LEADERBOARD_MULTIPLAYER_TIME,
-	LEADERBOARD_MULTIPLAYER_SCORE,
-	LEADERBOARD_HELL_TIME,
-	LEADERBOARD_HELL_SCORE,
-	LEADERBOARD_HARDCORE_TIME,
-	LEADERBOARD_HARDCORE_SCORE,
-	LEADERBOARD_CLASSIC_TIME,
-	LEADERBOARD_CLASSIC_SCORE,
-	LEADERBOARD_CLASSIC_HARDCORE_TIME,
-	LEADERBOARD_CLASSIC_HARDCORE_SCORE,
-	LEADERBOARD_MULTIPLAYER_CLASSIC_TIME,
-	LEADERBOARD_MULTIPLAYER_CLASSIC_SCORE,
-	LEADERBOARD_MULTIPLAYER_HELL_TIME,
-	LEADERBOARD_MULTIPLAYER_HELL_SCORE,
-	LEADERBOARD_DLC_NORMAL_TIME,
-	LEADERBOARD_DLC_NORMAL_SCORE,
-	LEADERBOARD_DLC_MULTIPLAYER_TIME,
-	LEADERBOARD_DLC_MULTIPLAYER_SCORE,
-	LEADERBOARD_DLC_HELL_TIME,
-	LEADERBOARD_DLC_HELL_SCORE,
-	LEADERBOARD_DLC_HARDCORE_TIME,
-	LEADERBOARD_DLC_HARDCORE_SCORE,
-	LEADERBOARD_DLC_CLASSIC_TIME,
-	LEADERBOARD_DLC_CLASSIC_SCORE,
-	LEADERBOARD_DLC_CLASSIC_HARDCORE_TIME,
-	LEADERBOARD_DLC_CLASSIC_HARDCORE_SCORE,
-	LEADERBOARD_DLC_MULTIPLAYER_CLASSIC_TIME,
-	LEADERBOARD_DLC_MULTIPLAYER_CLASSIC_SCORE,
-	LEADERBOARD_DLC_MULTIPLAYER_HELL_TIME,
-	LEADERBOARD_DLC_MULTIPLAYER_HELL_SCORE
-};
-
 bool achievementUnlocked(const char* achName);
 void steamAchievement(const char* achName);
 void steamUnsetAchievement(const char* achName);
@@ -224,6 +212,8 @@ void steamIndicateStatisticProgress(int statisticNum, ESteamStatTypes type);
 void freePlayerEquipment(int x);
 void pauseGame(int mode, int ignoreplayer);
 int initGame();
+void initGameDatafiles(bool moddedReload);
+void initGameDatafilesAsync(bool moddedReload);
 void deinitGame();
 void handleButtons(void);
 void gameLogic(void);
@@ -239,6 +229,8 @@ void actStatueAnimator(Entity* my);
 void actStatue(Entity* my);
 void actDoorFrame(Entity* my);
 void actDeathCam(Entity* my);
+void actDeathGhost(Entity* my);
+void actDeathGhostLimb(Entity* my);
 void actPlayerLimb(Entity* my);
 void actTorch(Entity* my);
 void actCrystalShard(Entity* my);
@@ -253,7 +245,7 @@ void actGoldBag(Entity* my);
 void actGib(Entity* my);
 void actDamageGib(Entity* my);
 Entity* spawnGib(Entity* parentent, int customGibSprite = -1);
-Entity* spawnDamageGib(Entity* parentent, Sint32 dmgAmount);
+Entity* spawnDamageGib(Entity* parentent, Sint32 dmgAmount, int gibDmgType, int displayType = 0, bool updateClients = false);
 Entity* spawnGibClient(Sint16 x, Sint16 y, Sint16 z, Sint16 sprite);
 void serverSpawnGibForClient(Entity* gib);
 void actLadder(Entity* my);
@@ -263,7 +255,6 @@ void actWinningPortal(Entity* my);
 void actFlame(Entity* my);
 void actCampfire(Entity* my);
 Entity* spawnFlame(Entity* parentent, Sint32 sprite);
-void actMagic(Entity* my);
 Entity* castMagic(Entity* parentent);
 void actSprite(Entity* my);
 void actSpriteNametag(Entity* my);
@@ -272,12 +263,13 @@ void actSleepZ(Entity* my);
 Entity* spawnBang(Sint16 x, Sint16 y, Sint16 z);
 Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z);
 Entity* spawnExplosionFromSprite(Uint16 sprite, Sint16 x, Sint16 y, Sint16 z);
-Entity* spawnPoof(Sint16, Sint16 y, Sint16 z);
+Entity* spawnPoof(Sint16 x, Sint16 y, Sint16 z, real_t scale, bool updateClients = false);
 Entity* spawnSleepZ(Sint16 x, Sint16 y, Sint16 z);
 Entity* spawnFloatingSpriteMisc(int sprite, Sint16 x, Sint16 y, Sint16 z);
 void actArrow(Entity* my);
 void actBoulder(Entity* my);
 void actBoulderTrap(Entity* my);
+void actBoulderTrapHole(Entity* my);
 void actBoulderTrapEast(Entity* my);
 void actBoulderTrapWest(Entity* my);
 void actBoulderTrapSouth(Entity* my);
@@ -302,11 +294,15 @@ void actCustomPortal(Entity* my);
 void actTeleporter(Entity* my);
 void actMagicTrapCeiling(Entity* my);
 void actTeleportShrine(Entity* my);
+void actDaedalusShrine(Entity* my);
+void actBell(Entity* my);
+void bellBreakBulb(Entity* my, bool minotaurBreak);
 void actSpellShrine(Entity* my);
 void actExpansionEndGamePortal(Entity* my);
 void actSoundSource(Entity* my);
 void actLightSource(Entity* my);
 void actSignalTimer(Entity* my);
+void actSignalGateAND(Entity* my);
 
 void startMessages();
 bool frameRateLimit(Uint32 maxFrameRate, bool resetAccumulator = true, bool sleep = false);
@@ -318,10 +314,11 @@ void drawAllPlayerCameras();
 
 #define TOUCHRANGE 32
 #define STRIKERANGE 24
-#define XPSHARERANGE 256
+#define XPSHARERANGE 99999
 
 // function prototypes for charclass.c:
 void initClass(int player);
+void initClassStats(const int classnum, void* myStats);
 void initShapeshiftHotbar(int player);
 void deinitShapeshiftHotbar(int player);
 bool playerUnlockedShamanSpell(int player, Item* item);
@@ -362,14 +359,20 @@ static const int EFFECT_WITHDRAWAL_BASE_TIME = TICKS_PER_SECOND * 60 * 8; // 8 m
 
 static const std::string PLAYERNAMES_MALE_FILE = "playernames-male.txt";
 static const std::string PLAYERNAMES_FEMALE_FILE = "playernames-female.txt";
+static const std::string NPCNAMES_MALE_FILE = "npcnames-male.txt";
+static const std::string NPCNAMES_FEMALE_FILE = "npcnames-female.txt";
 extern std::vector<std::string> randomPlayerNamesMale;
 extern std::vector<std::string> randomPlayerNamesFemale;
+extern std::vector<std::string> randomNPCNamesMale;
+extern std::vector<std::string> randomNPCNamesFemale;
 extern bool enabledDLCPack1;
 extern bool enabledDLCPack2;
 extern std::vector<std::string> physFSFilesInDirectory;
 void loadRandomNames();
 void mapLevel(int player);
+void mapLevel2(int player);
 void mapFoodOnLevel(int player);
+bool mapTileDiggable(const int x, const int y);
 
 class TileEntityListHandler
 {
@@ -427,12 +430,32 @@ public:
 	std::chrono::high_resolution_clock::time_point t10FrameLimiter;
 	std::chrono::high_resolution_clock::time_point t11End;
 
+	std::chrono::high_resolution_clock::time_point gui1;
+	std::chrono::high_resolution_clock::time_point gui2;
+	std::chrono::high_resolution_clock::time_point gui3;
+	std::chrono::high_resolution_clock::time_point gui4;
+	std::chrono::high_resolution_clock::time_point gui5;
+	std::chrono::high_resolution_clock::time_point gui6;
+	std::chrono::high_resolution_clock::time_point gui7;
+	std::chrono::high_resolution_clock::time_point gui8;
+	std::chrono::high_resolution_clock::time_point gui9;
+	std::chrono::high_resolution_clock::time_point gui10;
+	std::chrono::high_resolution_clock::time_point gui11;
+	std::chrono::high_resolution_clock::time_point gui12;
+
 	std::chrono::high_resolution_clock::time_point eventsT1;
 	std::chrono::high_resolution_clock::time_point eventsT2;
 	std::chrono::high_resolution_clock::time_point eventsT3;
 	std::chrono::high_resolution_clock::time_point eventsT4;
 	std::chrono::high_resolution_clock::time_point eventsT5;
 	std::chrono::high_resolution_clock::time_point eventsT6;
+
+	std::chrono::high_resolution_clock::time_point drawWorldT1;
+	std::chrono::high_resolution_clock::time_point drawWorldT2;
+	std::chrono::high_resolution_clock::time_point drawWorldT3;
+	std::chrono::high_resolution_clock::time_point drawWorldT4;
+	std::chrono::high_resolution_clock::time_point drawWorldT5;
+	std::chrono::high_resolution_clock::time_point drawWorldT6;
 
 	std::chrono::high_resolution_clock::time_point messagesT1;
 
@@ -501,9 +524,12 @@ public:
 };
 
 extern ConsoleVariable<bool> cvar_enableKeepAlives;
+extern ConsoleVariable<bool> cvar_map_sequence_rng;
 
 extern DebugStatsClass DebugStats;
 //extern ConsoleVariable<bool> cvar_useTimerInterpolation;
+
+#include "draw.hpp"
 
 class TimerExperiments
 {
@@ -595,3 +621,8 @@ public:
 	static void postRenderRestore(view_t& camera, int player);
 	static void updateEntityInterpolationPosition(Entity* entity);
 };
+
+void loadAchievementData(const char* path);
+void sortAchievementsForDisplay();
+
+real_t getFPSScale(real_t baseFPS);

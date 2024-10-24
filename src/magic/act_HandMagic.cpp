@@ -22,6 +22,7 @@
 #include "../scores.hpp"
 #include "../ui/MainMenu.hpp"
 #include "../prng.hpp"
+#include "../mod_tools.hpp"
 
 //The spellcasting animation stages:
 #define CIRCLE 0 //One circle
@@ -86,13 +87,25 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 	animation_manager->stage = CIRCLE;
 
 	//Make the HUDWEAPON disappear, or somesuch?
+	players[player]->hud.magicLeftHand->flags[INVISIBLE_DITHER] = false;
+	players[player]->hud.magicRightHand->flags[INVISIBLE_DITHER] = false;
 	if ( stat->type != RAT )
 	{
 		if ( !usingSpellbook )
 		{
 			players[player]->hud.magicLeftHand->flags[INVISIBLE] = false;
+			if ( caster->isInvisible() )
+			{
+				players[player]->hud.magicLeftHand->flags[INVISIBLE] = true;
+				players[player]->hud.magicLeftHand->flags[INVISIBLE_DITHER] = true;
+			}
 		}
 		players[player]->hud.magicRightHand->flags[INVISIBLE] = false;
+		if ( caster->isInvisible() )
+		{
+			players[player]->hud.magicRightHand->flags[INVISIBLE] = true;
+			players[player]->hud.magicRightHand->flags[INVISIBLE_DITHER] = true;
+		}
 	}
 
 	animation_manager->lefthand_angle = 0;
@@ -108,12 +121,12 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 		animation_manager->consumeMana = false;
 	}
 
-	if (stat->PROFICIENCIES[PRO_SPELLCASTING] < SPELLCASTING_BEGINNER)   //There's a chance that caster is newer to magic (and thus takes longer to cast a spell).
+	if (stat->getModifiedProficiency(PRO_SPELLCASTING) < SPELLCASTING_BEGINNER)   //There's a chance that caster is newer to magic (and thus takes longer to cast a spell).
 	{
 		int chance = local_rng.rand() % 10;
-		if (chance >= stat->PROFICIENCIES[PRO_SPELLCASTING] / 15)
+		if (chance >= stat->getModifiedProficiency(PRO_SPELLCASTING) / 15)
 		{
-			int amount = (local_rng.rand() % 50) / std::max(stat->PROFICIENCIES[PRO_SPELLCASTING] + statGetINT(stat, caster), 1);
+			int amount = (local_rng.rand() % 50) / std::max(stat->getModifiedProficiency(PRO_SPELLCASTING) + statGetINT(stat, caster), 1);
 			amount = std::min(amount, CASTING_EXTRA_TIMES_CAP);
 			animation_manager->times_to_circle += amount;
 		}
@@ -123,7 +136,7 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 		if ( !playerLearnedSpellbook(player, stat->shield) || (stat->shield->beatitude < 0 && !shouldInvertEquipmentBeatitude(stat)) )
 		{
 			// for every tier below the spell you are, add 3 circle for 1 tier, or add 2 for every additional tier.
-			int casterAbility = std::min(100, std::max(0, stat->PROFICIENCIES[PRO_SPELLCASTING] + statGetINT(stat, caster))) / 20;
+			int casterAbility = std::min(100, std::max(0, stat->getModifiedProficiency(PRO_SPELLCASTING) + statGetINT(stat, caster))) / 20;
 			if ( stat->shield->beatitude < 0 )
 			{
 				casterAbility = 0; // cursed book has cast penalty.
@@ -134,7 +147,7 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 				animation_manager->times_to_circle += (std::min(5, 1 + 2 * (difficulty - casterAbility)));
 			}
 		}
-		else if ( stat->PROFICIENCIES[PRO_SPELLCASTING] >= SPELLCASTING_BEGINNER )
+		else if ( stat->getModifiedProficiency(PRO_SPELLCASTING) >= SPELLCASTING_BEGINNER )
 		{
 			animation_manager->times_to_circle = (spellCost / 20) + 1; //Circle once for every 20 mana the spell costs.
 		}
@@ -160,10 +173,12 @@ void spellcastingAnimationManager_deactivate(spellcasting_animation_manager_t* a
 	if ( players[animation_manager->player]->hud.magicLeftHand )
 	{
 		players[animation_manager->player]->hud.magicLeftHand->flags[INVISIBLE] = true;
+		players[animation_manager->player]->hud.magicLeftHand->flags[INVISIBLE_DITHER] = false;
 	}
 	if ( players[animation_manager->player]->hud.magicRightHand )
 	{
 		players[animation_manager->player]->hud.magicRightHand->flags[INVISIBLE] = true;
+		players[animation_manager->player]->hud.magicRightHand->flags[INVISIBLE_DITHER] = false;
 	}
 }
 
@@ -184,6 +199,7 @@ void spellcastingAnimationManager_completeSpell(spellcasting_animation_manager_t
 void actLeftHandMagic(Entity* my)
 {
 	//int c = 0;
+	my->flags[INVISIBLE_DITHER] = false;
 	if (intro == true)
 	{
 		my->flags[INVISIBLE] = true;
@@ -223,7 +239,7 @@ void actLeftHandMagic(Entity* my)
 
 	//Sprite
 	Monster playerRace = players[HANDMAGIC_PLAYERNUM]->entity->getMonsterFromPlayerRace(stats[HANDMAGIC_PLAYERNUM]->playerRace);
-	int playerAppearance = stats[HANDMAGIC_PLAYERNUM]->appearance;
+	int playerAppearance = stats[HANDMAGIC_PLAYERNUM]->stat_appearance;
 	if ( players[HANDMAGIC_PLAYERNUM]->entity->effectShapeshift != NOTHING )
 	{
 		playerRace = static_cast<Monster>(players[HANDMAGIC_PLAYERNUM]->entity->effectShapeshift);
@@ -369,14 +385,6 @@ void actLeftHandMagic(Entity* my)
 		}*/
 	}
 
-	if ( playerRace == RAT )
-	{
-		my->flags[INVISIBLE] = true;
-		my->y = 0;
-		my->z += 1;
-	}
-
-
 	Entity*& hudarm = players[HANDMAGIC_PLAYERNUM]->hud.arm;
 	if ( playerRace == SPIDER && hudarm && players[HANDMAGIC_PLAYERNUM]->entity->bodyparts.at(0) )
 	{
@@ -396,26 +404,27 @@ void actLeftHandMagic(Entity* my)
 		my->focalz = -1.5;
 	}
 
-	bool wearingring = false;
-
-	//Select model
-	if (stats[HANDMAGIC_PLAYERNUM]->ring != NULL)
-	{
-		if (stats[HANDMAGIC_PLAYERNUM]->ring->type == RING_INVISIBILITY)
-		{
-			wearingring = true;
-		}
-	}
-	if (stats[HANDMAGIC_PLAYERNUM]->cloak != NULL)
-	{
-		if (stats[HANDMAGIC_PLAYERNUM]->cloak->type == CLOAK_INVISIBILITY)
-		{
-			wearingring = true;
-		}
-	}
-	if (players[HANDMAGIC_PLAYERNUM]->entity->skill[3] == 1 || players[HANDMAGIC_PLAYERNUM]->entity->isInvisible() )   // debug cam or player invisible
+	if ( !cast_animation[HANDMAGIC_PLAYERNUM].active )
 	{
 		my->flags[INVISIBLE] = true;
+	}
+	else
+	{
+		if ( playerRace == RAT )
+		{
+			my->flags[INVISIBLE] = true;
+			my->y = 0;
+			my->z += 1;
+		}
+		else if ( players[HANDMAGIC_PLAYERNUM]->entity->skill[3] == 1 )   // debug cam
+		{
+			my->flags[INVISIBLE] = true;
+		}
+		else if ( players[HANDMAGIC_PLAYERNUM]->entity->isInvisible() )
+		{
+			my->flags[INVISIBLE] = true;
+			my->flags[INVISIBLE_DITHER] = true;
+		}
 	}
 
 	if ( (cast_animation[HANDMAGIC_PLAYERNUM].active || cast_animation[HANDMAGIC_PLAYERNUM].active_spellbook) )
@@ -431,11 +440,12 @@ void actLeftHandMagic(Entity* my)
 					entity->flags[NOUPDATE] = true;
 					entity->flags[UPDATENEEDED] = false;
 					entity->flags[OVERDRAW] = true;
-					entity->flags[BRIGHT] = true;
+					entity->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
 					entity->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
 					entity->scaley = 0.25f;
 					entity->scalez = 0.25f;
 					entity->sprite = 16; //TODO: Originally. 22. 16 -- spark sprite instead?
+					entity->z += 3.0;
 					if ( cast_animation[HANDMAGIC_PLAYERNUM].active_spellbook )
 					{
 						entity->y -= 1.5;
@@ -458,7 +468,23 @@ void actLeftHandMagic(Entity* my)
 					if ( multiplayer == SINGLE && cast_animation[HANDMAGIC_PLAYERNUM].consumeMana )
 					{
 						int HP = stats[HANDMAGIC_PLAYERNUM]->HP;
+						int MP = stats[HANDMAGIC_PLAYERNUM]->MP;
 						players[HANDMAGIC_PLAYERNUM]->entity->drainMP(1, false); // don't notify otherwise we'll get spammed each 1 mp
+
+						if ( cast_animation[HANDMAGIC_PLAYERNUM].spell )
+						{
+							bool sustainedSpell = false;
+							auto findSpellDef = ItemTooltips.spellItems.find(cast_animation[HANDMAGIC_PLAYERNUM].spell->ID);
+							if ( findSpellDef != ItemTooltips.spellItems.end() )
+							{
+								sustainedSpell = (findSpellDef->second.spellType == ItemTooltips_t::SpellItemTypes::SPELL_TYPE_SELF_SUSTAIN);
+							}
+							if ( sustainedSpell )
+							{
+								players[HANDMAGIC_PLAYERNUM]->mechanics.sustainedSpellIncrementMP(MP - stats[HANDMAGIC_PLAYERNUM]->MP);
+							}
+						}
+
 						if ( (HP > stats[HANDMAGIC_PLAYERNUM]->HP) && !overDrawDamageNotify )
 						{
 							overDrawDamageNotify = true;
@@ -466,7 +492,7 @@ void actLeftHandMagic(Entity* my)
 							cameravars[HANDMAGIC_PLAYERNUM].shakey += 10;
 							playSoundPlayer(HANDMAGIC_PLAYERNUM, 28, 92);
 							Uint32 color = makeColorRGB(255, 255, 0);
-							messagePlayerColor(HANDMAGIC_PLAYERNUM, MESSAGE_STATUS, color, language[621]);
+							messagePlayerColor(HANDMAGIC_PLAYERNUM, MESSAGE_STATUS, color, Language::get(621));
 						}
 					}
 					--cast_animation[HANDMAGIC_PLAYERNUM].mana_left;
@@ -545,6 +571,7 @@ void actLeftHandMagic(Entity* my)
 
 void actRightHandMagic(Entity* my)
 {
+	my->flags[INVISIBLE_DITHER] = false;
 	if (intro == true)
 	{
 		my->flags[INVISIBLE] = true;
@@ -581,7 +608,7 @@ void actRightHandMagic(Entity* my)
 
 	//Sprite
 	Monster playerRace = players[HANDMAGIC_PLAYERNUM]->entity->getMonsterFromPlayerRace(stats[HANDMAGIC_PLAYERNUM]->playerRace);
-	int playerAppearance = stats[HANDMAGIC_PLAYERNUM]->appearance;
+	int playerAppearance = stats[HANDMAGIC_PLAYERNUM]->stat_appearance;
 	if ( players[HANDMAGIC_PLAYERNUM]->entity->effectShapeshift != NOTHING )
 	{
 		playerRace = static_cast<Monster>(players[HANDMAGIC_PLAYERNUM]->entity->effectShapeshift);
@@ -724,11 +751,29 @@ void actRightHandMagic(Entity* my)
 		}*/
 	}
 
-	if ( playerRace == RAT )
+	if ( !(cast_animation[HANDMAGIC_PLAYERNUM].active || cast_animation[HANDMAGIC_PLAYERNUM].active_spellbook) )
 	{
 		my->flags[INVISIBLE] = true;
-		my->y = 0;
-		my->z += 1;
+	}
+	else
+	{
+		my->flags[INVISIBLE] = false;
+
+		if ( playerRace == RAT )
+		{
+			my->flags[INVISIBLE] = true;
+			my->y = 0;
+			my->z += 1;
+		}
+		else if ( players[HANDMAGIC_PLAYERNUM]->entity->skill[3] == 1 )   // debug cam
+		{
+			my->flags[INVISIBLE] = true;
+		}
+		else if ( players[HANDMAGIC_PLAYERNUM]->entity->isInvisible() )
+		{
+			my->flags[INVISIBLE] = true;
+			my->flags[INVISIBLE_DITHER] = true;
+		}
 	}
 
 	Entity*& hudarm = players[HANDMAGIC_PLAYERNUM]->hud.arm;
@@ -751,28 +796,6 @@ void actRightHandMagic(Entity* my)
 		my->focalz = -1.5;
 	}
 
-	bool wearingring = false;
-
-	//Select model
-	if (stats[HANDMAGIC_PLAYERNUM]->ring != NULL)
-	{
-		if (stats[HANDMAGIC_PLAYERNUM]->ring->type == RING_INVISIBILITY)
-		{
-			wearingring = true;
-		}
-	}
-	if (stats[HANDMAGIC_PLAYERNUM]->cloak != NULL)
-	{
-		if (stats[HANDMAGIC_PLAYERNUM]->cloak->type == CLOAK_INVISIBILITY)
-		{
-			wearingring = true;
-		}
-	}
-	if ( players[HANDMAGIC_PLAYERNUM]->entity->skill[3] == 1 || players[HANDMAGIC_PLAYERNUM]->entity->isInvisible() )   // debug cam or player invisible
-	{
-		my->flags[INVISIBLE] = true;
-	}
-
 	if ( (cast_animation[HANDMAGIC_PLAYERNUM].active || cast_animation[HANDMAGIC_PLAYERNUM].active_spellbook) )
 	{
 		switch ( cast_animation[HANDMAGIC_PLAYERNUM].stage)
@@ -787,7 +810,8 @@ void actRightHandMagic(Entity* my)
 					entity->flags[NOUPDATE] = true;
 					entity->flags[UPDATENEEDED] = false;
 					entity->flags[OVERDRAW] = true;
-					entity->flags[BRIGHT] = true;
+					entity->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
+					entity->z += 3.0;
 					//entity->sizex = 1; //MAKE 'EM SMALL PLEASE!
 					//entity->sizey = 1;
 					entity->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!

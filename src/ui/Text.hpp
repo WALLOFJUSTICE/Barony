@@ -6,6 +6,7 @@
 
 //! Contains some text that was rendered to a texture with a ttf font.
 class Text {
+friend class Field;
 private:
 	Text() = default;
 	Text(const char* _name);
@@ -40,7 +41,7 @@ public:
 	//! @param color 32-bit encoded color to colorize the text
 	void drawColor(const SDL_Rect src, const SDL_Rect dest, const SDL_Rect viewport, const Uint32& color) const;
 
-	//! get a Text object from the engine
+	//! get a Text object from the engine. Loads it if it has not been loaded
 	//! @param str The Text's string
 	//! @param font the Text's font
 	//! @param textColor the color of the rendered text
@@ -48,8 +49,24 @@ public:
 	//! @return the Text or nullptr if it could not be retrieved
 	static Text* get(const char* str, const char* font, Uint32 textColor, Uint32 outlineColor);
 
+	//! get a text object. loads it if it has not been loaded
+	//! @param hash the hash value of the cached text
+	//! @return the text object, or nullptr if it was not found
+	static Text* get(size_t hash, const char* key);
+
+	//! turn the given parameters into a hash value which can be used to subsequently retrieve cached text more quickly
+	//! @param str The Text's string
+	//! @param font the Text's font
+	//! @param textColor the color of the rendered text
+	//! @param outlineColor the color of the rendered outline
+	//! @return the hash for the given parameters, and the format string (valid until next call)
+	static std::pair<size_t, const char*> hash(const char* str, const char* font, Uint32 textColor, Uint32 outlineColor);
+
 	//! dump engine's text cache
 	static void dumpCache();
+
+	//! check if text cache needs to be dumped due to excess size
+	static void dumpCacheInMainLoop();
 
 	//! renders the text using its pre-specified parameters.
 	//! you usually won't need to call this yourself,
@@ -71,19 +88,6 @@ private:
 	std::string name;
 	GLuint texid = 0;
 	SDL_Surface* surf = nullptr;
-
-	//! static geometry data for rendering the image to a quad
-	static const GLuint indices[6];
-	static const GLfloat positions[8];
-	static const GLfloat texcoords[8];
-	enum buffer_t {
-		VERTEX_BUFFER,
-		TEXCOORD_BUFFER,
-		INDEX_BUFFER,
-		BUFFER_TYPE_LENGTH
-	};
-	static GLuint vbo[BUFFER_TYPE_LENGTH];
-	static GLuint vao;
 
 	int width = 0;
 	int height = 0;

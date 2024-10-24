@@ -8,6 +8,7 @@
 #include "../game.hpp"
 #include "../draw.hpp"
 #include "../prng.hpp"
+#include "../mod_tools.hpp"
 
 #include <mutex>
 #include <thread>
@@ -48,7 +49,7 @@ static void baseCreateLoadingScreen(real_t progress, const char* background_imag
 
 		// loading bar
 		auto loading_bar = loading_frame->addFrame("loading_bar");
-		loading_bar->setSize(SDL_Rect{60, 474, 1168, 228});
+		loading_bar->setSize(SDL_Rect{(Frame::virtualScreenX - 1168) / 2, Frame::virtualScreenY - (720 - 474), 1168, 228});
 		{
 			// background
 			auto background = loading_bar->addImage(
@@ -105,9 +106,10 @@ static void baseCreateLoadingScreen(real_t progress, const char* background_imag
 	    // create framebuffer for background
 	    loading_fb.init(xres, yres, GL_LINEAR, GL_LINEAR);
 	    loading_fb.bindForWriting();
-	    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        GL_CHECK_ERR(glClearColor(0.f, 0.f, 0.f, 0.f));
+        GL_CHECK_ERR(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 	    drawAllPlayerCameras();
-	    main_framebuffer.bindForWriting();
+        loading_fb.unbindForWriting();
 #endif
 
 		// spinning widget
@@ -121,10 +123,10 @@ static void baseCreateLoadingScreen(real_t progress, const char* background_imag
 
 	// Loading... text
 	auto label = loading_frame->addField("loading_label", 128);
-	label->setSize(fullscreen);
-	label->setJustify(Field::justify_t::CENTER);
+    label->setSize(fullscreen);
+    label->setJustify(Field::justify_t::CENTER);
 	label->setFont("fonts/pixel_maz.ttf#64#2");
-	label->setText(language[709]);
+	label->setText(Language::get(709));
 }
 
 void createLoadingScreen(real_t progress) {
@@ -155,7 +157,6 @@ void doLoadingScreen() {
 	const Uint32 oldTicks = loadingticks;
 	(void)handleEvents();
 	if (oldTicks != loadingticks) {
-
 		// spinning widget
 		auto spinning_widget = loading_frame->findImage("spinning_widget");
 		if (spinning_widget) {
@@ -212,12 +213,15 @@ void doLoadingScreen() {
 		}
 
 		// render
-		main_framebuffer.bindForWriting();
 		drawClearBuffers();
 		if (loading_fb.fbo) {
 		    loading_fb.bindForReading();
-		    framebuffer::blit();
+            loading_fb.draw();
 		}
+		if (fadealpha > 0) {
+			drawRect(NULL, makeColor(0, 0, 0, 255), fadealpha);
+		}
+		gui->process();
 		gui->predraw();
 		gui->draw();
 		gui->postdraw();

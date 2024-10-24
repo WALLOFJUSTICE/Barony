@@ -28,6 +28,9 @@
 #include <steam/steam_api.h>
 #include "steam.hpp"
 #endif
+#ifdef USE_PLAYFAB
+#include "playfab.hpp"
+#endif
 #include "menu.hpp"
 #include "paths.hpp"
 #include "player.hpp"
@@ -37,6 +40,7 @@
 #include "ui/LoadingScreen.hpp"
 #include "ui/GameUI.hpp"
 #include "ui/Text.hpp"
+#include "ui/MainMenu.hpp"
 
 #include <thread>
 #include <future>
@@ -49,6 +53,98 @@
 	initializes certain game specific resources
 
 -------------------------------------------------------------------------------*/
+
+void initGameDatafiles(bool moddedReload)
+{
+	for ( int i = 0; i < NUMITEMS && i < (NUM_ITEM_STRINGS - 2); ++i )
+	{
+		ItemTooltips.itemNameStringToItemID[itemNameStrings[i + 2]] = i;
+	}
+	ItemTooltips.readItemsFromFile();
+	ItemTooltips.readTooltipsFromFile();
+	ItemTooltips.readItemLocalizationsFromFile();
+	ItemTooltips.readBookLocalizationsFromFile();
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		// set these to something silly clear the tooltip cache match
+		players[i]->worldUI.worldTooltipItem.type = WOODEN_SHIELD;
+		players[i]->worldUI.worldTooltipItem.count = 99;
+	}
+
+	loadHUDSettingsJSON();
+	Player::SkillSheet_t::loadSkillSheetJSON();
+	Player::CharacterSheet_t::loadCharacterSheetJSON();
+	StatusEffectQueue_t::loadStatusEffectsJSON();
+	FollowerRadialMenu::loadFollowerJSON();
+	CalloutRadialMenu::loadCalloutJSON();
+	MonsterData_t::loadMonsterDataJSON();
+	ScriptTextParser.readAllScripts();
+	ShopkeeperConsumables_t::readFromFile();
+	EditorEntityData_t::readFromFile();
+	ClassHotbarConfig_t::init();
+	MainMenu::RaceDescriptions::readFromFile();
+	MainMenu::ClassDescriptions::readFromFile();
+	StatueManager.readAllStatues();
+	GameModeManager_t::CurrentSession_t::SeededRun_t::readSeedNamesFromFile();
+	loadLights();
+	for ( int c = 1; c < NUMMONSTERS; ++c )
+	{
+		EquipmentModelOffsets.readFromFile(monstertypename[c], c);
+	}
+	setupSpells();
+	CompendiumEntries.readMonstersFromFile();
+	Compendium_t::Events_t::itemDisplayedEventsList.clear();
+	Compendium_t::Events_t::readEventsFromFile();
+	CompendiumEntries.readCodexFromFile();
+	CompendiumEntries.readWorldFromFile();
+	CompendiumEntries.readItemsFromFile();
+	CompendiumEntries.readMagicFromFile();
+	CompendiumEntries.readMonstersTranslationsFromFile();
+	CompendiumEntries.readCodexTranslationsFromFile();
+	CompendiumEntries.readWorldTranslationsFromFile();
+	CompendiumEntries.readItemsTranslationsFromFile();
+	CompendiumEntries.readMagicTranslationsFromFile();
+	Compendium_t::AchievementData_t::readContentsLang();
+	Compendium_t::Events_t::readEventsTranslations();
+	Compendium_t::readUnlocksSaveData();
+	Compendium_t::Events_t::loadItemsSaveData();
+	CompendiumEntries.readModelLimbsFromFile("monster");
+	CompendiumEntries.readModelLimbsFromFile("world");
+	CompendiumEntries.readModelLimbsFromFile("codex");
+	MainMenu::MainMenuBanners_t::readFromFile();
+}
+
+void initGameDatafilesAsync(bool moddedReload)
+{
+	physfsReloadMonsterLimbFiles();
+	GlyphHelper.readFromFile();
+#ifndef NINTENDO
+	if ( PHYSFS_getRealDir(PLAYERNAMES_MALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(PLAYERNAMES_MALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(PLAYERNAMES_MALE_FILE);
+		randomPlayerNamesMale = getLinesFromDataFile(namesDirectory);
+	}
+	if ( PHYSFS_getRealDir(PLAYERNAMES_FEMALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(PLAYERNAMES_FEMALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(PLAYERNAMES_FEMALE_FILE);
+		randomPlayerNamesFemale = getLinesFromDataFile(namesDirectory);
+	}
+	if ( PHYSFS_getRealDir(NPCNAMES_MALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(NPCNAMES_MALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(NPCNAMES_MALE_FILE);
+		randomNPCNamesMale = getLinesFromDataFile(namesDirectory);
+	}
+	if ( PHYSFS_getRealDir(NPCNAMES_FEMALE_FILE.c_str()) )
+	{
+		std::string namesDirectory = PHYSFS_getRealDir(NPCNAMES_FEMALE_FILE.c_str());
+		namesDirectory.append(PHYSFS_getDirSeparator()).append(NPCNAMES_FEMALE_FILE);
+		randomNPCNamesFemale = getLinesFromDataFile(namesDirectory);
+	}
+#endif
+}
 
 int initGame()
 {
@@ -76,6 +172,9 @@ int initGame()
 	cpp_SteamServerClientWrapper_OnRequestEncryptedAppTicket = &steam_OnRequestEncryptedAppTicket;
  #endif //USE_EOS
 #endif
+#ifdef USE_PLAYFAB
+	playfabUser.init();
+#endif
 
 	initGameControllers();
 
@@ -83,227 +182,30 @@ int initGame()
 	updateLoadingScreen(90);
 	doLoadingScreen();
 
-	// load achievement images
-#ifdef NINTENDO
-	Directory achievementsDir("rom:/images/achievements");
-#else
-	Directory achievementsDir("images/achievements");
-#endif
-	for (auto& item : achievementsDir.list)
-	{
-		std::string fullPath = achievementsDir.path + std::string("/") + item;
-		char* name = const_cast<char*>(fullPath.c_str()); // <- evil
-		achievementImages.emplace(std::make_pair(item, loadImage(name)));
-	}
-
 	// load item types
-	int newItems = 0;
-	printlog("loading items...\n");
-	std::string itemsDirectory = PHYSFS_getRealDir("items/items.txt");
-	itemsDirectory.append(PHYSFS_getDirSeparator()).append("items/items.txt");
-	File* fp = openDataFile(itemsDirectory.c_str(), "rb");
-	for (int c = 0; !fp->eof(); ++c)
-	{
-		if (c > SPELLBOOK_DETECT_FOOD)
-		{
-			newItems = c - SPELLBOOK_DETECT_FOOD - 1;
-			items[c].name_identified = language[3500 + newItems * 2];
-			items[c].name_unidentified = language[3501 + newItems * 2];
-		}
-		else if (c > ARTIFACT_BOW)
-		{
-			newItems = c - ARTIFACT_BOW - 1;
-			items[c].name_identified = language[2200 + newItems * 2];
-			items[c].name_unidentified = language[2201 + newItems * 2];
-		}
-		else
-		{
-			items[c].name_identified = language[1545 + c * 2];
-			items[c].name_unidentified = language[1546 + c * 2];
-		}
-		items[c].index = fp->geti();
-		items[c].fpindex = fp->geti();
-		items[c].variations = fp->geti();
-		char name[32];
-		fp->gets2(name, sizeof(name));
-		if (!strcmp(name, "WEAPON"))
-		{
-			items[c].category = WEAPON;
-		}
-		else if (!strcmp(name, "ARMOR"))
-		{
-			items[c].category = ARMOR;
-		}
-		else if (!strcmp(name, "AMULET"))
-		{
-			items[c].category = AMULET;
-		}
-		else if (!strcmp(name, "POTION"))
-		{
-			items[c].category = POTION;
-		}
-		else if (!strcmp(name, "SCROLL"))
-		{
-			items[c].category = SCROLL;
-		}
-		else if (!strcmp(name, "MAGICSTAFF"))
-		{
-			items[c].category = MAGICSTAFF;
-		}
-		else if (!strcmp(name, "RING"))
-		{
-			items[c].category = RING;
-		}
-		else if (!strcmp(name, "SPELLBOOK"))
-		{
-			items[c].category = SPELLBOOK;
-		}
-		else if (!strcmp(name, "TOOL"))
-		{
-			items[c].category = TOOL;
-		}
-		else if (!strcmp(name, "FOOD"))
-		{
-			items[c].category = FOOD;
-		}
-		else if (!strcmp(name, "BOOK"))
-		{
-			items[c].category = BOOK;
-		}
-		else if (!strcmp(name, "THROWN"))
-		{
-			items[c].category = THROWN;
-		}
-		else if (!strcmp(name, "SPELL_CAT"))
-		{
-			items[c].category = SPELL_CAT;
-		}
-		else
-		{
-			items[c].category = GEM;
-		}
-		items[c].weight = fp->geti();
-		items[c].value = fp->geti();
-		items[c].images.first = NULL;
-		items[c].images.last = NULL;
-		while (1)
-		{
-			string_t* string = (string_t*)malloc(sizeof(string_t));
-			string->data = (char*)malloc(sizeof(char) * 64);
-			string->lines = 1;
-
-			node_t* node = list_AddNodeLast(&items[c].images);
-			node->element = string;
-			node->deconstructor = &stringDeconstructor;
-			node->size = sizeof(string_t);
-			string->node = node;
-
-			auto result = fp->gets2(string->data, 64);
-			if (result == nullptr || string->data[0] == '\0') {
-				list_RemoveNode(node);
-				break;
-			}
-		}
-	}
-	FileIO::close(fp);
-	loadItemLists();
-	ItemTooltips.readItemsFromFile();
-	ItemTooltips.readTooltipsFromFile();
-	setupSpells();
-
-	loadHUDSettingsJSON();
-	Player::SkillSheet_t::loadSkillSheetJSON();
-	Player::CharacterSheet_t::loadCharacterSheetJSON();
-	StatusEffectQueue_t::loadStatusEffectsJSON();
-	FollowerRadialMenu::loadFollowerJSON();
-	MonsterData_t::loadMonsterDataJSON();
-	ScriptTextParser.readAllScripts();
-	ShopkeeperConsumables_t::readFromFile();
+	initGameDatafiles(false);
 
 	std::atomic_bool loading_done {false};
 	auto loading_task = std::async(std::launch::async, [&loading_done](){
-		int c, x;
-		char name[32];
-
-		// load model offsets
-		printlog( "loading model offsets...\n");
-		for ( c = 1; c < NUMMONSTERS; c++ )
-		{
-			// initialize all offsets to zero
-			for ( x = 0; x < 20; x++ )
-			{
-				limbs[c][x][0] = 0;
-				limbs[c][x][1] = 0;
-				limbs[c][x][2] = 0;
-			}
-
-			// open file
-			char filename[256];
-			strcpy(filename, "models/creatures/");
-			strcat(filename, monstertypename[c]);
-			strcat(filename, "/limbs.txt");
-			File* fp;
-			if ( (fp = openDataFile(filename, "rb")) == NULL )
-			{
-				continue;
-			}
-
-			// read file
-			int line;
-			for ( line = 1; !fp->eof(); line++ )
-			{
-				char data[256];
-				int limb = 20;
-				int dummy;
-
-				// read line from file
-				fp->gets( data, 256 );
-
-				// skip blank and comment lines
-				if ( data[0] == '\n' || data[0] == '\r' || data[0] == '#' )
-				{
-					continue;
-				}
-
-				// process line
-				if ( sscanf( data, "%d", &limb ) != 1 || limb >= 20 || limb < 0 )
-				{
-					printlog( "warning: syntax error in '%s':%d\n invalid limb index!\n", filename, line);
-					continue;
-				}
-				if ( sscanf( data, "%d %f %f %f\n", &dummy, &limbs[c][limb][0], &limbs[c][limb][1], &limbs[c][limb][2] ) != 4 )
-				{
-					printlog( "warning: syntax error in '%s':%d\n invalid limb offsets!\n", filename, line);
-					continue;
-				}
-			}
-
-			// close file
-			FileIO::close(fp);
-		}
-
 		updateLoadingScreen(92);
-
-		GlyphHelper.readFromFile();
-
+		initGameDatafilesAsync(false);
 #ifdef NINTENDO
-		std::string maleNames, femaleNames;
-		maleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_MALE_FILE;
-		femaleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_FEMALE_FILE;
-		randomPlayerNamesMale = getLinesFromDataFile(maleNames);
-		randomPlayerNamesFemale = getLinesFromDataFile(femaleNames);
-#else // NINTENDO
-		randomPlayerNamesMale = getLinesFromDataFile(PLAYERNAMES_MALE_FILE);
-		randomPlayerNamesFemale = getLinesFromDataFile(PLAYERNAMES_FEMALE_FILE);
-#endif // !NINTENDO
+		const auto playerMaleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_MALE_FILE;
+		const auto playerFemaleNames = BASE_DATA_DIR + std::string("/") + PLAYERNAMES_FEMALE_FILE;
+        const auto npcMaleNames = BASE_DATA_DIR + std::string("/") + NPCNAMES_MALE_FILE;
+        const auto npcFemaleNames = BASE_DATA_DIR + std::string("/") + NPCNAMES_FEMALE_FILE;
+		randomPlayerNamesMale = getLinesFromDataFile(playerMaleNames);
+		randomPlayerNamesFemale = getLinesFromDataFile(playerFemaleNames);
+        randomNPCNamesMale = getLinesFromDataFile(npcMaleNames);
+        randomNPCNamesFemale = getLinesFromDataFile(npcFemaleNames);
+#endif // NINTENDO
 
 		updateLoadingScreen(94);
 
-#ifdef NINTENDO_DEBUG
-		//#error "No DLC support on SWITCH yet :(" //TODO: Resolve this.
-		enabledDLCPack1 = true;
-		enabledDLCPack2 = true;
-#endif
+//#ifdef NINTENDO_DEBUG
+		//enabledDLCPack1 = true;
+		//enabledDLCPack2 = true;
+//#endif
 
 #if defined(USE_EOS) || defined(STEAMWORKS)
 #else
@@ -367,7 +269,7 @@ int initGame()
 		removedEntities.last = NULL;
 		safePacketsSent.first = NULL;
 		safePacketsSent.last = NULL;
-		for ( c = 0; c < MAXPLAYERS; c++ )
+		for ( int c = 0; c < MAXPLAYERS; c++ )
 		{
 			safePacketsReceivedMap[c].clear();
 		}
@@ -384,7 +286,7 @@ int initGame()
 		}
 		command_history.first = NULL;
 		command_history.last = NULL;
-		for ( c = 0; c < MAXPLAYERS; c++ )
+		for ( int c = 0; c < MAXPLAYERS; c++ )
 		{
 			openedChest[c] = NULL;
 		}
@@ -407,7 +309,7 @@ int initGame()
 			}
 			players[c]->entity = nullptr;
 			stats[c]->sex = static_cast<sex_t>(0);
-			stats[c]->appearance = 0;
+			stats[c]->stat_appearance = 0;
 			strcpy(stats[c]->name, "");
 			stats[c]->type = HUMAN;
 			stats[c]->playerRace = RACE_HUMAN;
@@ -418,12 +320,10 @@ int initGame()
 			stats[c]->clearStats();
 			entitiesToDelete[c].first = nullptr;
 			entitiesToDelete[c].last = nullptr;
-			if ( c == 0 )
-			{
-				initClass(c);
-			}
+			initClass(c);
 			GenericGUI[c].setPlayer(c);
 			FollowerMenu[c].setPlayer(c);
+			CalloutMenu[c].setPlayer(c);
 			cameras[c].winx = 0;
 			cameras[c].winy = 0;
 			cameras[c].winw = xres;
@@ -493,17 +393,20 @@ int initGame()
 		}
 
 		// load extraneous game resources
-		title_bmp = loadImage("images/system/title.png");
-		logo_bmp = loadImage("images/system/logo.png");
-		cursor_bmp = loadImage("images/system/cursor.png");
-		cross_bmp = loadImage("images/system/cross.png");
-		selected_cursor_bmp = loadImage("images/system/selectedcursor.png");
 		if (!loadInterfaceResources())
 		{
 			printlog("Failed to load interface resources.\n");
 			loading_done = true;
 			return -1;
 		}
+
+		loadAchievementData("/data/achievements.json");
+#ifdef LOCAL_ACHIEVEMENTS
+		LocalAchievements.readFromFile();
+#endif
+#ifdef NINTENDO
+		nxPostSDLInit();
+#endif
 	}
 
 	return result;
@@ -517,9 +420,24 @@ int initGame()
 
 -------------------------------------------------------------------------------*/
 
+#include "interface/ui.hpp"
+
 void deinitGame()
 {
-	int c, x;
+    // destroy camera framebuffers
+    constexpr int numFbs = sizeof(view_t::fb) / sizeof(view_t::fb[0]);
+    for (int c = 0; c < MAXPLAYERS; ++c) {
+        for (int i = 0; i < numFbs; ++i) {
+            cameras[c].fb[i].destroy();
+            playerPortraitView[c].fb[i].destroy();
+        }
+    }
+    for (int i = 0; i < numFbs; ++i) {
+        menucam.fb[i].destroy();
+    }
+
+	// destroy enemy hp bar textures
+	EnemyHPDamageBarHandler::dumpCache();
 
 	// send disconnect messages
 	if (multiplayer != SINGLE) {
@@ -535,7 +453,7 @@ void deinitGame()
 	    }
 	    else if ( multiplayer == SERVER )
 	    {
-		    for ( x = 1; x < MAXPLAYERS; x++ )
+		    for ( int x = 1; x < MAXPLAYERS; x++ )
 		    {
 			    if ( client_disconnected[x] == true )
 			    {
@@ -566,6 +484,13 @@ void deinitGame()
 	    }
 	}
 
+	UIToastNotificationManager.term(true);
+	Compendium_t::Events_t::writeItemsSaveData();
+	Compendium_t::writeUnlocksSaveData();
+#ifdef LOCAL_ACHIEVEMENTS
+	LocalAchievements_t::writeToFile();
+#endif
+
 	saveAllScores(SCORESFILE);
 	saveAllScores(SCORESFILE_MULTIPLAYER);
 	list_FreeAll(&topscores);
@@ -576,33 +501,13 @@ void deinitGame()
 		players[i]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
 	}
 	list_FreeAll(&removedEntities);
-	if ( title_bmp != nullptr )
-	{
-		SDL_FreeSurface(title_bmp);
-	}
-	if ( logo_bmp != nullptr )
-	{
-		SDL_FreeSurface(logo_bmp);
-	}
-	if ( cursor_bmp != nullptr )
-	{
-		SDL_FreeSurface(cursor_bmp);
-	}
-	if ( cross_bmp != nullptr )
-	{
-		SDL_FreeSurface(cross_bmp);
-	}
-	if ( selected_cursor_bmp != nullptr )
-	{
-		SDL_FreeSurface(selected_cursor_bmp);
-	}
 	for ( int i = 0; i < MAXPLAYERS; ++i )
 	{
 		list_FreeAll(&chestInv[i]);
 	}
 	freeInterfaceResources();
 	bookParser_t.deleteBooks();
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		players[c]->inventoryUI.appraisal.timer = 0;
 		players[c]->inventoryUI.appraisal.current_item = 0;
@@ -638,20 +543,20 @@ void deinitGame()
 	}
 	else if ( multiplayer == SERVER )
 	{
-		for ( c = 0; c < MAXPLAYERS; ++c )
+		for ( int c = 0; c < MAXPLAYERS; ++c )
 		{
 			list_FreeAll(&channeledSpells[c]);
 		}
 	}
 
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		list_FreeAll(&players[c]->magic.spellList);
 	}
 	list_FreeAll(&command_history);
 
 	list_FreeAll(&safePacketsSent);
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		safePacketsReceivedMap[c].clear();
 	}
@@ -683,8 +588,10 @@ void deinitGame()
 		bramscastlemusic->release();
 		hamletmusic->release();
 		tutorialmusic->release();
+		gameovermusic->release();
+		introstorymusic->release();
 
-		for ( c = 0; c < NUMMINESMUSIC; c++ )
+		for ( int c = 0; c < NUMMINESMUSIC; c++ )
 		{
 			minesmusic[c]->release();
 		}
@@ -692,7 +599,7 @@ void deinitGame()
 		{
 			free(minesmusic);
 		}
-		for ( c = 0; c < NUMSWAMPMUSIC; c++ )
+		for ( int c = 0; c < NUMSWAMPMUSIC; c++ )
 		{
 			swampmusic[c]->release();
 		}
@@ -700,7 +607,7 @@ void deinitGame()
 		{
 			free(swampmusic);
 		}
-		for ( c = 0; c < NUMLABYRINTHMUSIC; c++ )
+		for ( int c = 0; c < NUMLABYRINTHMUSIC; c++ )
 		{
 			labyrinthmusic[c]->release();
 		}
@@ -708,7 +615,7 @@ void deinitGame()
 		{
 			free(labyrinthmusic);
 		}
-		for ( c = 0; c < NUMRUINSMUSIC; c++ )
+		for ( int c = 0; c < NUMRUINSMUSIC; c++ )
 		{
 			ruinsmusic[c]->release();
 		}
@@ -716,7 +623,7 @@ void deinitGame()
 		{
 			free(ruinsmusic);
 		}
-		for ( c = 0; c < NUMUNDERWORLDMUSIC; c++ )
+		for ( int c = 0; c < NUMUNDERWORLDMUSIC; c++ )
 		{
 			underworldmusic[c]->release();
 		}
@@ -724,7 +631,7 @@ void deinitGame()
 		{
 			free(underworldmusic);
 		}
-		for ( c = 0; c < NUMHELLMUSIC; c++ )
+		for ( int c = 0; c < NUMHELLMUSIC; c++ )
 		{
 			hellmusic[c]->release();
 		}
@@ -732,7 +639,7 @@ void deinitGame()
 		{
 			free(hellmusic);
 		}
-		for ( c = 0; c < NUMMINOTAURMUSIC; c++ )
+		for ( int c = 0; c < NUMMINOTAURMUSIC; c++ )
 		{
 			minotaurmusic[c]->release();
 		}
@@ -740,7 +647,7 @@ void deinitGame()
 		{
 			free(minotaurmusic);
 		}
-		for ( c = 0; c < NUMCAVESMUSIC; c++ )
+		for ( int c = 0; c < NUMCAVESMUSIC; c++ )
 		{
 			cavesmusic[c]->release();
 		}
@@ -748,7 +655,7 @@ void deinitGame()
 		{
 			free(cavesmusic);
 		}
-		for ( c = 0; c < NUMCITADELMUSIC; c++ )
+		for ( int c = 0; c < NUMCITADELMUSIC; c++ )
 		{
 			citadelmusic[c]->release();
 		}
@@ -756,7 +663,7 @@ void deinitGame()
 		{
 			free(citadelmusic);
 		}
-		for ( c = 0; c < NUMINTROMUSIC; c++ )
+		for ( int c = 0; c < NUMINTROMUSIC; c++ )
 		{
 			intromusic[c]->release();
 		}
@@ -773,7 +680,7 @@ void deinitGame()
 
 	// free items
 	printlog( "freeing item data...\n");
-	for ( c = 0; c < NUMITEMS; c++ )
+	for ( int c = 0; c < NUMITEMS; c++ )
 	{
 		list_FreeAll(&items[c].images);
 		node_t* node, *nextnode;
@@ -820,7 +727,7 @@ void deinitGame()
 		cpp_Free_CSteamID(currentLobby); //TODO: Remove these bodges.
 		currentLobby = NULL;
 	}
-	for ( c = 0; c < MAXPLAYERS; c++ )
+	for ( int c = 0; c < MAXPLAYERS; c++ )
 	{
 		if ( steamIDRemote[c] )
 		{
@@ -828,7 +735,7 @@ void deinitGame()
 			steamIDRemote[c] = NULL;
 		}
 	}
-	for ( c = 0; c < MAX_STEAM_LOBBIES; c++ )
+	for ( int c = 0; c < MAX_STEAM_LOBBIES; c++ )
 	{
 		if ( lobbyIDs[c] )
 		{
@@ -838,30 +745,8 @@ void deinitGame()
 	}
 #endif
 #if defined USE_EOS
-	if ( EOS.CurrentLobbyData.currentLobbyIsValid() )
-	{
-		EOS.leaveLobby();
-
-		Uint32 shutdownTicks = SDL_GetTicks();
-		while ( EOS.CurrentLobbyData.bAwaitingLeaveCallback )
-		{
-#ifdef APPLE
-			SDL_Event event;
-			while ( SDL_PollEvent(&event) != 0 )
-			{
-				//Makes Mac work because Apple had to do it different.
-			}
-#endif
-			EOS_Platform_Tick(EOS.PlatformHandle);
-			SDL_Delay(50);
-			if ( SDL_GetTicks() - shutdownTicks >= 3000 )
-			{
-				break;
-			}
-		}
-	}
-	EOS.AccountManager.deinit();
-	EOS.shutdown();
+	EOS.stop();
+	EOS.quit();
 #endif
 
 	//Close game controller
@@ -883,7 +768,10 @@ void deinitGame()
 	{
 		free(shoparea);
 	}
-
+	if ( CompendiumEntries.compendiumMap.tiles )
+	{
+		free(CompendiumEntries.compendiumMap.tiles);
+	}
 	for (int i = 0; i < MAXPLAYERS; ++i)
 	{
 		delete players[i];
@@ -896,4 +784,359 @@ void deinitGame()
 #ifdef USE_IMGUI
 	ImGui_t::deinit();
 #endif
+#ifdef USE_PLAYFAB
+	playfabUser.postScoreHandler.deinit();
+#endif
+}
+
+void loadAchievementData(const char* path) {
+	if ( !PHYSFS_getRealDir(path) )
+	{
+		printlog("[JSON]: Error: Could not find file: %s", path);
+		return;
+	}
+
+	std::string inputPath = PHYSFS_getRealDir(path);
+	inputPath.append(path);
+
+	File* fp = FileIO::open(inputPath.c_str(), "rb");
+	if (!fp) {
+		printlog("[JSON]: Error: Could not find file: %s", path);
+		return;
+	}
+
+	char buf[120000];
+	int count = (int)fp->read(buf, sizeof(buf[0]), sizeof(buf));
+	buf[count] = '\0';
+	rapidjson::StringStream is(buf);
+	FileIO::close(fp);
+
+	rapidjson::Document d;
+	d.ParseStream(is);
+
+	if (!d.HasMember("achievements") || !d["achievements"].IsObject()) {
+		printlog("[JSON]: Error: could not parse %s", path);
+		return;
+	}
+	const auto& achievements = d["achievements"].GetObject();
+
+	for (const auto& it : achievements) {
+		if (!it.name.IsString()) {
+			printlog("[JSON]: Error: could not parse %s", path);
+			return;
+		}
+		auto achName = it.name.GetString();
+#ifdef NINTENDO
+		if ( !strcmp(achName, "BARONY_ACH_LOCAL_CUSTOMS") )
+		{
+			continue;
+		}
+#endif
+#ifndef STEAMWORKS
+		if ( !strcmp(achName, "BARONY_ACH_CARTOGRAPHER") )
+		{
+			continue;
+		}
+#endif
+#ifndef USE_PLAYFAB
+		if ( !strcmp(achName, "BARONY_ACH_BLOOM_PLANTED") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_DUNGEONSEED") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_GROWTH_MINDSET") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_REAP_SOW") )
+		{
+			continue;
+		}
+		if ( !strcmp(achName, "BARONY_ACH_SPROUTS") )
+		{
+			continue;
+		}
+#endif
+		const auto& ach = it.value.GetObject();
+		auto& achData = Compendium_t::achievements[achName];
+		if (ach.HasMember("name") && ach["name"].IsString()) {
+			achData.name = ach["name"].GetString();
+		}
+		if (ach.HasMember("description") && ach["description"].IsString()) {
+			achData.desc = ach["description"].GetString();
+		}
+		if (ach.HasMember("hidden") && ach["hidden"].IsBool()) {
+			achData.hidden = ach["hidden"].GetBool();
+		}
+		if ( ach.HasMember("category") )
+		{
+			achData.category = ach["category"].GetString();
+		}
+		if ( ach.HasMember("lore_points") )
+		{
+			achData.lorePoints = ach["lore_points"].GetInt();
+		}
+
+		achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_NORMAL;
+		if ( ach.HasMember("dlc") )
+		{
+			if ( ach["dlc"].IsString() )
+			{
+				if ( !strcmp(ach["dlc"].GetString(), "myths_outcasts") )
+				{
+					achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC1;
+				}
+				else if ( !strcmp(ach["dlc"].GetString(), "legends_pariahs") )
+				{
+					achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC2;
+				}
+			}
+			else if ( ach["dlc"].IsArray() )
+			{
+				for ( auto it = ach["dlc"].Begin(); it != ach["dlc"].End(); ++it )
+				{
+					if ( it->IsString() )
+					{
+						if ( !strcmp(it->GetString(), "myths_outcasts") )
+						{
+							if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC2 )
+							{
+								achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2;
+							}
+							else
+							{
+								achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC1;
+							}
+						}
+						else if ( !strcmp(it->GetString(), "legends_pariahs") )
+						{
+							if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1 )
+							{
+								achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2;
+							}
+							else
+							{
+								achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC2;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for ( int statNum = 0; statNum < NUM_STEAM_STATISTICS; ++statNum )
+	{
+		if ( steamStatAchStringsAndMaxVals[statNum].first != "BARONY_ACH_NONE" )
+		{
+			auto find = Compendium_t::achievements.find(steamStatAchStringsAndMaxVals[statNum].first);
+			if ( find != Compendium_t::achievements.end() )
+			{
+				find->second.achievementProgress = statNum;
+			}
+		}
+	}
+
+	sortAchievementsForDisplay();
+}
+
+
+void sortAchievementsForDisplay()
+{
+#ifdef STEAMWORKS
+	if ( Compendium_t::AchievementData_t::achievementsNeedFirstData )
+	{
+		if ( SteamUser()->BLoggedOn() )
+		{
+			Compendium_t::AchievementData_t::achievementsNeedFirstData = false;
+
+			for ( auto& achData : Compendium_t::achievements )
+			{
+				Uint32 time = 0;
+				bool unlocked = false;
+				SteamUserStats()->GetAchievementAndUnlockTime(achData.first.c_str(), &achData.second.unlocked, &time);
+				if ( achData.second.unlocked )
+				{
+					achData.second.unlockTime = time;
+				}
+			}
+		}
+	}
+#endif
+
+	Compendium_t::AchievementData_t::achievementsNeedResort = false;
+
+	// sort achievements list
+	Compendium_t::AchievementData_t::achievementNamesSorted.clear();
+	std::vector<std::pair<std::string, std::string>> names;
+	for ( auto& achData : Compendium_t::achievements )
+	{
+		names.push_back(std::make_pair(achData.first, achData.second.name));
+	}
+	Compendium_t::AchievementData_t::Comparator compFunctor =
+		[](std::pair<std::string, std::string> lhs, std::pair<std::string, std::string> rhs)
+	{
+		auto& achData1 = Compendium_t::achievements[lhs.first];
+		auto& achData2 = Compendium_t::achievements[rhs.first];
+
+		bool ach1 = achData1.unlocked;
+		bool ach2 = achData2.unlocked;
+		bool lhsAchIsHidden = achData1.hidden;
+		bool rhsAchIsHidden = achData2.hidden;
+		if ( !Compendium_t::AchievementData_t::sortAlphabetical )
+		{
+			if ( ach1 && !ach2 )
+			{
+				if ( Compendium_t::compendium_sorting_hide_ach_unlocked )
+				{
+					return false;
+				}
+				return true;
+			}
+			else if ( !ach1 && ach2 )
+			{
+				if ( Compendium_t::compendium_sorting_hide_ach_unlocked )
+				{
+					return true;
+				}
+				return false;
+			}
+			else if ( !ach1 && !ach2 && (lhsAchIsHidden || rhsAchIsHidden) )
+			{
+				if ( lhsAchIsHidden && rhsAchIsHidden )
+				{
+					return lhs.second < rhs.second;
+				}
+				if ( !lhsAchIsHidden )
+				{
+					return true;
+				}
+				if ( !rhsAchIsHidden )
+				{
+					return false;
+				}
+				return lhs.second < rhs.second;
+			}
+			else
+			{
+				if ( !ach1 && !ach2 )
+				{
+					return lhs.second < rhs.second;
+				}
+				else
+				{
+					if ( achData1.unlockTime == achData2.unlockTime )
+					{
+						return lhs.second < rhs.second;
+					}
+					else
+					{
+						return achData1.unlockTime > achData2.unlockTime;
+					}
+				}
+			}
+		}
+		else
+		{
+			if ( !ach1 && !ach2 && (lhsAchIsHidden || rhsAchIsHidden) )
+			{
+				if ( lhsAchIsHidden && rhsAchIsHidden )
+				{
+					return lhs.second < rhs.second;
+				}
+				if ( !lhsAchIsHidden )
+				{
+					return true;
+				}
+				if ( !rhsAchIsHidden )
+				{
+					return false;
+				}
+				return lhs.second < rhs.second;
+			}
+			else
+			{
+				if ( ach1 && !ach2 )
+				{
+					if ( Compendium_t::compendium_sorting_hide_ach_unlocked )
+					{
+						return false;
+					}
+					return true;
+				}
+				else if ( !ach1 && ach2 )
+				{
+					if ( Compendium_t::compendium_sorting_hide_ach_unlocked )
+					{
+						return true;
+					}
+					return false;
+				}
+				return lhs.second < rhs.second;
+			}
+		}
+	};
+
+	std::set<std::pair<std::string, std::string>, Compendium_t::AchievementData_t::Comparator> sorted(
+		names.begin(),
+		names.end(),
+		compFunctor);
+	Compendium_t::AchievementData_t::achievementNamesSorted.swap(sorted);
+	Compendium_t::AchievementData_t::achievementCategories.clear();
+	for ( auto& entry : Compendium_t::AchievementData_t::achievementNamesSorted )
+	{
+		auto& achData = Compendium_t::achievements[entry.first];
+		Compendium_t::AchievementData_t::achievementCategories[achData.category].push_back(entry);
+	}
+
+	Compendium_t::AchievementData_t::achievementsBookDisplay.clear();
+	for ( auto& entry : Compendium_t::AchievementData_t::achievementCategories )
+	{
+		auto& achDisplay = Compendium_t::AchievementData_t::achievementsBookDisplay[entry.first];
+		if ( entry.second.size() > 0 )
+		{
+			achDisplay.pages.push_back(std::vector<std::string>());
+		}
+		int numEntries = 0;
+		bool foundHidden = false;
+		for ( auto& name : entry.second )
+		{
+			auto& achData = Compendium_t::achievements[name.first];
+			if ( foundHidden )
+			{
+				if ( Compendium_t::compendium_sorting_hide_ach_unlocked )
+				{
+					if ( achData.hidden && !achData.unlocked )
+					{
+						achDisplay.numHidden++;
+						continue;
+					}
+				}
+				else
+				{
+					if ( achData.hidden && !achData.unlocked )
+					{
+						achDisplay.numHidden++;
+					}
+					// hidden, so allow only 1 entry to represent all the hidden ones
+					continue;
+				}
+			}
+			++numEntries;
+			if ( numEntries > 1 && ((numEntries - 1) % 8 == 0) )
+			{
+				achDisplay.pages.push_back(std::vector<std::string>());
+			}
+			auto& list = achDisplay.pages.back();
+			list.push_back(name.first);
+			if ( achData.hidden && !achData.unlocked )
+			{
+				foundHidden = true;
+				achDisplay.numHidden++;
+			}
+		}
+	}
 }

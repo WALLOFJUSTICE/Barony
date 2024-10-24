@@ -19,6 +19,8 @@
 #include "../net.hpp"
 #include "../player.hpp"
 #include "magic.hpp"
+#include "../mod_tools.hpp"
+#include "../ui/GameUI.hpp"
 
 list_t channeledSpells[MAXPLAYERS];
 
@@ -72,6 +74,13 @@ spellElement_t spellElement_salvageItem;
 spellElement_t spellElement_flutter;
 spellElement_t spellElement_dash;
 spellElement_t spellElement_selfPolymorph;
+spellElement_t spellElement_ghostBolt;
+spellElement_t spellElement_slimeAcid;
+spellElement_t spellElement_slimeWater;
+spellElement_t spellElement_slimeFire;
+spellElement_t spellElement_slimeTar;
+spellElement_t spellElement_slimeMetal;
+spellElement_t spellElement_slime_spray;
 
 spell_t spell_forcebolt;
 spell_t spell_magicmissile;
@@ -126,6 +135,12 @@ spell_t spell_salvageItem;
 spell_t spell_flutter;
 spell_t spell_dash;
 spell_t spell_polymorph;
+spell_t spell_ghost_bolt;
+spell_t spell_slime_acid;
+spell_t spell_slime_water;
+spell_t spell_slime_fire;
+spell_t spell_slime_tar;
+spell_t spell_slime_metal;
 
 bool addSpell(int spell, int player, bool ignoreSkill)
 {
@@ -303,6 +318,24 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 		case SPELL_CRAB_WEB:
 			new_spell = copySpell(&spell_sprayWeb);
 			break;
+		case SPELL_GHOST_BOLT:
+			new_spell = copySpell(&spell_ghost_bolt);
+			break;
+		case SPELL_SLIME_ACID:
+			new_spell = copySpell(&spell_slime_acid);
+			break;
+		case SPELL_SLIME_WATER:
+			new_spell = copySpell(&spell_slime_water);
+			break;
+		case SPELL_SLIME_FIRE:
+			new_spell = copySpell(&spell_slime_fire);
+			break;
+		case SPELL_SLIME_TAR:
+			new_spell = copySpell(&spell_slime_tar);
+			break;
+		case SPELL_SLIME_METAL:
+			new_spell = copySpell(&spell_slime_metal);
+			break;
 		default:
 			return false;
 	}
@@ -346,33 +379,39 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 			else if ( foundNormalSpell )
 			{
 				// can't learn, already have it.
-				messagePlayer(player, MESSAGE_STATUS, language[439], new_spell->name);
+				messagePlayer(player, MESSAGE_STATUS, Language::get(439), new_spell->getSpellName());
 				spellDeconstructor((void*)new_spell);
+				playSoundPlayer(player, 90, 64);
 				return false;
 			}
 		}
 		else
 		{
 			// can't learn, already have it.
-			messagePlayer(player, MESSAGE_STATUS, language[439], new_spell->name);
+			if ( !(spell == SPELL_FORCEBOLT && skillCapstoneUnlocked(player, PRO_SPELLCASTING)) )
+			{
+				messagePlayer(player, MESSAGE_STATUS, Language::get(439), new_spell->getSpellName());
+			}
 			spellDeconstructor((void*)new_spell);
 			return false;
 		}
 	}
-	int skillLVL = stats[player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[player], players[player]->entity);
-	if ( stats[player]->PROFICIENCIES[PRO_MAGIC] >= 100 )
+	int skillLVL = stats[player]->getModifiedProficiency(PRO_MAGIC) + statGetINT(stats[player], players[player]->entity);
+	if ( stats[player]->getModifiedProficiency(PRO_MAGIC) >= 100 )
 	{
 		skillLVL = 100;
 	}
 	if ( !ignoreSkill && skillLVL < new_spell->difficulty )
 	{
-		messagePlayer(player, MESSAGE_PROGRESSION, language[440]);
+		messagePlayer(player, MESSAGE_PROGRESSION, Language::get(440));
 		spellDeconstructor((void*)new_spell);
+		playSoundPlayer(player, 90, 64);
 		return false;
 	}
 	if ( !intro )
 	{
-		messagePlayer(player, MESSAGE_PROGRESSION, language[441], new_spell->name);
+		messagePlayer(player, MESSAGE_PROGRESSION, Language::get(441), new_spell->getSpellName());
+		skillUpAnimation[player].addSpellLearned(new_spell->ID);
 	}
 	node = list_AddNodeLast(&players[player]->magic.spellList);
 	node->element = new_spell;
@@ -393,24 +432,36 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 		if ( !intro )
 		{
 			pickedUp->notifyIcon = true;
+			if ( players[player]->magic.spellbookUidFromHotbarSlot != 0 )
+			{
+				if ( autoAddHotbarFilter(*pickedUp) )
+				{
+					for ( auto& slot : players[player]->hotbar.slots() )
+					{
+						if ( slot.item == players[player]->magic.spellbookUidFromHotbarSlot )
+						{
+							slot.item = pickedUp->uid;
+							break;
+						}
+					}
+				}
+				players[player]->magic.spellbookUidFromHotbarSlot = 0;
+			}
 		}
 	}
 	free(item);
 
+	if ( !ignoreSkill || (ignoreSkill && !intro) )
+	{
+		Compendium_t::Events_t::eventUpdateWorld(player, Compendium_t::CPDM_SPELLS_LEARNED, "magicians guild", 1);
+	}
 	return true;
-}
-
-spell_t* newSpell()
-{
-	spell_t* spell = (spell_t*) malloc(sizeof(spell_t));
-	spellConstructor(spell);
-	return spell;
 }
 
 void spellConstructor(spell_t* spell)
 {
 	spell->ID = -1;
-	strcpy(spell->name, "Spell");
+	strcpy(spell->spell_internal_name, "spell_default");
 	spell->elements.first = NULL;
 	spell->elements.last = NULL;
 	spell->sustain = true;
@@ -452,7 +503,7 @@ void spellElementConstructor(spellElement_t* element)
 	element->damage = 0;
 	element->duration = 0;
 	element->can_be_learned = true;
-	strcpy(element->name, "New Element");
+	strcpy(element->element_internal_name, "element_default");
 	element->elements.first = NULL;
 	element->elements.last = NULL;
 	element->node = NULL;
@@ -602,7 +653,30 @@ bool spell_isChanneled(spell_t* spell)
 	return false;
 }
 
-real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spellElement_t* spellElement)
+real_t getSpellBonusFromCasterINT(Entity* caster, Stat* casterStats)
+{
+	if ( caster && caster->behavior != &actPlayer )
+	{
+		return 0.0;
+	}
+
+	real_t bonus = 0.0;
+	if ( !casterStats && caster )
+	{
+		casterStats = caster->getStats();
+	}
+	if ( casterStats )
+	{
+		int INT = statGetINT(casterStats, caster);
+		if ( INT > 0 )
+		{
+			bonus += INT / 100.0;
+		}
+	}
+	return bonus;
+}
+
+real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spellElement_t* spellElement, int spellID)
 {
 	if ( caster && caster->behavior != &actPlayer )
 	{
@@ -614,12 +688,75 @@ real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spell
 		casterStats = caster->getStats();
 	}
 
-	int INT = statGetINT(casterStats, caster);
-	if ( INT > 0 )
+	real_t bonus = 0.0;
+	bonus += getSpellBonusFromCasterINT(caster, casterStats);
+
+	if ( casterStats )
 	{
-		return INT / 100.0;
+		if ( casterStats->EFFECTS[EFF_PWR] )
+		{
+			bonus += 0.25;
+			int percentMP = static_cast<int>(100.0 * (real_t)casterStats->MP / std::max(1, casterStats->MAXMP));
+			percentMP = std::min(100, std::max(0, percentMP));
+			percentMP = (100 - percentMP) / 10;
+			bonus += 0.5 * percentMP / 10.0;
+		}
+		if ( casterStats->helmet )
+		{
+			if ( casterStats->helmet->type == HAT_MITER )
+			{
+				real_t hatBonus = 0.0;
+				if ( casterStats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(casterStats) )
+				{
+					hatBonus += (0.10 + (0.05 * abs(casterStats->helmet->beatitude)));
+				}
+				else
+				{
+					hatBonus -= ((0.10 * abs(casterStats->helmet->beatitude)));
+				}
+				if ( spellID == SPELL_HEALING || spellID == SPELL_EXTRAHEALING )
+				{
+					hatBonus *= 2;
+				}
+				bonus += hatBonus;
+			}
+			else if ( casterStats->helmet->type == HAT_HEADDRESS )
+			{
+				real_t hatBonus = 0.0;
+				if ( casterStats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(casterStats) )
+				{
+					hatBonus += (0.10 + (0.05 * abs(casterStats->helmet->beatitude)));
+				}
+				else
+				{
+					hatBonus -= ((0.10 * abs(casterStats->helmet->beatitude)));
+				}
+				if ( ItemTooltips.spellItems.find(spellID) != ItemTooltips.spellItems.end() )
+				{
+					auto& entry = ItemTooltips.spellItems[spellID];
+					if ( entry.spellTags.find(ItemTooltips_t::SpellTagTypes::SPELL_TAG_DAMAGE) != entry.spellTags.end() )
+					{
+						hatBonus *= 2;
+					}
+				}
+				bonus += hatBonus;
+			}
+			else if ( casterStats->helmet->type == HAT_CIRCLET
+				|| casterStats->helmet->type == HAT_CIRCLET_WISDOM )
+			{
+				if ( casterStats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(casterStats) )
+				{
+					bonus += (0.05 + (0.05 * abs(casterStats->helmet->beatitude)));
+				}
+				else
+				{
+					bonus -= ((0.05 * abs(casterStats->helmet->beatitude)));
+				}
+			}
+		}
 	}
-	return 0.0;
+	
+	return bonus;
 }
 
 bool spellElement_isChanneled(spellElement_t* spellElement)
@@ -647,9 +784,18 @@ void equipSpell(spell_t* spell, int playernum, Item* spellItem)
 	if ( players[playernum]->isLocalPlayer() )
 	{
 		players[playernum]->magic.equipSpell(spell);
-		messagePlayer(playernum, MESSAGE_MISC, language[442], spell->name);
+		messagePlayer(playernum, MESSAGE_MISC, Language::get(442), spell->getSpellName());
 		players[playernum]->magic.selected_spell_last_appearance = spellItem->appearance; // to keep track of shapeshift/normal spells.
 	}
+}
+
+const char* spell_t::getSpellName()
+{
+	if ( ItemTooltips.spellItems.find(ID) != ItemTooltips.spellItems.end() )
+	{
+		return ItemTooltips.spellItems[ID].name.c_str();
+	}
+	return "";
 }
 
 spell_t* getSpellFromID(int ID)
@@ -822,6 +968,24 @@ spell_t* getSpellFromID(int ID)
 		    break;
 		case SPELL_CRAB_WEB:
 			spell = &spell_sprayWeb;
+			break;
+		case SPELL_GHOST_BOLT:
+			spell = &spell_ghost_bolt;
+			break;
+		case SPELL_SLIME_ACID:
+			spell = &spell_slime_acid;
+			break;
+		case SPELL_SLIME_WATER:
+			spell = &spell_slime_water;
+			break;
+		case SPELL_SLIME_FIRE:
+			spell = &spell_slime_fire;
+			break;
+		case SPELL_SLIME_TAR:
+			spell = &spell_slime_tar;
+			break;
+		case SPELL_SLIME_METAL:
+			spell = &spell_slime_metal;
 			break;
 		default:
 			break;
@@ -997,6 +1161,9 @@ int getSpellbookFromSpellID(int spellID)
 		case SPELL_CRAB_WEB:
 			itemType = SPELLBOOK_10;
 			break;
+		case SPELL_GHOST_BOLT:
+			itemType = SPELLBOOK_9;
+			break;
 		default:
 			break;
 	}
@@ -1167,12 +1334,12 @@ void spell_changeHealth(Entity* entity, int amount, bool overdrewFromHP)
 			if ( overdrewFromHP )
 			{
 				Uint32 color = makeColorRGB(255, 255, 255);
-				messagePlayerColor(player, MESSAGE_STATUS, color, language[3400]);
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3400));
 			}
 			else
 			{
 				Uint32 color = makeColorRGB(0, 255, 0);
-				messagePlayerColor(player, MESSAGE_STATUS, color, language[443]);
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(443));
 			}
 		}
 		else
@@ -1180,11 +1347,11 @@ void spell_changeHealth(Entity* entity, int amount, bool overdrewFromHP)
 			Uint32 color = makeColorRGB(255, 255, 0);
 			if (amount == 0)
 			{
-				messagePlayerColor(player, MESSAGE_COMBAT, color, language[444]);
+				messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(444));
 			}
 			else
 			{
-				messagePlayerColor(player, MESSAGE_COMBAT, color, language[445]);
+				messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(445));
 			}
 		}
 
@@ -1201,7 +1368,7 @@ void spell_changeHealth(Entity* entity, int amount, bool overdrewFromHP)
 	}
 }
 
-spell_t* getSpellFromItem(const int player, Item* item)
+spell_t* getSpellFromItem(const int player, Item* item, bool usePlayerInventory)
 {
 	spell_t* spell = nullptr;
 	node_t* node = nullptr;
@@ -1209,23 +1376,44 @@ spell_t* getSpellFromItem(const int player, Item* item)
 	{
 		return nullptr;
 	}
-	for ( node = players[player]->magic.spellList.first; node; node = node->next )
+	if ( item->type != SPELL_ITEM )
 	{
-		if ( node->element )
+		return nullptr;
+	}
+
+	Uint32 appearance = item->appearance;
+	if ( item->type == SPELL_ITEM && item->appearance >= 1000 )
+	{
+		appearance -= 1000; // hack for normally uncontrollable spells.
+	}
+	if ( usePlayerInventory )
+	{
+		if ( player < 0 || player >= MAXPLAYERS )
 		{
-			spell = (spell_t*) node->element;
-			Uint32 appearance = item->appearance;
-			if ( item->type == SPELL_ITEM && item->appearance >= 1000 )
+			return nullptr;
+		}
+		for ( node = players[player]->magic.spellList.first; node; node = node->next )
+		{
+			if ( node->element )
 			{
-				appearance -= 1000; // hack for normally uncontrollable spells.
+				spell = (spell_t*) node->element;
+				if ( spell->ID == appearance )
+				{
+					return spell;    //Found the spell.
+				}
 			}
+		}
+	}
+	else
+	{
+		for ( auto spell : allGameSpells )
+		{
 			if ( spell->ID == appearance )
 			{
 				return spell;    //Found the spell.
 			}
 		}
 	}
-
 	return nullptr;
 }
 
@@ -1243,7 +1431,7 @@ int canUseShapeshiftSpellInCurrentForm(const int player, Item& item)
 	{
 		return -1;
 	}
-	spell_t* spell = getSpellFromItem(player, &item);
+	spell_t* spell = getSpellFromItem(player, &item, false);
 	if ( !spell )
 	{
 		return -1;

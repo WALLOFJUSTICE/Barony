@@ -64,16 +64,34 @@ void Entity::actPedestalBase()
 		pedestalInit = 1;
 	}
 
+#ifdef USE_FMOD
+	if ( pedestalAmbience == 0 )
+	{
+		pedestalAmbience--;
+		stopEntitySound();
+		entity_sound = playSoundEntityLocal(this, 149, 64);
+	}
+	if ( entity_sound )
+	{
+		bool playing = false;
+		entity_sound->isPlaying(&playing);
+		if ( !playing )
+		{
+			entity_sound = nullptr;
+		}
+	}
+#else
 	pedestalAmbience--;
 	if ( pedestalAmbience <= 0 )
 	{
 		pedestalAmbience = TICKS_PER_SECOND * 30;
 		playSoundEntityLocal(this, 149, 64);
 	}
+#endif
 
 	if ( !light )
 	{
-		light = lightSphereShadow(x / 16, y / 16, 3, 255);
+		light = addLight(x / 16, y / 16, "pedestal");
 	}
 
 	if ( ticks == 1 )
@@ -214,14 +232,14 @@ void Entity::actPedestalBase()
 							case 1: // blue
 								if ( stats[i] && !stats[i]->EFFECTS[EFF_SHRINE_BLUE_BUFF] )
 								{
-									messagePlayer(i, MESSAGE_INTERACTION, language[2910]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2910));
 								}
 								players[i]->entity->setEffect(EFF_SHRINE_BLUE_BUFF, true, 1000, false);
 								break;
 							case 2: // red
 								if ( stats[i] && !stats[i]->EFFECTS[EFF_SHRINE_RED_BUFF] )
 								{
-									messagePlayer(i, MESSAGE_INTERACTION, language[2904]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2904));
 								}
 								players[i]->entity->setEffect(EFF_SHRINE_RED_BUFF, true, 1000, false);
 								break;
@@ -230,7 +248,7 @@ void Entity::actPedestalBase()
 							case 4: // green
 								if ( stats[i] && !stats[i]->EFFECTS[EFF_SHRINE_GREEN_BUFF] )
 								{
-									messagePlayer(i, MESSAGE_INTERACTION, language[2909]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2909));
 								}
 								players[i]->entity->setEffect(EFF_SHRINE_GREEN_BUFF, true, 1000, false);
 								break;
@@ -251,7 +269,7 @@ void Entity::actPedestalBase()
 		for ( node2 = map.entities->first; node2 != nullptr; node2 = node2->next )
 		{
 			Entity* entity = (Entity*)node2->element;
-			if ( entity == this || entity->flags[PASSABLE]
+			if ( entity == this || (entity->flags[PASSABLE] && entity->behavior != &actDeathGhost)
 				|| entity->behavior == &actDoorFrame || entity == orbEntity )
 			{
 				continue;
@@ -283,7 +301,7 @@ void Entity::actPedestalBase()
 						if ( pedestalHasOrb == pedestalOrbType && pedestalLockOrb == 1 )
 						{
 							// if orb locked, then can't retreive.
-							messagePlayer(i, MESSAGE_INTERACTION, language[2367]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2367));
 						}
 						else
 						{
@@ -307,7 +325,7 @@ void Entity::actPedestalBase()
 							}
 							pedestalHasOrb = 0;
 							serverUpdateEntitySkill(this, 0); // update orb status.
-							messagePlayer(i, MESSAGE_INTERACTION, language[2374], itemOrb->getName());
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2374), itemOrb->getName());
 						}
 					}
 					else
@@ -316,20 +334,20 @@ void Entity::actPedestalBase()
 						{
 							if ( local_rng.rand() % 2 == 0 )
 							{
-								messagePlayer(i, MESSAGE_INTERACTION, language[476]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(476));
 							}
 							else
 							{
-								messagePlayer(i, MESSAGE_INTERACTION, language[2364]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(2364));
 							}
 						}
 						else if ( players[i]->entity->getINT() < 15 )
 						{
-							messagePlayer(i, MESSAGE_INTERACTION, language[2365]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2365));
 						}
 						else
 						{
-							messagePlayer(i, MESSAGE_INTERACTION, language[2366]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2366));
 						}
 					}
 				}
@@ -386,7 +404,7 @@ void Entity::actPedestalOrb()
 								if ( parent->pedestalHasOrb == parent->pedestalOrbType && parent->pedestalLockOrb == 1 )
 								{
 									// if orb locked, then can't retreive.
-									messagePlayer(i, MESSAGE_INTERACTION, language[2367]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2367));
 								}
 								else
 								{
@@ -410,7 +428,7 @@ void Entity::actPedestalOrb()
 									}
 									parent->pedestalHasOrb = 0;
 									serverUpdateEntitySkill(parent, 0); // update orb status 
-									messagePlayer(i, MESSAGE_INTERACTION | MESSAGE_INVENTORY, language[2374], itemOrb->getName());
+									messagePlayer(i, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(2374), itemOrb->getName());
 								}
 							}
 						}
@@ -434,7 +452,13 @@ void Entity::actPedestalOrb()
 			flags[PASSABLE] = false;
 			if ( !light )
 			{
-				light = lightSphereShadow(x / 16, y / 16, 5, 192);
+                switch (parent->pedestalOrbType) {
+                default:
+                case 1: light = addLight(x / 16, y / 16, "orb_blue"); break;
+                case 2: light = addLight(x / 16, y / 16, "orb_red"); break;
+                case 3: light = addLight(x / 16, y / 16, "orb_purple"); break;
+                case 4: light = addLight(x / 16, y / 16, "orb_green"); break;
+                }
 			}
 		}
 	}

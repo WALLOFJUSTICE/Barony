@@ -73,7 +73,13 @@ static const int SPELL_DASH = 51;
 static const int SPELL_SELF_POLYMORPH = 52;
 static const int SPELL_CRAB_FORM = 53;
 static const int SPELL_CRAB_WEB = 54;
-static const int NUM_SPELLS = 55;
+static const int SPELL_GHOST_BOLT = 55;
+static const int SPELL_SLIME_ACID = 56;
+static const int SPELL_SLIME_WATER = 57;
+static const int SPELL_SLIME_FIRE = 58;
+static const int SPELL_SLIME_TAR = 59;
+static const int SPELL_SLIME_METAL = 60;
+static const int NUM_SPELLS = 61;
 
 
 #define SPELLELEMENT_CONFUSE_BASE_DURATION 2//In seconds.
@@ -145,6 +151,8 @@ static const int PARTICLE_EFFECT_PLAYER_AUTOMATON_DEATH = 23;
 static const int PARTICLE_EFFECT_DEVIL_SUMMON_MONSTER = 24;
 static const int PARTICLE_EFFECT_SHATTERED_GEM = 25;
 static const int PARTICLE_EFFECT_SHRINE_TELEPORT = 26;
+static const int PARTICLE_EFFECT_GHOST_TELEPORT = 27;
+static const int PARTICLE_EFFECT_SLIME_SPRAY = 28;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -157,6 +165,15 @@ static const int PARTICLE_TIMER_ACTION_SPAWN_PORTAL = 2;
 static const int PARTICLE_TIMER_ACTION_SUMMON_MONSTER = 3;
 static const int PARTICLE_TIMER_ACTION_SPELL_SUMMON = 4;
 static const int PARTICLE_TIMER_ACTION_DEVIL_SUMMON_MONSTER = 5;
+static const int PARTICLE_TIMER_ACTION_MAGIC_SPRAY = 6;
+
+struct ParticleEmitterHit_t
+{
+	Uint32 tick = 0;
+	int hits = 0;
+};
+extern std::map<Uint32, std::map<Uint32, ParticleEmitterHit_t>> particleTimerEmitterHitEntities;
+ParticleEmitterHit_t* getParticleEmitterHitProps(Uint32 emitterUid, Entity* hitentity);
 
 bool addSpell(int spell, int player, bool ignoreSkill = false); //Adds a spell to the client's spell list. Note: Do not use this to add custom spells.
 
@@ -173,7 +190,7 @@ typedef struct spellElement_t
 	int overload_multiplier; // what does this do?
 	int damage;
 	int duration; // travel time if it's a missile element, duration for a light spell, duration for curses/enchants/traps/beams/rays/effects/what have you.
-	char name[64];
+	char element_internal_name[64];
 	bool can_be_learned; // if a spellElement can't be learned, a player won't be able to build spells with it.
 	bool channeled; // false by default. Specific spells can set this to true. Channeling it sustains the effect in some fashion. It reconsumes the casting mana after every duration has expired.
 	/*
@@ -397,6 +414,13 @@ extern spellElement_t spellElement_salvageItem;
 extern spellElement_t spellElement_flutter;
 extern spellElement_t spellElement_dash;
 extern spellElement_t spellElement_selfPolymorph;
+extern spellElement_t spellElement_ghostBolt;
+extern spellElement_t spellElement_slimeAcid;
+extern spellElement_t spellElement_slimeWater;
+extern spellElement_t spellElement_slimeFire;
+extern spellElement_t spellElement_slimeTar;
+extern spellElement_t spellElement_slimeMetal;
+extern spellElement_t spellElement_slime_spray;
 /*
  */
 //TODO: Differentiate between touch spells, enchantment spells, personal spells, ranged spells, area of effect spells, close blast/burst spells, and enemy/ally target spells.
@@ -409,7 +433,7 @@ extern spellElement_t spellElement_selfPolymorph;
 typedef struct spell_t
 {
 	int ID;
-	char name[64];
+	char spell_internal_name[64];
 	//spellElement_t *elements;
 	int difficulty; //The proficiency you need in the magic skill to learn this spell. //TODO: Should this instead be determined by the spell elements?
 	//int skill_caster; //The spellcasting skill it was cast with. Lower skill can introduce inefficiencies and other !!FUN!!
@@ -421,6 +445,9 @@ typedef struct spell_t
 	int channel_duration; //This is the value to reset the timer to when a spell is channeled.
 	list_t elements; //NOTE: This could technically allow a spell to have multiple roots. So you could make a flurry of fireballs, for example.
 	//TODO: Some way to make spells work with "need to cast more to get better at casting the spell." A sort of spell learning curve. The first time you cast it, prone to failure. Less the more you cast it.
+	
+	// get localized spell name
+	const char* getSpellName();
 } spell_t;
 
 extern list_t channeledSpells[MAXPLAYERS]; //Spells the player is currently channeling. //TODO: Universalize it for all entities that can cast spells? //TODO: Cleanup and stuff.
@@ -487,6 +514,12 @@ extern spell_t spell_salvageItem;
 extern spell_t spell_flutter;
 extern spell_t spell_dash;
 extern spell_t spell_polymorph;
+extern spell_t spell_ghost_bolt;
+extern spell_t spell_slime_acid;
+extern spell_t spell_slime_water;
+extern spell_t spell_slime_fire;
+extern spell_t spell_slime_tar;
+extern spell_t spell_slime_metal;
 //TODO: Armor/protection/warding spells.
 //TODO: Targeting method?
 
@@ -499,7 +532,9 @@ int spellGetCastSound(spell_t* spell);
 int getSpellcastingAbilityFromUsingSpellbook(spell_t* spell, Entity* caster, Stat* casterStats);
 bool isSpellcasterBeginnerFromSpellbook(int player, Entity* caster, Stat* stat, spell_t* spell, Item* spellbookItem);
 int getSpellbookBonusPercent(Entity* caster, Stat* stat, Item* spellbookItem);
-real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spellElement_t* spellElement = nullptr);
+real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spellElement_t* spellElement, int spellID);
+real_t getSpellBonusFromCasterINT(Entity* caster, Stat* casterStats);
+void magicOnEntityHit(Entity* parent, Entity* particle, Entity* hitentity, Stat* hitstats, Sint32 preResistanceDamage, Sint32 damage, Sint32 oldHP, int spellID);
 #endif
 bool isSpellcasterBeginner(int player, Entity* caster);
 void actMagicTrap(Entity* my);
@@ -508,10 +543,12 @@ void actMagicMissile(Entity* my);
 void actMagicClient(Entity* my);
 void actMagicClientNoLight(Entity* my);
 void actMagicParticle(Entity* my);
+void actHUDMagicParticle(Entity* my);
+void actHUDMagicParticleCircling(Entity* my);
 Entity* spawnMagicParticle(Entity* parentent);
 Entity* spawnMagicParticleCustom(Entity* parentent, int sprite, real_t scale, real_t spreadReduce);
 void spawnMagicEffectParticles(Sint16 x, Sint16 y, Sint16 z, Uint32 sprite);
-void createParticle1(Entity* caster, int player);
+void spawnMagicEffectParticlesBell(Entity* bell, Uint32 sprite);
 void createParticleCircling(Entity* parent, int duration, int sprite);
 void actParticleCircle(Entity* my);
 void actParticleDot(Entity* my);
@@ -530,21 +567,22 @@ void actParticleShadowTag(Entity* my);
 void createParticleDropRising(Entity* parent, int sprite, double scale);
 void createParticleDot(Entity* parent);
 Entity* createParticleAestheticOrbit(Entity* parent, int sprite, int duration, int particleType);
-void createParticleRock(Entity* parent);
-void createParticleShatteredGem(Entity* parent, int sprite);
+void createParticleRock(Entity* parent, int sprite = -1);
+void createParticleShatteredGem(real_t x, real_t y, real_t z, int sprite, Entity* parent);
 void createParticleErupt(Entity* parent, int sprite);
 Entity* createParticleSapCenter(Entity* parent, Entity* target, int spell, int sprite, int endSprite);
 Entity* createParticleTimer(Entity* parent, int duration, int sprite);
 void createParticleSap(Entity* parent);
 void createParticleExplosionCharge(Entity* parent, int sprite, int particleCount, double scale);
-void createParticleFollowerCommand(real_t x, real_t y, real_t z, int sprite);
+void createParticleFollowerCommand(real_t x, real_t y, real_t z, int sprite, Uint32 uid);
+static const int FOLLOWER_SELECTED_PARTICLE = 1229;
+static const int FOLLOWER_TARGET_PARTICLE = 1230;
 void createParticleCharmMonster(Entity* parent);
 void createParticleShadowTag(Entity* parent, Uint32 casterUid, int duration);
 
 void spawnMagicTower(Entity* parent, real_t x, real_t y, int spellID, Entity* autoHitTarget, bool castedSpell = false); // autoHitTarget is to immediate damage an entity, as all 3 tower magics hitting is unreliable
-void magicDig(Entity* parent, Entity* projectile, int numRocks, int randRocks);
+bool magicDig(Entity* parent, Entity* projectile, int numRocks, int randRocks);
 
-spell_t* newSpell();
 spell_t* copySpell(spell_t* spell);
 void spellConstructor(spell_t* spell);
 void spellDeconstructor(void* data);
@@ -605,7 +643,7 @@ void spellcastingAnimationManager_completeSpell(spellcasting_animation_manager_t
 
 class Item;
 
-spell_t* getSpellFromItem(const int player, Item* item);
+spell_t* getSpellFromItem(const int player, Item* item, bool usePlayerInventory);
 int getSpellIDFromSpellbook(int spellbookType);
 int canUseShapeshiftSpellInCurrentForm(const int player, Item& item);
 
@@ -615,6 +653,7 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int re
 void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent, int resistance);
 void spellEffectDrainSoul(Entity& my, spellElement_t& element, Entity* parent, int resistance);
 spell_t* spellEffectVampiricAura(Entity* caster, spell_t* spell, int extramagic_to_use);
+int getCharmMonsterDifficulty(Entity& my, Stat& myStats);
 void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent, int resistance, bool magicstaff);
 Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell, int customDuration = 0); // returns nullptr if target was monster, otherwise returns pointer to new creature
 void spellEffectPoison(Entity& my, spellElement_t& element, Entity* parent, int resistance);
@@ -625,5 +664,3 @@ void spellEffectShadowTag(Entity& my, spellElement_t& element, Entity* parent, i
 bool spellEffectDemonIllusion(Entity& my, spellElement_t& element, Entity* parent, Entity* target, int resistance);
 
 void freeSpells();
-int drawSpellTooltip(const int player, spell_t* spell, Item* item, SDL_Rect* src);
-void getSpellEffectString(int spellID, char effectTextBuffer[256], char spellType[32], int value, int* spellInfoLines, real_t* sustainCostPerSecond);
