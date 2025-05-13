@@ -314,7 +314,8 @@ void TimerExperiments::updateEntityInterpolationPosition(Entity* entity)
 		|| entity->behavior == &actLeftHandMagic
 		|| entity->behavior == &actRightHandMagic
 		|| entity->behavior == &actCircuit
-		|| entity->behavior == &actDoor )
+		|| entity->behavior == &actDoor
+		|| entity->behavior == &actIronDoor )
 	{
 		entity->bUseRenderInterpolation = false;
 	}
@@ -1092,7 +1093,7 @@ void gameLogic(void)
 	        {
 	            continue;
 	        }
-	        if ( stats[c]->EFFECTS[EFF_DRUNK] )
+	        if ( stats[c]->getEffectActive(EFF_DRUNK) )
 		    {
 			    // goat/drunkards no spin!
 			    if ( stats[c]->type == GOATMAN )
@@ -1121,7 +1122,7 @@ void gameLogic(void)
 		    }
 		    else
 		    {
-			    if ( stats[c]->EFFECTS[EFF_WITHDRAWAL] || stats[c]->EFFECTS[EFF_DISORIENTED] )
+			    if ( stats[c]->getEffectActive(EFF_WITHDRAWAL) || stats[c]->getEffectActive(EFF_DISORIENTED) )
 			    {
 				    // special widthdrawal shakes
 				    if ( drunkextend[c] < 0.2 )
@@ -1524,9 +1525,9 @@ void gameLogic(void)
 						steamAchievementClient(c, "BARONY_ACH_COMEDIAN");
 					}
 
-					if ( stats[c]->EFFECTS[EFF_SHRINE_RED_BUFF]
-						&& stats[c]->EFFECTS[EFF_SHRINE_GREEN_BUFF]
-						&& stats[c]->EFFECTS[EFF_SHRINE_BLUE_BUFF] )
+					if ( stats[c]->getEffectActive(EFF_SHRINE_RED_BUFF)
+						&& stats[c]->getEffectActive(EFF_SHRINE_GREEN_BUFF)
+						&& stats[c]->getEffectActive(EFF_SHRINE_BLUE_BUFF) )
 					{
 						steamAchievementClient(c, "BARONY_ACH_WELL_PREPARED");
 					}
@@ -1941,6 +1942,7 @@ void gameLogic(void)
 						players[i]->hud.weapon = nullptr;
 						players[i]->hud.magicLeftHand = nullptr;
 						players[i]->hud.magicRightHand = nullptr;
+						players[i]->hud.magicRangefinder = nullptr;
 						players[i]->ghost.reset();
 						FollowerMenu[i].recentEntity = nullptr;
 						FollowerMenu[i].followerToCommand = nullptr;
@@ -1967,6 +1969,7 @@ void gameLogic(void)
 					{
 						soundNotification_group->stop();
 					}
+					ensembleSounds.stopPlaying();
 					VoiceChat.deinitRecording(false);
 #elif defined USE_OPENAL
 					if ( sound_group )
@@ -2249,6 +2252,7 @@ void gameLogic(void)
 					EnemyHPDamageBarHandler::dumpCache();
 					monsterAllyFormations.reset();
 					particleTimerEmitterHitEntities.clear();
+					particleTimerEffects.clear();
 					monsterTrapIgnoreEntities.clear();
 					minimapHighlights.clear();
 
@@ -2388,17 +2392,17 @@ void gameLogic(void)
 					{
 						if (players[c] && players[c]->entity && !client_disconnected[c])
 						{
-							if ( stats[c] && stats[c]->EFFECTS[EFF_POLYMORPH] && stats[c]->playerPolymorphStorage != NOTHING )
+							if ( stats[c] && stats[c]->getEffectActive(EFF_POLYMORPH) && stats[c]->playerPolymorphStorage != NOTHING )
 							{
 								players[c]->entity->effectPolymorph = stats[c]->playerPolymorphStorage;
 								serverUpdateEntitySkill(players[c]->entity, 50); // update visual polymorph effect for clients.
 							}
-							if ( stats[c] && stats[c]->EFFECTS[EFF_SHAPESHIFT] && stats[c]->playerShapeshiftStorage != NOTHING )
+							if ( stats[c] && stats[c]->getEffectActive(EFF_SHAPESHIFT) && stats[c]->playerShapeshiftStorage != NOTHING )
 							{
 								players[c]->entity->effectShapeshift = stats[c]->playerShapeshiftStorage;
 								serverUpdateEntitySkill(players[c]->entity, 53); // update visual polymorph effect for clients.
 							}
-							if ( stats[c] && stats[c]->EFFECTS[EFF_VAMPIRICAURA] && stats[c]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
+							if ( stats[c] && stats[c]->getEffectActive(EFF_VAMPIRICAURA) && stats[c]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
 							{
 								players[c]->entity->playerVampireCurse = 1;
 								serverUpdateEntitySkill(players[c]->entity, 51); // update curse progression
@@ -2774,6 +2778,8 @@ void gameLogic(void)
 			{
 				client_selected[j] = NULL;
 			}
+
+			Player::PlayerMechanics_t::ensembleMusicUpdate();
 
 			// world UI
 			Player::WorldUI_t::handleTooltips();
@@ -3460,6 +3466,8 @@ void gameLogic(void)
 				entity = (Entity*)node->element;
 				entity->ranbehavior = false;
 			}
+
+			Player::PlayerMechanics_t::ensembleMusicUpdate();
 
 			// world UI
 			Player::WorldUI_t::handleTooltips();
@@ -6277,8 +6285,8 @@ void drawAllPlayerCameras() {
 					}
 
 					int PERModifier = 0;
-					if ( stats[c] && stats[c]->EFFECTS[EFF_BLIND]
-						&& !stats[c]->EFFECTS[EFF_ASLEEP] && !stats[c]->EFFECTS[EFF_MESSY] )
+					if ( stats[c] && stats[c]->getEffectActive(EFF_BLIND)
+						&& !stats[c]->getEffectActive(EFF_ASLEEP) && !stats[c]->getEffectActive(EFF_MESSY) )
 					{
 						// blind but not messy or asleep = allow PER to let you see the world a little.
 						PERModifier = players[c]->entity->getPER() / 5;
@@ -6368,9 +6376,7 @@ void drawAllPlayerCameras() {
             
             // undo ghost fog
             if (players[c]->ghost.isActive()) {
-                *cvar_hdrBrightness = {1.0f, 1.0f, 1.0f, 1.0f};
-                *cvar_fogColor = {0.0f, 0.0f, 0.0f, 1.0f};
-                *cvar_fogDistance = 0.0f;
+				map.setMapHDRSettings();
             }
 
 			if (shaking && players[c] && players[c]->entity && !gamePaused)
@@ -7080,6 +7086,7 @@ int main(int argc, char** argv)
 						players[i]->hud.weapon = nullptr;
 						players[i]->hud.magicLeftHand = nullptr;
 						players[i]->hud.magicRightHand = nullptr;
+						players[i]->hud.magicRangefinder = nullptr;
 						players[i]->ghost.reset();
 						FollowerMenu[i].recentEntity = nullptr;
 						FollowerMenu[i].followerToCommand = nullptr;

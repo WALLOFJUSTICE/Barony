@@ -668,6 +668,7 @@ public:
 	bool bSplitscreen = false;
 	SplitScreenTypes splitScreenType = SPLITSCREEN_DEFAULT;
 	bool bControlEnabled = true; // disabled if dead waiting for gameover prompt etc
+	bool was_connected_to_game = false;
 	Player(int playernum = 0, bool local_host = true);
 	~Player();
 
@@ -1078,6 +1079,8 @@ public:
 		bool warpMouseToSelectedChestSlot(Item* snapToItem, Uint32 flags);
 		bool guiAllowDropItems(Item* itemToDrop) const;
 		bool guiAllowDefaultRightClick() const;
+		Item* hasKeyForWallLock(Entity& entity) const;
+		int getKeyAmountForWallLock(Entity& entity) const;
 		void processInventory();
 		void updateInventory();
 		void updateCursor();
@@ -1481,6 +1484,7 @@ public:
 		Entity* arm = nullptr;
 		Entity* magicLeftHand = nullptr;
 		Entity* magicRightHand = nullptr;
+		Entity* magicRangefinder = nullptr;
 
 		bool weaponSwitch = false;
 		bool shieldSwitch = false;
@@ -2081,7 +2085,6 @@ public:
 		real_t tooltipInRange(Entity& tooltip); // returns distance of added tooltip, otherwise 0.
 		void cycleToNextTooltip();
 		void cycleToPreviousTooltip();
-
 	} worldUI;
 
 	class PaperDoll_t
@@ -2339,6 +2342,12 @@ public:
 		void sustainedSpellIncrementMP(int mpChange);
 		std::map<Uint32, int> enemyRaisedBlockingAgainst;
 		bool allowedRaiseBlockingAgainstEntity(Entity& attacker);
+		int ensemblePlaying = -1;
+		bool ensembleRequireRecast = false;
+		bool ensembleTakenInitialMP = false;
+		static void ensembleMusicUpdateServer();
+		static void ensembleMusicUpdate();
+		Uint32 ensembleDataUpdate = 0;
 		PlayerMechanics_t(Player& p) : player(p)
 		{};
 		~PlayerMechanics_t() {};

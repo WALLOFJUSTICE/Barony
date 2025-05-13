@@ -93,6 +93,7 @@ public:
 	~Entity();
     
     bool ditheringDisabled = false;
+	int ditheringOverride = -1;
     struct Dither {
         int value = 0;
         Uint32 lastUpdateTick = 0;
@@ -262,6 +263,8 @@ public:
 	real_t& playerStrafeVelocity; //fskill[12]
 	real_t& playerStrafeDir; //fskill[13]
 	real_t& monsterSpecialAttackUnequipSafeguard; //fskill[14]
+	real_t& creatureWindDir; //fskill[15]
+	real_t& creatureWindVelocity; //fskill[16]
 
 	//--EFFECTS--
 	Sint32& effectPolymorph; // skill[50]
@@ -368,6 +371,7 @@ public:
 	Sint32& doorDisableOpening; //skill[13]
 	Sint32& doorLockpickHealth; //skill[14]
 	Sint32& doorOldHealth; //skill[15]
+	Sint32& doorUnlockWhenPowered; //skill[16]
 
 	//--PUBLIC PEDESTAL SKILLS--
 	Sint32& pedestalHasOrb; //skill[0]
@@ -422,6 +426,7 @@ public:
 	Sint32& floorDecorationHeightOffset; //skill[3] positive numbers will lift the model higher
 	Sint32& floorDecorationXOffset; //skill[4]
 	Sint32& floorDecorationYOffset; //skill[5]
+	Sint32& floorDecorationDestroyIfNoWall; //skill[6]
 	Sint32& floorDecorationInteractText1; //skill[8]
 	Sint32& floorDecorationInteractText2; //skill[9]
 	Sint32& floorDecorationInteractText3; //skill[10]
@@ -537,6 +542,9 @@ public:
 	real_t& actmagicOrbitStationaryY; // fskill[5]
 	real_t& actmagicOrbitStationaryCurrentDist; // fskill[6]
 	real_t& actmagicSprayGravity; // fskill[7]
+	real_t& actmagicVelXStore; // fskill[8]
+	real_t& actmagicVelYStore; // fskill[9]
+	real_t& actmagicVelZStore; // fskill[10]
 	Sint32& actmagicOrbitStationaryHitTarget; // skill[14]
 	Sint32& actmagicOrbitHitTargetUID1; // skill[15]
 	Sint32& actmagicOrbitHitTargetUID2; // skill[16]
@@ -550,6 +558,8 @@ public:
 	Sint32& actmagicFromSpellbook; // skill[26]
 	Sint32& actmagicSpray; // skill[27]
 	Sint32& actmagicEmitter; // skill[29]
+	Sint32& actmagicDelayMove; // skill[30]
+	Sint32& actmagicNoHitMessage; // skill[31]
 	
 	//--PUBLIC GOLD SKILLS--
 	Sint32& goldAmount; //skill[0]
@@ -576,6 +586,7 @@ public:
 	Sint32& lightSourceFlicker; //skill[5]
 	Sint32& lightSourceDelay; //skill[6]
 	Sint32& lightSourceDelayCounter;//skill[7]
+	Sint32& lightSourceRGB;//skill[11]
 
 	//--PUBLIC TEXT SOURCE SKILLS--
 	Sint32& textSourceColorRGB; //skill[0]
@@ -592,6 +603,23 @@ public:
 	Sint32& signalInputDirection; //skill[5]
 	Sint32& signalGateANDPowerCount; //skill[9]
 	Sint32& signalInvertOutput; //skill[10]
+
+	//--PUBLIC LOCK SKILLS--
+	Sint32& wallLockState; //skill[0]
+	Sint32& wallLockInvertPower; //skill[1]
+	Sint32& wallLockTurnable; //skill[3]
+	Sint32& wallLockMaterial; //skill[4]
+	Sint32& wallLockDir; //skill[5]
+	Sint32& wallLockClientInteractDelay; //skill[6]
+	Sint32& wallLockPlayerInteracting; //skill[7]
+	Sint32& wallLockPower; //skill[8]
+	Sint32& wallLockInit; //skill[9]
+	Sint32& wallLockTimer; //skill[10]
+	Sint32& wallLockPickable; //skill[11]
+	Sint32& wallLockPickHealth; //skill[12]
+	Sint32& wallLockPickableSkeletonKey; //skill[13]
+	Sint32& wallLockPreventLockpickExploit; //skill[14]
+	Sint32& wallLockAutoGenKey; //skill[15]
 
 	//--THROWN PROJECTILE--
 	Sint32& thrownProjectilePower; //skill[19]
@@ -613,6 +641,17 @@ public:
 		PRESSURE_PLATE_PLAYERS_OR_ALLIES,
 		PRESSURE_PLATE_MONSTERS_NON_ALLY,
 		PRESSURE_PLATE_ENUM_END
+	};
+
+	enum WallLockStates
+	{
+		LOCK_NO_KEY,
+		LOCK_KEY_START,
+		LOCK_KEY_ENTER,
+		LOCK_KEY_ACTIVE_START,
+		LOCK_KEY_ACTIVE,
+		LOCK_KEY_INACTIVE_START,
+		LOCK_KEY_INACTIVE
 	};
 
 	//--WORLDTOOLTIP--
@@ -683,7 +722,7 @@ public:
 	void drainMP(int amount, bool notifyOverexpend = true); //Removes this much from MP. Anything over the entity's MP is subtracted from their health. Can be very dangerous.
 	bool safeConsumeMP(int amount); //A function for the magic code. Attempts to remove mana without overdrawing the player. Returns true if success, returns false if didn't have enough mana.
 
-	static Sint32 getAttack(Entity* my, Stat* myStats, bool isPlayer = false);
+	static Sint32 getAttack(Entity* my, Stat* myStats, bool isPlayer = false, int chargeModifier = -1);
 	static real_t getACEffectiveness(Entity* my, Stat* myStats, bool isPlayer, Entity* attacker, Stat* attackerStats, int& outNumBlessings);
 	static void setMeleeDamageSkillModifiers(Entity* my, Stat* myStats, int skill, real_t& baseSkillModifier, real_t& variance, ItemType* itemType);
 	Sint32 getBonusAttackOnTarget(Stat& hitstats);
@@ -804,6 +843,10 @@ public:
 	void actTextSource();
 	void actSignalTimer();
 	void actSignalGateAND();
+	void actWallLock();
+	void actWallButton();
+	void actIronDoor();
+	void actWind();
 
 	Monster getRace() const
 	{
@@ -922,7 +965,7 @@ public:
 	 * @param guarantee: Causes serverUpdateEffectsForEntity() to use sendPacketSafe() rather than just sendPacket().
 	 * Returns true on successfully setting value.
 	 */
-	bool setEffect(int effect, bool value, int duration, bool updateClients, bool guarantee = true);
+	bool setEffect(int effect, std::variant<bool, Uint8> value, int duration, bool updateClients, bool guarantee = true);
 
 	/*
 	 * @param state: required to let the entity know if it should enter MONSTER_STATE_PATH, MONSTER_STATE_ATTACK, etc.
@@ -946,7 +989,7 @@ public:
 			return;
 		}
 
-		if ( myStats->EFFECTS[EFF_FEAR] )
+		if ( myStats->getEffectActive(EFF_FEAR) )
 		{
 			return; // don't change weapons while feared.
 		}
@@ -1080,6 +1123,7 @@ public:
 	void handleKnockbackDamage(Stat& myStats, Entity* knockedInto); // handle knockback damage from getting hit into other things.
 	void setHelmetLimbOffsetWithMask(Entity* helm, Entity* mask);
 	bool entityCheckIfTriggeredBomb(bool triggerBomb);
+	bool entityCheckIfTriggeredWallButton();
 	Sint32 playerInsectoidExpectedManaFromHunger(Stat& myStats);
 	Sint32 playerInsectoidHungerValueOfManaPoint(Stat& myStats);
 	static real_t getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableType damageType);
@@ -1183,6 +1227,7 @@ void actArrowTrap(Entity* my);
 void actTrap(Entity* my);
 void actTrapPermanent(Entity* my);
 void actSwitchWithTimer(Entity* my);
+void actIronDoor(Entity* my);
 
 /*
  * Note: Circuits and mechanisms use skill[28] to signify powered state.
@@ -1230,9 +1275,8 @@ void actTextSource(Entity* my);
 
 //checks if a sprite falls in certain sprite ranges
 
-static const int NUM_ITEM_STRINGS = 336;
-static const int NUM_ITEM_STRINGS_BY_TYPE = 129;
-static const int NUM_EDITOR_SPRITES = 202;
+static const int NUM_ITEM_STRINGS = 350;
+static const int NUM_ITEM_STRINGS_BY_TYPE = 130;
 static const int NUM_EDITOR_TILES = 350;
 
 // furniture types.
@@ -1244,7 +1288,7 @@ static const int FURNITURE_PODIUM = 4;
 
 int checkSpriteType(Sint32 sprite);
 Monster editorSpriteTypeToMonster(Sint32 sprite);
-extern char spriteEditorNameStrings[NUM_EDITOR_SPRITES][64];
+extern std::vector<const char*>spriteEditorNameStrings;
 extern char tileEditorNameStrings[NUM_EDITOR_TILES][44];
 extern char monsterEditorNameStrings[NUMMONSTERS][16];
 extern char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32];
@@ -1373,7 +1417,11 @@ public:
 		TO_SPELLBOT,
 		TO_GYROBOT,
 		TO_DUMMYBOT,
-		TO_BUGBEAR
+		TO_BUGBEAR,
+		TO_MONSTER_D,
+		TO_MONSTER_M,
+		TO_MONSTER_S,
+		TO_MONSTER_G
 	};
 	enum ScriptType : int
 	{
@@ -1424,6 +1472,8 @@ public:
 	void playerClearInventory(bool clearStats);
 	std::string getScriptFromEntity(Entity& src);
 	void parseScriptInMapGeneration(Entity& src);
+	Entity* createScriptEntityInMapGen(int x, int y, const char* text);
+	void addScriptToTextSource(Entity& src, const char* text);
 	void handleTextSourceScript(Entity& src, std::string input);
 	int textSourceProcessScriptTag(std::string& input, std::string findTag, Entity& src);
 	bool hasClearedInventory = false;

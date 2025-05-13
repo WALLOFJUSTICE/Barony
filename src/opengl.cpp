@@ -622,7 +622,12 @@ static inline bool testTileOccludes(const map_t& map, int index) {
     }
     const Uint64& t0 = *(Uint64*)&map.tiles[index];
     const Uint32& t1 = *(Uint32*)&map.tiles[index + 2];
-    return (t0 & 0xffffffff00000000) && (t0 & 0x00000000ffffffff) && t1;
+    return (t0 & 0xffffffff00000000) // is floor != 0
+        && (t0 & 0x00000000ffffffff) // is obstacle layer != 0
+        && t1 // is ceiling != 0
+        && (((t0 & 0xffffffff00000000) >> 32) != TRANSPARENT_TILE)  // is floor != TRANSPARENT_TILE
+        && ((t0 & 0x00000000ffffffff) != TRANSPARENT_TILE)  // is obstacle layer != TRANSPARENT_TILE
+        && (t1 != TRANSPARENT_TILE); // is ceiling != TRANSPARENT_TILE
 }
 
 static void loadLightmapTexture(int which, map_t& map) {
@@ -689,6 +694,8 @@ void beginGraphics() {
 #ifndef EDITOR
 ConsoleVariable<float> cvar_fogDistance("/fog_distance", 0.f);
 ConsoleVariable<Vector4> cvar_fogColor("/fog_color", {0.f, 0.f, 0.f, 0.f});
+ConsoleVariable<float> cvar_fogRate("/fog_rate", 0.0);
+ConsoleVariable<float> cvar_fogFade("/fog_fade", 0.0);
 #endif
 
 static void uploadUniforms(Shader& shader, float* proj, float* view, float* mapDims) {
@@ -696,7 +703,7 @@ static void uploadUniforms(Shader& shader, float* proj, float* view, float* mapD
     if (proj) { GL_CHECK_ERR(glUniformMatrix4fv(shader.uniform("uProj"), 1, false, proj)); }
     if (view) { GL_CHECK_ERR(glUniformMatrix4fv(shader.uniform("uView"), 1, false, view)); }
     if (mapDims) { GL_CHECK_ERR(glUniform2fv(shader.uniform("uMapDims"), 1, mapDims)); }
-    
+    GL_CHECK_ERR(glUniform1ui(shader.uniform("uTicks"), (GLuint)ticks));
 #ifdef EDITOR
     float fogDistance = 0.f;
     float fogColor[4] = { 1.f, 1.f, 1.f, 1.f };
@@ -709,8 +716,13 @@ static void uploadUniforms(Shader& shader, float* proj, float* view, float* mapD
         GL_CHECK_ERR(glUniform4fv(shader.uniform("uFogColor"), 1, fogColor));
         GL_CHECK_ERR(glUniform1f(shader.uniform("uFogDistance"), fogDistance));
     } else {
+        auto fog_distance = *cvar_fogDistance;
+        if ( *cvar_fogFade > 0.01 )
+        {
+            fog_distance *= (1.0 - (*cvar_fogFade / 2)) + ((*cvar_fogFade / 2) * sin(*cvar_fogRate * ticks * PI / 180.f));
+        }
         GL_CHECK_ERR(glUniform4fv(shader.uniform("uFogColor"), 1, (float*)&*cvar_fogColor));
-        GL_CHECK_ERR(glUniform1f(shader.uniform("uFogDistance"), *cvar_fogDistance));
+        GL_CHECK_ERR(glUniform1f(shader.uniform("uFogDistance"), fog_distance));
     }
 #endif
 }
@@ -918,12 +930,12 @@ static void uploadLightUniforms(view_t* camera, Shader& shader, Entity* entity, 
     }
 }
 
-constexpr Vector4 defaultBrightness = {1.f, 1.f, 1.f, 1.f};
-constexpr float defaultGamma = 0.75f;           // default gamma level: 75%
-constexpr float defaultExposure = 0.5f;         // default exposure level: 50%
-constexpr float defaultAdjustmentRate = 0.1f;   // how fast your eyes adjust
-constexpr float defaultLimitHigh = 4.f;         // your aperture can increase to see something 4 times darker.
-constexpr float defaultLimitLow = 0.1f;         // your aperture can decrease to see something 10 times brighter.
+const Vector4 defaultBrightness = {1.f, 1.f, 1.f, 1.f};
+const float defaultGamma = 0.75f;           // default gamma level: 75%
+const float defaultExposure = 0.5f;         // default exposure level: 50%
+const float defaultAdjustmentRate = 0.1f;   // how fast your eyes adjust
+const float defaultLimitHigh = 4.f;         // your aperture can increase to see something 4 times darker.
+const float defaultLimitLow = 0.1f;         // your aperture can decrease to see something 10 times brighter.
 constexpr float defaultLumaRed = 0.2126f;       // how much to weigh red light for luma (ITU 709)
 constexpr float defaultLumaGreen = 0.7152f;     // how much to weigh green light for luma (ITU 709)
 constexpr float defaultLumaBlue = 0.0722f;      // how much to weigh blue light for luma (ITU 709)
@@ -939,11 +951,11 @@ bool hdrEnabled = true;
 #else
 ConsoleVariable<Vector4> cvar_hdrBrightness("/hdr_brightness", defaultBrightness);
 static ConsoleVariable<bool> cvar_hdrMultithread("/hdr_multithread", defaultMultithread);
-static ConsoleVariable<float> cvar_hdrExposure("/hdr_exposure", defaultExposure);
-static ConsoleVariable<float> cvar_hdrGamma("/hdr_gamma", defaultGamma);
-static ConsoleVariable<float> cvar_hdrAdjustment("/hdr_adjust_rate", defaultAdjustmentRate);
-static ConsoleVariable<float> cvar_hdrLimitHigh("/hdr_limit_high", defaultLimitHigh);
-static ConsoleVariable<float> cvar_hdrLimitLow("/hdr_limit_low", defaultLimitLow);
+ConsoleVariable<float> cvar_hdrExposure("/hdr_exposure", defaultExposure);
+ConsoleVariable<float> cvar_hdrGamma("/hdr_gamma", defaultGamma);
+ConsoleVariable<float> cvar_hdrAdjustment("/hdr_adjust_rate", defaultAdjustmentRate);
+ConsoleVariable<float> cvar_hdrLimitHigh("/hdr_limit_high", defaultLimitHigh);
+ConsoleVariable<float> cvar_hdrLimitLow("/hdr_limit_low", defaultLimitLow);
 static ConsoleVariable<int> cvar_hdrSamples("/hdr_samples", defaultSamples);
 static ConsoleVariable<Vector4> cvar_hdrLuma("/hdr_luma", Vector4{defaultLumaRed, defaultLumaGreen, defaultLumaBlue, 0.f});
 bool hdrEnabled = true;
@@ -1323,7 +1335,16 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode) {
     GL_CHECK_ERR(glDisableVertexAttribArray(1));
     GL_CHECK_ERR(glDisableVertexAttribArray(2));
 #endif
-    
+
+    /*
+    if ( SDL_Surface* sprite = tiles[83] )
+    {
+        GL_CHECK_ERR(glActiveTexture(GL_TEXTURE2));
+        GL_CHECK_ERR(glBindTexture(GL_TEXTURE_2D, texid[(long int)sprite->userdata]));
+    }
+
+    GL_CHECK_ERR(glActiveTexture(GL_TEXTURE0));*/
+
     // reset GL state
     if (entity->flags[OVERDRAW]) {
         GL_CHECK_ERR(glUniformMatrix4fv(shader.uniform("uProj"), 1, false, (float*)&camera->proj));
@@ -1463,9 +1484,10 @@ void glDrawEnemyBarSprite(view_t* camera, int mode, int playerViewport, void* en
     const float cameraPos[4] = {(float)camera->x * 32.f, -(float)camera->z, (float)camera->y * 32.f, 1.f};
     GL_CHECK_ERR(glUniform4fv(shader.uniform("uCameraPos"), 1, cameraPos));
 
+
     // draw
     spriteMesh.draw();
-    
+
     // reset GL state
     GL_CHECK_ERR(glDepthRange(0, 1));
     GL_CHECK_ERR(glDisable(GL_BLEND));
@@ -1704,6 +1726,7 @@ void glDrawWorldUISprite(view_t* camera, Entity* entity, int mode)
     const float cameraPos[4] = {(float)camera->x * 32.f, -(float)camera->z, (float)camera->y * 32.f, 1.f};
     GL_CHECK_ERR(glUniform4fv(shader.uniform("uCameraPos"), 1, cameraPos));
     
+
     // draw
     spriteMesh.draw();
     
@@ -1784,8 +1807,24 @@ void glDrawSprite(view_t* camera, Entity* entity, int mode)
     }
     v = vec4(entity->x * 2.f, -entity->z * 2.f - 1, entity->y * 2.f, 0.f);
     (void)translate_mat(&m, &t, &v); t = m;
-    (void)rotate_mat(&m, &t, entity->flags[OVERDRAW] ? -90.f :
-        -90.f - camera->ang * (180.f / PI), &i.y); t = m;
+
+    if ( (entity->skill[7] != 0 && entity->behavior == &actSprite) || entity->behavior == &actMagicRangefinder )
+    {
+        // dont draw billboard
+        const float rotx = entity->roll * 180.0 / PI; // roll
+        const float roty = 360.0 - entity->yaw * 180.0 / PI; // yaw
+        const float rotz = 360.0 - entity->pitch * 180.0 / PI; // pitch
+        (void)rotate_mat(&m, &t, roty, &i.y); t = m; // yaw
+        (void)rotate_mat(&m, &t, rotz, &i.z); t = m; // pitch
+        (void)rotate_mat(&m, &t, rotx, &i.x); t = m; // roll
+    }
+    else
+    {
+        // billboard
+        (void)rotate_mat(&m, &t, entity->flags[OVERDRAW] ? -90.f :
+            -90.f - camera->ang * (180.f / PI), &i.y); t = m;
+    }
+
     v = vec4(entity->focalx * 2.f, -entity->focalz * 2.f, entity->focaly * 2.f, 0.f);
     (void)translate_mat(&m, &t, &v); t = m;
     v = vec4(entity->scalex * sprite->w, entity->scaley * sprite->h, entity->scalez, 0.f);
@@ -1801,8 +1840,23 @@ void glDrawSprite(view_t* camera, Entity* entity, int mode)
 #endif
         const GLfloat factor[4] = { 1.f, 1.f, 1.f, 1.f };
         GL_CHECK_ERR(glUniform4fv(shader.uniform("uLightFactor"), 1, factor));
-        const GLfloat light[4] = { b, b, b, 1.f };
-        GL_CHECK_ERR(glUniform4fv(shader.uniform("uLightColor"), 1, light));
+        if ( entity->skill[6] != 0 && entity->behavior == &actSprite )
+        {
+            // use alpha
+            const GLfloat light[4] = { b, b, b, entity->fskill[1]};
+            GL_CHECK_ERR(glUniform4fv(shader.uniform("uLightColor"), 1, light));
+        }
+        else if ( entity->behavior == &actMagicRangefinder )
+        {
+            // use alpha
+            const GLfloat light[4] = { b, b, b, entity->fskill[0] };
+            GL_CHECK_ERR(glUniform4fv(shader.uniform("uLightColor"), 1, light));
+        }
+        else
+        {
+            const GLfloat light[4] = { b, b, b, 1.f };
+            GL_CHECK_ERR(glUniform4fv(shader.uniform("uLightColor"), 1, light));
+        }
         const GLfloat empty[4] = { 0.f, 0.f, 0.f, 0.f };
         GL_CHECK_ERR(glUniform4fv(shader.uniform("uColorAdd"), 1, empty));
         const float cameraPos[4] = {(float)camera->x * 32.f, -(float)camera->z, (float)camera->y * 32.f, 1.f};

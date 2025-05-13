@@ -577,7 +577,8 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 		}
 		if ( Stat* myStats = getStats() )
 		{
-			if ( myStats->type == BAT_SMALL || myStats->EFFECTS[EFF_AGILITY] )
+			if ( myStats->type == BAT_SMALL || myStats->getEffectActive(EFF_AGILITY) || myStats->getEffectActive(EFF_ENSEMBLE_LUTE) 
+				|| (parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_BLIND)) )
 			{
 				bool miss = false;
 				if ( myStats->type == BAT_SMALL && isUntargetableBat() )
@@ -626,17 +627,40 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 				}
 				else
 				{
-					int baseChance = myStats->type == BAT_SMALL ? 6 : 3;
-					if ( accuracyBonus )
+					int baseChance = 0;
+					if ( myStats->type == BAT_SMALL )
 					{
-						baseChance -= 2;
+						baseChance = std::max(baseChance, 60);
 					}
-					if ( flanking )
+					if ( myStats->getEffectActive(EFF_AGILITY) )
 					{
-						baseChance -= 2;
+						baseChance = std::max(baseChance, 30);
 					}
-					baseChance = std::max(1, baseChance);
-					miss = local_rng.rand() % 10 < baseChance;
+					if ( myStats->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_TIER) > 0.001 )
+					{
+						baseChance = std::max(baseChance, static_cast<int>(myStats->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_TIER)));
+					}
+					if ( parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_BLIND) )
+					{
+						baseChance = std::max(baseChance, 75);
+					}
+					if ( baseChance <= 0 )
+					{
+						miss = false;
+					}
+					else
+					{
+						if ( accuracyBonus )
+						{
+							baseChance -= 20;
+						}
+						if ( flanking )
+						{
+							baseChance -= 20;
+						}
+						baseChance = std::max(10, baseChance);
+						miss = local_rng.rand() % 100 < baseChance;
+					}
 				}
 
 				if ( miss )
@@ -755,6 +779,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 	bool reduceCollisionSize = false;
 	bool tryReduceCollisionSize = false;
 	bool projectileAttack = false;
+	bool parentDodgeChance = false;
 	Entity* parent = nullptr;
 	Stat* parentStats = nullptr;
 	if ( my )
@@ -770,6 +795,10 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				projectileAttack = true;
 				if ( parent = uidToEntity(my->parent) )
 				{
+					if ( Stat* tmpStats = parent->getStats() )
+					{
+						parentDodgeChance = tmpStats->getEffectActive(EFF_BLIND);
+					}
 					if ( my->behavior == &actThrown )
 					{
 						tryReduceCollisionSize = true;
@@ -972,7 +1001,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 			{
 				continue;
 			}
-			if ( projectileAttack && yourStats && yourStats->EFFECTS[EFF_AGILITY] )
+			if ( projectileAttack && yourStats && (parentDodgeChance || yourStats->getEffectActive(EFF_AGILITY) || yourStats->getEffectActive(EFF_ENSEMBLE_LUTE)) )
 			{
 				entityDodgeChance = true;
 			}
@@ -2165,7 +2194,9 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 						entity = (Entity*)node->element;
 						//++entCheck;
 						if ( !entity ) { continue; }
-						if ( entity->flags[PASSABLE] || entity == my || entity == target || entity->behavior == &actDoor )
+						if ( entity->flags[PASSABLE] || entity == my || entity == target 
+							|| entity->behavior == &actDoor
+							|| (entity->behavior == &actIronDoor && entity->doorLocked == 0) )
 						{
 							continue;
 						}
@@ -2176,7 +2207,8 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 						if ( isMonster && my->getMonsterTypeFromSprite() == MINOTAUR 
 							&& ((entity->isDamageableCollider()
 									&& (entity->colliderHasCollision & EditorEntityData_t::COLLIDER_COLLISION_FLAG_MINO))
-								|| entity->behavior == &::actDaedalusShrine) )
+								|| entity->behavior == &::actDaedalusShrine
+								|| entity->behavior == &actIronDoor) )
 						{
 							continue;
 						}

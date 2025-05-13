@@ -1181,7 +1181,7 @@ bool playerGreasyDropItem(const int player, Item* const item)
 	if ( player < 0 || player >= MAXPLAYERS ) { return false; }
 	if ( players[player]->isLocalPlayer() )
 	{
-		if ( !stats[player]->EFFECTS[EFF_GREASY] ) { return false; }
+		if ( !stats[player]->getEffectActive(EFF_GREASY) ) { return false; }
 		if ( itemIsEquipped(item, player) )
 		{
 			Item** slot = itemSlot(stats[player], item);
@@ -2280,6 +2280,7 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 		case STEEL_CHAKRAM:
 		case CRYSTAL_SHURIKEN:
 		case BOOMERANG:
+		case RAPIER:
 			equipItemResult = equipItem(item, &stats[player]->weapon, player, checkInventorySpaceForPaperDoll);
 			break;
 		case STEEL_SHIELD:
@@ -2734,6 +2735,12 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 		case QUIVER_KNOCKBACK:
 		case QUIVER_CRYSTAL:
 		case QUIVER_HUNTING:
+		case TOOL_FOCI_FIRE:
+		case INSTRUMENT_FLUTE:
+		case INSTRUMENT_LYRE:
+		case INSTRUMENT_DRUM:
+		case INSTRUMENT_LUTE:
+		case INSTRUMENT_HORN:
 			equipItemResult = equipItem(item, &stats[player]->shield, player, checkInventorySpaceForPaperDoll);
 			break;
 		case TOOL_BLINDFOLD:
@@ -2744,7 +2751,7 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 		case TOOL_TOWEL:
 			item_ToolTowel(item, player);
 			if ( multiplayer == CLIENT )
-				if ( stats[player]->EFFECTS[EFF_BLEEDING] )
+				if ( stats[player]->getEffectActive(EFF_BLEEDING) )
 				{
 					consumeItem(item, player);
 				}
@@ -3948,6 +3955,10 @@ Sint32 Item::weaponGetAttack(const Stat* const wielder) const
 	else if ( type == IRON_SWORD )
 	{
 		attack += 5;
+	}
+	else if ( type == RAPIER )
+	{
+		attack += 7;
 	}
 	else if ( type == IRON_MACE )
 	{
@@ -5828,6 +5839,10 @@ bool Item::shouldItemStack(const int player, bool ignoreStackLimit) const
 			{
 				return false;
 			}
+			else if ( items[type].hasAttribute("no_stack") )
+			{
+				return false;
+			}
 			return true;
 		}
 	}
@@ -5861,7 +5876,13 @@ bool isItemEquippableInShieldSlot(const Item* const item)
 		return false;
 	}
 
-	if ( itemTypeIsQuiver(item->type) )
+	if ( item->type < 0 || item->type >= NUMITEMS )
+	{
+		return false;
+	}
+	return (items[item->type].item_slot == EQUIPPABLE_IN_SLOT_SHIELD);
+
+	/*if ( itemTypeIsQuiver(item->type) )
 	{
 		return true;
 	}
@@ -5882,7 +5903,7 @@ bool isItemEquippableInShieldSlot(const Item* const item)
 		default:
 			break;
 	}
-	return false;
+	return false;*/
 }
 
 bool Item::usableWhileShapeshifted(const Stat* const wielder) const

@@ -599,6 +599,9 @@ void deinitGame()
 		tutorialmusic->release();
 		gameovermusic->release();
 		introstorymusic->release();
+#ifdef USE_FMOD
+		ensembleSounds.deinit();
+#endif
 
 		for ( int c = 0; c < NUMMINESMUSIC; c++ )
 		{

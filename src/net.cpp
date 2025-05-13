@@ -960,11 +960,18 @@ void serverUpdateEffects(int player)
 	net_packet->data[17] = 0;
 	net_packet->data[18] = 0;
 	net_packet->data[19] = 0;
+	std::vector<std::pair<Uint8, Uint8>> effectStrengths;
 	for (j = 0; j < NUMEFFECTS; j++)
 	{
-		if ( stats[player]->EFFECTS[j] == true )
+		Uint8 effectValue = stats[player]->getEffectActive(j);
+		if ( effectValue > 0 )
 		{
 			net_packet->data[4 + j / 8] |= power(2, j - (j / 8) * 8);
+			if ( effectValue > 1 )
+			{
+				// effect index, then value
+				effectStrengths.push_back(std::make_pair(static_cast<Uint8>(j & 0xFF), effectValue));
+			}
 		}
 		if ( stats[player]->EFFECTS_TIMERS[j] < TICKS_PER_SECOND * 5 && stats[player]->EFFECTS_TIMERS[j] > 0 )
 		{
@@ -972,9 +979,23 @@ void serverUpdateEffects(int player)
 			net_packet->data[12 + j / 8] |= power(2, j - (j / 8) * 8);
 		}
 	}
+	
+	net_packet->data[20] = (Uint8)effectStrengths.size();
+	net_packet->len = 21;
+	for ( auto& pair : effectStrengths )
+	{
+		if ( net_packet->len + 1 >= NET_PACKET_SIZE )
+		{
+			// no more room
+			break;
+		}
+		net_packet->data[net_packet->len + 0] = pair.first;
+		net_packet->data[net_packet->len + 1] = pair.second;
+		net_packet->len += 2;
+	}
+
 	net_packet->address.host = net_clients[player - 1].host;
 	net_packet->address.port = net_clients[player - 1].port;
-	net_packet->len = 20;
 	sendPacketSafe(net_sock, -1, net_packet, player - 1);
 }
 
@@ -1817,11 +1838,15 @@ void clientActions(Entity* entity)
 	    case 1167:
 	    case 1168:
 	    case 1169:
+		case 1631:
 		case 1:
 			entity->behavior = &actDoorFrame;
 			break;
 		case 2:
 			entity->behavior = &actDoor;
+			break;
+		case 1162:
+			entity->behavior = &actIronDoor;
 			break;
 		case 3:
 			entity->behavior = &actTorch;
@@ -1925,6 +1950,24 @@ void clientActions(Entity* entity)
 		case 1484:
 			entity->behavior = &actAssistShrine;
 			break;
+		case 1585:
+		case 1586:
+		case 1587:
+		case 1588:
+		case 1589:
+		case 1590:
+		case 1591:
+		case 1592:
+			// wall lock keys
+			entity->behavior = &actEmpty;
+			entity->flags[NOUPDATE] = true;
+			break;
+		case 1151:
+		case 1152:
+			// wall buttons
+			entity->behavior = &actEmpty;
+			entity->flags[NOUPDATE] = true;
+			break;
 		case Player::Ghost_t::GHOST_MODEL_P1:
 		case Player::Ghost_t::GHOST_MODEL_P2:
 		case Player::Ghost_t::GHOST_MODEL_P3:
@@ -2025,6 +2068,10 @@ void clientActions(Entity* entity)
 				case -16:
 					entity->behavior = &actBoulder;
 					break;
+				case -17:
+					entity->behavior = &actParticleFloorMagic;
+					entity->flags[NOUPDATE] = true;
+					break;
 				default:
 					if ( static_cast<Uint8>(c & 0xFF) == 17 )
 					{
@@ -2069,6 +2116,7 @@ static void changeLevel() {
 		players[i]->hud.weapon = nullptr;
 		players[i]->hud.magicLeftHand = nullptr;
 		players[i]->hud.magicRightHand = nullptr;
+		players[i]->hud.magicRangefinder = nullptr;
 		players[i]->ghost.reset();
 		FollowerMenu[i].recentEntity = nullptr;
 		FollowerMenu[i].followerToCommand = nullptr;
@@ -2095,6 +2143,7 @@ static void changeLevel() {
 	{
 		soundNotification_group->stop();
 	}
+	ensembleSounds.stopPlaying();
 	VoiceChat.deinitRecording(false);
 #elif defined USE_OPENAL
 	if ( sound_group )
@@ -2198,6 +2247,7 @@ static void changeLevel() {
 	EnemyHPDamageBarHandler::dumpCache();
 	monsterAllyFormations.reset();
 	particleTimerEmitterHitEntities.clear();
+	particleTimerEffects.clear();
 	monsterTrapIgnoreEntities.clear();
 	minimapHighlights.clear();
 
@@ -2489,7 +2539,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		* Packet breakdown:
 		* [0][1][2][3]: "EFFE"
 		* [4][5][6][7]: Entity's UID.
-		* [8][9][10][11]: Entity's effects.
+		* [8][9][10][11][12][13][14][15]: Entity's effects.
 		*/
 
 		Uint32 uid = static_cast<int>(SDLNet_Read32(&net_packet->data[4]));
@@ -2519,12 +2569,29 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			{
 				if ( net_packet->data[8 + i / 8] & power(2, i - (i / 8) * 8) )
 				{
-					stats->EFFECTS[i] = true;
+					stats->setEffectValueUnsafe(i, 1);
 				}
 				else
 				{
-					stats->EFFECTS[i] = false;
+					stats->clearEffect(i);
 				}
+			}
+
+			int numEffectStrengths = net_packet->data[16];
+			int index = 0;
+			while ( numEffectStrengths > 0 )
+			{
+				int currentIndex = 17 + index;
+				if ( currentIndex + 1 >= NET_PACKET_SIZE )
+				{
+					// too much data to read, abort
+					break;
+				}
+				int effectIndex = net_packet->data[currentIndex + 0];
+				Uint8 effectStrength = net_packet->data[currentIndex + 1];
+				stats->setEffectValueUnsafe(effectIndex, effectStrength);
+				index += 2;
+				--numEffectStrengths;
 			}
 		}
 	}},
@@ -3012,6 +3079,12 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 						}
 					}
 					break;
+				case PARTICLE_EFFECT_ENSEMBLE_OTHER_CAST:
+					createEnsembleTargetParticleCircling(entity);
+					break;
+				case PARTICLE_EFFECT_ENSEMBLE_SELF_CAST:
+					createEnsembleHUDParticleCircling(entity);
+					break;
 				default:
 					break;
 			}
@@ -3290,7 +3363,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 							{
 								if ( effect != EFF_VAMPIRICAURA && effect != EFF_WITHDRAWAL && effect != EFF_SHAPESHIFT )
 								{
-									stats[j]->EFFECTS[effect] = false;
+									stats[j]->clearEffect(effect);
 									stats[j]->EFFECTS_TIMERS[effect] = 0;
 								}
 							}
@@ -3328,6 +3401,31 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		cameravars[clientnum].shakex += ((Sint8)(net_packet->data[4])) / 100.f;
 		cameravars[clientnum].shakey += ((Sint8)(net_packet->data[5]));
 	}},
+
+	// no mana flash
+	{ 'NOMP', []() {
+		messagePlayer(clientnum, MESSAGE_MISC, Language::get(375));
+		playSound(563, 64);
+		if ( players[clientnum]->magic.noManaProcessedOnTick == 0 )
+		{
+			players[clientnum]->magic.flashNoMana();
+		}
+		if ( net_packet->len >= 8 )
+		{
+			if ( stats[clientnum]->defending && stats[clientnum]->shield )
+			{
+				ItemType itemType = static_cast<ItemType>(SDLNet_Read32(&net_packet->data[4]));
+				if ( stats[clientnum]->shield->type == itemType )
+				{
+					Input& input = Input::inputs[clientnum];
+					if ( input.binaryToggle("Defend") )
+					{
+						input.consumeBinaryToggle("Defend");
+					}
+				}
+			}
+		}
+	} },
 
 	// a torch burns out
 	{'TORC', [](){
@@ -4128,7 +4226,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				if ( !(c == EFF_VAMPIRICAURA && stats[clientnum]->EFFECTS_TIMERS[c] == -2)
 					&& c != EFF_WITHDRAWAL && c != EFF_SHAPESHIFT )
 				{
-					stats[clientnum]->EFFECTS[c] = false;
+					stats[clientnum]->clearEffect(c);
 					stats[clientnum]->EFFECTS_TIMERS[c] = 0;
 				}
 			}
@@ -4168,20 +4266,41 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		{
 			if ( net_packet->data[4 + c / 8]&power(2, c - (c / 8) * 8) )
 			{
-				stats[clientnum]->EFFECTS[c] = true;
+				stats[clientnum]->setEffectValueUnsafe(c, 1);
 				if ( net_packet->data[12 + c / 8] & power(2, c - (c / 8) * 8) ) // use these bits to denote if duration is low.
 				{
 					stats[clientnum]->EFFECTS_TIMERS[c] = 1;
 				}
+				else if ( stats[clientnum]->EFFECTS_TIMERS[c] > 0 )
+				{
+					stats[clientnum]->EFFECTS_TIMERS[c] = 0;
+				}
 			}
 			else
 			{
-				stats[clientnum]->EFFECTS[c] = false;
+				stats[clientnum]->clearEffect(c);
 				if ( stats[clientnum]->EFFECTS_TIMERS[c] > 0 )
 				{
 					stats[clientnum]->EFFECTS_TIMERS[c] = 0;
 				}
 			}
+		}
+
+		int numEffectStrengths = net_packet->data[20];
+		int index = 0;
+		while ( numEffectStrengths > 0 )
+		{
+			int currentIndex = 21 + index;
+			if ( currentIndex + 1 >= NET_PACKET_SIZE )
+			{
+				// too much data to read, abort
+				break;
+			}
+			int effectIndex = net_packet->data[currentIndex + 0];
+			Uint8 effectStrength = net_packet->data[currentIndex + 1];
+			stats[clientnum]->setEffectValueUnsafe(effectIndex, effectStrength);
+			index += 2;
+			--numEffectStrengths;
 		}
 	}},
 
@@ -5498,6 +5617,51 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		}
 	} },
 
+	// server order to consume key for lock
+	{ 'LKEY', []() {
+		const int player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
+		bool success = false;
+
+		// reply got packet
+		strcpy((char*)net_packet->data, "OKEY");
+		net_packet->data[4] = clientnum;
+
+		if ( player == clientnum )
+		{
+			Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+			Entity* entity = uidToEntity(uid);
+			if ( entity && entity->behavior == &actWallLock )
+			{
+				Item* key = players[clientnum]->inventoryUI.hasKeyForWallLock(*entity);
+				if ( key )
+				{
+					SDLNet_Write16((Uint16)key->type, &net_packet->data[10]);
+					consumeItem(key, clientnum);
+					success = true;
+				}
+			}
+		}
+
+		net_packet->data[9] = success ? 1 : 0;
+		net_packet->len = 12;
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	} },
+
+	// server ensemble music update
+	{ 'ENSM', []() {
+		for ( int i = 4; i < net_packet->len; i += 4 )
+		{
+			Uint32 data = SDLNet_Read32(&net_packet->data[i]);
+			int player = ((data & 0x7F) - 1);
+			if ( player >= 0 && player < MAXPLAYERS )
+			{
+				players[player]->mechanics.ensembleDataUpdate = data;
+			}
+		}
+	} },
+
 	{ 'VOIP',[]() {
 #ifdef USE_FMOD
 		VoiceChat.receivePacket(net_packet);
@@ -6172,6 +6336,88 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 			}
 			client_selected[player] = entity;
 			inrange[player] = true;
+		}
+	}},
+
+	// clicked wall lock entity in range with key
+	{'LKEY', []() {
+		const int player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
+		client_keepalive[player] = ticks;
+		Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+		Entity* entity = uidToEntity(uid);
+		if ( entity && entity->behavior == &actWallLock )
+		{
+			if ( players[player]->entity )
+			{
+				client_selected[player] = entity;
+				inrange[player] = true;
+				if ( entity->wallLockState == Entity::WallLockStates::LOCK_NO_KEY )
+				{
+					if ( entity->wallLockPlayerInteracting == 0 )
+					{
+						entity->wallLockPlayerInteracting = players[player]->entity->getUID();
+					}
+					else if ( entity->wallLockPlayerInteracting == players[player]->entity->getUID() )
+					{
+						// client has already queued up an action, drop this interaction
+						client_selected[player] = nullptr;
+						inrange[player] = false;
+					}
+				}
+			}
+		}
+	}},
+
+	// clicked wall lock entity in range without key
+	{'LNOK', []() {
+		const int player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
+		client_keepalive[player] = ticks;
+		Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+		Entity* entity = uidToEntity(uid);
+		if ( entity && entity->behavior == &actWallLock )
+		{
+			if ( players[player]->entity )
+			{
+				client_selected[player] = entity;
+				inrange[player] = true;
+				if ( entity->wallLockState == Entity::WallLockStates::LOCK_NO_KEY )
+				{
+					if ( entity->wallLockPlayerInteracting == players[player]->entity->getUID() )
+					{
+						// client has already queued up an action, drop this interaction
+						client_selected[player] = nullptr;
+						inrange[player] = false;
+					}
+				}
+			}
+		}
+	}},
+
+	// client checked valid key for the lock
+	{ 'OKEY', []() {
+		const int player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
+		client_keepalive[player] = ticks;
+		Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+		Entity* entity = uidToEntity(uid);
+		if ( entity && entity->behavior == &actWallLock )
+		{
+			if ( entity->wallLockState == Entity::WallLockStates::LOCK_NO_KEY && net_packet->data[9] != 0 ) // success from client
+			{
+				Uint16 key = SDLNet_Read16(&net_packet->data[10]);
+				if ( key >= WOODEN_SHIELD && key < NUMITEMS )
+				{
+					messagePlayer(player, MESSAGE_INTERACTION, Language::get(6378), items[key].getIdentifiedName());
+				}
+				entity->wallLockState = Entity::WallLockStates::LOCK_KEY_START;
+				serverUpdateEntitySkill(entity, 0);
+			}
+			else if ( entity->wallLockState == Entity::WallLockStates::LOCK_NO_KEY && net_packet->data[9] == 0 )
+			{
+				messagePlayer(player, MESSAGE_INTERACTION, Language::get(6379));
+				playSoundEntity(entity, 152, 64);
+			}
+			entity->wallLockClientInteractDelay = 0;
+			entity->wallLockPlayerInteracting = 0;
 		}
 	}},
 
@@ -6994,13 +7240,19 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		spell_t* thespell = getSpellFromID(SDLNet_Read32(&net_packet->data[5]));
 		if ( players[player] && players[player]->entity )
 		{
-			if ( net_packet->data[9] == 1 )
+			bool spellbookCast = net_packet->data[9] == 1;
+			if ( net_packet->len > 10 )
 			{
-				castSpell(players[player]->entity->getUID(), thespell, false, false, true);
+				CastSpellProps_t castSpellProps;
+				castSpellProps.caster_x = (SDLNet_Read16(&net_packet->data[10]) / 256.0);
+				castSpellProps.caster_y = (SDLNet_Read16(&net_packet->data[12]) / 256.0);
+				castSpellProps.target_x = (SDLNet_Read16(&net_packet->data[14]) / 256.0);
+				castSpellProps.target_y = (SDLNet_Read16(&net_packet->data[16]) / 256.0);
+				castSpell(players[player]->entity->getUID(), thespell, false, false, spellbookCast, &castSpellProps);
 			}
 			else
 			{
-				castSpell(players[player]->entity->getUID(), thespell, false, false);
+				castSpell(players[player]->entity->getUID(), thespell, false, false, spellbookCast);
 			}
 		}
 	}},
@@ -7370,7 +7622,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		if ( players[player] && players[player]->entity && stats[player] )
 		{
 			if ( client_classes[player] == CLASS_ACCURSED &&
-				stats[player]->EFFECTS[EFF_VAMPIRICAURA] && players[player]->entity->playerVampireCurse == 1 )
+				stats[player]->getEffectActive(EFF_VAMPIRICAURA) && players[player]->entity->playerVampireCurse == 1 )
 			{
 				players[player]->entity->setEffect(EFF_VAMPIRICAURA, true, 1, true);
 				messagePlayerColor(player, MESSAGE_STATUS, uint32ColorGreen, Language::get(3241));

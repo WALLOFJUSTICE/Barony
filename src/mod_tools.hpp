@@ -3506,9 +3506,9 @@ struct EquipmentModelOffsets_t
 	};
 	std::map<int, std::map<int, ModelOffset_t>> monsterModelsMap;
 	void readFromFile(std::string monsterName, int monsterType = NOTHING);
-	bool modelOffsetExists(int monster, int sprite);
-	bool expandHelmToFitMask(int monster, int helmSprite, int maskSprite);
-	bool maskHasAdjustmentForExpandedHelm(int monster, int helmSprite, int maskSprite);
+	int modelOffsetExists(int monster, int sprite, int monsterSprite);
+	int expandHelmToFitMask(int monster, int helmSprite, int maskSprite, int monsterSprite);
+	int maskHasAdjustmentForExpandedHelm(int monster, int helmSprite, int maskSprite, int monsterSprite);
 	ModelOffset_t::AdditionalOffset_t getExpandHelmOffset(int monster, int helmSprite, int maskSprite);
 	ModelOffset_t::AdditionalOffset_t getMaskOffsetForExpandHelm(int monster, int helmSprite, int maskSprite);
 	ModelOffset_t& getModelOffset(int monster, int sprite);
@@ -4286,3 +4286,13 @@ struct Compendium_t
 };
 
 extern Compendium_t CompendiumEntries;
+
+struct TreasureRoomGenerator
+{
+	BaronyRNG treasure_rng;
+	std::unordered_set<unsigned int> treasure_floors;
+	std::unordered_set<unsigned int> treasure_secret_floors;
+	void init();
+	bool bForceSpawnForCurrentFloor(int secretlevelexit, bool minotaur, BaronyRNG& mapRNG);
+};
+extern TreasureRoomGenerator treasure_room_generator;

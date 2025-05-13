@@ -26,6 +26,7 @@
 #include "../mod_tools.hpp"
 
 std::map<Uint32, std::map<Uint32, ParticleEmitterHit_t>> particleTimerEmitterHitEntities;
+std::map<Uint32, ParticleTimerEffect_t> particleTimerEffects;
 ParticleEmitterHit_t* getParticleEmitterHitProps(Uint32 emitterUid, Entity* hitentity)
 {
 	if ( emitterUid == 0 || !hitentity ) { return nullptr; }
@@ -51,7 +52,7 @@ void freeSpells()
 {
 	for ( auto it = allGameSpells.begin(); it != allGameSpells.end(); ++it )
 	{
-		spell_t& spell = **it;
+		spell_t& spell = *it->second;
 		list_FreeAll(&spell.elements);
 	}
 }
@@ -132,6 +133,7 @@ bool spellEffectDominate(Entity& my, spellElement_t& element, Entity& caster, En
 		|| hitstats->type == SHADOW
 		|| hitstats->type == MIMIC
 		|| hitstats->type == BAT_SMALL
+		|| hit.entity->monsterAllySummonRank != 0
 		|| (hitstats->type == VAMPIRE && MonsterData_t::nameMatchesSpecialNPCName(*hitstats, "bram kindly"))
 		|| (hitstats->type == COCKATRICE && !strncmp(map.name, "Cockatrice Lair", 15))
 		)
@@ -305,7 +307,7 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int re
 			bool recentlyHitBySameSpell = false;
 			if ( !hasamulet && !hasgoggles )
 			{
-				hitstats->EFFECTS[EFF_POISONED] = true;
+				hitstats->setEffectActive(EFF_POISONED, 1);
 				hitstats->EFFECTS_TIMERS[EFF_POISONED] = duration; // 6 seconds.
 				if ( abs(duration - previousDuration) > 10 ) // message if not recently acidified
 				{
@@ -322,7 +324,7 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int re
 			{
 				playSoundEntity(hit.entity, 249, 64);
 			}
-			/*hitstats->EFFECTS[EFF_SLOW] = true;
+			/*hitstats->setEffectActive(EFF_SLOW, 1);
 			hitstats->EFFECTS_TIMERS[EFF_SLOW] = (element->duration * (((element->mana) / static_cast<double>(element->base_mana)) * element->overload_multiplier));
 			hitstats->EFFECTS_TIMERS[EFF_SLOW] /= (1 + (int)resistance);*/
 			if ( hit.entity->behavior == &actPlayer )
@@ -412,7 +414,7 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int re
 				}
 			}
 		}
-		else if ( hit.entity->behavior == &actDoor )
+		else if ( hit.entity->behavior == &actDoor || hit.entity->behavior == &actIronDoor )
 		{
 			hit.entity->doorHandleDamageMagic(damage, my, parent);
 		}
@@ -556,7 +558,7 @@ void spellEffectPoison(Entity& my, spellElement_t& element, Entity* parent, int 
 				messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(3428));
 			}
 		}
-		else if ( hit.entity->behavior == &actDoor )
+		else if ( hit.entity->behavior == &actDoor || hit.entity->behavior == &actIronDoor )
 		{
 			hit.entity->doorHandleDamageMagic(damage, my, parent);
 		}
@@ -692,7 +694,7 @@ void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, in
 			}		
 
 			bool spawnParticles = true;
-			if ( hitstats->EFFECTS[EFF_WEBBED] )
+			if ( hitstats->getEffectActive(EFF_WEBBED) )
 			{
 				spawnParticles = false;
 			}
@@ -789,7 +791,8 @@ void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent,
 				return;
 			}
 
-			if ( hitstats->type == LICH || hitstats->type == LICH_FIRE || hitstats->type == LICH_ICE || hitstats->type == DEVIL )
+			if ( hitstats->type == LICH || hitstats->type == LICH_FIRE || hitstats->type == LICH_ICE || hitstats->type == DEVIL
+				|| hitstats->type == SHADOW )
 			{
 				return;
 			}
@@ -1333,7 +1336,7 @@ int getCharmMonsterDifficulty(Entity& my, Stat& myStats)
 
 
 	/************** CHANCE CALCULATION ***********/
-	if ( myStats.EFFECTS[EFF_CONFUSED] || myStats.EFFECTS[EFF_DRUNK] || my.behavior == &actPlayer )
+	if ( myStats.getEffectActive(EFF_CONFUSED) || myStats.getEffectActive(EFF_DRUNK) || my.behavior == &actPlayer )
 	{
 		difficulty -= 1; // players and confused/drunk monsters have lower resistance.
 	}
@@ -1831,7 +1834,7 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 		bool fellInLava = false;
 		bool fellInWater = false;
 
-		if ( targetStats->EFFECTS[EFF_LEVITATING]
+		if ( targetStats->getEffectActive(EFF_LEVITATING)
 			&& (monsterSummonType != CREATURE_IMP && monsterSummonType != COCKATRICE && monsterSummonType != SHADOW) )
 		{
 			// check if there's a floor...

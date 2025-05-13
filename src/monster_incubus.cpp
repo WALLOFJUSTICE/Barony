@@ -83,60 +83,6 @@ void initIncubus(Entity* my, Stat* myStats)
 						myStats->GOLD = 0;
 			
 						myStats->weapon = newItem(TOOL_WHIP, EXCELLENT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, true, nullptr);
-						/*if ( parentStats->shield )
-						{
-							myStats->shield = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->shield, parentStats->shield);
-							myStats->shield->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->helmet )
-						{
-							myStats->helmet = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->helmet, parentStats->helmet);
-							myStats->helmet->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->breastplate )
-						{
-							myStats->breastplate = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->breastplate, parentStats->breastplate);
-							myStats->breastplate->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->shoes )
-						{
-							myStats->shoes = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->shoes, parentStats->shoes);
-							myStats->shoes->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->gloves )
-						{
-							myStats->gloves = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->gloves, parentStats->gloves);
-							myStats->gloves->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->cloak )
-						{
-							myStats->cloak = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->cloak, parentStats->cloak);
-							myStats->cloak->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->ring )
-						{
-							myStats->ring = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->ring, parentStats->ring);
-							myStats->ring->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->amulet )
-						{
-							myStats->amulet = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->amulet, parentStats->amulet);
-							myStats->amulet->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->mask )
-						{
-							myStats->mask = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->mask, parentStats->mask);
-							myStats->mask->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}*/
 					}
 				}
 			}
@@ -586,7 +532,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				wearingring = true;
 			}
 		}
-		if ( myStats->EFFECTS[EFF_INVISIBLE] == true )
+		if ( myStats->getEffectActive(EFF_INVISIBLE) )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[BLOCKSIGHT] = false;
@@ -652,7 +598,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		}
 
 		// sleeping
-		if ( myStats->EFFECTS[EFF_ASLEEP] )
+		if ( myStats->getEffectActive(EFF_ASLEEP) )
 		{
 			my->z = 1.5;
 		}
@@ -833,7 +779,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							{
 								// set overshoot for head, freeze incubus in place
 								my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
-								myStats->EFFECTS[EFF_PARALYZED] = true;
+								myStats->setEffectActive(EFF_PARALYZED, 1);
 								if ( my->monsterAttack == MONSTER_POSE_INCUBUS_TAUNT )
 								{
 									myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 250;
@@ -1099,7 +1045,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			{
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->weapon == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->weapon == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1174,7 +1120,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							entity->handleQuiverThirdPersonModel(*myStats);
 						}
 					}
-					if ( myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1218,7 +1164,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			case LIMB_HUMANOID_CLOAK:
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->cloak == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->cloak == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1276,7 +1222,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				if ( multiplayer != CLIENT )
 				{
 					entity->sprite = itemModel(myStats->helmet);
-					if ( myStats->helmet == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->helmet == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1339,7 +1285,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							hasSteelHelm = true;
 						}
 					}*/
-					if ( myStats->mask == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring || hasSteelHelm ) //TODO: isInvisible()?
+					if ( myStats->mask == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring || hasSteelHelm ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1404,7 +1350,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						my->setHelmetLimbOffset(entity);
 						my->setHelmetLimbOffsetWithMask(helmet, entity);
 					}
-					else if ( EquipmentModelOffsets.modelOffsetExists(INCUBUS, entity->sprite) )
+					else if ( EquipmentModelOffsets.modelOffsetExists(INCUBUS, entity->sprite, my->sprite) )
 					{
 						my->setHelmetLimbOffset(entity);
 						my->setHelmetLimbOffsetWithMask(helmet, entity);
@@ -1513,7 +1459,7 @@ void Entity::incubusChooseWeapon(const Entity* target, double dist)
 
 		bool tryCharm = true;
 		bool trySteal = true;
-		if ( targetStats->EFFECTS[EFF_PACIFY] )
+		if ( targetStats->getEffectActive(EFF_PACIFY) )
 		{
 			tryCharm = false;
 		}
@@ -1533,9 +1479,9 @@ void Entity::incubusChooseWeapon(const Entity* target, double dist)
 				bonusFromHP += 1; // +extra 2.5% chance if on lower health
 			}
 
-			int requiredRoll = (1 + bonusFromHP + (targetStats->EFFECTS[EFF_CONFUSED] ? 4 : 0)
-				+ (targetStats->EFFECTS[EFF_DRUNK] ? 2 : 0)
-				+ (targetStats->EFFECTS[EFF_PACIFY] ? 2 : 0)); // +2.5% base, + extra if target is inebriated
+			int requiredRoll = (1 + bonusFromHP + (targetStats->getEffectActive(EFF_CONFUSED) ? 4 : 0)
+				+ (targetStats->getEffectActive(EFF_DRUNK) ? 2 : 0)
+				+ (targetStats->getEffectActive(EFF_PACIFY) ? 2 : 0)); // +2.5% base, + extra if target is inebriated
 
 			if ( trySteal && tryCharm )
 			{

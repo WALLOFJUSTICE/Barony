@@ -56,6 +56,10 @@ Monster editorSpriteTypeToMonster(Sint32 sprite)
 	case 166: monsterType = GYROBOT; break;
 	case 188: monsterType = BAT_SMALL; break;
 	case 189: monsterType = BUGBEAR; break;
+	case 204: monsterType = MONSTER_D; break;
+	case 205: monsterType = MONSTER_M; break;
+	case 206: monsterType = MONSTER_S; break;
+	case 207: monsterType = MONSTER_G; break;
 	default:
 		break;
 	}
@@ -109,6 +113,10 @@ int checkSpriteType(Sint32 sprite)
 	case 195:
 	case 196:
 	case 197:
+	case 204:
+	case 205:
+	case 206:
+	case 207:
 		//monsters
 		return 1;
 		break;
@@ -218,6 +226,25 @@ int checkSpriteType(Sint32 sprite)
 	case 34:
 		// act trap
 		return 29;
+	case 208:
+	case 209:
+	case 210:
+	case 211:
+		// wall locks
+		return 30;
+	case 212:
+	case 213:
+	case 214:
+	case 215:
+		// wall buttons
+		return 31;
+	case 217:
+	case 218:
+		// iron doors
+		return 32;
+	case 220:
+		// wind
+		return 33;
 	default:
 		return 0;
 		break;
@@ -561,7 +588,22 @@ char itemNameStrings[NUM_ITEM_STRINGS][32] =
 	"hat_hood_whispers",
 	"ring_resolve",
 	"cloak_guardian",
-	"mask_marigold"
+	"mask_marigold",
+	"key_stone",
+	"key_bone",
+	"key_bronze",
+	"key_iron",
+	"key_silver",
+	"key_gold",
+	"key_crystal",
+	"key_machine",
+	"tool_foci_fire",
+	"instrument_flute",
+	"instrument_lyre",
+	"instrument_drum",
+	"instrument_lute",
+	"instrument_horn",
+	"rapier",
 	""
 };
 
@@ -739,6 +781,7 @@ char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32] =
 		"artifact_orb_red",
 		"artifact_orb_purple",
 		"artifact_orb_green",
+		"rapier",
 		""
 	},
 	{
@@ -761,6 +804,12 @@ char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32] =
 		"quiver_heavy",
 		"quiver_crystal",
 		"quiver_hunting",
+		"tool_foci_fire",
+		"instrument_flute",
+		"instrument_lyre",
+		"instrument_drum",
+		"instrument_lute",
+		"instrument_horn",
 		""
 	},
 	{
@@ -884,7 +933,7 @@ char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32] =
 	
 };
 
-char spriteEditorNameStrings[NUM_EDITOR_SPRITES][64] =
+std::vector<const char*> spriteEditorNameStrings =
 {
 	"NULL",	
 	"PLAYER START",
@@ -1087,7 +1136,27 @@ char spriteEditorNameStrings[NUM_EDITOR_SPRITES][64] =
 	"NOT USED",
 	"NOT USED",
 	"NOT USED",
-	"ASSIST SHRINE"
+	"ASSIST SHRINE",
+	"NOT USED",
+	"NOT USED",
+	"MONSTER_D",
+	"MONSTER_M",
+	"MONSTER_S",
+	"MONSTER_G",
+	"WALL LOCK (East)",
+	"WALL LOCK (South)",
+	"WALL LOCK (West)",
+	"WALL LOCK (North)",
+	"WALL BUTTON (East)",
+	"WALL BUTTON (South)",
+	"WALL BUTTON (West)",
+	"WALL BUTTON (North)",
+	"NO DIG TILE",
+	"IRON DOOR (North-South)",
+	"IRON DOOR (East-West)",
+	"SLIPPERY TILE",
+	"WIND TILE",
+	"SLOW TILE"
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][16] =
@@ -1129,7 +1198,11 @@ char monsterEditorNameStrings[NUMMONSTERS][16] =
 	"spellbot",
 	"gyrobot",
 	"dummybot",
-	"bugbear"
+	"bugbear",
+	"monster_d",
+	"monster_m",
+	"monster_s",
+	"monster_g"
 };
 
 char tileEditorNameStrings[NUM_EDITOR_TILES][44] =
@@ -1452,6 +1525,10 @@ int canWearEquip(Entity* entity, int category)
 				case GOATMAN:
 				case KOBOLD:
 				case INSECTOID:
+				case MONSTER_D:
+				case MONSTER_M:
+				case MONSTER_S:
+				case MONSTER_G:
 					equipType = 3;
 					break;
 
@@ -1778,6 +1855,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->floorDecorationHeightOffset = entityToCopy->floorDecorationHeightOffset;
 			entityNew->floorDecorationXOffset = entityToCopy->floorDecorationXOffset;
 			entityNew->floorDecorationYOffset = entityToCopy->floorDecorationYOffset;
+			entityNew->floorDecorationDestroyIfNoWall = entityToCopy->floorDecorationDestroyIfNoWall;
 			for ( int i = 8; i < 60; ++i )
 			{
 				entityNew->skill[i] = entityToCopy->skill[i];
@@ -1791,6 +1869,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->floorDecorationHeightOffset = 0;
 			entityNew->floorDecorationXOffset = 0;
 			entityNew->floorDecorationYOffset = 0;
+			entityNew->floorDecorationDestroyIfNoWall = -1;
 			for ( int i = 8; i < 60; ++i )
 			{
 				entityNew->skill[i] = 0;
@@ -1830,6 +1909,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->lightSourceRadius = entityToCopy->lightSourceRadius;
 			entityNew->lightSourceFlicker = entityToCopy->lightSourceFlicker;
 			entityNew->lightSourceDelay = entityToCopy->lightSourceDelay;
+			entityNew->lightSourceRGB = entityToCopy->lightSourceRGB;
 		}
 		else
 		{
@@ -1841,6 +1921,10 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->lightSourceRadius = 5;
 			entityNew->lightSourceFlicker = 0;
 			entityNew->lightSourceDelay = 0;
+			entityNew->lightSourceRGB = 0;
+			entityNew->lightSourceRGB |= 255;
+			entityNew->lightSourceRGB |= (255 << 8);
+			entityNew->lightSourceRGB |= (255 << 16);
 		}
 	}
 	else if ( spriteType == 16 )
@@ -2006,6 +2090,25 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->doorDisableOpening = 0;
 		}
 	}
+	else if ( spriteType == 32 ) // iron doors
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->doorUnlockWhenPowered = entityToCopy->doorUnlockWhenPowered;
+			entityNew->doorDisableLockpicks = entityToCopy->doorDisableLockpicks;
+			entityNew->doorForceLockedUnlocked = entityToCopy->doorForceLockedUnlocked;
+			entityNew->doorDisableOpening = entityToCopy->doorDisableOpening;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->doorUnlockWhenPowered = 1;
+			entityNew->doorDisableLockpicks = 1;
+			entityNew->doorDisableOpening = 1;
+			entityNew->doorForceLockedUnlocked = 1;
+		}
+	}
 	else if ( spriteType == 22 ) // gates
 	{
 		if ( entityToCopy != nullptr )
@@ -2129,6 +2232,57 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 		{
 			// set default new entity attributes.
 			entityNew->pressurePlateTriggerType = 0;
+		}
+	}
+	else if ( spriteType == 30 ) // wall locks
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->wallLockMaterial = entityToCopy->wallLockMaterial;
+			entityNew->wallLockInvertPower = entityToCopy->wallLockInvertPower;
+			entityNew->wallLockTurnable = entityToCopy->wallLockTurnable;
+			entityNew->wallLockPickable = entityToCopy->wallLockPickable;
+			entityNew->wallLockPickableSkeletonKey = entityToCopy->wallLockPickableSkeletonKey;
+			entityNew->wallLockAutoGenKey = entityToCopy->wallLockAutoGenKey;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->wallLockMaterial = 0;
+			entityNew->wallLockInvertPower = 0;
+			entityNew->wallLockTurnable = 0;
+			entityNew->wallLockPickable = -1;
+			entityNew->wallLockPickableSkeletonKey = 0;
+			entityNew->wallLockAutoGenKey = 0;
+		}
+	}
+	else if ( spriteType == 31 ) // wall buttons
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->wallLockInvertPower = entityToCopy->wallLockInvertPower;
+			entityNew->wallLockTimer = entityToCopy->wallLockTimer;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->wallLockInvertPower = 0;
+			entityNew->wallLockTimer = 0;
+		}
+	}
+	else if ( spriteType == 33 ) // wind
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->skill[0] = entityToCopy->skill[0];
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->skill[0] = 0;
 		}
 	}
 

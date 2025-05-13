@@ -6609,7 +6609,87 @@ Host to enable the game setting.
 (%s %s)#
 6356 You claim %d Assistance points from the shrine.#
 6357 %s claims %d Assistance points from the Assist shrine.#
-
+6358 monster_d#
+6359 monster_m#
+6360 monster_s#
+6361 monster_g#
+6362 monster_ds#
+6363 monster_ms#
+6364 monster_ss#
+6365 monster_gs#
+6366 strikes#
+6367 strikes#
+6368 strikes#
+6369 strikes#
+6370 *grunt*#
+6371 *grunt*#
+6372 *grunt*#
+6373 *grunt*#
+6374 You reset the %s lock.#
+6375 You activate the %s lock.#
+6376 The %s key is stuck tight!#
+6377 The %s lock is currently in use.#
+6378 You activate the lock using your %s.#
+6379 You have no matching key for that %s lock.#
+6380 That button is already pressed.#
+6381 You press the button.#
+6382 You hit the button!#
+# lock types
+6383 stone#
+6384 spirit#
+6385 bronze#
+6386 iron#
+6387 silver#
+6388 gold#
+6389 crystal#
+6390 machine#
+6391 key#
+6392 lock#
+6393 button#
+6394 You see a %s lock.#
+6395 You see a %s lock with a key.#
+6396 You see a button.#
+6397 Use %s key #
+6398 #
+6399 Reset %s lock#
+6400 Activate %s lock#
+6401 Press button#
+6402 (%d held)#
+6403 The iron door's lock is controlled elsewhere!#
+6404 You open the iron door.#
+6405 You close the iron door.#
+6406 The iron door locks as you close it!#
+6407 The iron door is locked!#
+6408 You lock the iron door!#
+6409 You see an iron door.#
+6410 Your spell destroys the iron door!#
+6411 You open the iron door!#
+6412 You hit the iron door!#
+6413 The iron door crashes open!#
+6414 iron door#
+6415 You unlock the iron door.#
+6416 You lock the iron door.#
+6417 You failed to unlock the iron door.#
+6418 This iron door is already unlocked.#
+6419 An arcane protection holds the iron door firmly in place!#
+6420 Close iron door#
+6421 Open iron door#
+6422 You lack the skill to pick this %s lock!#
+6423 There is already a %s key inside this lock.#
+6424 This %s lock can't be picked!#
+6425 The skeleton key doesn't fit!#
+6426 Your %s activates the %s lock!#
+6427 Your %s resets the %s lock.#
+6428 You failed to lockpick the %s lock.#
+6429 The %s lock seems unable to be reset by lockpicking.#
+6430 This %s lock has already been lockpicked open.#
+6431 Your song's effect cannot be extended any further!#
+6432 Your strike pierced the %s's armor!#
+6433 Your strike pierced %s's armor!#
+6434 The %s parries your blow!#
+6435 %s parries your blow!#
+6436 You parry the %s's blow!#
+6437 You parry %s's blow!#
 6438 Input Device#
 6439 The input device for voice chat.#
 6440 Voice#

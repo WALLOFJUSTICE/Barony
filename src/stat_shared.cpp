@@ -92,7 +92,7 @@ Stat::Stat(Sint32 sprite) :
 		}
 		if ( c < NUMEFFECTS )
 		{
-			this->EFFECTS[c] = false;
+			this->EFFECTS[c] = 0;
 		}
 		if ( c < NUMEFFECTS )
 		{
@@ -227,7 +227,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->LVL = 30;
 			stats->HUNGER = 900;
 
-			stats->EFFECTS[EFF_LEVITATING] = true;
+			stats->setEffectActive(EFF_LEVITATING, 1);
 			stats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
 			stats->setProficiency(PRO_MAGIC, 100);
@@ -1364,6 +1364,115 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 33; //Random Items
+			break;
+		case 204:
+		case (1000 + MONSTER_D):
+			stats->type = MONSTER_D;
+			stats->sex = static_cast<sex_t>(local_rng.rand() % 2);
+			stats->stat_appearance = local_rng.rand();
+			stats->inventory.first = NULL;
+			stats->inventory.last = NULL;
+			stats->HP = 110;
+			stats->RANDOM_HP = 0;
+			stats->MAXHP = stats->HP;
+			stats->RANDOM_MAXHP = 10;
+			stats->RANDOM_HP = stats->RANDOM_MAXHP;
+			stats->MP = 30;
+			stats->MAXMP = 30;
+			stats->OLDHP = stats->HP;
+
+			stats->STR = 8;
+			stats->RANDOM_STR = 0;
+			stats->DEX = 6;
+			stats->CON = 7;
+			stats->INT = -2;
+			stats->PER = 5;
+			stats->CHR = 5;
+			stats->EXP = 0;
+			stats->LVL = 10;
+
+			stats->GOLD = 0;
+			stats->HUNGER = 900;
+			break;
+		case 205:
+		case (1000 + MONSTER_M):
+			stats->type = MONSTER_M;
+			stats->sex = static_cast<sex_t>(local_rng.rand() % 2);
+			stats->stat_appearance = local_rng.rand();
+			stats->inventory.first = NULL;
+			stats->inventory.last = NULL;
+			stats->HP = 110;
+			stats->RANDOM_HP = 0;
+			stats->MAXHP = stats->HP;
+			stats->RANDOM_MAXHP = 10;
+			stats->RANDOM_HP = stats->RANDOM_MAXHP;
+			stats->MP = 30;
+			stats->MAXMP = 30;
+			stats->OLDHP = stats->HP;
+
+			stats->STR = 8;
+			stats->RANDOM_STR = 0;
+			stats->DEX = 6;
+			stats->CON = 7;
+			stats->INT = -2;
+			stats->PER = 5;
+			stats->CHR = 5;
+			stats->EXP = 0;
+			stats->LVL = 10;
+
+			stats->GOLD = 0;
+			stats->HUNGER = 900;
+			break;
+		case 206:
+		case (1000 + MONSTER_S):
+			stats->type = MONSTER_S;
+			stats->sex = static_cast<sex_t>(local_rng.rand() % 2);
+			stats->stat_appearance = local_rng.rand();
+			stats->inventory.first = NULL;
+			stats->inventory.last = NULL;
+			stats->HP = 50;
+			stats->RANDOM_HP = 0;
+			stats->MAXHP = stats->HP;
+			stats->RANDOM_MAXHP = stats->RANDOM_HP;
+			stats->MP = 30;
+			stats->MAXMP = 30;
+			stats->OLDHP = stats->HP;
+			stats->STR = -5;
+			stats->DEX = 1;
+			stats->CON = 0;
+			stats->INT = 0;
+			stats->PER = 0;
+			stats->CHR = 0;
+			stats->EXP = 0;
+			stats->LVL = 5;
+			stats->GOLD = 0;
+			stats->HUNGER = 900;
+			break;
+		case 207:
+		case (1000 + MONSTER_G):
+			stats->type = MONSTER_G;
+			stats->sex = static_cast<sex_t>(local_rng.rand() % 2);
+			stats->stat_appearance = local_rng.rand();
+			stats->inventory.first = NULL;
+			stats->inventory.last = NULL;
+			stats->HP = 80;
+			stats->MAXHP = stats->HP;
+			stats->OLDHP = stats->HP;
+			stats->RANDOM_HP = 0;
+			stats->RANDOM_MAXHP = stats->RANDOM_HP;
+			stats->MP = 30;
+			stats->MAXMP = 30;
+			stats->OLDHP = stats->HP;
+			stats->STR = 7;
+			stats->DEX = 5;
+			stats->CON = 8;
+			stats->PER = 5;
+			stats->INT = 0;
+			stats->CHR = 0;
+			stats->EXP = 0;
+			stats->LVL = 10;
+			stats->GOLD = 0;
+			stats->HUNGER = 900;
 			break;
 		case 10:
 		default:

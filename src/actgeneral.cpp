@@ -1182,6 +1182,68 @@ void actFloorDecoration(Entity* my)
 		return;
 	}
 
+	if ( my->floorDecorationDestroyIfNoWall >= 0 )
+	{
+		int x = static_cast<int>(my->x) >> 4;
+		int y = static_cast<int>(my->y) >> 4;
+		std::vector<std::pair<int, int>> coords;
+		switch ( my->floorDecorationDestroyIfNoWall )
+		{
+		case 0:
+			// east
+			coords.push_back(std::make_pair(x + 1, y));
+			break;
+		case 1:
+			// southeast
+			coords.push_back(std::make_pair(x + 1, y));
+			coords.push_back(std::make_pair(x, y + 1));
+			break;
+		case 2:
+			// south
+			coords.push_back(std::make_pair(x, y + 1));
+			break;
+		case 3:
+			// southwest
+			coords.push_back(std::make_pair(x, y + 1));
+			coords.push_back(std::make_pair(x - 1, y));
+			break;
+		case 4:
+			// west
+			coords.push_back(std::make_pair(x - 1, y));
+			break;
+		case 5:
+			// northwest
+			coords.push_back(std::make_pair(x, y - 1));
+			coords.push_back(std::make_pair(x - 1, y));
+			break;
+		case 6:
+			// north
+			coords.push_back(std::make_pair(x, y - 1));
+			break;
+		case 7:
+			// northeast
+			coords.push_back(std::make_pair(x, y - 1));
+			coords.push_back(std::make_pair(x + 1, y));
+			break;
+		default:
+			break;
+		}
+
+		for ( auto& pair : coords )
+		{
+			int x = pair.first;
+			int y = pair.second;
+			if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+			{
+				if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
+				{
+					list_RemoveNode(my->mynode);
+					return;
+				}
+			}
+		}
+	}
+
 	if ( my->floorDecorationInteractText1 == 0 )
 	{
 		// no text.
@@ -2150,6 +2212,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						}
 						if ( multiplayer == SERVER )
 						{
+							if ( entity->behavior == &actPlayer && entity->skill[2] > 0 )
+							{
+								serverUpdateEffects(entity->skill[2]);
+							}
 							entity->serverUpdateEffectsForEntity(true);
 						}
 					}
@@ -2177,6 +2243,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						}
 						if ( multiplayer == SERVER )
 						{
+							if ( entity->behavior == &actPlayer && entity->skill[2] > 0 )
+							{
+								serverUpdateEffects(entity->skill[2]);
+							}
 							entity->serverUpdateEffectsForEntity(true);
 						}
 					}
@@ -3550,6 +3620,52 @@ std::string TextSourceScript::getScriptFromEntity(Entity& src)
 	return buf;
 }
 
+Entity* TextSourceScript::createScriptEntityInMapGen(int x, int y, const char* text)
+{
+	Entity* scriptEntity = newEntity(132, 1, map.entities, nullptr); // text script
+	setSpriteAttributes(scriptEntity, nullptr, nullptr);
+	scriptEntity->x = x * 16.0;
+	scriptEntity->y = y * 16.0;
+	scriptEntity->textSourceDelay = 1;
+
+	if ( text )
+	{
+		addScriptToTextSource(*scriptEntity, text);
+	}
+
+	return scriptEntity;
+}
+
+void TextSourceScript::addScriptToTextSource(Entity& src, const char* text)
+{
+	if ( !text ) { return; }
+
+	for ( int skill = 4; skill < 60; ++skill )
+	{
+		if ( skill == 28 ) { continue; }
+		src.skill[skill] = 0;
+	}
+
+	int skillnum = 4;
+	int len = strlen(text);
+	int encodeIndex = 0;
+	for ( int s = 0; s < len; ++s )
+	{
+		src.skill[skillnum] |= ((text[s]) << (encodeIndex * 8));
+		++encodeIndex;
+		if ( encodeIndex == 4 )
+		{
+			encodeIndex = 0;
+			++skillnum;
+			if ( skillnum == 28 ) { ++skillnum; }
+		}
+		if ( skillnum >= 60 )
+		{
+			break;
+		}
+	}
+}
+
 void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 {
 	std::string script = getScriptFromEntity(src);
@@ -3669,7 +3785,7 @@ void bellAttractMonsters(Entity* my)
 						&& myStats
 						&& entityDist(my, entity) > TOUCHRANGE )
 					{
-						if ( !myStats->EFFECTS[EFF_DISTRACTED_COOLDOWN]
+						if ( !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN)
 							&& entity->monsterSetPathToLocation(my->x / 16, my->y / 16, 1,
 								GeneratePathTypes::GENERATE_PATH_DEFAULT, true) && entity->children.first )
 						{

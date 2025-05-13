@@ -383,7 +383,7 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 	bool wasAsleep = false;
 	if ( stat )
 	{
-		wasAsleep = stat->EFFECTS[EFF_ASLEEP];
+		wasAsleep = stat->getEffectActive(EFF_ASLEEP);
 	}
 	if ( damage > 0 )
 	{
@@ -884,7 +884,7 @@ void actBomb(Entity* my)
 		}
 		else if ( onEntity )
 		{
-			if ( onEntity->behavior == &actDoor )
+			if ( onEntity->behavior == &actDoor || onEntity->behavior == &actIronDoor )
 			{
 				if ( onEntity->doorHealth < BOMB_ENTITY_ATTACHED_START_HP || onEntity->flags[PASSABLE] || cursedExplode
 					|| BOMB_HIT_BY_PROJECTILE == 1 )
@@ -1170,6 +1170,63 @@ void actBomb(Entity* my)
 	}
 }
 
+bool Entity::entityCheckIfTriggeredWallButton()
+{
+	if ( multiplayer == CLIENT )
+	{
+		return false;
+	}
+	if ( this->behavior != &actThrown && this->behavior != &actArrow )
+	{
+		return false;
+	}
+
+	bool foundButton = false;
+
+	real_t height_limit_low = (behavior == &actThrown) ? 5.0 : 4.0;
+	real_t height_limit_high = -8.0;
+
+	// check for wall buttons
+	if ( z < height_limit_low && z > height_limit_high )
+	{
+		std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(this, 1);
+		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+		{
+			list_t* currentList = *it;
+			node_t* node;
+			for ( node = currentList->first; node != nullptr; node = node->next )
+			{
+				if ( Entity* entity = ((Entity*)node->element) )
+				{
+					if ( entity->behavior == &::actWallButton )
+					{
+						Sint32 tmpsizex = sizex;
+						Sint32 tmpsizey = sizey;
+						sizex = std::max(sizex, 2);
+						sizey = std::max(sizey, 2);
+						if ( entityInsideEntity(this, entity) )
+						{
+							entity->wallLockPlayerInteracting = MAXPLAYERS + 1;
+							foundButton = true;
+							if ( Entity* parent = uidToEntity(this->parent) )
+							{
+								if ( parent->behavior == &actPlayer )
+								{
+									entity->wallLockPlayerInteracting = 1 + parent->skill[2];
+								}
+							}
+						}
+						sizex = tmpsizex;
+						sizey = tmpsizey;
+					}
+				}
+			}
+		}
+	}
+
+	return foundButton;
+}
+
 bool Entity::entityCheckIfTriggeredBomb(bool triggerBomb)
 {
 	if ( multiplayer == CLIENT )
@@ -1313,8 +1370,8 @@ void actDecoyBox(Entity* my)
 							{
 								// ignore pathing to this noisemaker as we're already distracted by it.
 								if ( entityDist(entity, my) < TOUCHRANGE 
-									&& !myStats->EFFECTS[EFF_DISORIENTED]
-									&& !myStats->EFFECTS[EFF_DISTRACTED_COOLDOWN] )
+									&& !myStats->getEffectActive(EFF_DISORIENTED)
+									&& !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN) )
 								{
 									// if we pathed within range
 									detected = false; // skip the message.
@@ -1347,7 +1404,7 @@ void actDecoyBox(Entity* my)
 							{
 								break;
 							}
-							if ( !myStats->EFFECTS[EFF_DISTRACTED_COOLDOWN] 
+							if ( !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN) 
 								&& entity->monsterSetPathToLocation(my->x / 16, my->y / 16, 2,
 									GeneratePathTypes::GENERATE_PATH_DEFAULT) && entity->children.first )
 							{
@@ -1360,8 +1417,8 @@ void actDecoyBox(Entity* my)
 								++lured;
 
 								if ( entityDist(entity, my) < TOUCHRANGE 
-									&& !myStats->EFFECTS[EFF_DISORIENTED]
-									&& !myStats->EFFECTS[EFF_DISTRACTED_COOLDOWN] )
+									&& !myStats->getEffectActive(EFF_DISORIENTED)
+									&& !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN) )
 								{
 									detected = false; // skip the message.
 

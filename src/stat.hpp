@@ -68,6 +68,11 @@ static const int EFF_PWR = 43;
 static const int EFF_AGILITY = 44;
 static const int EFF_RALLY = 45;
 static const int EFF_MARIGOLD = 46;
+static const int EFF_ENSEMBLE_FLUTE = 47;
+static const int EFF_ENSEMBLE_LYRE = 48;
+static const int EFF_ENSEMBLE_DRUM = 49;
+static const int EFF_ENSEMBLE_LUTE = 50;
+static const int EFF_ENSEMBLE_HORN = 51;
 static const int NUMEFFECTS = 64;
 
 // stats
@@ -221,6 +226,7 @@ enum KilledBy {
 class Stat
 {
 	Sint32 PROFICIENCIES[NUMPROFICIENCIES];
+	Uint8 EFFECTS[NUMEFFECTS];
 public:
 	Monster type;
 	sex_t sex;
@@ -278,9 +284,41 @@ public:
 		PROFICIENCIES[skill] = value;
 	}
 	int getGoldWeight() const;
-	bool EFFECTS[NUMEFFECTS];
+	Uint8 getEffectActive(int effect) const
+	{
+		if ( effect >= 0 && effect < NUMEFFECTS )
+		{
+			return EFFECTS[effect];
+		}
+		return 0;
+	}
+	void clearEffect(int effect)
+	{
+		if ( effect >= 0 && effect < NUMEFFECTS )
+		{
+			EFFECTS[effect] = 0;
+		}
+	}
+	void setEffectActive(int effect, Uint8 effectStrength)
+	{
+#ifndef EDITOR
+		assert(effectStrength > 0);
+#endif
+		if ( effect >= 0 && effect < NUMEFFECTS )
+		{
+			EFFECTS[effect] = std::max(EFFECTS[effect], effectStrength); // strongest value remains
+		}
+	}
+	void setEffectValueUnsafe(int effect, Uint8 effectStrength)
+	{
+		if ( effect >= 0 && effect < NUMEFFECTS )
+		{
+			EFFECTS[effect] = effectStrength;
+		}
+	}
 	Sint32 EFFECTS_TIMERS[NUMEFFECTS];
 	bool defending;
+	Uint32 parrying = 0;
 	Sint32& sneaking; // MISC_FLAGS[1]
 	Sint32& allyItemPickup; // MISC_FLAGS[2]
 	Sint32& allyClass; // MISC_FLAGS[3]
@@ -356,6 +394,7 @@ public:
 	};
 	int getPassiveShieldBonus(bool checkShield, bool excludeSkill) const;
 	int getActiveShieldBonus(bool checkShield, bool excludeSkill, Item* shieldItem = nullptr, bool checkNonShieldBonus = false) const;
+	int getParryingACBonus(bool checkWeapon, bool excludeSkill, int weaponSkill) const;
 	std::string getAttribute(std::string key) const
 	{ 
 		if ( attributes.find(key) != attributes.end() )
@@ -373,6 +412,31 @@ public:
 	Uint32 getLootingBagKey(const int player);
 	static bool emptyLootingBag(const int player, Uint32 key);
 	static int maxEquipmentBonusToSkill;
+	enum EnsembleEffectsBonusType
+	{
+		ENSEMBLE_FLUTE_EFF_1,
+		ENSEMBLE_FLUTE_EFF_2,
+		ENSEMBLE_FLUTE_TIER,
+		ENSEMBLE_LUTE_EFF_1,
+		ENSEMBLE_LUTE_EFF_2,
+		ENSEMBLE_LUTE_TIER,
+		ENSEMBLE_DRUM_EFF_1,
+		ENSEMBLE_DRUM_EFF_2,
+		ENSEMBLE_DRUM_TIER,
+		ENSEMBLE_HORN_EFF_1,
+		ENSEMBLE_HORN_EFF_2,
+		ENSEMBLE_HORN_TIER,
+		ENSEMBLE_LYRE_EFF_1,
+		ENSEMBLE_LYRE_EFF_2,
+		ENSEMBLE_LYRE_TIER,
+		ENSEMBLE_LYRE_TIER_2
+	};
+	static const Sint32 kEnsembleBreakPointTier4 = 40;
+	static const Sint32 kEnsembleBreakPointTier3 = 20;
+	static const Sint32 kEnsembleBreakPointTier2 = 5;
+	static const Sint32 kEnsembleBreakPointTier1 = 0;
+	real_t getEnsembleEffectBonus(EnsembleEffectsBonusType bonusType);
+	static int getMaxAttackCharge(Stat* myStats);
 };
 extern Stat* stats[MAXPLAYERS];
 

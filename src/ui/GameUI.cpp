@@ -388,6 +388,10 @@ std::string EnemyBarSettings_t::getEnemyBarSpriteName(Entity* entity)
 	{
 		return "door";
 	}
+	else if ( entity->behavior == &actIronDoor )
+	{
+		return "iron_door";
+	}
 	else if ( entity->behavior == &actChest )
 	{
 		return "chest";
@@ -6268,23 +6272,180 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 		int player = parent->getOwner();
 		if ( player >= 0 && player < MAXPLAYERS )
 		{
-			if ( stats[player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS] > 0 )
+			if ( stats[player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS] > 0
+				|| stats[player]->getEffectActive(EFF_ENSEMBLE_FLUTE)
+				|| stats[player]->getEffectActive(EFF_ENSEMBLE_LUTE) 
+				|| stats[player]->getEffectActive(EFF_ENSEMBLE_LYRE) 
+				|| stats[player]->getEffectActive(EFF_ENSEMBLE_DRUM) 
+				|| stats[player]->getEffectActive(EFF_ENSEMBLE_HORN) )
 			{
 				for ( auto img : frame->getImages() )
 				{
-					if ( !img->disabled && img->path.find("assistance.png") != std::string::npos )
+					if ( !img->disabled )
 					{
-						if ( auto text = Text::get(std::to_string(stats[player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS]).c_str(), 
-							"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+						if ( img->path.find("assistance.png") != std::string::npos )
 						{
-							text->drawColor(SDL_Rect{ 0,0,0,0 },
-								SDL_Rect{ pos.x + img->pos.x + img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x,
-								pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
-								0, 0 },
-								SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
-								makeColor(255, 255, 255, 255));
+							if ( auto text = Text::get(std::to_string(stats[player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS]).c_str(), 
+								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+							{
+								text->drawColor(SDL_Rect{ 0,0,0,0 },
+									SDL_Rect{ pos.x + img->pos.x + img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x,
+									pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+									0, 0 },
+									SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+									makeColor(255, 255, 255, 255));
+							}
 						}
-						break;
+						else if ( img->path.find("ensemble_flute.png") != std::string::npos )
+						{
+							std::string val = "I";
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_ENSEMBLE_FLUTE);
+							if ( effectStrength >= 1 )
+							{
+								if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
+								{
+									val = "IV";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
+								{
+									val = "III";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
+								{
+									val = "II";
+								}
+							}
+							if ( auto text = Text::get(val.c_str(),
+								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+							{
+								text->drawColor(SDL_Rect{ 0,0,0,0 },
+									SDL_Rect{ pos.x + img->pos.x + img->pos.w - (int)text->getWidth()/* / 2 + *cvar_assist_icon_txt_x*/,
+									pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+									0, 0 },
+									SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+									makeColor(255, 255, 255, 255));
+							}
+						}
+						else if ( img->path.find("ensemble_lute.png") != std::string::npos )
+						{
+							std::string val = "I";
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_ENSEMBLE_LUTE);
+							if ( effectStrength >= 1 )
+							{
+								if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
+								{
+									val = "IV";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
+								{
+									val = "III";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
+								{
+									val = "II";
+								}
+							}
+							if ( auto text = Text::get(val.c_str(),
+								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+							{
+								text->drawColor(SDL_Rect{ 0,0,0,0 },
+									SDL_Rect{ pos.x + img->pos.x + img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x,
+									pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+									0, 0 },
+									SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+									makeColor(255, 255, 255, 255));
+							}
+						}
+						else if ( img->path.find("ensemble_lyre.png") != std::string::npos )
+						{
+							std::string val = "I";
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_ENSEMBLE_LYRE);
+							if ( effectStrength >= 1 )
+							{
+								if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
+								{
+									val = "IV";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
+								{
+									val = "III";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
+								{
+									val = "II";
+								}
+							}
+							if ( auto text = Text::get(val.c_str(),
+								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+							{
+								text->drawColor(SDL_Rect{ 0,0,0,0 },
+									SDL_Rect{ pos.x + img->pos.x + img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x,
+									pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+									0, 0 },
+									SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+									makeColor(255, 255, 255, 255));
+							}
+						}
+						else if ( img->path.find("ensemble_drum.png") != std::string::npos )
+						{
+							std::string val = "I";
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_ENSEMBLE_DRUM);
+							if ( effectStrength >= 1 )
+							{
+								if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
+								{
+									val = "IV";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
+								{
+									val = "III";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
+								{
+									val = "II";
+								}
+							}
+							if ( auto text = Text::get(val.c_str(),
+								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+							{
+								text->drawColor(SDL_Rect{ 0,0,0,0 },
+									SDL_Rect{ pos.x + img->pos.x + img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x,
+									pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+									0, 0 },
+									SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+									makeColor(255, 255, 255, 255));
+							}
+							}
+						else if ( img->path.find("ensemble_horn.png") != std::string::npos )
+						{
+							std::string val = "I";
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_ENSEMBLE_HORN);
+							if ( effectStrength >= 1 )
+							{
+								if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
+								{
+									val = "IV";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
+								{
+									val = "III";
+								}
+								else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
+								{
+									val = "II";
+								}
+							}
+							if ( auto text = Text::get(val.c_str(),
+								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+							{
+								text->drawColor(SDL_Rect{ 0,0,0,0 },
+									SDL_Rect{ pos.x + img->pos.x + img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x,
+									pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+									0, 0 },
+									SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+									makeColor(255, 255, 255, 255));
+							}
+						}
 					}
 				}
 			}
@@ -6983,6 +7144,73 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 						}
 					}
 				}
+				else if ( effectID == EFF_ENSEMBLE_DRUM
+					|| effectID == EFF_ENSEMBLE_FLUTE
+					|| effectID == EFF_ENSEMBLE_LUTE
+					|| effectID == EFF_ENSEMBLE_HORN
+					|| effectID == EFF_ENSEMBLE_LYRE )
+				{
+					int variation = 0;
+					if ( Uint8 effectStrength = stats[player]->getEffectActive(effectID) )
+					{
+						if ( effectStrength >= 40 )
+						{
+							variation = 3;
+						}
+						else if ( effectStrength >= 20 )
+						{
+							variation = 2;
+						}
+						else if ( effectStrength >= 5 )
+						{
+							variation = 1;
+						}
+					}
+
+					std::string newHeader = definition.getName(variation).c_str();
+					uppercaseString(newHeader);
+					tooltipHeader->setText(newHeader.c_str());
+					std::string newDesc = definition.getDesc(variation).c_str();
+					newDesc += '\n';
+					newDesc += "Scaled Stat: ";
+					if ( effectID == EFF_ENSEMBLE_DRUM )
+					{
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_DRUM_EFF_1));
+						newDesc += '\n';
+						newDesc += "Tier Stat: ";
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_DRUM_TIER));
+					}
+					else if ( effectID == EFF_ENSEMBLE_FLUTE )
+					{
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_FLUTE_EFF_1));
+						newDesc += '\n';
+						newDesc += "Tier Stat: ";
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_FLUTE_TIER));
+					}
+					else if ( effectID == EFF_ENSEMBLE_LUTE )
+					{
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_EFF_1));
+						newDesc += '\n';
+						newDesc += "Tier Stat: ";
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_TIER));
+					}
+					else if ( effectID == EFF_ENSEMBLE_HORN )
+					{
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_HORN_EFF_1));
+						newDesc += '\n';
+						newDesc += "Tier Stat: ";
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_HORN_TIER));
+					}
+					else if ( effectID == EFF_ENSEMBLE_LYRE )
+					{
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LYRE_EFF_1));
+						newDesc += '\n';
+						newDesc += "Tier Stat: ";
+						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LYRE_TIER));
+					}
+					tooltipDesc->setText(newDesc.c_str());
+					tooltipInnerWidth = definition.tooltipWidth;
+				}
 				else if ( effectID == EFF_VAMPIRICAURA )
 				{
 					bool sustained = false;
@@ -7161,7 +7389,12 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 					&& effectID != StatusEffectQueue_t::kEffectWantedInShop
 					&& effectID != StatusEffectQueue_t::kEffectBountyTarget
 					&& effectID != StatusEffectQueue_t::kEffectDisabledHPRegen
-					&& effectID != StatusEffectQueue_t::kEffectAssistance )
+					&& effectID != StatusEffectQueue_t::kEffectAssistance
+					&& !(effectID == EFF_ENSEMBLE_DRUM
+						|| effectID == EFF_ENSEMBLE_FLUTE
+						|| effectID == EFF_ENSEMBLE_LUTE
+						|| effectID == EFF_ENSEMBLE_HORN
+						|| effectID == EFF_ENSEMBLE_LYRE) )
 				{
 					std::string newHeader = definition.getName(variation).c_str();
 					uppercaseString(newHeader);
@@ -7590,13 +7823,13 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 	    else
 	    {
 			bool skipAnim = false;
-			bool effectActive = stats[player]->EFFECTS[i];
+			bool effectActive = stats[player]->getEffectActive(i) > 0;
 			if ( i == EFF_LEVITATING && !effectActive )
 			{
-				bool tmp = stats[player]->EFFECTS[EFF_FLUTTER];
-				stats[player]->EFFECTS[EFF_FLUTTER] = false;
+				Uint8 tmp = stats[player]->getEffectActive(EFF_FLUTTER);
+				stats[player]->clearEffect(EFF_FLUTTER);
 				effectActive = isLevitating(stats[player]);
-				stats[player]->EFFECTS[EFF_FLUTTER] = tmp;
+				stats[player]->setEffectValueUnsafe(EFF_FLUTTER, tmp);
 			}
 			else if ( i == EFF_MAGICREFLECT && !effectActive )
 			{
@@ -7640,6 +7873,15 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					skipAnim = true;
 					effectsToSkipAnim.insert(i);
 				}
+			}
+			else if ( i == EFF_ENSEMBLE_DRUM
+				|| i == EFF_ENSEMBLE_HORN
+				|| i == EFF_ENSEMBLE_LUTE
+				|| i == EFF_ENSEMBLE_FLUTE
+				|| i == EFF_ENSEMBLE_LYRE )
+			{
+				skipAnim = true;
+				effectsToSkipAnim.insert(i);
 			}
 			else if ( i == EFF_DRUNK && stats[player]->type == GOATMAN )
 			{
@@ -7720,11 +7962,11 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 		{
 			bool cursedItemIsBuff = shouldInvertEquipmentBeatitude(stats[player]);
 			if ( ((stats[player]->mask && stats[player]->mask->type == TOOL_BLINDFOLD_FOCUS)
-				|| (stats[player]->type == GOATMAN && stats[player]->EFFECTS[EFF_DRUNK])) )
+				|| (stats[player]->type == GOATMAN && stats[player]->getEffectActive(EFF_DRUNK))) )
 			{
 				miscEffects[kEffectFreeAction] = true;
 			}
-			if ( stats[player]->type == GOATMAN && stats[player]->EFFECTS[EFF_DRUNK] )
+			if ( stats[player]->type == GOATMAN && stats[player]->getEffectActive(EFF_DRUNK) )
 			{
 				miscEffects[kEffectDrunkGoatman] = true;
 			}
@@ -7800,7 +8042,7 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 			}
 			if ( (stats[player]->ring && stats[player]->ring->type == RING_STRENGTH)
 				|| (stats[player]->gloves && stats[player]->gloves->type == GAUNTLETS_STRENGTH)
-				|| stats[player]->EFFECTS[EFF_POTION_STR] )
+				|| stats[player]->getEffectActive(EFF_POTION_STR) )
 			{
 				miscEffects[kEffectPush] = true;
 			}
@@ -18976,7 +19218,7 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 		
 		std::string descriptionText = mapDisplayNamesDescriptions[map.name].second.c_str();
 		std::string mapDetailsText = "";
-		auto mapDetails = Player::Minimap_t::mapDetails;
+		auto& mapDetails = Player::Minimap_t::mapDetails;
 		for ( auto& detail : mapDetails )
 		{
 			if ( mapDetailsText != "" )
@@ -34104,36 +34346,41 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 			}
 			std::string magics = "";
 			std::set<int> inserted;
-			for ( auto it = allGameSpells.begin(); it != allGameSpells.end(); ++it )
+			for ( int i = SPELL_NONE + 1; i < NUM_SPELLS; ++i )
 			{
-				auto spellEntry = *it;
-				if ( !spellEntry )
+				auto find = allGameSpells.find(i);
+				if ( find != allGameSpells.end() )
 				{
-					continue;
-				}
-				if ( spellEntry->ID == SPELL_WEAKNESS 
-					|| spellEntry->ID == SPELL_GHOST_BOLT
-					|| spellEntry->ID == SPELL_SLIME_ACID 
-					|| spellEntry->ID == SPELL_SLIME_FIRE 
-					|| spellEntry->ID == SPELL_SLIME_WATER 
-					|| spellEntry->ID == SPELL_SLIME_TAR
-					|| spellEntry->ID == SPELL_SLIME_METAL )
-				{
-					continue;
-				}
-				if ( spellEntry && spellEntry->difficulty == (skillLVL * 20) )
-				{
-					if ( inserted.find(spellEntry->ID) != inserted.end() )
+					auto spellEntry = find->second;
+					if ( !spellEntry )
 					{
 						continue;
 					}
-					inserted.insert(spellEntry->ID);
-					if ( magics != "" )
+					if ( spellEntry->ID == SPELL_WEAKNESS 
+						|| spellEntry->ID == SPELL_GHOST_BOLT
+						|| spellEntry->ID == SPELL_SLIME_ACID 
+						|| spellEntry->ID == SPELL_SLIME_FIRE 
+						|| spellEntry->ID == SPELL_SLIME_WATER 
+						|| spellEntry->ID == SPELL_SLIME_TAR
+						|| spellEntry->ID == SPELL_SLIME_METAL
+						|| spellEntry->hide_from_ui == true )
 					{
-						magics += '\n';
+						continue;
 					}
-					magics += "\x1E ";
-					magics += spellEntry->getSpellName();
+					if ( spellEntry && spellEntry->difficulty == (skillLVL * 20) )
+					{
+						if ( inserted.find(spellEntry->ID) != inserted.end() )
+						{
+							continue;
+						}
+						inserted.insert(spellEntry->ID);
+						if ( magics != "" )
+						{
+							magics += '\n';
+						}
+						magics += "\x1E ";
+						magics += spellEntry->getSpellName();
+					}
 				}
 			}
 			if ( magics == "" ) { magics = "-"; }
@@ -39447,7 +39694,7 @@ bool SkillUpAnimation_t::soundIndexUsedForNotification(const int index)
 	}
 	else
 	{
-		for ( auto skill : Player::SkillSheet_t::skillSheetData.skillEntries )
+		for ( auto& skill : Player::SkillSheet_t::skillSheetData.skillEntries )
 		{
 			if ( index == skill.skillSfx )
 			{
@@ -40838,7 +41085,7 @@ void updateSkillUpFrame(const int player)
 			}
 			else
 			{
-				for ( auto skill : Player::SkillSheet_t::skillSheetData.skillEntries )
+				for ( auto& skill : Player::SkillSheet_t::skillSheetData.skillEntries )
 				{
 					if ( skill.skillId == skillUp.whichSkill )
 					{

@@ -1284,7 +1284,7 @@ namespace ConsoleCommands {
 			Stat* tempStats = players[clientnum]->entity->getStats();
 			if (tempStats)
 			{
-				tempStats->EFFECTS[EFF_POISONED] = true;
+				tempStats->setEffectActive(EFF_POISONED, 1);
 				tempStats->EFFECTS_TIMERS[EFF_POISONED] = 600;
 			}
 		}
@@ -1545,11 +1545,11 @@ namespace ConsoleCommands {
 			if (!(c == EFF_VAMPIRICAURA && players[clientnum]->entity->getStats()->EFFECTS_TIMERS[c] == -2)
 				&& c != EFF_WITHDRAWAL && c != EFF_SHAPESHIFT)
 			{
-				players[clientnum]->entity->getStats()->EFFECTS[c] = false;
+				players[clientnum]->entity->getStats()->clearEffect(c);
 				players[clientnum]->entity->getStats()->EFFECTS_TIMERS[c] = 0;
 			}
 		}
-		if (players[clientnum]->entity->getStats()->EFFECTS[EFF_WITHDRAWAL])
+		if (players[clientnum]->entity->getStats()->getEffectActive(EFF_WITHDRAWAL))
 		{
 			players[clientnum]->entity->setEffect(EFF_WITHDRAWAL, false, EFFECT_WITHDRAWAL_BASE_TIME, true);
 		}
@@ -2342,11 +2342,11 @@ namespace ConsoleCommands {
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
 			return;
 		}
-		if (multiplayer != SINGLE)
+		/*if (multiplayer != SINGLE)
 		{
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(299));
 			return;
-		}
+		}*/
 
 		if (argc < 2)
 		{
@@ -2359,9 +2359,25 @@ namespace ConsoleCommands {
 		}
 		else
 		{
-			for (int i = 0; i < 10; ++i)
+			if ( multiplayer == CLIENT )
 			{
-				players[clientnum]->entity->increaseSkill(skill);
+				for ( int i = 0; i < 10; ++i )
+				{
+					strcpy((char*)net_packet->data, "CSKL");
+					net_packet->data[4] = clientnum;
+					net_packet->data[5] = skill;
+					net_packet->address.host = net_server.host;
+					net_packet->address.port = net_server.port;
+					net_packet->len = 6;
+					sendPacketSafe(net_sock, -1, net_packet, 0);
+				}
+			}
+			else
+			{
+				for (int i = 0; i < 10; ++i)
+				{
+					players[clientnum]->entity->increaseSkill(skill);
+				}
 			}
 		}
 		});
@@ -2431,14 +2447,14 @@ namespace ConsoleCommands {
 			return;
 		}
 
-		if (!players[clientnum]->entity->getStats()->EFFECTS[EFF_DRUNK])
+		if (!players[clientnum]->entity->getStats()->getEffectActive(EFF_DRUNK))
 		{
-			players[clientnum]->entity->getStats()->EFFECTS[EFF_DRUNK] = true;
+			players[clientnum]->entity->getStats()->setEffectActive(EFF_DRUNK, 1);
 			players[clientnum]->entity->getStats()->EFFECTS_TIMERS[EFF_DRUNK] = -1;
 		}
 		else
 		{
-			players[clientnum]->entity->getStats()->EFFECTS[EFF_DRUNK] = false;
+			players[clientnum]->entity->getStats()->clearEffect(EFF_DRUNK);
 			players[clientnum]->entity->getStats()->EFFECTS_TIMERS[EFF_DRUNK] = 0;
 		}
 		});
@@ -2746,11 +2762,16 @@ namespace ConsoleCommands {
 		else
 		{
 			int duration = 500;
+			Uint8 strength = 1;
 			if ( argc >= 3 )
 			{
 				duration = atoi(argv[2]);
 			}
-			players[clientnum]->entity->setEffect(effect, true, duration, true);
+			if ( argc >= 4 )
+			{
+				strength = atoi(argv[3]);
+			}
+			players[clientnum]->entity->setEffect(effect, strength, duration, true);
 		}
 		});
 
@@ -3062,8 +3083,8 @@ namespace ConsoleCommands {
 		}
 
 		messagePlayer(clientnum, MESSAGE_MISC, "Hungover Active: %d, Time to go: %d, Drunk Active: %d, Drunk time: %d",
-			stats[clientnum]->EFFECTS[EFF_WITHDRAWAL], stats[clientnum]->EFFECTS_TIMERS[EFF_WITHDRAWAL],
-			stats[clientnum]->EFFECTS[EFF_DRUNK], stats[clientnum]->EFFECTS_TIMERS[EFF_DRUNK]);
+			stats[clientnum]->getEffectActive(EFF_WITHDRAWAL), stats[clientnum]->EFFECTS_TIMERS[EFF_WITHDRAWAL],
+			stats[clientnum]->getEffectActive(EFF_DRUNK), stats[clientnum]->EFFECTS_TIMERS[EFF_DRUNK]);
 		return;
 		});
 
@@ -3102,13 +3123,18 @@ namespace ConsoleCommands {
 			return;
 		}
 
-		for (auto it = allGameSpells.begin(); it != allGameSpells.begin() + 29; ++it)
+		for ( int i = SPELL_NONE + 1; i <= 29 && i < NUM_SPELLS; ++i )
 		{
-			spell_t* spell = *it;
-			bool oldIntro = intro;
-			intro = true;
-			bool learned = addSpell(spell->ID, clientnum, true);
-			intro = oldIntro;
+			if ( allGameSpells.find(i) != allGameSpells.end() )
+			{
+				if ( spell_t* spell = allGameSpells[i] )
+				{
+					bool oldIntro = intro;
+					intro = true;
+					bool learned = addSpell(spell->ID, clientnum, true);
+					intro = oldIntro;
+				}
+			}
 		}
 		return;
 		});
@@ -3858,13 +3884,18 @@ namespace ConsoleCommands {
 			return;
 		}
 
-		for (auto it = allGameSpells.begin() + 29; it != allGameSpells.end(); ++it)
+		for ( int i = 30; i < NUM_SPELLS; ++i )
 		{
-			spell_t* spell = *it;
-			bool oldIntro = intro;
-			intro = true;
-			bool learned = addSpell(spell->ID, clientnum, true);
-			intro = oldIntro;
+			if ( allGameSpells.find(i) != allGameSpells.end() )
+			{
+				if ( spell_t* spell = allGameSpells[i] )
+				{
+					bool oldIntro = intro;
+					intro = true;
+					bool learned = addSpell(spell->ID, clientnum, true);
+					intro = oldIntro;
+				}
+			}
 		}
 		return;
 		});
@@ -3876,13 +3907,18 @@ namespace ConsoleCommands {
 			return;
 		}
 
-		for (auto it = allGameSpells.begin(); it != allGameSpells.end(); ++it)
+		for ( int i = SPELL_NONE + 1; i < NUM_SPELLS; ++i )
 		{
-			spell_t* spell = *it;
-			bool oldIntro = intro;
-			intro = true;
-			bool learned = addSpell(spell->ID, clientnum, true);
-			intro = oldIntro;
+			if ( allGameSpells.find(i) != allGameSpells.end() )
+			{
+				if ( spell_t* spell = allGameSpells[i] )
+				{
+					bool oldIntro = intro;
+					intro = true;
+					bool learned = addSpell(spell->ID, clientnum, true);
+					intro = oldIntro;
+				}
+			}
 		}
 		return;
 		});
@@ -4566,6 +4602,36 @@ namespace ConsoleCommands {
 #endif
 	});
 
+	static ConsoleCommand ccmd_map_debug_door("/map_debug_door", "", []CCMD{
+#ifndef NINTENDO
+		for ( auto f : directoryContents(".\\maps\\", false, true) )
+		{
+			std::string mapPath = "maps/";
+			mapPath += f;
+			bool foundNumber = std::find_if(f.begin(), f.end(), ::isdigit) != f.end();
+			if ( foundNumber && PHYSFS_getRealDir(mapPath.c_str()) )
+			{
+				int maphash = 0;
+				std::string fullMapPath = PHYSFS_getRealDir(mapPath.c_str());
+				fullMapPath += PHYSFS_getDirSeparator();
+				fullMapPath += mapPath;
+				loadMap(fullMapPath.c_str(), &map, map.entities, map.creatures, nullptr);
+				for ( node_t* node = map.entities->first; node; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( entity->sprite == 217 || entity->sprite == 218 )
+						{
+							printlog("Iron door: Lockpick state: %d, opening: %d", entity->doorDisableLockpicks, entity->doorDisableOpening);
+						}
+					}
+				}
+				// will crash the game but will show results of every map load :)
+			}
+		}
+#endif
+		});
+
 	static ConsoleCommand ccmd_exportitemlang("/exportitemlang", "", []CCMD{
 #ifndef EDITOR
 #ifndef NINTENDO
@@ -4674,7 +4740,7 @@ namespace ConsoleCommands {
 					stat->CON = 0;
 					stat->RANDOM_CON = 0;
 					stat->LVL = 50;
-					stat->EFFECTS[EFF_STUNNED] = true;
+					stat->setEffectActive(EFF_STUNNED, 1);
 					stat->monsterForceAllegiance = Stat::MONSTER_FORCE_PLAYER_ENEMY;
 					serverUpdateEntityStatFlag(monster, 20);
 					stat->EDITOR_ITEMS[ITEM_SLOT_HELM] = 0;
@@ -5165,6 +5231,10 @@ namespace ConsoleCommands {
 						case 166: monsterType = GYROBOT; break;
 						case 188: monsterType = BAT_SMALL; break;
 						case 189: monsterType = BUGBEAR; break;
+						case 204: monsterType = MONSTER_D; break;
+						case 205: monsterType = MONSTER_M; break;
+						case 206: monsterType = MONSTER_S; break;
+						case 207: monsterType = MONSTER_G; break;
 						default:
 							break;
 						}
@@ -5179,5 +5249,146 @@ namespace ConsoleCommands {
 		}
 #endif
 		});
+
+	static ConsoleCommand ccmd_shader_test("/shader_test", "", []CCMD{
+		{
+			std::string filePath = "/data/shaders/";
+			filePath.append("sprite");
+			if ( filePath.find(".json") == std::string::npos )
+			{
+				filePath.append(".json");
+			}
+			if ( PHYSFS_getRealDir(filePath.c_str()) )
+			{
+				std::string inputPath = PHYSFS_getRealDir(filePath.c_str());
+				inputPath.append(filePath);
+
+				File* fp = FileIO::open(inputPath.c_str(), "rb");
+				if ( !fp )
+				{
+					printlog("[JSON]: Error: Could not locate json file %s", inputPath.c_str());
+					return;
+				}
+
+				char buf[65536];
+				int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
+				buf[count] = '\0';
+				rapidjson::StringStream is(buf);
+				FileIO::close(fp);
+
+				rapidjson::Document d;
+				d.ParseStream(is);
+
+				if ( !d.IsObject() || !d.HasMember("version") )
+				{
+					printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
+					return;
+				}
+
+				std::string vertex;
+				std::string fragment;
+
+				for ( auto itr = d["vertex"].Begin(); itr != d["vertex"].End(); ++itr )
+				{
+					if ( vertex.size() != 0 )
+					{
+						vertex += '\n';
+					}
+					vertex += itr->GetString();
+				}
+				for ( auto itr = d["fragment"].Begin(); itr != d["fragment"].End(); ++itr )
+				{
+					if ( fragment.size() != 0 )
+					{
+						fragment += '\n';
+					}
+					fragment += itr->GetString();
+				}
+
+				auto& shader = spriteBrightShader;
+				shader.destroy();
+				shader.init("spriteBrightShader");
+
+				shader.compile(vertex.c_str(), vertex.size(), Shader::Type::Vertex);
+				shader.compile(fragment.c_str(), fragment.size(), Shader::Type::Fragment);
+				shader.bindAttribLocation("iPosition", 0);
+				shader.bindAttribLocation("iTexCoord", 1);
+				shader.bindAttribLocation("iColor", 2);
+				shader.link();
+				shader.bind();
+				GL_CHECK_ERR(glUniform1i(shader.uniform("uTexture"), 0));
+				GL_CHECK_ERR(glUniform1i(shader.uniform("uLightmap"), 1));
+			}
+		}
+		{
+			std::string filePath = "/data/shaders/";
+			filePath.append("voxel");
+			if ( filePath.find(".json") == std::string::npos )
+			{
+				filePath.append(".json");
+			}
+			if ( PHYSFS_getRealDir(filePath.c_str()) )
+			{
+				std::string inputPath = PHYSFS_getRealDir(filePath.c_str());
+				inputPath.append(filePath);
+
+				File* fp = FileIO::open(inputPath.c_str(), "rb");
+				if ( !fp )
+				{
+					printlog("[JSON]: Error: Could not locate json file %s", inputPath.c_str());
+					return;
+				}
+
+				char buf[65536];
+				int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
+				buf[count] = '\0';
+				rapidjson::StringStream is(buf);
+				FileIO::close(fp);
+
+				rapidjson::Document d;
+				d.ParseStream(is);
+
+				if ( !d.IsObject() || !d.HasMember("version") )
+				{
+					printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
+					return;
+				}
+
+				std::string vertex;
+				std::string fragment;
+
+				for ( auto itr = d["vertex"].Begin(); itr != d["vertex"].End(); ++itr )
+				{
+					if ( vertex.size() != 0 )
+					{
+						vertex += '\n';
+					}
+					vertex += itr->GetString();
+				}
+				for ( auto itr = d["fragment"].Begin(); itr != d["fragment"].End(); ++itr )
+				{
+					if ( fragment.size() != 0 )
+					{
+						fragment += '\n';
+					}
+					fragment += itr->GetString();
+				}
+
+				auto& shader = voxelShader;
+				shader.destroy();
+				shader.init("voxelShader");
+
+				shader.compile(vertex.c_str(), vertex.size(), Shader::Type::Vertex);
+				shader.compile(fragment.c_str(), fragment.size(), Shader::Type::Fragment);
+				shader.bindAttribLocation("iPosition", 0);
+				shader.bindAttribLocation("iColor", 1);
+				shader.bindAttribLocation("iNormal", 2);
+				shader.link();
+				shader.bind();
+				GL_CHECK_ERR(glUniform1i(shader.uniform("uLightmap"), 1));
+				GL_CHECK_ERR(glUniform1i(shader.uniform("uTexturemap"), 2));
+			}
+		}
+	});
 }
 

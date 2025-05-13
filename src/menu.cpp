@@ -533,7 +533,7 @@ int isCharacterValidFromDLC(Stat& myStats, int characterClass)
 	{
 		return VALID_OK_CHARACTER; // aesthetic only option.
 	}
-	if ( characterClass <= CLASS_MONK )
+	if ( characterClass <= CLASS_MONK || characterClass == CLASS_21 )
 	{
 		return VALID_OK_CHARACTER;
 	}
@@ -8544,6 +8544,14 @@ void doNewGame(bool makeHighscore) {
 	{
 	    client_keepalive[i] = ticks; // this way nobody times out when we reset ticks!
 		players[i]->init();
+		if ( !loadingsavegame )
+		{
+			players[i]->was_connected_to_game = !client_disconnected[i];
+		}
+		else if ( !client_disconnected[i] )
+		{
+			players[i]->was_connected_to_game = true;
+		}
 		players[i]->hud.reset();
 		players[i]->hud.followerBars.clear();
 		players[i]->hud.playerBars.clear();
@@ -8561,6 +8569,7 @@ void doNewGame(bool makeHighscore) {
 	monsterAllyFormations.reset();
 	PingNetworkStatus_t::reset();
 	particleTimerEmitterHitEntities.clear();
+	particleTimerEffects.clear();
 	monsterTrapIgnoreEntities.clear();
 	minimapHighlights.clear();
 
@@ -8739,6 +8748,7 @@ void doNewGame(bool makeHighscore) {
 	// generate mimics
 	{
 		mimic_generator.init();
+		treasure_room_generator.init();
 	}
 
 	Compendium_t::Events_t::clientReceiveData.clear();
@@ -8780,6 +8790,7 @@ void doNewGame(bool makeHighscore) {
 		{
 			soundNotification_group->stop();
 		}
+		ensembleSounds.stopPlaying();
 		VoiceChat.deinitRecording(false);
 #elif defined USE_OPENAL
 		if ( sound_group )
@@ -8810,7 +8821,7 @@ void doNewGame(bool makeHighscore) {
 			Uint32 oldSvFlags = gameModeManager.currentSession.serverFlags;
 			bool bOldSvFlags = gameModeManager.currentSession.bHasSavedServerFlags;
 			for (int c = 0; c < MAXPLAYERS; ++c) {
-				if (!client_disconnected[c]) {
+				if (!client_disconnected[c] || players[c]->was_connected_to_game ) {
 					stats[c]->clearStats();
 					loadGame(c, saveGameInfo);
 				}
@@ -8852,6 +8863,7 @@ void doNewGame(bool makeHighscore) {
 			players[i]->hud.weapon = nullptr;
 			players[i]->hud.magicLeftHand = nullptr;
 			players[i]->hud.magicRightHand = nullptr;
+			players[i]->hud.magicRangefinder = nullptr;
 			players[i]->ghost.reset();
 			FollowerMenu[i].recentEntity = nullptr;
 			FollowerMenu[i].followerToCommand = nullptr;
@@ -8967,19 +8979,19 @@ void doNewGame(bool makeHighscore) {
 			{
 				if ( players[c] && players[c]->entity && !client_disconnected[c] )
 				{
-					if ( stats[c] && stats[c]->EFFECTS[EFF_POLYMORPH] && stats[c]->playerPolymorphStorage != NOTHING )
+					if ( stats[c] && stats[c]->getEffectActive(EFF_POLYMORPH) && stats[c]->playerPolymorphStorage != NOTHING )
 					{
 						players[c]->entity->effectPolymorph = stats[c]->playerPolymorphStorage;
 						serverUpdateEntitySkill(players[c]->entity, 50); // update visual polymorph effect for clients.
 						serverUpdateEffects(c);
 					}
-					if ( stats[c] && stats[c]->EFFECTS[EFF_SHAPESHIFT] && stats[c]->playerShapeshiftStorage != NOTHING )
+					if ( stats[c] && stats[c]->getEffectActive(EFF_SHAPESHIFT) && stats[c]->playerShapeshiftStorage != NOTHING )
 					{
 						players[c]->entity->effectShapeshift = stats[c]->playerShapeshiftStorage;
 						serverUpdateEntitySkill(players[c]->entity, 53); // update visual shapeshift effect for clients.
 						serverUpdateEffects(c);
 					}
-					if ( stats[c] && stats[c]->EFFECTS[EFF_VAMPIRICAURA] && stats[c]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
+					if ( stats[c] && stats[c]->getEffectActive(EFF_VAMPIRICAURA) && stats[c]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
 					{
 						players[c]->entity->playerVampireCurse = 1;
 						serverUpdateEntitySkill(players[c]->entity, 51); // update curse progression
@@ -9182,6 +9194,7 @@ void doNewGame(bool makeHighscore) {
 			players[i]->hud.weapon = nullptr;
 			players[i]->hud.magicLeftHand = nullptr;
 			players[i]->hud.magicRightHand = nullptr;
+			players[i]->hud.magicRangefinder = nullptr;
 			players[i]->ghost.reset();
 			FollowerMenu[i].recentEntity = nullptr;
 			FollowerMenu[i].followerToCommand = nullptr;
@@ -9253,6 +9266,7 @@ void doNewGame(bool makeHighscore) {
 		{
 			soundNotification_group->stop();
 		}
+		ensembleSounds.stopPlaying();
 		VoiceChat.deinitRecording(false);
 #elif defined USE_OPENAL
 		if ( sound_group )
@@ -9661,7 +9675,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 		{
 			if ( client_classes[clientnum] == CLASS_ACCURSED )
 			{
-				if ( stats[clientnum]->EFFECTS[EFF_VAMPIRICAURA] && stats[clientnum]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
+				if ( stats[clientnum]->getEffectActive(EFF_VAMPIRICAURA) && stats[clientnum]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
 				{
 					conductGameChallenges[CONDUCT_ACCURSED] = 1;
 				}
@@ -9760,6 +9774,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 	{
 		soundNotification_group->stop();
 	}
+	ensembleSounds.stopPlaying();
 	VoiceChat.deinitRecording(true);
 #elif defined USE_OPENAL
 	if ( sound_group )
@@ -9909,7 +9924,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 						else if ( client_classes[i] == CLASS_ACCURSED )
 						{
 							steamAchievement("BARONY_ACH_POWER_HUNGRY");
-							if ( stats[i]->EFFECTS[EFF_VAMPIRICAURA] && stats[i]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
+							if ( stats[i]->getEffectActive(EFF_VAMPIRICAURA) && stats[i]->EFFECTS_TIMERS[EFF_VAMPIRICAURA] == -2 )
 							{
 								if ( stats[i] && (svFlags & SV_FLAG_HUNGER) )
 								{
@@ -10049,6 +10064,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 	EnemyHPDamageBarHandler::dumpCache();
 	monsterAllyFormations.reset();
 	particleTimerEmitterHitEntities.clear();
+	particleTimerEffects.clear();
 	monsterTrapIgnoreEntities.clear();
 	minimapHighlights.clear();
 	PingNetworkStatus_t::reset();
@@ -10118,6 +10134,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 		players[i]->hud.weapon = nullptr;
 		players[i]->hud.magicLeftHand = nullptr;
 		players[i]->hud.magicRightHand = nullptr;
+		players[i]->hud.magicRangefinder = nullptr;
 		players[i]->ghost.reset();
 		FollowerMenu[i].recentEntity = nullptr;
 		FollowerMenu[i].followerToCommand = nullptr;

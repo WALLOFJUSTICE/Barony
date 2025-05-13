@@ -9350,7 +9350,8 @@ bind_failed:
 				}
 				statChecks.clear();
 			});
-
+		static ConsoleVariable<bool> cvar_leaderboard_show_id("/leaderboard_show_id", false);
+		static ConsoleVariable<bool> cvar_leaderboard_copy_id("/leaderboard_copy_id", false);
         static auto add_score = [](score_t* score, const char* name, const char* prev, const char* next, int index,
 			int rank, int selectIndex){
             auto window = main_menu_frame->findFrame("leaderboards"); assert(window);
@@ -9417,6 +9418,13 @@ bind_failed:
                 selectedScore = score;
                 updateStats(button, score);
                 loadScore(score);
+				/*if ( *cvar_leaderboard_copy_id && *cvar_leaderboard_show_id )
+				{
+					if ( score && score->stats )
+					{
+						SDL_SetClipboardText(score->stats->name);
+					}
+				}*/
                 });
             button->setTickCallback([](Widget& widget){
                 auto button = static_cast<Button*>(&widget);
@@ -9671,7 +9679,6 @@ bind_failed:
 
         // poll for downloaded scores
 #ifdef USE_PLAYFAB
-		static ConsoleVariable<bool> cvar_leaderboard_show_id("/leaderboard_show_id", false);
 		list->setTickCallback([](Widget& widget) {
 			bool tryRefresh = false;
 			if ( playfabUser.leaderboardSearch.requiresRefresh )
@@ -13362,7 +13369,7 @@ failed:
 	std::vector<const char*> reducedClassList(int index) {
 		std::vector<const char*> result;
 		result.reserve(num_classes);
-		for (int c = CLASS_BARBARIAN; c <= CLASS_HUNTER; ++c) {
+		for (int c = CLASS_BARBARIAN; c <= CLASS_25; ++c) {
 			if (isCharacterValidFromDLC(*stats[index], c) == VALID_OK_CHARACTER) {
 				result.emplace_back(classes_in_order[c]);
 			}
@@ -13557,6 +13564,11 @@ failed:
 				break;
 			default:
 				break;
+		}
+
+		if ( ClassDescriptions::data.find(classnum) == ClassDescriptions::data.end() )
+		{
+			return;
 		}
 
 		for ( int c = 0; c < num_class_stats; ++c )
@@ -37755,7 +37767,7 @@ failed:
 					myStats->setAttribute("monster_portrait", "true");
 					(void)actMonster(monster);
 					monster->yaw = 0.0;
-					myStats->EFFECTS[EFF_ASLEEP] = false;
+					myStats->clearEffect(EFF_ASLEEP);
 					monsterAnimate(compendiumMonster, myStats, 0.0);
 					monsterAnimate(compendiumMonster, myStats, 0.0);
 				}

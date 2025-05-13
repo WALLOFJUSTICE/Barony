@@ -59,6 +59,10 @@ enum Monster : int
 	GYROBOT,
 	DUMMYBOT,
 	BUGBEAR,
+	MONSTER_D,
+	MONSTER_M,
+	MONSTER_S,
+	MONSTER_G,
 	MAX_MONSTER
 };
 const int NUMMONSTERS = MAX_MONSTER;
@@ -293,6 +297,23 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 	{
 		1412,
 	},
+
+	//MONSTER_D
+	{
+		1485, 1486, 1514, 1515
+	},
+	//MONSTER_M
+	{
+		1519, 1520
+	},
+	//MONSTER_S
+	{
+		1536, 1538, 1540, 1537, 1539, 1541
+	},
+	//MONSTER_G
+	{
+		1569, 1570
+	},
 };
 
 static char monstertypename[][15] =
@@ -334,7 +355,11 @@ static char monstertypename[][15] =
 	"spellbot",
 	"gyrobot",
 	"dummybot",
-	"bugbear"
+	"bugbear",
+	"monster_d",
+	"monster_m",
+	"monster_s",
+	"monster_g"
 };
 
 static char monstertypenamecapitalized[][15] =
@@ -376,7 +401,11 @@ static char monstertypenamecapitalized[][15] =
 	"Spellbot",
 	"Gyrobot",
 	"Dummybot",
-	"Bugbear"
+	"Bugbear",
+	"Monster_D",
+	"Monster_M",
+	"Monster_S",
+	"Monster_G"
 };
 
 // body part focal points
@@ -425,7 +454,11 @@ static char gibtype[NUMMONSTERS] =
 	0,	//SPELLBOT
 	0,  //GYROBOT
 	0,	//DUMMYBOT
-	1	//BUGBEAR
+	1,	//BUGBEAR
+	1,	//MONSTER_D
+	1,	//MONSTER_M
+	1,	//MONSTER_S
+	1	//MONSTER_G
 };
 
 // columns go like this:
@@ -470,7 +503,11 @@ static double damagetables[NUMMONSTERS][7] =
 	{ 1.f, 1.f, 1.f, 1.f, 0.5, 0.5, 1.f }, // sentrybot
 	{ 1.f, 1.f, 1.f, 1.f, 0.5, 0.5, 1.f }, // gyrobot
 	{ 1.f, 1.f, 1.f, 1.f, 0.5, 1.2, 0.5 }, // dummybot
-	{ 1.3, 1.2, 1.2, 0.7, 0.8, 1.f, 0.7 }  // bugbear
+	{ 1.3, 1.2, 1.2, 0.7, 0.8, 1.f, 0.7 }, // bugbear
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_d
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_m
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_s
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }  // monster_g
 };
 
 enum DamageTableType : int
@@ -509,7 +546,12 @@ static std::vector<std::vector<unsigned int>> classStatGrowth =
 	{	2,	5,	2,	4,	7,	4 }, // MACHINIST 17
 	{	4,	3,	2,	3,	4,	4 }, // PUNISHER 18
 	{	4,	4,	4,	4,	4,	4 }, // SHAMAN 19
-	{	1,	7,	1,	4,	7,	4 }  // HUNTER 20
+	{	1,	7,	1,	4,	7,	4 }, // HUNTER 20
+	{	2,	5,	3,	4,	3,	7 },
+	{	0,	0,	0,	0,	0,	0 },
+	{	0,	0,	0,	0,	0,	0 },
+	{	0,	0,	0,	0,	0,	0 },
+	{	0,	0,	0,	0,	0,	0 }
 };
 
 enum AllyNPCCommand : int
@@ -710,6 +752,10 @@ void initDummyBot(Entity* my, Stat* myStats);
 void initMimic(Entity* my, Stat* myStats);
 void initBat(Entity* my, Stat* myStats);
 void initBugbear(Entity* my, Stat* myStats);
+void initMonsterD(Entity* my, Stat* myStats);
+void initMonsterM(Entity* my, Stat* myStats);
+void initMonsterS(Entity* my, Stat* myStats);
+void initMonsterG(Entity* my, Stat* myStats);
 
 //--act*Limb functions--
 void actHumanLimb(Entity* my);
@@ -745,6 +791,10 @@ void actDummyBotLimb(Entity* my);
 void actMimicLimb(Entity* my);
 void actBatLimb(Entity* my);
 void actBugbearLimb(Entity* my);
+void actMonsterDLimb(Entity* my);
+void actMonsterMLimb(Entity* my);
+void actMonsterSLimb(Entity* my);
+void actMonsterGLimb(Entity* my);
 
 //--*Die functions--
 void humanDie(Entity* my);
@@ -782,6 +832,10 @@ void dummyBotDie(Entity* my);
 void mimicDie(Entity* my);
 void batDie(Entity* my);
 void bugbearDie(Entity* my);
+void monsterDDie(Entity* my);
+void monsterMDie(Entity* my);
+void monsterSDie(Entity* my);
+void monsterGDie(Entity* my);
 
 void monsterAnimate(Entity* my, Stat* myStats, double dist);
 //--*MoveBodyparts functions--
@@ -822,6 +876,10 @@ void dummyBotAnimate(Entity* my, Stat* myStats, double dist);
 void mimicAnimate(Entity* my, Stat* myStats, double dist);
 void batAnimate(Entity* my, Stat* myStats, double dist);
 void bugbearMoveBodyparts(Entity* my, Stat* myStats, double dist);
+void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist);
+void monsterMMoveBodyparts(Entity* my, Stat* myStats, double dist);
+void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist);
+void monsterGMoveBodyparts(Entity* my, Stat* myStats, double dist);
 
 //--misc functions--
 void actMinotaurTrap(Entity* my);
@@ -905,6 +963,7 @@ static const int MONSTER_POSE_MIMIC_LOCKED2 = 38;
 static const int MONSTER_POSE_MIMIC_MAGIC1 = 39;
 static const int MONSTER_POSE_MIMIC_MAGIC2 = 40;
 static const int MONSTER_POSE_BUGBEAR_SHIELD = 41;
+static const int MONSTER_POSE_PARRY = 42;
 
 //--monster special cooldowns
 static const int MONSTER_SPECIAL_COOLDOWN_GOLEM = 150;
@@ -1272,3 +1331,5 @@ struct MimicGenerator
 	bool bForceSpawnForCurrentFloor();
 };
 extern MimicGenerator mimic_generator;
+
+bool monsterDebugModels(Entity* my, real_t* dist);
