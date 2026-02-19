@@ -19,9 +19,246 @@
 #include "net.hpp"
 #include "player.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
+#include "collision.hpp"
 
 Stat* stats[MAXPLAYERS];
 
+int Stat::getGoldWeight() const
+{
+	bool cursedItemIsBuff = false;
+	bool isPlayer = false;
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( this == stats[i] )
+		{
+			isPlayer = true;
+			break;
+		}
+	}
+	if ( isPlayer )
+	{
+		cursedItemIsBuff = shouldInvertEquipmentBeatitude(this);
+	}
+
+	int weight = GOLD / 100;
+	if ( mask && mask->type == MASK_GOLDEN )
+	{
+		real_t equipmentBonus = 100.0;
+		if ( mask->beatitude >= 0 || cursedItemIsBuff )
+		{
+			equipmentBonus -= 50.0 * (1 + abs(mask->beatitude));
+			equipmentBonus = std::max(-50.0, equipmentBonus);
+		}
+		else
+		{
+			equipmentBonus -= 50.0 * (abs(mask->beatitude));
+			equipmentBonus = std::max(0.0, equipmentBonus);
+		}
+
+		weight *= (equipmentBonus / 100.0);
+	}
+
+	return weight;
+}
+
+int Stat::maxEquipmentBonusToSkill = 25;
+Sint32 Stat::getModifiedProficiency(int skill) const
+{
+	if ( !(skill >= 0 && skill < NUMPROFICIENCIES) )
+	{
+		return 0;
+	}
+
+	Sint32 base = std::min(100, std::max(0, PROFICIENCIES[skill]));
+	Sint32 equipmentBonus = 0;
+
+	bool cursedItemIsBuff = false;
+	bool isPlayer = false;
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( this == stats[i] )
+		{
+			isPlayer = true;
+			break;
+		}
+	}
+	if ( isPlayer )
+	{
+		cursedItemIsBuff = shouldInvertEquipmentBeatitude(this);
+	}
+
+	if ( mask )
+	{
+		if ( mask->type == MASK_HAZARD_GOGGLES && skill == PRO_ALCHEMY )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(mask->beatitude) * 10;
+			}
+		}
+		else if ( mask->type == MASK_GOLDEN && skill == PRO_TRADING )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= 999;
+			}
+		}
+		else if ( (mask->type == MASK_STEEL_VISOR || mask->type == MASK_CRYSTAL_VISOR)
+			&& (skill == PRO_SWORD || skill == PRO_AXE || skill == PRO_POLEARM || skill == PRO_MACE) )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 5);
+			}
+			else
+			{
+				equipmentBonus -= abs(mask->beatitude) * 5;
+			}
+		}
+		else if ( (mask->type == MASK_ARTIFACT_VISOR)
+			&& (skill == PRO_SWORD || skill == PRO_AXE || skill == PRO_POLEARM || skill == PRO_MACE) )
+		{
+			if ( mask->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(mask->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(mask->beatitude) * 10;
+			}
+		}
+	}
+	if ( helmet )
+	{
+		if ( helmet->type == HAT_PLUMED_CAP && skill == PRO_LEADERSHIP )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 10;
+			}
+		}
+		else if ( helmet->type == HAT_BOUNTYHUNTER && skill == PRO_RANGED )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 10;
+			}
+		}
+		else if ( helmet->type == HAT_HOOD_WHISPERS && skill == PRO_STEALTH )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 10);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 10;
+			}
+		}
+		else if ( (helmet->type == HAT_CIRCLET && skill == PRO_MYSTICISM)
+			|| (helmet->type == HAT_CIRCLET_SORCERY && skill == PRO_SORCERY)
+			|| (helmet->type == HAT_CIRCLET_THAUMATURGY && skill == PRO_THAUMATURGY) )
+		{
+			if ( helmet->beatitude >= 0 || cursedItemIsBuff )
+			{
+				equipmentBonus += std::min(maxEquipmentBonusToSkill, (1 + abs(helmet->beatitude)) * 5);
+			}
+			else
+			{
+				equipmentBonus -= abs(helmet->beatitude) * 5;
+			}
+		}
+	}
+
+	int effectBonus = 0;
+	if ( getEffectActive(EFF_NIMBLENESS)
+		&& (skill == PRO_LOCKPICKING
+			|| skill == PRO_SWORD
+			|| skill == PRO_RANGED
+			|| skill == PRO_STEALTH) )
+	{
+		effectBonus += 10 + 5 * std::max(0, ((int)(getEffectActive(EFF_NIMBLENESS) & 0xF) - 1));
+	}
+	if ( getEffectActive(EFF_GREATER_MIGHT)
+		&& (skill == PRO_POLEARM
+			|| skill == PRO_AXE
+			|| skill == PRO_MACE) )
+	{
+		effectBonus += 10 + 5 * std::max(0, ((int)(getEffectActive(EFF_GREATER_MIGHT) & 0xF) - 1));
+	}
+	if ( getEffectActive(EFF_COUNSEL) 
+		&& (skill == PRO_SORCERY
+			|| skill == PRO_MYSTICISM) )
+	{
+		effectBonus += 10 + 5 * std::max(0, ((int)(getEffectActive(EFF_COUNSEL) & 0xF) - 1));
+	}
+	if ( getEffectActive(EFF_STURDINESS)
+		&& (skill == PRO_SHIELD) )
+	{
+		effectBonus += 10 + 5 * std::max(0, ((int)(getEffectActive(EFF_STURDINESS) & 0xF) - 1));
+	}
+	int result = std::min(100, std::max(0, base + equipmentBonus + effectBonus));
+	if ( skill == PRO_STEALTH && getEffectActive(EFF_DUSTED) )
+	{
+		result *= 0.3;
+	}
+	return result;
+}
+
+Sint32 Stat::getThaumProficiencySpellStatBonus(int whichStat, Sint32 currentBonus)
+{
+	Sint32 bonus = 0;
+	if ( whichStat == STAT_INT )
+	{
+		if ( getEffectActive(EFF_COUNSEL) )
+		{
+			real_t ratio = std::max(0.0, 0.1 * ((int)(getEffectActive(EFF_COUNSEL) & 0xF) - 1));
+			bonus = (std::max(2 + (getEffectActive(EFF_COUNSEL) & 0xF), (int)(currentBonus * ratio)));
+		}
+	}
+	else if ( whichStat == STAT_DEX )
+	{
+		if ( getEffectActive(EFF_NIMBLENESS) )
+		{
+			real_t ratio = std::max(0.0, 0.1 * ((int)(getEffectActive(EFF_NIMBLENESS) & 0xF) - 1));
+			bonus = (std::max(2 + (getEffectActive(EFF_NIMBLENESS) & 0xF), (int)(currentBonus * ratio)));
+		}
+	}
+	else if ( whichStat == STAT_STR )
+	{
+		if ( getEffectActive(EFF_GREATER_MIGHT) )
+		{
+			real_t ratio = std::max(0.0, 0.1 * ((int)(getEffectActive(EFF_GREATER_MIGHT) & 0xF) - 1));
+			bonus = (std::max(2 + (getEffectActive(EFF_GREATER_MIGHT) & 0xF), (int)(currentBonus * ratio)));
+		}
+	}
+	else if ( whichStat == STAT_CON )
+	{
+		if ( getEffectActive(EFF_STURDINESS) )
+		{
+			real_t ratio = std::max(0.0, 0.1 * ((int)(getEffectActive(EFF_STURDINESS) & 0xF) - 1));
+			bonus = (std::max(2 + (getEffectActive(EFF_STURDINESS) & 0xF), (int)(currentBonus * ratio)));
+		}
+	}
+	return bonus;
+}
 
 //Destructor
 Stat::~Stat()
@@ -158,14 +395,19 @@ Stat::~Stat()
 	}
 	list_FreeAll(&this->magic_effects);
 	list_FreeAll(&this->inventory);
+	list_FreeAll(&this->void_chest_inventory);
 }
 
 void Stat::clearStats()
 {
 	int x;
 
-	strcpy(this->obituary, language[1500]);
+	strcpy(this->obituary, Language::get(1500));
 	this->killer = KilledBy::UNKNOWN;
+	this->killer_uid = 0;
+	this->killer_monster = NOTHING;
+	this->killer_item = WOODEN_SHIELD;
+	this->killer_name = "";
 	this->poisonKiller = 0;
 	this->HP = DEFAULT_HP;
 	this->MAXHP = DEFAULT_HP;
@@ -191,8 +433,9 @@ void Stat::clearStats()
 		}
 		if (x < NUMEFFECTS)
 		{
-			this->EFFECTS[x] = false;
+			this->EFFECTS[x] = 0;
 			this->EFFECTS_TIMERS[x] = 0;
+			this->EFFECTS_ACCRETION_TIME[x] = 0;
 		}
 	}
 
@@ -234,9 +477,12 @@ void Stat::clearStats()
 			break;
 		}
 	}
+	this->attributes.clear();
+	this->player_lootbags.clear();
 
 	freePlayerEquipment();
 	list_FreeAll(&this->inventory);
+	list_FreeAll(&this->void_chest_inventory);
 }
 
 /*-------------------------------------------------------------------------------
@@ -391,7 +637,7 @@ Stat* Stat::copyStats()
 
 	newStat->type = this->type;
 	newStat->sex = this->sex;
-	newStat->appearance = this->appearance;
+	newStat->stat_appearance = this->stat_appearance;
 	strcpy(newStat->name, this->name);
 	strcpy(newStat->obituary, this->obituary);
 
@@ -420,6 +666,7 @@ Stat* Stat::copyStats()
 	{
 		newStat->EFFECTS[c] = this->EFFECTS[c];
 		newStat->EFFECTS_TIMERS[c] = this->EFFECTS_TIMERS[c];
+		newStat->EFFECTS_ACCRETION_TIME[c] = this->EFFECTS_ACCRETION_TIME[c];
 	}
 
 	for ( c = 0; c < ITEM_SLOT_NUM; c++ )
@@ -447,15 +694,19 @@ Stat* Stat::copyStats()
 	newStat->FOLLOWERS.first = NULL;
 	newStat->FOLLOWERS.last = NULL;
 	list_Copy(&newStat->FOLLOWERS, &this->FOLLOWERS);
-	newStat->stache_x1 = this->stache_x1;
-	newStat->stache_x2 = this->stache_x2;
-	newStat->stache_y1 = this->stache_y1;
-	newStat->stache_y2 = this->stache_y2;
 
 	newStat->inventory.first = NULL;
 	newStat->inventory.last = NULL;
 	list_Copy(&newStat->inventory, &this->inventory);
 	for (node = newStat->inventory.first; node != NULL; node = node->next)
+	{
+		Item* item = (Item*)node->element;
+		item->node = node;
+	}
+	newStat->void_chest_inventory.first = nullptr;
+	newStat->void_chest_inventory.last = nullptr;
+	list_Copy(&newStat->void_chest_inventory, &this->void_chest_inventory);
+	for ( node = newStat->void_chest_inventory.first; node != NULL; node = node->next )
 	{
 		Item* item = (Item*)node->element;
 		item->node = node;
@@ -639,6 +890,7 @@ Stat* Stat::copyStats()
 	newStat->magic_effects.first = NULL;
 	newStat->magic_effects.last = NULL;
 	newStat->attributes = this->attributes;
+	newStat->player_lootbags = this->player_lootbags;
 	return newStat;
 }
 
@@ -646,7 +898,7 @@ void Stat::printStats()
 {
 	printlog("type = %d\n", this->type);
 	printlog("sex = %d\n", this->sex);
-	printlog("appearance = %d\n", this->appearance);
+	printlog("appearance = %d\n", this->stat_appearance);
 	printlog("name = \"%s\"\n", this->name);
 	printlog("HP = %d\n", this->HP);
 	printlog("MAXHP = %d\n", this->MAXHP);
@@ -672,25 +924,34 @@ void Stat::printStats()
 	printlog("Effects & timers: ");
 	for (int i = 0; i < NUMEFFECTS; ++i)
 	{
-		printlog("[%d] = %s. timer[%d] = %d", i, (this->EFFECTS[i]) ? "true" : "false", i, this->EFFECTS_TIMERS[i]);
+		printlog("[%d] = %s. timer[%d] = %d", i, (this->getEffectActive(i)) ? "true" : "false", i, this->EFFECTS_TIMERS[i]);
 	}
 }
 
 int Stat::pickRandomEquippedItemToDegradeOnHit(Item** returnItem, bool excludeWeapon, bool excludeShield, bool excludeArmor, bool excludeJewelry)
 {
-	if ( EFFECTS[EFF_SHAPESHIFT] )
+	if ( getEffectActive(EFF_SHAPESHIFT) )
 	{
 		returnItem = nullptr;
 		return -1;
 	}
 	if ( shield && (itemTypeIsQuiver(shield->type)
 		|| itemCategory(shield) == SPELLBOOK
-		|| shield->type == TOOL_TINKERING_KIT) )
+		|| shield->type == TOOL_TINKERING_KIT
+		|| shield->type == TOOL_FRYING_PAN
+		|| itemTypeIsFoci(shield->type)
+		|| itemTypeIsInstrument(shield->type)
+		|| shield->type == TOOL_DUCK )
+		 )
 	{
 		excludeShield = true;
 	}
-	Item* maskItem = mask; // exclude mask
-	mask = nullptr;
+	Item* maskItem = mask; 
+	if ( mask && !Item::doesItemProvideBeatitudeAC(mask->type) )
+	{
+		// exclude mask
+		mask = nullptr;
+	}
 	int result = pickRandomEquippedItem(returnItem, excludeWeapon, excludeShield, excludeArmor, excludeJewelry);
 	mask = maskItem;
 	return result;
@@ -819,7 +1080,7 @@ int Stat::pickRandomEquippedItem(Item** returnItem, bool excludeWeapon, bool exc
 	return equipNum[roll];
 }
 
-char* getSkillLangEntry(int skill)
+const char* getSkillLangEntry(int skill)
 {
 	int langEntry = 236 + skill;
 	if ( skill == PRO_UNARMED )
@@ -830,7 +1091,7 @@ char* getSkillLangEntry(int skill)
 	{
 		langEntry = 3340;
 	}
-	return language[langEntry];
+	return Language::get(langEntry);
 }
 
 void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
@@ -1226,20 +1487,39 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	intro = oldIntro;
 }
 
-int Stat::getActiveShieldBonus(bool checkShield) const
+int Stat::getActiveShieldBonus(bool checkShield, bool excludeSkill, Item* shieldItem, bool checkNonShieldBonus) const
 {
-	if ( !checkShield )
+	Item* item = shieldItem;
+	if ( !item )
 	{
-		return (5 + (PROFICIENCIES[PRO_SHIELD] / 5));
+		if ( !checkShield )
+		{
+			if ( checkNonShieldBonus )
+			{
+				return (5 + (excludeSkill ? 0 : std::min(SKILL_LEVEL_SKILLED, getModifiedProficiency(PRO_SHIELD)) / 5));
+			}
+			else
+			{
+				return (5 + (excludeSkill ? 0 : (getModifiedProficiency(PRO_SHIELD) / 5)));
+			}
+		}
+		item = shield;
 	}
-
-	if ( shield )
+	if ( item )
 	{
-		if ( itemCategory(shield) == SPELLBOOK || itemTypeIsQuiver(shield->type) )
+		if ( itemCategory(item) == SPELLBOOK || itemTypeIsQuiver(item->type) 
+			|| itemTypeIsFoci(item->type)
+			|| itemTypeIsInstrument(item->type)
+			|| item->type == TOOL_DUCK )
 		{
 			return 0;
 		}
-		return (5 + (PROFICIENCIES[PRO_SHIELD] / 5));
+		if ( itemCategory(item) != ARMOR )
+		{
+			// non-armor caps out at 40 blocking
+			return (5 + (excludeSkill ? 0 : std::min(SKILL_LEVEL_SKILLED, getModifiedProficiency(PRO_SHIELD)) / 5));
+		}
+		return (5 + (excludeSkill ? 0 : (getModifiedProficiency(PRO_SHIELD) / 5)));
 	}
 	else
 	{
@@ -1247,11 +1527,47 @@ int Stat::getActiveShieldBonus(bool checkShield) const
 	}
 }
 
-int Stat::getPassiveShieldBonus(bool checkShield) const
+int Stat::getParryingACBonus(Stat* myStats, Item* myWeapon, bool checkWeapon, bool excludeSkill, int weaponSkill)
+{
+	if ( !checkWeapon )
+	{
+		if ( excludeSkill )
+		{
+			return 0;
+		}
+		return (myStats ? myStats->getModifiedProficiency(weaponSkill) / 25 : 0);
+	}
+
+	if ( myWeapon )
+	{
+		if ( itemCategory(myWeapon) != WEAPON )
+		{
+			return 0;
+		}
+		if ( excludeSkill )
+		{
+			return 0;
+		}
+		int bonus = (myStats ? myStats->getModifiedProficiency(weaponSkill) / 25 : 0);
+		bonus += myWeapon->weaponGetAttack(myStats);
+		bonus += (5 + (excludeSkill ? 0 : std::min(SKILL_LEVEL_SKILLED, myStats ? myStats->getModifiedProficiency(weaponSkill) : 0) / 5));
+		return bonus;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+int Stat::getPassiveShieldBonus(bool checkShield, bool excludeSkill) const
 {
 	if ( !checkShield )
 	{
-		return (PROFICIENCIES[PRO_SHIELD] / 25);
+		if ( excludeSkill )
+		{
+			return 0;
+		}
+		return (getModifiedProficiency(PRO_SHIELD) / 25);
 	}
 
 	if ( shield )
@@ -1261,10 +1577,722 @@ int Stat::getPassiveShieldBonus(bool checkShield) const
 		{
 			return 0;
 		}
-		return (PROFICIENCIES[PRO_SHIELD] / 25);
+		if ( excludeSkill )
+		{
+			return 0;
+		}
+		return (getModifiedProficiency(PRO_SHIELD) / 25);
 	}
 	else
 	{
 		return 0;
+	}
+}
+
+int Stat::numShillelaghDebuffsActive(Entity* my)
+{
+	static std::set<int> effs = {
+		EFF_ASLEEP,
+		EFF_POISONED,
+		EFF_CONFUSED,
+		EFF_BLIND,
+		EFF_GREASY,
+		EFF_MESSY,
+		EFF_PARALYZED,
+		EFF_BLEEDING,
+		EFF_SLOW,
+		EFF_PACIFY,
+		EFF_WEBBED,
+		EFF_FEAR,
+		//EFF_DISORIENTED,
+		EFF_ROOTED,
+		EFF_STATIC,
+		EFF_DRUNK,
+		EFF_WEAKNESS,
+		EFF_INCOHERENCE,
+		EFF_MINIMISE,
+		EFF_DUCKED,
+		EFF_MAGIC_GREASE,
+		EFF_NUMBING_BOLT,
+		EFF_CURSE_FLESH,
+		EFF_TABOO,
+		EFF_COWARDICE,
+		EFF_DIZZY,
+		EFF_SPIN,
+		EFF_DUSTED,
+		EFF_DISRUPTED,
+		EFF_FROST,
+		EFF_HOLY_FIRE
+	};
+	int result = 0;
+	if ( my && my->flags[BURNING] )
+	{
+		++result;
+	}
+	for ( auto eff : effs )
+	{
+		if ( getEffectActive(eff) )
+		{
+			++result;
+		}
+	}
+
+	return result;
+}
+
+bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
+{
+	switch ( effect )
+	{
+		case EFF_ASLEEP:
+		case EFF_POISONED:
+		case EFF_CONFUSED:
+		case EFF_BLIND:
+		case EFF_GREASY:
+		case EFF_MESSY:
+		case EFF_PARALYZED:
+		case EFF_BLEEDING:
+		case EFF_SLOW:
+		case EFF_PACIFY:
+		case EFF_WEBBED:
+		case EFF_FEAR:
+		case EFF_DISORIENTED:
+		case EFF_ROOTED:
+		case EFF_STATIC:
+		case EFF_WEAKNESS:
+		case EFF_INCOHERENCE:
+		case EFF_MINIMISE:
+		case EFF_NUMBING_BOLT:
+		case EFF_CURSE_FLESH:
+		case EFF_TABOO:
+		case EFF_COWARDICE:
+		case EFF_DIZZY:
+		case EFF_SPIN:
+		case EFF_DUSTED:
+		case EFF_STASIS:
+		case EFF_DISRUPTED:
+		case EFF_FROST:
+		case EFF_HOLY_FIRE:
+			return true;
+			break;
+		case EFF_DRUNK:
+			if ( this->type == GOATMAN
+				|| (my && my->behavior == &actPlayer 
+					&& playerRace == RACE_GOATMAN && stat_appearance == 0) )
+			{
+				return false;
+			}
+			return true;
+			break;
+		default:
+			break;
+	}
+	return false;
+}
+
+Uint32 Stat::getLootingBagKey(const int player)
+{
+	Uint32 lootingBagKey = player & 0xF;
+	Uint16 levelKey = currentlevel & 0xFFF;
+	levelKey |= ((secretlevel ? 1 : 0) << 11);
+	lootingBagKey |= (levelKey << 4);
+
+	return lootingBagKey;
+}
+
+void Stat::addItemToLootingBag(const int player, const real_t x, const real_t y, Item& item)
+{
+	if ( item.type == TOOL_DUCK )
+	{
+		item.applyDuck(achievementObserver.playerUids[player], x, y, nullptr, false);
+		return;
+	}
+
+	Uint32 lootingBagKey = getLootingBagKey(player);
+	if ( player_lootbags.find(lootingBagKey) == player_lootbags.end() )
+	{
+		player_lootbags[lootingBagKey].spawn_x = x;
+		player_lootbags[lootingBagKey].spawn_y = y;
+
+		if ( !player_lootbags[lootingBagKey].spawnedOnGround )
+		{
+			Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
+			entity->flags[INVISIBLE] = true;
+			entity->flags[UPDATENEEDED] = true;
+			entity->x = x;
+			entity->y = y;
+			entity->sizex = 4;
+			entity->sizey = 4;
+			entity->yaw = (local_rng.rand() % 360) * (PI / 180.f);
+			entity->vel_x = 0.0;
+			entity->vel_y = 0.0;
+			entity->vel_z = -.5;
+			entity->flags[PASSABLE] = true;
+			entity->flags[USERFLAG1] = true;
+			entity->behavior = &actItem;
+			entity->skill[10] = TOOL_PLAYER_LOOT_BAG;
+			entity->skill[11] = WORN;
+			entity->skill[12] = 0;
+			entity->skill[13] = 1;
+			entity->skill[14] = lootingBagKey;
+			entity->skill[15] = true;
+		}
+		
+		player_lootbags[lootingBagKey].spawnedOnGround = true;
+	}
+	auto& loot = player_lootbags[lootingBagKey];
+	loot.items.push_back(Item());
+	auto& i = loot.items.back();
+	copyItem(&i, &item);
+
+	if ( item.type >= ARTIFACT_SWORD && item.type <= ARTIFACT_GLOVES )
+	{
+		if ( itemIsEquipped(&item, player) )
+		{
+			steamAchievementClient(player, "BARONY_ACH_CHOSEN_ONE");
+		}
+	}
+}
+
+bool Stat::emptyLootingBag(const int player, Uint32 key)
+{
+	if ( multiplayer == CLIENT )
+	{
+		return false;
+	}
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( stats[i] && stats[i]->player_lootbags.find(key) != stats[i]->player_lootbags.end() )
+		{
+			messagePlayer(player, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(4332));
+			if ( !stats[i]->player_lootbags[key].looted )
+			{
+				for ( auto& item_loot : stats[i]->player_lootbags[key].items )
+				{
+					//dropItemMonster(&item, players[i]->entity, stats[i], item.count);
+					Item* item2 = newItem(item_loot.type, item_loot.status, 
+						item_loot.beatitude, item_loot.count, item_loot.appearance, item_loot.identified, nullptr);
+					if ( item2 )
+					{
+						int pickedUpCount = item2->count;
+						Item* item = itemPickup(player, item2);
+						if ( item )
+						{
+							if ( players[player]->isLocalPlayer() )
+							{
+								// item is the new inventory stack for server, free the picked up items
+								free(item2);
+								int oldcount = item->count;
+								item->count = pickedUpCount;
+								//messagePlayer(i, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(504), item->description());
+								item->count = oldcount;
+							}
+							else
+							{
+								//messagePlayer(i, MESSAGE_INTERACTION | MESSAGE_INVENTORY, Language::get(504), item->description());
+								free(item); // item is the picked up items (item == item2)
+							}
+						}
+					}
+					if ( !stats[i]->player_lootbags[key].looted )
+					{
+						playSoundEntity(players[player]->entity, 558, 64);
+						playSoundEntity(players[player]->entity, 35 + local_rng.rand() % 3, 64);
+					}
+					stats[i]->player_lootbags[key].looted = true;
+				}
+				int owner = (key & 0xF);
+				if ( owner == player )
+				{
+					Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_DEATHBOX_OPEN_OWN, TOOL_PLAYER_LOOT_BAG, 1);
+				}
+				else if ( owner != player )
+				{
+					Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_DEATHBOX_OPEN_OTHERS, TOOL_PLAYER_LOOT_BAG, 1);
+				}
+			}
+			stats[i]->player_lootbags.erase(key);
+			return true;
+		}
+	}
+	return false;
+}
+
+real_t Stat::getEnsembleEffectBonus(Stat::EnsembleEffectsBonusType bonusType, int checkEffectStrength)
+{
+	static const Sint32 kBreakPoint4 = 40;
+	static const Sint32 kBreakPoint3 = 20;
+	static const Sint32 kBreakPoint2 = 4;
+	static const Sint32 kBreakPoint1 = 1;
+
+	static const Sint32 kDivBreakPoint4 = 5;
+	static const Sint32 kDivBreakPoint3 = 5;
+	static const Sint32 kDivBreakPoint2 = 4;
+	static const Sint32 kDivBreakPoint1 = 1;
+
+	real_t result = 0.0;
+	Uint8 effectStrength = getEffectActive(EFF_ENSEMBLE_FLUTE);
+	if ( checkEffectStrength >= 0 )
+	{
+		effectStrength = checkEffectStrength;
+	}
+	if ( effectStrength > 0 )
+	{
+		if ( effectStrength > 0 )
+		{
+			--effectStrength; // offset by 1.
+		}
+		if ( bonusType == ENSEMBLE_FLUTE_EFF_1 )
+		{
+			Sint32 total = 1; // bonus at effect strength 0
+			static const Sint32 mult4 = 1;
+			static const Sint32 mult3 = 1;
+			static const Sint32 mult2 = 1;
+			static const Sint32 mult1 = 1;
+			if ( effectStrength >= kBreakPoint4 )
+			{
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
+				effectStrength -= (effectStrength - kBreakPoint4 + 1);
+			}
+			if ( effectStrength >= kBreakPoint3 )
+			{
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
+				effectStrength -= (effectStrength - kBreakPoint3 + 1);
+			}
+			if ( effectStrength >= kBreakPoint2 )
+			{
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
+				effectStrength -= (effectStrength - kBreakPoint2 + 1);
+			}
+			if ( effectStrength >= kBreakPoint1 )
+			{
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
+				effectStrength -= (effectStrength - kBreakPoint1 + 1);
+			}
+			result += total;
+		}
+		if ( bonusType == ENSEMBLE_FLUTE_EFF_2 )
+		{
+		}
+		if ( bonusType == ENSEMBLE_FLUTE_TIER )
+		{
+			if ( effectStrength >= kEnsembleBreakPointTier4 )
+			{
+				result = 50.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier3 )
+			{
+				result = 40.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier2 )
+			{
+				result = 30.0;
+			}
+			else if(effectStrength >= kEnsembleBreakPointTier1 )
+			{
+				result = 20.0;
+			}
+		}
+	}
+
+	effectStrength = getEffectActive(EFF_ENSEMBLE_LUTE);
+	if ( checkEffectStrength >= 0 )
+	{
+		effectStrength = checkEffectStrength;
+	}
+	if ( effectStrength > 0 )
+	{
+		if ( effectStrength > 0 )
+		{
+			--effectStrength; // offset by 1.
+		}
+		if ( bonusType == ENSEMBLE_LUTE_EFF_1 )
+		{
+			Sint32 total = 3; // bonus at effect strength 0
+			static const Sint32 mult4 = 3;
+			static const Sint32 mult3 = 3;
+			static const Sint32 mult2 = 3;
+			static const Sint32 mult1 = 3;
+			if ( effectStrength >= kBreakPoint4 )
+			{
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
+				effectStrength -= (effectStrength - kBreakPoint4 + 1);
+			}
+			if ( effectStrength >= kBreakPoint3 )
+			{
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
+				effectStrength -= (effectStrength - kBreakPoint3 + 1);
+			}
+			if ( effectStrength >= kBreakPoint2 )
+			{
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
+				effectStrength -= (effectStrength - kBreakPoint2 + 1);
+			}
+			if ( effectStrength >= kBreakPoint1 )
+			{
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
+				effectStrength -= (effectStrength - kBreakPoint1 + 1);
+			}
+			result += total;
+		}
+		if ( bonusType == ENSEMBLE_LUTE_EFF_2 )
+		{
+		}
+		if ( bonusType == ENSEMBLE_LUTE_TIER )
+		{
+			if ( effectStrength >= kEnsembleBreakPointTier4 )
+			{
+				result = 18.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier3 )
+			{
+				result = 15.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier2 )
+			{
+				result = 12.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier1 )
+			{
+				result = 10.0;
+			}
+		}
+	}
+
+	effectStrength = getEffectActive(EFF_ENSEMBLE_DRUM);
+	if ( checkEffectStrength >= 0 )
+	{
+		effectStrength = checkEffectStrength;
+	}
+	if ( effectStrength > 0 )
+	{
+		if ( effectStrength > 0 )
+		{
+			--effectStrength; // offset by 1.
+		}
+		if ( bonusType == ENSEMBLE_DRUM_EFF_1 )
+		{
+			Sint32 total = 1; // bonus at effect strength 0
+			static const Sint32 mult4 = 1;
+			static const Sint32 mult3 = 1;
+			static const Sint32 mult2 = 1;
+			static const Sint32 mult1 = 1;
+			if ( effectStrength >= kBreakPoint4 )
+			{
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
+				effectStrength -= (effectStrength - kBreakPoint4 + 1);
+			}
+			if ( effectStrength >= kBreakPoint3 )
+			{
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
+				effectStrength -= (effectStrength - kBreakPoint3 + 1);
+			}
+			if ( effectStrength >= kBreakPoint2 )
+			{
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
+				effectStrength -= (effectStrength - kBreakPoint2 + 1);
+			}
+			if ( effectStrength >= kBreakPoint1 )
+			{
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
+				effectStrength -= (effectStrength - kBreakPoint1 + 1);
+			}
+			result += total;
+		}
+		if ( bonusType == ENSEMBLE_DRUM_EFF_2 )
+		{
+		}
+		if ( bonusType == ENSEMBLE_DRUM_TIER )
+		{
+			if ( effectStrength >= kEnsembleBreakPointTier4 )
+			{
+				result = 25.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier3 )
+			{
+				result = 20.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier2 )
+			{
+				result = 15.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier1 )
+			{
+				result = 10.0;
+			}
+		}
+	}
+
+	effectStrength = getEffectActive(EFF_ENSEMBLE_HORN);
+	if ( checkEffectStrength >= 0 )
+	{
+		effectStrength = checkEffectStrength;
+	}
+	if ( effectStrength > 0 )
+	{
+		if ( effectStrength > 0 )
+		{
+			--effectStrength; // offset by 1.
+		}
+		if ( bonusType == ENSEMBLE_HORN_EFF_1 )
+		{
+			Sint32 total = 1; // bonus at effect strength 0
+			static const Sint32 mult4 = 1;
+			static const Sint32 mult3 = 1;
+			static const Sint32 mult2 = 1;
+			static const Sint32 mult1 = 1;
+			if ( effectStrength >= kBreakPoint4 )
+			{
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
+				effectStrength -= (effectStrength - kBreakPoint4 + 1);
+			}
+			if ( effectStrength >= kBreakPoint3 )
+			{
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
+				effectStrength -= (effectStrength - kBreakPoint3 + 1);
+			}
+			if ( effectStrength >= kBreakPoint2 )
+			{
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
+				effectStrength -= (effectStrength - kBreakPoint2 + 1);
+			}
+			if ( effectStrength >= kBreakPoint1 )
+			{
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
+				effectStrength -= (effectStrength - kBreakPoint1 + 1);
+			}
+			result += total;
+		}
+		if ( bonusType == ENSEMBLE_HORN_EFF_2 )
+		{
+		}
+		if ( bonusType == ENSEMBLE_HORN_TIER )
+		{
+			if ( effectStrength >= kEnsembleBreakPointTier4 )
+			{
+				result = 10.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier3 )
+			{
+				result = 8.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier2 )
+			{
+				result = 5.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier1 )
+			{
+				result = 2.0;
+			}
+		}
+	}
+
+	effectStrength = getEffectActive(EFF_ENSEMBLE_LYRE);
+	if ( checkEffectStrength >= 0 )
+	{
+		effectStrength = checkEffectStrength;
+	}
+	if ( effectStrength > 0 )
+	{
+		if ( effectStrength > 0 )
+		{
+			--effectStrength; // offset by 1.
+		}
+		if ( bonusType == ENSEMBLE_LYRE_EFF_1 )
+		{
+			Sint32 total = 1; // bonus at effect strength 0
+			static const Sint32 mult4 = 1;
+			static const Sint32 mult3 = 1;
+			static const Sint32 mult2 = 1;
+			static const Sint32 mult1 = 1;
+			if ( effectStrength >= kBreakPoint4 )
+			{
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
+				effectStrength -= (effectStrength - kBreakPoint4 + 1);
+			}
+			if ( effectStrength >= kBreakPoint3 )
+			{
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
+				effectStrength -= (effectStrength - kBreakPoint3 + 1);
+			}
+			if ( effectStrength >= kBreakPoint2 )
+			{
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
+				effectStrength -= (effectStrength - kBreakPoint2 + 1);
+			}
+			if ( effectStrength >= kBreakPoint1 )
+			{
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
+				effectStrength -= (effectStrength - kBreakPoint1 + 1);
+			}
+			result += total;
+		}
+		if ( bonusType == ENSEMBLE_LYRE_EFF_2 )
+		{
+		}
+		if ( bonusType == ENSEMBLE_LYRE_TIER )
+		{
+			if ( effectStrength >= kEnsembleBreakPointTier4 )
+			{
+				result = 35.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier3 )
+			{
+				result = 30.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier2 )
+			{
+				result = 25.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier1 )
+			{
+				result = 20.0;
+			}
+		}
+		if ( bonusType == ENSEMBLE_LYRE_TIER_2 )
+		{
+			if ( effectStrength >= kEnsembleBreakPointTier4 )
+			{
+				result = 5.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier3 )
+			{
+				result = 4.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier2 )
+			{
+				result = 3.0;
+			}
+			else if ( effectStrength >= kEnsembleBreakPointTier1 )
+			{
+				result = 2.0;
+			}
+		}
+	}
+
+	return result;
+}
+
+int Stat::getMaxAttackCharge(Stat* myStats)
+{
+	int charge = MAXCHARGE;
+	if ( myStats && myStats->getEffectActive(EFF_ENSEMBLE_FLUTE) )
+	{
+		real_t mult = (100.0 - myStats->getEnsembleEffectBonus(ENSEMBLE_FLUTE_TIER)) / 100.0;
+		charge *= mult;
+	}
+	return std::max(5, charge); // failsafe min 5
+}
+
+real_t Stat::MonsterRangedAccuracy::getAccuracy(Uint32 target)
+{
+	if ( lastTarget != target )
+	{
+		accuracy = 0.0;
+	}
+	if ( ::ticks - lastTick > 5 * TICKS_PER_SECOND )
+	{
+		accuracy /= 2;
+	}
+	lastTarget = target;
+	lastTick = ::ticks;
+	return accuracy;
+}
+
+void Stat::MonsterRangedAccuracy::incrementAccuracy()
+{
+	accuracy += 10.0;
+	if ( local_rng.rand() % 4 == 0 )
+	{
+		accuracy += 20.0;
+	}
+	accuracy = std::min(100.0, accuracy);
+}
+void Stat::MonsterRangedAccuracy::modifyProjectile(Entity& my, Entity& projectile)
+{
+	Stat* myStats = my.getStats();
+	if ( !myStats ) { return; }
+	if ( myStats->type == LICH
+		|| myStats->type == LICH_FIRE
+		|| myStats->type == LICH_ICE
+		|| myStats->type == DEVIL )
+	{
+		return;
+	}
+	int accuracy = this->accuracy;
+	if ( accuracy == 0 ) { return; }
+	if ( Entity* target = uidToEntity(this->lastTarget) )
+	{
+		real_t velocity = sqrt(pow(projectile.vel_x, 2) + pow(projectile.vel_y, 2));
+
+		if ( velocity > 0.01 )
+		{
+			const real_t dist = entityDist(&my, target);
+			const real_t ticksToHit = (dist / std::max(0.01, velocity));
+			const real_t predictx = target->x + (target->vel_x * ticksToHit);
+			const real_t predicty = target->y + (target->vel_y * ticksToHit);
+			const real_t tangent = atan2(predicty - projectile.y, predictx - projectile.x); // assume target will be here when attack lands.
+
+			real_t projectileYaw = atan2(projectile.vel_y, projectile.vel_x);
+			int diff = static_cast<int>((projectileYaw - tangent) * 180.0 / PI) % 360;
+			if ( diff < 0 )
+			{
+				diff += 360;
+			}
+			if ( diff > 180 )
+			{
+				diff -= 360;
+			}
+			static ConsoleVariable<int> cvar_monster_ranged_accuracy("/monster_ranged_accuracy", 0);
+			int maxDiff = std::min(15, currentlevel / 2);
+			if ( myStats->type == SHOPKEEPER )
+			{
+				maxDiff = 15;
+			}
+			if ( svFlags & SV_FLAG_CHEATS )
+			{
+				maxDiff = std::max(maxDiff, *cvar_monster_ranged_accuracy);
+			}
+
+			if ( diff > 0 )
+			{
+				diff = std::min(maxDiff, diff);
+			}
+			else if ( diff < 0 )
+			{
+				diff = std::max(-maxDiff, diff);
+			}
+			const real_t yawChange = (diff * PI / 180.0);
+			const real_t testYaw = projectileYaw - yawChange;
+			//messagePlayer(0, MESSAGE_DEBUG, "acc %d, changed: %.2f", accuracy, yawChange);
+			Entity* ohitentity = hit.entity;
+			const real_t oldx = target->x;
+			const real_t oldy = target->y;
+			target->x = predictx;
+			target->y = predicty;
+			lineTraceTarget(&my, my.x, my.y, testYaw, 256.0, 0, false, target);
+			target->x = oldx;
+			target->y = oldy;
+			if ( hit.entity == target )
+			{
+				real_t factor = (accuracy / 2.0) + (local_rng.rand() % ((accuracy / 2) + 1));
+				if ( accuracy > 50 && local_rng.rand() % 5 == 0 )
+				{
+					factor = (local_rng.rand() % (accuracy + 1)); // full range
+				}
+				projectileYaw -= yawChange * factor / 100.0;
+				if ( projectile.behavior == &actArrow || projectile.behavior == &actMagicMissile )
+				{
+					projectile.yaw = projectileYaw;
+				}
+				projectile.vel_x = cos(projectileYaw) * velocity;
+				projectile.vel_y = sin(projectileYaw) * velocity;
+			}
+			else
+			{
+				//messagePlayer(0, MESSAGE_DEBUG, "can't see");
+			}
+			hit.entity = ohitentity;
+		}
 	}
 }

@@ -39,6 +39,8 @@ void initCockatrice(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -47,7 +49,7 @@ void initCockatrice(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
@@ -55,21 +57,14 @@ void initCockatrice(Entity* my, Stat* myStats)
 			// boss variants
 
 			// random effects
-			myStats->EFFECTS[EFF_LEVITATING] = true;
+			myStats->setEffectActive(EFF_LEVITATING, 1);
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
-			// cockatrices don't sleep!
-			/*if ( local_rng.rand() % 4 == 0 )
-			{
-				myStats->EFFECTS[EFF_ASLEEP] = true;
-				myStats->EFFECTS_TIMERS[EFF_ASLEEP] = 1800 + local_rng.rand() % 3600;
-			}*/
-
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -85,10 +80,10 @@ void initCockatrice(Entity* my, Stat* myStats)
 			int minValue = 70;
 			int maxValue = 80;
 			int numRolls = 1; // 0-2 extra rolls
-			if ( local_rng.rand() % 2 == 0 ) // 50% chance
+			if ( rng.rand() % 2 == 0 ) // 50% chance
 			{
 				++numRolls;
-				if ( local_rng.rand() % 2 == 0 ) // 25% chance, including the previous roll
+				if ( rng.rand() % 2 == 0 ) // 25% chance, including the previous roll
 				{
 					++numRolls;
 				}
@@ -101,37 +96,37 @@ void initCockatrice(Entity* my, Stat* myStats)
 				case 5:
 					// TODO: cockatrice head.
 				case 4:
-					if ( local_rng.rand() % 20 == 0 ) // 5% drop stoneblood spellbook
+					if ( rng.rand() % 20 == 0 ) // 5% drop stoneblood spellbook
 					{
-						newItem(static_cast<ItemType>(SPELLBOOK_STONEBLOOD), static_cast<Status>(1 + local_rng.rand() % 4), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, &myStats->inventory);
+						newItem(static_cast<ItemType>(SPELLBOOK_STONEBLOOD), static_cast<Status>(1 + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
 					}
 				case 3:
-					if ( local_rng.rand() % 5 == 0 ) // 20% for gemstone, luckstone to obsidian. qty 1-2.
+					if ( rng.rand() % 5 == 0 ) // 20% for gemstone, luckstone to obsidian. qty 1-2.
 					{
-						if ( local_rng.rand() % 3 == 0 )
+						if ( rng.rand() % 3 == 0 )
 						{
 							newItem(ENCHANTED_FEATHER, WORN, 0, 1, (2 * (ENCHANTED_FEATHER_MAX_DURABILITY - 1)) / 4, false, &myStats->inventory);
 						}
 						else
 						{
-							newItem(static_cast<ItemType>(GEM_LUCK + local_rng.rand() % 16), static_cast<Status>(EXCELLENT), 0, 1 + local_rng.rand() % 2, local_rng.rand(), false, &myStats->inventory);
+							newItem(static_cast<ItemType>(GEM_LUCK + rng.rand() % 16), static_cast<Status>(EXCELLENT), 0, 1 + rng.rand() % 2, rng.rand(), false, &myStats->inventory);
 						}
 					}
 				case 2:
-					if ( local_rng.rand() % 10 < 3 ) // 30% drop stoneblood magicstaff
+					if ( rng.rand() % 10 < 3 ) // 30% drop stoneblood magicstaff
 					{
-						newItem(static_cast<ItemType>(MAGICSTAFF_STONEBLOOD), static_cast<Status>(1 + local_rng.rand() % 4), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, &myStats->inventory);
+						newItem(static_cast<ItemType>(MAGICSTAFF_STONEBLOOD), static_cast<Status>(1 + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
 					}
 				case 1:
 					for ( int i = 0; i < numRolls; ++i )
 					{
-						if ( local_rng.rand() % 3 == 0 ) // 33% chance to choose high value item
+						if ( rng.rand() % 3 == 0 ) // 33% chance to choose high value item
 						{
 							minValue = 100;
 							maxValue = 100;
 						}
-						ItemType itemType = itemTypeWithinGoldValue(Category::POTION, minValue, maxValue);
-						newItem(itemType, static_cast<Status>(1 + local_rng.rand() % 4), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, &myStats->inventory);
+						ItemType itemType = itemTypeWithinGoldValue(Category::POTION, minValue, maxValue, rng);
+						newItem(itemType, static_cast<Status>(1 + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
 						// reset values for next loop.
 						minValue = 70;
 						maxValue = 80;
@@ -328,7 +323,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	// set invisibility //TODO: use isInvisible()?
 	if ( multiplayer != CLIENT )
 	{
-		if ( myStats->EFFECTS[EFF_INVISIBLE] == true )
+		if ( myStats->getEffectActive(EFF_INVISIBLE) )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[BLOCKSIGHT] = false;
@@ -340,7 +335,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					bodypart++;
 					continue;
 				}
-				if ( bodypart >= 7 )
+				if ( bodypart >= 9 )
 				{
 					break;
 				}
@@ -365,7 +360,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					bodypart++;
 					continue;
 				}
-				if ( bodypart >= 7 )
+				if ( bodypart >= 9 )
 				{
 					break;
 				}
@@ -381,7 +376,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		}
 
 		// sleeping
-		if ( myStats->EFFECTS[EFF_ASLEEP] )
+		if ( myStats->getEffectActive(EFF_ASLEEP) )
 		{
 			my->pitch = PI / 4;
 		}
@@ -394,7 +389,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		}
 
 		// cockatrices are always flying
-		myStats->EFFECTS[EFF_LEVITATING] = true;
+		myStats->setEffectActive(EFF_LEVITATING, 1);
 		myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 	}
 
@@ -410,14 +405,34 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( my->monsterAnimationLimbOvershoot >= ANIMATE_OVERSHOOT_TO_SETPOINT )
 					{
 						// handle z movement on windup
+						if ( abs(my->creatureHoverZ) > 0.01 )
+						{
+							my->z = -4.5;
+							my->creatureHoverZ = 0.0;
+						}
 						limbAnimateWithOvershoot(my, ANIMATE_Z, 0.2, -3.5, 0.05, -5.5, ANIMATE_DIR_POSITIVE); // default z is -4.5 in actmonster.cpp
 					}
 				}
-				else if(MONSTER_ATTACK != MONSTER_POSE_MELEE_WINDUP3 )
+				else if ( MONSTER_ATTACK != MONSTER_POSE_MELEE_WINDUP3 )
 				{
 					// post-swing head animation. client doesn't need to adjust the entity pitch, server will handle.
 					limbAnimateWithOvershoot(my, ANIMATE_PITCH, 0.2, PI / 4, 0.1, 0, ANIMATE_DIR_POSITIVE);
-					limbAnimateToLimit(my, ANIMATE_Z, 0.2, -4.5, false, 0);
+
+					if ( myStats->getEffectActive(EFF_LIFT) )
+					{
+						my->z = -4.5;
+						my->creatureHandleLiftZ();
+					}
+					else
+					{
+						if ( abs(my->creatureHoverZ) > 0.01 )
+						{
+							my->z = -4.5;
+							my->creatureHoverZ = 0.0;
+						}
+						my->z = std::min(my->z, -4.5);
+						limbAnimateToLimit(my, ANIMATE_Z, 0.2, -4.5, false, 0);
+					}
 				}
 			}
 			
@@ -562,7 +577,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						if ( multiplayer != CLIENT )
 						{
 							// cockatrice can't be paralyzed, use EFF_STUNNED instead.
-							myStats->EFFECTS[EFF_STUNNED] = true;
+							myStats->setEffectActive(EFF_STUNNED, 1);
 							myStats->EFFECTS_TIMERS[EFF_STUNNED] = 20;
 						}
 						entity->skill[0] = 0;
@@ -647,7 +662,7 @@ void cockatriceMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						{
 							my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 							// cockatrice can't be paralyzed, use EFF_STUNNED instead.
-							myStats->EFFECTS[EFF_STUNNED] = true;
+							myStats->setEffectActive(EFF_STUNNED, 1);
 							myStats->EFFECTS_TIMERS[EFF_STUNNED] = 50;
 						}
 					}

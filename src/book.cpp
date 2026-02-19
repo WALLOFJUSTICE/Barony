@@ -45,7 +45,7 @@ int getBook(std::string bookTitle)
 	int index = 0;
 	for ( auto& book : allBooks )
 	{
-		if ( book.name == bookTitle )
+		if ( book.default_name == bookTitle )
 		{
 			return index;
 		}
@@ -54,7 +54,7 @@ int getBook(std::string bookTitle)
 	return 0;
 }
 
-std::string getBookNameFromIndex(int index, bool censored)
+std::string getBookDefaultNameFromIndex(int index, bool censored)
 {
 	if (allBooks.empty() || index < 0 || index >= allBooks.size()) {
 		return "";
@@ -62,12 +62,28 @@ std::string getBookNameFromIndex(int index, bool censored)
 	if (!spawn_blood && censored) {
 		for (int c = 0; c < num_banned_books; ++c) {
 			auto banned_book = banned_books[c];
-			if (allBooks[index].name == banned_book) {
-				return getBookNameFromIndex((index + 1) % allBooks.size(), censored);
+			if (allBooks[index].default_name == banned_book) {
+				return getBookDefaultNameFromIndex((index + 1) % allBooks.size(), censored);
 			}
 		}
 	}
-	return allBooks[index].name;
+	return allBooks[index].default_name;
+}
+
+std::string getBookLocalizedNameFromIndex(int index, bool censored)
+{
+	if ( allBooks.empty() || index < 0 || index >= allBooks.size() ) {
+		return "";
+	}
+	if ( !spawn_blood && censored ) {
+		for ( int c = 0; c < num_banned_books; ++c ) {
+			auto banned_book = banned_books[c];
+			if ( allBooks[index].default_name == banned_book ) {
+				return getBookLocalizedNameFromIndex((index + 1) % allBooks.size(), censored);
+			}
+		}
+	}
+	return ItemTooltips.bookNameLocalizations[allBooks[index].default_name];
 }
 
 //Local helper function to make getting the list of books cross-platform easier.
@@ -106,7 +122,7 @@ bool BookParser_t::readCompiledBooks()
 		File* fp = FileIO::open(compiledBooksPath.c_str(), "rb");
 		if ( fp )
 		{
-			char buf[MAX_FILE_LENGTH];
+			static char buf[MAX_FILE_LENGTH];
 			int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
 			buf[count] = '\0';
 			rapidjson::StringStream is(buf);
@@ -126,7 +142,7 @@ bool BookParser_t::readCompiledBooks()
 			{
 				allBooks.push_back(Book_t());
 				auto& newBook = allBooks[allBooks.size() - 1];
-				newBook.name = book_itr->name.GetString();
+				newBook.default_name = book_itr->name.GetString();
 				for ( rapidjson::Value::ConstValueIterator page_itr = book_itr->value["pages"].Begin();
 					page_itr != book_itr->value["pages"].End(); ++page_itr )
 				{
@@ -154,7 +170,7 @@ bool BookParser_t::booksRequireCompiling()
 		File* fp = FileIO::open(compiledBooksPath.c_str(), "rb");
 		if ( fp )
 		{
-			char buf[MAX_FILE_LENGTH];
+			static char buf[MAX_FILE_LENGTH];
 			int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
 			buf[count] = '\0';
 			rapidjson::StringStream is(buf);
@@ -319,7 +335,12 @@ void BookParser_t::readBooksIntoTemp()
 
 			char bookChar[PATH_MAX];
 			strncpy(bookChar, bookPath.c_str(), PATH_MAX - 1);
-			entry = readFile(bookChar);
+			char* tmp = readFile(bookChar);
+			if ( tmp )
+			{
+				entry = tmp;
+			}
+			free(tmp);
 		}
 	}
 	else
@@ -401,34 +422,34 @@ void BookParser_t::writeCompiledBooks()
 
 	for ( auto& book : allBooks )
 	{
-		if ( !d["books"].HasMember(book.name.c_str()) )
+		if ( !d["books"].HasMember(book.default_name.c_str()) )
 		{
 			rapidjson::Value bookObj(rapidjson::kObjectType);
-			CustomHelpers::addMemberToSubkey(d, "books", book.name.c_str(), bookObj);
+			CustomHelpers::addMemberToSubkey(d, "books", book.default_name.c_str(), bookObj);
 
 			rapidjson::Value rawTextKey("raw_text", d.GetAllocator());
 			rapidjson::Value rawTextVal(book.text.c_str(), d.GetAllocator());
-			d["books"][book.name.c_str()].AddMember(rawTextKey, rawTextVal, d.GetAllocator());
+			d["books"][book.default_name.c_str()].AddMember(rawTextKey, rawTextVal, d.GetAllocator());
 
 			rapidjson::Value pagesKey("pages", d.GetAllocator());
 			rapidjson::Value pagesArrayVal(rapidjson::kArrayType);
-			d["books"][book.name.c_str()].AddMember(pagesKey, pagesArrayVal, d.GetAllocator());
+			d["books"][book.default_name.c_str()].AddMember(pagesKey, pagesArrayVal, d.GetAllocator());
 			for ( auto& page : book.formattedPages )
 			{
 				rapidjson::Value pageVal;
 				pageVal.SetString(page.c_str(), d.GetAllocator());
-				d["books"][book.name.c_str()]["pages"].PushBack(pageVal, d.GetAllocator());
+				d["books"][book.default_name.c_str()]["pages"].PushBack(pageVal, d.GetAllocator());
 			}
 		}
 		else
 		{
-			d["books"][book.name.c_str()]["raw_text"].SetString(book.text.c_str(), d.GetAllocator());
-			d["books"][book.name.c_str()]["pages"].Clear();
+			d["books"][book.default_name.c_str()]["raw_text"].SetString(book.text.c_str(), d.GetAllocator());
+			d["books"][book.default_name.c_str()]["pages"].Clear();
 			for ( auto& page : book.formattedPages )
 			{
 				rapidjson::Value pageVal;
 				pageVal.SetString(page.c_str(), d.GetAllocator());
-				d["books"][book.name.c_str()]["pages"].PushBack(pageVal, d.GetAllocator());
+				d["books"][book.default_name.c_str()]["pages"].PushBack(pageVal, d.GetAllocator());
 			}
 		}
 	}
@@ -568,18 +589,23 @@ void BookParser_t::createBook(std::string filename)
 
 	char bookChar[PATH_MAX];
 	strncpy(bookChar, tempstr.c_str(), PATH_MAX - 1);
-	newBook.text = readFile(bookChar);
+	char* tmp = readFile(bookChar);
+	if ( tmp )
+	{
+		newBook.text = tmp;
+	}
+	free(tmp);
 	if ( newBook.text == "" )
 	{
 		printlog( "error opening book \"%s\".\n", tempstr.c_str());
 		return; //Failed to open the file.
 	}
 
-	newBook.name = filename;
-	auto findTxt = newBook.name.find(".txt");
+	newBook.default_name = filename;
+	auto findTxt = newBook.default_name.find(".txt");
 	if ( findTxt != std::string::npos )
 	{
-		newBook.name = newBook.name.substr(0, findTxt);
+		newBook.default_name = newBook.default_name.substr(0, findTxt);
 	}
 	//newBook.rawBookText = book->text;
 	
@@ -608,7 +634,7 @@ void BookParser_t::createBook(std::string filename)
 	tmpField->setSize(SDL_Rect{ 0, 0, Player::BookGUI_t::BOOK_PAGE_WIDTH, Player::BookGUI_t::BOOK_PAGE_HEIGHT });
 	tmpField->setFont("fonts/pixel_maz.ttf#32");
 	tmpField->setText(pageText.c_str());
-	tmpField->reflowTextToFit(0);
+	tmpField->reflowTextToFit(0, false);
 
 	int len = strlen(tmpField->getText());
 	char* reflowedText = (char*)malloc(len + 1);

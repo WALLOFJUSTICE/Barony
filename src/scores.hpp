@@ -14,8 +14,8 @@
 #include "json.hpp"
 #include "player.hpp"
 
-#define SCORESFILE "scores.dat"
-#define SCORESFILE_MULTIPLAYER "scores_multiplayer.dat"
+#define SCORESFILE "savegames/scores.json"
+#define SCORESFILE_MULTIPLAYER "savegames/scores_multiplayer.json"
 
 // game score structure
 #define MAXTOPSCORES 100
@@ -35,6 +35,8 @@ static const int CONDUCT_KEEPINVENTORY = 8; // 1 = keep inventory server flag, 0
 static const int CONDUCT_LIFESAVING = 9; // 1 = lifesaving server flag, 0 = not.
 static const int CONDUCT_ACCURSED = 10; // 1 = cursed, 0 = not
 static const int CONDUCT_RANGED_ONLY = 11; // 1 = ranged only, 0 = not.
+static const int CONDUCT_MODDED_NO_ACHIEVEMENTS = 12; // 1 = mods have disabled achievements
+static const int CONDUCT_ASSISTANCE_CLAIMED = 13; // how many assistance points claimed for the party
 
 static const int STATISTICS_BOMB_SQUAD = 0;
 static const int STATISTICS_SITTING_DUCK = 1;
@@ -52,7 +54,23 @@ static const int STATISTICS_PIMPING_AINT_EASY = 12;
 static const int STATISTICS_TRIBE_SUBSCRIBE = 13;
 static const int STATISTICS_POP_QUIZ_1 = 14;
 static const int STATISTICS_POP_QUIZ_2 = 15;
+static const int STATISTICS_TOTAL_KILLS = 16;
+static const int STATISTICS_FLAVORTOWN = 17;
+static const int STATISTICS_BARDIC_INSPIRATION = 18;
+static const int STATISTICS_SKID_ROW = 19;
+static const int STATISTICS_WRECKING_CREW = 20;
+static const int STATISTICS_RIGHTEOUS_FURY = 21;
+static const int STATISTICS_PARRY_TANK = 22;
+static const int STATISTICS_EAT_ME = 23;
+static const int STATISTICS_BONK = 24;
+static const int STATISTICS_NO_CAP = 25;
+static const int STATISTICS_DONT_TOUCH_HAIR = 26;
+static const int STATISTICS_GARGOYLES_QUEST = 27;
+static const int STATISTICS_QUACKERY = 28;
+static const int STATISTICS_THATS_CHEATING = 29;
+static const int STATISTICS_DISCIPLINE = 30;
 static const int STATISTICS_DISABLE_UPLOAD = 31;
+static const int STATISTICS_FIRE_FIGHTER = 32;
 
 enum SteamStatIndexes : int
 {
@@ -104,7 +122,31 @@ enum SteamStatIndexes : int
 	STEAM_STAT_EXTRA_CREDIT_LVLS,
 	STEAM_STAT_DIPLOMA,
 	STEAM_STAT_DIPLOMA_LVLS,
-	STEAM_STAT_TUTORIAL_ENTERED
+	STEAM_STAT_TUTORIAL_ENTERED,
+	STEAM_STAT_I_NEEDED_THAT,
+	STEAM_STAT_DAPPER_1,
+	STEAM_STAT_DAPPER_2,
+	STEAM_STAT_DAPPER_3,
+	STEAM_STAT_DAPPER,
+	STEAM_STAT_DUNGEONSEED,
+	STEAM_STAT_PITCH_PERFECT,
+	STEAM_STAT_RUNG_OUT,
+	STEAM_STAT_SMASH_MELEE,
+	STEAM_STAT_CALL_LOCKSMITH,
+	STEAM_STAT_PREMIUM_LOOTBOX,
+	STEAM_STAT_WITCHES_BREW,
+	STEAM_STAT_HOBBYIST,
+	STEAM_STAT_BLESSED_ADDITION,
+	STEAM_STAT_THATS_A_WRAP,
+	STEAM_STAT_LET_HIM_COOK,
+	STEAM_STAT_TOUCHE,
+	STEAM_STAT_MERCENARY_ARMY,
+	STEAM_STAT_COLONIST,
+	STEAM_STAT_PRICKLY_PERSONALITY,
+	STEAM_STAT_BOOM_DYNAMITE,
+	STEAM_STAT_PAY_TO_WIN,
+	STEAM_STAT_DOESNT_COUNT,
+	STEAM_STAT_SOURCE_ENGINE
 };
 
 enum SteamGlobalStatIndexes : int
@@ -175,12 +217,89 @@ enum SteamGlobalStatIndexes : int
 	STEAM_GSTAT_TUTORIAL10_ATTEMPTS,
 	STEAM_GSTAT_DISABLE,
 	STEAM_GSTAT_PROMO,
-	STEAM_GSTAT_PROMO_INTERACT
+	STEAM_GSTAT_PROMO_INTERACT,
+	STEAM_GSTAT_DEATHS_BAT,
+	STEAM_GSTAT_DEATHS_BUGBEAR,
+	STEAM_GSTAT_DEATHS_MIMIC,
+	STEAM_GSTAT_MAX
+};
+
+const std::vector<std::string> SteamGlobalStatStr =
+{
+	"GAMES_STARTED",
+	"GAMES_WON",
+	"BOULDER_DEATHS",
+	"HERX_SLAIN",
+	"BAPHOMET_SLAIN",
+	"TWINSFIRE_SLAIN",
+	"DEATHS_HUMAN",
+	"DEATHS_RAT",
+	"DEATHS_GOBLIN",
+	"DEATHS_SLIME",
+	"DEATHS_TROLL",
+	"DEATHS_SPIDER",
+	"DEATHS_GHOUL",
+	"DEATHS_SKELETON",
+	"DEATHS_SCORPION",
+	"DEATHS_IMP",
+	"DEATHS_GNOME",
+	"DEATHS_DEMON",
+	"DEATHS_SUCCUBUS",
+	"DEATHS_LICH",
+	"DEATHS_MINOTAUR",
+	"DEATHS_DEVIL",
+	"DEATHS_SHOPKEEPER",
+	"DEATHS_KOBOLD",
+	"DEATHS_SCARAB",
+	"DEATHS_CRYSTALGOLEM",
+	"DEATHS_INCUBUS",
+	"DEATHS_VAMPIRE",
+	"DEATHS_SHADOW",
+	"DEATHS_COCKATRICE",
+	"DEATHS_INSECTOID",
+	"DEATHS_GOATMAN",
+	"DEATHS_AUTOMATON",
+	"DEATHS_LICHICE",
+	"DEATHS_LICHFIRE",
+	"DEATHS_SENTRYBOT",
+	"DEATHS_SPELLBOT",
+	"DEATHS_GYROBOT",
+	"DEATHS_DUMMYBOT",
+	"TWINSICE_SLAIN",
+	"SHOPKEEPERS_SLAIN",
+	"MINOTAURS_SLAIN",
+	"TUTORIAL_ENTERED",
+	"TUTORIAL1_COMPLETED",
+	"TUTORIAL2_COMPLETED",
+	"TUTORIAL3_COMPLETED",
+	"TUTORIAL4_COMPLETED",
+	"TUTORIAL5_COMPLETED",
+	"TUTORIAL6_COMPLETED",
+	"TUTORIAL7_COMPLETED",
+	"TUTORIAL8_COMPLETED",
+	"TUTORIAL9_COMPLETED",
+	"TUTORIAL10_COMPLETED",
+	"TUTORIAL1_ATTEMPTS",
+	"TUTORIAL2_ATTEMPTS",
+	"TUTORIAL3_ATTEMPTS",
+	"TUTORIAL4_ATTEMPTS",
+	"TUTORIAL5_ATTEMPTS",
+	"TUTORIAL6_ATTEMPTS",
+	"TUTORIAL7_ATTEMPTS",
+	"TUTORIAL8_ATTEMPTS",
+	"TUTORIAL9_ATTEMPTS",
+	"TUTORIAL10_ATTEMPTS",
+	"DISABLE",
+	"PROMO",
+	"PROMO_INTERACT",
+	"DEATHS_BAT",
+	"DEATHS_BUGBEAR",
+	"DEATHS_MIMIC",
 };
 
 SteamGlobalStatIndexes getIndexForDeathType(int type);
 
-static const std::pair<std::string, int> steamStatAchStringsAndMaxVals[] = 
+static const std::pair<std::string, int> steamStatAchStringsAndMaxVals[] =
 {
 	std::make_pair("BARONY_ACH_NONE", 999999),				// STEAM_STAT_BOULDER_DEATHS,
 	std::make_pair("BARONY_ACH_RHINESTONE_COWBOY", 50),		// STEAM_STAT_RHINESTONE_COWBOY,
@@ -230,7 +349,32 @@ static const std::pair<std::string, int> steamStatAchStringsAndMaxVals[] =
 	std::make_pair("BARONY_ACH_NONE", 1023),				// STEAM_STAT_EXTRA_CREDIT_LVLS,
 	std::make_pair("BARONY_ACH_DIPLOMA", 10),				// STEAM_STAT_DIPLOMA
 	std::make_pair("BARONY_ACH_NONE", 1023),				// STEAM_STAT_DIPLOMA_LVLS,
-	std::make_pair("BARONY_ACH_NONE", 1)					// STEAM_STAT_TUTORIAL_ENTERED,
+	std::make_pair("BARONY_ACH_NONE", 1),					// STEAM_STAT_TUTORIAL_ENTERED,
+	std::make_pair("BARONY_ACH_I_NEEDED_THAT", 10),			// STEAM_STAT_I_NEEDED_THAT
+	std::make_pair("BARONY_ACH_NONE", 0xFFFFFFFF),			// STEAM_STAT_DAPPER_1
+	std::make_pair("BARONY_ACH_NONE", 0xFFFFFFFF),			// STEAM_STAT_DAPPER_2
+	std::make_pair("BARONY_ACH_NONE", 0xFFFFFFFF),			// STEAM_STAT_DAPPER_3
+	std::make_pair("BARONY_ACH_DAPPER", 30),				// STEAM_STAT_DAPPER
+	std::make_pair("BARONY_ACH_DUNGEONSEED", 12),			// STEAM_STAT_DUNGEONSEED
+	std::make_pair("BARONY_ACH_BAT1000", 81),				// STEAM_STAT_PITCH_PERFECT
+	std::make_pair("BARONY_ACH_RUNG_OUT", 20),				// STEAM_STAT_RUNG_OUT
+	std::make_pair("BARONY_ACH_SMASH_MELEE", 500),			// STEAM_STAT_SMASH_MELEE
+
+	std::make_pair("BARONY_ACH_CALL_LOCKSMITH", 20),		// STEAM_STAT_LOCKSMITH,
+	std::make_pair("BARONY_ACH_PREMIUM_LOOTBOX", 20),		// STEAM_STAT_PREMIUM_LOOTBOX,
+	std::make_pair("BARONY_ACH_WITCHES_BREW", 50),			// STEAM_STAT_WITCHES_BREW,
+	std::make_pair("BARONY_ACH_HOBBYIST", 50),				// STEAM_STAT_HOBBYIST,
+	std::make_pair("BARONY_ACH_BLESSED_ADDITION", 50),		// STEAM_STAT_BLESSED_ADDITION,
+	std::make_pair("BARONY_ACH_THATS_A_WRAP", 50),			// STEAM_STAT_THATS_A_WRAP,
+	std::make_pair("BARONY_ACH_LET_HIM_COOK", 100),			// STEAM_STAT_LET_HIM_COOK,
+	std::make_pair("BARONY_ACH_TOUCHE", 1000),				// STEAM_STAT_TOUCHE,
+	std::make_pair("BARONY_ACH_MERCENARY_ARMY", 20),		// STEAM_STAT_MERCENARY_ARMY,
+	std::make_pair("BARONY_ACH_COLONIST", 50),				// STEAM_STAT_COLONIST,
+	std::make_pair("BARONY_ACH_PRICKLY_PERSONALITY", 20),	// STEAM_STAT_PRICKLY_PERSONALITY,
+	std::make_pair("BARONY_ACH_BOOM_DYNAMITE", 50),			// STEAM_STAT_BOOM_DYNAMITE,
+	std::make_pair("BARONY_ACH_PAY_TO_WIN", 5000),			// STEAM_STAT_PAY_TO_WIN,
+	std::make_pair("BARONY_ACH_DOESNT_COUNT", 50),			// STEAM_STAT_DOESNT_COUNT,
+	std::make_pair("BARONY_ACH_SOURCE_ENGINE", 1000)		// STEAM_STAT_SOURCE_ENGINE
 };
 
 typedef struct score_t
@@ -240,6 +384,7 @@ typedef struct score_t
 	Sint32 classnum;
 	Sint32 dungeonlevel;
 	int victory;
+	int totalscore = -1;
 
 	Uint32 completionTime;
 	bool conductPenniless;
@@ -249,8 +394,10 @@ typedef struct score_t
 	Sint32 conductGameChallenges[NUM_CONDUCT_CHALLENGES];
 	Sint32 gameStatistics[NUM_GAMEPLAY_STATISTICS];
 } score_t;
-extern list_t topscores;
-extern list_t topscoresMultiplayer;
+extern list_t topscores_json;
+extern list_t topscoresMultiplayer_json;
+extern list_t topscores_legacy;
+extern list_t topscoresMultiplayer_legacy;
 extern int victory;
 
 extern Uint32 completionTime;
@@ -262,11 +409,13 @@ extern list_t booksRead;
 extern bool usedClass[NUMCLASSES];
 extern bool usedRace[NUMRACES];
 extern Uint32 loadingsavegame;
+extern Uint32 loadinglobbykey;
 extern Sint32 conductGameChallenges[NUM_CONDUCT_CHALLENGES];
 extern Sint32 gameStatistics[NUM_GAMEPLAY_STATISTICS];
 extern std::vector<std::pair<Uint32, Uint32>> achievementRhythmOfTheKnightVec[MAXPLAYERS];
 extern bool achievementStatusRhythmOfTheKnight[MAXPLAYERS];
-extern std::pair<Uint32, Uint32> achievementThankTheTankPair[MAXPLAYERS];
+extern bool achievementRhythmOfTheKnight[MAXPLAYERS];
+extern std::map<Uint32, Uint32> achievementThankTheTankPair[MAXPLAYERS];
 extern bool achievementStatusBaitAndSwitch[MAXPLAYERS];
 extern Uint32 achievementBaitAndSwitchTimer[MAXPLAYERS];
 extern std::unordered_set<int> clientLearnedAlchemyIngredients[MAXPLAYERS];
@@ -277,11 +426,12 @@ extern std::vector<Uint32> achievementStrobeVec[MAXPLAYERS];
 extern bool achievementStatusStrobe[MAXPLAYERS];
 extern bool playerFailedRangedOnlyConduct[MAXPLAYERS];
 extern bool achievementBrawlerMode;
+extern bool achievementPenniless;
 extern bool achievementRangedMode[MAXPLAYERS];
 
-score_t* scoreConstructor();
+score_t* scoreConstructor(int player);
 void scoreDeconstructor(void* data);
-int saveScore();
+int saveScore(int player);
 int totalScore(score_t* score);
 void loadScore(int score);
 void loadScore(score_t* score);
@@ -300,9 +450,6 @@ enum SaveFileType {
 extern int savegameCurrentFileIndex;
 
 std::string setSaveGameFileName(bool singleplayer, SaveFileType type, int saveIndex = savegameCurrentFileIndex);
-int saveGameOld(int saveIndex = savegameCurrentFileIndex);
-int loadGameOld(int player, int saveIndex = savegameCurrentFileIndex);
-list_t* loadGameFollowersOld(int saveIndex = savegameCurrentFileIndex);
 
 int deleteSaveGame(int gametype, int saveIndex = savegameCurrentFileIndex);
 bool saveGameExists(bool singleplayer, int saveIndex = savegameCurrentFileIndex);
@@ -316,14 +463,29 @@ struct SaveGameInfo {
 	Uint32 hash = 0;
 	std::string gamename;
 	Uint32 gamekey = 0;
+	Uint32 lobbykey = 0;
 	Uint32 mapseed = 0;
 	Uint32 gametimer = 0;
 	Uint32 svflags = 0;
+	Uint32 customseed = 0;
+	std::string customseed_string = "";
     int player_num = 0;
     int multiplayer_type = SINGLE;
     int dungeon_lvl = 0;
 	int level_track = 0;
+	int hiscore_loadstatus = 0;
+	int hiscore_totalscore = 0;
+	int hiscore_rank = -1;
+	int hiscore_victory = 0;
+	int hiscore_killed_by = 0;
+	int hiscore_killed_monster = 0;
+	int hiscore_killed_item = 0;
+	bool hiscore_dummy_loading = false;
     std::vector<int> players_connected;
+
+	int populateFromSession(const int playernum);
+	int getTotalScore(const int playernum, const int victory);
+	std::string serializeToOnlineHiscore(const int playernum, const int victory);
 
 	struct Player {
 		Uint32 char_class = 0;
@@ -335,13 +497,76 @@ struct SaveGameInfo {
 		bool conductVegetarian = false;
 		bool conductIlliterate = false;
 		int additionalConducts[NUM_CONDUCT_CHALLENGES] = { 0 };
+		int gameStatistics[NUM_GAMEPLAY_STATISTICS] = { 0 };
 
 		Uint32 hotbar[NUM_HOTBAR_SLOTS];
+		Uint32 hotbar_alternate[NUM_HOTBAR_ALTERNATES][NUM_HOTBAR_SLOTS];
+		Uint32 selected_spell;
+		Uint32 selected_spell_alternate[NUM_HOTBAR_ALTERNATES];
+		int selected_spell_last_appearance;
 		std::vector<Uint32> spells;
 
 		typedef std::pair<int, std::pair<int, int>> recipe_t;
 		std::vector<recipe_t> known_recipes;
 		std::vector<int> known_scrolls;
+
+		struct PlayerRaceHostility_t
+		{
+			int numAggressions = 0;
+			int numKills = 0;
+			int numAccessories = 0;
+			int playerRace = NOTHING;
+			int sex = sex_t::MALE;
+			int equipment = 0;
+			int type = 0;
+			int wantedLevel = ShopkeeperPlayerHostility_t::NO_WANTED_LEVEL;
+			int player = -1;
+
+			PlayerRaceHostility_t() = default;
+			PlayerRaceHostility_t(const PlayerRaceHostility_t&) = default;
+			PlayerRaceHostility_t(PlayerRaceHostility_t&&) = default;
+			PlayerRaceHostility_t(ShopkeeperPlayerHostility_t::PlayerRaceHostility_t& h)
+			{
+				wantedLevel = h.wantedLevel;
+				playerRace = h.playerRace;
+				sex = h.sex;
+				equipment = h.equipment;
+				type = h.type;
+				player = h.player;
+				numAggressions = h.numAggressions;
+				numKills = h.numKills;
+				numAccessories = h.numAccessories;
+			}
+			bool serialize(FileInterface* fp)
+			{
+				fp->property("wanted_level", wantedLevel);
+				fp->property("player_race", playerRace);
+				fp->property("equipment", equipment);
+				fp->property("type", type);
+				fp->property("sex", sex);
+				fp->property("player", player);
+				fp->property("num_aggressions", numAggressions);
+				fp->property("num_kills", numKills);
+				fp->property("num_accessories", numAccessories);
+				return true;
+			}
+		};
+		std::vector<std::pair<int, PlayerRaceHostility_t>> shopkeeperHostility;
+		std::vector<std::pair<std::string, std::vector<int>>> compendium_item_events;
+		std::vector<std::pair<int, int>> itemDegradeRNG;
+		std::vector<std::pair<int, int>> escalatingRngRolls;
+		std::vector<std::pair<int, int>> escalatingSpellRngRolls;
+		std::vector<std::pair<int, int>> appraisal_item_progress;
+		std::vector<int> learnedSpells;
+		std::vector<std::pair<int, int>> sustainedSpellIDCounter;
+		std::vector<std::pair<int, int>> ducksInARow;
+		std::vector<std::pair<int, int>> favoriteBooksAchievement;
+		int sustainedSpellMPUsedSorcery = 0;
+		int sustainedSpellMPUsedMysticism = 0;
+		int sustainedSpellMPUsedThaumaturgy = 0;
+		int baseSpellMPUsedSorcery = 0;
+		int baseSpellMPUsedMysticism = 0;
+		int baseSpellMPUsedThaumaturgy = 0;
 
 		struct stat_t {
 			struct item_t {
@@ -375,7 +600,6 @@ struct SaveGameInfo {
 				bool identified = false;
 				int x = 0;
 				int y = 0;
-
 				bool serialize(FileInterface* fp) {
 					fp->property("type", type);
 					fp->property("status", status);
@@ -387,12 +611,46 @@ struct SaveGameInfo {
 					fp->property("y", y);
 					return true;
 				}
+				void computeHash(Uint32& hash, Uint32& shift);
+			};
+
+			struct lootbag_t
+			{
+				lootbag_t() = default;
+				lootbag_t(const lootbag_t&) = default;
+				lootbag_t(lootbag_t&&) = default;
+				lootbag_t(
+					int _spawn_x,
+					int _spawn_y,
+					bool _spawnedOnGround,
+					bool _looted
+					)
+				{
+					spawn_x = _spawn_x;
+					spawn_y = _spawn_y;
+					spawnedOnGround = _spawnedOnGround;
+					looted = _looted;
+				}
+
+				int spawn_x = 0;
+				int spawn_y = 0;
+				bool spawnedOnGround = false;
+				bool looted = false;
+				std::vector<item_t> items;
+				bool serialize(FileInterface* fp) {
+					fp->property("spawn_x", spawn_x);
+					fp->property("spawn_y", spawn_y);
+					fp->property("looted", looted);
+					fp->property("spawned", spawnedOnGround);
+					fp->property("items", items);
+					return true;
+				}
 			};
 
 			std::string name;
 			Uint32 type = Monster::HUMAN;
 			Uint32 sex = 0;
-			Uint32 appearance = 0;
+			Uint32 statscore_appearance = 0;
 			int HP = 0;
 			int maxHP = 0;
 			int MP = 0;
@@ -410,17 +668,20 @@ struct SaveGameInfo {
 			std::vector<int> PROFICIENCIES;
 			std::vector<int> EFFECTS;
 			std::vector<int> EFFECTS_TIMERS;
+			std::vector<int> EFFECTS_ACCRETION_TIME;
 			std::vector<int> MISC_FLAGS;
 			std::vector<std::pair<std::string, std::string>> attributes;
 			std::vector<std::pair<std::string, Uint32>> player_equipment;
 			std::vector<std::pair<std::string, item_t>> npc_equipment;
 			std::vector<item_t> inventory;
+			std::vector<item_t> void_chest_inventory;
+			std::vector<std::pair<Uint32, lootbag_t>> player_lootbags;
 
 			bool serialize(FileInterface* fp) {
 				fp->property("name", name);
 				fp->property("type", type);
 				fp->property("sex", sex);
-				fp->property("appearance", appearance);
+				fp->property("appearance", statscore_appearance);
 				fp->property("HP", HP);
 				fp->property("maxHP", maxHP);
 				fp->property("MP", MP);
@@ -438,10 +699,14 @@ struct SaveGameInfo {
 				fp->property("PROFICIENCIES", PROFICIENCIES);
 				fp->property("EFFECTS", EFFECTS);
 				fp->property("EFFECTS_TIMERS", EFFECTS_TIMERS);
+				fp->property("EFFECTS_ACCRETION_TIME", EFFECTS_ACCRETION_TIME);
 				fp->property("MISC_FLAGS", MISC_FLAGS);
 				fp->property("player_equipment", player_equipment);
 				fp->property("npc_equipment", npc_equipment);
 				fp->property("inventory", inventory);
+				fp->property("void_chest_inventory", void_chest_inventory);
+				fp->property("attributes", attributes);
+				fp->property("lootbags", player_lootbags);
 				return true;
 			}
 		};
@@ -459,16 +724,56 @@ struct SaveGameInfo {
 			fp->property("conduct_vegetarian", conductVegetarian);
 			fp->property("conduct_illiterate", conductIlliterate);
 			fp->property("additional_conducts", additionalConducts);
+			if ( fp->isReading() )
+			{
+				for ( int i = 0; i < NUM_HOTBAR_SLOTS; ++i )
+				{
+					hotbar[i] = UINT32_MAX;
+					for ( int j = 0; j < NUM_HOTBAR_ALTERNATES; ++j )
+					{
+						hotbar_alternate[j][i] = UINT32_MAX;
+					}
+				}
+				selected_spell = UINT32_MAX;
+				for ( int j = 0; j < NUM_HOTBAR_ALTERNATES; ++j )
+				{
+					selected_spell_alternate[j] = UINT32_MAX;
+				}
+			}
 			fp->property("hotbar", hotbar);
+			fp->property("hotbar_alternate", hotbar_alternate);
+			fp->property("selected_spell", selected_spell);
+			fp->property("selected_spell_alternate", selected_spell_alternate);
+			fp->property("selected_spell_last_appearance", selected_spell_last_appearance);
 			fp->property("spells", spells);
 			fp->property("recipes", known_recipes);
 			fp->property("scrolls", known_scrolls);
 			fp->property("stats", stats);
 			fp->property("followers", followers);
+			fp->property("game_statistics", gameStatistics);
+			fp->property("shopkeeper_hostility", shopkeeperHostility);
+			fp->property("compendium_item_events", compendium_item_events);
+			fp->property("item_degrade_rng", itemDegradeRNG);
+			fp->property("sustained_mp_used_sorcery", sustainedSpellMPUsedSorcery);
+			fp->property("sustained_mp_used_mysticism", sustainedSpellMPUsedMysticism);
+			fp->property("sustained_mp_used_thaumaturgy", sustainedSpellMPUsedThaumaturgy);
+			fp->property("base_mp_used_sorcery", baseSpellMPUsedSorcery);
+			fp->property("base_mp_used_mysticism", baseSpellMPUsedMysticism);
+			fp->property("base_mp_used_thaumaturgy", baseSpellMPUsedThaumaturgy);
+			fp->property("learned_spells", learnedSpells);
+			fp->property("ducks_in_a_row", ducksInARow);
+			fp->property("favorite_books_achievement", favoriteBooksAchievement);
+			fp->property("sustained_spell_id_counters", sustainedSpellIDCounter);
+			fp->property("escalating_rng_rolls", escalatingRngRolls);
+			fp->property("escalating_spell_rng_rolls", escalatingSpellRngRolls);
+			fp->property("appraisal_time_progress", appraisal_item_progress);
 			return true;
 		}
+
+		int isCharacterValidFromDLC();
 	};
 	std::vector<Player> players;
+	std::vector<std::pair<std::string, std::string>> map_messages; // map modifiers "sound of pickaxes striking rock" "walls are fortified" etc
 	std::vector<std::pair<std::string, std::string>> additional_data;
 	
 	bool serialize(FileInterface* fp) {
@@ -478,6 +783,7 @@ struct SaveGameInfo {
 		fp->property("hash", hash);
 		fp->property("game_name", gamename);
 		fp->property("gamekey", gamekey);
+		fp->property("lobbykey", lobbykey);
 		fp->property("mapseed", mapseed);
 		fp->property("gametimer", gametimer);
 		fp->property("svflags", svflags);
@@ -485,23 +791,28 @@ struct SaveGameInfo {
 		fp->property("multiplayer_type", multiplayer_type);
 		fp->property("dungeon_lvl", dungeon_lvl);
 		fp->property("level_track", level_track);
+		fp->property("customseed", customseed);
+		fp->property("customseed_string", customseed_string);
 		fp->property("players_connected", players_connected);
 		fp->property("players", players);
 		fp->property("additional_data", additional_data);
+		fp->property("map_messages", map_messages);
 		return true;
 	}
+
+	void computeHash(const int playernum, Uint32& hash);
 };
 
 int saveGame(int saveIndex = savegameCurrentFileIndex);
 int loadGame(int player, const SaveGameInfo& info);
 list_t* loadGameFollowers(const SaveGameInfo& info);
 
+score_t* scoreConstructor(int player, SaveGameInfo& info);
 SaveGameInfo getSaveGameInfo(bool singleplayer, int saveIndex = savegameCurrentFileIndex);
 const char* getSaveGameName(const SaveGameInfo& info);
 int getSaveGameType(const SaveGameInfo& info);
 int getSaveGameClientnum(const SaveGameInfo& info);
 Uint32 getSaveGameMapSeed(const SaveGameInfo& info);
-Uint32 getSaveGameUniqueGameKey(const SaveGameInfo& info);
 int getSaveGameVersionNum(const SaveGameInfo& info);
 
 int getSavegameVersion(const char* checkstr); // returns -1 on invalid version, otherwise converts to 3 digit int
@@ -511,8 +822,9 @@ void updateGameplayStatisticsInMainLoop(); // check for achievement values for g
 void updateAchievementRhythmOfTheKnight(int player, Entity* target, bool playerIsHit);
 void updateAchievementThankTheTank(int player, Entity* target, bool targetKilled);
 void updateAchievementBaitAndSwitch(int player, bool isTeleporting);
-static const int SAVE_GAMES_MAX = 10;
+static const int SAVE_GAMES_MAX = 100;
 
+#ifndef EDITOR
 class AchievementObserver
 {
 	int levelObserved = -1;
@@ -562,7 +874,20 @@ public:
 		BARONY_ACH_DIPLOMA,
 		BARONY_ACH_BACK_TO_BASICS,
 		BARONY_ACH_FAST_LEARNER,
-		BARONY_ACH_MASTER
+		BARONY_ACH_MASTER,
+		BARONY_ACH_DAPPER,
+		BARONY_ACH_SPROUTS,
+		BARONY_ACH_BY_THE_BOOK,
+		BARONY_ACH_THATS_A_WRAP,
+		BARONY_ACH_APPRENTICES,
+		BARONY_ACH_SHORT_SHORTS,
+		BARONY_ACH_HOLY_ORDER,
+		BARONY_ACH_CONSCRIPTED,
+		BARONY_ACH_LONER_LEAGUE,
+		BARONY_ACH_RIZZLERS,
+		BARONY_ACH_FOREIGN_EXCHANGE,
+		BARONY_ACH_STUDY_ABROAD,
+		BARONY_ACH_FOOD_FIGHT
 	};
 	enum AchievementEvent : int
 	{
@@ -575,7 +900,10 @@ public:
 		EXTRA_CREDIT_SECRET,
 		DIPLOMA_LEVEL_COMPLETE,
 		BACK_TO_BASICS_LEVEL_COMPLETE,
-		FAST_LEARNER_TIME_UPDATE
+		FAST_LEARNER_TIME_UPDATE,
+		DAPPER_EQUIPMENT_CHECK,
+		BY_THE_BOOK_COMPENDIUM_PAGE,
+		BY_THE_BOOK_BREW
 	};
 	void updatePlayerAchievement(int player, Achievement achievement, AchievementEvent achEvent);
 	bool bIsAchievementAllowedDuringTutorial(std::string achievementStr)
@@ -647,6 +975,17 @@ public:
 		int socialButterfly = 0;
 		int rollTheBones = 0;
 		int trashCompactor = 0;
+		bool totalKillsTickUpdate = false;
+		Uint32 ticksByTheBookViewed = 0;
+		static bool allPlayersDeadEvent;
+
+		int skidRow = 0;
+		int bonk = 0;
+		int righteousFury = 0;
+		int hellsKitchen = 0;
+		int eatMe = 0;
+		int sourceEngine = 0;
+		int parryTank = 0;
 
 		std::pair<int, int> realBoy;
 		std::unordered_map<Uint32, int> caughtInAMoshTargets;
@@ -655,6 +994,13 @@ public:
 		std::pair<real_t, real_t> flutterShyCoordinates;
 		std::pair<int, Uint32> gastricBypassSpell;
 		std::unordered_set<Uint32> rat5000secondRule;
+		std::unordered_set<Uint32> phantomMaskFirstStrikes;
+		std::unordered_set<Uint32> bountyTargets;
+		std::vector<Uint32> manifestDestinyChests;
+		Uint32 manifestDestinyChestSequence = 0;
+		bool updatedBountyTargets = false;
+		bool wearingBountyHat = false;
+		static std::set<ItemType> startingClassItems;
 		
 		PlayerAchievements()
 		{
@@ -664,13 +1010,16 @@ public:
 		};
 		bool checkPathBetweenObjects(Entity* player, Entity* target, int achievement);
 		bool checkTraditionKill(Entity* player, Entity* target);
+		int getItemIndexForDapperAchievement(Item* item);
 	} playerAchievements[MAXPLAYERS];
 
+	void updateClientBounties(bool firstSend);
 	void clearPlayerAchievementData();
 	void checkMapScriptsOnVariableSet();
-	void updateGlobalStat(int index, int value = 1);
+	void updateGlobalStat(int index, int player);
 };
 extern AchievementObserver achievementObserver;
+#endif
 
 #ifdef STEAMWORKS
 bool steamLeaderboardSetScore(score_t* score);

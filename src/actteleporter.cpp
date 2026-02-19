@@ -47,37 +47,118 @@ void Entity::actTeleporter()
 		createWorldUITooltip();
 	}
 
+	if ( teleporterDuration > 0 && multiplayer != CLIENT )
+	{
+		--teleporterDuration;
+		if ( teleporterDuration <= 0 )
+		{
+			this->removeLightField();
+			list_RemoveNode(this->mynode);
+			return;
+		}
+	}
+
+#ifdef USE_FMOD
+	if ( teleporterAmbience == 0 )
+	{
+		teleporterAmbience--;
+		stopEntitySound();
+		entity_sound = playSoundEntityLocal(this, 149, 64);
+	}
+	if ( entity_sound )
+	{
+		bool playing = false;
+		entity_sound->isPlaying(&playing);
+		if ( !playing )
+		{
+			entity_sound = nullptr;
+		}
+	}
+#else
 	teleporterAmbience--;
 	if ( teleporterAmbience <= 0 )
 	{
 		teleporterAmbience = TICKS_PER_SECOND * 30;
 		playSoundEntityLocal(this, 149, 64);
 	}
+#endif
 
 	// use teleporter
 	if ( multiplayer != CLIENT )
 	{
+		if ( this->isInteractWithMonster() )
+		{
+			Entity* monsterInteracting = uidToEntity(this->interactedByMonster);
+			if ( monsterInteracting )
+			{
+				if ( teleporterType == 3 )
+				{
+					if ( monsterInteracting->teleport(teleporterX, teleporterY) )
+					{
+						if ( Entity* caster = uidToEntity(this->parent) )
+						{
+							if ( auto hitprops = getParticleEmitterHitProps(this->getUID(), this) )
+							{
+								if ( hitprops->hits == 0 )
+								{
+									magicOnSpellCastEvent(caster, caster, nullptr, SPELL_TUNNEL, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+									++hitprops->hits;
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					monsterInteracting->teleporterMove(teleporterX, teleporterY, teleporterType);
+				}
+				this->clearMonsterInteract();
+				return;
+			}
+			this->clearMonsterInteract();
+		}
 		for ( i = 0; i < MAXPLAYERS; i++ )
 		{
 			if ( selectedEntity[i] == this || client_selected[i] == this )
 			{
-				if ( inrange[i] )
+				if ( inrange[i] && Player::getPlayerInteractEntity(i) )
 				{
 					switch ( teleporterType )
 					{
 						case 0:
-							messagePlayer(i, MESSAGE_INTERACTION, language[2378]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(2378));
 							break;
 						case 1:
-							messagePlayer(i, MESSAGE_INTERACTION, language[506]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(506));
 							break;
 						case 2:
-							messagePlayer(i, MESSAGE_INTERACTION, language[510]);
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(510));
 							break;
 						default:
 							break;
 					}
-					players[i]->entity->teleporterMove(teleporterX, teleporterY, teleporterType);
+					if ( teleporterType == 3 )
+					{
+						if ( Player::getPlayerInteractEntity(i)->teleport(teleporterX, teleporterY) )
+						{
+							messagePlayer(i, MESSAGE_INTERACTION, Language::get(6696));
+							if ( Entity* caster = uidToEntity(this->parent) )
+							{
+								if ( auto hitprops = getParticleEmitterHitProps(this->getUID(), this) )
+								{
+									if ( hitprops->hits == 0 )
+									{
+										magicOnSpellCastEvent(caster, caster, nullptr, SPELL_TUNNEL, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+										++hitprops->hits;
+									}
+								}
+							}
+						}
+					}
+					else
+					{
+						Player::getPlayerInteractEntity(i)->teleporterMove(teleporterX, teleporterY, teleporterType);
+					}
 					return;
 				}
 			}
@@ -88,7 +169,7 @@ void Entity::actTeleporter()
 	{
 		if ( !light )
 		{
-			light = lightSphereShadow(x / 16, y / 16, 3, 255);
+			light = addLight(x / 16, y / 16, "portal_purple");
 		}
 		yaw += 0.01; // rotate slowly on my axis
 		sprite = 620;
@@ -96,5 +177,27 @@ void Entity::actTeleporter()
 		{
 			sprite = 992 + ((this->ticks / 20) % 4) - 1; // animate through 992, 993, 994
 		}
+	}
+	else if ( teleporterType == 3 )
+	{
+		if ( !light )
+		{
+			light = addLight(x / 16, y / 16, "portal_purple");
+		}
+
+		if ( ::ticks % 4 == 0 )
+		{
+			sprite = teleporterStartFrame + teleporterCurrentFrame;
+			++teleporterCurrentFrame;
+			if ( teleporterCurrentFrame >= teleporterNumFrames )
+			{
+				teleporterCurrentFrame = 0;
+			}
+		}
+
+		real_t increment = std::max(.05, (1.0 - scalex)) / 3.0;
+		scalex = std::min(1.0, scalex + increment);
+		scaley = std::min(1.0, scaley + increment);
+		scalez = std::min(1.0, scalez + increment);
 	}
 }

@@ -59,9 +59,6 @@ void Entity::actPowerCrystal()
 
 	real_t acceleration = 0.95;
 
-	//this->light = lightSphereShadow(this->x / 16, this->y / 16, 3, 64);
-	//messagePlayer(0, "vel z: %f", this->vel_z);
-
 	if ( ticks == 1 )
 	{
 		this->createWorldUITooltip();
@@ -198,18 +195,18 @@ void Entity::actPowerCrystal()
 		{
 			if ( inrange[i] )
 			{
-				if ( players[i] && players[i]->entity && crystalInitialised )
+				if ( players[i] && Player::getPlayerInteractEntity(i) && crystalInitialised )
 				{
 					playSoundEntity(this, 151, 128);
 					crystalTurning = 1;
 					crystalTurnStartDir = static_cast<Sint32>(this->yaw / (PI / 2));
 					serverUpdateEntitySkill(this, 3);
 					serverUpdateEntitySkill(this, 4);
-					messagePlayer(i, MESSAGE_INTERACTION, language[2356]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(2356));
 				}
 				else if ( !crystalInitialised )
 				{
-					messagePlayer(i, MESSAGE_INTERACTION, language[2357]);
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(2357));
 				}
 			}	
 		}

@@ -12,6 +12,8 @@
 #pragma once
 
 #include "main.hpp"
+#include "prng.hpp"
+#include "game.hpp"
 
 class Entity; // forward declare
 class Stat; // forward declare
@@ -305,11 +307,248 @@ typedef enum ItemType
 	COMPOUND_BOW,
 	HEAVY_CROSSBOW,
 	BOOMERANG,
-	SCROLL_CONJUREARROW
+	SCROLL_CONJUREARROW,
+	MONOCLE,
+	TOOL_PLAYER_LOOT_BAG,
+	MASK_BANDIT,
+	MASK_EYEPATCH,
+	MASK_MASQUERADE,
+	MASK_MOUTH_ROSE,
+	MASK_GOLDEN,
+	MASK_SPOOKY,
+	MASK_TECH_GOGGLES,
+	MASK_HAZARD_GOGGLES,
+	MASK_PHANTOM,
+	MASK_PIPE,
+	MASK_GRASS_SPRIG,
+	MASK_PLAGUE,
+	MASK_MOUTHKNIFE,
+	HAT_SILKEN_BOW,
+	HAT_PLUMED_CAP,
+	HAT_BYCOCKET,
+	HAT_TOPHAT,
+	HAT_BANDANA,
+	HAT_CIRCLET,
+	HAT_CROWN,
+	HAT_LAURELS,
+	HAT_TURBAN,
+	HAT_CROWNED_HELM,
+	HAT_WARM,
+	HAT_WOLF_HOOD,
+	HAT_BEAR_HOOD,
+	HAT_STAG_HOOD,
+	HAT_BUNNY_HOOD,
+	HAT_BOUNTYHUNTER,
+	HAT_MITER,
+	HAT_HEADDRESS,
+	HAT_CHEF,
+	HELM_MINING,
+	MASK_STEEL_VISOR,
+	MASK_CRYSTAL_VISOR,
+	MASK_ARTIFACT_VISOR,
+	HAT_CIRCLET_WISDOM,
+	HAT_HOOD_APPRENTICE,
+	HAT_HOOD_ASSASSIN,
+	HAT_HOOD_WHISPERS,
+	RING_RESOLVE,
+	CLOAK_GUARDIAN,
+	MASK_MARIGOLD,
+	KEY_STONE,
+	KEY_BONE,
+	KEY_BRONZE,
+	KEY_IRON,
+	KEY_SILVER,
+	KEY_GOLD,
+	KEY_CRYSTAL,
+	KEY_MACHINE,
+	TOOL_FOCI_FIRE,
+	INSTRUMENT_FLUTE,
+	INSTRUMENT_LYRE,
+	INSTRUMENT_DRUM,
+	INSTRUMENT_LUTE,
+	INSTRUMENT_HORN,
+	RAPIER,
+	AMULET_BURNINGRESIST,
+	GREASE_BALL,
+	BRANCH_STAFF,
+	BRANCH_BOW,
+	BRANCH_BOW_INFECTED,
+	DUST_BALL,
+	BOLAS,
+	STEEL_FLAIL,
+	FOOD_RATION,
+	FOOD_RATION_SPICY,
+	FOOD_RATION_SOUR,
+	FOOD_RATION_BITTER,
+	FOOD_RATION_HEARTY,
+	FOOD_RATION_HERBAL,
+	FOOD_RATION_SWEET,
+	SLOP_BALL,
+	TOOL_FRYING_PAN,
+	CLEAT_BOOTS,
+	BANDIT_BREASTPIECE,
+	TUNIC_BLOUSE,
+	BONE_BREASTPIECE,
+	BLACKIRON_BREASTPIECE,
+	SILVER_BREASTPIECE,
+	IRON_PAULDRONS,
+	QUILTED_GAMBESON,
+	ROBE_CULTIST,
+	ROBE_HEALER,
+	ROBE_MONK,
+	ROBE_WIZARD,
+	SHAWL,
+	CHAIN_HAUBERK,
+	BONE_BRACERS,
+	BLACKIRON_GAUNTLETS,
+	SILVER_GAUNTLETS,
+	QUILTED_GLOVES,
+	CHAIN_GLOVES,
+	BONE_BOOTS,
+	BLACKIRON_BOOTS,
+	SILVER_BOOTS,
+	QUILTED_BOOTS,
+	LOAFERS,
+	CHAIN_BOOTS,
+	SCUTUM,
+	BONE_SHIELD,
+	BLACKIRON_SHIELD,
+	SILVER_SHIELD,
+	CLOAK_DENDRITE,
+	BONE_HELM,
+	BLACKIRON_HELM,
+	SILVER_HELM,
+	HAT_FELT,
+	QUILTED_CAP,
+	HOOD_TEAL,
+	CHAIN_COIF,
+	FOOD_SHROOM,
+	FOOD_NUT,
+	TOOL_FOCI_SNOW,
+	TOOL_FOCI_NEEDLES,
+	TOOL_FOCI_ARCS,
+	TOOL_FOCI_SAND,
+	TOOL_FOCI_DARK_LIFE,
+	TOOL_FOCI_DARK_RIFT,
+	TOOL_FOCI_DARK_SILENCE,
+	TOOL_FOCI_DARK_VENGEANCE,
+	TOOL_FOCI_DARK_SUPPRESS,
+	TOOL_FOCI_LIGHT_PEACE,
+	TOOL_FOCI_LIGHT_JUSTICE,
+	TOOL_FOCI_LIGHT_PROVIDENCE,
+	TOOL_FOCI_LIGHT_PURITY,
+	TOOL_FOCI_LIGHT_SANCTUARY,
+	MAGICSTAFF_SCEPTER,
+	TOME_SORCERY,
+	TOME_MYSTICISM,
+	TOME_THAUMATURGY,
+	HAT_CIRCLET_SORCERY,
+	HAT_CIRCLET_THAUMATURGY,
+	TOOL_DUCK,
+	SHILLELAGH_MACE,
+	CLAYMORE_SWORD,
+	ANELACE_SWORD,
+	LANCE_SPEAR,
+	STEEL_FALSHION,
+	STEEL_GREATAXE,
+	BLACKIRON_AXE,
+	BLACKIRON_CROSSBOW,
+	BLACKIRON_DART,
+	BLACKIRON_MACE,
+	BLACKIRON_SWORD,
+	BLACKIRON_TRIDENT,
+	BONE_AXE,
+	BONE_MACE,
+	BONE_SHORTBOW,
+	BONE_SPEAR,
+	BONE_SWORD,
+	BONE_THROWING,
+	SILVER_AXE,
+	SILVER_GLAIVE,
+	SILVER_MACE,
+	SILVER_PLUMBATA,
+	SILVER_SWORD,
+	QUIVER_BONE,
+	QUIVER_BLACKIRON,
+	GEM_JEWEL,
+	SPELLBOOK_METEOR,
+	SPELLBOOK_ICE_WAVE,
+	SPELLBOOK_GUARD_BODY,
+	SPELLBOOK_GUARD_SPIRIT,
+	SPELLBOOK_DIVINE_GUARD,
+	SPELLBOOK_PROF_NIMBLENESS,
+	SPELLBOOK_PROF_GREATER_MIGHT,
+	SPELLBOOK_PROF_COUNSEL,
+	SPELLBOOK_PROF_STURDINESS,
+	SPELLBOOK_BLESS_FOOD,
+	SPELLBOOK_PINPOINT,
+	SPELLBOOK_DONATION,
+	SPELLBOOK_SCRY_ALLIES,
+	SPELLBOOK_SCRY_TRAPS,
+	SPELLBOOK_SCRY_TREASURES,
+	SPELLBOOK_DETECT_ENEMY,
+	SPELLBOOK_TURN_UNDEAD,
+	SPELLBOOK_HEAL_OTHER,
+	SPELLBOOK_BLOOD_WARD,
+	SPELLBOOK_DIVINE_ZEAL,
+	SPELLBOOK_MAXIMISE,
+	SPELLBOOK_MINIMISE,
+	SPELLBOOK_INCOHERENCE,
+	SPELLBOOK_OVERCHARGE,
+	SPELLBOOK_ENVENOM_WEAPON,
+	SPELLBOOK_PSYCHIC_SPEAR,
+	SPELLBOOK_DEFY_FLESH,
+	SPELLBOOK_GREASE_SPRAY,
+	SPELLBOOK_BLOOD_WAVES,
+	SPELLBOOK_COMMAND,
+	SPELLBOOK_METALLURGY,
+	SPELLBOOK_FORGE_KEY,
+	SPELLBOOK_RESHAPE_WEAPON,
+	SPELLBOOK_ALTER_ARROW,
+	SPELLBOOK_VOID_CHEST,
+	SPELLBOOK_LEAD_BOLT,
+	SPELLBOOK_NUMBING_BOLT,
+	SPELLBOOK_CURSE_FLESH,
+	SPELLBOOK_COWARDICE,
+	SPELLBOOK_SEEK_ALLY,
+	SPELLBOOK_DEEP_SHADE,
+	SPELLBOOK_SPIRIT_WEAPON,
+	SPELLBOOK_SPORES,
+	SPELLBOOK_WINDGATE,
+	SPELLBOOK_TELEKINESIS,
+	SPELLBOOK_DISARM,
+	SPELLBOOK_ABUNDANCE,
+	SPELLBOOK_PRESERVE,
+	SPELLBOOK_SABOTAGE,
+	SPELLBOOK_MIST_FORM,
+	SPELLBOOK_FORCE_SHIELD,
+	SPELLBOOK_SPLINTER_GEAR,
+	SPELLBOOK_ATTRACT_ITEMS,
+	SPELLBOOK_ABSORB_MAGIC,
+	SPELLBOOK_TUNNEL,
+	SPELLBOOK_NULL_AREA,
+	SPELLBOOK_FIRE_SPRITE,
+	SPELLBOOK_SPIN,
+	SPELLBOOK_CLEANSE_FOOD,
+	SPELLBOOK_FLAME_CLOAK,
+	SPELLBOOK_LIGHTNING_BOLT,
+	SPELLBOOK_DISRUPT_EARTH,
+	SPELLBOOK_FIRE_WALL,
+	SPELLBOOK_SLAM,
+	SPELLBOOK_IGNITE,
+	SPELLBOOK_SHATTER_OBJECTS,
+	SPELLBOOK_KINETIC_FIELD,
+	SPELLBOOK_THORNS,
+	SPELLBOOK_MAGICIANS_ARMOR,
+	SPELLBOOK_HEAL_MINOR,
+	SPELLBOOK_SIGIL,
+	SPELLBOOK_SANCTUARY,
+	SPELLBOOK_HOLY_BEAM,
+	SPELLBOOK_DOMINATE,
+	ITEM_ENUM_MAX
 } ItemType;
-const int NUMITEMS = 287;
+const int NUMITEMS = ITEM_ENUM_MAX;
 
-//NOTE: If you change this, make sure to update NUMCATEGORIES in game.h to reflect the total number of categories. Not doing that will make bad things happen.
 typedef enum Category
 {
 	WEAPON,
@@ -325,7 +564,9 @@ typedef enum Category
 	TOOL,
 	FOOD,
 	BOOK,
-	SPELL_CAT
+	SPELL_CAT,
+	TOME_SPELL,
+	CATEGORY_MAX
 } Category;
 
 typedef enum Status
@@ -412,12 +653,13 @@ public:
 	bool playerSoldItemToShop = false; // if item was sold to a shopkeeper
 	bool itemHiddenFromShop = false; // if item needs to be hidden in shop view
 	bool notifyIcon = false; // if item draws exclamation as a 'new' untouched item
+	bool spellNotifyIcon = false; // if spell can level you up
 	Uint8 itemRequireTradingSkillInShop = 0; // if item hidden in shop view until player has trading req
 	bool itemSpecialShopConsumable = false; // if item is extra non-standard inventory consumable
 
 	// weight, category and other generic info reported by function calls
 
-	node_t* node;
+	node_t* node = nullptr;
 
 	/*
 	 * Gems use this to store information about what sort of creature they contain.
@@ -438,6 +680,8 @@ public:
 	int sellValue(int player) const;
 	bool usableWhileShapeshifted(const Stat* wielder = nullptr) const;
 	char* getScrollLabel() const;
+	const char* getTomeLabel() const;
+	int getTomeSpellID() const;
 
 	void apply(int player, Entity* entity);
 	void applyLockpickToWall(int player, int x, int y) const;
@@ -458,31 +702,36 @@ public:
 	int getMaxStackLimit(int player) const;
 
 	bool isShield() const;
-	bool doesItemProvideBeatitudeAC() const;
-	bool doesItemProvidePassiveShieldBonus() const;
+	static bool doesItemProvideBeatitudeAC(ItemType type);
 	bool doesPotionHarmAlliesOnThrown() const;
 
-	Sint32 potionGetEffectHealth() const;
-	Sint32 potionGetEffectDamage() const;
-	Sint32 potionGetEffectDurationMinimum() const;
-	Sint32 potionGetEffectDurationMaximum() const;
-	Sint32 potionGetEffectDurationRandom() const;
-	Sint32 potionGetCursedEffectDurationMinimum() const;
-	Sint32 potionGetCursedEffectDurationMaximum() const;
-	Sint32 potionGetCursedEffectDurationRandom() const;
+	Sint32 potionGetEffectHealth(Entity* my, Stat* myStats) const;
+	Sint32 potionGetEffectDamage(Entity* my, Stat* myStats) const;
+	Sint32 potionGetEffectDurationMinimum(Entity* my, Stat* myStats) const;
+	Sint32 potionGetEffectDurationMaximum(Entity* my, Stat* myStats) const;
+	Sint32 potionGetEffectDurationRandom(Entity* my, Stat* myStats) const;
+	Sint32 potionGetCursedEffectDurationMinimum(Entity* my, Stat* myStats) const;
+	Sint32 potionGetCursedEffectDurationMaximum(Entity* my, Stat* myStats) const;
+	Sint32 potionGetCursedEffectDurationRandom(Entity* my, Stat* myStats) const;
+	static int getBaseFoodSatiation(ItemType type);
 
 	Sint32 getWeight() const;
+	Sint32 getGoldValue() const;
 
 	void foodTinGetDescriptionIndices(int* a, int* b, int* c) const;
 	void foodTinGetDescription(std::string& cookingMethod, std::string& protein, std::string& sides) const;
 	int foodGetPukeChance(Stat* eater) const;
+	int getLootBagPlayer() const;
+	int getLootBagNumItems() const;
+	int getDuckPlayer() const;
 
 	enum ItemBombPlacement : int
 	{
 		BOMB_FLOOR,
 		BOMB_WALL,
 		BOMB_CHEST,
-		BOMB_DOOR
+		BOMB_DOOR,
+		BOMB_COLLIDER
 	};
 	enum ItemBombFacingDirection : int
 	{
@@ -500,32 +749,40 @@ public:
 	};
 	void applyBomb(Entity* parent, ItemType type, ItemBombPlacement placement, ItemBombFacingDirection dir, Entity* thrown, Entity* onEntity);
 	void applyTinkeringCreation(Entity* parent, Entity* thrown);
+	void applyDuck(Uint32 parentUid, real_t x, real_t y, Entity* hitentity, bool onLevelRespawn);
 	bool unableToEquipDueToSwapWeaponTimer(const int player) const;
 	bool tinkeringBotIsMaxHealth() const;
 	bool isTinkeringItemWithThrownLimit() const;
+	static void onItemIdentified(int player, Item* tempItem);
+	static void itemFindUniqueAppearance(Item* tempItem, std::unordered_set<Uint32>& appearancesOfSimilarItems);
 };
 extern Uint32 itemuids;
 
 // item generic
 class ItemGeneric
 {
+	std::string item_name_identified;      // identified item name
+	std::string item_name_unidentified;    // unidentified item name
 public:
-	char* name_identified;      // identified item name
-	char* name_unidentified;    // unidentified item name
 	int index;                  // world model
+	int indexShort;				// short mob world model
 	int fpindex;                // first person model
 	int variations;             // number of model variations
 	int weight;                 // weight per item
-	int value;                  // value per item
+	int gold_value;                  // value per item
 	list_t images;              // item image filenames (inventory)
 	list_t surfaces;            // item image surfaces (inventory)
 	Category category;          // item category
 	int level;					// item level for random generation
-								// equip slot that item can go in
+	// equip slot that item can go in
 	ItemEquippableSlot item_slot = ItemEquippableSlot::NO_EQUIP;
 	std::map<std::string, Sint32> attributes;
 	std::string tooltip = "tooltip_default";
 
+	const char* getIdentifiedName() const { return item_name_identified.c_str(); }
+	const char* getUnidentifiedName() const { return item_name_unidentified.c_str(); }
+	void setIdentifiedName(std::string name) { item_name_identified = name; }
+	void setUnidentifiedName(std::string name) { item_name_unidentified = name; }
 	bool hasAttribute(std::string attribute)
 	{
 		if ( attributes.size() > 0 )
@@ -550,6 +807,7 @@ bool item_PotionBooze(Item*& item, Entity* entity, Entity* usedBy, bool shouldCo
 bool item_PotionJuice(Item*& item, Entity* entity, Entity* usedBy);
 bool item_PotionSickness(Item*& item, Entity* entity, Entity* usedBy);
 bool item_PotionConfusion(Item*& item, Entity* entity, Entity* usedBy);
+bool item_PotionGrease(Item*& item, Entity* entity, Entity* usedBy);
 bool item_PotionCureAilment(Item*& item, Entity* entity, Entity* usedBy);
 bool item_PotionBlindness(Item*& item, Entity* entity, Entity* usedBy);
 bool item_PotionHealing(Item*& item, Entity* entity, Entity* usedBy, bool shouldConsumeItem = true);
@@ -563,48 +821,57 @@ bool item_PotionAcid(Item*& item, Entity* entity, Entity* usedBy);
 bool item_PotionUnstableStorm(Item*& item, Entity* entity, Entity* usedBy, Entity* thrownPotion);
 bool item_PotionParalysis(Item*& item, Entity* entity, Entity* usedBy);
 Entity* item_PotionPolymorph(Item*& item, Entity* entity, Entity* usedBy);
-void item_ScrollMail(Item* item, int player);
-void item_ScrollIdentify(Item* item, int player);
-void item_ScrollLight(Item* item, int player);
-void item_ScrollBlank(Item* item, int player);
-void item_ScrollEnchantWeapon(Item* item, int player);
-void item_ScrollEnchantArmor(Item* item, int player);
-void item_ScrollRemoveCurse(Item* item, int player);
-bool item_ScrollFire(Item* item, int player); // return true if exploded into fire.
-void item_ScrollFood(Item* item, int player);
-void item_ScrollConjureArrow(Item* item, int player);
-void item_ScrollMagicMapping(Item* item, int player);
-void item_ScrollRepair(Item* item, int player);
-void item_ScrollDestroyArmor(Item* item, int player);
-void item_ScrollTeleportation(Item* item, int player);
-void item_ScrollSummon(Item* item, int player);
-void item_AmuletSexChange(Item* item, int player);
+void item_ScrollMail(Item*& item, int player);
+void item_ScrollIdentify(Item*& item, int player);
+void item_ScrollLight(Item*& item, int player);
+void item_ScrollBlank(Item*& item, int player);
+void item_ScrollEnchantWeapon(Item*& item, int player);
+void item_ScrollEnchantArmor(Item*& item, int player);
+void item_ScrollRemoveCurse(Item*& item, int player);
+bool item_ScrollFire(Item*& item, int player); // return true if exploded into fire.
+void item_ScrollFood(Item*& item, int player);
+void item_ScrollConjureArrow(Item*& item, int player);
+void item_ScrollMagicMapping(Item*& item, int player);
+void item_ScrollRepair(Item*& item, int player);
+void item_ScrollDestroyArmor(Item*& item, int player);
+void item_ScrollTeleportation(Item*& item, int player);
+void item_ScrollSummon(Item*& item, int player);
+void item_AmuletSexChange(Item*& item, int player);
 void item_ToolTowel(Item*& item, int player);
-void item_ToolTinOpener(Item* item, int player);
+void item_ToolTinOpener(Item*& item, int player);
 void item_ToolMirror(Item*& item, int player);
-void item_ToolBeartrap(Item*& item, Entity* usedBy);
+Entity* item_ToolBeartrap(Item*& item, Entity* usedBy);
 void item_Food(Item*& item, int player);
 void item_FoodTin(Item*& item, int player);
 void item_FoodAutomaton(Item*& item, int player);
-void item_Gem(Item* item, int player);
 void item_Spellbook(Item*& item, int player);
+void item_ToolLootBag(Item*& item, int player);
 
 //General functions.
 Item* newItem(ItemType type, Status status, Sint16 beatitude, Sint16 count, Uint32 appearance, bool identified, list_t* inventory);
 Item* uidToItem(Uint32 uid);
-ItemType itemCurve(Category cat);
-ItemType itemLevelCurve(Category cat, int minLevel, int maxLevel);
+ItemType itemLevelCurveEntity(Entity& my, Category cat, int minLevel, int maxLevel, BaronyRNG& rng);
+bool itemLevelCurvePostProcess(Entity* my, Item* item, BaronyRNG& rng, 
+#ifdef EDITOR
+	int itemLevel = 0
+#else
+	int itemLevel = currentlevel
+#endif
+	, int* lastItemType = nullptr, int* lastItemSpellType = nullptr
+);
+ItemType itemLevelCurve(Category cat, int minLevel, int maxLevel, BaronyRNG& rng);
 Item* newItemFromEntity(const Entity* entity, bool discardUid = false); //Make sure to call free(item). discardUid will free the new items uid if this is for temp purposes
 Entity* dropItemMonster(Item* item, Entity* monster, Stat* monsterStats, Sint16 count = 1);
 Item** itemSlot(Stat* myStats, Item* item);
 
 enum Category itemCategory(const Item* item);
-Sint32 itemModel(const Item* item);
+Sint32 itemModel(const Item* item, bool shortModel = false, Entity* creature = nullptr);
 Sint32 itemModelFirstperson(const Item* item);
-SDL_Surface* itemSprite(Item* item);
 void consumeItem(Item*& item, int player); //NOTE: Items have to be unequipped before calling this function on them. NOTE: THIS CAN FREE THE ITEM POINTER. Sets item to nullptr if it does.
-bool dropItem(Item* item, int player, bool notifyMessage = true); // return true on free'd item
-void useItem(Item* item, int player, Entity* usedBy = nullptr, bool unequipForDropping = false);
+bool dropItem(Item* item, int player, const bool notifyMessage = true, const bool dropAll = false); // return true on free'd item
+bool playerGreasyDropItem(const int player, Item* const item);
+bool playerThrowDuck(const int player, Item* const item, int charge);
+void useItem(Item* item, int player, Entity* usedBy = nullptr, bool unequipForDropping = false, bool serverCheckUse = false);
 enum EquipItemResult : int
 {
 	EQUIP_ITEM_FAIL_CANT_UNEQUIP,
@@ -629,6 +896,8 @@ void playerTryEquipItemAndUpdateServer(const int player, Item* item, bool checkI
 void clientSendEquipUpdateToServer(EquipItemSendToServerSlot slot, EquipItemResult equipType, int player,
 	ItemType type, Status status, Sint16 beatitude, int count, Uint32 appearance, bool identified);
 void clientUnequipSlotAndUpdateServer(const int player, EquipItemSendToServerSlot slot, Item* item);
+void clientSendAppearanceUpdateToServer(const int player, Item* item, const bool onIdentify);
+void clientSendItemTypeUpdateToServer(const int player, Item* item, ItemType prevItemType);
 EquipItemResult equipItem(Item* item, Item** slot, int player, bool checkInventorySpaceForPaperDoll);
 enum ItemStackResults : int
 {
@@ -691,35 +960,41 @@ static const int ENCHANTED_FEATHER_MAX_DURABILITY = 101;
 static const int QUIVER_MAX_AMMO_QTY = 51;
 static const int SCRAP_MAX_STACK_QTY = 101;
 static const int THROWN_GEM_MAX_STACK_QTY = 9;
+static const int MAGICSTAFF_SCEPTER_CHARGE_MAX = 101;
+static const int TOME_APPEARANCE_MAX = 1024;
 
 //-----ITEM COMPARISON FUNCS-----
 /*
  * Only compares items of the same type.
  */
-int itemCompare(const Item* item1, const Item* item2, bool checkAppearance);
+int itemCompare(const Item* item1, const Item* item2, bool checkAppearance, bool comparisonUsedForStacking = true);
 
 /*
  * Returns true if potion is harmful to the player.
  */
 bool isPotionBad(const Item& potion);
 bool isRangedWeapon(const Item& item);
+bool isRangedWeapon(const ItemType type);
 bool isMeleeWeapon(const Item& item);
 bool itemIsThrowableTinkerTool(const Item* item);
 
-void createCustomInventory(Stat* stats, int itemLimit);
+void createCustomInventory(Stat* stats, int itemLimit, BaronyRNG& rng);
 void copyItem(Item* itemToSet, const Item* itemToCopy);
 bool swapMonsterWeaponWithInventoryItem(Entity* my, Stat* myStats, node_t* inventoryNode, bool moveStack, bool overrideCursed);
 bool monsterUnequipSlot(Stat* myStats, Item** slot, Item* itemToUnequip);
 bool monsterUnequipSlotFromCategory(Stat* myStats, Item** slot, Category cat);
-node_t* itemNodeInInventory(const Stat* myStats, Sint32 itemToFind, Category cat);
+node_t* itemNodeInInventory(const Stat* myStats, Sint32 itemToFind, Category cat, bool randomSlot = false);
 node_t* spellbookNodeInInventory(const Stat* myStats, int spellIDToFind);
 node_t* getRangedWeaponItemNodeInInventory(const Stat* myStats, bool includeMagicstaff);
 node_t* getMeleeWeaponItemNodeInInventory(const Stat* myStats);
-ItemType itemTypeWithinGoldValue(int cat, int minValue, int maxValue);
+ItemType itemTypeWithinGoldValue(int cat, int minValue, int maxValue, BaronyRNG& rng);
 bool itemSpriteIsQuiverThirdPersonModel(int sprite);
 bool itemSpriteIsQuiverBaseThirdPersonModel(int sprite);
+bool itemSpriteIsFociThirdPersonModel(const int sprite);
 bool itemTypeIsQuiver(ItemType type);
-bool itemSpriteIsBreastpiece(int sprite);
+bool itemTypeIsFoci(ItemType type);
+bool itemTypeIsInstrument(ItemType type);
+bool itemTypeIsThrownBall(ItemType type);
 real_t rangedAttackGetSpeedModifier(const Stat* myStats);
 bool rangedWeaponUseQuiverOnAttack(const Stat* myStats);
 real_t getArtifactWeaponEffectChance(ItemType type, Stat& wielder, real_t* effectAmount);
@@ -734,4 +1009,21 @@ static const int MONSTER_ITEM_UNDROPPABLE_APPEARANCE = 1234567890;
 static const int ITEM_TINKERING_APPEARANCE = 987654320;
 static const int ITEM_GENERATED_QUIVER_APPEARANCE = 1122334455;
 
-bool loadItemLists();
+enum SpellbookColors
+{
+	SPELLBOOK_COLOR_THAUM_2,		//"items/images/SpellbookYellow.png",
+	SPELLBOOK_COLOR_THAUM_3,		//"items/images/SpellbookWhite.png",
+	SPELLBOOK_COLOR_THAUM_1,		//"items/images/SpellbookBlack.png",
+	SPELLBOOK_COLOR_MYSTICISM_2,	//"items/images/SpellbookRed.png",
+	SPELLBOOK_COLOR_SORCERY_1,		//"items/images/SpellbookBrown.png",
+	SPELLBOOK_COLOR_SORCERY_3,		//"items/images/SpellbookOrange.png",
+	SPELLBOOK_COLOR_MYSTICISM_1,	//"items/images/SpellbookGreen.png",
+	SPELLBOOK_COLOR_SORCERY_2,		//"items/images/SpellbookBlue.png",
+	SPELLBOOK_COLOR_MYSTICISM_3		//"items/images/SpellbookPurple.png"
+};
+
+int getItemVariationFromSpellbookOrTome(const Item& item);
+
+#ifdef EDITOR
+SDL_Surface* itemSprite(Item* const item);
+#endif

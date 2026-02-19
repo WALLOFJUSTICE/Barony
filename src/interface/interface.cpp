@@ -38,93 +38,95 @@
 #include "../ui/Image.hpp"
 #include "../ui/Button.hpp"
 #include "../ui/Slider.hpp"
+#include "../collision.hpp"
+#include "../classdescriptions.hpp"
 
 Uint32 svFlags = 30;
 Uint32 settings_svFlags = svFlags;
-SDL_Surface* backdrop_blessed_bmp = nullptr;
-SDL_Surface* backdrop_cursed_bmp = nullptr;
-SDL_Surface* status_bmp = nullptr;
-SDL_Surface* character_bmp = nullptr;
-SDL_Surface* hunger_bmp = nullptr;
-SDL_Surface* hunger_blood_bmp = nullptr;
-SDL_Surface* hunger_boiler_bmp = nullptr;
-SDL_Surface* hunger_boiler_hotflame_bmp = nullptr;
-SDL_Surface* hunger_boiler_flame_bmp = nullptr;
-SDL_Surface* minotaur_bmp = nullptr;
-int textscroll = 0;
-int inventorycategory = 7; // inventory window defaults to wildcard
-int itemscroll = 0;
 view_t camera_charsheet;
 real_t camera_charsheet_offsetyaw = (330) * PI / 180;
 
-SDL_Surface* font12x12_small_bmp = NULL;
-SDL_Surface* inventoryChest_bmp = NULL;
-SDL_Surface* invclose_bmp = NULL;
-SDL_Surface* invgraball_bmp = NULL;
-SDL_Surface* button_bmp = NULL, *smallbutton_bmp = NULL, *invup_bmp = NULL, *invdown_bmp = NULL;
-bool gui_clickdrag[MAXPLAYERS] = { false };
-int dragoffset_x[MAXPLAYERS] = { 0 };
-int dragoffset_y[MAXPLAYERS] = { 0 };
+bool keepInventoryGlobal = false;
+
 
 list_t chestInv[MAXPLAYERS];
 
-SDL_Surface* rightsidebar_titlebar_img = NULL;
-SDL_Surface* rightsidebar_slot_img = NULL;
-SDL_Surface* rightsidebar_slot_highlighted_img = NULL;
-SDL_Surface* rightsidebar_slot_grayedout_img = NULL;
-int rightsidebar_height = 0;
+//SDL_Surface* font12x12_small_bmp = NULL;
+//bool gui_clickdrag[MAXPLAYERS] = { false };
+//int dragoffset_x[MAXPLAYERS] = { 0 };
+//int dragoffset_y[MAXPLAYERS] = { 0 };
+//int textscroll = 0;
+//int inventorycategory = 7; // inventory window defaults to wildcard
+//int itemscroll = 0;
+//SDL_Surface* inventoryChest_bmp = NULL;
+//SDL_Surface* invclose_bmp = NULL;
+//SDL_Surface* invgraball_bmp = NULL;
+//SDL_Surface* button_bmp = NULL, *smallbutton_bmp = NULL, *invup_bmp = NULL, *invdown_bmp = NULL;
+//SDL_Surface* backdrop_blessed_bmp = nullptr;
+//SDL_Surface* backdrop_cursed_bmp = nullptr;
+//SDL_Surface* status_bmp = nullptr;
+//SDL_Surface* character_bmp = nullptr;
+//SDL_Surface* hunger_bmp = nullptr;
+//SDL_Surface* hunger_blood_bmp = nullptr;
+//SDL_Surface* hunger_boiler_bmp = nullptr;
+//SDL_Surface* hunger_boiler_hotflame_bmp = nullptr;
+//SDL_Surface* hunger_boiler_flame_bmp = nullptr;
+//SDL_Surface* minotaur_bmp = nullptr;
+//SDL_Surface* rightsidebar_titlebar_img = NULL;
+//SDL_Surface* rightsidebar_slot_img = NULL;
+//SDL_Surface* rightsidebar_slot_highlighted_img = NULL;
+//SDL_Surface* rightsidebar_slot_grayedout_img = NULL;
+//int rightsidebar_height = 0;
 
-SDL_Surface* bookgui_img = NULL;
-SDL_Surface* book_highlighted_left_img = NULL;
-SDL_Surface* book_highlighted_right_img = NULL;
+//SDL_Surface* bookgui_img = NULL;
+//SDL_Surface* book_highlighted_left_img = NULL;
+//SDL_Surface* book_highlighted_right_img = NULL;
 
-SDL_Surface* magicspellList_bmp = NULL;
-SDL_Surface* spell_list_titlebar_bmp = NULL;
-SDL_Surface* spell_list_gui_slot_bmp = NULL;
-SDL_Surface* spell_list_gui_slot_highlighted_bmp = NULL;
-SDL_Surface* textup_bmp = NULL;
-SDL_Surface* textdown_bmp = NULL;
-SDL_Surface* attributesleft_bmp = NULL;
-SDL_Surface* attributesright_bmp = NULL;
-SDL_Surface* attributesleftunclicked_bmp = NULL;
-SDL_Surface* attributesrightunclicked_bmp = NULL;
-SDL_Surface* inventory_bmp = NULL, *inventoryoption_bmp = NULL, *inventoryoptionChest_bmp = NULL, *equipped_bmp = NULL;
-SDL_Surface* itembroken_bmp = nullptr;
-//SDL_Surface *category_bmp[NUMCATEGORIES];
-SDL_Surface* shopkeeper_bmp = NULL;
-SDL_Surface* shopkeeper2_bmp = NULL;
-SDL_Surface* damage_bmp = NULL;
-SDL_Surface *str_bmp64u = NULL;
-SDL_Surface *dex_bmp64u = NULL;
-SDL_Surface *con_bmp64u = NULL;
-SDL_Surface *int_bmp64u = NULL;
-SDL_Surface *per_bmp64u = NULL;
-SDL_Surface *chr_bmp64u = NULL;
-SDL_Surface *str_bmp64 = NULL;
-SDL_Surface *dex_bmp64 = NULL;
-SDL_Surface *con_bmp64 = NULL;
-SDL_Surface *int_bmp64 = NULL;
-SDL_Surface *per_bmp64 = NULL;
-SDL_Surface *chr_bmp64 = NULL;
-SDL_Surface *sidebar_lock_bmp = nullptr;
-SDL_Surface *sidebar_unlock_bmp = nullptr;
-SDL_Surface *effect_drunk_bmp = nullptr;
-SDL_Surface *effect_polymorph_bmp = nullptr;
-SDL_Surface *effect_hungover_bmp = nullptr;
-int spellscroll = 0;
-int magicspell_list_offset_x = 0;
-int magicspell_list_offset_y = 0;
-bool dragging_magicspell_list_GUI = false;
-int magic_GUI_state = 0;
-SDL_Rect magic_gui_pos;
-SDL_Surface* sustained_spell_generic_icon = NULL;
+//SDL_Surface* magicspellList_bmp = NULL;
+//SDL_Surface* spell_list_titlebar_bmp = NULL;
+//SDL_Surface* spell_list_gui_slot_bmp = NULL;
+//SDL_Surface* spell_list_gui_slot_highlighted_bmp = NULL;
+//SDL_Surface* textup_bmp = NULL;
+//SDL_Surface* textdown_bmp = NULL;
+//SDL_Surface* attributesleft_bmp = NULL;
+//SDL_Surface* attributesright_bmp = NULL;
+//SDL_Surface* attributesleftunclicked_bmp = NULL;
+//SDL_Surface* attributesrightunclicked_bmp = NULL;
+//SDL_Surface* inventory_bmp = NULL, *inventoryoption_bmp = NULL, *inventoryoptionChest_bmp = NULL, *equipped_bmp = NULL;
+//SDL_Surface* itembroken_bmp = nullptr;
+//SDL_Surface *category_bmp[Category::CATEGORY_MAX];
+//SDL_Surface* shopkeeper_bmp = NULL;
+//SDL_Surface* shopkeeper2_bmp = NULL;
+//SDL_Surface* damage_bmp = NULL;
+//SDL_Surface *str_bmp64u = NULL;
+//SDL_Surface *dex_bmp64u = NULL;
+//SDL_Surface *con_bmp64u = NULL;
+//SDL_Surface *int_bmp64u = NULL;
+//SDL_Surface *per_bmp64u = NULL;
+//SDL_Surface *chr_bmp64u = NULL;
+//SDL_Surface *str_bmp64 = NULL;
+//SDL_Surface *dex_bmp64 = NULL;
+//SDL_Surface *con_bmp64 = NULL;
+//SDL_Surface *int_bmp64 = NULL;
+//SDL_Surface *per_bmp64 = NULL;
+//SDL_Surface *chr_bmp64 = NULL;
+//SDL_Surface *sidebar_lock_bmp = nullptr;
+//SDL_Surface *sidebar_unlock_bmp = nullptr;
+//SDL_Surface *effect_drunk_bmp = nullptr;
+//SDL_Surface *effect_polymorph_bmp = nullptr;
+//SDL_Surface *effect_hungover_bmp = nullptr;
+//int spellscroll = 0;
+//int magicspell_list_offset_x = 0;
+//int magicspell_list_offset_y = 0;
+//bool dragging_magicspell_list_GUI = false;
+//int magic_GUI_state = 0;
+//SDL_Rect magic_gui_pos;
+//SDL_Surface* sustained_spell_generic_icon = NULL;
+//SDL_Surface* hotbar_img = NULL;
+//SDL_Surface* hotbar_spell_img = NULL;
 
 int buttonclick = 0;
 
-SDL_Surface* hotbar_img = NULL;
-SDL_Surface* hotbar_spell_img = NULL;
-
-list_t damageIndicators[MAXPLAYERS];
 
 bool auto_hotbar_new_items = true;
 bool auto_hotbar_categories[NUM_HOTBAR_CATEGORIES] = {	true, true, true, true, 
@@ -133,7 +135,6 @@ bool auto_hotbar_categories[NUM_HOTBAR_CATEGORIES] = {	true, true, true, true,
 int autosort_inventory_categories[NUM_AUTOSORT_CATEGORIES] = {	0, 0, 0, 0,
 																0, 0, 0, 0,
 																0, 0, 0, 0 };
-bool hotbar_numkey_quick_add = false;
 bool disable_messages = false;
 bool right_click_protect = false;
 bool auto_appraise_new_items = true;
@@ -149,10 +150,14 @@ bool uiscale_charactersheet = false;
 bool uiscale_skillspage = false;
 const int inscriptionSlotHeight = 40;
 
+DamageIndicatorHandler_t DamageIndicatorHandler;
 EnemyHPDamageBarHandler enemyHPDamageBarHandler[MAXPLAYERS];
 FollowerRadialMenu FollowerMenu[MAXPLAYERS];
+CalloutRadialMenu CalloutMenu[MAXPLAYERS];
 GenericGUIMenu GenericGUI[MAXPLAYERS];
 
+bool EnemyHPDamageBarHandler::bDamageGibTypesEnabled = true;
+std::map<int, std::vector<int>> EnemyHPDamageBarHandler::damageGibAnimCurves;
 int EnemyHPDamageBarHandler::maxTickLifetime = 120;
 int EnemyHPDamageBarHandler::maxTickFurnitureLifetime = 60;
 int EnemyHPDamageBarHandler::shortDistanceHPBarFadeTicks = TICKS_PER_SECOND / 2;
@@ -162,140 +167,133 @@ std::vector<std::pair<real_t, int>> EnemyHPDamageBarHandler::widthHealthBreakpoi
 
 std::vector<std::pair<SDL_Surface**, std::string>> systemResourceImages =
 {
-	std::make_pair(&title_bmp, "images/system/title.png"),
-	std::make_pair(&logo_bmp, "images/system/logo.png"),
-	std::make_pair(&cursor_bmp, "images/system/cursor.png"),
-	std::make_pair(&cross_bmp, "images/system/cross.png"),
-	std::make_pair(&selected_cursor_bmp, "images/system/selectedcursor.png"),
-
-	std::make_pair(&fancyWindow_bmp, "images/system/fancyWindow.png"),
 	std::make_pair(&font8x8_bmp, "images/system/font8x8.png"),
 	std::make_pair(&font12x12_bmp, "images/system/font12x12.png"),
 	std::make_pair(&font16x16_bmp, "images/system/font16x16.png"),
 
-	std::make_pair(&font12x12_small_bmp, "images/system/font12x12_small.png"),
-	std::make_pair(&backdrop_blessed_bmp, "images/system/backdrop_blessed.png"),
-	std::make_pair(&backdrop_cursed_bmp, "images/system/backdrop_cursed.png"),
-	std::make_pair(&button_bmp, "images/system/ButtonHighlighted.png"),
-	std::make_pair(&smallbutton_bmp, "images/system/SmallButtonHighlighted.png"),
-	std::make_pair(&invup_bmp, "images/system/InventoryUpHighlighted.png"),
-	std::make_pair(&invdown_bmp, "images/system/InventoryDownHighlighted.png"),
-	std::make_pair(&status_bmp, "images/system/StatusBar.png"),
-	std::make_pair(&character_bmp, "images/system/CharacterSheet.png"),
-	std::make_pair(&hunger_bmp, "images/system/Hunger.png"),
-	std::make_pair(&hunger_blood_bmp, "images/system/Hunger_blood.png"),
-	std::make_pair(&hunger_boiler_bmp, "images/system/Hunger_boiler.png"),
-	std::make_pair(&hunger_boiler_hotflame_bmp, "images/system/Hunger_boiler_hotfire.png"),
-	std::make_pair(&hunger_boiler_flame_bmp, "images/system/Hunger_boiler_fire.png"),
-	std::make_pair(&minotaur_bmp, "images/system/minotaur.png"),
-	std::make_pair(&attributesleft_bmp, "images/system/AttributesLeftHighlighted.png"),
-	std::make_pair(&attributesright_bmp, "images/system/AttributesRightHighlighted.png"),
+	//std::make_pair(&font12x12_small_bmp, "images/system/font12x12_small.png"),
+	//std::make_pair(&backdrop_blessed_bmp, "images/system/backdrop_blessed.png"),
+	//std::make_pair(&backdrop_cursed_bmp, "images/system/backdrop_cursed.png"),
+	//std::make_pair(&button_bmp, "images/system/ButtonHighlighted.png"),
+	//std::make_pair(&smallbutton_bmp, "images/system/SmallButtonHighlighted.png"),
+	//std::make_pair(&invup_bmp, "images/system/InventoryUpHighlighted.png"),
+	//std::make_pair(&invdown_bmp, "images/system/InventoryDownHighlighted.png"),
+	//std::make_pair(&status_bmp, "images/system/StatusBar.png"),
+	//std::make_pair(&character_bmp, "images/system/CharacterSheet.png"),
+	//std::make_pair(&hunger_bmp, "images/system/Hunger.png"),
+	//std::make_pair(&hunger_blood_bmp, "images/system/Hunger_blood.png"),
+	//std::make_pair(&hunger_boiler_bmp, "images/system/Hunger_boiler.png"),
+	//std::make_pair(&hunger_boiler_hotflame_bmp, "images/system/Hunger_boiler_hotfire.png"),
+	//std::make_pair(&hunger_boiler_flame_bmp, "images/system/Hunger_boiler_fire.png"),
+	//std::make_pair(&minotaur_bmp, "images/system/minotaur.png"),
+	//std::make_pair(&attributesleft_bmp, "images/system/AttributesLeftHighlighted.png"),
+	//std::make_pair(&attributesright_bmp, "images/system/AttributesRightHighlighted.png"),
 
 	//General GUI images.
-	std::make_pair(&attributesleftunclicked_bmp, "images/system/AttributesLeft.png"),
-	std::make_pair(&attributesrightunclicked_bmp, "images/system/AttributesRight.png"),
-	std::make_pair(&shopkeeper_bmp, "images/system/shopkeeper.png"),
-	std::make_pair(&shopkeeper2_bmp, "images/system/shopkeeper2.png"),
-	std::make_pair(&damage_bmp, "images/system/damage.png"),
+	//std::make_pair(&attributesleftunclicked_bmp, "images/system/AttributesLeft.png"),
+	//std::make_pair(&attributesrightunclicked_bmp, "images/system/AttributesRight.png"),
+	//std::make_pair(&shopkeeper_bmp, "images/system/shopkeeper.png"),
+	//std::make_pair(&shopkeeper2_bmp, "images/system/shopkeeper2.png"),
+	//std::make_pair(&damage_bmp, "images/system/damage.png"),
 
 	//Magic GUI images.
-	std::make_pair(&magicspellList_bmp, "images/system/spellList.png"),
-	std::make_pair(&spell_list_titlebar_bmp, "images/system/spellListTitlebar.png"),
-	std::make_pair(&spell_list_gui_slot_bmp, "images/system/spellListSlot.png"),
-	std::make_pair(&spell_list_gui_slot_highlighted_bmp, "images/system/spellListSlotHighlighted.png"),
-	std::make_pair(&sustained_spell_generic_icon, "images/system/magic/channeled_spell.png"),
+	//std::make_pair(&magicspellList_bmp, "images/system/spellList.png"),
+	//std::make_pair(&spell_list_titlebar_bmp, "images/system/spellListTitlebar.png"),
+	//std::make_pair(&spell_list_gui_slot_bmp, "images/system/spellListSlot.png"),
+	//std::make_pair(&spell_list_gui_slot_highlighted_bmp, "images/system/spellListSlotHighlighted.png"),
+	//std::make_pair(&sustained_spell_generic_icon, "images/system/magic/channeled_spell.png"),
 
 	// inventory GUI images.
-	std::make_pair(&inventory_bmp, "images/system/Inventory.png"),
-	std::make_pair(&inventoryoption_bmp, "images/system/InventoryOption.png"),
-	std::make_pair(&inventory_mode_item_img, "images/system/inventory_mode_item.png"),
-	std::make_pair(&inventory_mode_item_highlighted_img, "images/system/inventory_mode_item_highlighted.png"),
-	std::make_pair(&inventory_mode_spell_img, "images/system/inventory_mode_spell.png"),
-	std::make_pair(&inventory_mode_spell_highlighted_img, "images/system/inventory_mode_spell_highlighted.png"),
-	std::make_pair(&equipped_bmp, "images/system/Equipped.png"),
-	std::make_pair(&itembroken_bmp, "images/system/Broken.png"),
+	//std::make_pair(&inventory_bmp, "images/system/Inventory.png"),
+	//std::make_pair(&inventoryoption_bmp, "images/system/InventoryOption.png"),
+	//std::make_pair(&inventory_mode_item_img, "images/system/inventory_mode_item.png"),
+	//std::make_pair(&inventory_mode_item_highlighted_img, "images/system/inventory_mode_item_highlighted.png"),
+	//std::make_pair(&inventory_mode_spell_img, "images/system/inventory_mode_spell.png"),
+	//std::make_pair(&inventory_mode_spell_highlighted_img, "images/system/inventory_mode_spell_highlighted.png"),
+	//std::make_pair(&equipped_bmp, "images/system/Equipped.png"),
+	//std::make_pair(&itembroken_bmp, "images/system/Broken.png"),
 
 	//Chest images..
-	std::make_pair(&inventoryChest_bmp, "images/system/InventoryChest.png"),
-	std::make_pair(&inventoryoptionChest_bmp, "images/system/InventoryOptionChest.png"),
-	std::make_pair(&invclose_bmp, "images/system/InventoryCloseHighlighted.png"),
-	std::make_pair(&invgraball_bmp, "images/system/InventoryChestGraballHighlighted.png"),
+	//std::make_pair(&inventoryChest_bmp, "images/system/InventoryChest.png"),
+	//std::make_pair(&inventoryoptionChest_bmp, "images/system/InventoryOptionChest.png"),
+	//std::make_pair(&invclose_bmp, "images/system/InventoryCloseHighlighted.png"),
+	//std::make_pair(&invgraball_bmp, "images/system/InventoryChestGraballHighlighted.png"),
 
 	//Identify GUI images...
-	std::make_pair(&identifyGUI_img, "images/system/identifyGUI.png"),
-	std::make_pair(&rightsidebar_slot_grayedout_img, "images/system/rightSidebarSlotGrayedOut.png"),
-	std::make_pair(&bookgui_img, "images/system/book.png"),
-	std::make_pair(&book_highlighted_left_img, "images/system/bookpageleft-highlighted.png"),
-	std::make_pair(&book_highlighted_right_img, "images/system/bookpageright-highlighted.png"),
+	//std::make_pair(&identifyGUI_img, "images/system/identifyGUI.png"),
+	//std::make_pair(&rightsidebar_slot_grayedout_img, "images/system/rightSidebarSlotGrayedOut.png"),
+	//std::make_pair(&bookgui_img, "images/system/book.png"),
+	//std::make_pair(&book_highlighted_left_img, "images/system/bookpageleft-highlighted.png"),
+	//std::make_pair(&book_highlighted_right_img, "images/system/bookpageright-highlighted.png"),
 
 	//Levelup images.
-	std::make_pair(&str_bmp64u, "images/system/str64u.png"),
-	std::make_pair(&dex_bmp64u, "images/system/dex64u.png"),
-	std::make_pair(&con_bmp64u, "images/system/con64u.png"),
-	std::make_pair(&int_bmp64u, "images/system/int64u.png"),
-	std::make_pair(&per_bmp64u, "images/system/per64u.png"),
-	std::make_pair(&chr_bmp64u, "images/system/chr64u.png"),
-	std::make_pair(&str_bmp64, "images/system/str64.png"),
-	std::make_pair(&dex_bmp64, "images/system/dex64.png"),
-	std::make_pair(&con_bmp64, "images/system/con64.png"),
-	std::make_pair(&int_bmp64, "images/system/int64.png"),
-	std::make_pair(&per_bmp64, "images/system/per64.png"),
-	std::make_pair(&chr_bmp64, "images/system/chr64.png"),
+	//std::make_pair(&str_bmp64u, "images/system/str64u.png"),
+	//std::make_pair(&dex_bmp64u, "images/system/dex64u.png"),
+	//std::make_pair(&con_bmp64u, "images/system/con64u.png"),
+	//std::make_pair(&int_bmp64u, "images/system/int64u.png"),
+	//std::make_pair(&per_bmp64u, "images/system/per64u.png"),
+	//std::make_pair(&chr_bmp64u, "images/system/chr64u.png"),
+	//std::make_pair(&str_bmp64, "images/system/str64.png"),
+	//std::make_pair(&dex_bmp64, "images/system/dex64.png"),
+	//std::make_pair(&con_bmp64, "images/system/con64.png"),
+	//std::make_pair(&int_bmp64, "images/system/int64.png"),
+	//std::make_pair(&per_bmp64, "images/system/per64.png"),
+	//std::make_pair(&chr_bmp64, "images/system/chr64.png"),
 
 	//Misc GUI images.
-	std::make_pair(&sidebar_lock_bmp, "images/system/locksidebar.png"),
-	std::make_pair(&sidebar_unlock_bmp, "images/system/unlocksidebar.png"),
-	std::make_pair(&hotbar_img, "images/system/hotbar_slot.png"),
-	std::make_pair(&hotbar_spell_img, "images/system/magic/hotbar_spell.png"),
+	//std::make_pair(&sidebar_lock_bmp, "images/system/locksidebar.png"),
+	//std::make_pair(&sidebar_unlock_bmp, "images/system/unlocksidebar.png"),
+	//std::make_pair(&hotbar_img, "images/system/hotbar_slot.png"),
+	//std::make_pair(&hotbar_spell_img, "images/system/magic/hotbar_spell.png"),
 
 	//Misc effect images.
-	std::make_pair(&effect_drunk_bmp, "images/system/drunk.png"),
-	std::make_pair(&effect_polymorph_bmp, "images/system/polymorph.png"),
-	std::make_pair(&effect_hungover_bmp, "images/system/hungover.png")
+	//std::make_pair(&effect_drunk_bmp, "images/system/drunk.png"),
+	//std::make_pair(&effect_polymorph_bmp, "images/system/polymorph.png"),
+	//std::make_pair(&effect_hungover_bmp, "images/system/hungover.png")
 };
 
 bool loadInterfaceResources()
 {
 	//General GUI images.
-	font12x12_small_bmp = loadImage("images/system/font12x12_small.png");
-	backdrop_blessed_bmp = loadImage("images/system/backdrop_blessed.png");
-	backdrop_cursed_bmp = loadImage("images/system/backdrop_cursed.png");
-	button_bmp = loadImage("images/system/ButtonHighlighted.png");
-	smallbutton_bmp = loadImage("images/system/SmallButtonHighlighted.png");
-	invup_bmp = loadImage("images/system/InventoryUpHighlighted.png");
-	invdown_bmp = loadImage("images/system/InventoryDownHighlighted.png");
-	status_bmp = loadImage("images/system/StatusBar.png");
-	character_bmp = loadImage("images/system/CharacterSheet.png");
-	hunger_bmp = loadImage("images/system/Hunger.png");
-	hunger_blood_bmp = loadImage("images/system/Hunger_blood.png");
-	hunger_boiler_bmp = loadImage("images/system/Hunger_boiler.png");
-	hunger_boiler_hotflame_bmp = loadImage("images/system/Hunger_boiler_hotfire.png");
-	hunger_boiler_flame_bmp = loadImage("images/system/Hunger_boiler_fire.png");
-	minotaur_bmp = loadImage("images/system/minotaur.png"); // the file "images/system/minotaur.png" doesn't exist in current Data
+	//font12x12_small_bmp = loadImage("images/system/font12x12_small.png");
+	//backdrop_blessed_bmp = loadImage("images/system/backdrop_blessed.png");
+	//backdrop_cursed_bmp = loadImage("images/system/backdrop_cursed.png");
+	//button_bmp = loadImage("images/system/ButtonHighlighted.png");
+	//smallbutton_bmp = loadImage("images/system/SmallButtonHighlighted.png");
+	//invup_bmp = loadImage("images/system/InventoryUpHighlighted.png");
+	//invdown_bmp = loadImage("images/system/InventoryDownHighlighted.png");
+	//status_bmp = loadImage("images/system/StatusBar.png");
+	//character_bmp = loadImage("images/system/CharacterSheet.png");
+	//hunger_bmp = loadImage("images/system/Hunger.png");
+	//hunger_blood_bmp = loadImage("images/system/Hunger_blood.png");
+	//hunger_boiler_bmp = loadImage("images/system/Hunger_boiler.png");
+	//hunger_boiler_hotflame_bmp = loadImage("images/system/Hunger_boiler_hotfire.png");
+	//hunger_boiler_flame_bmp = loadImage("images/system/Hunger_boiler_fire.png");
+	//minotaur_bmp = loadImage("images/system/minotaur.png"); // the file "images/system/minotaur.png" doesn't exist in current Data
 	//textup_bmp = loadImage("images/system/TextBoxUpHighlighted.png");
 	//textdown_bmp = loadImage("images/system/TextBoxDownHighlighted.png");
-	attributesleft_bmp = loadImage("images/system/AttributesLeftHighlighted.png");
-	attributesright_bmp = loadImage("images/system/AttributesRightHighlighted.png");
-	attributesleftunclicked_bmp = loadImage("images/system/AttributesLeft.png");
-	attributesrightunclicked_bmp = loadImage("images/system/AttributesRight.png");
-	shopkeeper_bmp = loadImage("images/system/shopkeeper.png");
-	shopkeeper2_bmp = loadImage("images/system/shopkeeper2.png");
-	damage_bmp = loadImage("images/system/damage.png");
+	//attributesleft_bmp = loadImage("images/system/AttributesLeftHighlighted.png");
+	//attributesright_bmp = loadImage("images/system/AttributesRightHighlighted.png");
+	//attributesleftunclicked_bmp = loadImage("images/system/AttributesLeft.png");
+	//attributesrightunclicked_bmp = loadImage("images/system/AttributesRight.png");
+	//shopkeeper_bmp = loadImage("images/system/shopkeeper.png");
+	//shopkeeper2_bmp = loadImage("images/system/shopkeeper2.png");
+	//damage_bmp = loadImage("images/system/damage.png");
 
 	//Magic GUI images.
-	magicspellList_bmp = loadImage("images/system/spellList.png");
-	spell_list_titlebar_bmp = loadImage("images/system/spellListTitlebar.png");
-	spell_list_gui_slot_bmp = loadImage("images/system/spellListSlot.png");
-	spell_list_gui_slot_highlighted_bmp = loadImage("images/system/spellListSlotHighlighted.png");
-	sustained_spell_generic_icon = loadImage("images/system/magic/channeled_spell.png");
-	inventory_bmp = loadImage("images/system/Inventory.png");
-	inventoryoption_bmp = loadImage("images/system/InventoryOption.png");
-	inventory_mode_item_img = loadImage("images/system/inventory_mode_item.png");
-	inventory_mode_item_highlighted_img = loadImage("images/system/inventory_mode_item_highlighted.png");
-	inventory_mode_spell_img = loadImage("images/system/inventory_mode_spell.png");
-	inventory_mode_spell_highlighted_img = loadImage("images/system/inventory_mode_spell_highlighted.png");
-	equipped_bmp = loadImage("images/system/Equipped.png");
-	itembroken_bmp = loadImage("images/system/Broken.png");
+	//magicspellList_bmp = loadImage("images/system/spellList.png");
+	//spell_list_titlebar_bmp = loadImage("images/system/spellListTitlebar.png");
+	//spell_list_gui_slot_bmp = loadImage("images/system/spellListSlot.png");
+	//spell_list_gui_slot_highlighted_bmp = loadImage("images/system/spellListSlotHighlighted.png");
+	//sustained_spell_generic_icon = loadImage("images/system/magic/channeled_spell.png");
+	//inventory_bmp = loadImage("images/system/Inventory.png");
+	//inventoryoption_bmp = loadImage("images/system/InventoryOption.png");
+	//inventory_mode_item_img = loadImage("images/system/inventory_mode_item.png");
+	//inventory_mode_item_highlighted_img = loadImage("images/system/inventory_mode_item_highlighted.png");
+	//inventory_mode_spell_img = loadImage("images/system/inventory_mode_spell.png");
+	//inventory_mode_spell_highlighted_img = loadImage("images/system/inventory_mode_spell_highlighted.png");
+	//equipped_bmp = loadImage("images/system/Equipped.png");
+	//itembroken_bmp = loadImage("images/system/Broken.png");
 	//sky_bmp=scaleSurface(loadImage("images/system/sky.png"), 1280*(xres/320.0),468*(xres/320.0));
 	/*category_bmp[0]=loadImage("images/system/Weapon.png");
 	category_bmp[1]=loadImage("images/system/Armor.png");
@@ -311,13 +309,13 @@ bool loadInterfaceResources()
 	category_bmp[11]=loadImage("images/system/Spellbook.png");*/
 
 	//Chest images..
-	inventoryChest_bmp = loadImage("images/system/InventoryChest.png");
-	inventoryoptionChest_bmp = loadImage("images/system/InventoryOptionChest.png");
-	invclose_bmp = loadImage("images/system/InventoryCloseHighlighted.png");
-	invgraball_bmp = loadImage("images/system/InventoryChestGraballHighlighted.png");
+	//inventoryChest_bmp = loadImage("images/system/InventoryChest.png");
+	//inventoryoptionChest_bmp = loadImage("images/system/InventoryOptionChest.png");
+	//invclose_bmp = loadImage("images/system/InventoryCloseHighlighted.png");
+	//invgraball_bmp = loadImage("images/system/InventoryChestGraballHighlighted.png");
 
 	//Identify GUI images...
-	identifyGUI_img = loadImage("images/system/identifyGUI.png");
+	//identifyGUI_img = loadImage("images/system/identifyGUI.png");
 
 	/*rightsidebar_titlebar_img = loadImage("images/system/rightSidebarTitlebar.png");
 	if (!rightsidebar_titlebar_img) {
@@ -334,46 +332,40 @@ bool loadInterfaceResources()
 		printlog( "Failed to load \"images/system/rightSidebarSlotHighlighted.png\".");
 		return false;
 	}*/
-	rightsidebar_titlebar_img = spell_list_titlebar_bmp;
-	rightsidebar_slot_img = spell_list_gui_slot_bmp;
-	rightsidebar_slot_highlighted_img = spell_list_gui_slot_highlighted_bmp;
-	rightsidebar_slot_grayedout_img = loadImage("images/system/rightSidebarSlotGrayedOut.png");
+	//rightsidebar_titlebar_img = spell_list_titlebar_bmp;
+	//rightsidebar_slot_img = spell_list_gui_slot_bmp;
+	//rightsidebar_slot_highlighted_img = spell_list_gui_slot_highlighted_bmp;
+	//rightsidebar_slot_grayedout_img = loadImage("images/system/rightSidebarSlotGrayedOut.png");
 
-	bookgui_img = loadImage("images/system/book.png");
+	//bookgui_img = loadImage("images/system/book.png");
 	//nextpage_img = loadImage("images/system/nextpage.png");
 	//previouspage_img = loadImage("images/system/previouspage.png");
 	//bookclose_img = loadImage("images/system/bookclose.png");
 
-	book_highlighted_left_img = loadImage("images/system/bookpageleft-highlighted.png");
-	book_highlighted_right_img = loadImage("images/system/bookpageright-highlighted.png");
+	//book_highlighted_left_img = loadImage("images/system/bookpageleft-highlighted.png");
+	//book_highlighted_right_img = loadImage("images/system/bookpageright-highlighted.png");
 
-	str_bmp64u = loadImage("images/system/str64u.png");
-	dex_bmp64u = loadImage("images/system/dex64u.png");
-	con_bmp64u = loadImage("images/system/con64u.png");
-	int_bmp64u = loadImage("images/system/int64u.png");
-	per_bmp64u = loadImage("images/system/per64u.png");
-	chr_bmp64u = loadImage("images/system/chr64u.png");
-	str_bmp64 = loadImage("images/system/str64.png");
-	dex_bmp64 = loadImage("images/system/dex64.png");
-	con_bmp64 = loadImage("images/system/con64.png");
-	int_bmp64 = loadImage("images/system/int64.png");
-	per_bmp64 = loadImage("images/system/per64.png");
-	chr_bmp64 = loadImage("images/system/chr64.png");
+	//str_bmp64u = loadImage("images/system/str64u.png");
+	//dex_bmp64u = loadImage("images/system/dex64u.png");
+	//con_bmp64u = loadImage("images/system/con64u.png");
+	//int_bmp64u = loadImage("images/system/int64u.png");
+	//per_bmp64u = loadImage("images/system/per64u.png");
+	//chr_bmp64u = loadImage("images/system/chr64u.png");
+	//str_bmp64 = loadImage("images/system/str64.png");
+	//dex_bmp64 = loadImage("images/system/dex64.png");
+	//con_bmp64 = loadImage("images/system/con64.png");
+	//int_bmp64 = loadImage("images/system/int64.png");
+	//per_bmp64 = loadImage("images/system/per64.png");
+	//chr_bmp64 = loadImage("images/system/chr64.png");
 
-	sidebar_lock_bmp = loadImage("images/system/locksidebar.png");
-	sidebar_unlock_bmp = loadImage("images/system/unlocksidebar.png");
-	hotbar_img = loadImage("images/system/hotbar_slot.png");
-	hotbar_spell_img = loadImage("images/system/magic/hotbar_spell.png");
+	//sidebar_lock_bmp = loadImage("images/system/locksidebar.png");
+	//sidebar_unlock_bmp = loadImage("images/system/unlocksidebar.png");
+	//hotbar_img = loadImage("images/system/hotbar_slot.png");
+	//hotbar_spell_img = loadImage("images/system/magic/hotbar_spell.png");
 
-	effect_drunk_bmp = loadImage("images/system/drunk.png");
-	effect_polymorph_bmp = loadImage("images/system/polymorph.png");
-	effect_hungover_bmp = loadImage("images/system/hungover.png");
-
-	for ( int i = 0; i < MAXPLAYERS; ++i )
-	{
-		damageIndicators[i].first = nullptr;
-		damageIndicators[i].last = nullptr;
-	}
+	//effect_drunk_bmp = loadImage("images/system/drunk.png");
+	//effect_polymorph_bmp = loadImage("images/system/polymorph.png");
+	//effect_hungover_bmp = loadImage("images/system/hungover.png");
 
 	return true;
 }
@@ -382,194 +374,194 @@ void freeInterfaceResources()
 {
 	//int c;
 
-	if (font12x12_small_bmp)
+	/*if (font12x12_small_bmp)
 	{
 		SDL_FreeSurface(font12x12_small_bmp);
-	}
-	if ( backdrop_blessed_bmp )
-	{
-		SDL_FreeSurface(backdrop_blessed_bmp);
-	}
-	if ( backdrop_cursed_bmp )
-	{
-		SDL_FreeSurface(backdrop_cursed_bmp);
-	}
-	if (status_bmp)
-	{
-		SDL_FreeSurface(status_bmp);
-	}
-	if (character_bmp)
-	{
-		SDL_FreeSurface(character_bmp);
-	}
-	if (hunger_bmp)
-	{
-		SDL_FreeSurface(hunger_bmp);
-	}
-	if ( hunger_blood_bmp )
-	{
-		SDL_FreeSurface(hunger_blood_bmp);
-	}
-	if ( hunger_boiler_bmp )
-	{
-		SDL_FreeSurface(hunger_boiler_bmp);
-	}
-	if ( hunger_boiler_hotflame_bmp )
-	{
-		SDL_FreeSurface(hunger_boiler_hotflame_bmp);
-	}
-	if ( hunger_boiler_flame_bmp )
-	{
-		SDL_FreeSurface(hunger_boiler_flame_bmp);
-	}
-	if ( minotaur_bmp )
-	{
-		SDL_FreeSurface(minotaur_bmp);
-	}
-	//if(textup_bmp)
-	//SDL_FreeSurface(textup_bmp);
-	//if(textdown_bmp)
-	//SDL_FreeSurface(textdown_bmp);
-	if (attributesleft_bmp)
-	{
-		SDL_FreeSurface(attributesleft_bmp);
-	}
-	if (attributesright_bmp)
-	{
-		SDL_FreeSurface(attributesright_bmp);
-	}
-	if (attributesleftunclicked_bmp)
-	{
-		SDL_FreeSurface(attributesleftunclicked_bmp);
-	}
-	if (attributesrightunclicked_bmp)
-	{
-		SDL_FreeSurface(attributesrightunclicked_bmp);
-	}
-	if (magicspellList_bmp)
-	{
-		SDL_FreeSurface(magicspellList_bmp);
-	}
-	if (spell_list_titlebar_bmp)
-	{
-		SDL_FreeSurface(spell_list_titlebar_bmp);
-	}
-	if (spell_list_gui_slot_bmp)
-	{
-		SDL_FreeSurface(spell_list_gui_slot_bmp);
-	}
-	if (spell_list_gui_slot_highlighted_bmp)
-	{
-		SDL_FreeSurface(spell_list_gui_slot_highlighted_bmp);
-	}
-	if (sustained_spell_generic_icon)
-	{
-		SDL_FreeSurface(sustained_spell_generic_icon);
-	}
-	if (invup_bmp != NULL)
-	{
-		SDL_FreeSurface(invup_bmp);
-	}
-	if (invdown_bmp != NULL)
-	{
-		SDL_FreeSurface(invdown_bmp);
-	}
-	if (inventory_bmp != NULL)
-	{
-		SDL_FreeSurface(inventory_bmp);
-	}
-	if (inventoryoption_bmp != NULL)
-	{
-		SDL_FreeSurface(inventoryoption_bmp);
-	}
-	if (inventory_mode_item_img)
-	{
-		SDL_FreeSurface(inventory_mode_item_img);
-	}
-	if (inventory_mode_item_highlighted_img)
-	{
-		SDL_FreeSurface(inventory_mode_item_highlighted_img);
-	}
-	if (inventory_mode_spell_img)
-	{
-		SDL_FreeSurface(inventory_mode_spell_img);
-	}
-	if (inventory_mode_spell_highlighted_img)
-	{
-		SDL_FreeSurface(inventory_mode_spell_highlighted_img);
-	}
-	if (button_bmp != NULL)
-	{
-		SDL_FreeSurface(button_bmp);
-	}
-	if (smallbutton_bmp != NULL)
-	{
-		SDL_FreeSurface(smallbutton_bmp);
-	}
-	if (equipped_bmp != NULL)
-	{
-		SDL_FreeSurface(equipped_bmp);
-	}
-	if ( itembroken_bmp != nullptr )
-	{
-		SDL_FreeSurface(itembroken_bmp);
-	}
-	if (inventoryChest_bmp != NULL)
-	{
-		SDL_FreeSurface(inventoryChest_bmp);
-	}
-	if (invclose_bmp != NULL)
-	{
-		SDL_FreeSurface(invclose_bmp);
-	}
-	if (invgraball_bmp != NULL)
-	{
-		SDL_FreeSurface(invgraball_bmp);
-	}
-	if (inventoryoptionChest_bmp != NULL)
-	{
-		SDL_FreeSurface(inventoryoptionChest_bmp);
-	}
-	if (shopkeeper_bmp != NULL)
-	{
-		SDL_FreeSurface(shopkeeper_bmp);
-	}
-	if ( shopkeeper2_bmp != NULL )
-	{
-		SDL_FreeSurface(shopkeeper2_bmp);
-	}
-	if (damage_bmp != NULL)
-	{
-		SDL_FreeSurface(damage_bmp);
-	}
-	//for( c=0; c<NUMCATEGORIES; c++ )
+	}*/
+	//if ( backdrop_blessed_bmp )
+	//{
+	//	SDL_FreeSurface(backdrop_blessed_bmp);
+	//}
+	//if ( backdrop_cursed_bmp )
+	//{
+	//	SDL_FreeSurface(backdrop_cursed_bmp);
+	//}
+	//if (status_bmp)
+	//{
+	//	SDL_FreeSurface(status_bmp);
+	//}
+	//if (character_bmp)
+	//{
+	//	SDL_FreeSurface(character_bmp);
+	//}
+	//if (hunger_bmp)
+	//{
+	//	SDL_FreeSurface(hunger_bmp);
+	//}
+	//if ( hunger_blood_bmp )
+	//{
+	//	SDL_FreeSurface(hunger_blood_bmp);
+	//}
+	//if ( hunger_boiler_bmp )
+	//{
+	//	SDL_FreeSurface(hunger_boiler_bmp);
+	//}
+	//if ( hunger_boiler_hotflame_bmp )
+	//{
+	//	SDL_FreeSurface(hunger_boiler_hotflame_bmp);
+	//}
+	//if ( hunger_boiler_flame_bmp )
+	//{
+	//	SDL_FreeSurface(hunger_boiler_flame_bmp);
+	//}
+	//if ( minotaur_bmp )
+	//{
+	//	SDL_FreeSurface(minotaur_bmp);
+	//}
+	////if(textup_bmp)
+	////SDL_FreeSurface(textup_bmp);
+	////if(textdown_bmp)
+	////SDL_FreeSurface(textdown_bmp);
+	//if (attributesleft_bmp)
+	//{
+	//	SDL_FreeSurface(attributesleft_bmp);
+	//}
+	//if (attributesright_bmp)
+	//{
+	//	SDL_FreeSurface(attributesright_bmp);
+	//}
+	//if (attributesleftunclicked_bmp)
+	//{
+	//	SDL_FreeSurface(attributesleftunclicked_bmp);
+	//}
+	//if (attributesrightunclicked_bmp)
+	//{
+	//	SDL_FreeSurface(attributesrightunclicked_bmp);
+	//}
+	//if (magicspellList_bmp)
+	//{
+	//	SDL_FreeSurface(magicspellList_bmp);
+	//}
+	//if (spell_list_titlebar_bmp)
+	//{
+	//	SDL_FreeSurface(spell_list_titlebar_bmp);
+	//}
+	//if (spell_list_gui_slot_bmp)
+	//{
+	//	SDL_FreeSurface(spell_list_gui_slot_bmp);
+	//}
+	//if (spell_list_gui_slot_highlighted_bmp)
+	//{
+	//	SDL_FreeSurface(spell_list_gui_slot_highlighted_bmp);
+	//}
+	//if (sustained_spell_generic_icon)
+	//{
+	//	SDL_FreeSurface(sustained_spell_generic_icon);
+	//}
+	//if (invup_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(invup_bmp);
+	//}
+	//if (invdown_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(invdown_bmp);
+	//}
+	//if (inventory_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(inventory_bmp);
+	//}
+	//if (inventoryoption_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(inventoryoption_bmp);
+	//}
+	//if (inventory_mode_item_img)
+	//{
+	//	SDL_FreeSurface(inventory_mode_item_img);
+	//}
+	//if (inventory_mode_item_highlighted_img)
+	//{
+	//	SDL_FreeSurface(inventory_mode_item_highlighted_img);
+	//}
+	//if (inventory_mode_spell_img)
+	//{
+	//	SDL_FreeSurface(inventory_mode_spell_img);
+	//}
+	//if (inventory_mode_spell_highlighted_img)
+	//{
+	//	SDL_FreeSurface(inventory_mode_spell_highlighted_img);
+	//}
+	//if (button_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(button_bmp);
+	//}
+	//if (smallbutton_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(smallbutton_bmp);
+	//}
+	//if (equipped_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(equipped_bmp);
+	//}
+	//if ( itembroken_bmp != nullptr )
+	//{
+	//	SDL_FreeSurface(itembroken_bmp);
+	//}
+	//if (inventoryChest_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(inventoryChest_bmp);
+	//}
+	//if (invclose_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(invclose_bmp);
+	//}
+	//if (invgraball_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(invgraball_bmp);
+	//}
+	//if (inventoryoptionChest_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(inventoryoptionChest_bmp);
+	//}
+	//if (shopkeeper_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(shopkeeper_bmp);
+	//}
+	//if ( shopkeeper2_bmp != NULL )
+	//{
+	//	SDL_FreeSurface(shopkeeper2_bmp);
+	//}
+	//if (damage_bmp != NULL)
+	//{
+	//	SDL_FreeSurface(damage_bmp);
+	//}
+	//for( c=0; c<Category::CATEGORY_MAX; c++ )
 	//if(category_bmp[c]!=NULL)
 	//SDL_FreeSurface(category_bmp[c]);
-	if (identifyGUI_img != NULL)
+	/*if (identifyGUI_img != NULL)
 	{
 		SDL_FreeSurface(identifyGUI_img);
-	}
+	}*/
 	/*if (rightsidebar_titlebar_img)
 		SDL_FreeSurface(rightsidebar_titlebar_img);
 	if (rightsidebar_slot_img)
 		SDL_FreeSurface(rightsidebar_slot_img);
 	if (rightsidebar_slot_highlighted_img)
 		SDL_FreeSurface(rightsidebar_slot_highlighted_img);*/
-	if (rightsidebar_slot_grayedout_img)
+	/*if (rightsidebar_slot_grayedout_img)
 	{
 		SDL_FreeSurface(rightsidebar_slot_grayedout_img);
 	}
 	if (bookgui_img)
 	{
 		SDL_FreeSurface(bookgui_img);
-	}
+	}*/
 	//if (nextpage_img)
 	//SDL_FreeSurface(nextpage_img);
 	//if (previouspage_img)
 	//SDL_FreeSurface(previouspage_img);
 	//if (bookclose_img)
 	//SDL_FreeSurface(bookclose_img);
-	if (book_highlighted_left_img)
+	/*if (book_highlighted_left_img)
 	{
 		SDL_FreeSurface(book_highlighted_left_img);
 	}
@@ -652,11 +644,7 @@ void freeInterfaceResources()
 	if ( effect_hungover_bmp )
 	{
 		SDL_FreeSurface(effect_hungover_bmp);
-	}
-	for ( int i = 0; i < MAXPLAYERS; ++i )
-	{
-		list_FreeAll(&damageIndicators[i]);
-	}
+	}*/
 }
 
 void defaultImpulses()
@@ -765,7 +753,7 @@ static void genericgui_deselect_fn(Widget& widget) {
 
 void saveCommand(char* content)
 {
-	newString(&command_history, 0xFFFFFFFF, ticks, content);
+	newString(&command_history, 0xFFFFFFFF, ticks, -1, content);
 }
 
 /*-------------------------------------------------------------------------------
@@ -985,71 +973,14 @@ Sint8 dummy_value = 0; //THIS LINE IS AN UTTER BODGE to stop this function from 
 
 Sint8* inputPressed(Uint32 scancode)
 {
-	if (scancode >= 0 && scancode < 283)
-	{
-		// usual (keyboard) scancode range
-		return &keystatus[scancode];
-	}
-	else if (scancode < 299)
-	{
-		// mouse scancodes
-		return &mousestatus[scancode - 282];
-	}
-	else if (scancode < 301)
-	{
-		//Analog joystick triggers are mapped to digital status (0 = not pressed, 1 = pressed).
-		//return &joy_trigger_status[scancode - 299];
-		// WIP SPLITSCREEN - DEPRECATE THIS
-		dummy_value = 0;
-		return &dummy_value;
-	}
-	else if (scancode < 318)
-	{
-		//return &joystatus[scancode - 301];
-		// WIP SPLITSCREEN - DEPRECATE THIS
-		dummy_value = 0;
-		return &dummy_value;
-	}
-	else
-	{
-		// bad scancode
-		//return nullptr; //This crashes.
-		dummy_value = 0;
-		return &dummy_value;
-		//Not an ideal solution, but...
-	}
+	// deprecated
+    return nullptr;
 }
 
 Sint8* inputPressedForPlayer(int player, Uint32 scancode)
 {
-	if ( splitscreen )
-	{
-		// WIP SPLITSCREEN - keyboard only send for local player
-		if ( !inputs.bPlayerUsingKeyboardControl(player) )
-		{
-			dummy_value = 0;
-			return &dummy_value;
-		}
-	}
-
-	if ( scancode >= 0 && scancode < 283 )
-	{
-		// usual (keyboard) scancode range
-		return &keystatus[scancode];
-	}
-	else if ( scancode < 299 )
-	{
-		// mouse scancodes
-		return &mousestatus[scancode - 282];
-	}
-	else
-	{
-		// bad scancode
-		//return nullptr; //This crashes.
-		dummy_value = 0;
-		return &dummy_value;
-		//Not an ideal solution, but...
-	}
+    // deprecated
+    return nullptr;
 }
 
 void Player::GUI_t::setHoveringOverModuleButton(Player::GUI_t::GUIModules moduleOfButton)
@@ -1100,6 +1031,12 @@ bool Player::GUI_t::bActiveModuleUsesInventory()
 	switch ( activeModule )
 	{
 		case MODULE_INVENTORY:
+			if ( dropdownMenu.bOpen 
+				&& (dropdownMenu.currentName.find("paper_doll") != std::string::npos) )
+			{
+				return false;
+			}
+			return true;
 		case MODULE_HOTBAR:
 		case MODULE_SHOP:
 		case MODULE_CHEST:
@@ -1109,6 +1046,8 @@ bool Player::GUI_t::bActiveModuleUsesInventory()
 		case MODULE_FEATHER:
 		case MODULE_SPELLS:
 		case MODULE_ALCHEMY:
+		case MODULE_ASSISTSHRINE:
+		case MODULE_MAILBOX:
 			return true;
 		default:
 			break;
@@ -1236,6 +1175,46 @@ bool Player::GUI_t::warpControllerToModule(bool moveCursorInstantly)
 		}
 		return true;
 	}
+	else if ( activeModule == MODULE_MAILBOX )
+	{
+		auto& mailboxGUI = GenericGUI[player.playernum].mailboxGUI;
+		auto& inventoryUI = player.inventoryUI;
+		if ( mailboxGUI.warpMouseToSelectedMailItem(nullptr, (Inputs::SET_CONTROLLER))
+			&& inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_NONE )
+		{
+			if ( auto slot = mailboxGUI.getMailSlotFrame(mailboxGUI.getSelectedMailSlotX(), mailboxGUI.getSelectedMailSlotY()) )
+			{
+				SDL_Rect pos = slot->getAbsoluteSize();
+				pos.x -= player.camera_virtualx1();
+				pos.y -= player.camera_virtualy1();
+				inventoryUI.updateSelectedSlotAnimation(pos.x, pos.y,
+					inventoryUI.getSlotSize(), inventoryUI.getSlotSize(), moveCursorInstantly);
+			}
+		}
+		return true;
+	}
+	else if ( activeModule == MODULE_ASSISTSHRINE )
+	{
+		auto& assistShrineGUI = GenericGUI[player.playernum].assistShrineGUI;
+		auto& inventoryUI = player.inventoryUI;
+		if ( assistShrineGUI.warpMouseToSelectedAssistShrineItem(nullptr, (Inputs::SET_CONTROLLER))
+			&& inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_NONE )
+		{
+			if ( auto slot = assistShrineGUI.getAssistShrineSlotFrame(
+				assistShrineGUI.getSelectedAssistShrineX(), assistShrineGUI.getSelectedAssistShrineY()) )
+			{
+				SDL_Rect pos = slot->getAbsoluteSize();
+				pos.x -= player.camera_virtualx1();
+				pos.y -= player.camera_virtualy1();
+
+				pos.w = inventoryUI.getSlotSize();
+				pos.h = inventoryUI.getSlotSize();
+				inventoryUI.updateSelectedSlotAnimation(pos.x, pos.y,
+					pos.w, pos.h, moveCursorInstantly);
+			}
+		}
+		return true;
+	}
 	else if ( activeModule == MODULE_TINKERING )
 	{
 		auto& tinkerGUI = GenericGUI[player.playernum].tinkerGUI;
@@ -1274,7 +1253,19 @@ bool Player::GUI_t::warpControllerToModule(bool moveCursorInstantly)
 	}
 	else if ( activeModule == MODULE_HOTBAR )
 	{
-		warpMouseToSelectedHotbarSlot(player.playernum);
+		auto& inventoryUI = player.inventoryUI;
+		if ( warpMouseToSelectedHotbarSlot(player.playernum)
+			&& inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_NONE )
+		{
+			if ( auto hotbarSlotFrame = player.hotbar.getHotbarSlotFrame(player.hotbar.current_hotbar) )
+			{
+				SDL_Rect pos = hotbarSlotFrame->getAbsoluteSize();
+				pos.x -= player.camera_virtualx1();
+				pos.y -= player.camera_virtualy1();
+				inventoryUI.updateSelectedSlotAnimation(pos.x, pos.y,
+					inventoryUI.getSlotSize(), inventoryUI.getSlotSize(), moveCursorInstantly);
+			}
+		}
 		return true;
 	}
 	else if ( activeModule == MODULE_CHARACTERSHEET )
@@ -1307,16 +1298,20 @@ void Player::GUI_t::activateModule(Player::GUI_t::GUIModules module)
 					|| oldModule == MODULE_CHEST 
 					|| oldModule == MODULE_SHOP
 					|| oldModule == MODULE_ALCHEMY
+					|| oldModule == MODULE_MAILBOX
 					|| oldModule == MODULE_TINKERING
-					|| oldModule == MODULE_FEATHER)
+					|| oldModule == MODULE_FEATHER
+					|| oldModule == MODULE_ASSISTSHRINE)
 				&& !(activeModule == MODULE_INVENTORY 
 					|| activeModule == MODULE_HOTBAR 
 					|| activeModule == MODULE_SPELLS
 					|| activeModule == MODULE_CHEST
 					|| activeModule == MODULE_SHOP
 					|| activeModule == MODULE_ALCHEMY
+					|| activeModule == MODULE_MAILBOX
 					|| activeModule == MODULE_TINKERING
-					|| activeModule == MODULE_FEATHER)
+					|| activeModule == MODULE_FEATHER
+					|| activeModule == MODULE_ASSISTSHRINE)
 				&& !bActiveModuleHasNoCursor()
 				&& hoveringOverModuleButton() == MODULE_NONE )
 			{
@@ -1336,16 +1331,20 @@ void Player::GUI_t::activateModule(Player::GUI_t::GUIModules module)
 				|| activeModule == MODULE_CHEST
 				|| activeModule == MODULE_SHOP
 				|| activeModule == MODULE_ALCHEMY
+				|| activeModule == MODULE_MAILBOX
 				|| activeModule == MODULE_TINKERING
-				|| activeModule == MODULE_FEATHER)
+				|| activeModule == MODULE_FEATHER
+				|| activeModule == MODULE_ASSISTSHRINE)
 				&& !(oldModule == MODULE_INVENTORY 
 					|| oldModule == MODULE_HOTBAR 
 					|| oldModule == MODULE_SPELLS
 					|| oldModule == MODULE_CHEST
 					|| oldModule == MODULE_SHOP
 					|| oldModule == MODULE_ALCHEMY
+					|| oldModule == MODULE_MAILBOX
 					|| oldModule == MODULE_TINKERING
-					|| oldModule == MODULE_FEATHER))
+					|| oldModule == MODULE_FEATHER
+					|| oldModule == MODULE_ASSISTSHRINE))
 				|| hoveringOverModuleButton() != MODULE_NONE )
 			{
 				SDL_Rect size = hudCursor->getSize();
@@ -1372,16 +1371,20 @@ void Player::openStatusScreen(const int whichGUIMode, const int whichInventoryMo
 	{
 		FollowerMenu[playernum].closeFollowerMenuGUI();
 	}
-	GenericGUI[playernum].closeGUI();
-	if ( hud.mapWindow )
+	if ( whichGUIMode != GUI_MODE_NONE && whichGUIMode != GUI_MODE_CALLOUT )
 	{
-		hud.mapWindow->removeSelf();
-		hud.mapWindow = nullptr;
+		CalloutMenu[playernum].closeCalloutMenuGUI();
 	}
-	if ( hud.logWindow )
+	GenericGUI[playernum].closeGUI();
+	if ( minimap.mapWindow )
 	{
-		hud.logWindow->removeSelf();
-		hud.logWindow = nullptr;
+		minimap.mapWindow->removeSelf();
+		minimap.mapWindow = nullptr;
+	}
+	if ( messageZone.logWindow )
+	{
+		messageZone.logWindow->removeSelf();
+		messageZone.logWindow = nullptr;
 	}
 
 	int oldgui = gui_mode;
@@ -1422,7 +1425,8 @@ void Player::openStatusScreen(const int whichGUIMode, const int whichInventoryMo
 	if ( inputs.hasController(playernum)
 		&& ((oldgui == GUI_MODE_NONE && whichGUIMode != GUI_MODE_NONE) 
 			|| (oldmodule != GUI.activeModule && GUI.activeModule == GUI_t::MODULE_INVENTORY))
-		&& !FollowerMenu[playernum].followerToCommand )
+		&& !FollowerMenu[playernum].followerToCommand
+		&& !CalloutMenu[playernum].bOpen )
 	{
 		warpMouseToInventorySlot = true;
 	}
@@ -1464,6 +1468,10 @@ void Player::closeAllGUIs(CloseGUIShootmode shootmodeAction, CloseGUIIgnore what
 	{
 		FollowerMenu[playernum].closeFollowerMenuGUI();
 	}
+	if ( whatToClose != CLOSEGUI_DONT_CLOSE_CALLOUTGUI )
+	{
+		CalloutMenu[playernum].closeCalloutMenuGUI();
+	}
 	if ( whatToClose != CLOSEGUI_DONT_CLOSE_CHEST )
 	{
 		if ( openedChest[playernum] )
@@ -1489,16 +1497,17 @@ void Player::closeAllGUIs(CloseGUIShootmode shootmodeAction, CloseGUIIgnore what
 		signGUI.closeSignGUI();
 	}
 
-	if ( hud.mapWindow )
+	if ( minimap.mapWindow )
 	{
-		hud.mapWindow->removeSelf();
-		hud.mapWindow = nullptr;
+		minimap.mapWindow->removeSelf();
+		minimap.mapWindow = nullptr;
 	}
-	if ( hud.logWindow )
+	if ( messageZone.logWindow )
 	{
-		hud.logWindow->removeSelf();
-		hud.logWindow = nullptr;
+		messageZone.logWindow->removeSelf();
+		messageZone.logWindow = nullptr;
 	}
+	hud.closeStatusFxWindow();
 
 	if ( shootmodeAction == CLOSEGUI_ENABLE_SHOOTMODE )
 	{
@@ -2129,10 +2138,10 @@ std::vector<Entity*> getAllOtherFollowersForSendAllCommand(const int gui_player,
 					}
 				}
 				
-				int skillLVL2 = stats[gui_player]->PROFICIENCIES[PRO_LEADERSHIP] + statGetCHR(stats[gui_player], players[gui_player]->entity);
+				int skillLVL2 = stats[gui_player]->getModifiedProficiency(PRO_LEADERSHIP) + statGetCHR(stats[gui_player], players[gui_player]->entity);
 				if ( FollowerMenu[gui_player].isTinkeringFollower(follower2Type) )
 				{
-					skillLVL2 = stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity);
+					skillLVL2 = stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity);
 				}
 				if ( follower2->monsterAllySummonRank != 0 )
 				{
@@ -2165,7 +2174,9 @@ void FollowerRadialMenu::drawFollowerMenu()
 		if ( input.binaryToggle("MenuCancel") )
 		{
 			input.consumeBinaryToggle("MenuCancel");
+			input.consumeBindingsSharedWithBinding("MenuCancel");
 			closeFollowerMenuGUI();
+			Player::soundCancel();
 		}
 		if ( !followerToCommand )
 		{
@@ -2175,6 +2186,17 @@ void FollowerRadialMenu::drawFollowerMenu()
 		else if ( followerFrame )
 		{
 			followerFrame->setDisabled(true);
+		}
+
+		if ( followerToCommand )
+		{
+			if ( followerToCommand->monsterAllyIndex < 0 && followerToCommand->getStats() && 
+				(!followerToCommand->getStats()->getEffectActive(EFF_COMMAND)
+					|| followerToCommand->getStats()->getEffectActive(EFF_COMMAND) - 1 != gui_player) )
+			{
+				selectMoveTo = false;
+				closeFollowerMenuGUI();
+			}
 		}
 		return;
 	}
@@ -2205,17 +2227,33 @@ void FollowerRadialMenu::drawFollowerMenu()
 	Uint32 textHighlightColor = followerBannerTextHighlightColor;
 	bool tinkeringFollower = false;
 
+	if ( recentEntity )
+	{
+		if ( recentEntity->monsterAllyIndex != gui_player ) // our ally left our service by charm or otherwise
+		{
+			recentEntity = nullptr;
+			if ( followerToCommand == recentEntity )
+			{
+				closeFollowerMenuGUI();
+				players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+				return;
+			}
+		}
+	}
+
 	if ( !followerToCommand && (!followerFrame->isDisabled() || players[gui_player]->gui_mode == GUI_MODE_FOLLOWERMENU) )
 	{
 		closeFollowerMenuGUI();
 		players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
 		return;
 	}
-	if ( input.binaryToggle("MenuCancel") )
+	if ( followerMenuIsOpen() && input.binaryToggle("MenuCancel") )
 	{
 		input.consumeBinaryToggle("MenuCancel");
+		input.consumeBindingsSharedWithBinding("MenuCancel");
 		closeFollowerMenuGUI();
 		players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+		Player::soundCancel();
 		return;
 	}
 
@@ -2234,7 +2272,7 @@ void FollowerRadialMenu::drawFollowerMenu()
 	if ( followerToCommand )
 	{
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiff = fpsScale * std::max(.1, (1.0 - animTitle)) / 2.5;
 			animTitle += setpointDiff;
 			animTitle = std::min(1.0, animTitle);
@@ -2253,12 +2291,19 @@ void FollowerRadialMenu::drawFollowerMenu()
 		if ( players[gui_player] && players[gui_player]->entity
 			&& followerToCommand->monsterTarget == players[gui_player]->entity->getUID() )
 		{
-			players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_DONT_CLOSE_FOLLOWERGUI);
+			players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
 			return;
 		}
 
 		Stat* followerStats = followerToCommand->getStats();
 		if ( !followerStats )
+		{
+			closeFollowerMenuGUI();
+			return;
+		}
+		if ( followerToCommand->monsterAllyIndex < 0 && 
+			(!followerStats->getEffectActive(EFF_COMMAND)
+				|| followerStats->getEffectActive(EFF_COMMAND) - 1 != gui_player))
 		{
 			closeFollowerMenuGUI();
 			return;
@@ -2295,10 +2340,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 			}
 			if ( optionSelected >= ALLY_CMD_DEFEND && optionSelected < ALLY_CMD_END && optionSelected != ALLY_CMD_ATTACK_CONFIRM )
 			{
-				skillLVL = stats[gui_player]->PROFICIENCIES[PRO_LEADERSHIP] + statGetCHR(stats[gui_player], players[gui_player]->entity);
+				skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LEADERSHIP) + statGetCHR(stats[gui_player], players[gui_player]->entity);
 				if ( tinkeringFollower )
 				{
-					skillLVL = stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity);
+					skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity);
 				}
 				if ( followerToCommand->monsterAllySummonRank != 0 )
 				{
@@ -2322,21 +2367,37 @@ void FollowerRadialMenu::drawFollowerMenu()
 				}
 			}
 		}
+
+		bool menuConfirmOnGamepad = input.input("MenuConfirm").isBindingUsingGamepad();
+		bool menuLeftClickOnKeyboard = input.input("MenuLeftClick").isBindingUsingKeyboard() && !inputs.hasController(gui_player);
+
 		// process commands if option selected on the wheel.
 		if ( !(players[gui_player]->bControlEnabled && !gamePaused && !players[gui_player]->usingCommand()) )
 		{
 			// no action
 		}
-		else if ( (!input.binaryToggle("Use") && !input.binaryToggle("Show NPC Commands") && !menuToggleClick && !holdWheel)
-			|| ((input.binaryToggle("Use") || input.binaryToggle("Show NPC Commands")) && menuToggleClick)
+		else if ( (!menuToggleClick && !holdWheel
+					&& !input.binaryToggle("Use") 
+					&& !input.binaryToggle("Show NPC Commands") 
+					&& !(input.binaryToggle("MenuConfirm") && menuConfirmOnGamepad)
+					&& !(input.binaryToggle("MenuLeftClick") && menuLeftClickOnKeyboard) )
+			|| (menuToggleClick && (input.binaryToggle("Use") || input.binaryToggle("Show NPC Commands")) )
+			|| ( (input.binaryToggle("MenuConfirm") && menuConfirmOnGamepad)
+				|| (input.binaryToggle("MenuLeftClick") && menuLeftClickOnKeyboard)
+				|| (input.binaryToggle("Use") && holdWheel) )
 			|| (!input.binaryToggle("Show NPC Commands") && holdWheel && !menuToggleClick)
 			|| (input.binaryToggle("Command NPC") && optionPrevious != -1)
 			)
 		{
+			bool usingLastCmd = false;
+			//bool usingShowCmdRelease = (!input.binaryToggle("Show NPC Commands") && holdWheel && !menuToggleClick);
+			if ( input.binaryToggle("Command NPC") )
+			{
+				usingLastCmd = true;
+			}
+
 			if ( menuToggleClick )
 			{
-			    input.consumeBinaryToggle("Use");
-			    input.consumeBinaryToggle("Show NPC Commands");
 				menuToggleClick = false;
 				if ( optionSelected == -1 )
 				{
@@ -2344,11 +2405,14 @@ void FollowerRadialMenu::drawFollowerMenu()
 				}
 			}
 
-			bool usingLastCmd = false;
-			if ( input.binaryToggle("Command NPC") )
-			{
-				usingLastCmd = true;
-			}
+			input.consumeBinaryToggle("Use");
+			input.consumeBinaryToggle("MenuConfirm");
+			input.consumeBinaryToggle("MenuLeftClick");
+			input.consumeBinaryToggle("Show NPC Commands");
+			input.consumeBindingsSharedWithBinding("Use");
+			input.consumeBindingsSharedWithBinding("MenuConfirm");
+			input.consumeBindingsSharedWithBinding("MenuLeftClick");
+			input.consumeBindingsSharedWithBinding("Show NPC Commands");
 
 			if ( followerStats->type == GYROBOT )
 			{
@@ -2361,7 +2425,9 @@ void FollowerRadialMenu::drawFollowerMenu()
 					optionSelected = ALLY_CMD_DUMMYBOT_RETURN;
 				}
 			}
-			else if ( followerToCommand->monsterAllySummonRank != 0 && optionSelected == ALLY_CMD_CLASS_TOGGLE )
+			else if ( (followerToCommand->monsterAllySummonRank != 0 
+				|| followerStats->type == MONSTER_ADORCISED_WEAPON
+				|| followerStats->type == FLAME_ELEMENTAL) && optionSelected == ALLY_CMD_CLASS_TOGGLE )
 			{
 				optionSelected = ALLY_CMD_RETURN_SOUL;
 			}
@@ -2375,13 +2441,20 @@ void FollowerRadialMenu::drawFollowerMenu()
 				keepWheelOpen = true;
 			}
 
+			bool sfxPlayed = false;
 			if ( disableOption != 0 )
 			{
 				animInvalidAction = 1.0;
 				animInvalidActionTicks = ticks;
+				//if ( !usingShowCmdRelease )
+				//{
+				//	// play bad feedback sfx
+				//}
+				playSound(90, 64);
+				sfxPlayed = true;
 			}
 
-			if ( input.binaryToggle("Command NPC") )
+			if ( usingLastCmd )
 			{
 				if ( keepWheelOpen )
 				{
@@ -2401,14 +2474,6 @@ void FollowerRadialMenu::drawFollowerMenu()
 			if ( optionSelected != -1 )
 			{
 				holdWheel = false;
-				if ( optionSelected != ALLY_CMD_ATTACK_CONFIRM && optionSelected != ALLY_CMD_MOVETO_CONFIRM )
-				{
-					playSound(139, 64); // click
-				}
-				else
-				{
-					playSound(399, 48); // ping
-				}
 				// return to shootmode and close guis etc. TODO: tidy up interface code into 1 spot?
 				if ( !keepWheelOpen )
 				{
@@ -2418,7 +2483,24 @@ void FollowerRadialMenu::drawFollowerMenu()
 						|| optionSelected == ALLY_CMD_CANCEL )
 					{
 						players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_DONT_CLOSE_FOLLOWERGUI);
+						if ( !followerToCommand )
+						{
+							return;
+						}
 					}
+				}
+
+				if ( optionSelected != ALLY_CMD_ATTACK_CONFIRM && optionSelected != ALLY_CMD_MOVETO_CONFIRM )
+				{
+					if ( !sfxPlayed && optionSelected != ALLY_CMD_CANCEL )
+					{
+						playSound(139, 64); // click
+						sfxPlayed = true;
+					}
+				}
+				else
+				{
+					playSound(399, 48); // ping
 				}
 
 				if ( disableOption == 0
@@ -2436,7 +2518,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 						{
 							if ( !usingLastCmd )
 							{
-								if ( stats[gui_player]->shield && itemCategory(stats[gui_player]->shield) == SPELLBOOK )
+								if ( stats[gui_player]->shield 
+									&& (itemCategory(stats[gui_player]->shield) == SPELLBOOK
+										|| itemTypeIsFoci(stats[gui_player]->shield->type)
+										|| itemTypeIsInstrument(stats[gui_player]->shield->type)) )
 								{
 									input.consumeBinaryToggle("Defend"); // don't try cast when menu closes.
 								}
@@ -2515,15 +2600,15 @@ void FollowerRadialMenu::drawFollowerMenu()
 						// tell player current monster can't do what you asked (e.g using last command & swapping between monsters with different requirements)
 						if ( disableOption < 0 )
 						{
-							messagePlayer(gui_player, MESSAGE_MISC, language[3640], getMonsterLocalizedName(followerStats->type).c_str());
+							messagePlayer(gui_player, MESSAGE_MISC, Language::get(3640), getMonsterLocalizedName(followerStats->type, followerStats).c_str());
 						}
 						else if ( tinkeringFollower )
 						{
-							messagePlayer(gui_player, MESSAGE_MISC, language[3639], getMonsterLocalizedName(followerStats->type).c_str());
+							messagePlayer(gui_player, MESSAGE_MISC, Language::get(3639), getMonsterLocalizedName(followerStats->type, followerStats).c_str());
 						}
 						else
 						{
-							messagePlayer(gui_player, MESSAGE_MISC, language[3638], getMonsterLocalizedName(followerStats->type).c_str());
+							messagePlayer(gui_player, MESSAGE_MISC, Language::get(3638), getMonsterLocalizedName(followerStats->type, followerStats).c_str());
 						}
 					}
 
@@ -2537,6 +2622,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 						{
 							optionPrevious = optionSelected;
 						}
+					}
+					else if ( optionSelected == ALLY_CMD_CANCEL && !sfxPlayed )
+					{
+						Player::soundCancel();
 					}
 
 					if ( !keepWheelOpen )
@@ -2612,10 +2701,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 		bool tinkeringFollower = isTinkeringFollower(followerStats->type);
 		if ( stats[gui_player] && players[gui_player] && players[gui_player]->entity )
 		{
-			skillLVL = stats[gui_player]->PROFICIENCIES[PRO_LEADERSHIP] + statGetCHR(stats[gui_player], players[gui_player]->entity);
+			skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LEADERSHIP) + statGetCHR(stats[gui_player], players[gui_player]->entity);
 			if ( tinkeringFollower )
 			{
-				skillLVL = stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity);
+				skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity);
 			}
 			else if ( followerToCommand->monsterAllySummonRank != 0 )
 			{
@@ -2661,14 +2750,14 @@ void FollowerRadialMenu::drawFollowerMenu()
 		int width = 0;
 		if ( *cvar_showoldwheel )
 		{
-			getSizeOfText(ttf12, language[3036], &width, nullptr);
+			getSizeOfText(ttf12, Language::get(3036), &width, nullptr);
 			if ( players[gui_player]->camera_height() < 768 )
 			{
-				ttfPrintText(ttf12, src.x - width / 2, src.y - radius - thickness - 14, language[3036]);
+				ttfPrintText(ttf12, src.x - width / 2, src.y - radius - thickness - 14, Language::get(3036));
 			}
 			else
 			{
-				ttfPrintText(ttf12, src.x - width / 2, src.y - radius - thickness - 24, language[3036]);
+				ttfPrintText(ttf12, src.x - width / 2, src.y - radius - thickness - 24, Language::get(3036));
 			}
 		}
 
@@ -2680,6 +2769,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 				GameController::DpadDirection dir = controller->dpadDirToggle();
 				if ( dir != GameController::DpadDirection::INVALID )
 				{
+					if ( !controller->virtualDpad.consumed )
+					{
+						Player::soundMovement();
+					}
 					controller->consumeDpadDirToggle();
 					switch ( dir )
 					{
@@ -2734,7 +2827,7 @@ void FollowerRadialMenu::drawFollowerMenu()
 
 		if ( *cvar_showoldwheel )
 		{
-			drawImageRing(fancyWindow_bmp, &src, radius, thickness, 40, 0, PI * 2, 156);
+			//drawImageRing(fancyWindow_bmp, &src, radius, thickness, 40, 0, PI * 2, 156);
 
 			for ( i = 0; i < numoptions; ++i )
 			{
@@ -2780,7 +2873,7 @@ void FollowerRadialMenu::drawFollowerMenu()
 						highlight = i;
 						if ( *cvar_showoldwheel )
 						{
-							drawImageRing(fancyWindow_bmp, &src, radius, thickness, (numoptions) * 8, angleStart, angleEnd, 192);
+							//drawImageRing(fancyWindow_bmp, &src, radius, thickness, (numoptions) * 8, angleStart, angleEnd, 192);
 
 							// draw borders around highlighted item.
 							Uint32 borderColor = uint32ColorBaronyBlue;
@@ -2798,6 +2891,13 @@ void FollowerRadialMenu::drawFollowerMenu()
 						}
 					}
 				}
+				if ( !inputs.hasController(gui_player) )
+				{
+					if ( highlight != -1 && optionSelected != highlight && optionSelected != -1 )
+					{
+						Player::soundMovement();
+					}
+				}
 			}
 
 			SDL_Rect txt;
@@ -2805,11 +2905,6 @@ void FollowerRadialMenu::drawFollowerMenu()
 			txt.y = src.y - src.h * sin(angleMiddle);
 			txt.w = 0;
 			txt.h = 0;
-			SDL_Rect img;
-			img.x = txt.x - sidebar_unlock_bmp->w / 2;
-			img.y = txt.y - sidebar_unlock_bmp->h / 2;
-			img.w = sidebar_unlock_bmp->w;
-			img.h = sidebar_unlock_bmp->h;
 
 			// draw the text for the menu wheel.
 
@@ -2818,7 +2913,12 @@ void FollowerRadialMenu::drawFollowerMenu()
 			{
 				if ( *cvar_showoldwheel )
 				{
-					drawImage(sidebar_unlock_bmp, nullptr, &img); // locked menu options
+					//SDL_Rect img;
+					//img.x = txt.x - sidebar_unlock_bmp->w / 2;
+					//img.y = txt.y - sidebar_unlock_bmp->h / 2;
+					//img.w = sidebar_unlock_bmp->w;
+					//img.h = sidebar_unlock_bmp->h;
+					//drawImage(sidebar_unlock_bmp, nullptr, &img); // locked menu options
 				}
 				lockedOption = true;
 			}
@@ -2827,8 +2927,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 			{
 				if ( followerStats->type == SENTRYBOT || followerStats->type == SPELLBOT )
 				{
-					getSizeOfText(ttf12, language[3675], &width, nullptr);
-					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3675]) : SDL_Rect{};
+					getSizeOfText(ttf12, Language::get(3675), &width, nullptr);
+					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3675)) : SDL_Rect{};
 					if ( i == highlight )
 					{
 						panelIcons[i]->path = iconEntries["tinker_aim_look"].path_active_hover;
@@ -2849,8 +2949,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 				}
 				else
 				{
-					getSizeOfText(ttf12, language[3037 + i + 8], &width, nullptr);
-					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3037 + i + 8]) : SDL_Rect{};
+					getSizeOfText(ttf12, Language::get(3037 + i + 8), &width, nullptr);
+					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3037 + i + 8)) : SDL_Rect{};
 					// "follow"
 					if ( i == highlight )
 					{
@@ -2896,13 +2996,13 @@ void FollowerRadialMenu::drawFollowerMenu()
 			}
 			else
 			{
-				getSizeOfText(ttf12, language[3037 + i], &width, nullptr);
+				getSizeOfText(ttf12, Language::get(3037 + i), &width, nullptr);
 				if ( i == ALLY_CMD_DEFEND 
 					&& followerToCommand->monsterAllyState == ALLY_STATE_DEFAULT
 					&& (followerStats->type == SENTRYBOT || followerStats->type == SPELLBOT) )
 				{
-					getSizeOfText(ttf12, language[3674], &width, nullptr);
-					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3674]) : SDL_Rect{};
+					getSizeOfText(ttf12, Language::get(3674), &width, nullptr);
+					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3674)) : SDL_Rect{};
 					if ( i == highlight )
 					{
 						panelIcons[i]->path = iconEntries["tinker_aim_look"].path_hover;
@@ -2926,10 +3026,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 					if ( followerStats->type == GYROBOT )
 					{
 						// draw higher.
-						getSizeOfText(ttf12, language[3619], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3619]) : SDL_Rect{};
-						getSizeOfText(ttf12, language[3620 + followerToCommand->monsterAllyClass], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3620 + followerToCommand->monsterAllyClass]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3619), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3619)) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3620 + followerToCommand->monsterAllyClass), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3620 + followerToCommand->monsterAllyClass)) : SDL_Rect{};
 						switch ( followerToCommand->monsterAllyClass )
 						{
 							case ALLY_GYRO_LIGHT_FAINT:
@@ -2968,10 +3068,13 @@ void FollowerRadialMenu::drawFollowerMenu()
 								break;
 						}
 					}
-					else if ( followerToCommand && followerToCommand->monsterAllySummonRank != 0 )
+					else if ( followerToCommand 
+						&& (followerToCommand->monsterAllySummonRank != 0 
+							|| followerStats->type == MONSTER_ADORCISED_WEAPON
+							|| followerStats->type == FLAME_ELEMENTAL) )
 					{
 						getSizeOfText(ttf12, "Relinquish ", &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3196]) : SDL_Rect{};
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3196)) : SDL_Rect{};
 						if ( i == highlight )
 						{
 							panelIcons[i]->path = iconEntries["leader_relinquish_soul"].path_hover;
@@ -2985,9 +3088,9 @@ void FollowerRadialMenu::drawFollowerMenu()
 					else
 					{
 						// draw higher.
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3037 + i]) : SDL_Rect{};
-						getSizeOfText(ttf12, language[3053 + followerToCommand->monsterAllyClass], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3053 + followerToCommand->monsterAllyClass]) : SDL_Rect{};
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3037 + i)) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3053 + followerToCommand->monsterAllyClass), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3053 + followerToCommand->monsterAllyClass)) : SDL_Rect{};
 						switch ( followerToCommand->monsterAllyClass )
 						{
 							case ALLY_CLASS_MELEE:
@@ -3036,16 +3139,16 @@ void FollowerRadialMenu::drawFollowerMenu()
 							|| followerToCommand->monsterAllyPickupItems == ALLY_GYRO_DETECT_ITEMS_VALUABLE )
 						{
 							getSizeOfText(ttf12, "Detect", &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 24, language[3636]) : SDL_Rect{};
-							getSizeOfText(ttf12, language[3624 + followerToCommand->monsterAllyPickupItems], &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 12, language[3624 + followerToCommand->monsterAllyPickupItems]) : SDL_Rect{};
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 24, Language::get(3636)) : SDL_Rect{};
+							getSizeOfText(ttf12, Language::get(3624 + followerToCommand->monsterAllyPickupItems), &width, nullptr);
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 12, Language::get(3624 + followerToCommand->monsterAllyPickupItems)) : SDL_Rect{};
 						}
 						else
 						{
-							getSizeOfText(ttf12, language[3623], &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3623]) : SDL_Rect{};
-							getSizeOfText(ttf12, language[3624 + followerToCommand->monsterAllyPickupItems], &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3624 + followerToCommand->monsterAllyPickupItems]) : SDL_Rect{};
+							getSizeOfText(ttf12, Language::get(3623), &width, nullptr);
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3623)) : SDL_Rect{};
+							getSizeOfText(ttf12, Language::get(3624 + followerToCommand->monsterAllyPickupItems), &width, nullptr);
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3624 + followerToCommand->monsterAllyPickupItems)) : SDL_Rect{};
 						}
 						switch ( followerToCommand->monsterAllyPickupItems )
 						{
@@ -3133,9 +3236,9 @@ void FollowerRadialMenu::drawFollowerMenu()
 					{
 						// draw higher.
 						getSizeOfText(ttf12, "Pickup", &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 24, language[3037 + i]) : SDL_Rect{};
-						getSizeOfText(ttf12, language[3056 + followerToCommand->monsterAllyPickupItems], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 12, language[3056 + followerToCommand->monsterAllyPickupItems]) : SDL_Rect{};
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 24, Language::get(3037 + i)) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3056 + followerToCommand->monsterAllyPickupItems), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 12, Language::get(3056 + followerToCommand->monsterAllyPickupItems)) : SDL_Rect{};
 						switch ( followerToCommand->monsterAllyPickupItems )
 						{
 							case ALLY_PICKUP_ALL:
@@ -3179,10 +3282,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 				{
 					if ( followerStats->type == GYROBOT )
 					{
-						getSizeOfText(ttf12, language[3633], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3633]) : SDL_Rect{};
-						getSizeOfText(ttf12, language[3634], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3634]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3633), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3633)) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3634), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3634)) : SDL_Rect{};
 						if ( i == highlight )
 						{
 							panelIcons[i]->path = iconEntries["tinker_drop"].path_hover;
@@ -3195,11 +3298,11 @@ void FollowerRadialMenu::drawFollowerMenu()
 					}
 					else
 					{
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3037 + i]) : SDL_Rect{};
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3037 + i)) : SDL_Rect{};
 						if ( skillLVL >= SKILL_LEVEL_LEGENDARY )
 						{
-							getSizeOfText(ttf12, language[3061], &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3061]) : SDL_Rect{};
+							getSizeOfText(ttf12, Language::get(3061), &width, nullptr);
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3061)) : SDL_Rect{};
 							if ( i == highlight )
 							{
 								setFollowerBannerText(gui_player, bannerTxt, "leader_drop", "leader_drop_all", textHighlightColor);
@@ -3207,8 +3310,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 						}
 						else if ( skillLVL >= SKILL_LEVEL_MASTER )
 						{
-							getSizeOfText(ttf12, language[3060], &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3060]) : SDL_Rect{};
+							getSizeOfText(ttf12, Language::get(3060), &width, nullptr);
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3060)) : SDL_Rect{};
 							if ( i == highlight )
 							{
 								setFollowerBannerText(gui_player, bannerTxt, "leader_drop", "leader_drop_equipment", textHighlightColor);
@@ -3216,8 +3319,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 						}
 						else
 						{
-							getSizeOfText(ttf12, language[3059], &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3059]) : SDL_Rect{};
+							getSizeOfText(ttf12, Language::get(3059), &width, nullptr);
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3059)) : SDL_Rect{};
 							if ( i == highlight )
 							{
 								setFollowerBannerText(gui_player, bannerTxt, "leader_drop", "leader_drop_weapon", textHighlightColor);
@@ -3238,7 +3341,7 @@ void FollowerRadialMenu::drawFollowerMenu()
 					if ( followerStats->type == GYROBOT )
 					{
 						getSizeOfText(ttf12, "Return &", &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3635]) : SDL_Rect{};
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3635)) : SDL_Rect{};
 						if ( i == highlight )
 						{
 							panelIcons[i]->path = iconEntries["tinker_return_and_land"].path_hover;
@@ -3251,10 +3354,10 @@ void FollowerRadialMenu::drawFollowerMenu()
 					}
 					else if ( followerStats->type == DUMMYBOT )
 					{
-						getSizeOfText(ttf12, language[3641], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3641]) : SDL_Rect{};
-						getSizeOfText(ttf12, language[3642], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3642]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3641), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3641)) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3642), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3642)) : SDL_Rect{};
 						if ( i == highlight )
 						{
 							panelIcons[i]->path = iconEntries["tinker_deactivate"].path_hover;
@@ -3267,8 +3370,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 					}
 					else if ( followerStats->type == SENTRYBOT || followerStats->type == SPELLBOT )
 					{
-						getSizeOfText(ttf12, language[3649], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3649]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3649), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3649)) : SDL_Rect{};
 						if ( i == highlight )
 						{
 							panelIcons[i]->path = iconEntries["tinker_deactivate"].path_hover;
@@ -3281,8 +3384,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 					}
 					else
 					{
-						getSizeOfText(ttf12, language[3037 + i], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3037 + i]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3037 + i), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3037 + i)) : SDL_Rect{};
 						// rest
 						if ( i == highlight )
 						{
@@ -3302,7 +3405,7 @@ void FollowerRadialMenu::drawFollowerMenu()
 						if ( optionDisabledForCreature(skillLVL, followerStats->type, ALLY_CMD_ATTACK_CONFIRM, followerToCommand) == 0 )
 						{
 							getSizeOfText(ttf12, "Interact / ", &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, language[3051]) : SDL_Rect{};
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3051)) : SDL_Rect{};
 							if ( i == highlight )
 							{
 								panelIcons[i]->path = iconEntries["leader_attack_or_interact"].path_hover;
@@ -3315,8 +3418,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 						}
 						else
 						{
-							getSizeOfText(ttf12, language[3037 + i], &width, nullptr);
-							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, language[3037 + i]) : SDL_Rect{};
+							getSizeOfText(ttf12, Language::get(3037 + i), &width, nullptr);
+							(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y + 4, Language::get(3037 + i)) : SDL_Rect{};
 							if ( tinkeringFollower )
 							{
 								if ( i == highlight )
@@ -3345,8 +3448,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 					}
 					else
 					{
-						getSizeOfText(ttf12, language[3104], &width, nullptr); // print just attack if no world interaction.
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3104]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3104), &width, nullptr); // print just attack if no world interaction.
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3104)) : SDL_Rect{};
 						if ( tinkeringFollower )
 						{
 							if ( i == highlight )
@@ -3377,8 +3480,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 				{
 					if ( followerStats->type == SENTRYBOT || followerStats->type == SPELLBOT )
 					{
-						getSizeOfText(ttf12, language[3650], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3650]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3650), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3650)) : SDL_Rect{};
 						if ( i == highlight )
 						{
 							panelIcons[i]->path = iconEntries["tinker_lookat"].path_hover;
@@ -3391,8 +3494,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 					}
 					else
 					{
-						getSizeOfText(ttf12, language[3037 + i], &width, nullptr);
-						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3037 + i]) : SDL_Rect{};
+						getSizeOfText(ttf12, Language::get(3037 + i), &width, nullptr);
+						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3037 + i)) : SDL_Rect{};
 						if ( tinkeringFollower )
 						{
 							if ( i == highlight )
@@ -3421,8 +3524,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 				}
 				else
 				{
-					getSizeOfText(ttf12, language[3037 + i], &width, nullptr);
-					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, language[3037 + i]) : SDL_Rect{};
+					getSizeOfText(ttf12, Language::get(3037 + i), &width, nullptr);
+					(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 4, Language::get(3037 + i)) : SDL_Rect{};
 					if ( i == ALLY_CMD_DEFEND )
 					{
 						// "wait"
@@ -3545,8 +3648,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 			{
 				drawCircle(centerx, centery, radius - thickness, uint32ColorBaronyBlue, 192);
 			}
-			//getSizeOfText(ttf12, language[3063], &width, nullptr);
-			//ttfPrintText(ttf12, centerx - width / 2, centery - 8, language[3063]);
+			//getSizeOfText(ttf12, Language::get(3063), &width, nullptr);
+			//ttfPrintText(ttf12, centerx - width / 2, centery - 8, Language::get(3063));
 		}
 
 		if ( optionSelected == -1 && disableOption == 0 && highlight != -1 )
@@ -3580,55 +3683,34 @@ void FollowerRadialMenu::drawFollowerMenu()
 		if ( disableOption != 0 )
 		{
 			disableActionGlyph = true;
-			SDL_Rect tooltip;
-			tooltip.x = omousex + 16;
-			tooltip.y = omousey + 16;
-			char* lowSkillLVLTooltip = language[3062];
-			if ( tinkeringFollower )
-			{
-				lowSkillLVLTooltip = language[3672];
-			}
-			tooltip.w = longestline(lowSkillLVLTooltip) * TTF12_WIDTH + 8;
-			tooltip.h = TTF12_HEIGHT * 2 + 8;
 
 			if ( disableOption == -2 ) // disabled due to cooldown
 			{
-				tooltip.h = TTF12_HEIGHT + 8;
-				tooltip.w = longestline(language[3092]) * TTF12_WIDTH + 8;
-				//drawTooltip(&tooltip);
-				//ttfPrintTextFormattedColor(ttf12, tooltip.x + 4, tooltip.y + 6, uint32ColorOrange, language[3092]);
 				setFollowerBannerText(gui_player, bannerTxt, "invalid_action", "rest_cooldown", hudColors.characterSheetRed);
 			}
 			else if ( disableOption == -1 ) // disabled due to creature type
 			{
-				tooltip.h = TTF12_HEIGHT + 8;
-				tooltip.w = longestline(language[3103]) * TTF12_WIDTH + 8;
-				tooltip.w += strlen(getMonsterLocalizedName(followerStats->type).c_str()) * TTF12_WIDTH;
-				//drawTooltip(&tooltip);
-				//ttfPrintTextFormattedColor(ttf12, tooltip.x + 4, tooltip.y + 6,
-					//uint32ColorOrange, language[3103], getMonsterLocalizedName(followerStats->type).c_str());
 				auto& textMap = FollowerMenu[gui_player].iconEntries["invalid_action"].text_map["command_unavailable"];
 				setFollowerBannerTextFormatted(gui_player, bannerTxt, hudColors.characterSheetRed,
 					textMap.second, textMap.first.c_str(),
-					getMonsterLocalizedName(followerStats->type).c_str());
+					getMonsterLocalizedName(followerStats->type, followerStats).c_str());
+			}
+			else if ( disableOption == -4 ) // disabled due to command spell type
+			{
+				auto& textMap = FollowerMenu[gui_player].iconEntries["invalid_action"].text_map["command_unavailable_spell"];
+				setFollowerBannerTextFormatted(gui_player, bannerTxt, hudColors.characterSheetRed,
+					textMap.second, textMap.first.c_str(),
+					getMonsterLocalizedName(followerStats->type, followerStats).c_str());
 			}
 			else if ( disableOption == -3 ) // disabled due to tinkerbot quality
 			{
-				tooltip.h = TTF12_HEIGHT + 8;
-				tooltip.w = longestline(language[3673]) * TTF12_WIDTH + 8;
-				//drawTooltip(&tooltip);
-				tooltip.w += strlen(getMonsterLocalizedName(followerStats->type).c_str()) * TTF12_WIDTH;
-				//drawTooltip(&tooltip);
-				//ttfPrintTextFormattedColor(ttf12, tooltip.x + 4, tooltip.y + 6,
-					//uint32ColorOrange, language[3673], getMonsterLocalizedName(followerStats->type).c_str());
 				auto& textMap = FollowerMenu[gui_player].iconEntries["invalid_action"].text_map["tinker_quality_low"];
 				setFollowerBannerTextFormatted(gui_player, bannerTxt, hudColors.characterSheetRed,
 					textMap.second, textMap.first.c_str(),
-					getMonsterLocalizedName(followerStats->type).c_str());
+					getMonsterLocalizedName(followerStats->type, followerStats).c_str());
 			}
 			else
 			{
-				//drawTooltip(&tooltip);
 				std::string requirement = "";
 				std::string current = "";
 				int requirementVal = 0;
@@ -3638,31 +3720,31 @@ void FollowerRadialMenu::drawFollowerMenu()
 					switch ( std::min(disableOption, SKILL_LEVEL_LEGENDARY) )
 					{
 						case 0:
-							requirement = language[363];
+							requirement = Language::get(363);
 							requirementVal = 0;
 							break;
 						case SKILL_LEVEL_NOVICE:
-							requirement = language[364];
+							requirement = Language::get(364);
 							requirementVal = SKILL_LEVEL_NOVICE;
 							break;
 						case SKILL_LEVEL_BASIC:
-							requirement = language[365];
+							requirement = Language::get(365);
 							requirementVal = SKILL_LEVEL_BASIC;
 							break;
 						case SKILL_LEVEL_SKILLED:
-							requirement = language[366];
+							requirement = Language::get(366);
 							requirementVal = SKILL_LEVEL_SKILLED;
 							break;
 						case SKILL_LEVEL_EXPERT:
-							requirement = language[367];
+							requirement = Language::get(367);
 							requirementVal = SKILL_LEVEL_EXPERT;
 							break;
 						case SKILL_LEVEL_MASTER:
-							requirement = language[368];
+							requirement = Language::get(368);
 							requirementVal = SKILL_LEVEL_MASTER;
 							break;
 						case SKILL_LEVEL_LEGENDARY:
-							requirement = language[369];
+							requirement = Language::get(369);
 							requirementVal = SKILL_LEVEL_LEGENDARY;
 							break;
 						default:
@@ -3672,37 +3754,36 @@ void FollowerRadialMenu::drawFollowerMenu()
 
 					if ( skillLVL >= SKILL_LEVEL_LEGENDARY )
 					{
-						current = language[369];
+						current = Language::get(369);
 					}
 					else if ( skillLVL >= SKILL_LEVEL_MASTER )
 					{
-						current = language[368];
+						current = Language::get(368);
 					}
 					else if ( skillLVL >= SKILL_LEVEL_EXPERT )
 					{
-						current = language[367];
+						current = Language::get(367);
 					}
 					else if ( skillLVL >= SKILL_LEVEL_SKILLED )
 					{
-						current = language[366];
+						current = Language::get(366);
 					}
 					else if ( skillLVL >= SKILL_LEVEL_BASIC )
 					{
-						current = language[365];
+						current = Language::get(365);
 					}
 					else if ( skillLVL >= SKILL_LEVEL_NOVICE )
 					{
-						current = language[364];
+						current = Language::get(364);
 					}
 					else
 					{
-						current = language[363];
+						current = Language::get(363);
 					}
 					current.erase(std::remove(current.begin(), current.end(), ' '), current.end()); // trim whitespace
 					currentVal = skillLVL;
 				}
-				//ttfPrintTextFormattedColor(ttf12, tooltip.x + 4, tooltip.y + 6, 
-					//uint32ColorOrange, lowSkillLVLTooltip, requirement.c_str(), current.c_str());
+
 				if ( tinkeringFollower )
 				{
 					auto& textMap = FollowerMenu[gui_player].iconEntries["invalid_action"].text_map["skill_missing_tinker"];
@@ -3768,7 +3849,15 @@ void FollowerRadialMenu::drawFollowerMenu()
 
 			auto bannerGlyph = bannerFrame->findImage("banner glyph");
 			bannerGlyph->disabled = true;
-			bannerGlyph->path = Input::inputs[gui_player].getGlyphPathForBinding("Use");
+			if ( inputs.hasController(gui_player) )
+			{
+				bannerGlyph->path = Input::inputs[gui_player].getGlyphPathForBinding("MenuConfirm");
+			}
+			else
+			{
+				bannerGlyph->path = Input::inputs[gui_player].getGlyphPathForBinding("MenuLeftClick");
+			}
+			//bannerGlyph->path = Input::inputs[gui_player].getGlyphPathForBinding("Use");
 			auto bannerGlyphModifier = bannerFrame->findImage("banner modifier glyph");
 			bannerGlyphModifier->disabled = true;
 			bannerGlyphModifier->path = Input::inputs[gui_player].getGlyphPathForBinding("Defend");
@@ -3883,24 +3972,24 @@ void FollowerRadialMenu::drawFollowerMenu()
 				char buf[128] = "";
 				int spaces = 0;
 				int spaces2 = 0;
-				for ( int c = 0; c <= strlen(language[4200]); ++c )
+				for ( int c = 0; c <= strlen(Language::get(4200)); ++c )
 				{
-					if ( language[4200][c] == '\0' )
+					if ( Language::get(4200)[c] == '\0' )
 					{
 						break;
 					}
-					if ( language[4200][c] == ' ' )
+					if ( Language::get(4200)[c] == ' ' )
 					{
 						++spaces;
 					}
 				}
 				if ( strcmp(followerStats->name, "") && strcmp(followerStats->name, "nothing") )
 				{
-					snprintf(buf, sizeof(buf), language[4200], followerStats->name);
+					snprintf(buf, sizeof(buf), Language::get(4200), followerStats->name);
 				}
 				else
 				{
-					snprintf(buf, sizeof(buf), language[4200], getMonsterLocalizedName(followerStats->type).c_str());
+					snprintf(buf, sizeof(buf), Language::get(4200), getMonsterLocalizedName(followerStats->type, followerStats).c_str());
 				}
 
 				for ( int c = 0; c <= strlen(buf); ++c )
@@ -4054,7 +4143,8 @@ void FollowerRadialMenu::selectNextFollower()
 			}
 			if ( recentEntity )
 			{
-				createParticleFollowerCommand(recentEntity->x, recentEntity->y, 0, 174);
+				createParticleFollowerCommand(recentEntity->x, recentEntity->y, 0, FOLLOWER_SELECTED_PARTICLE,
+					recentEntity->getUID());
 				playSound(139, 64);
 			}
 			return;
@@ -4152,14 +4242,26 @@ bool FollowerRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool upda
 	bool interactItems = allowedInteractItems(followerStats->type) || allowedInteractFood(followerStats->type);
 	bool interactWorld = allowedInteractWorld(followerStats->type);
 	bool tinkeringFollower = isTinkeringFollower(followerStats->type);
-	int skillLVL = stats[gui_player]->PROFICIENCIES[PRO_LEADERSHIP] + statGetCHR(stats[gui_player], players[gui_player]->entity);
+	int skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LEADERSHIP) + statGetCHR(stats[gui_player], players[gui_player]->entity);
 	if ( tinkeringFollower )
 	{
-		skillLVL = stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity);
+		skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity);
 	}
 	if ( followerToCommand->monsterAllySummonRank != 0 )
 	{
 		skillLVL = SKILL_LEVEL_LEGENDARY;
+	}
+
+	if ( followerToCommand )
+	{
+		if ( Stat* followerStats = followerToCommand->getStats() )
+		{
+			if ( followerStats->getEffectActive(EFF_COMMAND) >= 1 && followerStats->getEffectActive(EFF_COMMAND) < MAXPLAYERS + 1 )
+			{
+				interactWorld = false;
+				interactItems = false;
+			}
+		}
 	}
 
 	bool enableAttack = (optionDisabledForCreature(skillLVL, followerStats->type, ALLY_CMD_ATTACK_CONFIRM, followerToCommand) == 0);
@@ -4170,12 +4272,12 @@ bool FollowerRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool upda
 		{
 			if ( Input::inputs[gui_player].binary("Defend") )
 			{
-				strcpy(interactText, language[4201]); //"(ALL) "
-				strcat(interactText, language[4043]); // "Attack "
+				strcpy(interactText, Language::get(4201)); //"(ALL) "
+				strcat(interactText, Language::get(4043)); // "Attack "
 			}
 			else
 			{
-				strcpy(interactText, language[4043]); // "Attack "
+				strcpy(interactText, Language::get(4043)); // "Attack "
 			}
 		}
 	}
@@ -4183,29 +4285,67 @@ bool FollowerRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool upda
 	{
 		if ( updateInteractText )
 		{
-			strcpy(interactText, language[4014]); // "Interact with "
+			strcpy(interactText, Language::get(4014)); // "Interact with "
 		}
 	}
 	if ( selectedEntity.behavior == &actTorch && interactWorld )
 	{
 		if ( updateInteractText )
 		{
-			strcat(interactText, items[TOOL_TORCH].name_identified);
+			strcat(interactText, items[TOOL_TORCH].getIdentifiedName());
 		}
 	}
 	else if ( (selectedEntity.behavior == &actSwitch || selectedEntity.sprite == 184) && interactWorld )
 	{
 		if ( updateInteractText )
 		{
-			strcat(interactText, language[4044]); // "switch"
+			strcat(interactText, Language::get(4044)); // "switch"
+		}
+	}
+	else if ( (selectedEntity.behavior == &actWallButton || selectedEntity.sprite == 1151
+		|| selectedEntity.sprite == 1152) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6393)); // "button"
+		}
+	}
+	else if ( (selectedEntity.behavior == &actTeleportShrine ) && (interactWorld || interactItems || enableAttack) && followerStats->type != GYROBOT )
+	{
+		if ( updateInteractText )
+		{
+			if ( !interactItems && !interactWorld && enableAttack )
+			{
+				strcpy(interactText, Language::get(4014)); // "Interact with "
+			}
+			strcat(interactText, Language::get(4309)); // "shrine"
+		}
+	}
+	else if ( (selectedEntity.behavior == &actTeleporter) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			switch ( selectedEntity.teleporterType )
+			{
+				case 0:
+				case 1:
+					strcat(interactText, Language::get(4310)); // "ladder"
+					break;
+				case 2:
+				case 3:
+					strcat(interactText, Language::get(4311)); // "portal"
+					break;
+				default:
+					break;
+			}
 		}
 	}
 	else if ( selectedEntity.behavior == &actBomb && interactWorld && followerStats->type == GYROBOT )
 	{
 		if ( updateInteractText )
 		{
-			strcpy(interactText, language[3093]);
-			strcat(interactText, language[4045]); // "trap"
+			strcpy(interactText, Language::get(3093));
+			strcat(interactText, Language::get(4045)); // "trap"
 		}
 	}
 	else if ( selectedEntity.behavior == &actItem && interactItems )
@@ -4216,31 +4356,33 @@ bool FollowerRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool upda
 			{
 				if ( selectedEntity.skill[15] == 0 )
 				{
-					strcat(interactText, items[selectedEntity.skill[10]].name_unidentified);
+					strcat(interactText, items[selectedEntity.skill[10]].getUnidentifiedName());
 				}
 				else
 				{
-					strcat(interactText, items[selectedEntity.skill[10]].name_identified);
+					strcat(interactText, items[selectedEntity.skill[10]].getIdentifiedName());
 				}
 			}
 			else
 			{
-				strcat(interactText, language[4046]); // "item"
+				strcat(interactText, Language::get(4046)); // "item"
 			}
 		}
 	}
-	else if ( selectedEntity.behavior == &actMonster && enableAttack )
+	else if ( selectedEntity.behavior == &actMonster 
+		&& enableAttack && selectedEntity.getMonsterTypeFromSprite() != GYROBOT
+		&& !selectedEntity.isInertMimic() )
 	{
 		if ( updateInteractText )
 		{
 			if ( Input::inputs[gui_player].binary("Defend") )
 			{
-				strcpy(interactText, language[4201]); //"(ALL) "
-				strcat(interactText, language[4043]); // "Attack "
+				strcpy(interactText, Language::get(4201)); //"(ALL) "
+				strcat(interactText, Language::get(4043)); // "Attack "
 			}
 			else
 			{
-				strcpy(interactText, language[4043]); // "Attack "
+				strcpy(interactText, Language::get(4043)); // "Attack "
 			}
 			int monsterType = selectedEntity.getMonsterTypeFromSprite();
 			strcat(interactText, getMonsterLocalizedName((Monster)monsterType).c_str());
@@ -4250,7 +4392,7 @@ bool FollowerRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool upda
 	{
 		if ( updateInteractText )
 		{
-			strcpy(interactText, language[4047]); // "No interactions available"
+			strcpy(interactText, Language::get(4047)); // "No interactions available"
 		}
 		return false;
 	}
@@ -4272,6 +4414,12 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 		case GYROBOT:
 		case SENTRYBOT:
 		case SPELLBOT:
+		case REVENANT_SKULL:
+		case MINIMIMIC:
+		case MONSTER_ADORCISED_WEAPON:
+		case FLAME_ELEMENTAL:
+		case EARTH_ELEMENTAL:
+		case MOTH_SMALL:
 			creatureTier = 0;
 			break;
 		case GOBLIN:
@@ -4289,6 +4437,12 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 		case INCUBUS:
 		case INSECTOID:
 		case GOATMAN:
+		case BUGBEAR:
+		case DRYAD:
+		case MYCONID:
+		case SALAMANDER:
+		case GREMLIN:
+		case MIMIC:
 			creatureTier = 2;
 			break;
 		case CRYSTALGOLEM:
@@ -4419,6 +4573,11 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 		}
 	}
 
+	if ( option == ALLY_CMD_SPECIAL && monsterType == EARTH_ELEMENTAL )
+	{
+		return -1; // disabled due to monster.
+	}
+
 	if ( option == ALLY_CMD_SPECIAL
 		&& follower->monsterAllySpecialCooldown != 0 )
 	{
@@ -4445,6 +4604,10 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 			if ( monsterType == SENTRYBOT || monsterType == SPELLBOT )
 			{
 				return 0;
+			}
+			if ( followerStats && followerStats->getEffectActive(EFF_COMMAND) >= 1 && followerStats->getEffectActive(EFF_COMMAND) < MAXPLAYERS + 1 )
+			{
+				return -4; // unavailable due to spell
 			}
 			if ( creatureTier > 0 )
 			{
@@ -4551,7 +4714,9 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 			break;
 
 		case ALLY_CMD_CLASS_TOGGLE:
-			if ( follower && follower->monsterAllySummonRank != 0 )
+			if ( follower && (follower->monsterAllySummonRank != 0 
+				|| monsterType == MONSTER_ADORCISED_WEAPON
+				|| monsterType == FLAME_ELEMENTAL) )
 			{
 				return 0;
 			}
@@ -4562,6 +4727,10 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 			if ( !allowedClassToggle(monsterType) )
 			{
 				return -1; // disabled due to creature.
+			}
+			if ( followerStats && followerStats->getEffectActive(EFF_COMMAND) >= 1 && followerStats->getEffectActive(EFF_COMMAND) < MAXPLAYERS + 1 )
+			{
+				return -4; // unavailable due to spell
 			}
 			if ( playerSkillLVL < requirement )
 			{
@@ -4579,6 +4748,10 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 			{
 				return 0;
 			}
+			if ( followerStats && followerStats->getEffectActive(EFF_COMMAND) >= 1 && followerStats->getEffectActive(EFF_COMMAND) < MAXPLAYERS + 1 )
+			{
+				return -4; // unavailable due to spell
+			}
 			if ( playerSkillLVL < requirement )
 			{
 				return requirement; // disabled due to basic skill requirements.
@@ -4590,6 +4763,10 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 			if ( creatureTier == 3 )
 			{
 				return -1; // disabled due to creature.
+			}
+			if ( followerStats && followerStats->getEffectActive(EFF_COMMAND) >= 1 && followerStats->getEffectActive(EFF_COMMAND) < MAXPLAYERS + 1 )
+			{
+				return -4; // unavailable due to spell
 			}
 			if ( playerSkillLVL < requirement )
 			{
@@ -4735,6 +4912,16 @@ bool FollowerRadialMenu::allowedInteractItems(int monsterType)
 			{
 				return false;
 			}
+			/*if ( followerToCommand )
+			{
+				if ( Stat* followerStats = followerToCommand->getStats() )
+				{
+					if ( followerStats->getEffectActive(EFF_COMMAND) >= 1 && followerStats->getEffectActive(EFF_COMMAND) < MAXPLAYERS + 1 )
+					{
+						return false;
+					}
+				}
+			}*/
 			return true;
 			break;
 		default:
@@ -4745,7 +4932,20 @@ bool FollowerRadialMenu::allowedInteractItems(int monsterType)
 
 bool FollowerRadialMenu::attackCommandOnly(int monsterType)
 {
-	return !(allowedInteractItems(monsterType) || allowedInteractWorld(monsterType) || allowedInteractFood(monsterType));
+	bool result = !(allowedInteractItems(monsterType) || allowedInteractWorld(monsterType) || allowedInteractFood(monsterType));
+
+	if ( followerToCommand )
+	{
+		if ( Stat* followerStats = followerToCommand->getStats() )
+		{
+			if ( followerStats->getEffectActive(EFF_COMMAND) >= 1 && followerStats->getEffectActive(EFF_COMMAND) < MAXPLAYERS + 1 )
+			{
+				return true;
+			}
+		}
+	}
+
+	return result;
 }
 
 void FollowerRadialMenu::monsterGyroBotConvertCommand(int* option)
@@ -4833,6 +5033,575 @@ bool GenericGUIMenu::isItemIdentifiable(const Item* item)
 	return true;
 }
 
+bool GenericGUIMenu::isItemEnchantArmorable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( items[item->type].item_slot != NO_EQUIP )
+	{
+		if ( items[item->type].item_slot != EQUIPPABLE_IN_SLOT_AMULET
+			&& items[item->type].item_slot != EQUIPPABLE_IN_SLOT_RING
+			&& items[item->type].item_slot != EQUIPPABLE_IN_SLOT_WEAPON )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool GenericGUIMenu::isItemEnchantWeaponable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_WEAPON )
+	{
+		return true;
+		/*if ( itemCategory(item) == WEAPON || itemCategory(item) == THROWN )
+		{
+		}*/
+	}
+	else if ( item->type == BRASS_KNUCKLES
+		|| item->type == IRON_KNUCKLES
+		|| item->type == SPIKED_GAUNTLETS )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool GenericGUIMenu::isItemDesecratable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( item->beatitude > 0 )
+	{
+		return true;
+	}
+
+
+	return false;
+}
+
+void GenericGUIMenu::desecrateItem(Item* item)
+{
+	if ( !item )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6720), item->getName());
+		return;
+	}
+
+	item->beatitude = -item->beatitude;
+	messagePlayer(gui_player, MESSAGE_HINT, Language::get(858), item->getName()); // glows black
+
+	if ( multiplayer == CLIENT )
+	{
+		Item** slot = itemSlot(stats[gui_player], item);
+		int armornum = -1;
+		if ( slot )
+		{
+			if ( slot == &stats[gui_player]->weapon )
+			{
+				armornum = 0;
+			}
+			else if ( slot == &stats[gui_player]->helmet )
+			{
+				armornum = 1;
+			}
+			else if ( slot == &stats[gui_player]->breastplate )
+			{
+				armornum = 2;
+			}
+			else if ( slot == &stats[gui_player]->gloves )
+			{
+				armornum = 3;
+			}
+			else if ( slot == &stats[gui_player]->shoes )
+			{
+				armornum = 4;
+			}
+			else if ( slot == &stats[gui_player]->shield )
+			{
+				armornum = 5;
+			}
+			else if ( slot == &stats[gui_player]->cloak )
+			{
+				armornum = 6;
+			}
+			else if ( slot == &stats[gui_player]->mask )
+			{
+				armornum = 7;
+			}
+			else if ( slot == &stats[gui_player]->mask )
+			{
+				armornum = 7;
+			}
+		}
+		if ( armornum >= 0 )
+		{
+			strcpy((char*)net_packet->data, "BEAT");
+			net_packet->data[4] = gui_player;
+			net_packet->data[5] = armornum;
+			net_packet->data[6] = item->beatitude + 100;
+			SDLNet_Write16((Sint16)item->type, &net_packet->data[7]);
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 9;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+			//messagePlayer(player, "sent server: %d, %d, %d", net_packet->data[4], net_packet->data[5], net_packet->data[6]);
+		}
+	}
+	closeGUI();
+}
+
+bool GenericGUIMenu::isItemBlessWaterable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( item->type == POTION_WATER )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+void GenericGUIMenu::blessWater(Item* item)
+{
+	if ( !item )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6721), item->getName());
+		return;
+	}
+
+	item->beatitude = item->beatitude + 1;
+	item->status = SERVICABLE;
+	messagePlayer(gui_player, MESSAGE_HINT, Language::get(859), item->getName()); // glows blue
+
+	closeGUI();
+}
+
+bool GenericGUIMenu::isItemSanctifiable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( item->beatitude < 0 )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+void GenericGUIMenu::sanctifyItem(Item* item)
+{
+	if ( !item )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6721), item->getName());
+		return;
+	}
+
+	item->beatitude = -item->beatitude;
+	messagePlayer(gui_player, MESSAGE_HINT, Language::get(859), item->getName()); // glows blue
+
+	if ( multiplayer == CLIENT )
+	{
+		Item** slot = itemSlot(stats[gui_player], item);
+		int armornum = -1;
+		if ( slot )
+		{
+			if ( slot == &stats[gui_player]->weapon )
+			{
+				armornum = 0;
+			}
+			else if ( slot == &stats[gui_player]->helmet )
+			{
+				armornum = 1;
+			}
+			else if ( slot == &stats[gui_player]->breastplate )
+			{
+				armornum = 2;
+			}
+			else if ( slot == &stats[gui_player]->gloves )
+			{
+				armornum = 3;
+			}
+			else if ( slot == &stats[gui_player]->shoes )
+			{
+				armornum = 4;
+			}
+			else if ( slot == &stats[gui_player]->shield )
+			{
+				armornum = 5;
+			}
+			else if ( slot == &stats[gui_player]->cloak )
+			{
+				armornum = 6;
+			}
+			else if ( slot == &stats[gui_player]->mask )
+			{
+				armornum = 7;
+			}
+			else if ( slot == &stats[gui_player]->mask )
+			{
+				armornum = 7;
+			}
+		}
+		if ( armornum >= 0 )
+		{
+			strcpy((char*)net_packet->data, "BEAT");
+			net_packet->data[4] = gui_player;
+			net_packet->data[5] = armornum;
+			net_packet->data[6] = item->beatitude + 100;
+			SDLNet_Write16((Sint16)item->type, &net_packet->data[7]);
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 9;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+			//messagePlayer(player, "sent server: %d, %d, %d", net_packet->data[4], net_packet->data[5], net_packet->data[6]);
+		}
+	}
+	closeGUI();
+}
+
+bool GenericGUIMenu::isItemCleaseFoodable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( itemCategory(item) == FOOD )
+	{
+		if ( item->status < EXCELLENT )
+		{
+			return true;
+		}
+		else if ( item->beatitude < 0 )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void GenericGUIMenu::cleanseFood(Item* item)
+{
+	if ( !item )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6723), item->getName());
+		return;
+	}
+
+	bool statusModified = false;
+	if ( item->status < EXCELLENT )
+	{
+		item->status = EXCELLENT;
+		statusModified = true;
+	}
+	else
+	{
+		if ( item->beatitude < 0 )
+		{
+			item->beatitude += 1;
+			statusModified = true;
+		}
+	}
+
+	/*if ( item->beatitude == 0 )
+	{
+		item->beatitude = 1;
+		statusModified = true;
+	}*/
+	if ( statusModified )
+	{
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_CLEANSE_FOOD, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+
+		messagePlayer(gui_player, MESSAGE_HINT, Language::get(6725), item->getName()); // looks fresher
+	}
+	closeGUI();
+}
+
+bool GenericGUIMenu::isItemVoidable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( items[item->type].hasAttribute("UNVOIDABLE") )
+	{
+		return false;
+	}
+	return true;
+}
+
+bool GenericGUIMenu::isItemAdorcisable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_WEAPON )
+	{
+		if ( getWeaponSkill(item) >= PRO_SWORD && getWeaponSkill(item) <= PRO_POLEARM )
+		{
+			return true;
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_INSTRUMENT )
+	{
+		if ( itemTypeIsInstrument(item->type) )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool GenericGUIMenu::isItemScepterChargeable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( itemCategory(item) == SPELL_CAT )
+	{
+		return true;
+	}
+	return false;
+}
+
+bool GenericGUIMenu::isItemAlterable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
+	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_INSTRUMENT )
+	{
+		if ( itemTypeIsInstrument(item->type) )
+		{
+			return true;
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_METALLURGY )
+	{
+		int metal = 0;
+		int magic = 0;
+		GenericGUIMenu::tinkeringGetItemValue(item, &metal, &magic);
+		if ( metal > 0 && itemCategory(item) != GEM )
+		{
+			if ( item->getGoldValue() > 0 )
+			{
+				int value = item->sellValue(-1) / 4;
+				return value > 0;
+			}
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_VANDALISE )
+	{
+		if ( item->status == BROKEN )
+		{
+			return false;
+		}
+
+		if ( items[item->type].hasAttribute("UNVANDALISABLE") )
+		{
+			return false;
+		}
+
+		if ( item->getGoldValue() > 0 )
+		{
+			int value = item->sellValue(-1) / 20;
+			return value > 0;
+		}
+		return true;
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_GEOMANCY )
+	{
+		int metal = 0;
+		int magic = 0;
+		GenericGUIMenu::tinkeringGetItemValue(item, &metal, &magic);
+		if ( metal > 0 )
+		{
+			if ( item->getGoldValue() > 0 )
+			{
+				int value = item->sellValue(-1) / 2;
+				return value > 0;
+			}
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_KEY )
+	{
+		if ( item->type == KEY_IRON
+			|| item->type == KEY_BRONZE
+			|| item->type == KEY_SILVER
+			/*|| item->type == KEY_GOLD*/
+			|| (itemCategory(item) == GEM && item->type != GEM_ROCK && item->type != GEM_LUCK /*&& item->type != GEM_GLASS*/) )
+		{
+			return true;
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_JEWEL )
+	{
+		/*if ( item->type == GEM_GLASS )
+		{
+			return true;
+		}
+		else */
+		if ( (itemCategory(item) == GEM && item->type != GEM_ROCK && item->type != GEM_LUCK /*&& item->type != GEM_GLASS*/
+			&& !(item->type == GEM_JEWEL && item->status == EXCELLENT)) )
+		{
+			return true;
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ENHANCE_WEAPON )
+	{
+		if ( item->type == BRONZE_AXE
+			|| item->type == BRONZE_MACE
+			|| item->type == BRONZE_SWORD
+			|| item->type == BRONZE_TOMAHAWK )
+		{
+			return true;
+		}
+		else if ( item->type == IRON_AXE
+			|| item->type == IRON_MACE
+			|| item->type == IRON_SWORD
+			|| item->type == IRON_SPEAR
+			|| item->type == IRON_DAGGER )
+		{
+			return true;
+		}
+		else if ( item->type == STEEL_AXE
+			|| item->type == STEEL_MACE
+			|| item->type == STEEL_SWORD
+			|| item->type == STEEL_HALBERD
+			|| item->type == STEEL_CHAKRAM )
+		{
+			return true;
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON )
+	{
+		if ( item->type == BRONZE_AXE
+			|| item->type == BRONZE_MACE
+			|| item->type == BRONZE_SWORD )
+		{
+			return true;
+		}
+		else if ( item->type == IRON_AXE
+			|| item->type == IRON_MACE
+			|| item->type == IRON_SWORD
+			|| item->type == IRON_SPEAR )
+		{
+			return true;
+		}
+		else if ( item->type == STEEL_AXE
+			|| item->type == STEEL_MACE
+			|| item->type == STEEL_SWORD
+			|| item->type == STEEL_HALBERD )
+		{
+			return true;
+		}
+		else if ( item->type == CRYSTAL_BATTLEAXE
+			|| item->type == CRYSTAL_MACE
+			|| item->type == CRYSTAL_SWORD
+			|| item->type == CRYSTAL_SPEAR )
+		{
+			return true;
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW )
+	{
+		if ( itemCategory(item) == GEM )
+		{
+			return true;
+		}
+		else if ( itemTypeIsQuiver(item->type) )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool GenericGUIMenu::isItemRepairable(const Item* item, int repairScroll)
 {
 	if ( !item )
@@ -4853,6 +5622,18 @@ bool GenericGUIMenu::isItemRepairable(const Item* item, int repairScroll)
 				return true;
 			}
 			return false;
+		}
+		else if(item->type == MAGICSTAFF_SCEPTER)
+		{
+			if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX < 100 )
+			{
+				return true;
+			}
+			if ( item->status == EXCELLENT )
+			{
+				return false;
+			}
+			return true;
 		}
 		else if ( cat == MAGICSTAFF )
 		{
@@ -4907,6 +5688,7 @@ bool GenericGUIMenu::isItemRepairable(const Item* item, int repairScroll)
 				case TOOL_DECOY:
 				case TOOL_DUMMYBOT:
 				case ENCHANTED_FEATHER:
+				case TOOL_DUCK:
 					return false;
 					break;
 				default:
@@ -4983,11 +5765,11 @@ void GenericGUIMenu::rebuildGUIInventory()
 			// did not find mixable item... close GUI
 			//if ( !experimentingAlchemy )
 			//{
-			//	messagePlayer(gui_player, MESSAGE_MISC, language[3338]);
+			//	messagePlayer(gui_player, MESSAGE_MISC, Language::get(3338));
 			//}
 			//else
 			//{
-			//	messagePlayer(gui_player, MESSAGE_MISC | MESSAGE_INVENTORY, language[3343]);
+			//	messagePlayer(gui_player, MESSAGE_MISC | MESSAGE_INVENTORY, Language::get(3343));
 			//}
 			//closeGUI();
 			//return;
@@ -5088,40 +5870,56 @@ void GenericGUIMenu::updateGUI()
 		}
 		if ( guiType == GUI_TYPE_ALCHEMY )
 		{
-			if ( !alembicItem )
+			if ( (alembicEntityUid == 0 && !alembicItem) || (alembicEntityUid != 0 && !uidToEntity(alembicEntityUid)) )
 			{
 				closeGUI();
 				return;
 			}
-			if ( !alembicItem->node )
+
+			if ( alembicItem )
 			{
-				closeGUI();
-				return;
+				if ( !alembicItem->node )
+				{
+					closeGUI();
+					return;
+				}
+				if ( alembicItem->node->list != &stats[gui_player]->inventory )
+				{
+					// dropped out of inventory or something.
+					closeGUI();
+					return;
+				}
 			}
-			if ( alembicItem->node->list != &stats[gui_player]->inventory )
+		}
+		else if ( guiType == GUI_TYPE_MAILBOX )
+		{
+			if ( mailboxEntityUid == 0 || (mailboxEntityUid != 0 && !uidToEntity(mailboxEntityUid)) )
 			{
-				// dropped out of inventory or something.
 				closeGUI();
 				return;
 			}
 		}
 		else if ( guiType == GUI_TYPE_TINKERING )
 		{
-			if ( !tinkeringKitItem )
+			if ( (workstationEntityUid == 0 && !tinkeringKitItem) || (workstationEntityUid != 0 && !uidToEntity(workstationEntityUid)) )
 			{
 				closeGUI();
 				return;
 			}
-			if ( !tinkeringKitItem->node )
+
+			if ( tinkeringKitItem )
 			{
-				closeGUI();
-				return;
-			}
-			if ( tinkeringKitItem->node->list != &stats[gui_player]->inventory )
-			{
-				// dropped out of inventory or something.
-				closeGUI();
-				return;
+				if ( !tinkeringKitItem->node )
+				{
+					closeGUI();
+					return;
+				}
+				if ( tinkeringKitItem->node->list != &stats[gui_player]->inventory )
+				{
+					// dropped out of inventory or something.
+					closeGUI();
+					return;
+				}
 			}
 		}
 		else if ( guiType == GUI_TYPE_SCRIBING )
@@ -5182,18 +5980,6 @@ void GenericGUIMenu::updateGUI()
 			}
 		}
 
-		gui_starty = (players[gui_player]->camera_midx() + (inventoryChest_bmp->w / 2)) + offsetx;
-		gui_startx = (players[gui_player]->camera_midy() - (inventoryChest_bmp->h / 2)) + offsety;
-
-		//Center the GUI.
-		pos.x = gui_starty;
-		pos.y = gui_startx;
-
-		windowX1 = gui_starty;
-		windowX2 = gui_starty + identifyGUI_img->w;
-
-		windowY1 = gui_startx;
-		windowY2 = gui_startx + identifyGUI_img->h;
 		if ( guiType == GUI_TYPE_TINKERING )
 		{
 			//windowX1 -= 20;
@@ -5226,19 +6012,19 @@ void GenericGUIMenu::updateGUI()
 
 			//// title
 			//ttfPrintTextFormatted(ttf12, windowX1 + 16, windowY1 + 8,
-			//	language[3690]);
+			//	Language::get(3690));
 			//char kitStatusText[64] = "";
 			//if ( tinkeringKitItem )
 			//{
-			//	snprintf(kitStatusText, 63, language[3691], language[3691 + std::max(1, static_cast<int>(tinkeringKitItem->status))]);
+			//	snprintf(kitStatusText, 63, Language::get(3691), Language::get(3691 + std::max(1, static_cast<int>(tinkeringKitItem->status))));
 			//}
 			//ttfPrintTextFormatted(ttf12, windowX2 - 16 - (strlen(kitStatusText) + 1) * TTF12_WIDTH, windowY2 - TTF12_HEIGHT - 8,
 			//	kitStatusText);
 
 			//ttfPrintTextFormatted(ttf12, windowX1 + 16, windowY2 - TTF12_HEIGHT - 8,
-			//	language[3647], numMetalScrap, numMagicScrap);
+			//	Language::get(3647), numMetalScrap, numMagicScrap);
 			//SDL_Rect smallIcon;
-			//smallIcon.x = windowX1 + 16 + (strlen(language[3647]) - 5) * TTF12_WIDTH;
+			//smallIcon.x = windowX1 + 16 + (strlen(Language::get(3647)) - 5) * TTF12_WIDTH;
 			//smallIcon.y = windowY2 - TTF12_HEIGHT - 12;
 			//smallIcon.h = 16;
 			//smallIcon.w = 16;
@@ -5264,7 +6050,7 @@ void GenericGUIMenu::updateGUI()
 
 			//SDL_Rect highlightBtn;
 			//// Craft
-			//getSizeOfText(ttf8, language[3644], &txtWidth, &txtHeight);
+			//getSizeOfText(ttf8, Language::get(3644), &txtWidth, &txtHeight);
 			//highlightBtn.x = textstartx;
 			//highlightBtn.y = pos.y + (12 - txtHeight);
 			//highlightBtn.w = txtWidth + 2 * charWidth + 4;
@@ -5280,10 +6066,10 @@ void GenericGUIMenu::updateGUI()
 			//{
 			//	drawImageScaled(button_bmp, NULL, &highlightBtn);
 			//}
-			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), language[3644]);
+			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), Language::get(3644));
 
 			//// Salvage
-			//getSizeOfText(font, language[3645], &txtWidth, &txtHeight);
+			//getSizeOfText(font, Language::get(3645), &txtWidth, &txtHeight);
 			//highlightBtn.x += highlightBtn.w;
 			//highlightBtn.y = pos.y + (12 - txtHeight);
 			//highlightBtn.w = txtWidth + 2 * charWidth + 4;
@@ -5299,10 +6085,10 @@ void GenericGUIMenu::updateGUI()
 			//{
 			//	drawImageScaled(button_bmp, NULL, &highlightBtn);
 			//}
-			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), language[3645]);
+			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), Language::get(3645));
 
 			//// Repair
-			//getSizeOfText(font, language[3646], &txtWidth, &txtHeight);
+			//getSizeOfText(font, Language::get(3646), &txtWidth, &txtHeight);
 			//highlightBtn.x += highlightBtn.w;
 			//highlightBtn.y = pos.y + (12 - txtHeight);
 			//highlightBtn.w = txtWidth + 2 * charWidth + 4;
@@ -5318,10 +6104,10 @@ void GenericGUIMenu::updateGUI()
 			//{
 			//	drawImageScaled(button_bmp, NULL, &highlightBtn);
 			//}
-			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), language[3646]);
+			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), Language::get(3646));
 
 			//// Filter include all (*)
-			//getSizeOfText(font, language[356], &txtWidth, &txtHeight);
+			//getSizeOfText(font, Language::get(356), &txtWidth, &txtHeight);
 			//highlightBtn.x += highlightBtn.w;
 			//highlightBtn.y = pos.y + (12 - txtHeight);
 			//highlightBtn.w = 2 * charWidth + 4;
@@ -5337,7 +6123,7 @@ void GenericGUIMenu::updateGUI()
 			//{
 			//	drawImageScaled(smallbutton_bmp, NULL, &highlightBtn);
 			//}
-			//ttfPrintText(font, highlightBtn.x + (highlightBtn.w - txtWidth) / 2, pos.y - (8 - txtHeight), language[356]);
+			//ttfPrintText(font, highlightBtn.x + (highlightBtn.w - txtWidth) / 2, pos.y - (8 - txtHeight), Language::get(356));
 		}
 		else if ( guiType == GUI_TYPE_SCRIBING )
 		{
@@ -5349,11 +6135,11 @@ void GenericGUIMenu::updateGUI()
 
 			//// title
 			//ttfPrintTextFormatted(ttf12, windowX1 + 16, windowY1 + 8,
-			//	language[3716]);
+			//	Language::get(3716));
 			//char toolStatusText[64] = "";
 			//if ( scribingToolItem && scribingToolItem->identified )
 			//{
-			//	snprintf(toolStatusText, 63, language[3717], scribingToolItem->appearance % ENCHANTED_FEATHER_MAX_DURABILITY);
+			//	snprintf(toolStatusText, 63, Language::get(3717), scribingToolItem->appearance % ENCHANTED_FEATHER_MAX_DURABILITY);
 			//}
 			//ttfPrintTextFormatted(ttf12, windowX2 - 16 - (strlen(toolStatusText) + 1) * TTF12_WIDTH, windowY2 - TTF12_HEIGHT - 8,
 			//	toolStatusText);
@@ -5367,7 +6153,7 @@ void GenericGUIMenu::updateGUI()
 			//{
 			//	if ( scribingBlankScrollTarget )
 			//	{
-			//		snprintf(tempstr, 1024, language[3722], scribingBlankScrollTarget->beatitude, items[SCROLL_BLANK].name_identified);
+			//		snprintf(tempstr, 1024, Language::get(3722), scribingBlankScrollTarget->beatitude, items[SCROLL_BLANK].name_identified);
 			//		ttfPrintTextFormatted(ttf12, windowX1 + 16, windowY2 - 2 * TTF12_HEIGHT - 8, tempstr);
 
 			//		SDL_Rect smallIcon;
@@ -5381,7 +6167,7 @@ void GenericGUIMenu::updateGUI()
 			//			drawImageScaled(*((SDL_Surface**)imageNode->element), NULL, &smallIcon);
 			//		}
 			//		smallIcon.x += smallIcon.w + 4;
-			//		smallIcon.w = longestline(language[3723]) * TTF12_WIDTH + 8;
+			//		smallIcon.w = longestline(Language::get(3723)) * TTF12_WIDTH + 8;
 			//		smallIcon.y -= 2;
 			//		smallIcon.h += 2;
 			//		if ( mouseInBounds(gui_player, smallIcon.x, smallIcon.x + smallIcon.w, smallIcon.y, smallIcon.y + smallIcon.h) )
@@ -5398,18 +6184,18 @@ void GenericGUIMenu::updateGUI()
 			//		{
 			//			drawWindow(smallIcon.x, smallIcon.y, smallIcon.x + smallIcon.w, smallIcon.y + smallIcon.h);
 			//		}
-			//		ttfPrintTextFormatted(ttf12, smallIcon.x + 6, windowY2 - 2 * TTF12_HEIGHT + 2, language[3723]);
+			//		ttfPrintTextFormatted(ttf12, smallIcon.x + 6, windowY2 - 2 * TTF12_HEIGHT + 2, Language::get(3723));
 			//	}
 			//	else
 			//	{
 			//		ttfPrintTextFormatted(ttf12, windowX1 + 16, windowY2 - 2 * TTF12_HEIGHT - 8,
-			//			language[3720]);
+			//			Language::get(3720));
 			//	}
 			//}
 			//else if ( scribingFilter == SCRIBING_FILTER_REPAIRABLE )
 			//{
 			//	ttfPrintTextFormatted(ttf12, windowX1 + 16, windowY2 - 2 * TTF12_HEIGHT - 8,
-			//		language[3726]);
+			//		Language::get(3726));
 			//}
 
 			//// draw filter labels.
@@ -5422,7 +6208,7 @@ void GenericGUIMenu::updateGUI()
 
 			//SDL_Rect highlightBtn;
 			//// Inscribe
-			//getSizeOfText(ttf8, language[3718], &txtWidth, &txtHeight);
+			//getSizeOfText(ttf8, Language::get(3718), &txtWidth, &txtHeight);
 			//highlightBtn.x = textstartx;
 			//highlightBtn.y = pos.y + (12 - txtHeight);
 			//highlightBtn.w = txtWidth + 2 * charWidth + 4;
@@ -5438,10 +6224,10 @@ void GenericGUIMenu::updateGUI()
 			//{
 			//	drawImageScaled(button_bmp, NULL, &highlightBtn);
 			//}
-			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), language[3718]);
+			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), Language::get(3718));
 
 			//// Repair
-			//getSizeOfText(font, language[3719], &txtWidth, &txtHeight);
+			//getSizeOfText(font, Language::get(3719), &txtWidth, &txtHeight);
 			//highlightBtn.x += highlightBtn.w;
 			//highlightBtn.y = pos.y + (12 - txtHeight);
 			//highlightBtn.w = txtWidth + 2 * charWidth + 4;
@@ -5457,107 +6243,7 @@ void GenericGUIMenu::updateGUI()
 			//{
 			//	drawImageScaled(button_bmp, NULL, &highlightBtn);
 			//}
-			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), language[3719]);
-		}
-
-		if ( guiType != GUI_TYPE_TINKERING && guiType != GUI_TYPE_ALCHEMY
-			&& guiType != GUI_TYPE_SCRIBING ) // gradually remove all this for all windows once upgraded
-		{
-			//drawImage(identifyGUI_img, NULL, &pos);
-
-			////Buttons
-			//if ( inputs.bMouseLeft(gui_player) )
-			//{
-			//	//GUI scroll up button.
-			//	if ( omousey >= gui_startx + 16 && omousey < gui_startx + 52 )
-			//	{
-			//		if ( omousex >= gui_starty + (identifyGUI_img->w - 28) && omousex < gui_starty + (identifyGUI_img->w - 12) )
-			//		{
-			//			buttonclick = 7;
-			//			scroll--;
-			//			inputs.mouseClearLeft(gui_player);
-			//		}
-			//	}
-			//	//GUI scroll down button.
-			//	else if ( omousey >= gui_startx + 52 && omousey < gui_startx + 88 )
-			//	{
-			//		if ( omousex >= gui_starty + (identifyGUI_img->w - 28) && omousex < gui_starty + (identifyGUI_img->w - 12) )
-			//		{
-			//			buttonclick = 8;
-			//			scroll++;
-			//			inputs.mouseClearLeft(gui_player);
-			//		}
-			//	}
-			//	else if ( omousey >= gui_startx && omousey < gui_startx + 15 )
-			//	{
-			//		//GUI close button.
-			//		if ( omousex >= gui_starty + 393 && omousex < gui_starty + 407 )
-			//		{
-			//			buttonclick = 9;
-			//			inputs.mouseClearLeft(gui_player);
-			//		}
-
-			//		// 20/12/20 - disabling this for now. unnecessary
-			//		if ( false )
-			//		{
-			//			if ( omousex >= gui_starty && omousex < gui_starty + 377 && omousey >= gui_startx && omousey < gui_startx + 15 )
-			//			{
-			//				gui_clickdrag[gui_player] = true;
-			//				draggingGUI = true;
-			//				dragoffset_x[gui_player] = omousex - gui_starty;
-			//				dragoffset_y[gui_player] = omousey - gui_startx;
-			//				inputs.mouseClearLeft(gui_player);
-			//			}
-			//		}
-			//	}
-			//}
-
-			//// mousewheel
-			//if ( omousex >= gui_starty + 12 && omousex < gui_starty + (identifyGUI_img->w - 28) )
-			//{
-			//	if ( omousey >= gui_startx + 16 && omousey < gui_startx + (identifyGUI_img->h - 8) )
-			//	{
-			//		if ( mousestatus[SDL_BUTTON_WHEELDOWN] )
-			//		{
-			//			mousestatus[SDL_BUTTON_WHEELDOWN] = 0;
-			//			scroll++;
-			//		}
-			//		else if ( mousestatus[SDL_BUTTON_WHEELUP] )
-			//		{
-			//			mousestatus[SDL_BUTTON_WHEELUP] = 0;
-			//			scroll--;
-			//		}
-			//	}
-			//}
-
-			//if ( draggingGUI )
-			//{
-			//	if ( gui_clickdrag[gui_player] )
-			//	{
-			//		offsetx = (omousex - dragoffset_x[gui_player]) - (gui_starty - offsetx);
-			//		offsety = (omousey - dragoffset_y[gui_player]) - (gui_startx - offsety);
-			//		if ( gui_starty <= 0 )
-			//		{
-			//			offsetx = 0 - (gui_starty - offsetx);
-			//		}
-			//		if ( gui_starty > 0 + xres - identifyGUI_img->w )
-			//		{
-			//			offsetx = (0 + xres - identifyGUI_img->w) - (gui_starty - offsetx);
-			//		}
-			//		if ( gui_startx <= 0 )
-			//		{
-			//			offsety = 0 - (gui_startx - offsety);
-			//		}
-			//		if ( gui_startx > 0 + players[gui_player]->camera_y2() - identifyGUI_img->h )
-			//		{
-			//			offsety = (0 + players[gui_player]->camera_y2() - identifyGUI_img->h) - (gui_startx - offsety);
-			//		}
-			//	}
-			//	else
-			//	{
-			//		draggingGUI = false;
-			//	}
-			//}
+			//ttfPrintText(font, highlightBtn.x + 4 + charWidth, pos.y - (8 - txtHeight), Language::get(3719));
 		}
 
 		list_t* player_inventory = &stats[gui_player]->inventory;
@@ -5585,390 +6271,43 @@ void GenericGUIMenu::updateGUI()
 			messagePlayer(0, MESSAGE_DEBUG, "Warning: stats[%d].inventory is not a valid list. This should not happen.", gui_player);
 		}
 
-		//else
-		//{
-		//	//Print the window label signifying this GUI.
-		//	char* window_name;
-		//	/*if ( guiType == GUI_TYPE_REPAIR )
-		//	{
-		//		if ( itemEffectItemType == SCROLL_REPAIR )
-		//		{
-		//			window_name = language[3286];
-		//		}
-		//		else if ( itemEffectItemType == SCROLL_CHARGING )
-		//		{
-		//			window_name = language[3732];
-		//		}
-		//		ttfPrintText(ttf8, (gui_starty + 2 + ((identifyGUI_img->w / 2) - ((TTF8_WIDTH * longestline(window_name)) / 2))), gui_startx + 4, window_name);
-		//	}
-		//	else */
-		//	if ( guiType == GUI_TYPE_ALCHEMY )
-		//	{
-		//		/*if ( !basePotion )
-		//		{
-		//			if ( !experimentingAlchemy )
-		//			{
-		//				window_name = language[3328];
-		//			}
-		//			else
-		//			{
-		//				window_name = language[3344];
-		//			}
-		//			ttfPrintText(ttf8, (gui_starty + 2 + ((identifyGUI_img->w / 2) - ((TTF8_WIDTH * longestline(window_name)) / 2))), gui_startx + 4, window_name);
-		//		}
-		//		else
-		//		{
-		//			if ( !experimentingAlchemy )
-		//			{
-		//				window_name = language[3329];
-		//			}
-		//			else
-		//			{
-		//				window_name = language[3345];
-		//			}
-		//			ttfPrintText(ttf8, (gui_starty + 2 + ((identifyGUI_img->w / 2) - ((TTF8_WIDTH * longestline(window_name)) / 2))), 
-		//				gui_startx + 4 - TTF8_HEIGHT - 4, window_name);
-		//			int count = basePotion->count;
-		//			basePotion->count = 1;
-		//			char *description = basePotion->description();
-		//			basePotion->count = count;
-		//			ttfPrintText(ttf8, (gui_starty + 2 + ((identifyGUI_img->w / 2) - ((TTF8_WIDTH * longestline(description)) / 2))),
-		//				gui_startx + 4, description);
-		//		}*/
-		//	}
-		//	/*else if ( guiType == GUI_TYPE_REMOVECURSE )
-		//	{
-		//		window_name = language[346];
-		//		ttfPrintText(ttf8, (gui_starty + 2 + ((identifyGUI_img->w / 2) - ((TTF8_WIDTH * longestline(window_name)) / 2))), gui_startx + 4, window_name);
-		//	}
-		//	else if ( guiType == GUI_TYPE_IDENTIFY )
-		//	{
-		//		window_name = language[318];
-		//		ttfPrintText(ttf8, (gui_starty + 2 + ((identifyGUI_img->w / 2) - ((TTF8_WIDTH * longestline(window_name)) / 2))), gui_startx + 4, window_name);
-		//	}*/
+		if ( player_inventory && guiType != GUI_TYPE_ALCHEMY )
+		{
+			rebuildGUIInventory();
 
-		//	if ( guiType != GUI_TYPE_TINKERING 
-		//		&& guiType != GUI_TYPE_ALCHEMY
-		//		&& guiType != GUI_TYPE_SCRIBING )
-		//	{
-		//		//GUI up button.
-		//		if ( buttonclick == 7 )
-		//		{
-		//			pos.x = gui_starty + (identifyGUI_img->w - 28);
-		//			pos.y = gui_startx + 16;
-		//			pos.w = 0;
-		//			pos.h = 0;
-		//			drawImage(invup_bmp, NULL, &pos);
-		//		}
-		//		//GUI down button.
-		//		if ( buttonclick == 8 )
-		//		{
-		//			pos.x = gui_starty + (identifyGUI_img->w - 28);
-		//			pos.y = gui_startx + 52;
-		//			pos.w = 0;
-		//			pos.h = 0;
-		//			drawImage(invdown_bmp, NULL, &pos);
-		//		}
-		//		//GUI close button.
-		//		if ( buttonclick == 9 )
-		//		{
-		//			pos.x = gui_starty + 393;
-		//			pos.y = gui_startx;
-		//			pos.w = 0;
-		//			pos.h = 0;
-		//			drawImage(invclose_bmp, NULL, &pos);
-		//			closeGUI();
-		//		}
-
-		//		Item *item = nullptr;
-
-		//		bool selectingSlot = false;
-		//		SDL_Rect slotPos;
-		//		slotPos.x = gui_starty + 12;
-		//		slotPos.w = inventoryoptionChest_bmp->w;
-		//		slotPos.y = gui_startx + 16;
-		//		slotPos.h = inventoryoptionChest_bmp->h;
-		//		bool mouseWithinBoundaryX = (mousex >= slotPos.x && mousex < slotPos.x + slotPos.w);
-
-		//		for ( int i = 0; i < kNumShownItems; ++i, slotPos.y += slotPos.h )
-		//		{
-		//			pos.x = slotPos.x;
-		//			pos.w = 0;
-		//			pos.h = 0;
-
-
-		//			if ( mouseWithinBoundaryX && omousey >= slotPos.y && omousey < slotPos.y + slotPos.h && itemsDisplayed[i] )
-		//			{
-		//				pos.y = slotPos.y;
-		//				drawImage(inventoryoptionChest_bmp, nullptr, &pos);
-		//				selectedSlot = i;
-		//				selectingSlot = true;
-		//				if ( (inputs.bMouseLeft(gui_player) || inputs.bControllerInputPressed(gui_player, INJOY_MENU_USE)) )
-		//				{
-		//					inputs.controllerClearInput(gui_player, INJOY_MENU_USE);
-		//					inputs.mouseClearLeft(gui_player);
-
-		//					bool result = executeOnItemClick(itemsDisplayed[i]);
-		//					GUICurrentType oldType = guiType;
-		//					rebuildGUIInventory();
-
-		//					if ( oldType == GUI_TYPE_ALCHEMY && !guiActive )
-		//					{
-		//						// do nothing
-		//					}
-		//					else if ( itemsDisplayed[i] == nullptr )
-		//					{
-		//						if ( itemsDisplayed[0] == nullptr )
-		//						{
-		//							//Go back to inventory.
-		//							selectedSlot = -1;
-		//							players[gui_player]->inventoryUI.warpMouseToSelectedItem(nullptr, (Inputs::SET_CONTROLLER));
-		//						}
-		//						else
-		//						{
-		//							//Move up one slot.
-		//							--selectedSlot;
-		//							warpMouseToSelectedSlot();
-		//						}
-		//					}
-		//				}
-		//			}
-		//		}
-
-		//		if ( !selectingSlot )
-		//		{
-		//			selectedSlot = -1;
-		//		}
-		//	}
-
-		//	//Okay, now prepare to render all the items.
-		//	y = gui_startx + 22;
-		//	c = 0;
-			if ( player_inventory && guiType != GUI_TYPE_ALCHEMY )
+			std::unordered_map<ItemType, int> itemCounts;
+			if ( guiType == GUI_TYPE_TINKERING && tinkeringFilter == TINKER_FILTER_CRAFTABLE )
 			{
-				rebuildGUIInventory();
-
-				std::unordered_map<ItemType, int> itemCounts;
-				if ( guiType == GUI_TYPE_TINKERING && tinkeringFilter == TINKER_FILTER_CRAFTABLE )
+				for ( node = stats[gui_player]->inventory.first; node != NULL; node = node->next )
 				{
-					for ( node = stats[gui_player]->inventory.first; node != NULL; node = node->next )
+					if ( node->element )
 					{
-						if ( node->element )
-						{
-							Item* item = (Item*)node->element;
-							itemCounts[item->type] += item->count;
-						}
+						Item* item = (Item*)node->element;
+						itemCounts[item->type] += item->count;
 					}
-					for ( node = player_inventory->first; node != NULL; node = node->next )
+				}
+				for ( node = player_inventory->first; node != NULL; node = node->next )
+				{
+					if ( node->element )
 					{
-						if ( node->element )
+						Item* item = (Item*)node->element;
+						if ( isNodeTinkeringCraftableItem(item->node) )
 						{
-							Item* item = (Item*)node->element;
-							if ( isNodeTinkeringCraftableItem(item->node) )
+							// make the displayed items reflect how many you are carrying.
+							item->count = 0;
+							if ( itemCounts.find(item->type) != itemCounts.end() )
 							{
-								// make the displayed items reflect how many you are carrying.
-								item->count = 0;
-								if ( itemCounts.find(item->type) != itemCounts.end() )
-								{
-									item->count = itemCounts[item->type];
-								}
+								item->count = itemCounts[item->type];
 							}
-							else
-							{
-								// stop once we reach normal inventory.
-								break;
-							}
+						}
+						else
+						{
+							// stop once we reach normal inventory.
+							break;
 						}
 					}
 				}
-
-		//		//Actually render the items.
-		//		c = 0;
-		//		for ( node = player_inventory->first; node != NULL; node = node->next )
-		//		{
-		//			if ( node->element )
-		//			{
-		//				Item* item = (Item*)node->element;
-		//				bool displayItem = shouldDisplayItemInGUI(item);
-		//				if ( displayItem )   //Skip over all non-used items
-		//				{
-		//					c++;
-		//					if ( c <= scroll )
-		//					{
-		//						continue;
-		//					}
-		//					char tempstr[256] = { 0 };
-		//					int showTinkeringBotHealthPercentage = false;
-		//					Uint32 color = uint32ColorWhite;
-		//					if ( guiType == GUI_TYPE_TINKERING )
-		//					{
-		//						break;
-		//						if ( isNodeTinkeringCraftableItem(item->node) )
-		//						{
-		//							// if anything, these should be doing
-		//							// strncpy(tempstr, language[N], TEMPSTR_LEN - <extra space needed>)
-		//							// not strlen(language[N]). there is zero safety conferred from this
-		//							// anti-pattern. different story with memcpy(), but strcpy() is not
-		//							// memcpy().
-		//							strcpy(tempstr, language[3644]); // craft
-		//							strncat(tempstr, item->description(), 46 - strlen(language[3644]));
-		//							if ( !tinkeringPlayerCanAffordCraft(item) || (tinkeringPlayerHasSkillLVLToCraft(item) == -1) )
-		//							{
-		//								color = uint32ColorGray;
-		//							}
-		//						}
-		//						else if ( isItemSalvageable(item, gui_player) && tinkeringFilter != TINKER_FILTER_REPAIRABLE )
-		//						{
-		//							strcpy(tempstr, language[3645]); // salvage
-		//							strncat(tempstr, item->description(), 46 - strlen(language[3645]));
-		//						}
-		//						else if ( tinkeringIsItemRepairable(item, gui_player) )
-		//						{
-		//							if ( tinkeringIsItemUpgradeable(item) )
-		//							{
-		//								if ( tinkeringUpgradeMaxStatus(item) <= item->status )
-		//								{
-		//									color = uint32ColorGray; // can't upgrade since it's higher status than we can craft.
-		//								}
-		//								else if ( !tinkeringPlayerCanAffordRepair(item) )
-		//								{
-		//									color = uint32ColorGray; // can't upgrade since no materials
-		//								}
-		//								strcpy(tempstr, language[3684]); // upgrade
-		//								strncat(tempstr, item->description(), 46 - strlen(language[3684]));
-		//							}
-		//							else
-		//							{
-		//								if ( tinkeringPlayerHasSkillLVLToCraft(item) == -1 && itemCategory(item) == TOOL )
-		//								{
-		//									color = uint32ColorGray; // can't repair since no we can't craft it.
-		//								}
-		//								else if ( !tinkeringPlayerCanAffordRepair(item) )
-		//								{
-		//									color = uint32ColorGray; // can't repair since no materials
-		//								}
-		//								strcpy(tempstr, language[3646]); // repair
-		//								strncat(tempstr, item->description(), 46 - strlen(language[3646]));
-		//							}
-		//							if ( item->type == TOOL_SENTRYBOT || item->type == TOOL_DUMMYBOT || item->type == TOOL_SPELLBOT )
-		//							{
-		//								showTinkeringBotHealthPercentage = true;
-		//							}
-		//						}
-		//						else
-		//						{
-		//							messagePlayer(clientnum, MESSAGE_DEBUG, "%d", item->type);
-		//							strncat(tempstr, "invalid item", 13);
-		//						}
-		//					}
-		//					else if ( guiType == GUI_TYPE_SCRIBING )
-		//					{
-		//						break;
-		//						if ( isNodeScribingCraftableItem(item->node) )
-		//						{
-		//							snprintf(tempstr, sizeof(tempstr), language[3721], item->getScrollLabel());
-		//						}
-		//						else
-		//						{
-		//							if ( scribingFilter == SCRIBING_FILTER_REPAIRABLE )
-		//							{
-		//								strcpy(tempstr, language[3719]); // repair
-		//								strncat(tempstr, item->description(), 46 - strlen(language[3718]));
-		//							}
-		//							else
-		//							{
-		//								strcpy(tempstr, language[3718]); // inscribe
-		//								int oldcount = item->count;
-		//								item->count = 1;
-		//								strncat(tempstr, item->description(), 46 - strlen(language[3718]));
-		//								item->count = oldcount;
-		//							}
-		//						}
-		//					}
-		//					else
-		//					{
-		//						strncpy(tempstr, item->description(), 46);
-		//					}
-
-		//					if ( showTinkeringBotHealthPercentage )
-		//					{
-		//						int health = 100;
-		//						if ( item->appearance >= 0 && item->appearance <= 4 )
-		//						{
-		//							health = 25 * item->appearance;
-		//							if ( health == 0 && item->status != BROKEN )
-		//							{
-		//								health = 5;
-		//							}
-		//						}
-		//						char healthstr[32] = "";
-		//						snprintf(healthstr, 16, " (%d%%)", health);
-		//						strncat(tempstr, healthstr, 46 - strlen(tempstr) - strlen(healthstr));
-		//					}
-		//					else if ( item->type == ENCHANTED_FEATHER && item->identified )
-		//					{
-		//						char healthstr[32] = "";
-		//						snprintf(healthstr, 16, " (%d%%)", item->appearance % ENCHANTED_FEATHER_MAX_DURABILITY);
-		//						strncat(tempstr, healthstr, 46 - strlen(tempstr) - strlen(healthstr));
-		//					}
-		//					
-
-		//					if ( strlen(tempstr) >= 46 )
-		//					{
-		//						strcat(tempstr, " ...");
-		//					}
-		//					ttfPrintTextColor(ttf8, gui_starty + 36, y, color, true, tempstr);
-		//					pos.x = gui_starty + 16;
-		//					pos.y = gui_startx + 17 + 18 * (c - scroll - 1);
-		//					pos.w = 16;
-		//					pos.h = 16;
-		//					drawImageScaled(itemSprite(item), NULL, &pos);
-		//					if ( guiType == GUI_TYPE_TINKERING )
-		//					{
-		//						int metal = 0;
-		//						int magic = 0;
-		//						if ( isNodeTinkeringCraftableItem(item->node) )
-		//						{
-		//							tinkeringGetCraftingCost(item, &metal, &magic);
-		//						}
-		//						else if ( isItemSalvageable(item, gui_player) && tinkeringFilter != TINKER_FILTER_REPAIRABLE )
-		//						{
-		//							tinkeringGetItemValue(item, &metal, &magic);
-		//						}
-		//						else if ( tinkeringIsItemRepairable(item, gui_player) )
-		//						{
-		//							tinkeringGetRepairCost(item, &metal, &magic);
-		//						}
-		//						pos.x = windowX2 - 20 - TTF8_WIDTH * 12;
-		//						if ( !item->identified )
-		//						{
-		//							ttfPrintTextFormattedColor(ttf8, windowX2 - 24 - TTF8_WIDTH * 15, y, color, "  ?    ?");
-		//						}
-		//						else
-		//						{
-		//							ttfPrintTextFormattedColor(ttf8, windowX2 - 24 - TTF8_WIDTH * 15, y, color, "%3d  %3d", metal, magic);
-		//						}
-		//						node_t* imageNode = items[TOOL_METAL_SCRAP].surfaces.first;
-		//						if ( imageNode )
-		//						{
-		//							drawImageScaled(*((SDL_Surface**)imageNode->element), NULL, &pos);
-		//						}
-		//						pos.x += TTF12_WIDTH * 4;
-		//						imageNode = items[TOOL_MAGIC_SCRAP].surfaces.first;
-		//						if ( imageNode )
-		//						{
-		//							drawImageScaled(*((SDL_Surface**)imageNode->element), NULL, &pos);
-		//						}
-		//					}
-		//					y += 18;
-		//					if ( c > 3 + scroll )
-		//					{
-		//						break;
-		//					}
-		//				}
-		//			}
-		//		}
-		//	}
+			}
 		}
 	}
 }
@@ -5986,21 +6325,78 @@ bool GenericGUIMenu::shouldDisplayItemInGUI(Item* item)
 		{
 			return isItemIdentifiable(item);
 		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_ENCHANT_ARMOR )
+		{
+			return isItemEnchantArmorable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_ENCHANT_WEAPON )
+		{
+			return isItemEnchantWeaponable(item);
+		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_REPAIR
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_CHARGING )
 		{
 			return isItemRepairable(item, itemEffectItemType);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESTORE )
+		{
+			return isItemRepairable(item, SCROLL_REPAIR);
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_REMOVECURSE 
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SPELL_REMOVECURSE )
 		{
 			return isItemRemoveCursable(item);
 		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_INSTRUMENT
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_METALLURGY
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_GEOMANCY
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_KEY
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_JEWEL
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ENHANCE_WEAPON
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_VANDALISE )
+		{
+			return isItemAlterable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_DESECRATE )
+		{
+			return isItemDesecratable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY_WATER )
+		{
+			return isItemBlessWaterable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY )
+		{
+			return isItemSanctifiable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_CLEANSE_FOOD )
+		{
+			return isItemCleaseFoodable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_WEAPON
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_INSTRUMENT )
+		{
+			return isItemAdorcisable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_PUNCTURE_VOID )
+		{
+			return isItemVoidable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCEPTER_CHARGE )
+		{
+			return isItemScepterChargeable(item);
+		}
 		return false;
 	}
 	else if ( guiType == GUI_TYPE_ALCHEMY )
 	{
 		return isItemMixable(item);
+	}
+	else if ( guiType == GUI_TYPE_MAILBOX )
+	{
+		return isItemMailable(item);
 	}
 	else if ( guiType == GUI_TYPE_TINKERING )
 	{
@@ -6062,12 +6458,19 @@ void GenericGUIMenu::uncurseItem(Item* item)
 	}
 	if ( !shouldDisplayItemInGUI(item) )
 	{
-		messagePlayer(gui_player, MESSAGE_MISC, language[347], item->getName());
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(347), item->getName());
 		return;
 	}
 
+	if ( item->beatitude != 0 )
+	{
+		if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SPELL_REMOVECURSE )
+		{
+			magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_REMOVECURSE, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+		}
+	}
 	item->beatitude = 0; //0 = uncursed. > 0 = blessed.
-	messagePlayer(gui_player, MESSAGE_MISC, language[348], item->description());
+	messagePlayer(gui_player, MESSAGE_MISC, Language::get(348), item->description());
 
 	closeGUI();
 	if ( multiplayer == CLIENT && itemIsEquipped(item, gui_player) )
@@ -6132,12 +6535,679 @@ void GenericGUIMenu::identifyItem(Item* item)
 	}
 	if ( !shouldDisplayItemInGUI(item) )
 	{
-		messagePlayer(gui_player, MESSAGE_MISC, language[319], item->getName());
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(319), item->getName());
 		return;
 	}
 
+	if ( gui_player >= 0 && gui_player < MAXPLAYERS && players[gui_player]->isLocalPlayer() )
+	{
+		if ( !item->identified )
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_APPRAISED, item->type, 1);
+			if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SPELL_IDENTIFY )
+			{
+				magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_IDENTIFY, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+			}
+		}
+	}
+	bool prevIdentified = item->identified;
 	item->identified = true;
-	messagePlayer(gui_player, MESSAGE_MISC, language[320], item->description());
+
+	if ( !prevIdentified )
+	{
+		Item::onItemIdentified(gui_player, item);
+	}
+
+	messagePlayer(gui_player, MESSAGE_MISC, Language::get(320), item->description());
+	closeGUI();
+}
+
+bool GenericGUIMenu::ItemEffectGUI_t::consumeResourcesForTransmute()
+{
+	if ( modeHasCostEffect != COST_EFFECT_NONE && players[parentGUI.gui_player] && players[parentGUI.gui_player]->entity )
+	{
+		bool hasGold = costEffectGoldAmount <= 0 || stats[parentGUI.gui_player]->GOLD >= costEffectGoldAmount;
+		bool hasMana = costEffectMPAmount == 0 || (stats[parentGUI.gui_player]->MP >= costEffectMPAmount || stats[parentGUI.gui_player]->type == VAMPIRE);
+		if ( hasGold && hasMana )
+		{
+			if ( costEffectGoldAmount != 0 )
+			{
+				stats[parentGUI.gui_player]->GOLD -= costEffectGoldAmount;
+				stats[parentGUI.gui_player]->GOLD = std::max(0, stats[parentGUI.gui_player]->GOLD);
+				if ( costEffectGoldAmount < 0 )
+				{
+					playSound(89, 64); // earned money
+				}
+				else
+				{
+					if ( players[parentGUI.gui_player]->isLocalPlayer() )
+					{
+						Compendium_t::Events_t::eventUpdateCodex(parentGUI.gui_player, Compendium_t::CPDM_GOLD_CASTED, "gold", costEffectGoldAmount);
+						Compendium_t::Events_t::eventUpdateCodex(parentGUI.gui_player, Compendium_t::CPDM_GOLD_CASTED_RUN, "gold", costEffectGoldAmount);
+
+						steamStatisticUpdate(STEAM_STAT_PAY_TO_WIN, STEAM_STAT_INT, costEffectGoldAmount);
+					}
+				}
+			}
+			if ( multiplayer != CLIENT )
+			{
+				if ( costEffectMPAmount > 0 )
+				{
+					if ( players[parentGUI.gui_player]->isLocalPlayer() )
+					{
+						if ( costEffectMPAmount > stats[parentGUI.gui_player]->MP )
+						{
+							cameravars[parentGUI.gui_player].shakex += 0.1;
+							cameravars[parentGUI.gui_player].shakey += 10;
+							playSoundPlayer(parentGUI.gui_player, 28, 92);
+						}
+						Sint32 prevMP = stats[parentGUI.gui_player]->MP;
+						players[parentGUI.gui_player]->entity->drainMP(costEffectMPAmount);
+
+						if ( parentGUI.itemEffectScrollItem && parentGUI.itemEffectScrollItem->type == SPELL_ITEM )
+						{
+							if ( auto spell = getSpellFromItem(parentGUI.gui_player, parentGUI.itemEffectScrollItem, false) )
+							{
+								players[parentGUI.gui_player]->mechanics.baseSpellIncrementMP(
+									prevMP - stats[parentGUI.gui_player]->MP, spell->skillID);
+							}
+						}
+					}
+				}
+			}
+			if ( multiplayer == CLIENT )
+			{
+				strcpy((char*)net_packet->data, "FXGD");
+				net_packet->data[4] = parentGUI.gui_player;
+				SDLNet_Write32((Uint32)costEffectGoldAmount, &net_packet->data[5]);
+				SDLNet_Write32((Uint32)costEffectMPAmount, &net_packet->data[9]);
+
+				Uint16 spellID = 0;
+				if ( parentGUI.itemEffectScrollItem && parentGUI.itemEffectScrollItem->type == SPELL_ITEM )
+				{
+					if ( auto spell = getSpellFromItem(parentGUI.gui_player, parentGUI.itemEffectScrollItem, false) )
+					{
+						spellID = spell->ID;
+					}
+				}
+				SDLNet_Write16(spellID, &net_packet->data[13]);
+				net_packet->address.host = net_server.host;
+				net_packet->address.port = net_server.port;
+				net_packet->len = 15;
+				sendPacketSafe(net_sock, -1, net_packet, 0);
+			}
+			return true;
+		}
+		else if ( !hasMana )
+		{
+			messagePlayer(parentGUI.gui_player, MESSAGE_MISC, Language::get(375));
+			if ( players[parentGUI.gui_player]->isLocalPlayer() )
+			{
+				playSound(563, 64);
+				if ( players[parentGUI.gui_player]->magic.noManaProcessedOnTick == 0 )
+				{
+					players[parentGUI.gui_player]->magic.flashNoMana();
+				}
+			}
+		}
+		else if ( !hasGold )
+		{
+			messagePlayer(parentGUI.gui_player, MESSAGE_MISC, Language::get(6540));
+		}
+	}
+	return false;
+}
+
+int GenericGUIMenu::getAlterItemResultAtCycle(Item* item)
+{
+	if ( !item )
+	{
+		return -1;
+	}
+
+	std::vector<int> targetItems;
+	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON )
+	{
+		switch ( item->type )
+		{
+		case BRONZE_AXE:
+		case BRONZE_MACE:
+		case BRONZE_SWORD:
+			targetItems.push_back(BRONZE_AXE);
+			targetItems.push_back(BRONZE_MACE);
+			targetItems.push_back(BRONZE_SWORD);
+			break;
+		case IRON_AXE:
+		case IRON_MACE:
+		case IRON_SWORD:
+		case IRON_SPEAR:
+			targetItems.push_back(IRON_AXE);
+			targetItems.push_back(IRON_MACE);
+			targetItems.push_back(IRON_SWORD);
+			targetItems.push_back(IRON_SPEAR);
+			break;
+		case STEEL_AXE:
+		case STEEL_MACE:
+		case STEEL_SWORD:
+		case STEEL_HALBERD:
+			targetItems.push_back(STEEL_AXE);
+			targetItems.push_back(STEEL_MACE);
+			targetItems.push_back(STEEL_SWORD);
+			targetItems.push_back(STEEL_HALBERD);
+			break;
+		case CRYSTAL_BATTLEAXE:
+		case CRYSTAL_MACE:
+		case CRYSTAL_SWORD:
+		case CRYSTAL_SPEAR:
+			targetItems.push_back(CRYSTAL_BATTLEAXE);
+			targetItems.push_back(CRYSTAL_MACE);
+			targetItems.push_back(CRYSTAL_SWORD);
+			targetItems.push_back(CRYSTAL_SPEAR);
+			break;
+		default:
+			break;
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW )
+	{
+		if ( itemTypeIsQuiver(item->type) || itemCategory(item) == GEM )
+		{
+			targetItems =
+			{
+				QUIVER_LIGHTWEIGHT,
+				QUIVER_FIRE,
+				QUIVER_KNOCKBACK,
+				QUIVER_PIERCE,
+				//QUIVER_BONE,
+				QUIVER_SILVER,
+				//QUIVER_BLACKIRON,
+				QUIVER_CRYSTAL,
+				QUIVER_HUNTING,
+			};
+		}
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_INSTRUMENT )
+	{
+		targetItems = {
+			INSTRUMENT_FLUTE,
+			INSTRUMENT_LYRE,
+			INSTRUMENT_DRUM,
+			INSTRUMENT_LUTE,
+			INSTRUMENT_HORN
+		};
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_KEY )
+	{
+		targetItems = {
+			KEY_IRON,
+			KEY_BRONZE,
+			KEY_SILVER,
+			KEY_GOLD
+		};
+	}
+
+	if ( targetItems.size() == 0 ) { return -1; }
+
+	auto find = std::find(targetItems.begin(), targetItems.end(), item->type);
+	{
+		bool inList = find != targetItems.end();
+		if ( !inList )
+		{
+			find = targetItems.begin();
+		}
+
+		if ( targetItems.size() >= (2 + (inList ? 1 : 0)) )
+		{
+			int cycles = transmuteItemScroll % (targetItems.size() - (inList ? 1 : 0));
+			while ( cycles >= 0 )
+			{
+				--cycles;
+				++find;
+				if ( find == targetItems.end() )
+				{
+					find = targetItems.begin();
+				}
+				if ( *find == item->type )
+				{
+					++find;
+					if ( find == targetItems.end() )
+					{
+						find = targetItems.begin();
+					}
+				}
+			}
+			return *find;
+		}
+		else if ( targetItems.size() == (1 + (inList ? 1 : 0)) )
+		{
+			++find;
+			if ( find == targetItems.end() )
+			{
+				find = targetItems.begin();
+			}
+			if ( *find == item->type )
+			{
+				++find;
+				if ( find == targetItems.end() )
+				{
+					find = targetItems.begin();
+				}
+			}
+			return *find;
+		}
+		else
+		{
+			return targetItems.at(0);
+		}
+	}
+
+	return -1;
+}
+
+void GenericGUIMenu::alterItem(Item* item)
+{
+	if ( !item || gui_player < 0 )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->getName());
+		closeGUI();
+		return;
+	}
+	if ( !itemfxGUI.consumeResourcesForTransmute() )
+	{
+		closeGUI();
+		return;
+	}
+
+	bool isEquipped = itemIsEquipped(item, gui_player);
+
+	ItemType prevType = item->type;
+	std::string prevItem = item->getName();
+	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_INSTRUMENT )
+	{
+		int result = getAlterItemResultAtCycle(item);
+		if ( result >= 0 )
+		{
+			item->type = (ItemType)(result);
+		}
+		else
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
+			closeGUI();
+			return;
+		}
+
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, 
+			nullptr, SPELL_ALTER_INSTRUMENT, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ENHANCE_WEAPON )
+	{
+		switch ( item->type )
+		{
+			case BRONZE_AXE:
+				item->type = IRON_AXE;
+				break;
+			case BRONZE_MACE:
+				item->type = IRON_MACE;
+				break;
+			case BRONZE_SWORD:
+				item->type = IRON_SWORD;
+				break;
+			case BRONZE_TOMAHAWK:
+				item->type = IRON_DAGGER;
+				break;
+			case IRON_AXE:
+				item->type = STEEL_AXE;
+				break;
+			case IRON_MACE:
+				item->type = STEEL_MACE;
+				break;
+			case IRON_SWORD:
+				item->type = STEEL_SWORD;
+				break;
+			case IRON_SPEAR:
+				item->type = STEEL_HALBERD;
+				break;
+			case IRON_DAGGER:
+				item->type = STEEL_CHAKRAM;
+				break;
+			case STEEL_AXE:
+				item->type = CRYSTAL_BATTLEAXE;
+				break;
+			case STEEL_MACE:
+				item->type = CRYSTAL_MACE;
+				break;
+			case STEEL_SWORD:
+				item->type = CRYSTAL_SWORD;
+				break;
+			case STEEL_HALBERD:
+				item->type = CRYSTAL_SPEAR;
+				break;
+			case STEEL_CHAKRAM:
+				item->type = CRYSTAL_SHURIKEN;
+				break;
+			default:
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
+				closeGUI();
+				return;
+		}
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+			nullptr, SPELL_ENHANCE_WEAPON, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON )
+	{
+		int result = getAlterItemResultAtCycle(item);
+		if ( result >= 0 )
+		{
+			item->type = (ItemType)(result);
+		}
+		else
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
+			closeGUI();
+			return;
+		}
+
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+			nullptr, SPELL_RESHAPE_WEAPON, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_KEY )
+	{
+		ItemType newType = GEM_ROCK;
+		/*switch ( item->type )
+		{
+		case KEY_IRON:
+			newType = KEY_BRONZE;
+			break;
+		case KEY_BRONZE:
+			newType = KEY_SILVER;
+			break;
+		case KEY_SILVER:
+			newType = KEY_GOLD;
+			break;
+		case KEY_GOLD:
+			newType = TOOL_SKELETONKEY;
+			break;
+		default:
+			if ( itemCategory(item) == GEM && item->type != GEM_ROCK && item->type != GEM_LUCK )
+			{
+				newType = KEY_IRON;
+			}
+			break;
+		}*/
+		int result = getAlterItemResultAtCycle(item);
+		if ( result >= 0 )
+		{
+			newType = (ItemType)(result);
+		}
+		else
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
+			closeGUI();
+			return;
+		}
+
+		if ( newType == GEM_ROCK )
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->getName());
+		}
+		else
+		{
+			Item* itemToPickup = newItem(newType, SERVICABLE, item->beatitude, 1, item->appearance, true, nullptr);
+			Item* pickedUp = itemPickup(gui_player, itemToPickup);
+			int oldCount = item->count;
+			item->count = 1;
+			std::string desc = itemToPickup->description();
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6553), desc.c_str(), item->description());
+			item->count = oldCount;
+			free(itemToPickup);
+			consumeItem(item, gui_player);
+
+			magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+				nullptr, SPELL_FORGE_KEY, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+		}
+		closeGUI();
+		return;
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_JEWEL )
+	{
+		if ( itemCategory(item) == GEM && item->type != GEM_ROCK && item->type != GEM_LUCK /*&& item->type != GEM_GLASS*/
+			&& !(item->type == GEM_JEWEL && item->status == EXCELLENT) )
+		{
+			int value = item->getGoldValue();
+			Status result = DECREPIT;
+			if ( item->type == GEM_JEWEL )
+			{
+				result = (Status)std::min((int)EXCELLENT, (int)item->status + 1);
+			}
+			else if ( value < 250 )
+			{
+				result = DECREPIT;
+			}
+			else if ( value < 500 )
+			{
+				result = WORN;
+			}
+			else if ( value < 1000 )
+			{
+				result = SERVICABLE;
+			}
+			else if ( value >= 1000 )
+			{
+				result = EXCELLENT;
+			}
+
+			if ( item->type == GEM_JEWEL )
+			{
+				Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_UPGRADED, GEM_JEWEL, 1);
+			}
+			else
+			{
+				Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_FORGED, GEM_JEWEL, 1);
+			}
+
+			Item* itemToPickup = newItem(GEM_JEWEL, result, 0, 1, 0, true, nullptr);
+			Item* pickedUp = itemPickup(gui_player, itemToPickup);
+			int oldCount = item->count;
+			item->count = 1;
+			std::string desc = itemToPickup->description();
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6553), desc.c_str(), item->description());
+			item->count = oldCount;
+			free(itemToPickup);
+			consumeItem(item, gui_player);
+
+			magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+				nullptr, SPELL_FORGE_JEWEL, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+		}
+		else
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
+		}
+		closeGUI();
+		return;
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_METALLURGY )
+	{
+		int oldCount = item->count;
+		item->count = 1;
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6554), -itemfxGUI.costEffectGoldAmount, item->description());
+		item->count = oldCount;
+		consumeItem(item, gui_player);
+
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+			nullptr, SPELL_METALLURGY, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+
+		closeGUI();
+		return;
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_GEOMANCY )
+	{
+		int oldCount = item->count;
+		item->count = 1;
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6554), -itemfxGUI.costEffectGoldAmount, item->description());
+		item->count = oldCount;
+		consumeItem(item, gui_player);
+
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+			nullptr, SPELL_GEOMANCY, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+
+		closeGUI();
+		return;
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_VANDALISE )
+	{
+		int oldCount = item->count;
+		item->count = 1;
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6724), -itemfxGUI.costEffectGoldAmount, item->description());
+		item->count = oldCount;
+		consumeItem(item, gui_player);
+
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+			nullptr, SPELL_VANDALISE, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+
+		closeGUI();
+		return;
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW )
+	{
+		int result = getAlterItemResultAtCycle(item);
+		if ( result >= 0 )
+		{
+			item->type = (ItemType)(result);
+
+			magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+				nullptr, SPELL_ALTER_ARROW, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+		}
+		else
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
+			closeGUI();
+			return;
+		}
+	}
+	messagePlayer(gui_player, MESSAGE_HINT, Language::get(6515), prevItem.c_str(), item->description());
+
+	std::unordered_set<Uint32> appearancesOfSimilarItems;
+	// reroll any other conflicting items
+	for ( node_t* node = stats[gui_player]->inventory.first; node != nullptr; node = node->next )
+	{
+		Item* item2 = static_cast<Item*>(node->element);
+		if ( item2 && item2 != item && !itemCompare(item, item2, true) )
+		{
+			// items are the same (incl. appearance!)
+			// if they shouldn't stack, we need to change appearance of the new item.
+			appearancesOfSimilarItems.insert(item2->appearance);
+		}
+	}
+
+	Item::itemFindUniqueAppearance(item, appearancesOfSimilarItems);
+
+	if ( multiplayer == CLIENT )
+	{
+		if ( isEquipped )
+		{
+			clientSendItemTypeUpdateToServer(gui_player, item, prevType);
+		}
+	}
+
+	closeGUI();
+}
+
+void GenericGUIMenu::enchantItem(Item* item)
+{
+	if ( !item )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6307), item->getName());
+		return;
+	}
+
+	if ( !itemfxGUI.consumeResourcesForTransmute() )
+	{
+		closeGUI();
+		return;
+	}
+
+	if ( itemEffectItemBeatitude >= 0 )
+	{
+		if ( gui_player >= 0 && gui_player < MAXPLAYERS && players[gui_player]->isLocalPlayer() )
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_BLESSED_TOTAL, item->type, 1);
+		}
+		item->beatitude += 1 + itemEffectItemBeatitude;
+		if ( itemEffectItemBeatitude == 0 )
+		{
+			messagePlayer(gui_player, MESSAGE_HINT, Language::get(859), item->getName()); // glows blue
+		}
+		else if ( itemEffectItemBeatitude >= 0 )
+		{
+			messagePlayer(gui_player, MESSAGE_HINT, Language::get(860), item->getName()); // glows violently blue
+		}
+
+		if ( multiplayer == CLIENT )
+		{
+			Item** slot = itemSlot(stats[gui_player], item);
+			int armornum = -1;
+			if ( slot )
+			{
+				if ( slot == &stats[gui_player]->weapon )
+				{
+					armornum = 0;
+				}
+				else if ( slot == &stats[gui_player]->helmet )
+				{
+					armornum = 1;
+				}
+				else if ( slot == &stats[gui_player]->breastplate )
+				{
+					armornum = 2;
+				}
+				else if ( slot == &stats[gui_player]->gloves )
+				{
+					armornum = 3;
+				}
+				else if ( slot == &stats[gui_player]->shoes )
+				{
+					armornum = 4;
+				}
+				else if ( slot == &stats[gui_player]->shield )
+				{
+					armornum = 5;
+				}
+				else if ( slot == &stats[gui_player]->cloak )
+				{
+					armornum = 6;
+				}
+				else if ( slot == &stats[gui_player]->mask )
+				{
+					armornum = 7;
+				}
+				else if ( slot == &stats[gui_player]->mask )
+				{
+					armornum = 7;
+				}
+			}
+			if ( armornum >= 0 )
+			{
+				strcpy((char*)net_packet->data, "BEAT");
+				net_packet->data[4] = gui_player;
+				net_packet->data[5] = armornum;
+				net_packet->data[6] = item->beatitude + 100;
+				SDLNet_Write16((Sint16)item->type, &net_packet->data[7]);
+				net_packet->address.host = net_server.host;
+				net_packet->address.port = net_server.port;
+				net_packet->len = 9;
+				sendPacketSafe(net_sock, -1, net_packet, 0);
+				//messagePlayer(player, "sent server: %d, %d, %d", net_packet->data[4], net_packet->data[5], net_packet->data[6]);
+			}
+		}
+	}
 	closeGUI();
 }
 
@@ -6149,8 +7219,17 @@ void GenericGUIMenu::repairItem(Item* item)
 	}
 	if ( !shouldDisplayItemInGUI(item) )
 	{
-		messagePlayer(gui_player, MESSAGE_MISC, language[3287], item->getName());
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(3287), item->getName());
 		return;
+	}
+
+	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESTORE )
+	{
+		if ( !itemfxGUI.consumeResourcesForTransmute() )
+		{
+			closeGUI();
+			return;
+		}
 	}
 
 	bool isEquipped = itemIsEquipped(item, gui_player);
@@ -6159,7 +7238,29 @@ void GenericGUIMenu::repairItem(Item* item)
 	{
 		if ( itemCategory(item) == MAGICSTAFF )
 		{
-			if ( item->status == BROKEN )
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_MAGICSTAFF_RECHARGED, item->type, 1);
+			if ( item->type == MAGICSTAFF_SCEPTER )
+			{
+				int durability = item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
+				int repairAmount = ((MAGICSTAFF_SCEPTER_CHARGE_MAX - 1) - durability);
+				if ( repairAmount > (MAGICSTAFF_SCEPTER_CHARGE_MAX / 2) )
+				{
+					if ( itemEffectItemBeatitude == 0 )
+					{
+						repairAmount = MAGICSTAFF_SCEPTER_CHARGE_MAX / 2;
+					}
+				}
+				item->status = EXCELLENT;
+				item->appearance += repairAmount;
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(3730), item->getName());
+				closeGUI();
+				if ( multiplayer == CLIENT && isEquipped )
+				{
+					clientSendAppearanceUpdateToServer(gui_player, item, false);
+				}
+				return;
+			}
+			else if ( item->status == BROKEN )
 			{
 				if ( itemEffectItemBeatitude > 0 )
 				{
@@ -6189,7 +7290,7 @@ void GenericGUIMenu::repairItem(Item* item)
 			item->appearance += repairAmount;
 			item->status = EXCELLENT;
 		}
-		messagePlayer(gui_player, MESSAGE_MISC, language[3730], item->getName());
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(3730), item->getName());
 	}
 	else
 	{
@@ -6199,7 +7300,11 @@ void GenericGUIMenu::repairItem(Item* item)
 		}
 		else
 		{
-			if ( (item->type >= ARTIFACT_SWORD && item->type <= ARTIFACT_GLOVES) || item->type == BOOMERANG )
+			if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESTORE )
+			{
+				item->status = static_cast<Status>(std::min(item->status + 1, static_cast<int>(EXCELLENT)));
+			}
+			else if ( (item->type >= ARTIFACT_SWORD && item->type <= ARTIFACT_GLOVES) || item->type == BOOMERANG )
 			{
 				item->status = static_cast<Status>(std::min(item->status + 1, static_cast<int>(EXCELLENT)));
 			}
@@ -6208,7 +7313,14 @@ void GenericGUIMenu::repairItem(Item* item)
 				item->status = static_cast<Status>(std::min(item->status + 2 + itemEffectItemBeatitude, static_cast<int>(EXCELLENT)));
 			}
 		}
-		messagePlayer(gui_player, MESSAGE_MISC, language[872], item->getName());
+
+		if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESTORE )
+		{
+			magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_RESTORE, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+		}
+
+		Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_REPAIRS, item->type, 1);
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(872), item->getName());
 	}
 	closeGUI();
 	if ( multiplayer == CLIENT && isEquipped )
@@ -6264,7 +7376,7 @@ void GenericGUIMenu::closeGUI()
 	tinkeringFreeLists();
 	scribingFreeLists();
 	guiActive = false;
-	selectedSlot = -1;
+	auto prevGUI = guiType;
 	guiType = GUI_TYPE_NONE;
 	basePotion = nullptr;
 	secondaryPotion = nullptr;
@@ -6274,6 +7386,15 @@ void GenericGUIMenu::closeGUI()
 	itemEffectScrollItem = nullptr;
 	itemEffectItemType = 0;
 	itemEffectItemBeatitude = 0;
+	transmuteItemTarget = nullptr;
+	transmuteItemScroll = 0;
+	if ( prevGUI == GUI_TYPE_ITEMFX && itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCEPTER_CHARGE )
+	{
+		if ( players[gui_player]->inventory_mode == INVENTORY_MODE_SPELL )
+		{
+			players[gui_player]->inventory_mode = INVENTORY_MODE_ITEM;
+		}
+	}
 	itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_NONE;
 	if ( tinkerGUI.bOpen )
 	{
@@ -6283,6 +7404,10 @@ void GenericGUIMenu::closeGUI()
 	{
 		alchemyGUI.closeAlchemyMenu();
 	}
+	if ( mailboxGUI.bOpen )
+	{
+		mailboxGUI.closeMailMenu();
+	}
 	if ( featherGUI.bOpen )
 	{
 		featherGUI.closeFeatherMenu();
@@ -6291,119 +7416,126 @@ void GenericGUIMenu::closeGUI()
 	{
 		itemfxGUI.closeItemEffectMenu();
 	}
+	if ( assistShrineGUI.bOpen )
+	{
+		assistShrineGUI.closeAssistShrine();
+	}
 	if ( wasOpen )
 	{
 		players[gui_player]->inventoryUI.tooltipDelayTick = ticks + TICKS_PER_SECOND / 10;
 	}
+	alembicEntityUid = 0;
+	workstationEntityUid = 0;
+	mailboxEntityUid = 0;
 }
 
-inline Item* GenericGUIMenu::getItemInfo(int slot)
-{
-	if ( slot >= kNumShownItems )
-	{
-		return nullptr; //Out of bounds,
-	}
+//inline Item* GenericGUIMenu::getItemInfo(int slot)
+//{
+//	if ( slot >= kNumShownItems )
+//	{
+//		return nullptr; //Out of bounds,
+//	}
+//
+//	return itemsDisplayed[slot];
+//}
 
-	return itemsDisplayed[slot];
-}
+//void GenericGUIMenu::selectSlot(int slot)
+//{
+//	if ( slot < selectedSlot )
+//	{
+//		//Moving up.
+//
+//		/*
+//		* Possible cases:
+//		* * 1) Move cursor up the GUI through different selectedSlot.
+//		* * 2) Page up through scroll--
+//		* * 3) Scrolling up past top of GUI, no scroll (move back to inventory)
+//		*/
+//
+//		if ( selectedSlot <= 0 )
+//		{
+//			//Covers cases 2 & 3.
+//
+//			/*
+//			* Possible cases:
+//			* * A) Hit very top of "inventory", can't go any further. Return to inventory.
+//			* * B) Page up, scrolling through scroll.
+//			*/
+//
+//			if ( scroll <= 0 )
+//			{
+//				//Case 3/A: Return to inventory.
+//				//selectedSlot = -1;
+//			}
+//			else
+//			{
+//				//Case 2/B: Page up through "inventory".
+//				--scroll;
+//			}
+//		}
+//		else
+//		{
+//			//Covers case 1.
+//
+//			//Move cursor up the GUI through different selectedSlot (--selectedSlot).
+//			--selectedSlot;
+//			warpMouseToSelectedSlot();
+//		}
+//	}
+//	else if ( slot > selectedSlot )
+//	{
+//		//Moving down.
+//
+//		/*
+//		* Possible cases:
+//		* * 1) Moving cursor down through GUI through different selectedSlot.
+//		* * 2) Scrolling down past bottom of GUI through scroll++
+//		* * 3) Scrolling down past bottom of GUI, max scroll (revoke move -- can't go beyond limit of GUI).
+//		*/
+//
+//		if ( selectedSlot >= kNumShownItems - 1 )
+//		{
+//			//Covers cases 2 & 3.
+//			++scroll; //scroll is automatically sanitized in updateGUI().
+//		}
+//		else
+//		{
+//			//Covers case 1.
+//			//Move cursor down through the GUI through different selectedSlot (++selectedSlot).
+//			//This is a little bit trickier since must revoke movement if there is no item in the next slot!
+//
+//			/*
+//			* Two possible cases:
+//			* * A) Items below this. Advance selectedSlot to them.
+//			* * B) On last item already. Do nothing (revoke movement).
+//			*/
+//
+//			Item* item = getItemInfo(selectedSlot + 1);
+//
+//			if ( item )
+//			{
+//				++selectedSlot;
+//				warpMouseToSelectedSlot();
+//			}
+//			else
+//			{
+//				//No more items. Stop.
+//			}
+//		}
+//	}
+//}
 
-void GenericGUIMenu::selectSlot(int slot)
-{
-	if ( slot < selectedSlot )
-	{
-		//Moving up.
-
-		/*
-		* Possible cases:
-		* * 1) Move cursor up the GUI through different selectedSlot.
-		* * 2) Page up through scroll--
-		* * 3) Scrolling up past top of GUI, no scroll (move back to inventory)
-		*/
-
-		if ( selectedSlot <= 0 )
-		{
-			//Covers cases 2 & 3.
-
-			/*
-			* Possible cases:
-			* * A) Hit very top of "inventory", can't go any further. Return to inventory.
-			* * B) Page up, scrolling through scroll.
-			*/
-
-			if ( scroll <= 0 )
-			{
-				//Case 3/A: Return to inventory.
-				selectedSlot = -1;
-			}
-			else
-			{
-				//Case 2/B: Page up through "inventory".
-				--scroll;
-			}
-		}
-		else
-		{
-			//Covers case 1.
-
-			//Move cursor up the GUI through different selectedSlot (--selectedSlot).
-			--selectedSlot;
-			warpMouseToSelectedSlot();
-		}
-	}
-	else if ( slot > selectedSlot )
-	{
-		//Moving down.
-
-		/*
-		* Possible cases:
-		* * 1) Moving cursor down through GUI through different selectedSlot.
-		* * 2) Scrolling down past bottom of GUI through scroll++
-		* * 3) Scrolling down past bottom of GUI, max scroll (revoke move -- can't go beyond limit of GUI).
-		*/
-
-		if ( selectedSlot >= kNumShownItems - 1 )
-		{
-			//Covers cases 2 & 3.
-			++scroll; //scroll is automatically sanitized in updateGUI().
-		}
-		else
-		{
-			//Covers case 1.
-			//Move cursor down through the GUI through different selectedSlot (++selectedSlot).
-			//This is a little bit trickier since must revoke movement if there is no item in the next slot!
-
-			/*
-			* Two possible cases:
-			* * A) Items below this. Advance selectedSlot to them.
-			* * B) On last item already. Do nothing (revoke movement).
-			*/
-
-			Item* item = getItemInfo(selectedSlot + 1);
-
-			if ( item )
-			{
-				++selectedSlot;
-				warpMouseToSelectedSlot();
-			}
-			else
-			{
-				//No more items. Stop.
-			}
-		}
-	}
-}
-
-void GenericGUIMenu::warpMouseToSelectedSlot()
-{
-	SDL_Rect slotPos;
-	slotPos.x = gui_starty;
-	slotPos.w = inventoryoptionChest_bmp->w;
-	slotPos.h = inventoryoptionChest_bmp->h;
-	slotPos.y = gui_startx + 16 + (slotPos.h * selectedSlot);
-
-	// to verify for splitscreen
-	//SDL_WarpMouseInWindow(screen, slotPos.x + (slotPos.w / 2), slotPos.y + (slotPos.h / 2));
-}
+//void GenericGUIMenu::warpMouseToSelectedSlot()
+//{
+//	SDL_Rect slotPos;
+//	slotPos.x = gui_starty;
+//	slotPos.w = inventoryoptionChest_bmp->w;
+//	slotPos.h = inventoryoptionChest_bmp->h;
+//	slotPos.y = gui_startx + 16 + (slotPos.h * selectedSlot);
+//
+//	// to verify for splitscreen
+//	//SDL_WarpMouseInWindow(screen, slotPos.x + (slotPos.w / 2), slotPos.y + (slotPos.h / 2));
+//}
 
 void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, int effectItemType, int usingSpellID)
 {
@@ -6423,7 +7555,7 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 			{
 				continue;
 			}
-			spell_t* spell = getSpellFromItem(gui_player, item);
+			spell_t* spell = getSpellFromItem(gui_player, item, false);
 			if ( spell && spell->ID == usingSpellID )
 			{
 				effectItem = item;
@@ -6440,7 +7572,7 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 	{
 		if ( players[gui_player]->entity->isBlind() )
 		{
-			messagePlayer(gui_player, MESSAGE_MISC, language[892]);
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(892));
 			return; // I can't see!
 		}
 	}
@@ -6474,9 +7606,85 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCROLL_IDENTIFY;
 		}
+		else if ( itemEffectItemType == SCROLL_ENCHANTWEAPON )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCROLL_ENCHANT_WEAPON;
+		}
+		else if ( itemEffectItemType == SCROLL_ENCHANTARMOR )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCROLL_ENCHANT_ARMOR;
+		}
 		else if ( usingSpellID == SPELL_IDENTIFY )
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SPELL_IDENTIFY;
+		}
+		else if ( usingSpellID == SPELL_ALTER_INSTRUMENT )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_ALTER_INSTRUMENT;
+		}
+		else if ( usingSpellID == SPELL_METALLURGY )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_METALLURGY;
+		}
+		else if ( usingSpellID == SPELL_GEOMANCY )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_GEOMANCY;
+		}
+		else if ( usingSpellID == SPELL_FORGE_KEY )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_FORGE_KEY;
+		}
+		else if ( usingSpellID == SPELL_FORGE_JEWEL )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_FORGE_JEWEL;
+		}
+		else if ( usingSpellID == SPELL_ENHANCE_WEAPON )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_ENHANCE_WEAPON;
+		}
+		else if ( usingSpellID == SPELL_RESHAPE_WEAPON )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON;
+		}
+		else if ( usingSpellID == SPELL_ALTER_ARROW )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW;
+		}
+		else if ( usingSpellID == SPELL_RESTORE )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_RESTORE;
+		}
+		else if ( usingSpellID == SPELL_PUNCTURE_VOID )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_PUNCTURE_VOID;
+		}
+		else if ( usingSpellID == SPELL_ADORCISM )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_WEAPON;
+		}
+		else if ( usingSpellID == SPELL_VANDALISE )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_VANDALISE;
+		}
+		else if ( usingSpellID == SPELL_DESECRATE )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_DESECRATE;
+		}
+		else if ( usingSpellID == SPELL_SANCTIFY )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY;
+		}
+		else if ( usingSpellID == SPELL_SANCTIFY_WATER )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY_WATER;
+		}
+		else if ( usingSpellID == SPELL_CLEANSE_FOOD )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_CLEANSE_FOOD;
+		}
+		else if ( usingSpellID == SPELL_ADORCISE_INSTRUMENT )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_INSTRUMENT;
 		}
 		else if ( itemEffectItemType == SCROLL_CHARGING )
 		{
@@ -6490,6 +7698,10 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SPELL_REMOVECURSE;
 		}
+		else if ( itemEffectItemType == MAGICSTAFF_SCEPTER )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCEPTER_CHARGE;
+		}
 		else if ( itemEffectItemType == SCROLL_REPAIR )
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCROLL_REPAIR;
@@ -6501,10 +7713,9 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 		}
 		itemfxGUI.openItemEffectMenu(itemfxGUI.currentMode);
 	}
-	gui_starty = (players[gui_player]->camera_midx() - (inventoryChest_bmp->w / 2)) + offsetx;
-	gui_startx = (players[gui_player]->camera_midy() - (inventoryChest_bmp->h / 2)) + offsety;
 
 	FollowerMenu[gui_player].closeFollowerMenuGUI();
+	CalloutMenu[gui_player].closeCalloutMenuGUI();
 
 	if ( openedChest[gui_player] )
 	{
@@ -6520,7 +7731,7 @@ void GenericGUIMenu::openGUI(int type, bool experimenting, Item* itemOpenedWith)
 	{
 		if ( players[gui_player]->entity->isBlind() )
 		{
-			messagePlayer(gui_player, MESSAGE_MISC, language[892]);
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(892));
 			return; // I can't see!
 		}
 	}
@@ -6536,15 +7747,21 @@ void GenericGUIMenu::openGUI(int type, bool experimenting, Item* itemOpenedWith)
 	players[gui_player]->openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); // Reset the GUI to the inventory.
 	guiActive = true;
 	alembicItem = itemOpenedWith;
+	alembicEntityUid = 0;
 	experimentingAlchemy = experimenting;
 	guiType = static_cast<GUICurrentType>(type);
 	//players[gui_player]->GUI.activateModule(Player::GUI_t::MODULE_ALCHEMY);
-	alchemyGUI.openAlchemyMenu();
-
-	gui_starty = (players[gui_player]->camera_midx() - (inventoryChest_bmp->w / 2)) + offsetx;
-	gui_startx = 360 + (players[gui_player]->camera_midy() - (inventoryChest_bmp->h / 2)) + offsety;
+	if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
+	{
+		alchemyGUI.openAlchemyMenu(AlchemyGUI_t::ALCHEMY_VIEW_COOK);
+	}
+	else
+	{
+		alchemyGUI.openAlchemyMenu(AlchemyGUI_t::ALCHEMY_VIEW_BREW);
+	}
 
 	FollowerMenu[gui_player].closeFollowerMenuGUI();
+	CalloutMenu[gui_player].closeCalloutMenuGUI();
 
 	if ( openedChest[gui_player] )
 	{
@@ -6560,7 +7777,7 @@ void GenericGUIMenu::openGUI(int type, Item* itemOpenedWith)
 	{
 		if ( players[gui_player]->entity->isBlind() )
 		{
-			messagePlayer(gui_player, MESSAGE_MISC, language[892]);
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(892));
 			return; // I can't see!
 		}
 	}
@@ -6578,12 +7795,10 @@ void GenericGUIMenu::openGUI(int type, Item* itemOpenedWith)
 	guiActive = true;
 	guiType = static_cast<GUICurrentType>(type);
 
-	gui_starty = (players[gui_player]->camera_midx() - (inventoryChest_bmp->w / 2)) + offsetx;
-	gui_startx = (players[gui_player]->camera_midy() - (inventoryChest_bmp->h / 2)) + offsety;
-
 	// build the craftables list.
 	if ( guiType == GUI_TYPE_TINKERING )
 	{
+		workstationEntityUid = 0;
 		tinkeringKitItem = itemOpenedWith;
 		tinkeringCreateCraftableItemList();
 		if ( tinkeringFilter == TINKER_FILTER_CRAFTABLE )
@@ -6598,8 +7813,170 @@ void GenericGUIMenu::openGUI(int type, Item* itemOpenedWith)
 		scribingCreateCraftableItemList();
 		featherGUI.openFeatherMenu();
 	}
+	else if ( guiType == GUI_TYPE_ASSIST )
+	{
+		players[gui_player]->GUI.activateModule(Player::GUI_t::MODULE_ASSISTSHRINE);
+		assistShrineGUI.openAssistShrine(nullptr);
+	}
 
 	FollowerMenu[gui_player].closeFollowerMenuGUI();
+	CalloutMenu[gui_player].closeCalloutMenuGUI();
+
+	if ( openedChest[gui_player] )
+	{
+		openedChest[gui_player]->closeChest();
+	}
+	rebuildGUIInventory();
+}
+
+void stationOpenSound(int player, int type)
+{
+	int sfx = -1;
+	int vol = 0;
+	if ( type == GUI_TYPE_ALCHEMY )
+	{
+		vol = 64;
+		sfx = 774 + local_rng.rand() % 2;
+		//sfx = 401;
+	}
+	else if ( type == GUI_TYPE_TINKERING )
+	{
+		vol = 64;
+		sfx = 421 + (local_rng.rand() % 2) * 3;
+	}
+
+	if ( sfx > 0 )
+	{
+		playSoundEntityLocal(players[player]->entity, sfx, vol);
+		if ( multiplayer == CLIENT )
+		{
+			strcpy((char*)net_packet->data, "EMOT");
+			net_packet->data[4] = player;
+			SDLNet_Write16(sfx, &net_packet->data[5]);
+			net_packet->data[7] = vol;
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 8;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+		}
+		else if ( multiplayer != CLIENT )
+		{
+			for ( int c = 1; c < MAXPLAYERS; ++c )
+			{
+				if ( !client_disconnected[c] && !players[c]->isLocalPlayer() )
+				{
+					strcpy((char*)net_packet->data, "SNEL");
+					SDLNet_Write16(sfx, &net_packet->data[4]);
+					SDLNet_Write32((Uint32)players[player]->entity->getUID(), &net_packet->data[6]);
+					SDLNet_Write16(vol, &net_packet->data[10]);
+					net_packet->address.host = net_clients[c - 1].host;
+					net_packet->address.port = net_clients[c - 1].port;
+					net_packet->len = 12;
+					sendPacketSafe(net_sock, -1, net_packet, c - 1);
+				}
+			}
+		}
+	}
+}
+
+void GenericGUIMenu::openGUI(int type, Entity* shrine)
+{
+	// close existing guis
+	if ( guiType == GUI_TYPE_ASSIST )
+	{
+		Uint32 oldUID = assistShrineGUI.shrineUID;
+		assistShrineGUI.shrineUID = 0;
+		this->closeGUI();
+		assistShrineGUI.shrineUID = oldUID;
+	}
+	else if ( guiType == GUI_TYPE_ALCHEMY )
+	{
+		Uint32 oldUID = alembicEntityUid;
+		alembicEntityUid = 0;
+		this->closeGUI();
+		alembicEntityUid = oldUID;
+	}
+	else if ( guiType == GUI_TYPE_TINKERING )
+	{
+		Uint32 oldUID = workstationEntityUid;
+		workstationEntityUid = 0;
+		this->closeGUI();
+		workstationEntityUid = oldUID;
+	}
+	else if ( guiType == GUI_TYPE_MAILBOX )
+	{
+		Uint32 oldUID = mailboxEntityUid;
+		mailboxEntityUid = 0;
+		this->closeGUI();
+		mailboxEntityUid = oldUID;
+	}
+
+	if ( players[gui_player] && players[gui_player]->entity )
+	{
+		if ( players[gui_player]->entity->isBlind() )
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(892));
+			return; // I can't see!
+		}
+	}
+
+	if ( players[gui_player]->inventoryUI.bCompactView )
+	{
+		// if compact view, then we don't want the inventory slot being selected
+		// e.g opening a tinkering kit from your hand slot
+		if ( players[gui_player]->inventoryUI.getSelectedSlotY() < 0 )
+		{
+			players[gui_player]->inventoryUI.selectSlot(0, 0);
+		}
+	}
+	players[gui_player]->openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM); // Reset the GUI to the inventory.
+	guiActive = true;
+	guiType = static_cast<GUICurrentType>(type);
+
+	if ( guiType == GUI_TYPE_ASSIST )
+	{
+		players[gui_player]->GUI.activateModule(Player::GUI_t::MODULE_ASSISTSHRINE);
+		assistShrineGUI.openAssistShrine(shrine);
+	}
+	else if ( guiType == GUI_TYPE_ALCHEMY )
+	{
+		alembicItem = nullptr;
+		experimentingAlchemy = true;
+		alchemyGUI.openAlchemyMenu(AlchemyGUI_t::ALCHEMY_VIEW_COOK);
+		if ( shrine )
+		{
+			alembicEntityUid = shrine->getUID();
+			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_CAULDRON_INTERACTS, "cauldron", 1);
+			stationOpenSound(gui_player, GUI_TYPE_ALCHEMY);
+		}
+	}
+	else if ( guiType == GUI_TYPE_MAILBOX )
+	{
+		mailboxGUI.openMailMenu();
+		if ( shrine )
+		{
+			mailboxEntityUid = shrine->getUID();
+		}
+	}
+	else if ( guiType == GUI_TYPE_TINKERING )
+	{
+		tinkeringKitItem = nullptr;
+		tinkeringCreateCraftableItemList();
+		if ( tinkeringFilter == TINKER_FILTER_CRAFTABLE )
+		{
+			players[gui_player]->GUI.activateModule(Player::GUI_t::MODULE_TINKERING);
+		}
+		tinkerGUI.openTinkerMenu();
+		if ( shrine )
+		{
+			workstationEntityUid = shrine->getUID();
+			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_INTERACTS, "workbench", 1);
+			stationOpenSound(gui_player, GUI_TYPE_TINKERING);
+		}
+	}
+
+	FollowerMenu[gui_player].closeFollowerMenuGUI();
+	CalloutMenu[gui_player].closeCalloutMenuGUI();
 
 	if ( openedChest[gui_player] )
 	{
@@ -6610,6 +7987,182 @@ void GenericGUIMenu::openGUI(int type, Item* itemOpenedWith)
 
 bool hideRecipeFromList(int type);
 void onFeatherChangeTabAction(const int playernum, bool changingToNewTab = true);
+void GenericGUIMenu::sendItemToVoid(Item* item)
+{
+	if ( !item || gui_player < 0 )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6564), item->getName());
+		closeGUI();
+		return;
+	}
+
+	Item* newitem = newItem(item->type, item->status, item->beatitude, item->count, item->appearance, item->identified, nullptr);
+	if ( Item* insertedItem = Entity::addItemToVoidChest(gui_player, newitem, false, nullptr) )
+	{
+		if ( insertedItem != newitem )
+		{
+			free(newitem);
+		}
+
+		messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(6562), item->description());
+
+		if ( item->node )
+		{
+			list_RemoveNode(item->node);
+		}
+		else
+		{
+			free(item);
+		}
+	}
+	else
+	{
+		if ( multiplayer != CLIENT )
+		{
+			if ( item->count < newitem->count )
+			{
+				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(6562), newitem->description());
+			}
+			item->count = newitem->count; // update quantity as some may have went in
+		}
+		free(newitem);
+	}
+	closeGUI();
+}
+
+void GenericGUIMenu::adorciseItem(Item* item)
+{
+	if ( !item || gui_player < 0 )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6618), item->getName());
+		closeGUI();
+		return;
+	}
+
+	if ( players[gui_player]->entity )
+	{
+		int x = floor(players[gui_player]->entity->x / 16) * 16 + 8.0 + 16.0 * cos(players[gui_player]->entity->yaw);
+		int y = floor(players[gui_player]->entity->y / 16) * 16 + 8.0 + 16.0 * sin(players[gui_player]->entity->yaw);
+		if ( multiplayer != CLIENT )
+		{
+			if ( Entity* monster = spellEffectAdorcise(*players[gui_player]->entity, spellElementMap[SPELL_ADORCISM], 
+				x, y, item) )
+			{
+				consumeItem(item, gui_player);
+			}
+			else
+			{
+				// no room to spawn!
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(6578));
+			}
+		}
+		else
+		{
+			strcpy((char*)net_packet->data, "ADOR");
+			SDLNet_Write32((Uint32)item->type, &net_packet->data[4]);
+			SDLNet_Write32((Uint32)item->status, &net_packet->data[8]);
+			SDLNet_Write32((Uint32)item->beatitude, &net_packet->data[12]);
+			SDLNet_Write32((Uint32)1, &net_packet->data[16]);
+			SDLNet_Write32((Uint32)item->appearance, &net_packet->data[20]);
+			net_packet->data[24] = item->identified;
+			net_packet->data[25] = gui_player;
+			SDLNet_Write16((Sint16)(x / 16), &net_packet->data[26]);
+			SDLNet_Write16((Sint16)(y / 16), &net_packet->data[28]);
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 30;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+
+			consumeItem(item, gui_player);
+		}
+	}
+	closeGUI();
+}
+
+void GenericGUIMenu::rechargeScepterUsingItem(Item* item)
+{
+	if ( !item || gui_player < 0 )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6837), item->getName());
+		closeGUI();
+		return;
+	}
+
+	if ( itemEffectScrollItem && itemEffectScrollItem->type == MAGICSTAFF_SCEPTER )
+	{
+		if ( auto spell = getSpellFromItem(gui_player, item, true) )
+		{
+			messagePlayer(gui_player, MESSAGE_INTERACTION, Language::get(6836), spell->getSpellName());
+			messagePlayerColor(gui_player, MESSAGE_INTERACTION, makeColorRGB(0, 255, 0), Language::get(3730), items[itemEffectScrollItem->type].getIdentifiedName());
+			playSound(167, 64);
+			int difficulty = 10 + spell->difficulty / 4;
+			node_t* nextnode = nullptr;
+			for ( node_t* node = players[gui_player]->magic.spellList.first; node; node = nextnode )
+			{
+				nextnode = node->next;
+				if ( node->element )
+				{
+					spell_t* spell2 = (spell_t*)node->element;
+					if ( spell2 == spell )
+					{
+						if ( spell == players[gui_player]->magic.selectedSpell() )
+						{
+							players[gui_player]->magic.equipSpell(nullptr);
+						}
+						for ( int i = 0; i < NUM_HOTBAR_ALTERNATES; ++i )
+						{
+							if ( players[gui_player]->magic.selected_spell_alternate[i] == spell )
+							{
+								players[gui_player]->magic.selected_spell_alternate[i] = nullptr;
+							}
+						}
+						if ( client_classes[gui_player] == CLASS_SCION )
+						{
+							players[gui_player]->mechanics.favoriteBooksAchievement[spell->ID]++;
+							if ( players[gui_player]->mechanics.favoriteBooksAchievement[spell->ID] >= 5 )
+							{
+								steamAchievement("BARONY_ACH_FAVORITE_BOOK");
+							}
+						}
+						Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ARCHON_SPELLS_FORGOTTEN, MAGICSTAFF_SCEPTER, 1);
+						list_RemoveNode(node);
+						break;
+					}
+				}
+			}
+			consumeItem(item, gui_player);
+			Uint32 baseAppearance = itemEffectScrollItem->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
+			Uint32 increased = std::min(MAGICSTAFF_SCEPTER_CHARGE_MAX - 1U, baseAppearance + difficulty);
+			if ( increased > baseAppearance )
+			{
+				itemEffectScrollItem->appearance += (increased - baseAppearance);
+				itemEffectScrollItem->appearance = itemEffectScrollItem->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
+			}
+
+			if ( multiplayer == CLIENT )
+			{
+				// update item appearance
+				if ( itemIsEquipped(itemEffectScrollItem, gui_player) )
+				{
+					clientSendAppearanceUpdateToServer(gui_player, itemEffectScrollItem, false);
+				}
+			}
+		}
+	}
+	closeGUI();
+}
 
 bool GenericGUIMenu::executeOnItemClick(Item* item)
 {
@@ -6625,9 +8178,14 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 		{
 			if ( itemEffectScrollItem && itemCategory(itemEffectScrollItem) == SCROLL )
 			{
-				messagePlayer(gui_player, MESSAGE_INVENTORY, language[848]); // as you read the scroll it disappears...
+				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
 				consumeItem(itemEffectScrollItem, gui_player);
 			}
+			repairItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESTORE )
+		{
 			repairItem(item);
 			return true;
 		}
@@ -6636,7 +8194,7 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 		{
 			if ( itemEffectScrollItem && itemCategory(itemEffectScrollItem) == SCROLL )
 			{
-				messagePlayer(gui_player, MESSAGE_INVENTORY, language[848]); // as you read the scroll it disappears...
+				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
 				consumeItem(itemEffectScrollItem, gui_player);
 			}
 			uncurseItem(item);
@@ -6647,10 +8205,70 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 		{
 			if ( itemEffectScrollItem && itemCategory(itemEffectScrollItem) == SCROLL )
 			{
-				messagePlayer(gui_player, MESSAGE_INVENTORY, language[848]); // as you read the scroll it disappears...
+				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
 				consumeItem(itemEffectScrollItem, gui_player);
 			}
 			identifyItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_INSTRUMENT
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_METALLURGY
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_GEOMANCY
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_KEY
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_FORGE_JEWEL
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ENHANCE_WEAPON
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_VANDALISE )
+		{
+			alterItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_PUNCTURE_VOID )
+		{
+			sendItemToVoid(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_DESECRATE )
+		{
+			desecrateItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY_WATER )
+		{
+			blessWater(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY )
+		{
+			sanctifyItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_CLEANSE_FOOD )
+		{
+			cleanseFood(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_WEAPON
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_INSTRUMENT )
+		{
+			adorciseItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCEPTER_CHARGE )
+		{
+			rechargeScepterUsingItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_ENCHANT_WEAPON
+			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_ENCHANT_ARMOR )
+		{
+			if ( itemEffectScrollItem && itemCategory(itemEffectScrollItem) == SCROLL )
+			{
+				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
+				consumeItem(itemEffectScrollItem, gui_player);
+			}
+			enchantItem(item);
 			return true;
 		}
 		return false;
@@ -6678,11 +8296,11 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 				// did not find mixable item... close GUI
 				if ( !experimentingAlchemy )
 				{
-					messagePlayer(gui_player, MESSAGE_MISC, language[3337]);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3337));
 				}
 				else
 				{
-					messagePlayer(gui_player, MESSAGE_MISC, language[3342]);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3342));
 				}
 				closeGUI();
 				return false;
@@ -6715,7 +8333,17 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 			{
 				if ( tinkeringIsItemRepairable(item, gui_player) )
 				{
-					tinkeringRepairItem(item);
+					if ( tinkeringRepairItem(item) )
+					{
+						if ( workstationEntityUid != 0 && uidToEntity(workstationEntityUid) )
+						{
+							Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_REPAIRED, "workbench", 1);
+						}
+						else
+						{
+							Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_TINKERKIT_REPAIRS, TOOL_TINKERING_KIT, 1);
+						}
+					}
 				}
 			}
 			else if ( tinkeringFilter == TINKER_FILTER_SALVAGEABLE )
@@ -6736,6 +8364,10 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 			if ( item->identified && item->type == SCROLL_BLANK )
 			{
 				scribingBlankScrollTarget = item;
+				if ( !featherGUI.bDrawerOpen )
+				{
+					Player::soundModuleNavigation();
+				}
 				featherGUI.bDrawerOpen = true;
 				featherGUI.scrollListRequiresSorting = true;
 				onFeatherChangeTabAction(gui_player, false);
@@ -6760,25 +8392,10 @@ bool GenericGUIMenu::isItemMixable(const Item* item)
 		return false;
 	}
 
-	if ( itemCategory(item) != POTION )
+	if ( !alchemyGUI.inventoryItemAllowedInGUI(const_cast<Item*>(item)) )
 	{
 		return false;
 	}
-	if ( item->type == POTION_EMPTY )
-	{
-		return false;
-	}
-
-	//if ( players[gui_player] && players[gui_player]->entity )
-	//{
-	//	if ( players[gui_player]->entity->isBlind() )
-	//	{
-	//		messagePlayer(gui_player, MESSAGE_MISC, language[892]);
-	//		closeGUI();
-	//		return false; // I can't see!
-	//	}
-	//}
-
 
 	if ( !experimentingAlchemy && !item->identified )
 	{
@@ -6798,12 +8415,6 @@ bool GenericGUIMenu::isItemMixable(const Item* item)
 		return false; // don't want to deal with client/server desync problems here.
 	}
 
-	//int skillLVL = 0;
-	//if ( stats[gui_player] )
-	//{
-	//	skillLVL = stats[gui_player]->PROFICIENCIES[PRO_ALCHEMY] / 20; // 0 to 5;
-	//}
-
 	if ( experimentingAlchemy )
 	{
 		if ( !basePotion )
@@ -6819,18 +8430,21 @@ bool GenericGUIMenu::isItemMixable(const Item* item)
 		}
 	}
 
-	if ( !basePotion )
+	if ( alchemyGUI.currentView == AlchemyGUI_t::ALCHEMY_VIEW_BREW || alchemyGUI.currentView == AlchemyGUI_t::ALCHEMY_VIEW_RECIPES )
 	{
-		// we're selecting the first potion.
-		switch ( item->type )
+		// not used anymore??
+		if ( !basePotion )
 		{
+			// we're selecting the first potion.
+			switch ( item->type )
+			{
 			case POTION_WATER:
 			case POTION_POLYMORPH:
 			case POTION_BOOZE:
 			case POTION_JUICE:
 			case POTION_ACID:
 			case POTION_INVISIBILITY:
-				if ( clientLearnedAlchemyIngredients[gui_player].find(item->type) 
+				if ( clientLearnedAlchemyIngredients[gui_player].find(item->type)
 					!= clientLearnedAlchemyIngredients[gui_player].end() )
 				{
 					return true;
@@ -6843,19 +8457,19 @@ bool GenericGUIMenu::isItemMixable(const Item* item)
 			default:
 				return false;
 				break;
-		}
-	}
-
-	if ( !secondaryPotion )
-	{
-		if ( item == basePotion )
-		{
-			return false;
+			}
 		}
 
-		// we're selecting the second potion.
-		switch ( item->type )
+		if ( !secondaryPotion )
 		{
+			if ( item == basePotion )
+			{
+				return false;
+			}
+
+			// we're selecting the second potion.
+			switch ( item->type )
+			{
 			case POTION_WATER:
 			case POTION_SICKNESS:
 			case POTION_CONFUSION:
@@ -6864,7 +8478,7 @@ bool GenericGUIMenu::isItemMixable(const Item* item)
 			case POTION_RESTOREMAGIC:
 			case POTION_SPEED:
 			case POTION_POLYMORPH:
-				if ( clientLearnedAlchemyIngredients[gui_player].find(item->type) 
+				if ( clientLearnedAlchemyIngredients[gui_player].find(item->type)
 					!= clientLearnedAlchemyIngredients[gui_player].end() )
 				{
 					return true;
@@ -6877,10 +8491,230 @@ bool GenericGUIMenu::isItemMixable(const Item* item)
 			default:
 				return false;
 				break;
+			}
 		}
 	}
 
 	return false;
+}
+
+int GenericGUIMenu::isItemRationSeasoning(int type)
+{
+	if ( type >= WOODEN_SHIELD && type < NUMITEMS )
+	{
+		if ( items[type].hasAttribute("SEASONING_FOOD") )
+		{
+			if ( isItemRation(items[type].attributes["SEASONING_FOOD"]) )
+			{
+				return items[type].attributes["SEASONING_FOOD"];
+			}
+		}
+	}
+
+	return 0;
+}
+
+bool GenericGUIMenu::isItemRation(int type)
+{
+	switch ( type )
+	{
+		case FOOD_RATION:
+		case FOOD_RATION_SPICY:
+		case FOOD_RATION_SOUR:
+		case FOOD_RATION_BITTER:
+		case FOOD_RATION_HEARTY:
+		case FOOD_RATION_HERBAL:
+		case FOOD_RATION_SWEET:
+			return true;
+		default:
+			break;
+	}
+	return false;
+}
+
+bool GenericGUIMenu::AlchemyGUI_t::alchemyMissingIngredientQty(Item* item)
+{
+	if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
+	{
+		if ( potion1Uid && potion2Uid && alchemyResultPotion.type != POTION_EMPTY )
+		{
+			if ( !item )
+			{
+				if ( torchCount.count >= 0 && torchCount.count < 4 )
+				{
+					return true;
+				}
+				if ( alchemyResultPotion.appearance != 0 )
+				{
+					return true;
+				}
+			}
+			else if ( item && item->uid == potion1Uid )
+			{
+				if ( (alchemyResultPotion.appearance & 0xFF) != 0 )
+				{
+					return true;
+				}
+			}
+			else if ( item && item->uid == potion2Uid )
+			{
+				if ( ((alchemyResultPotion.appearance >> 8) & 0xFF) != 0 )
+				{
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+ItemType alchemyCookResult(int player, Item* potion1Item, Item* potion2Item, int& outCreateCount, Status& statusOut, 
+	int& outMissingPotion1Count, int& outMissingPotion2Count)
+{
+	ItemType result = POTION_EMPTY;
+	outCreateCount = 1;
+	outMissingPotion1Count = 0;
+	outMissingPotion2Count = 0;
+	statusOut = SERVICABLE;
+	if ( !potion1Item || !potion2Item )
+	{
+		return result;
+	}
+
+	ItemType potion1 = potion1Item->type;
+	ItemType potion2 = potion2Item->type;
+
+	if ( (potion1 == TOOL_TOWEL && potion2 == FOOD_RATION)
+		|| (potion2 == TOOL_TOWEL && potion1 == FOOD_RATION) )
+	{
+		result = GREASE_BALL;
+
+		if ( potion1 == TOOL_TOWEL )
+		{
+			outCreateCount = 4 * (int)(potion1Item->status);
+		}
+		else if ( potion2 == TOOL_TOWEL )
+		{
+			outCreateCount = 4 * (int)(potion2Item->status);
+		}
+		if ( potion1 == FOOD_RATION )
+		{
+			if ( potion1Item->count < 4 )
+			{
+				outMissingPotion1Count = 4 - potion1Item->count;
+			}
+		}
+		else if ( potion2 == FOOD_RATION )
+		{
+			if ( potion2Item->count < 4 )
+			{
+				outMissingPotion2Count = 4 - potion2Item->count;
+			}
+		}
+		statusOut = WORN;
+	}
+	else if ( (potion1 == POTION_WATER && potion2 == FOOD_RATION)
+		|| (potion2 == POTION_WATER && potion1 == FOOD_RATION) )
+	{
+		result = SLOP_BALL;
+		if ( potion1 == FOOD_RATION )
+		{
+			if ( potion1Item->count < 4 )
+			{
+				outMissingPotion1Count = 4 - potion1Item->count;
+			}
+		}
+		else if ( potion2 == FOOD_RATION )
+		{
+			if ( potion2Item->count < 4 )
+			{
+				outMissingPotion2Count = 4 - potion2Item->count;
+			}
+		}
+		outCreateCount = 4;
+		statusOut = WORN;
+	}
+	else if ( (potion1 == FOOD_RATION && GenericGUIMenu::isItemRationSeasoning(potion2))
+		|| (potion2 == FOOD_RATION && GenericGUIMenu::isItemRationSeasoning(potion1)) )
+	{
+		if ( GenericGUIMenu::isItemRationSeasoning(potion2) )
+		{
+			result = static_cast<ItemType>(GenericGUIMenu::isItemRationSeasoning(potion2));
+		}
+		else if ( GenericGUIMenu::isItemRationSeasoning(potion1) )
+		{
+			result = static_cast<ItemType>(GenericGUIMenu::isItemRationSeasoning(potion1));
+		}
+
+		if ( result != POTION_EMPTY )
+		{
+			if ( potion1 == FOOD_RATION )
+			{
+				if ( potion1Item->count < 4 )
+				{
+					outMissingPotion1Count = 4 - potion1Item->count;
+				}
+				statusOut = potion1Item->status;
+			}
+			else if ( potion2 == FOOD_RATION )
+			{
+				if ( potion2Item->count < 4 )
+				{
+					outMissingPotion2Count = 4 - potion2Item->count;
+				}
+				statusOut = potion2Item->status;
+			}
+
+			int skillLVL = (stats[player]->getModifiedProficiency(PRO_ALCHEMY) + statGetPER(stats[player], players[player]->entity)) / 20;
+			skillLVL = std::max(0, std::min(skillLVL, 5));
+			outCreateCount = 1 + skillLVL;
+			if ( skillLVL >= 4 )
+			{
+				statusOut = EXCELLENT;
+			}
+			if ( player >= 0 && stats[player] && stats[player]->helmet && stats[player]->helmet->type == HAT_CHEF )
+			{
+				statusOut = EXCELLENT;
+			}
+		}
+	}
+	else if ( items[potion1].category == FOOD && !GenericGUIMenu::isItemRation(potion1)
+		&& items[potion2].category == FOOD && !GenericGUIMenu::isItemRation(potion2) )
+	{
+		int satiation = Item::getBaseFoodSatiation(potion1) + Item::getBaseFoodSatiation(potion2);
+		if ( potion1 == FOOD_TIN || potion2 == FOOD_TIN )
+		{
+			satiation += 600; // bonus rations
+		}
+		if ( satiation >= 200 )
+		{
+			result = FOOD_RATION;
+			int count = satiation / 200;
+			int skillLVL = (stats[player]->getModifiedProficiency(PRO_ALCHEMY) + statGetPER(stats[player], players[player]->entity)) / 20;
+			skillLVL = std::max(0, std::min(skillLVL, 5));
+			if ( skillLVL >= 4 )
+			{
+				count += 1;
+			}
+			if ( satiation % 200 > 0 && skillLVL >= 1 )
+			{
+				count += 1;
+			}
+			count = std::max(1, count);
+			outCreateCount = count;
+			if ( skillLVL >= 4 )
+			{
+				statusOut = EXCELLENT;
+			}
+			if ( player >= 0 && stats[player] && stats[player]->helmet && stats[player]->helmet->type == HAT_CHEF )
+			{
+				statusOut = EXCELLENT;
+			}
+		}
+	}
+
+	return result;
 }
 
 ItemType alchemyMixResult(ItemType potion1, ItemType potion2, 
@@ -7213,7 +9047,7 @@ bool alchemyAddRecipe(int player, int basePotion, int secondaryPotion, int resul
 		clientLearnedAlchemyRecipes[player].push_back(std::make_pair(result, std::make_pair(basePotion, secondaryPotion)));
 		if ( !hideRecipeFromList(result) )
 		{
-			std::string itemName = items[result].name_identified;
+			std::string itemName = items[result].getIdentifiedName();
 			size_t pos = std::string::npos;
 			for ( auto& potionName : Player::SkillSheet_t::skillSheetData.potionNamesToFilter )
 			{
@@ -7240,12 +9074,432 @@ bool alchemyAddRecipe(int player, int basePotion, int secondaryPotion, int resul
 				}
 			}
 			GenericGUI[player].alchemyGUI.notifications.push_back(std::make_pair(ticks,
-				GenericGUIMenu::AlchemyGUI_t::AlchNotification_t(language[4179], itemName, iconPath)));
-			messagePlayerColor(player, MESSAGE_PROGRESSION, makeColorRGB(0, 255, 0), language[4182], items[result].name_identified);
+				GenericGUIMenu::AlchemyGUI_t::AlchNotification_t(Language::get(4179), itemName, iconPath)));
+			messagePlayerColor(player, MESSAGE_PROGRESSION, makeColorRGB(0, 255, 0), Language::get(4182), items[result].getIdentifiedName());
 		}
 		return true;
 	}
 	return false;
+}
+
+void GenericGUIMenu::alchemyCookCombination()
+{
+	if ( !basePotion || !secondaryPotion )
+	{
+		return;
+	}
+
+	const ItemType basePotionType = basePotion->type;
+	const ItemType secondaryPotionType = secondaryPotion->type;
+	int createCount = 1;
+	Status status = SERVICABLE;
+	int missingPotion1Count = 0;
+	int missingPotion2Count = 0;
+	ItemType result = alchemyCookResult(getPlayer(), basePotion, secondaryPotion, createCount, status, missingPotion1Count, missingPotion2Count);
+	if ( result == POTION_EMPTY || alchemyGUI.alchemyMissingIngredientQty(nullptr) )
+	{
+		return;
+	}
+
+	int skillLVL = 0;
+	if ( stats[gui_player] )
+	{
+		skillLVL = stats[gui_player]->getModifiedProficiency(PRO_ALCHEMY) / 20; // 0 to 5;
+	}
+
+
+	if ( basePotionType == TOOL_TOWEL )
+	{
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(6770),
+			items[secondaryPotionType].getIdentifiedName(), items[basePotionType].getIdentifiedName());
+	}
+	else if ( secondaryPotionType == TOOL_TOWEL )
+	{
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(6770),
+			items[basePotionType].getIdentifiedName(), items[secondaryPotionType].getIdentifiedName());
+	}
+	else if ( GenericGUIMenu::isItemRationSeasoning(basePotionType) || itemCategory(basePotion) == POTION )
+	{
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(3332),
+			items[secondaryPotionType].getIdentifiedName(), items[basePotionType].getIdentifiedName());
+	}
+	else if ( GenericGUIMenu::isItemRationSeasoning(secondaryPotionType) || itemCategory(secondaryPotion) == POTION )
+	{
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(3332),
+			items[basePotionType].getIdentifiedName(), items[secondaryPotionType].getIdentifiedName());
+	}
+	else
+	{
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(6769),
+			items[basePotionType].getIdentifiedName(), items[secondaryPotionType].getIdentifiedName());
+	}
+
+	if ( GenericGUIMenu::isItemRationSeasoning(basePotionType) && secondaryPotionType == FOOD_RATION )
+	{
+		status = std::max(status, secondaryPotion->status);
+	}
+	else if ( GenericGUIMenu::isItemRationSeasoning(secondaryPotionType) && basePotionType == FOOD_RATION )
+	{
+		status = std::max(status, basePotion->status);
+	}
+
+	bool degradeAlembic = false;
+	/*if ( (basePotion->type == POTION_ACID || secondaryPotion->type == POTION_ACID) && !samePotion )
+	{
+		if ( local_rng.rand() % 10 == 0 )
+		{
+			degradeAlembic = true;
+		}
+	}
+	else
+	{
+		if ( local_rng.rand() % 40 == 0 )
+		{
+			degradeAlembic = true;
+		}
+	}*/
+
+	int appearance = 0;
+	int blessing = 0;
+	if ( isItemRation(result) )
+	{
+		if ( basePotion->beatitude > 0 && secondaryPotion->beatitude > 0 )
+		{
+			blessing = std::min(basePotion->beatitude, secondaryPotion->beatitude); // take least blessed
+		}
+		else if ( basePotion->beatitude < 0 && secondaryPotion->beatitude < 0 )
+		{
+			blessing = std::min(basePotion->beatitude, secondaryPotion->beatitude); // take most cursed
+		}
+		else if ( (basePotion->beatitude < 0 && secondaryPotion->beatitude > 0)
+			|| (secondaryPotion->beatitude < 0 && basePotion->beatitude > 0) )
+		{
+			blessing = 0;
+		}
+		else if ( basePotion->beatitude < 0 && secondaryPotion->beatitude == 0 )
+		{
+			blessing = basePotion->beatitude; // curse the result
+		}
+		else if ( basePotion->beatitude == 0 && secondaryPotion->beatitude < 0 )
+		{
+			blessing = secondaryPotion->beatitude; // curse the result
+		}
+		else if ( basePotion->beatitude > 0 && secondaryPotion->beatitude == 0 )
+		{
+			blessing = 0; // negate the blessing
+		}
+		else if ( basePotion->beatitude == 0 && secondaryPotion->beatitude > 0 )
+		{
+			blessing = 0; // negate the blessing
+		}
+	}
+
+	bool emptyBottle = false;
+	{
+		int consume1 = 1;
+		int consume2 = 1;
+		if ( basePotionType == FOOD_RATION )
+		{
+			consume1 = 4;
+		}
+		if ( secondaryPotionType == FOOD_RATION )
+		{
+			consume2 = 4;
+		}
+		while ( consume1 > 0 )
+		{
+			int prevCount = basePotion->count;
+			consumeItem(basePotion, gui_player);
+			if ( !basePotion || basePotion->count == prevCount )
+			{
+				break;
+			}
+			--consume1;
+		}
+		while ( consume2 > 0 )
+		{
+			int prevCount = secondaryPotion->count;
+			consumeItem(secondaryPotion, gui_player);
+			if ( !secondaryPotion || secondaryPotion->count == prevCount )
+			{
+				break;
+			}
+			--consume2;
+		}
+
+		if ( alchemyGUI.torchCount.count >= 0 )
+		{
+			std::vector<Item*> torches;
+			Item* torchesEquipped;
+			for ( node_t* invnode = stats[gui_player]->inventory.first; invnode != NULL; invnode = invnode->next )
+			{
+				Item* item = (Item*)invnode->element;
+				if ( item && item->type == TOOL_TORCH )
+				{
+					if ( itemIsEquipped(item, gui_player) )
+					{
+						torchesEquipped = item;
+					}
+					else
+					{
+						torches.push_back(item);
+					}
+				}
+			}
+			int consumeTorch = 4;
+			bool updateEquipSlot = false;
+			while ( consumeTorch > 0 )
+			{
+				if ( torches.size() == 0 && !torchesEquipped )
+				{
+					break;
+				}
+
+				Item* torch = nullptr;
+				if ( torches.size() > 0 )
+				{
+					torch = torches[0];
+					torches.erase(torches.begin());
+
+					while ( torch && consumeTorch > 0 )
+					{
+						consumeItem(torch, gui_player);
+						--consumeTorch;
+					}
+					continue;
+				}
+				if ( torchesEquipped )
+				{
+					while ( torchesEquipped && consumeTorch > 0 )
+					{
+						consumeItem(torchesEquipped, gui_player);
+						updateEquipSlot = true;
+						--consumeTorch;
+					}
+					continue;
+				}
+			}
+
+			if ( updateEquipSlot && multiplayer == CLIENT )
+			{
+				// if decrementing qty and holding item, then send "equip" for server to update their count of your held item.
+				strcpy((char*)net_packet->data, "COOK");
+				Item* shield = stats[gui_player]->shield;
+				SDLNet_Write32(static_cast<Uint32>(shield ? shield->type : TOOL_TORCH), &net_packet->data[4]);
+				SDLNet_Write32(static_cast<Uint32>(shield ? shield->status : BROKEN), &net_packet->data[8]);
+				SDLNet_Write32(static_cast<Uint32>(shield ? shield->beatitude : 0), &net_packet->data[12]);
+				SDLNet_Write32(static_cast<Uint32>(shield ? shield->count : 0), &net_packet->data[16]);
+				SDLNet_Write32(static_cast<Uint32>(shield ? shield->appearance : 0), &net_packet->data[20]);
+				net_packet->data[24] = shield ? shield->identified : false;
+				net_packet->data[25] = gui_player;
+				net_packet->address.host = net_server.host;
+				net_packet->address.port = net_server.port;
+				net_packet->len = 26;
+				sendPacketSafe(net_sock, -1, net_packet, 0);
+			}
+		}
+
+		if ( items[basePotionType].category == POTION || items[secondaryPotionType].category == POTION )
+		{
+			if ( local_rng.rand() % 100 < (50 + skillLVL * 5) ) // 50 - 75% chance
+			{
+				emptyBottle = true;
+			}
+		}
+	}
+
+	/*if ( skillCapstoneUnlocked(gui_player, PRO_ALCHEMY) )
+	{
+		degradeAlembic = false;
+	}
+
+	if ( degradeAlembic && alembicItem )
+	{
+		alembicItem->status = static_cast<Status>(alembicItem->status - 1);
+		if ( alembicItem->status > BROKEN )
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(681), alembicItem->getName());
+		}
+		else
+		{
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(2351), alembicItem->getName());
+			playSoundPlayer(gui_player, 162, 64);
+			consumeItem(alembicItem, gui_player);
+			alembicItem = nullptr;
+		}
+	}*/
+
+	//if ( explodeSelf && players[gui_player] && players[gui_player]->entity )
+	//{
+	//	Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ALEMBIC_EXPLOSIONS, TOOL_ALEMBIC, 1);
+
+	//	// hurt.
+	//	alchemyAddRecipe(gui_player, basePotionType, secondaryPotionType, TOOL_BOMB, true);
+	//	if ( multiplayer == CLIENT )
+	//	{
+	//		strcpy((char*)net_packet->data, "BOOM");
+	//		net_packet->data[4] = gui_player;
+	//		net_packet->address.host = net_server.host;
+	//		net_packet->address.port = net_server.port;
+	//		net_packet->len = 5;
+	//		sendPacketSafe(net_sock, -1, net_packet, 0);
+	//	}
+	//	else
+	//	{
+	//		bool protection = false;
+	//		if ( stats[gui_player]->mask && stats[gui_player]->mask->type == MASK_HAZARD_GOGGLES )
+	//		{
+	//			bool shapeshifted = false;
+	//			if ( stats[gui_player]->type != HUMAN )
+	//			{
+	//				if ( players[gui_player]->entity->effectShapeshift != NOTHING )
+	//				{
+	//					shapeshifted = true;
+	//				}
+	//			}
+	//			if ( !shapeshifted )
+	//			{
+	//				protection = true;
+	//				messagePlayerColor(gui_player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6089));
+	//			}
+	//		}
+	//		spawnMagicTower(protection ? players[gui_player]->entity : nullptr,
+	//			players[gui_player]->entity->x, players[gui_player]->entity->y, SPELL_FIREBALL, nullptr);
+	//		players[gui_player]->entity->setObituary(Language::get(3350));
+	//		stats[gui_player]->killer = KilledBy::FAILED_ALCHEMY;
+	//	}
+	//	closeGUI();
+	//	return;
+	//}
+
+	appearance = std::max(0, appearance);
+	if ( Item* newPotion = newItem(result, status, blessing, createCount, appearance, true, nullptr) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6771), newPotion->description());
+		Item* pickedUp = itemPickup(gui_player, newPotion);
+		if ( pickedUp )
+		{
+			alchemyGUI.potionResultUid = pickedUp->uid;
+			alchemyGUI.animPotionResultCount = alchemyGUI.alchemyResultPotion.count;
+		}
+		free(newPotion);
+		newPotion = nullptr;
+	}
+
+	if ( players[gui_player] && players[gui_player]->entity )
+	{
+		playSoundEntityLocal(players[gui_player]->entity, 774 + local_rng.rand() % 2, 64);
+	}
+	if ( emptyBottle )
+	{
+		Item* emptyBottle = newItem(POTION_EMPTY, SERVICABLE, 0, 1, 0, true, nullptr);
+		itemPickup(gui_player, emptyBottle);
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(3351), items[POTION_EMPTY].getIdentifiedName());
+		Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_BOTTLE_FROM_BREWING, POTION_EMPTY, 1);
+		free(emptyBottle);
+	}
+
+	if ( result == SLOP_BALL )
+	{
+		if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+		{
+			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_SLOP_BALLS, "cauldron", createCount);
+			steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
+		}
+		if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_SLOP_BALLS, TOOL_FRYING_PAN, createCount);
+		}
+	}
+	else if ( result == GREASE_BALL )
+	{
+		if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+		{
+			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_GREASE_BALLS, "cauldron", createCount);
+			steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
+		}
+		if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_GREASE_BALLS, TOOL_FRYING_PAN, createCount);
+		}
+	}
+
+	if ( isItemRation(result) )
+	{
+		if ( result == FOOD_RATION )
+		{
+			if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+			{
+				Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_MEALS, "cauldron", createCount);
+				steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
+			}
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_MEALS, result, createCount);
+			if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
+			{
+				Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_MEALS, TOOL_FRYING_PAN, createCount);
+			}
+		}
+		else
+		{
+			if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+			{
+				Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_FLAVORED_MEALS, "cauldron", createCount);
+				steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
+			}
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_MEALS, result, createCount);
+			if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
+			{
+				Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_FLAVORED_MEALS, TOOL_FRYING_PAN, createCount);
+			}
+		}
+		if ( stats[gui_player]->type == VAMPIRE || stats[gui_player]->type == AUTOMATON
+			|| stats[gui_player]->type == SKELETON )
+		{
+			steamAchievement("BARONY_ACH_CULINARY_AMBASSADOR");
+		}
+		steamStatisticUpdate(STEAM_STAT_LET_HIM_COOK, STEAM_STAT_INT, createCount);
+
+		bool raiseSkill = false;
+		if ( result == FOOD_RATION && local_rng.rand() % 10 == 0 && stats[gui_player] 
+			&& stats[gui_player]->getProficiency(PRO_ALCHEMY) < SKILL_LEVEL_SKILLED )
+		{
+			raiseSkill = true;
+		}
+		else if ( local_rng.rand() % 5 == 0 )
+		{
+			raiseSkill = true;
+		}
+
+		if ( raiseSkill )
+		{
+			if ( multiplayer == CLIENT )
+			{
+				// request level up
+				strcpy((char*)net_packet->data, "CSKL");
+				net_packet->data[4] = gui_player;
+				net_packet->data[5] = PRO_ALCHEMY;
+				net_packet->address.host = net_server.host;
+				net_packet->address.port = net_server.port;
+				net_packet->len = 6;
+				sendPacketSafe(net_sock, -1, net_packet, 0);
+			}
+			else
+			{
+				if ( players[gui_player] && players[gui_player]->entity )
+				{
+					players[gui_player]->entity->increaseSkill(PRO_ALCHEMY);
+				}
+			}
+
+			if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+			{
+				if ( stats[gui_player]->getProficiency(PRO_ALCHEMY) < 100 && alchemyGUI.bOpen )
+				{
+					Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_CAULDRON_SKILLUPS, "cauldron", 1);
+				}
+			}
+		}
+	}
 }
 
 void GenericGUIMenu::alchemyCombinePotions()
@@ -7538,7 +9792,7 @@ void GenericGUIMenu::alchemyCombinePotions()
 	int skillLVL = 0;
 	if ( stats[gui_player] )
 	{
-		skillLVL = stats[gui_player]->PROFICIENCIES[PRO_ALCHEMY] / 20; // 0 to 5;
+		skillLVL = stats[gui_player]->getModifiedProficiency(PRO_ALCHEMY) / 20; // 0 to 5;
 	}
 
 	Status status = EXCELLENT;
@@ -7609,22 +9863,22 @@ void GenericGUIMenu::alchemyCombinePotions()
 
 	if ( basePotion->identified && secondaryPotion->identified )
 	{
-		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, language[3332],
-			items[basePotion->type].name_identified, items[secondaryPotion->type].name_identified);
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(3332),
+			items[basePotion->type].getIdentifiedName(), items[secondaryPotion->type].getIdentifiedName());
 	}
 	else if ( basePotion->identified )
 	{
-		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, language[3334],
-			items[basePotion->type].name_identified);
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(3334),
+			items[basePotion->type].getIdentifiedName());
 	}
 	else if ( secondaryPotion->identified )
 	{
-		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, language[3333],
-			items[secondaryPotion->type].name_identified);
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(3333),
+			items[secondaryPotion->type].getIdentifiedName());
 	}
 	else
 	{
-		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, language[3335]);
+		messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorWhite, Language::get(3335));
 	}
 
 	if ( !explodeSelf && result != POTION_SICKNESS && !tryDuplicatePotion && !samePotion )
@@ -7647,14 +9901,14 @@ void GenericGUIMenu::alchemyCombinePotions()
 	{
 		if ( (basePotion->type == POTION_ACID || secondaryPotion->type == POTION_ACID) && !samePotion )
 		{
-			if ( local_rng.rand() % 5 == 0 )
+			if ( local_rng.rand() % 10 == 0 )
 			{
 				degradeAlembic = true;
 			}
 		}
 		else
 		{
-			if ( local_rng.rand() % 20 == 0 )
+			if ( local_rng.rand() % 40 == 0 )
 			{
 				degradeAlembic = true;
 			}
@@ -7821,11 +10075,11 @@ void GenericGUIMenu::alchemyCombinePotions()
 		alembicItem->status = static_cast<Status>(alembicItem->status - 1);
 		if ( alembicItem->status > BROKEN )
 		{
-			messagePlayer(gui_player, MESSAGE_MISC, language[681], alembicItem->getName());
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(681), alembicItem->getName());
 		}
 		else
 		{
-			messagePlayer(gui_player, MESSAGE_MISC, language[2351], alembicItem->getName());
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(2351), alembicItem->getName());
 			playSoundPlayer(gui_player, 162, 64);
 			consumeItem(alembicItem, gui_player);
 			alembicItem = nullptr;
@@ -7834,6 +10088,15 @@ void GenericGUIMenu::alchemyCombinePotions()
 
 	if ( explodeSelf && players[gui_player] && players[gui_player]->entity )
 	{
+		if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+		{
+			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_ALEMBIC_EXPLOSIONS, "cauldron", 1);
+		}
+		else
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ALEMBIC_EXPLOSIONS, TOOL_ALEMBIC, 1);
+		}
+
 		// hurt.
 		alchemyAddRecipe(gui_player, basePotionType, secondaryPotionType, TOOL_BOMB, true);
 		if ( multiplayer == CLIENT )
@@ -7847,8 +10110,26 @@ void GenericGUIMenu::alchemyCombinePotions()
 		}
 		else
 		{
-			spawnMagicTower(nullptr, players[gui_player]->entity->x, players[gui_player]->entity->y, SPELL_FIREBALL, nullptr);
-			players[gui_player]->entity->setObituary(language[3350]);
+			bool protection = false;
+			if ( stats[gui_player]->mask && stats[gui_player]->mask->type == MASK_HAZARD_GOGGLES )
+			{
+				bool shapeshifted = false;
+				if ( stats[gui_player]->type != HUMAN )
+				{
+					if ( players[gui_player]->entity->effectShapeshift != NOTHING )
+					{
+						shapeshifted = true;
+					}
+				}
+				if ( !shapeshifted )
+				{
+					protection = true;
+					messagePlayerColor(gui_player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6089));
+				}
+			}
+			spawnMagicTower(protection ? players[gui_player]->entity : nullptr, 
+				players[gui_player]->entity->x, players[gui_player]->entity->y, SPELL_FIREBALL, nullptr);
+			players[gui_player]->entity->setObituary(Language::get(3350));
 		    stats[gui_player]->killer = KilledBy::FAILED_ALCHEMY;
 		}
 		closeGUI();
@@ -7898,7 +10179,15 @@ void GenericGUIMenu::alchemyCombinePotions()
 			{
 				if ( result == POTION_WATER && !duplicateSucceed )
 				{
-					messagePlayer(gui_player, MESSAGE_MISC, language[3356]);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3356));
+					if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+					{
+						Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_ALEMBIC_DUPLICATION_FAIL, "cauldron", 1);
+					}
+					else
+					{
+						Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ALEMBIC_DUPLICATION_FAIL, TOOL_ALEMBIC, 1);
+					}
 				}
 				else if ( newPotion )
 				{
@@ -7909,13 +10198,54 @@ void GenericGUIMenu::alchemyCombinePotions()
 						newPotion->identified = duplicatedPotion->identified;
 						newPotion->status = duplicatedPotion->status;
 					}
-					messagePlayer(gui_player, MESSAGE_MISC, language[3352], newPotion->description());
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3352), newPotion->description());
+					if ( duplicateSucceed )
+					{
+						if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+						{
+							Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_ALEMBIC_DUPLICATED, "cauldron", 1);
+						}
+						else
+						{
+							Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ALEMBIC_DUPLICATED, TOOL_ALEMBIC, 1);
+						}
+					}
 				}
 			}
 			else
 			{
-				messagePlayer(gui_player, MESSAGE_MISC, language[3352], newPotion->description());
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(3352), newPotion->description());
 				steamStatisticUpdate(STEAM_STAT_IN_THE_MIX, STEAM_STAT_INT, 1);
+				if ( samePotion )
+				{
+					if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+					{
+						Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_ALEMBIC_DECANTED, "cauldron", 1);
+					}
+					else
+					{
+						Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ALEMBIC_DECANTED, TOOL_ALEMBIC, 1);
+					}
+				}
+				else
+				{
+					if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+					{
+						Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_ALEMBIC_BREWED, "cauldron", 1);
+						steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
+					}
+					else
+					{
+						Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ALEMBIC_BREWED, TOOL_ALEMBIC, 1);
+					}
+
+					if ( result != POTION_SICKNESS && result != POTION_WATER )
+					{
+						achievementObserver.updatePlayerAchievement(gui_player, // clientnum intentional for to include splitscreen
+							AchievementObserver::BARONY_ACH_BY_THE_BOOK,
+							AchievementObserver::BY_THE_BOOK_BREW);
+					}
+				}
 			}
 
 			if ( newPotion )
@@ -7983,7 +10313,8 @@ void GenericGUIMenu::alchemyCombinePotions()
 			{
 				Item* emptyBottle = newItem(POTION_EMPTY, SERVICABLE, 0, 1, 0, true, nullptr);
 				itemPickup(gui_player, emptyBottle);
-				messagePlayer(gui_player, MESSAGE_MISC, language[3351], items[POTION_EMPTY].name_identified);
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(3351), items[POTION_EMPTY].getIdentifiedName());
+				Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_BOTTLE_FROM_BREWING, POTION_EMPTY, 1);
 				free(emptyBottle);
 			}
 			if ( raiseSkill && local_rng.rand() % 2 == 0 )
@@ -8004,6 +10335,13 @@ void GenericGUIMenu::alchemyCombinePotions()
 					if ( players[gui_player] && players[gui_player]->entity )
 					{
 						players[gui_player]->entity->increaseSkill(PRO_ALCHEMY);
+					}
+				}
+				if ( stats[gui_player]->getProficiency(PRO_ALCHEMY) < 100 && alchemyGUI.bOpen )
+				{
+					if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+					{
+						Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_CAULDRON_SKILLUPS, "cauldron", 1);
 					}
 				}
 			}
@@ -8034,13 +10372,13 @@ bool GenericGUIMenu::alchemyLearnRecipe(int type, bool increaseskill, bool notif
 				{
 					if ( isItemBaseIngredient(type) )
 					{
-						messagePlayerColor(gui_player, MESSAGE_PROGRESSION, color, language[3346], items[type].name_identified);
+						messagePlayerColor(gui_player, MESSAGE_PROGRESSION, color, Language::get(3346), items[type].getIdentifiedName());
 					}
 					else if ( isItemSecondaryIngredient(type) )
 					{
-						messagePlayerColor(gui_player, MESSAGE_PROGRESSION, color, language[3349], items[type].name_identified);
+						messagePlayerColor(gui_player, MESSAGE_PROGRESSION, color, Language::get(3349), items[type].getIdentifiedName());
 					}
-					std::string itemName = items[type].name_identified;
+					std::string itemName = items[type].getIdentifiedName();
 					size_t pos = std::string::npos;
 					for ( auto& potionName : Player::SkillSheet_t::skillSheetData.potionNamesToFilter )
 					{
@@ -8060,7 +10398,7 @@ bool GenericGUIMenu::alchemyLearnRecipe(int type, bool increaseskill, bool notif
 						iconPath = imagePath->data;
 					}
 					alchemyGUI.notifications.push_back(std::make_pair(ticks, 
-						AlchemyGUI_t::AlchNotification_t(language[4180], itemName, iconPath)));
+						AlchemyGUI_t::AlchNotification_t(Language::get(4180), itemName, iconPath)));
 				}
 				if ( increaseskill )
 				{
@@ -8080,6 +10418,14 @@ bool GenericGUIMenu::alchemyLearnRecipe(int type, bool increaseskill, bool notif
 						if ( players[gui_player] && players[gui_player]->entity )
 						{
 							players[gui_player]->entity->increaseSkill(PRO_ALCHEMY);
+						}
+					}
+
+					if ( stats[gui_player]->getProficiency(PRO_ALCHEMY) < 100 && alchemyGUI.bOpen )
+					{
+						if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+						{
+							Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_CAULDRON_SKILLUPS, "cauldron", 1);
 						}
 					}
 				}
@@ -8108,6 +10454,13 @@ bool GenericGUIMenu::alchemyLearnRecipe(int type, bool increaseskill, bool notif
 						if ( players[gui_player] && players[gui_player]->entity )
 						{
 							players[gui_player]->entity->increaseSkill(PRO_ALCHEMY);
+						}
+					}
+					if ( stats[gui_player]->getProficiency(PRO_ALCHEMY) < 100 && alchemyGUI.bOpen )
+					{
+						if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
+						{
+							Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_CAULDRON_SKILLUPS, "cauldron", 1);
 						}
 					}
 				}
@@ -8188,7 +10541,7 @@ void GenericGUIMenu::alchemyLearnRecipeOnLevelUp(int skill)
 
 	if ( !learned && skill % 5 == 0 )
 	{
-		ItemType potion = itemLevelCurve(POTION, 0, currentlevel);
+		ItemType potion = itemLevelCurve(POTION, 0, currentlevel, local_rng);
 		alchemyLearnRecipe(potion, false);
 	}
 }
@@ -8245,7 +10598,7 @@ void GenericGUIMenu::tinkeringCreateCraftableItemList()
 	items.push_back(newItem(TOOL_SPELLBOT, EXCELLENT, 0, 1, ITEM_TINKERING_APPEARANCE, true, &tinkeringTotalItems));
 	items[items.size() - 1]->x = 3;
 	items[items.size() - 1]->y = 2;
-	items.push_back(newItem(TOOL_ALEMBIC, EXCELLENT, 0, 1, ITEM_TINKERING_APPEARANCE, true, &tinkeringTotalItems));
+	items.push_back(newItem(MASK_TECH_GOGGLES, EXCELLENT, 0, 1, ITEM_TINKERING_APPEARANCE, true, &tinkeringTotalItems));
 	items[items.size() - 1]->x = 4;
 	items[items.size() - 1]->y = 2;
 	items.push_back(newItem(CLOAK_BACKPACK, EXCELLENT, 0, 1, ITEM_TINKERING_APPEARANCE, true, &tinkeringTotalItems));
@@ -8260,7 +10613,7 @@ void GenericGUIMenu::tinkeringCreateCraftableItemList()
 			int requiredSkill = tinkeringPlayerHasSkillLVLToCraft(item);
 			if ( stats[gui_player] && players[gui_player] )
 			{
-				skillLVL = (stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
+				skillLVL = (stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
 				skillLVL = std::min(skillLVL, 5);
 			}
 			if ( item->type == TOOL_DUMMYBOT || item->type == TOOL_SENTRYBOT
@@ -8348,13 +10701,13 @@ bool GenericGUIMenu::tinkeringCraftItem(Item* item)
 	if ( tinkeringPlayerHasSkillLVLToCraft(item) == -1 )
 	{
 		//playSound(90, 64);
-		messagePlayer(gui_player, MESSAGE_MISC, language[3652], items[item->type].name_identified);
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(3652), items[item->type].getIdentifiedName());
 		return false;
 	}
 	if ( !tinkeringPlayerCanAffordCraft(item) )
 	{
 		//playSound(90, 64);
-		messagePlayer(gui_player, MESSAGE_MISC, language[3648], items[item->type].name_identified);
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(3648), items[item->type].getIdentifiedName());
 		return false;
 	}
 
@@ -8362,7 +10715,17 @@ bool GenericGUIMenu::tinkeringCraftItem(Item* item)
 	if ( crafted )
 	{
 		Item* pickedUp = itemPickup(gui_player, crafted);
-		messagePlayer(gui_player, MESSAGE_MISC, language[3668], crafted->description());
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(3668), crafted->description());
+		if ( workstationEntityUid != 0 && uidToEntity(workstationEntityUid) )
+		{
+			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_CRAFTS, "workbench", 1);
+			steamStatisticUpdate(STEAM_STAT_HOBBYIST, STEAM_STAT_INT, 1);
+		}
+		else
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_TINKERKIT_CRAFTS, TOOL_TINKERING_KIT, 1);
+		}
+		Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_GADGET_CRAFTED, crafted->type, 1);
 		free(crafted);
 		return true;
 	}
@@ -8379,7 +10742,7 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 	if ( !outsideInventory && itemIsEquipped(item, player) )
 	{
 		tinkeringBulkSalvage = false;
-		messagePlayer(player, MESSAGE_MISC, language[3669]);
+		messagePlayer(player, MESSAGE_MISC, Language::get(3669));
 		return false; // don't want to deal with client/server desync problems here.
 	}
 
@@ -8393,7 +10756,7 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 	int bonusMagicScrap = 0;
 	if ( stats[player] && players[player] && item->status > BROKEN )
 	{
-   		skillLVL = (stats[player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[player], players[player]->entity)) / 20;
+   		skillLVL = (stats[player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[player], players[player]->entity)) / 20;
 		skillLVL = std::min(skillLVL, 5);
 		switch ( skillLVL )
 		{
@@ -8475,11 +10838,27 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 				if ( bonusMetalScrap > 0 )
 				{
 					Uint32 color = makeColorRGB(0, 255, 0);
-					messagePlayerColor(player, MESSAGE_INVENTORY, color, language[3665], metal + tinkeringBulkSalvageMetalScrap, items[pickedUp->type].name_identified);
+					messagePlayerColor(player, MESSAGE_INVENTORY, color, Language::get(3665), metal + tinkeringBulkSalvageMetalScrap, items[pickedUp->type].getIdentifiedName());
+					if ( players[player]->isLocalPlayer() )
+					{
+						Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_TINKERKIT_METAL_SCRAPPED, TOOL_TINKERING_KIT, metal + tinkeringBulkSalvageMetalScrap);
+						if ( item && item->type == TOOL_DETONATOR_CHARGE )
+						{
+							Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_DETONATOR_SCRAPPED_METAL, TOOL_DETONATOR_CHARGE, metal + tinkeringBulkSalvageMetalScrap);
+						}
+					}
 				}
 				else
 				{
-					messagePlayer(player, MESSAGE_MISC, language[3665], metal + tinkeringBulkSalvageMetalScrap, items[pickedUp->type].name_identified);
+					messagePlayer(player, MESSAGE_MISC, Language::get(3665), metal + tinkeringBulkSalvageMetalScrap, items[pickedUp->type].getIdentifiedName());
+					if ( players[player]->isLocalPlayer() )
+					{
+						Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_TINKERKIT_METAL_SCRAPPED, TOOL_TINKERING_KIT, metal + tinkeringBulkSalvageMetalScrap);
+						if ( item && item->type == TOOL_DETONATOR_CHARGE )
+						{
+							Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_DETONATOR_SCRAPPED_METAL, TOOL_DETONATOR_CHARGE, metal + tinkeringBulkSalvageMetalScrap);
+						}
+					}
 				}
 			}
 			else
@@ -8501,11 +10880,27 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 				if ( bonusMagicScrap > 0 )
 				{
 					Uint32 color = makeColorRGB(0, 255, 0);
-					messagePlayerColor(player, MESSAGE_INVENTORY, color, language[3665], magic + tinkeringBulkSalvageMagicScrap, items[pickedUp->type].name_identified);
+					messagePlayerColor(player, MESSAGE_INVENTORY, color, Language::get(3665), magic + tinkeringBulkSalvageMagicScrap, items[pickedUp->type].getIdentifiedName());
+					if ( players[player]->isLocalPlayer() )
+					{
+						Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_TINKERKIT_MAGIC_SCRAPPED, TOOL_TINKERING_KIT, magic + tinkeringBulkSalvageMagicScrap);
+						if ( item && item->type == TOOL_DETONATOR_CHARGE )
+						{
+							Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_DETONATOR_SCRAPPED_MAGIC, TOOL_DETONATOR_CHARGE, magic + tinkeringBulkSalvageMagicScrap);
+						}
+					}
 				}
 				else
 				{
-					messagePlayer(player, MESSAGE_MISC, language[3665], magic + tinkeringBulkSalvageMagicScrap, items[pickedUp->type].name_identified);
+					messagePlayer(player, MESSAGE_MISC, Language::get(3665), magic + tinkeringBulkSalvageMagicScrap, items[pickedUp->type].getIdentifiedName());
+					if ( players[player]->isLocalPlayer() )
+					{
+						Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_TINKERKIT_MAGIC_SCRAPPED, TOOL_TINKERING_KIT, magic + tinkeringBulkSalvageMagicScrap);
+						if ( item && item->type == TOOL_DETONATOR_CHARGE )
+						{
+							Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_DETONATOR_SCRAPPED_MAGIC, TOOL_DETONATOR_CHARGE, magic + tinkeringBulkSalvageMagicScrap);
+						}
+					}
 				}
 			}
 			else
@@ -8524,13 +10919,13 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 		{
 			if ( local_rng.rand() % 2 == 0 ) // 50%
 			{
-				if ( stats[player]->PROFICIENCIES[PRO_LOCKPICKING] < SKILL_LEVEL_EXPERT )
+				if ( stats[player]->getProficiency(PRO_LOCKPICKING) < SKILL_LEVEL_EXPERT )
 				{
 					increaseSkill = true;
 				}
 				else if ( local_rng.rand() % 20 == 0 && !tinkeringBulkSalvage )
 				{
-					messagePlayer(player, MESSAGE_MISC, language[3666]); // nothing left to learn from salvaging.
+					messagePlayer(player, MESSAGE_MISC, Language::get(3666)); // nothing left to learn from salvaging.
 				}
 			}
 		}
@@ -8538,13 +10933,13 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 		{
 			if ( local_rng.rand() % 5 == 0 ) // 20%
 			{
-				if ( stats[player]->PROFICIENCIES[PRO_LOCKPICKING] < SKILL_LEVEL_EXPERT )
+				if ( stats[player]->getProficiency(PRO_LOCKPICKING) < SKILL_LEVEL_EXPERT )
 				{
 					increaseSkill = true;
 				}
 				else if ( local_rng.rand() % 20 == 0 && !tinkeringBulkSalvage )
 				{
-					messagePlayer(player, MESSAGE_MISC, language[3666]); // nothing left to learn from salvaging.
+					messagePlayer(player, MESSAGE_MISC, Language::get(3666)); // nothing left to learn from salvaging.
 				}
 			}
 		}
@@ -8615,9 +11010,32 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 					players[player]->entity->increaseSkill(PRO_LOCKPICKING);
 				}
 			}
+
+			if ( stats[gui_player]->getProficiency(PRO_LOCKPICKING) < 100 && tinkerGUI.bOpen )
+			{
+				if ( workstationEntityUid != 0 && uidToEntity(workstationEntityUid) )
+				{
+					Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_SKILLUPS, "workbench", 1);
+				}
+			}
 		}
 	}
 
+	if ( players[player]->isLocalPlayer() && didCraft )
+	{
+		if ( workstationEntityUid != 0 && uidToEntity(workstationEntityUid) )
+		{
+			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_SALVAGE, "workbench", 1);
+		}
+		else
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_TINKERKIT_SALVAGED, TOOL_TINKERING_KIT, 1);
+		}
+		if ( item && item->type == TOOL_DETONATOR_CHARGE )
+		{
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_DETONATOR_SCRAPPED, TOOL_DETONATOR_CHARGE, 1);
+		}
+	}
 	if ( !outsideInventory && didCraft )
 	{
 		consumeItem(item, player);
@@ -8774,7 +11192,7 @@ Item* GenericGUIMenu::tinkeringCraftItemAndConsumeMaterials(const Item* item)
 				}
 				else
 				{
-					if ( stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] < SKILL_LEVEL_BASIC )
+					if ( stats[gui_player]->getProficiency(PRO_LOCKPICKING) < SKILL_LEVEL_BASIC )
 					{
 						if ( local_rng.rand() % 10 == 0 )
 						{
@@ -8783,7 +11201,7 @@ Item* GenericGUIMenu::tinkeringCraftItemAndConsumeMaterials(const Item* item)
 					}
 					else if ( local_rng.rand() % 20 == 0 )
 					{
-						messagePlayer(gui_player, MESSAGE_MISC, language[3667], items[item->type].name_identified);
+						messagePlayer(gui_player, MESSAGE_MISC, Language::get(3667), items[item->type].getIdentifiedName());
 					}
 				}
 			}
@@ -8807,6 +11225,14 @@ Item* GenericGUIMenu::tinkeringCraftItemAndConsumeMaterials(const Item* item)
 				if ( players[gui_player] && players[gui_player]->entity )
 				{
 					players[gui_player]->entity->increaseSkill(PRO_LOCKPICKING);
+				}
+			}
+
+			if ( stats[gui_player]->getProficiency(PRO_LOCKPICKING) < 100 && tinkerGUI.bOpen )
+			{
+				if ( workstationEntityUid != 0 && uidToEntity(workstationEntityUid) )
+				{
+					Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_SKILLUPS, "workbench", 1);
 				}
 			}
 		}
@@ -9013,9 +11439,9 @@ bool GenericGUIMenu::tinkeringGetCraftingCost(const Item* item, int* metal, int*
 			*metal = 8;
 			*magic = 16;
 			break;
-		case TOOL_ALEMBIC:
-			*metal = 16;
-			*magic = 16;
+		case MASK_TECH_GOGGLES:
+			*metal = 10;
+			*magic = 40;
 			break;
 		case TOOL_DECOY:
 			*metal = 8;
@@ -9090,6 +11516,22 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case SILVER_DOUBLET:
 		case CLOAK_SILVER:
 		case TOOL_LOCKPICK:
+		case MASK_EYEPATCH:
+		case TOOL_BEARTRAP:
+		case TOOL_GLASSES:
+		case TOOL_LANTERN:
+		case BONE_AXE:
+		case BONE_MACE:
+		case BONE_SHORTBOW:
+		case BONE_SPEAR:
+		case BONE_SWORD:
+		case BONE_THROWING:
+		case HOOD_TEAL:
+		case HAT_FELT:
+		case BANDIT_BREASTPIECE:
+		case TUNIC_BLOUSE:
+		case BOLAS:
+		case LOAFERS:
 			*metal = 1;
 			*magic = 0;
 			break;
@@ -9114,6 +11556,10 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case GEM_GLASS:
 		case TOOL_CRYSTALSHARD:
 		case HAT_FEZ:
+		case HAT_SILKEN_BOW:
+		case HAT_BANDANA:
+		case HAT_CHEF:
+		case SHAWL:
 			*metal = 1;
 			*magic = 1;
 			break;
@@ -9134,6 +11580,13 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case GEM_EMERALD:
 		case GEM_AMETHYST:
 		case GEM_FLUORITE:
+		case MASK_PIPE:
+		case CLEAT_BOOTS:
+		case BONE_BREASTPIECE:
+		case BONE_BRACERS:
+		case BONE_BOOTS:
+		case BONE_SHIELD:
+		case BONE_HELM:
 			*metal = 1;
 			*magic = 2;
 			break;
@@ -9150,17 +11603,22 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case GEM_AQUAMARINE:
 		case GEM_OPAL:
 		case TOOL_BLINDFOLD_FOCUS:
+		case CLOAK_DENDRITE:
+		case AMULET_BURNINGRESIST:
 			*metal = 1;
 			*magic = 3;
 			break;
 
 		case CLOAK_INVISIBILITY:
+		case CLOAK_GUARDIAN:
 		case AMULET_LIFESAVING:
 		case RING_SLOWDIGESTION:
 		case RING_INVISIBILITY:
 		case RING_LEVITATION:
 		case RING_REGENERATION:
+		case RING_RESOLVE:
 		case GEM_DIAMOND:
+		case GEM_JEWEL:
 		case TOOL_SKELETONKEY:
 		case VAMPIRE_DOUBLET:
 		case MAGICSTAFF_CHARM:
@@ -9168,8 +11626,26 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case MAGICSTAFF_STONEBLOOD:
 		case MAGICSTAFF_SUMMON:
 		case MASK_SHAMAN:
+		case HAT_CIRCLET:
+		case HAT_CIRCLET_SORCERY:
+		case HAT_CIRCLET_THAUMATURGY:
+		case HAT_LAURELS:
+		case HAT_HOOD_APPRENTICE:
+		case HAT_HOOD_WHISPERS:
+		case HAT_HOOD_ASSASSIN:
+		case ROBE_CULTIST:
+		case ROBE_HEALER:
+		case ROBE_MONK:
+		case ROBE_WIZARD:
 			*metal = 1;
 			*magic = 4;
+			break;
+
+		case MASK_MOUTH_ROSE:
+		case MASK_MARIGOLD:
+		case MASK_GRASS_SPRIG:
+			*metal = 0;
+			*magic = 1;
 			break;
 
 		case SCROLL_LIGHT:
@@ -9182,80 +11658,177 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 			*magic = 2;
 			break;
 
+		case BRANCH_BOW:
+		case BRANCH_BOW_INFECTED:
+		case BRANCH_STAFF:
+			*metal = 0;
+			*magic = 3;
+			break;
+
 		case SCROLL_IDENTIFY:
 		case SCROLL_REMOVECURSE:
 		case SCROLL_FOOD:
 		case SCROLL_SUMMON:
+
 		case SPELLBOOK_FORCEBOLT:
 		case SPELLBOOK_LIGHT:
+		case SPELLBOOK_CONFUSE:
 		case SPELLBOOK_SLOW:
-		case SPELLBOOK_LOCKING:
-		case SPELLBOOK_TELEPORTATION:
 		case SPELLBOOK_REVERT_FORM:
 		case SPELLBOOK_RAT_FORM:
-		case SPELLBOOK_SPRAY_WEB:
 		case SPELLBOOK_POISON:
-		case SPELLBOOK_SPEED:
-		case SPELLBOOK_DETECT_FOOD:
-		case SPELLBOOK_SHADOW_TAG:
 		case SPELLBOOK_SALVAGE:
 		case SPELLBOOK_DASH:
+		case SPELLBOOK_HEAL_OTHER:
+		case SPELLBOOK_BLOOD_WARD:
+		case SPELLBOOK_MAXIMISE:
+		case SPELLBOOK_SPIRIT_WEAPON:
+		case SPELLBOOK_FIRE_SPRITE:
+		case SPELLBOOK_IGNITE:
+		case SPELLBOOK_SHATTER_OBJECTS:
+		case SPELLBOOK_HEAL_MINOR:
+		case SPELLBOOK_LIGHTNING:
+		case SPELLBOOK_SLEEP:
+		case SPELLBOOK_OPENING:
+		case SPELLBOOK_LOCKING:
+		case SPELLBOOK_CUREAILMENT:
+		case SPELLBOOK_ACID_SPRAY:
+		case SPELLBOOK_SPRAY_WEB:
+		case SPELLBOOK_SHADOW_TAG:
+		case SPELLBOOK_GUARD_BODY:
+		case SPELLBOOK_GUARD_SPIRIT:
+		case SPELLBOOK_DONATION:
+		case SPELLBOOK_SCRY_ALLIES:
+		case SPELLBOOK_DETECT_ENEMY:
+		case SPELLBOOK_TURN_UNDEAD:
+		case SPELLBOOK_MINIMISE:
+		case SPELLBOOK_ENVENOM_WEAPON:
+		case SPELLBOOK_DEFY_FLESH:
+		case SPELLBOOK_RESHAPE_WEAPON:
+		case SPELLBOOK_ALTER_ARROW:
+		case SPELLBOOK_LEAD_BOLT:
+		case SPELLBOOK_COWARDICE:
+		case SPELLBOOK_SEEK_ALLY:
+		case SPELLBOOK_SPORES:
+		case SPELLBOOK_WINDGATE:
+		case SPELLBOOK_ATTRACT_ITEMS:
+		case SPELLBOOK_SPIN:
+		case SPELLBOOK_CLEANSE_FOOD:
+		case SPELLBOOK_FLAME_CLOAK:
+		case SPELLBOOK_DISRUPT_EARTH:
+		case SPELLBOOK_THORNS:
+		case SPELLBOOK_SIGIL:
+
 		case SPELLBOOK_9:
 		case SPELLBOOK_10:
+		case TOME_SORCERY:
+		case TOME_MYSTICISM:
+		case TOME_THAUMATURGY:
 			*metal = 0;
 			*magic = 4;
 			break;
 
-		case TOOL_BLINDFOLD_TELEPATHY:
+		case HAT_CIRCLET_WISDOM:
 			*metal = 1;
-			*magic = 6;
+			*magic = 12;
+			break;
+		case TOOL_BLINDFOLD_TELEPATHY:
+		case HAT_MITER:
+		case HAT_HEADDRESS:
+			*metal = 1;
+			*magic = 8;
 			break;
 
 		case SCROLL_ENCHANTWEAPON:
 		case SCROLL_ENCHANTARMOR:
-		case SPELLBOOK_COLD:
+
 		case SPELLBOOK_FIREBALL:
+		case SPELLBOOK_INVISIBILITY:
+		case SPELLBOOK_HEALING:
+		case SPELLBOOK_DIG:
+		case SPELLBOOK_BLEED:
+		case SPELLBOOK_SPIDER_FORM:
+		case SPELLBOOK_SPEED:
+		case SPELLBOOK_DETECT_FOOD:
+		case SPELLBOOK_WEAKNESS:
+		case SPELLBOOK_TELEPULL:
+		case SPELLBOOK_TROLLS_BLOOD:
+		case SPELLBOOK_PROF_NIMBLENESS:
+		case SPELLBOOK_PROF_COUNSEL:
+		case SPELLBOOK_BLESS_FOOD:
+		case SPELLBOOK_DIVINE_ZEAL:
+		case SPELLBOOK_INCOHERENCE:
+		case SPELLBOOK_OVERCHARGE:
+		case SPELLBOOK_GREASE_SPRAY:
+		case SPELLBOOK_FORGE_KEY:
+		case SPELLBOOK_DEEP_SHADE:
+		case SPELLBOOK_TELEKINESIS:
+		case SPELLBOOK_DISARM:
+		case SPELLBOOK_ABUNDANCE:
+		case SPELLBOOK_FORCE_SHIELD:
+		case SPELLBOOK_SPLINTER_GEAR:
+		case SPELLBOOK_FIRE_WALL:
+		case SPELLBOOK_MAGICIANS_ARMOR:
+		case SPELLBOOK_MAGICMISSILE:
+		case SPELLBOOK_COLD:
 		case SPELLBOOK_REMOVECURSE:
-		case SPELLBOOK_LIGHTNING:
 		case SPELLBOOK_IDENTIFY:
 		case SPELLBOOK_MAGICMAPPING:
-		case SPELLBOOK_SLEEP:
-		case SPELLBOOK_CONFUSE:
-		case SPELLBOOK_OPENING:
-		case SPELLBOOK_HEALING:
-		case SPELLBOOK_CUREAILMENT:
-		case SPELLBOOK_ACID_SPRAY:
-		case SPELLBOOK_CHARM_MONSTER:
-		case SPELLBOOK_SPIDER_FORM:
-		case SPELLBOOK_TROLL_FORM:
+		case SPELLBOOK_TELEPORTATION:
+		case SPELLBOOK_VAMPIRIC_AURA:
 		case SPELLBOOK_FEAR:
-		case SPELLBOOK_STRIKE:
-		case SPELLBOOK_TELEPULL:
 		case SPELLBOOK_FLUTTER:
+		case SPELLBOOK_SELF_POLYMORPH:
+		case SPELLBOOK_DIVINE_GUARD:
+		case SPELLBOOK_PROF_GREATER_MIGHT:
+		case SPELLBOOK_PROF_STURDINESS:
+		case SPELLBOOK_PINPOINT:
+		case SPELLBOOK_SCRY_TRAPS:
+		case SPELLBOOK_PSYCHIC_SPEAR:
+		case SPELLBOOK_COMMAND:
+		case SPELLBOOK_METALLURGY:
+		case SPELLBOOK_VOID_CHEST:
+		case SPELLBOOK_NUMBING_BOLT:
+		case SPELLBOOK_CURSE_FLESH:
+		case SPELLBOOK_PRESERVE:
+		case SPELLBOOK_SABOTAGE:
+		case SPELLBOOK_NULL_AREA:
+		case SPELLBOOK_SLAM:
+		case SPELLBOOK_KINETIC_FIELD:
+		case SPELLBOOK_TROLL_FORM:
+
 		case SCROLL_CHARGING:
 		case SCROLL_CONJUREARROW:
+		case MAGICSTAFF_SCEPTER:
 			*metal = 0;
 			*magic = 6;
 			break;
 
-		case SPELLBOOK_MAGICMISSILE:
+		case SPELLBOOK_CHARM_MONSTER:
 		case SPELLBOOK_LEVITATION:
-		case SPELLBOOK_INVISIBILITY:
 		case SPELLBOOK_EXTRAHEALING:
-		case SPELLBOOK_DIG:
-		case SPELLBOOK_SUMMON:
-		case SPELLBOOK_BLEED:
-		case SPELLBOOK_REFLECT_MAGIC:
 		case SPELLBOOK_STONEBLOOD:
+		case SPELLBOOK_REFLECT_MAGIC:
+		case SPELLBOOK_STRIKE:
+		case SPELLBOOK_AMPLIFY_MAGIC:
+		case SPELLBOOK_METEOR:
+		case SPELLBOOK_ICE_WAVE:
+		case SPELLBOOK_SCRY_TREASURES:
+		case SPELLBOOK_BLOOD_WAVES:
+		case SPELLBOOK_MIST_FORM:
+		case SPELLBOOK_ABSORB_MAGIC:
+		case SPELLBOOK_TUNNEL:
+		case SPELLBOOK_LIGHTNING_BOLT:
+		case SPELLBOOK_SANCTUARY:
+		case SPELLBOOK_HOLY_BEAM:
+		case SPELLBOOK_DOMINATE:
+
+		case SPELLBOOK_SUMMON:
 		case SPELLBOOK_STEAL_WEAPON:
 		case SPELLBOOK_DRAIN_SOUL:
-		case SPELLBOOK_VAMPIRIC_AURA:
 		case SPELLBOOK_IMP_FORM:
-		case SPELLBOOK_TROLLS_BLOOD:
-		case SPELLBOOK_WEAKNESS:
-		case SPELLBOOK_AMPLIFY_MAGIC:
 		case SPELLBOOK_DEMON_ILLU:
-		case SPELLBOOK_SELF_POLYMORPH:
+
 		case GEM_LUCK:
 		case ENCHANTED_FEATHER:
 			*metal = 0;
@@ -9273,28 +11846,65 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case LEATHER_BREASTPIECE:
 		case IRON_HELM:
 		case TOOL_PICKAXE:
-		case TOOL_LANTERN:
-		case TOOL_GLASSES:
 		case IRON_KNUCKLES:
-		case TOOL_BEARTRAP:
 		case IRON_DAGGER:
+		case MONOCLE:
+		case MASK_BANDIT:
+		case TOOL_FRYING_PAN:
+		case IRON_PAULDRONS:
+		case QUILTED_GAMBESON:
+		case QUILTED_GLOVES:
+		case QUILTED_BOOTS:
+		case QUILTED_CAP:
 			*metal = 2;
 			*magic = 0;
+			break;
+
+		case MASK_MOUTHKNIFE:
+		case HAT_PLUMED_CAP:
+		case HAT_BYCOCKET:
+		case MASK_STEEL_VISOR:
+			*metal = 2;
+			*magic = 1;
 			break;
 
 		case BRACERS_CONSTITUTION:
 		case TOOL_ALEMBIC:
 		case PUNISHER_HOOD:
+		case MASK_MASQUERADE:
+		case MASK_PLAGUE:
+		case HAT_BOUNTYHUNTER:
 			*metal = 2;
 			*magic = 2;
 			break;
 
 		case IRON_BOOTS_WATERWALKING:
+		case MASK_SPOOKY:
 			*metal = 2;
 			*magic = 3;
 			break;
 
 		case MIRROR_SHIELD:
+		case TOOL_FOCI_FIRE:
+		case TOOL_FOCI_SNOW:
+		case TOOL_FOCI_NEEDLES:
+		case TOOL_FOCI_ARCS:
+		case TOOL_FOCI_SAND:
+		case TOOL_FOCI_DARK_LIFE:
+		case TOOL_FOCI_DARK_RIFT:
+		case TOOL_FOCI_DARK_SILENCE:
+		case TOOL_FOCI_DARK_VENGEANCE:
+		case TOOL_FOCI_DARK_SUPPRESS:
+		case TOOL_FOCI_LIGHT_PEACE:
+		case TOOL_FOCI_LIGHT_JUSTICE:
+		case TOOL_FOCI_LIGHT_PROVIDENCE:
+		case TOOL_FOCI_LIGHT_PURITY:
+		case TOOL_FOCI_LIGHT_SANCTUARY:
+		case INSTRUMENT_FLUTE:
+		case INSTRUMENT_LYRE:
+		case INSTRUMENT_DRUM:
+		case INSTRUMENT_LUTE:
+		case INSTRUMENT_HORN:
 			*metal = 2;
 			*magic = 4;
 			break;
@@ -9314,11 +11924,46 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case TOOL_WHIP:
 		case MACHINIST_APRON:
 		case LONGBOW:
+		case MASK_HAZARD_GOGGLES:
+		case SHILLELAGH_MACE:
+		case CLAYMORE_SWORD:
+		case STEEL_FALSHION:
+		case STEEL_GREATAXE:
+		case BLACKIRON_DART:
+		case SILVER_PLUMBATA:
+		case ANELACE_SWORD:
+		case LANCE_SPEAR:
+		case RAPIER:
+		case STEEL_FLAIL:
 			*metal = 3;
 			*magic = 0;
 			break;
 
+		case HAT_WARM:
+		case HAT_WOLF_HOOD:
+		case HAT_BEAR_HOOD:
+		case HAT_STAG_HOOD:
+		case HAT_BUNNY_HOOD:
+		case HAT_TOPHAT:
+		case SILVER_AXE:
+		case SILVER_GLAIVE:
+		case SILVER_MACE:
+		case SILVER_SWORD:
+		case SILVER_BREASTPIECE:
+		case SILVER_GAUNTLETS:
+		case SILVER_BOOTS:
+		case SILVER_SHIELD:
+		case SILVER_HELM:
+		case CHAIN_HAUBERK:
+		case CHAIN_GLOVES:
+		case CHAIN_BOOTS:
+		case CHAIN_COIF:
+			*metal = 3;
+			*magic = 1;
+			break;
+
 		case GAUNTLETS_STRENGTH:
+		case HELM_MINING:
 			*metal = 3;
 			*magic = 2;
 			break;
@@ -9331,6 +11976,7 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case STEEL_BREASTPIECE:
 		case CRYSTAL_SHURIKEN:
 		case HEAVY_CROSSBOW:
+		case SCUTUM:
 			*metal = 4;
 			*magic = 0;
 			break;
@@ -9345,6 +11991,16 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case CRYSTAL_MACE:
 		case CLOAK_BACKPACK:
 		case COMPOUND_BOW:
+		case BLACKIRON_AXE:
+		case BLACKIRON_CROSSBOW:
+		case BLACKIRON_MACE:
+		case BLACKIRON_SWORD:
+		case BLACKIRON_TRIDENT:
+		case BLACKIRON_BREASTPIECE:
+		case BLACKIRON_GAUNTLETS:
+		case BLACKIRON_BOOTS:
+		case BLACKIRON_SHIELD:
+		case BLACKIRON_HELM:
 			*metal = 4;
 			*magic = 2;
 			break;
@@ -9355,8 +12011,27 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 			break;
 
 		case STEEL_BOOTS_LEVITATION:
+		case HAT_CROWN:
+		case HAT_CROWNED_HELM:
+		case MASK_CRYSTAL_VISOR:
 			*metal = 4;
 			*magic = 4;
+			break;
+
+		case MASK_PHANTOM:
+		case HAT_TURBAN:
+			*metal = 2;
+			*magic = 6;
+			break;
+
+		case MASK_TECH_GOGGLES:
+			*metal = 6;
+			*magic = 6;
+			break;
+
+		case MASK_GOLDEN:
+			*metal = 4;
+			*magic = 8;
 			break;
 
 		case ARTIFACT_BOW:
@@ -9381,6 +12056,7 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case ARTIFACT_HELM:
 		case ARTIFACT_BOOTS:
 		case ARTIFACT_GLOVES:
+		case MASK_ARTIFACT_VISOR:
 			*metal = 8;
 			*magic = 16;
 			break;
@@ -9407,13 +12083,32 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 			}
 			break;
 		case TOOL_DECOY:
-			*metal = 2;
+			*metal = 1;
 			*magic = 0;
 			break;
 		case TOOL_DETONATOR_CHARGE:
 			*metal = 2;
 			*magic = 4;
 			break;
+
+		case KEY_IRON:
+		case KEY_BRONZE:
+			*metal = 1;
+			*magic = 0;
+			break;
+
+		case KEY_SILVER:
+		case KEY_GOLD:
+			*metal = 2;
+			*magic = 0;
+			break;
+
+		//case XXX:
+		//	// TODOS
+		//	*metal = 0;
+		//	*magic = 0;
+		//	break;
+
 		default:
 			*metal = 0;
 			*magic = 0;
@@ -9441,6 +12136,9 @@ void getGeneralItemRepairCostWithoutRequirements(const int player, Item* item, i
 	magic = magicSalvage * 8;
 	int blessingOrCurse = abs(item->beatitude);
 	magic += blessingOrCurse * 4;
+
+	metal = std::min(99, metal);
+	magic = std::min(99, magic);
 }
 
 bool GenericGUIMenu::tinkeringGetRepairCost(Item* item, int* metal, int* magic)
@@ -9500,7 +12198,7 @@ bool GenericGUIMenu::tinkeringGetRepairCost(Item* item, int* metal, int* magic)
 			{
 				int requirement = tinkeringRepairGeneralItemSkillRequirement(item);
 				if ( requirement >= 0 && stats[gui_player]
-					&& ((stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity)) >= requirement) )
+					&& ((stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity)) >= requirement) )
 				{
 					getGeneralItemRepairCostWithoutRequirements(gui_player, item, *metal, *magic);
 				}
@@ -9595,7 +12293,7 @@ bool GenericGUIMenu::tinkeringIsItemUpgradeable(const Item* item)
 	return false;
 }
 
-const int TINKER_MIN_ITEM_SKILL_REQ = 10;
+const int TINKER_MIN_ITEM_SKILL_REQ = 0;
 
 int GenericGUIMenu::tinkeringPlayerHasSkillLVLToCraft(const Item* item)
 {
@@ -9606,7 +12304,7 @@ int GenericGUIMenu::tinkeringPlayerHasSkillLVLToCraft(const Item* item)
 	int skillLVL = 0;
 	if ( stats[gui_player] && players[gui_player] )
 	{
-		skillLVL = (stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
+		skillLVL = (stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
 	}
 
 	switch ( item->type )
@@ -9615,7 +12313,7 @@ int GenericGUIMenu::tinkeringPlayerHasSkillLVLToCraft(const Item* item)
 		case TOOL_GLASSES:
 		case POTION_EMPTY:
 		case TOOL_DECOY:
-			if ( stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity) >= TINKER_MIN_ITEM_SKILL_REQ ) // 10 requirement
+			if ( stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity) >= TINKER_MIN_ITEM_SKILL_REQ ) // 10 requirement
 			{
 				return 0;
 			}
@@ -9640,7 +12338,7 @@ int GenericGUIMenu::tinkeringPlayerHasSkillLVLToCraft(const Item* item)
 			}
 			break;
 		case TOOL_SPELLBOT:
-		case TOOL_ALEMBIC:
+		case MASK_TECH_GOGGLES:
 			if ( skillLVL >= 3 ) // 60 requirement
 			{
 				return 3;
@@ -9675,17 +12373,24 @@ bool GenericGUIMenu::tinkeringKitDegradeOnUse(int player)
 				return false;
 			}
 		}
+		if ( !toDegrade )
+		{
+			return false;
+		}
 
 		bool isEquipped = itemIsEquipped(toDegrade, gui_player);
-
+		if ( isEquipped && players[player]->entity && players[player]->entity->spellEffectPreserveItem(toDegrade) )
+		{
+			return false;
+		}
 		toDegrade->status = std::max(BROKEN, static_cast<Status>(toDegrade->status - 1));
 		if ( toDegrade->status > BROKEN )
 		{
-			messagePlayer(gui_player, MESSAGE_MISC, language[681], toDegrade->getName());
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(681), toDegrade->getName());
 		}
 		else
 		{
-			messagePlayer(gui_player, MESSAGE_MISC, language[662], toDegrade->getName());
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(662), toDegrade->getName());
 			if ( players[gui_player] && players[gui_player]->entity )
 			{
 				playSoundEntityLocal(players[gui_player]->entity, 76, 64);
@@ -9718,6 +12423,11 @@ Item* GenericGUIMenu::tinkeringKitFindInInventory()
 	}
 	else
 	{
+		if ( workstationEntityUid != 0 )
+		{
+			return nullptr;
+		}
+
 		for ( node_t* invnode = stats[gui_player]->inventory.first; invnode != NULL; invnode = invnode->next )
 		{
 			Item* tinkerItem = (Item*)invnode->element;
@@ -9747,12 +12457,14 @@ bool GenericGUIMenu::tinkeringRepairItem(Item* item)
 	}
 	//if ( itemIsEquipped(item, gui_player) && item->type != TOOL_TINKERING_KIT )
 	//{
-	//	messagePlayer(gui_player, language[3681]);
+	//	messagePlayer(gui_player, Language::get(3681));
 	//	return false; // don't want to deal with client/server desync problems here.
 	//}
 
 	if ( stats[gui_player] && players[gui_player] )
 	{
+		bool isEquipped = itemIsEquipped(item, gui_player);
+
 		if ( item->type == TOOL_SENTRYBOT || item->type == TOOL_SPELLBOT || item->type == TOOL_DUMMYBOT || item->type == TOOL_GYROBOT )
 		{
 			if ( item->tinkeringBotIsMaxHealth() )
@@ -9762,13 +12474,13 @@ bool GenericGUIMenu::tinkeringRepairItem(Item* item)
 				if ( craftRequirement == -1 ) // can't craft, can't upgrade!
 				{
 					//playSound(90, 64);
-					messagePlayer(gui_player, MESSAGE_MISC, language[3685], items[item->type].name_identified);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3685), items[item->type].getIdentifiedName());
 					return false;
 				}
 				else if ( !tinkeringPlayerCanAffordRepair(item) )
 				{
 					//playSound(90, 64);
-					messagePlayer(gui_player, MESSAGE_MISC, language[3687], items[item->type].name_identified);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3687), items[item->type].getIdentifiedName());
 					return false;
 				}
 				
@@ -9778,40 +12490,100 @@ bool GenericGUIMenu::tinkeringRepairItem(Item* item)
 				if ( maxStatus <= item->status )
 				{
 					//playSound(90, 64);
-					messagePlayer(gui_player, MESSAGE_MISC, language[3685], items[item->type].name_identified);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3685), items[item->type].getIdentifiedName());
 					return false;
 				}
 
 				if ( tinkeringConsumeMaterialsForRepair(item, true) )
 				{
 					newStatus = std::min(static_cast<Status>(item->status + 1), maxStatus);
-					Item* upgradedItem = newItem(item->type, newStatus, item->beatitude, 1, ITEM_TINKERING_APPEARANCE, true, nullptr);
-					if ( upgradedItem )
+					if ( !isEquipped )
 					{
-						achievementObserver.playerAchievements[gui_player].fixerUpper += 1;
-						Item* pickedUp = itemPickup(gui_player, upgradedItem);
-						if ( pickedUp && item->count == 1 )
+						Item* upgradedItem = newItem(item->type, newStatus, item->beatitude, 1, ITEM_TINKERING_APPEARANCE, true, nullptr);
+						if ( upgradedItem )
 						{
-							// item* will be consumed, so pickedUp can take the inventory slot of it.
-							pickedUp->x = item->x;
-							pickedUp->y = item->y;
-							for ( auto& hotbarSlot : players[gui_player]->hotbar.slots() )
+							achievementObserver.playerAchievements[gui_player].fixerUpper += 1;
+							Item* pickedUp = itemPickup(gui_player, upgradedItem);
+							if ( pickedUp && item->count == 1 )
 							{
-								if ( hotbarSlot.item == item->uid )
+								// item* will be consumed, so pickedUp can take the inventory slot of it.
+								pickedUp->x = item->x;
+								pickedUp->y = item->y;
+								for ( auto& hotbarSlot : players[gui_player]->hotbar.slots() )
 								{
-									hotbarSlot.item = pickedUp->uid;
-								}
-								else if ( hotbarSlot.item == pickedUp->uid )
-								{
-									// this was auto placed by itemPickup just above, undo it.
-									hotbarSlot.item = 0;
+									if ( hotbarSlot.item == item->uid )
+									{
+										hotbarSlot.item = pickedUp->uid;
+									}
+									else if ( hotbarSlot.item == pickedUp->uid )
+									{
+										// this was auto placed by itemPickup just above, undo it.
+										hotbarSlot.item = 0;
+										hotbarSlot.resetLastItem();
+									}
 								}
 							}
+							free(upgradedItem);
 						}
-						free(upgradedItem);
 					}
-					messagePlayer(gui_player, MESSAGE_MISC, language[3683], items[item->type].name_identified);
-					consumeItem(item, gui_player);
+					else
+					{
+						item->status = newStatus;
+						item->appearance = ITEM_TINKERING_APPEARANCE;
+					}
+
+					if ( multiplayer == CLIENT && isEquipped )
+					{
+						// the client needs to inform the server that their equipment was repaired.
+						int armornum = 0;
+						if ( item == stats[gui_player]->weapon )
+						{
+							armornum = 0;
+						}
+						else if ( item == stats[gui_player]->helmet )
+						{
+							armornum = 1;
+						}
+						else if ( item == stats[gui_player]->breastplate )
+						{
+							armornum = 2;
+						}
+						else if ( item == stats[gui_player]->gloves )
+						{
+							armornum = 3;
+						}
+						else if ( item == stats[gui_player]->shoes )
+						{
+							armornum = 4;
+						}
+						else if ( item == stats[gui_player]->shield )
+						{
+							armornum = 5;
+						}
+						else if ( item == stats[gui_player]->cloak )
+						{
+							armornum = 6;
+						}
+						else if ( item == stats[gui_player]->mask )
+						{
+							armornum = 7;
+						}
+
+						strcpy((char*)net_packet->data, "REPT");
+						net_packet->data[4] = gui_player;
+						net_packet->data[5] = armornum;
+						net_packet->data[6] = item->status;
+						SDLNet_Write32((Uint32)item->appearance, &net_packet->data[7]);
+						net_packet->address.host = net_server.host;
+						net_packet->address.port = net_server.port;
+						net_packet->len = 11;
+						sendPacketSafe(net_sock, -1, net_packet, 0);
+					}
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3683), items[item->type].getIdentifiedName());
+					if ( !isEquipped )
+					{
+						consumeItem(item, gui_player);
+					}
 					return true;
 				}
 			}
@@ -9821,13 +12593,13 @@ bool GenericGUIMenu::tinkeringRepairItem(Item* item)
 				if ( craftRequirement == -1 ) // can't craft, can't repair!
 				{
 					//playSound(90, 64);
-					messagePlayer(gui_player, MESSAGE_MISC, language[3688], items[item->type].name_identified);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3688), items[item->type].getIdentifiedName());
 					return false;
 				}
 				else if ( !tinkeringPlayerCanAffordRepair(item) )
 				{
 					//playSound(90, 64);
-					messagePlayer(gui_player, MESSAGE_MISC, language[3686], items[item->type].name_identified);
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3686), items[item->type].getIdentifiedName());
 					return false;
 				}
 
@@ -9838,33 +12610,92 @@ bool GenericGUIMenu::tinkeringRepairItem(Item* item)
 					{
 						repairedAppearance = ITEM_TINKERING_APPEARANCE;
 					}
-					Item* repairedItem = newItem(item->type, item->status, item->beatitude, 1, repairedAppearance, true, nullptr);
-					if ( repairedItem )
+					if ( !isEquipped )
 					{
-						achievementObserver.playerAchievements[gui_player].fixerUpper += 1;
-						Item* pickedUp = itemPickup(gui_player, repairedItem);
-						if ( pickedUp && item->count == 1 )
+						Item* repairedItem = newItem(item->type, item->status, item->beatitude, 1, repairedAppearance, true, nullptr);
+						if ( repairedItem )
 						{
-							// item* will be consumed, so pickedUp can take the inventory slot of it.
-							pickedUp->x = item->x;
-							pickedUp->y = item->y;
-							for ( auto& hotbarSlot : players[gui_player]->hotbar.slots() )
+							achievementObserver.playerAchievements[gui_player].fixerUpper += 1;
+							Item* pickedUp = itemPickup(gui_player, repairedItem);
+							if ( pickedUp && item->count == 1 )
 							{
-								if ( hotbarSlot.item == item->uid )
+								// item* will be consumed, so pickedUp can take the inventory slot of it.
+								pickedUp->x = item->x;
+								pickedUp->y = item->y;
+								for ( auto& hotbarSlot : players[gui_player]->hotbar.slots() )
 								{
-									hotbarSlot.item = pickedUp->uid;
-								}
-								else if ( hotbarSlot.item == pickedUp->uid )
-								{
-									// this was auto placed by itemPickup just above, undo it.
-									hotbarSlot.item = 0;
+									if ( hotbarSlot.item == item->uid )
+									{
+										hotbarSlot.item = pickedUp->uid;
+									}
+									else if ( hotbarSlot.item == pickedUp->uid )
+									{
+										// this was auto placed by itemPickup just above, undo it.
+										hotbarSlot.item = 0;
+										hotbarSlot.resetLastItem();
+									}
 								}
 							}
+							free(repairedItem);
 						}
-						free(repairedItem);
 					}
-					messagePlayer(gui_player, MESSAGE_MISC, language[3682], items[item->type].name_identified);
-					consumeItem(item, gui_player);
+					else
+					{
+						item->appearance = repairedAppearance;
+					}
+
+					if ( multiplayer == CLIENT && isEquipped )
+					{
+						// the client needs to inform the server that their equipment was repaired.
+						int armornum = 0;
+						if ( item == stats[gui_player]->weapon )
+						{
+							armornum = 0;
+						}
+						else if ( item == stats[gui_player]->helmet )
+						{
+							armornum = 1;
+						}
+						else if ( item == stats[gui_player]->breastplate )
+						{
+							armornum = 2;
+						}
+						else if ( item == stats[gui_player]->gloves )
+						{
+							armornum = 3;
+						}
+						else if ( item == stats[gui_player]->shoes )
+						{
+							armornum = 4;
+						}
+						else if ( item == stats[gui_player]->shield )
+						{
+							armornum = 5;
+						}
+						else if ( item == stats[gui_player]->cloak )
+						{
+							armornum = 6;
+						}
+						else if ( item == stats[gui_player]->mask )
+						{
+							armornum = 7;
+						}
+
+						strcpy((char*)net_packet->data, "REPT");
+						net_packet->data[4] = gui_player;
+						net_packet->data[5] = armornum;
+						net_packet->data[6] = item->status;
+						SDLNet_Write32((Uint32)item->appearance, &net_packet->data[7]);
+						net_packet->address.host = net_server.host;
+						net_packet->address.port = net_server.port;
+						net_packet->len = 11;
+						sendPacketSafe(net_sock, -1, net_packet, 0);
+					}
+					messagePlayer(gui_player, MESSAGE_MISC, Language::get(3682), items[item->type].getIdentifiedName());
+					if ( !isEquipped )
+					{
+						consumeItem(item, gui_player);
+					}
 					return true;
 				}
 			}
@@ -9876,22 +12707,23 @@ bool GenericGUIMenu::tinkeringRepairItem(Item* item)
 			if ( craftRequirement == -1 && itemCategory(item) == TOOL ) // can't craft, can't repair!
 			{
 				//playSound(90, 64);
-				messagePlayer(gui_player, MESSAGE_MISC, language[3688], items[item->type].name_identified);
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(3688), items[item->type].getIdentifiedName());
 				return false;
 			}
 			if ( !tinkeringPlayerCanAffordRepair(item) )
 			{
 				//playSound(90, 64);
-				messagePlayer(gui_player, MESSAGE_MISC, language[3686], items[item->type].name_identified);
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(3686), items[item->type].getIdentifiedName());
 				return false;
 			}
 
 			if ( tinkeringConsumeMaterialsForRepair(item, false) )
 			{
+				Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_REPAIRS, item->type, 1);
+
 				int repairedStatus = std::min(static_cast<Status>(item->status + 1), EXCELLENT);
-				bool isEquipped = itemIsEquipped(item, gui_player);
 				item->status = static_cast<Status>(repairedStatus);
-				messagePlayer(gui_player, MESSAGE_MISC, language[872], item->getName());
+				messagePlayer(gui_player, MESSAGE_MISC, Language::get(872), item->getName());
 				bool replaceTinkeringKit = false;
 				if ( item == tinkeringKitItem )
 				{
@@ -9918,6 +12750,7 @@ bool GenericGUIMenu::tinkeringRepairItem(Item* item)
 								{
 									// this was auto placed by itemPickup just above, undo it.
 									hotbarSlot.item = 0;
+									hotbarSlot.resetLastItem();
 								}
 							}
 							if ( replaceTinkeringKit )
@@ -9991,7 +12824,7 @@ int GenericGUIMenu::tinkeringUpgradeMaxStatus(Item* item)
 	int skillLVL = 0;
 	if ( stats[gui_player] && players[gui_player] )
 	{
-		skillLVL = (stats[gui_player]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
+		skillLVL = (stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
 		int craftRequirement = tinkeringPlayerHasSkillLVLToCraft(item);
 		if ( skillLVL >= 5 )
 		{
@@ -10068,6 +12901,14 @@ bool GenericGUIMenu::tinkeringConsumeMaterialsForRepair(Item* item, bool upgradi
 				if ( players[gui_player] && players[gui_player]->entity )
 				{
 					players[gui_player]->entity->increaseSkill(PRO_LOCKPICKING);
+				}
+			}
+
+			if ( stats[gui_player]->getProficiency(PRO_LOCKPICKING) < 100 && tinkerGUI.bOpen )
+			{
+				if ( workstationEntityUid != 0 && uidToEntity(workstationEntityUid) )
+				{
+					Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_SKILLUPS, "workbench", 1);
 				}
 			}
 		}
@@ -10199,6 +13040,7 @@ int GenericGUIMenu::scribingToolDegradeOnUse(Item* itemUsedWith)
 
 	if ( durability - usageCost < 0 )
 	{
+		Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_FEATHER_CHARGE_USED, ENCHANTED_FEATHER, durability);
 		toDegrade->status = BROKEN;
 		toDegrade->appearance = 0;
 	}
@@ -10206,11 +13048,12 @@ int GenericGUIMenu::scribingToolDegradeOnUse(Item* itemUsedWith)
 	{
 		scribingLastUsageDisplayTimer = 200;
 		scribingLastUsageAmount = usageCost;
+		Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_FEATHER_CHARGE_USED, ENCHANTED_FEATHER, scribingLastUsageAmount);
 		toDegrade->appearance -= usageCost;
 		if ( toDegrade->appearance % ENCHANTED_FEATHER_MAX_DURABILITY == 0 )
 		{
 			toDegrade->status = BROKEN;
-			messagePlayer(gui_player, MESSAGE_EQUIPMENT, language[3727], toDegrade->getName());
+			messagePlayer(gui_player, MESSAGE_EQUIPMENT, Language::get(3727), toDegrade->getName());
 			scribingToolItem = nullptr;
 			return usageCost;
 		}
@@ -10219,13 +13062,13 @@ int GenericGUIMenu::scribingToolDegradeOnUse(Item* itemUsedWith)
 			if ( durability > 25 && (toDegrade->appearance % ENCHANTED_FEATHER_MAX_DURABILITY) <= 25 )
 			{
 				// notify we're at less than 25%.
-				messagePlayer(gui_player, MESSAGE_EQUIPMENT, language[3729], toDegrade->getName());
+				messagePlayer(gui_player, MESSAGE_EQUIPMENT, Language::get(3729), toDegrade->getName());
 			}
 		}
 	}
 	if ( toDegrade->status > BROKEN )
 	{
-		//messagePlayer(gui_player, language[681], toDegrade->getName());
+		//messagePlayer(gui_player, Language::get(681), toDegrade->getName());
 		return usageCost;
 	}
 	else
@@ -10233,13 +13076,13 @@ int GenericGUIMenu::scribingToolDegradeOnUse(Item* itemUsedWith)
 		if ( (usageCostMin / 2) < durability && itemCategory(itemUsedWith) == SCROLL )
 		{
 			// if scroll cost is a little more than the durability, then let it succeed.
-			messagePlayer(gui_player, MESSAGE_EQUIPMENT, language[3727], toDegrade->getName());
+			messagePlayer(gui_player, MESSAGE_EQUIPMENT, Language::get(3727), toDegrade->getName());
 			scribingToolItem = nullptr;
 			return usageCost;
 		}
 		else
 		{
-			messagePlayer(gui_player, MESSAGE_EQUIPMENT, language[3728], toDegrade->getName());
+			messagePlayer(gui_player, MESSAGE_EQUIPMENT, Language::get(3728), toDegrade->getName());
 			scribingToolItem = nullptr;
 			return 0;
 		}
@@ -10323,7 +13166,7 @@ void GenericGUIMenu::scribingGetChargeCost(Item* itemUsedWith, int& outChargeCos
 		int skillLVL = 0;
 		if ( stats[gui_player] && players[gui_player] )
 		{
-			skillLVL = (stats[gui_player]->PROFICIENCIES[PRO_MAGIC] + statGetINT(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
+			skillLVL = (stats[gui_player]->getModifiedProficiency(PRO_SORCERY) + statGetINT(stats[gui_player], players[gui_player]->entity)) / 20; // 0 to 5
 		}
 		if ( scribingToolItem->beatitude > 0 )
 		{
@@ -10396,7 +13239,7 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 				// request level up
 				strcpy((char*)net_packet->data, "CSKL");
 				net_packet->data[4] = gui_player;
-				net_packet->data[5] = PRO_MAGIC;
+				net_packet->data[5] = PRO_SORCERY;
 				net_packet->address.host = net_server.host;
 				net_packet->address.port = net_server.port;
 				net_packet->len = 6;
@@ -10406,7 +13249,7 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 			{
 				if ( players[gui_player] && players[gui_player]->entity )
 				{
-					players[gui_player]->entity->increaseSkill(PRO_MAGIC);
+					players[gui_player]->entity->increaseSkill(PRO_SORCERY);
 				}
 			}
 		}
@@ -10421,10 +13264,10 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 				crafted->appearance = local_rng.rand();
 			}
 			Item* pickedUp = itemPickup(gui_player, crafted);
-			//messagePlayerColor(gui_player, uint32ColorGreen, language[3724]);
+			//messagePlayerColor(gui_player, uint32ColorGreen, Language::get(3724));
 			int oldcount = pickedUp->count;
 			pickedUp->count = 1;
-			messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorGreen, language[3724], pickedUp->description());
+			messagePlayerColor(gui_player, MESSAGE_INVENTORY, uint32ColorGreen, Language::get(3724), pickedUp->description());
 			pickedUp->count = oldcount;
 			consumeItem(scribingBlankScrollTarget, gui_player);
 			featherGUI.inscribeSuccessName = label;
@@ -10433,6 +13276,7 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 			{
 				steamStatisticUpdate(STEAM_STAT_ROLL_THE_BONES, STEAM_STAT_INT, 1);
 			}
+			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_FEATHER_ENSCRIBED, ENCHANTED_FEATHER, 1);
 			for ( int i = 0; i < NUMLABELS; ++i )
 			{
 				if ( label == scroll_label[i] )
@@ -10447,6 +13291,8 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 			}
 
 			free(crafted);
+
+			playSound(546, 92);
 			return true;
 		}
 	}
@@ -10484,7 +13330,7 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 				// request level up
 				strcpy((char*)net_packet->data, "CSKL");
 				net_packet->data[4] = gui_player;
-				net_packet->data[5] = PRO_MAGIC;
+				net_packet->data[5] = PRO_SORCERY;
 				net_packet->address.host = net_server.host;
 				net_packet->address.port = net_server.port;
 				net_packet->len = 6;
@@ -10494,15 +13340,18 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 			{
 				if ( players[gui_player] && players[gui_player]->entity )
 				{
-					players[gui_player]->entity->increaseSkill(PRO_MAGIC);
+					players[gui_player]->entity->increaseSkill(PRO_SORCERY);
 				}
 			}
 		}
+
+		Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_FEATHER_SPELLBOOKS, ENCHANTED_FEATHER, 1);
+
 		int repairedStatus = std::min(static_cast<Status>(item->status + 1), EXCELLENT);
 		bool isEquipped = itemIsEquipped(item, gui_player);
 		item->status = static_cast<Status>(repairedStatus);
-		messagePlayer(gui_player, MESSAGE_MISC, language[3725]);
-		messagePlayer(gui_player, MESSAGE_INVENTORY, language[872], item->getName());
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(3725));
+		messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(872), item->getName());
 		if ( !isEquipped )
 		{
 			Item* repairedItem = newItem(item->type, item->status, item->beatitude, 1, item->appearance, true, nullptr);
@@ -10524,6 +13373,7 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 						{
 							// this was auto placed by itemPickup just above, undo it.
 							hotbarSlot.item = 0;
+							hotbarSlot.resetLastItem();
 						}
 					}
 				}
@@ -10549,6 +13399,7 @@ bool GenericGUIMenu::scribingWriteItem(Item* item)
 			net_packet->len = 7;
 			sendPacketSafe(net_sock, -1, net_packet, 0);
 		}
+		playSound(546, 92);
 		return true;
 	}
 	return false;
@@ -10565,10 +13416,33 @@ void EnemyHPDamageBarHandler::cullExpiredHPBars()
 		}
 		if ( ticks - (*it).second.enemy_timer >= tickLifetime )
 		{
-			(*it).second.expired = true;
-			if ( (*it).second.animator.fadeOut <= 0.01 )
+			bool expire = true;
+			if ( (*it).second.detectMonsterCheckStatus )
 			{
-				it = HPBars.erase(it); // no need to show this bar, delete it
+				if ( Entity* parent = uidToEntity((*it).first) )
+				{
+					if ( Stat* stats = parent->getStats() )
+					{
+						if ( stats->getEffectActive(EFF_DETECT_ENEMY) )
+						{
+							(*it).second.enemy_timer += tickLifetime / 2; // extend lifetime of bar while effect active
+							expire = false;
+						}
+					}
+				}
+			}
+
+			if ( expire )
+			{
+				(*it).second.expired = true;
+				if ( (*it).second.animator.fadeOut <= 0.01 )
+				{
+					it = HPBars.erase(it); // no need to show this bar, delete it
+				}
+				else
+				{
+					++it;
+				}
 			}
 			else
 			{
@@ -10753,7 +13627,7 @@ void EnemyHPDamageBarHandler::displayCurrentHPBar(const int player)
 	//			int healthDiff = HPDetails.enemy_oldhp - HPDetails.enemy_hp;
 
 	//			// scale duration to FPS - tested @ 144hz
-	//			real_t fpsScale = (144.f / std::max(1U, fpsLimit));
+	//			real_t fpsScale = getFPSScale(144.0);
 	//			HPDetails.depletionAnimationPercent -= fpsScale * (std::max((healthDiff) / std::max(depletionTicks, 1), 1) / 100.0);
 	//			HPDetails.enemy_oldhp = HPDetails.depletionAnimationPercent * HPDetails.enemy_maxhp; // this follows the animation
 	//		}
@@ -10803,14 +13677,28 @@ void EnemyHPDamageBarHandler::EnemyHPDetails::updateWorldCoordinates()
 			worldX = entity->lerpRenderState.x.position * 16.0;
 			worldY = entity->lerpRenderState.y.position * 16.0;
 			worldZ = entity->lerpRenderState.z.position + enemyBarSettings.getHeightOffset(entity);
+			if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == BAT_SMALL )
+			{
+				if ( entity->bodyparts.size() > 0 )
+				{
+					worldZ += entity->bodyparts[0]->lerpRenderState.z.position;
+				}
+			}
 		}
 		else
 		{
 			worldX = entity->x;
 			worldY = entity->y;
 			worldZ = entity->z + enemyBarSettings.getHeightOffset(entity);
+			if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == BAT_SMALL )
+			{
+				if ( entity->bodyparts.size() > 0 )
+				{
+					worldZ += entity->bodyparts[0]->z;
+				}
+			}
 		}
-		if ( entity->behavior == &actDoor && entity->flags[PASSABLE] )
+		if ( (entity->behavior == &actDoor || entity->behavior == &actIronDoor) && entity->flags[PASSABLE] )
 		{
 			if ( entity->doorStartAng == 0 )
 			{
@@ -10821,11 +13709,34 @@ void EnemyHPDamageBarHandler::EnemyHPDetails::updateWorldCoordinates()
 				worldX -= 5;
 			}
 		}
+		if ( entity->behavior == &actMonster 
+			&& entity->monsterAttack == MONSTER_POSE_MAGIC_WINDUP2
+			&& entity->getMonsterTypeFromSprite() == SLIME )
+		{
+			worldZ += entity->focalz / 2;
+		}
+		else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == MIMIC )
+		{
+			if ( entity->isInertMimic() )
+			{
+				enemy_name = Language::get(675);
+			}
+			else
+			{
+				enemy_name = getMonsterLocalizedName(MIMIC);
+			}
+
+			if ( entity->bodyparts.size() > 0 )
+			{
+				auto limb = entity->bodyparts[0];
+				worldZ += (limb->z - entity->z) / 2; // offset to trunk animation
+			}
+		}
 		screenDistance = enemyBarSettings.getScreenDistanceOffset(entity);
 	}
 }
 
-void EnemyHPDamageBarHandler::addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 oldHP, Uint32 color, Uint32 uid, const char* name, bool isLowPriority)
+EnemyHPDamageBarHandler::EnemyHPDetails* EnemyHPDamageBarHandler::addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 oldHP, Uint32 uid, const char* name, bool isLowPriority, DamageGib gibDmgType)
 {
 	auto find = HPBars.find(uid);
 	EnemyHPDetails* details = nullptr;
@@ -10834,7 +13745,6 @@ void EnemyHPDamageBarHandler::addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 old
 		// uid exists in list.
 		(*find).second.enemy_hp = HP;
 		(*find).second.enemy_maxhp = maxHP;
-		(*find).second.enemy_bar_color = color;
 		(*find).second.lowPriorityTick = isLowPriority;
 		if ( !isLowPriority )
 		{
@@ -10846,14 +13756,22 @@ void EnemyHPDamageBarHandler::addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 old
 		details->displayOnHUD = false;
 		details->hasDistanceCheck = false;
 		details->expired = false;
+		if ( gibDmgType == DMG_DETECT_MONSTER )
+		{
+			details->detectMonsterCheckStatus = true;
+		}
 	}
 	else
 	{
-		HPBars.insert(std::make_pair(uid, EnemyHPDetails(uid, HP, maxHP, oldHP, color, name, isLowPriority)));
+		HPBars.insert(std::make_pair(uid, EnemyHPDetails(uid, HP, maxHP, oldHP, name, isLowPriority)));
 		auto find = HPBars.find(uid);
 		details = &(*find).second;
 		details->animator.previousSetpoint = details->enemy_oldhp;
 		details->animator.backgroundValue = details->enemy_oldhp;
+		if ( gibDmgType == DMG_DETECT_MONSTER )
+		{
+			details->detectMonsterCheckStatus = true;
+		}
 	}
 
 	details->animator.maxValue = details->enemy_maxhp;
@@ -10863,24 +13781,32 @@ void EnemyHPDamageBarHandler::addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 old
 	details->animator.damageTaken = std::max(-details->enemy_maxhp, oldHP - HP); // IDK if this needs a lower limit for healing
 
 	Entity* entity = uidToEntity(uid);
-	spawnDamageGib(entity, details->animator.damageTaken);
+	spawnDamageGib(entity, details->animator.damageTaken, gibDmgType);
 	lastEnemyUid = uid;
 
 	if ( entity )
 	{
 		details->updateWorldCoordinates();
 	}
-	if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actMonster) )
+
+	details->enemy_statusEffects1 = 0;
+	details->enemy_statusEffects2 = 0;
+	details->enemy_statusEffects3 = 0;
+	details->enemy_statusEffects4 = 0;
+	details->enemy_statusEffects5 = 0;
+	details->enemy_statusEffectsLowDuration1 = 0;
+	details->enemy_statusEffectsLowDuration2 = 0;
+	details->enemy_statusEffectsLowDuration3 = 0;
+	details->enemy_statusEffectsLowDuration4 = 0;
+	details->enemy_statusEffectsLowDuration5 = 0;
+
+	if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actMonster) && multiplayer != CLIENT )
 	{
 		if ( Stat* stat = entity->getStats() )
 		{
-			details->enemy_statusEffects1 = 0;
-			details->enemy_statusEffects2 = 0;
-			details->enemy_statusEffectsLowDuration1 = 0;
-			details->enemy_statusEffectsLowDuration2 = 0;
 			for ( int i = 0; i < NUMEFFECTS; ++i )
 			{
-				if ( stat->EFFECTS[i] )
+				if ( stat->getEffectActive(i) > 0 )
 				{
 					if ( i < 32 )
 					{
@@ -10895,13 +13821,38 @@ void EnemyHPDamageBarHandler::addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 old
 						details->enemy_statusEffects2 |= (1 << (i - 32));
 						if ( stat->EFFECTS_TIMERS[i] > 0 && stat->EFFECTS_TIMERS[i] < 5 * TICKS_PER_SECOND )
 						{
-							details->enemy_statusEffectsLowDuration2 |= (1 << i);
+							details->enemy_statusEffectsLowDuration2 |= (1 << (i - 32));
+						}
+					}
+					else if ( i < 96 )
+					{
+						details->enemy_statusEffects3 |= (1 << (i - 64));
+						if ( stat->EFFECTS_TIMERS[i] > 0 && stat->EFFECTS_TIMERS[i] < 5 * TICKS_PER_SECOND )
+						{
+							details->enemy_statusEffectsLowDuration3 |= (1 << (i - 64));
+						}
+					}
+					else if ( i < 128 )
+					{
+						details->enemy_statusEffects4 |= (1 << (i - 96));
+						if ( stat->EFFECTS_TIMERS[i] > 0 && stat->EFFECTS_TIMERS[i] < 5 * TICKS_PER_SECOND )
+						{
+							details->enemy_statusEffectsLowDuration4 |= (1 << (i - 96));
+						}
+					}
+					else if ( i < 160 )
+					{
+						details->enemy_statusEffects5 |= (1 << (i - 128));
+						if ( stat->EFFECTS_TIMERS[i] > 0 && stat->EFFECTS_TIMERS[i] < 5 * TICKS_PER_SECOND )
+						{
+							details->enemy_statusEffectsLowDuration5 |= (1 << (i - 128));
 						}
 					}
 				}
 			}
 		}
 	}
+	return details;
 }
 
 const int GenericGUIMenu::TinkerGUI_t::MAX_TINKER_X = 5;
@@ -10993,6 +13944,27 @@ void GenericGUIMenu::TinkerGUI_t::closeTinkerMenu()
 		}
 		tinkerSlotFrames.clear();
 	}
+
+	if ( multiplayer != CLIENT )
+	{
+		if ( Entity* workstation = uidToEntity(parentGUI.workstationEntityUid) )
+		{
+			workstation->skill[6] = 0;
+			serverUpdateEntitySkill(workstation, 6);
+		}
+	}
+
+	if ( multiplayer == CLIENT && parentGUI.workstationEntityUid > 0 )
+	{
+		strcpy((char*)net_packet->data, "WRKC");
+		net_packet->data[4] = clientnum;
+		SDLNet_Write32(parentGUI.workstationEntityUid, &net_packet->data[5]);
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		net_packet->len = 9;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	}
+	parentGUI.workstationEntityUid = 0;
 }
 
 void onTinkerChangeTabAction(const int playernum, bool changingToNewTab = true)
@@ -11205,7 +14177,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerScrapHeld(void* metalHeldText, voi
 	{
 		if ( true || ((ticks - animScrapStartTicks) > TICKS_PER_SECOND / 2) )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.1, (animScrap)) / 10.0;
 			animScrap -= setpointDiffX;
 			animScrap = std::max(0.0, animScrap);
@@ -11220,7 +14192,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerScrapHeld(void* metalHeldText, voi
 		{
 			pauseChangeScrapAnim = true;
 
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animScrap)) / 10.0;
 			animScrap += setpointDiffX;
 			animScrap = std::min(1.0, animScrap);
@@ -11317,6 +14289,24 @@ void buttonTinkerUpdateSelectorOnHighlight(const int player, Button* button)
 	}
 }
 
+void buttonItemfxSelectorOnHighlight(const int player, Button* button)
+{
+	if ( button->isHighlighted() )
+	{
+		players[player]->GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_ITEMEFFECTGUI);
+		if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_ITEMEFFECTGUI )
+		{
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ITEMEFFECTGUI);
+		}
+		SDL_Rect pos = button->getAbsoluteSize();
+		// make sure to adjust absolute size to camera viewport
+		pos.x -= players[player]->camera_virtualx1();
+		pos.y -= players[player]->camera_virtualy1();
+		players[player]->hud.setCursorDisabled(false);
+		players[player]->hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player)->draw_cursor);
+	}
+}
+
 void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 {
 	const int playernum = parentGUI.getPlayer();
@@ -11326,6 +14316,29 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 	{
 		closeTinkerMenu();
 		return;
+	}
+
+	Entity* workStation = nullptr;
+	if ( bOpen )
+	{
+		if ( parentGUI.workstationEntityUid != 0 )
+		{
+			workStation = uidToEntity(parentGUI.workstationEntityUid);
+			if ( !workStation )
+			{
+				parentGUI.closeGUI();
+				return;
+			}
+		}
+
+		if ( workStation )
+		{
+			if ( player->entity && (entityDist(player->entity, workStation) > TOUCHRANGE) )
+			{
+				parentGUI.closeGUI();
+				return;
+			}
+		}
 	}
 
 	if ( !tinkerFrame )
@@ -11339,6 +14352,10 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		players[playernum]->camera_virtualHeight() });
 
 	bool bConstructDrawerOpen = isConstructMenuActive();
+	if ( !bConstructDrawerOpen )
+	{
+		drawerJustifyInverted = false;
+	}
 
 	if ( !tinkerFrame->isDisabled() && bOpen )
 	{
@@ -11347,7 +14364,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 			createTinkerMenu();
 		}
 
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
 		animx += setpointDiffX;
 		animx = std::min(1.0, animx);
@@ -11411,19 +14428,20 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 	bool usingConstructMenu = parentGUI.tinkeringFilter == GenericGUIMenu::TINKER_FILTER_CRAFTABLE;
 	if ( !usingConstructMenu )
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animFilter)) / 2.0;
 		animFilter += setpointDiffX;
 		animFilter = std::min(1.0, animFilter);
 	}
 	else
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (animFilter)) / 2.0;
 		animFilter -= setpointDiffX;
 		animFilter = std::max(0.0, animFilter);
 	}
 
+	bool reversed = false;
 	auto tinkerFramePos = tinkerFrame->getSize();
 	if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT )
 	{
@@ -11442,7 +14460,15 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		}
 		else
 		{
-			tinkerFramePos.x = player->camera_virtualWidth() - animx * tinkerFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = tinkerFramePos.w + 210; // inventory width 210
+				tinkerFramePos.x = -tinkerFramePos.w + animx * fullWidth;
+			}
+			else
+			{
+				tinkerFramePos.x = player->camera_virtualWidth() - animx * tinkerFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -11455,10 +14481,11 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 	}
 	else if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_RIGHT )
 	{
+		reversed = true;
 		if ( !player->inventoryUI.bCompactView )
 		{
 			const int fullWidth = tinkerFramePos.w + 210; // inventory width 210
-			tinkerFramePos.x = player->camera_virtualWidth() - animx * fullWidth * 2;
+			tinkerFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -11470,7 +14497,15 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		}
 		else
 		{
-			tinkerFramePos.x = -tinkerFramePos.w + animx * tinkerFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = tinkerFramePos.w + 210; // inventory width 210
+				tinkerFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			}
+			else
+			{
+				tinkerFramePos.x = -tinkerFramePos.w + animx * tinkerFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -11481,8 +14516,9 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 			}
 		}
 	}
+	drawerJustifyInverted = reversed;
 
-	if ( !player->bUseCompactGUIHeight() )
+	if ( !player->bUseCompactGUIHeight() && !player->bUseCompactGUIWidth() )
 	{
 		tinkerFramePos.y = heightOffsetWhenNotCompact;
 	}
@@ -11512,11 +14548,21 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		drawerFrame->setDisabled(!bConstructDrawerOpen);
 		SDL_Rect drawerFramePos = drawerFrame->getSize();
 		const int widthDifference = animDrawer * (drawerFramePos.w);
-		drawerFramePos.x = 0;
+		if ( drawerJustifyInverted )
+		{
+			drawerFramePos.x = baseFramePos.x + baseFramePos.w + animDrawer * (drawerFramePos.w) - (drawerFramePos.w);
+		}
+		else
+		{
+			drawerFramePos.x = 0;
+		}
 		drawerFramePos.y = 18;
 		drawerFrame->setSize(drawerFramePos);
 
-		tinkerFramePos.x -= widthDifference;
+		if ( !drawerJustifyInverted )
+		{
+			tinkerFramePos.x -= widthDifference;
+		}
 		int adjustx = 0;
 		if ( tinkerFramePos.x < 0 )
 		{
@@ -11526,8 +14572,10 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		tinkerFramePos.w += (widthDifference);
 		tinkerFramePos.h = std::max(drawerFramePos.y + drawerFramePos.h, baseFramePos.y + baseFramePos.h);
 		tinkerFrame->setSize(tinkerFramePos);
-
-		baseFramePos.x = tinkerFramePos.w - baseFramePos.w;
+		if ( !drawerJustifyInverted )
+		{
+			baseFramePos.x = tinkerFramePos.w - baseFramePos.w;
+		}
 		baseFrame->setSize(baseFramePos);
 	}
 
@@ -11560,7 +14608,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 
 	if ( player->entity && player->entity->isBlind() )
 	{
-		messagePlayer(playernum, MESSAGE_MISC, language[4159]);
+		messagePlayer(playernum, MESSAGE_MISC, Language::get(4159));
 		parentGUI.closeGUI();
 		return; // I can't see!
 	}
@@ -11615,11 +14663,22 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		}
 		else
 		{
-			tinkerKitTitle->setText("");
+			if ( workStation )
+			{
+				tinkerKitTitle->setText(Language::get(6978));
+			}
+			else
+			{
+				tinkerKitTitle->setText("");
+			}
 			tinkerKitStatus->setText("");
 		}
 
 		SDL_Rect textPos{ 0, 27, baseFrame->getSize().w, 24 };
+		if ( workStation )
+		{
+			textPos.y += 8;
+		}
 		tinkerKitTitle->setSize(textPos);
 		textPos.y += 20;
 		tinkerKitStatus->setSize(textPos);
@@ -11647,7 +14706,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 	if ( bConstructDrawerOpen )
 	{
 		auto blueprintsTitle = drawerFrame->findField("blueprints title");
-		blueprintsTitle->setText(language[4199]);
+		blueprintsTitle->setText(Language::get(4199));
 	}
 
 	if ( itemActionType == TINKER_ACTION_OK	|| itemActionType == TINKER_ACTION_OK_UPGRADE
@@ -11660,7 +14719,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 	{
 		// shaking feedback for invalid action
 		// constant decay for animation
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * 1.0 / 25.0;
 		animInvalidAction -= setpointDiffX;
 		animInvalidAction = std::max(0.0, animInvalidAction);
@@ -11699,7 +14758,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		heldScrapTxtPos.y = metalPos.y;
 		heldScrapTxtPos.h = 24;
 		heldScrapText->setSize(heldScrapTxtPos);
-		heldScrapText->setText(language[4131]);
+		heldScrapText->setText(Language::get(4131));
 		if ( invalidActionType == INVALID_ACTION_SHAKE_METAL_SCRAP
 			|| invalidActionType == INVALID_ACTION_SHAKE_ALL_SCRAP )
 		{
@@ -11752,7 +14811,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		filterBtn->setBackground("*#images/ui/Tinkering/Tinker_Filter_Center_00.png");
 		Field* filterTxt = baseFrame->findField("filter salvage txt");
 		filterTxt->setDisabled(false);
-		filterTxt->setText(language[3645]);
+		filterTxt->setText(Language::get(3645));
 		filterTxt->setColor(inactiveColor);
 		if ( false && filterBtn->isHighlighted() )
 		{
@@ -11798,7 +14857,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		filterBtn->setBackground("*#images/ui/Tinkering/Tinker_Filter_Left_00.png");
 		filterTxt = baseFrame->findField("filter craft txt");
 		filterTxt->setDisabled(false);
-		filterTxt->setText(language[3644]);
+		filterTxt->setText(Language::get(3644));
 
 		filterTxt->setColor(inactiveColor);
 		if ( false && filterBtn->isHighlighted() )
@@ -11847,7 +14906,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		filterBtn->setBackground("*#images/ui/Tinkering/Tinker_Filter_Right_00.png");
 		filterTxt = baseFrame->findField("filter repair txt");
 		filterTxt->setDisabled(false);
-		filterTxt->setText(language[3646]);
+		filterTxt->setText(Language::get(3646));
 		filterTxt->setColor(inactiveColor);
 		if ( false && filterBtn->isHighlighted() )
 		{
@@ -11919,7 +14978,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 	auto actionPromptImg = baseFrame->findImage("action prompt glyph");
 	auto actionModifierImg = baseFrame->findImage("action modifier glyph");
 
-	int skillLVL = (stats[playernum]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[playernum], players[playernum]->entity));
+	int skillLVL = (stats[playernum]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[playernum], players[playernum]->entity));
 	Uint32 negativeColor = hudColors.characterSheetRed;
 	Uint32 neutralColor = hudColors.characterSheetLightNeutral;
 	Uint32 positiveColor = hudColors.characterSheetGreen;
@@ -12000,7 +15059,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		modifierPressed = true;
 	}
 	else if ( inputs.bPlayerUsingKeyboardControl(playernum)
-		&& (keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT]) )
+		&& (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT]) )
 	{
 		modifierPressed = true;
 	}
@@ -12009,7 +15068,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 	{
 		if ( isInteractable )
 		{
-			//const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			//real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
 			//animTooltip += setpointDiffX;
 			//animTooltip = std::min(1.0, animTooltip);
@@ -12043,7 +15102,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 					actionPromptImg->path = Input::inputs[playernum].getGlyphPathForBinding("MenuRightClick");
 					if ( modifierPressed )
 					{
-						actionModifierImg->path = GlyphHelper.getGlyphPath(SDL_SCANCODE_LSHIFT, false);
+						actionModifierImg->path = GlyphHelper.getGlyphPath(SDLK_LSHIFT, false);
 					}
 				}
 				if ( auto imgGet = Image::get(actionPromptImg->path.c_str()) )
@@ -12067,28 +15126,28 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 				}
 				if ( parentGUI.tinkeringFilter == GenericGUIMenu::TINKER_FILTER_CRAFTABLE )
 				{
-					actionPromptTxt->setText(language[3644]);
+					actionPromptTxt->setText(Language::get(3644));
 				}
 				else if ( parentGUI.tinkeringFilter == GenericGUIMenu::TINKER_FILTER_REPAIRABLE )
 				{
 					if ( itemActionType == TINKER_ACTION_OK_UPGRADE )
 					{
-						actionPromptTxt->setText(language[3684]);
+						actionPromptTxt->setText(Language::get(3684));
 					}
 					else
 					{
-						actionPromptTxt->setText(language[3646]);
+						actionPromptTxt->setText(Language::get(3646));
 					}
 				}
 				else if ( parentGUI.tinkeringFilter == GenericGUIMenu::TINKER_FILTER_SALVAGEABLE )
 				{
 					if ( modifierPressed )
 					{
-						actionPromptTxt->setText(language[4154]);
+						actionPromptTxt->setText(Language::get(4154));
 					}
 					else
 					{
-						actionPromptTxt->setText(language[3645]);
+						actionPromptTxt->setText(Language::get(3645));
 					}
 				}
 				else
@@ -12107,75 +15166,75 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 					case TINKER_ACTION_INVALID_ITEM:
 						if ( parentGUI.tinkeringFilter == TINKER_FILTER_REPAIRABLE )
 						{
-							actionPromptTxt->setText(language[4138]);
+							actionPromptTxt->setText(Language::get(4138));
 						}
 						else if ( parentGUI.tinkeringFilter == TINKER_FILTER_SALVAGEABLE )
 						{
-							actionPromptTxt->setText(language[4137]);
+							actionPromptTxt->setText(Language::get(4137));
 						}
 						break;
 					case TINKER_ACTION_INVALID_ROBOT_TO_SALVAGE:
-						actionPromptTxt->setText(language[4148]);
+						actionPromptTxt->setText(Language::get(4148));
 						break;
 					case TINKER_ACTION_NO_MATERIALS_UPGRADE:
 						if ( parentGUI.tinkeringFilter == TINKER_FILTER_REPAIRABLE )
 						{
-							actionPromptTxt->setText(language[4142]);
+							actionPromptTxt->setText(Language::get(4142));
 						}
 						break;
 					case TINKER_ACTION_NO_MATERIALS:
 						if ( parentGUI.tinkeringFilter == TINKER_FILTER_REPAIRABLE )
 						{
-							actionPromptTxt->setText(language[4141]);
+							actionPromptTxt->setText(Language::get(4141));
 						}
 						else if ( parentGUI.tinkeringFilter == TINKER_FILTER_SALVAGEABLE )
 						{
-							actionPromptTxt->setText(language[4137]);
+							actionPromptTxt->setText(Language::get(4137));
 						}
 						else if ( parentGUI.tinkeringFilter == TINKER_FILTER_CRAFTABLE )
 						{
-							actionPromptTxt->setText(language[4140]);
+							actionPromptTxt->setText(Language::get(4140));
 						}
 						break;
 					case TINKER_ACTION_NO_SKILL_LVL:
 						if ( parentGUI.tinkeringFilter == TINKER_FILTER_CRAFTABLE )
 						{
 							char buf[128];
-							snprintf(buf, sizeof(buf), language[4147], skillLVL, itemRequirement);
+							snprintf(buf, sizeof(buf), Language::get(4147), skillLVL, itemRequirement);
 							actionPromptTxt->setText(buf);
 						}
 						else
 						{
 							char buf[128];
-							snprintf(buf, sizeof(buf), language[4144], skillLVL, itemRequirement);
+							snprintf(buf, sizeof(buf), Language::get(4144), skillLVL, itemRequirement);
 							actionPromptTxt->setText(buf);
 						}
 						break;
 					case TINKER_ACTION_NO_SKILL_LVL_UPGRADE:
 						char buf[128];
-						snprintf(buf, sizeof(buf), language[4145], skillLVL, itemRequirement);
+						snprintf(buf, sizeof(buf), Language::get(4145), skillLVL, itemRequirement);
 						actionPromptTxt->setText(buf);
 						break;
 					case TINKER_ACTION_ITEM_FULLY_REPAIRED:
-						actionPromptTxt->setText(language[4136]);
+						actionPromptTxt->setText(Language::get(4136));
 						break;
 					case TINKER_ACTION_ITEM_FULLY_UPGRADED:
-						actionPromptTxt->setText(language[4139]);
+						actionPromptTxt->setText(Language::get(4139));
 						break;
 					case TINKER_ACTION_ROBOT_BROKEN:
-						actionPromptTxt->setText(language[4143]);
+						actionPromptTxt->setText(Language::get(4143));
 						break;
 					case TINKER_ACTION_MUST_BE_UNEQUIPPED:
-						actionPromptTxt->setText(language[4132]);
+						actionPromptTxt->setText(Language::get(4132));
 						break;
 					case TINKER_ACTION_ALREADY_USING_THIS_TINKERING_KIT:
-						actionPromptTxt->setText(language[4146]);
+						actionPromptTxt->setText(Language::get(4146));
 						break;
 					case TINKER_ACTION_KIT_NEEDS_REPAIRS:
-						actionPromptTxt->setText(language[4152]);
+						actionPromptTxt->setText(Language::get(4152));
 						break;
 					case TINKER_ACTION_NOT_IDENTIFIED_YET:
-						actionPromptTxt->setText(language[4153]);
+						actionPromptTxt->setText(Language::get(4153));
 						break;
 					default:
 						actionPromptTxt->setText("-");
@@ -12320,7 +15379,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 			|| (usingGamepad)
 			|| animTooltip < 0.9999 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animTooltip)) / 2.0;
 			animTooltip -= setpointDiffX;
 			animTooltip = std::max(0.0, animTooltip);
@@ -12329,32 +15388,32 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 
 	if ( parentGUI.tinkeringFilter == TINKER_FILTER_CRAFTABLE )
 	{
-		costScrapText->setText(language[4130]);
+		costScrapText->setText(Language::get(4130));
 	}
 	else if ( parentGUI.tinkeringFilter == TINKER_FILTER_REPAIRABLE )
 	{
 		bool activeTooltip = (itemActionType != TINKER_ACTION_NONE && itemDesc.size() > 1);
 		std::string currentText = costScrapText->getText();
 		if ( activeTooltip || (!activeTooltip
-			&& currentText != language[4135]
-			&& currentText != language[4134]) ) // if inactive tooltip, don't quickly change between upgrade/repair
+			&& currentText != Language::get(4135)
+			&& currentText != Language::get(4134)) ) // if inactive tooltip, don't quickly change between upgrade/repair
 		{
 			if ( itemType == TOOL_SENTRYBOT
 				|| itemType == TOOL_SPELLBOT
 				|| itemType == TOOL_DUMMYBOT
 				|| itemType == TOOL_GYROBOT )
 			{
-				costScrapText->setText(language[4135]);
+				costScrapText->setText(Language::get(4135));
 			}
 			else
 			{
-				costScrapText->setText(language[4134]);
+				costScrapText->setText(Language::get(4134));
 			}
 		}
 	}
 	else if ( parentGUI.tinkeringFilter == TINKER_FILTER_SALVAGEABLE )
 	{
-		costScrapText->setText(language[4133]);
+		costScrapText->setText(Language::get(4133));
 	}
 
 	auto actionPromptUnselectedTxt = baseFrame->findField("action prompt unselected txt");
@@ -12370,15 +15429,15 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 		actionPromptUnselectedTxt->setColor(makeColor(224, 224, 224, 255));
 		if ( parentGUI.tinkeringFilter == TINKER_FILTER_CRAFTABLE )
 		{
-			actionPromptUnselectedTxt->setText(language[4149]);
+			actionPromptUnselectedTxt->setText(Language::get(4149));
 		}
 		else if ( parentGUI.tinkeringFilter == TINKER_FILTER_SALVAGEABLE )
 		{
-			actionPromptUnselectedTxt->setText(language[4150]);
+			actionPromptUnselectedTxt->setText(Language::get(4150));
 		}
 		else if ( parentGUI.tinkeringFilter == TINKER_FILTER_REPAIRABLE )
 		{
-			actionPromptUnselectedTxt->setText(language[4151]);
+			actionPromptUnselectedTxt->setText(Language::get(4151));
 		}
 
 		{
@@ -12399,7 +15458,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 
 		if ( ticks - animPromptTicks > TICKS_PER_SECOND / 10 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animPrompt)) / 2.0;
 			animPrompt -= setpointDiffX;
 			animPrompt = std::max(0.0, animPrompt);
@@ -12424,6 +15483,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 			actionPromptTxt->setSize(pos);
 		}
 	}
+
 	{
 		SDL_Color color;
 		getColor(displayItemName->getColor(), &color.r, &color.g, &color.b, &color.a);
@@ -12493,7 +15553,6 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 			filterNavRight->pos.y -= filterNavRight->pos.h;
 			filterNavRight->pos.y -= *cvar_tinkNavGlyphY;
 		}
-
 	}
 
 	bool activateSelection = false;
@@ -12509,6 +15568,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 			{
 				Input::inputs[playernum].consumeBinaryToggle("MenuCancel");
 				parentGUI.closeGUI();
+				Player::soundCancel();
 				return;
 			}
 			else
@@ -12546,6 +15606,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 						parentGUI.tinkeringFilter = TINKER_FILTER_CRAFTABLE;
 					}
 					Input::inputs[playernum].consumeBinaryToggle("MenuPageRight");
+					Player::soundModuleNavigation();
 				}
 				else if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuPageLeft") )
 				{
@@ -12570,6 +15631,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 						parentGUI.tinkeringFilter = TINKER_FILTER_CRAFTABLE;
 					}
 					Input::inputs[playernum].consumeBinaryToggle("MenuPageLeft");
+					Player::soundModuleNavigation();
 				}
 			}
 		}
@@ -12601,7 +15663,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 						if ( isTinkerConstructItemSelected(item) )
 						{
 							foundItem = true;
-							if ( parentGUI.tinkeringKitItem && parentGUI.tinkeringKitItem->status > BROKEN
+							if ( ((parentGUI.tinkeringKitItem && parentGUI.tinkeringKitItem->status > BROKEN) || workStation)
 								&& actionOK )
 							{
 								parentGUI.executeOnItemClick(item);
@@ -12626,8 +15688,8 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 									bool finalAction = false;
 									for ( int i = 0; i < numActions
 										&& parentGUI.tinkeringBulkSalvage
-										&& parentGUI.tinkeringKitItem
-										&& parentGUI.tinkeringKitItem->status > BROKEN; ++i )
+										&& ((parentGUI.tinkeringKitItem
+										&& parentGUI.tinkeringKitItem->status > BROKEN) || workStation); ++i )
 									{
 										if ( i == numActions - 1 )
 										{
@@ -12653,7 +15715,7 @@ void GenericGUIMenu::TinkerGUI_t::updateTinkerMenu()
 											checkConsumedItem = true;
 										}
 									}
-									if ( (parentGUI.tinkeringKitItem && parentGUI.tinkeringKitItem->status > BROKEN)
+									if ( ((parentGUI.tinkeringKitItem && parentGUI.tinkeringKitItem->status > BROKEN) || workStation)
 										|| (parentGUI.tinkeringKitItem == item && parentGUI.tinkeringFilter == TINKER_FILTER_REPAIRABLE))
 									{
 										parentGUI.executeOnItemClick(item);
@@ -12784,7 +15846,7 @@ void GenericGUIMenu::TinkerGUI_t::createTinkerMenu()
 		auto headerFont = "fonts/pixel_maz_multiline.ttf#16#2";
 		auto blueprintsTitle = drawerFrame->addField("blueprints title", 128);
 		blueprintsTitle->setFont(headerFont);
-		blueprintsTitle->setText(language[4199]);
+		blueprintsTitle->setText(Language::get(4199));
 		blueprintsTitle->setHJustify(Field::justify_t::CENTER);
 		blueprintsTitle->setVJustify(Field::justify_t::TOP);
 		blueprintsTitle->setSize(SDL_Rect{ 60, 1, 90, 24 });
@@ -12985,6 +16047,7 @@ void GenericGUIMenu::TinkerGUI_t::createTinkerMenu()
 			closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
 			closeBtn->setCallback([](Button& button) {
 				GenericGUI[button.getOwner()].closeGUI();
+				Player::soundCancel();
 			});
 			closeBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -13069,6 +16132,10 @@ void GenericGUIMenu::TinkerGUI_t::createTinkerMenu()
 				{
 					GenericGUI[button.getOwner()].tinkerGUI.animPromptMoveLeft = true;
 				}
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
 			});
 			filterBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -13099,6 +16166,10 @@ void GenericGUIMenu::TinkerGUI_t::createTinkerMenu()
 				GenericGUI[button.getOwner()].tinkeringFilter = GenericGUIMenu::TINKER_FILTER_CRAFTABLE;
 				onTinkerChangeTabAction(button.getOwner(), changeToDifferentTab);
 				GenericGUI[button.getOwner()].tinkerGUI.animPromptMoveLeft = true;
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
 			});
 			filterBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -13129,6 +16200,10 @@ void GenericGUIMenu::TinkerGUI_t::createTinkerMenu()
 				GenericGUI[button.getOwner()].tinkeringFilter = GenericGUIMenu::TINKER_FILTER_REPAIRABLE;
 				onTinkerChangeTabAction(button.getOwner(), changeToDifferentTab);
 				GenericGUI[button.getOwner()].tinkerGUI.animPromptMoveLeft = false;
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
 			});
 			filterBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -13329,6 +16404,11 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 				snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), 
 					item->getName(), item->appearance % ENCHANTED_FEATHER_MAX_DURABILITY, item->beatitude);
 			}
+			else if ( item->type == MAGICSTAFF_SCEPTER && item->identified )
+			{
+				snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+					item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
+			}
 			else
 			{
 				snprintf(buf, sizeof(buf), "%s %s (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName(), item->beatitude);
@@ -13368,8 +16448,8 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 
 			if ( !checkStatusOnly )
 			{
-				int oldTinkering = stats[player]->PROFICIENCIES[PRO_LOCKPICKING];
-				stats[player]->PROFICIENCIES[PRO_LOCKPICKING] = 100;
+				int oldTinkering = stats[player]->getProficiency(PRO_LOCKPICKING);
+				stats[player]->setProficiencyUnsafe(PRO_LOCKPICKING, 999);
 				Sint32 oldPER = stats[player]->PER;
 				stats[player]->PER += -statGetPER(stats[player], players[player]->entity);
 				itemRequirement = parentGUI.tinkeringPlayerHasSkillLVLToCraft(item) * 20; // manually hack this to max to get requirement
@@ -13378,7 +16458,7 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 					itemRequirement = TINKER_MIN_ITEM_SKILL_REQ;
 				}
 				stats[player]->PER = oldPER;
-				stats[player]->PROFICIENCIES[PRO_LOCKPICKING] = oldTinkering;
+				stats[player]->setProficiency(PRO_LOCKPICKING, oldTinkering);
 			}
 		}
 		else if ( !parentGUI.tinkeringPlayerCanAffordCraft(item) )
@@ -13445,7 +16525,7 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 		if ( !checkStatusOnly )
 		{
 			repairable = parentGUI.tinkeringGetRepairCost(item, &metalScrapPrice, &magicScrapPrice);
-			if ( !isTinkeringBot )
+			if ( !isTinkeringBot && item->type != TOOL_TINKERING_KIT )
 			{
 				int metalTmp = 0;
 				int magicTmp = 0;
@@ -13465,7 +16545,7 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 		}
 		int requirement = parentGUI.tinkeringRepairGeneralItemSkillRequirement(item);
 
-		int skillLVL = stats[player]->PROFICIENCIES[PRO_LOCKPICKING] 
+		int skillLVL = stats[player]->getModifiedProficiency(PRO_LOCKPICKING) 
 			+ statGetPER(stats[player], players[player]->entity);
 		if ( !item->identified )
 		{
@@ -13508,8 +16588,8 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 			if ( !checkStatusOnly )
 			{
 				// can't craft, figure out base requirement
-				int oldTinkering = stats[player]->PROFICIENCIES[PRO_LOCKPICKING];
-				stats[player]->PROFICIENCIES[PRO_LOCKPICKING] = 100;
+				int oldTinkering = stats[player]->getProficiency(PRO_LOCKPICKING);
+				stats[player]->setProficiencyUnsafe(PRO_LOCKPICKING, 999);
 				Sint32 oldPER = stats[player]->PER;
 				stats[player]->PER += -statGetPER(stats[player], players[player]->entity);
 				itemRequirement = parentGUI.tinkeringPlayerHasSkillLVLToCraft(item) * 20; // manually hack this to max to get requirement
@@ -13518,7 +16598,7 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 					itemRequirement = TINKER_MIN_ITEM_SKILL_REQ;
 				}
 				stats[player]->PER = oldPER;
-				stats[player]->PROFICIENCIES[PRO_LOCKPICKING] = oldTinkering;
+				stats[player]->setProficiency(PRO_LOCKPICKING, oldTinkering);
 			}
 		}
 		else if ( isTinkeringBot && item->tinkeringBotIsMaxHealth()
@@ -13558,8 +16638,8 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 				}
 				else
 				{
-					int oldTinkering = stats[player]->PROFICIENCIES[PRO_LOCKPICKING];
-					stats[player]->PROFICIENCIES[PRO_LOCKPICKING] = 100;
+					int oldTinkering = stats[player]->getProficiency(PRO_LOCKPICKING);
+					stats[player]->setProficiencyUnsafe(PRO_LOCKPICKING, 999);
 					Sint32 oldPER = stats[player]->PER;
 					stats[player]->PER += -statGetPER(stats[player], players[player]->entity);
 					itemRequirement = parentGUI.tinkeringPlayerHasSkillLVLToCraft(item) * 20; // manually hack this to max to get requirement
@@ -13568,7 +16648,7 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 						itemRequirement = TINKER_MIN_ITEM_SKILL_REQ;
 					}
 					stats[player]->PER = oldPER;
-					stats[player]->PROFICIENCIES[PRO_LOCKPICKING] = oldTinkering;
+					stats[player]->setProficiency(PRO_LOCKPICKING, oldTinkering);
 				}
 			}
 		}
@@ -13672,7 +16752,7 @@ void GenericGUIMenu::TinkerGUI_t::clearItemDisplayed()
 const int GenericGUIMenu::AlchemyGUI_t::MAX_ALCH_X = 4;
 const int GenericGUIMenu::AlchemyGUI_t::MAX_ALCH_Y = 6;
 
-void GenericGUIMenu::AlchemyGUI_t::openAlchemyMenu()
+void GenericGUIMenu::AlchemyGUI_t::openAlchemyMenu(GenericGUIMenu::AlchemyGUI_t::AlchemyView_t view)
 {
 	const int playernum = parentGUI.getPlayer();
 	auto player = players[playernum];
@@ -13693,7 +16773,7 @@ void GenericGUIMenu::AlchemyGUI_t::openAlchemyMenu()
 		player->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
 		player->inventory_mode = INVENTORY_MODE_ITEM;
 		bOpen = true;
-		currentView = ALCHEMY_VIEW_BREW;
+		currentView = view;
 	}
 	if ( inputs.getUIInteraction(playernum)->selectedItem )
 	{
@@ -13702,6 +16782,25 @@ void GenericGUIMenu::AlchemyGUI_t::openAlchemyMenu()
 	}
 	inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
 	clearItemDisplayed();
+}
+
+void GenericGUIMenu::AlchemyGUI_t::changeCurrentView(GenericGUIMenu::AlchemyGUI_t::AlchemyView_t view)
+{
+	recipes.closeRecipePanel();
+
+	animTooltip = 0.0;
+
+	animPotion1 = 0.0;
+	potion1Uid = 0;
+	animPotion2 = 0.0;
+	potion2Uid = 0;
+	alchemyResultPotion.type = POTION_EMPTY;
+	potionResultUid = 0;
+	animPotionResult = 0.0;
+
+	itemRequiresTitleReflow = true;
+
+	openAlchemyMenu(view);
 }
 
 void GenericGUIMenu::AlchemyGUI_t::closeAlchemyMenu()
@@ -13764,6 +16863,27 @@ void GenericGUIMenu::AlchemyGUI_t::closeAlchemyMenu()
 	recipesFrame = nullptr;
 	notifications.clear();
 	recipes.stones.clear();
+
+	if ( multiplayer != CLIENT )
+	{
+		if ( Entity* cauldron = uidToEntity(parentGUI.alembicEntityUid) )
+		{
+			cauldron->skill[6] = 0;
+			serverUpdateEntitySkill(cauldron, 6);
+		}
+	}
+
+	if ( multiplayer == CLIENT && parentGUI.alembicEntityUid > 0 )
+	{
+		strcpy((char*)net_packet->data, "CAUC");
+		net_packet->data[4] = clientnum;
+		SDLNet_Write32(parentGUI.alembicEntityUid, &net_packet->data[5]);
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		net_packet->len = 9;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	}
+	parentGUI.alembicEntityUid = 0;
 }
 
 int GenericGUIMenu::AlchemyGUI_t::heightOffsetWhenNotCompact = 150;
@@ -13860,6 +16980,29 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		return;
 	}
 
+	Entity* alembicStation = nullptr;
+	if ( bOpen )
+	{
+		if ( parentGUI.alembicEntityUid != 0 )
+		{
+			alembicStation = uidToEntity(parentGUI.alembicEntityUid);
+			if ( !alembicStation )
+			{
+				parentGUI.closeGUI();
+				return;
+			}
+		}
+
+		if ( alembicStation )
+		{
+			if (player->entity && (entityDist(player->entity, alembicStation) > TOUCHRANGE))
+			{
+				parentGUI.closeGUI();
+				return;
+			}
+		}
+	}
+
 	if ( !alchFrame )
 	{
 		return;
@@ -13877,7 +17020,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 			createAlchemyMenu();
 		}
 
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
 		animx += setpointDiffX;
 		animx = std::min(1.0, animx);
@@ -13920,7 +17063,15 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		}
 		else
 		{
-			alchFramePos.x = player->camera_virtualWidth() - animx * alchFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = alchFramePos.w + 210; // inventory width 210
+				alchFramePos.x = -alchFramePos.w + animx * fullWidth;
+			}
+			else
+			{
+				alchFramePos.x = player->camera_virtualWidth() - animx * alchFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -13936,7 +17087,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		if ( !player->inventoryUI.bCompactView )
 		{
 			const int fullWidth = alchFramePos.w + 210; // inventory width 210
-			alchFramePos.x = player->camera_virtualWidth() - animx * fullWidth * 2;
+			alchFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -13948,7 +17099,15 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		}
 		else
 		{
-			alchFramePos.x = -alchFramePos.w + animx * alchFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = alchFramePos.w + 210; // inventory width 210
+				alchFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			}
+			else
+			{
+				alchFramePos.x = -alchFramePos.w + animx * alchFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -13962,7 +17121,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	}
 
 	int potionAnimOffsetY = 0; // all animations tested at heightOffsetWhenNotCompact = 200, so needs offset
-	if ( !player->bUseCompactGUIHeight() )
+	if ( !player->bUseCompactGUIHeight() && !player->bUseCompactGUIWidth() )
 	{
 		alchFramePos.y = heightOffsetWhenNotCompact;
 		potionAnimOffsetY = 200 - heightOffsetWhenNotCompact;
@@ -13979,6 +17138,30 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 
 	auto baseFrame = alchFrame->findFrame("alchemy base");
 	baseFrame->setDisabled(false);
+	if ( auto baseFrameImg = baseFrame->findImage("alchemy base img") )
+	{
+		if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+		{
+			baseFrameImg->path = "*#images/ui/Alchemy/Alchemy_Base_01.png";
+		}
+		else if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
+		{
+			baseFrameImg->path = "*#images/ui/Alchemy/Alchemy_Cook_01.png";
+		}
+	}
+
+	/*if ( keystatus[SDLK_g] )
+	{
+		keystatus[SDLK_g] = 0;
+		if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+		{
+			changeCurrentView(AlchemyGUI_t::ALCHEMY_VIEW_COOK);
+		}
+		else
+		{
+			changeCurrentView(AlchemyGUI_t::ALCHEMY_VIEW_BREW);
+		}
+	}*/
 
 	alchFrame->setSize(alchFramePos);
 
@@ -13998,9 +17181,9 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	}
 	alchFrame->setSize(alchFramePos);
 
-	if ( keystatus[SDL_SCANCODE_J] && enableDebugKeys )
+	/*if ( keystatus[SDLK_j] && enableDebugKeys )
 	{
-		if ( keystatus[SDL_SCANCODE_LSHIFT] )
+		if ( keystatus[SDLK_LSHIFT] )
 		{
 			std::vector<ItemType> potions;
 			for ( int i = 0; i < NUMITEMS; ++i )
@@ -14041,12 +17224,12 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				recipes.openRecipePanel();
 			}
 		}
-		keystatus[SDL_SCANCODE_J] = 0;
-	}
-	/*if ( keystatus[SDL_SCANCODE_H] && enableDebugKeys )
+		keystatus[SDLK_j] = 0;
+	}*/
+	/*if ( keystatus[SDLK_H] && enableDebugKeys )
 	{
-		keystatus[SDL_SCANCODE_H] = 0;
-		if ( keystatus[SDL_SCANCODE_LSHIFT] )
+		keystatus[SDLK_H] = 0;
+		if ( keystatus[SDLK_LSHIFT] )
 		{
 			for ( int i = 0; i < NUMITEMS; ++i )
 			{
@@ -14056,7 +17239,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				}
 			}
 		}
-		else if ( keystatus[SDL_SCANCODE_LCTRL] )
+		else if ( keystatus[SDLK_LCTRL] )
 		{
 			consoleCommand("/gimmepotions2");
 		}
@@ -14092,17 +17275,42 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				alchFrame->setSize(alchFramePos);
 			}
 		}
+		else
+		{
+			if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT
+				&& player->bAlignGUINextToInventoryCompact() )
+			{
+				alchFramePos.w += recipePos.w;
+				alchFrame->setSize(alchFramePos);
+			}
+		}
 	}
 	if ( auto emptyBottleFrame = baseFrame->findFrame("empty bottles") )
 	{
 		emptyBottleFrame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_RECIPE_ENTRY);
-		updateSlotFrameFromItem(emptyBottleFrame, &emptyBottleCount);
+		if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+		{
+			updateSlotFrameFromItem(emptyBottleFrame, &emptyBottleCount);
+		}
+		else
+		{
+			updateSlotFrameFromItem(emptyBottleFrame, &torchCount);
+			if ( torchCount.count < 0 )
+			{
+				auto spriteImageFrame = emptyBottleFrame->findFrame("item sprite frame");
+				auto spriteImage = spriteImageFrame->findImage("item sprite img");
+				spriteImage->path = "*#images/ui/Alchemy/Campfire.png";
+			}
+		}
 	}
 
-	animPotion1DestX = baseFrame->getSize().x + 36;
-	animPotion1DestY = baseFrame->getSize().y + 128;
-	animPotion2DestX = baseFrame->getSize().x + 128;
-	animPotion2DestY = baseFrame->getSize().y + 128;
+	static ConsoleVariable<int> cvar_alchemy_potion1_destx1("/alchemy_potion1_destx1", 36);
+	static ConsoleVariable<int> cvar_alchemy_potion1_destx2("/alchemy_potion1_destx2", 128);
+	static ConsoleVariable<int> cvar_alchemy_potion1_desty1("/alchemy_potion1_desty1", 128);
+	animPotion1DestX = baseFrame->getSize().x + *cvar_alchemy_potion1_destx1;
+	animPotion1DestY = baseFrame->getSize().y + *cvar_alchemy_potion1_desty1;
+	animPotion2DestX = baseFrame->getSize().x + *cvar_alchemy_potion1_destx2;
+	animPotion2DestY = baseFrame->getSize().y + *cvar_alchemy_potion1_desty1;
 	animPotionResultStartX = baseFrame->getSize().x + 74;
 	animPotionResultStartY = baseFrame->getSize().y + 286;
 
@@ -14124,7 +17332,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	}
 
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.05, (animPotionResult)) / 3.0;
 		animPotionResult -= setpointDiffX;
 		animPotionResult = std::max(0.0, animPotionResult);
@@ -14144,7 +17352,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		animRecipeAutoAddToSlot1Uid = 0;
 	}
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.05, (animPotion1)) / 3.0;
 		animPotion1 -= setpointDiffX;
 		animPotion1 = std::max(0.0, animPotion1);
@@ -14153,7 +17361,9 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	{
 		if ( potion1Item = uidToItem(potion1Uid) )
 		{
-			if ( !potion1Item->identified || itemIsEquipped(potion1Item, playernum) )
+			if ( !potion1Item->identified || itemIsEquipped(potion1Item, playernum) 
+				|| potion1Item->status == BROKEN
+				|| (potion1Item->type == FOOD_TIN && !hasTinOpener) )
 			{
 				potion1Item = nullptr; // if this got unidentified somehow, remove it
 				potion1Uid = 0;
@@ -14196,6 +17406,13 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				}
 				else
 				{
+					if ( alchemyMissingIngredientQty(potion1Item) )
+					{
+						if ( animPotion1 < 0.001 )
+						{
+							animPotion1Frame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_MISSING_QTY);
+						}
+					}
 					updateSlotFrameFromItem(animPotion1Frame, potion1Item);
 				}
 			}
@@ -14208,7 +17425,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 
 	auto animPotion2Frame = getAlchemySlotFrame(ALCH_SLOT_SECONDARY_POTION_X, 0);
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.05, (animPotion2)) / 3.0;
 		animPotion2 -= setpointDiffX;
 		animPotion2 = std::max(0.0, animPotion2);
@@ -14219,7 +17436,9 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	{
 		if ( potion2Item = uidToItem(potion2Uid) )
 		{
-			if ( !potion2Item->identified || itemIsEquipped(potion2Item, playernum) )
+			if ( !potion2Item->identified || itemIsEquipped(potion2Item, playernum) 
+				|| potion2Item->status == BROKEN
+				|| (potion2Item->type == FOOD_TIN && !hasTinOpener) )
 			{
 				potion2Item = nullptr; // if this got unidentified somehow, remove it
 				potion2Uid = 0;
@@ -14251,6 +17470,13 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				}
 				else
 				{
+					if ( alchemyMissingIngredientQty(potion2Item) )
+					{
+						if ( animPotion2 < 0.001 )
+						{
+							animPotion2Frame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_MISSING_QTY);
+						}
+					}
 					updateSlotFrameFromItem(animPotion2Frame, potion2Item);
 				}
 			}
@@ -14315,7 +17541,13 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	{
 		potionResultFrame->setDisabled(false);
 		potionResultFrame->setUserData(nullptr);
+		Status oldStatus = alchemyResultPotion.status;
+		if ( alchemyMissingIngredientQty(nullptr) )
+		{
+			alchemyResultPotion.status = BROKEN;
+		}
 		updateSlotFrameFromItem(potionResultFrame, &alchemyResultPotion);
+		alchemyResultPotion.status = oldStatus;
 		if ( alchemyResultPotion.type == TOOL_BOMB )
 		{
 			auto spriteImageFrame = potionResultFrame->findFrame("item sprite frame");
@@ -14324,9 +17556,23 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		}
 	}
 
+	hasTinOpener = false;
+
 	if ( !bOpen )
 	{
 		return;
+	}
+
+	for ( node_t* node = stats[playernum]->inventory.first; node != NULL && !hasTinOpener; node = node->next )
+	{
+		Item* item = (Item*)node->element;
+		if ( !item ) { continue; }
+
+		if ( item->type == TOOL_TINOPENER && item->identified )
+		{
+			hasTinOpener = true;
+			break;
+		}
 	}
 
 	if ( !parentGUI.isGUIOpen()
@@ -14342,14 +17588,14 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 
 	if ( player->entity && player->entity->isBlind() )
 	{
-		messagePlayer(playernum, MESSAGE_MISC, language[4159]);
+		messagePlayer(playernum, MESSAGE_MISC, Language::get(4159));
 		parentGUI.closeGUI();
 		return; // I can't see!
 	}
 
-	/*if ( keystatus[SDL_SCANCODE_B] && enableDebugKeys )
+	/*if ( keystatus[SDLK_B] && enableDebugKeys )
 	{
-		keystatus[SDL_SCANCODE_B] = 0;
+		keystatus[SDLK_B] = 0;
 		notifications.push_back(std::make_pair(ticks, AlchNotification_t("Wow a title!", "This is a body", "items/images/Alembic.png")));
 	}*/
 	auto notificationFrame = alchFrame->findFrame("notification");
@@ -14383,7 +17629,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 
 		if ( n.second.state == 0 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - n.second.animx)) / 2.0;
 			n.second.animx += setpointDiffX;
 			n.second.animx = std::min(1.0, n.second.animx);
@@ -14402,7 +17648,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		}
 		else if ( n.second.state == 2 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.05, (n.second.animx)) / 3.0;
 			n.second.animx -= setpointDiffX;
 			n.second.animx = std::max(0.0, n.second.animx);
@@ -14416,10 +17662,22 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 
 	// alembic status
 	{
+		auto alembicItemIcon = baseFrame->findImage("alchemy item icon");
+		alembicItemIcon->disabled = true;
+		auto alembicItemBadge = baseFrame->findImage("alchemy badge");
+		alembicItemBadge->disabled = false;
+		if ( alembicStation )
+		{
+			alembicItemBadge->disabled = true;
+		}
+
 		auto alembicTitle = baseFrame->findField("alchemy alembic title");
 		auto alembicStatus = baseFrame->findField("alchemy alembic status");
 		if ( auto item = parentGUI.alembicItem )
 		{
+			alembicItemIcon->path = getItemSpritePath(playernum, *item);
+			alembicItemIcon->disabled = false;
+
 			char buf[128];
 			if ( !item->identified )
 			{
@@ -14464,11 +17722,22 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		}
 		else
 		{
-			alembicTitle->setText("");
+			if ( alembicStation )
+			{
+				alembicTitle->setText(Language::get(6915));
+			}
+			else
+			{
+				alembicTitle->setText("");
+			}
 			alembicStatus->setText("");
 		}
 
 		SDL_Rect textPos{ 0, 21, baseFrame->getSize().w, 24 };
+		if ( alembicStation )
+		{
+			textPos.y -= 14;
+		}
 		alembicTitle->setSize(textPos);
 		textPos.y += 18;
 		alembicStatus->setSize(textPos);
@@ -14476,7 +17745,28 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 
 	bool usingGamepad = inputs.hasController(playernum) && !inputs.getVirtualMouse(playernum)->draw_cursor;
 	auto recipeBtn = baseFrame->findButton("recipe button");
+	recipeBtn->setInvisible(false);
+	auto stationCookBtn = baseFrame->findButton("station cook button");
+	auto stationCookText = baseFrame->findField("station cook text");
+	auto stationBrewText = baseFrame->findField("station brew text");
+	stationCookBtn->setInvisible(!alembicStation);
+	stationCookText->setDisabled(stationCookBtn->isInvisible());
+	stationBrewText->setDisabled(stationCookBtn->isInvisible());
+	if ( currentView == ALCHEMY_VIEW_COOK
+		|| currentView == ALCHEMY_VIEW_RECIPES_COOK )
+	{
+		recipeBtn->setInvisible(true);
+		stationCookText->setTextColor(hudColors.characterSheetLightNeutral);
+		stationBrewText->setTextColor(hudColors.characterSheetFaintText);
+	}
+	else
+	{
+		stationBrewText->setTextColor(hudColors.characterSheetLightNeutral);
+		stationCookText->setTextColor(hudColors.characterSheetFaintText);
+	}
 	auto recipeGlyph = baseFrame->findImage("recipe glyph");
+	auto stationToggleGlyph = baseFrame->findImage("station toggle glyph");
+	auto stationToggleGlyph2 = baseFrame->findImage("station toggle glyph 2");
 	{
 		// close btn
 		auto closeBtn = baseFrame->findButton("close alchemy button");
@@ -14504,25 +17794,38 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				closeGlyph->pos.h = imgGet->getHeight();
 				closeGlyph->disabled = false;
 			}
-			closeGlyph->pos.x = closeBtn->getSize().x + closeBtn->getSize().w / 2 - closeGlyph->pos.w / 2;
-			if ( closeGlyph->pos.x % 2 == 1 )
+
+			if ( stationBrewText->isDisabled() )
 			{
-				++closeGlyph->pos.x;
+				closeGlyph->pos.x = closeBtn->getSize().x + closeBtn->getSize().w / 2 - closeGlyph->pos.w / 2;
+				if ( closeGlyph->pos.x % 2 == 1 )
+				{
+					++closeGlyph->pos.x;
+				}
+				closeGlyph->pos.y = closeBtn->getSize().y + closeBtn->getSize().h - 4;
 			}
-			closeGlyph->pos.y = closeBtn->getSize().y + closeBtn->getSize().h - 4;
+			else
+			{
+				closeGlyph->pos.x = closeBtn->getSize().x - closeGlyph->pos.w;
+				closeGlyph->pos.y = closeBtn->getSize().y + closeBtn->getSize().h / 2 - closeGlyph->pos.h / 2;
+				if ( closeGlyph->pos.y % 2 == 1 )
+				{
+					++closeGlyph->pos.y;
+				}
+			}
 		}
 
 		recipeBtn->setDisabled(true);
 		recipeGlyph->disabled = true;
 		if ( recipes.bOpen )
 		{
-			recipeBtn->setText(language[4171]);
+			recipeBtn->setText(Language::get(4171));
 		}
 		else
 		{
-			recipeBtn->setText(language[4170]);
+			recipeBtn->setText(Language::get(4170));
 		}
-		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor && !recipeBtn->isInvisible() )
 		{
 			recipeBtn->setDisabled(!isInteractable);
 			if ( isInteractable )
@@ -14534,7 +17837,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		{
 			recipeBtn->deselect();
 		}
-		if ( recipeBtn->isDisabled() && usingGamepad )
+		if ( recipeBtn->isDisabled() && usingGamepad && !recipeBtn->isInvisible() )
 		{
 			recipeGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageRightAlt");
 			if ( auto imgGet = Image::get(recipeGlyph->path.c_str()) )
@@ -14551,8 +17854,59 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 			recipeGlyph->pos.y = recipeBtn->getSize().y + recipeBtn->getSize().h - 8;
 		}
 	}
+	{
+		stationCookBtn->setDisabled(true);
+		//recipeGlyph->disabled = true;
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor && !stationCookBtn->isInvisible() )
+		{
+			stationCookBtn->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonAlchemyUpdateSelectorOnHighlight(playernum, stationCookBtn);
+			}
+		}
+		else if ( stationCookBtn->isSelected() )
+		{
+			stationCookBtn->deselect();
+		}
 
-	int skillLVL = (stats[playernum]->PROFICIENCIES[PRO_ALCHEMY] + statGetINT(stats[playernum], players[playernum]->entity));
+		stationToggleGlyph->disabled = true;
+		if ( stationCookBtn->isDisabled() && usingGamepad && !stationCookBtn->isInvisible() )
+		{
+			stationToggleGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageLeft");
+			if ( auto imgGet = Image::get(stationToggleGlyph->path.c_str()) )
+			{
+				stationToggleGlyph->pos.w = imgGet->getWidth();
+				stationToggleGlyph->pos.h = imgGet->getHeight();
+				stationToggleGlyph->disabled = false;
+			}
+			stationToggleGlyph->pos.x = stationCookBtn->getSize().x - stationToggleGlyph->pos.w - 12;
+			if ( stationToggleGlyph->pos.x % 2 == 1 )
+			{
+				++stationToggleGlyph->pos.x;
+			}
+			stationToggleGlyph->pos.y = stationCookBtn->getSize().y + stationCookBtn->getSize().h - 6;
+		}
+
+		stationToggleGlyph2->disabled = true;
+		if ( stationCookBtn->isDisabled() && usingGamepad && !stationCookBtn->isInvisible() )
+		{
+			stationToggleGlyph2->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageRight");
+			if ( auto imgGet = Image::get(stationToggleGlyph2->path.c_str()) )
+			{
+				stationToggleGlyph2->pos.w = imgGet->getWidth();
+				stationToggleGlyph2->pos.h = imgGet->getHeight();
+				stationToggleGlyph2->disabled = false;
+			}
+			stationToggleGlyph2->pos.x = stationCookBtn->getSize().x + stationCookBtn->getSize().w + 12;
+			if ( stationToggleGlyph2->pos.x % 2 == 1 )
+			{
+				++stationToggleGlyph2->pos.x;
+			}
+			stationToggleGlyph2->pos.y = stationCookBtn->getSize().y + stationCookBtn->getSize().h - 6;
+		}
+	}
+
 	Uint32 negativeColor = hudColors.characterSheetRed;
 	Uint32 neutralColor = hudColors.characterSheetLightNeutral;
 	Uint32 positiveColor = hudColors.characterSheetGreen;
@@ -14578,7 +17932,57 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 
 	// calculate resultant potion
 	{
-		if ( potion1Item && potion2Item )
+		if ( potion1Item && potion2Item && (currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK) )
+		{
+			int createCount = 1;
+			Status status = SERVICABLE;
+			int missingPotion1Count = 0;
+			int missingPotion2Count = 0;
+			ItemType res = alchemyCookResult(playernum, potion1Item, potion2Item, createCount, status, missingPotion1Count, missingPotion2Count);
+			alchemyResultPotion.type = res;
+			alchemyResultPotion.count = createCount;
+			alchemyResultPotion.status = status;
+			alchemyResultPotion.identified = true;
+			int appearance = 0;
+			int blessing = 0;
+			if ( isItemRation(res) )
+			{
+				if ( potion1Item->beatitude > 0 && potion2Item->beatitude > 0 )
+				{
+					blessing = std::min(potion1Item->beatitude, potion2Item->beatitude); // take least blessed
+				}
+				else if ( potion1Item->beatitude < 0 && potion2Item->beatitude < 0 )
+				{
+					blessing = std::min(potion1Item->beatitude, potion2Item->beatitude); // take most cursed
+				}
+				else if ( (potion1Item->beatitude < 0 && potion2Item->beatitude > 0)
+					|| (potion2Item->beatitude < 0 && potion1Item->beatitude > 0) )
+				{
+					blessing = 0;
+				}
+				else if ( potion1Item->beatitude < 0 && potion2Item->beatitude == 0 )
+				{
+					blessing = potion1Item->beatitude; // curse the result
+				}
+				else if ( potion1Item->beatitude == 0 && potion2Item->beatitude < 0 )
+				{
+					blessing = potion2Item->beatitude; // curse the result
+				}
+				else if ( potion1Item->beatitude > 0 && potion2Item->beatitude == 0 )
+				{
+					blessing = 0; // negate the blessing
+				}
+				else if ( potion1Item->beatitude == 0 && potion2Item->beatitude > 0 )
+				{
+					blessing = 0; // negate the blessing
+				}
+			}
+			alchemyResultPotion.beatitude = blessing;
+			alchemyResultPotion.appearance = 0;
+			alchemyResultPotion.appearance |= (missingPotion1Count & 0xFF) << 0;
+			alchemyResultPotion.appearance |= (missingPotion2Count & 0xFF) << 8;
+		}
+		else if ( potion1Item && potion2Item && (currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES) )
 		{
 			bool tryDuplicatePotion = false;
 			bool randomResult = false;
@@ -14780,7 +18184,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		modifierPressed = true;
 	}
 	else if ( inputs.bPlayerUsingKeyboardControl(playernum)
-		&& (keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT]) )
+		&& (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT]) )
 	{
 		modifierPressed = true;
 	}
@@ -14791,7 +18195,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	brewGlyph->disabled = true;
 	if ( inputs.getVirtualMouse(playernum)->draw_cursor )
 	{
-		brewBtn->setText(language[4175]);
+		brewBtn->setText(Language::get(4175));
 		if ( (potion1Uid != 0 || potion2Uid != 0) && isInteractable )
 		{
 			brewBtn->setDisabled(false);
@@ -14809,7 +18213,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	}
 	if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
 	{
-		if ( potionResultFrame->isDisabled() )
+		if ( potionResultFrame->isDisabled() || alchemyMissingIngredientQty(nullptr) )
 		{
 			brewBtn->setTextColor(hudColors.characterSheetFaintText);
 		}
@@ -14817,9 +18221,16 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 		{
 			brewBtn->setTextColor(makeColor(255, 255, 255, 255));
 		}
-		brewBtn->setText(language[4178]);
+		if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
+		{
+			brewBtn->setText(Language::get(6773));
+		}
+		else
+		{
+			brewBtn->setText(Language::get(4178));
+		}
 		brewBtn->setDisabled(true);
-		if ( !potionResultFrame->isDisabled() )
+		if ( !potionResultFrame->isDisabled() && !alchemyMissingIngredientQty(nullptr) )
 		{
 			brewGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt2");
 			if ( auto imgGet = Image::get(brewGlyph->path.c_str()) )
@@ -14950,7 +18361,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 	{
 		if ( isInteractable )
 		{
-			//const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			//real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
 			//animTooltip += setpointDiffX;
 			//animTooltip = std::min(1.0, animTooltip);
@@ -15007,7 +18418,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				// do highlights
 				displayItemName->clearWordsToHighlight();
 				std::string str = displayItemName->getText();
-				if ( str == language[4167] )
+				if ( str == Language::get(4167) )
 				{
 					displayItemName->setTextColor(hudColors.characterSheetRed);
 				}
@@ -15035,36 +18446,41 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 						{
 							std::string toCompare = str.substr(str.find('[', c));
 							Uint32 color = 0;
-							if ( toCompare == language[4155] )
+							if ( toCompare == Language::get(4155) )
 							{
 								// unknown
 								color = hudColors.characterSheetLightNeutral;
 							}
-							else if ( toCompare == language[4162]
-								|| toCompare == language[4164] || toCompare == language[4166] )
+							else if ( toCompare == Language::get(4162)
+								|| toCompare == Language::get(4164) || toCompare == Language::get(4166) )
 							{
 								color = makeColor(54, 144, 171, 255);
 							}
-							else if ( toCompare == language[4156] )
+							else if ( toCompare == Language::get(4156) )
 							{
 								// base pot
 								color = hudColors.characterSheetGreen;
 							}
-							else if ( toCompare == language[4163] )
+							else if ( toCompare == Language::get(4163) )
 							{
 								// duplication chance
 								color = hudColors.characterSheetGreen;
 							}
-							else if ( toCompare == language[4157] )
+							else if ( toCompare == Language::get(4157) )
 							{
 								// secondary pot
 								color = hudColors.characterSheetHighlightText;
 							}
-							else if ( toCompare == language[4158] )
+							else if ( toCompare == Language::get(4158) )
 							{
 								color = hudColors.characterSheetFaintText;
 							}
-							else if ( toCompare == language[4160] || toCompare == language[4165] || toCompare == language[4168] )
+							else if ( toCompare == Language::get(4160) 
+								|| toCompare == Language::get(4165) 
+								|| toCompare == Language::get(6772)
+								|| toCompare == Language::get(6768)
+								|| toCompare == Language::get(6774)
+								|| toCompare == Language::get(4168) )
 							{
 								color = hudColors.characterSheetRed;
 							}
@@ -15149,7 +18565,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 			|| (usingGamepad)
 			|| animTooltip < 0.9999 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animTooltip)) / 2.0;
 			animTooltip -= setpointDiffX;
 			animTooltip = std::max(0.0, animTooltip);
@@ -15202,6 +18618,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 				if ( potion1Uid == 0 && potion2Uid == 0 && recipes.activateRecipeIndex == -1 )
 				{
 					parentGUI.closeGUI();
+					Player::soundCancel();
 					return;
 				}
 				else if ( recipes.activateRecipeIndex >= 0 )
@@ -15247,15 +18664,40 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 						recipes.activateRecipeIndex = -1;
 						animRandomPotionTicks = 0;
 					}
-					playSound(139, 64); // click sound
+					Player::soundCancel();
 				}
 			}
 			else if ( Input::inputs[playernum].binaryToggle("MenuPageRightAlt") || Input::inputs[playernum].binaryToggle("MenuPageLeftAlt") )
 			{
-				Input::inputs[playernum].consumeBinaryToggle("MenuPageLeftAlt");
-				Input::inputs[playernum].consumeBinaryToggle("MenuPageRightAlt");
-				recipeBtn->activate();
-				return;
+				bool left = Input::inputs[playernum].consumeBinaryToggle("MenuPageLeftAlt");
+				bool right = Input::inputs[playernum].consumeBinaryToggle("MenuPageRightAlt");
+				/*if ( left && !stationCookBtn->isInvisible() )
+				{
+					stationCookBtn->activate();
+				}*/
+				if ( (left || right) && !recipeBtn->isInvisible() )
+				{
+					recipeBtn->activate();
+					return;
+				}
+			}
+			else if ( Input::inputs[playernum].binaryToggle("MenuPageRight") || Input::inputs[playernum].binaryToggle("MenuPageLeft") )
+			{
+				bool left = Input::inputs[playernum].consumeBinaryToggle("MenuPageLeft");
+				bool right = Input::inputs[playernum].consumeBinaryToggle("MenuPageRight");
+				if ( (left || right) && !stationCookBtn->isInvisible() )
+				{
+					if ( left && (currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES) )
+					{
+						stationCookBtn->activate();
+						return;
+					}
+					if ( right && (currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK) )
+					{
+						stationCookBtn->activate();
+						return;
+					}
+				}
 			}
 			else if ( Input::inputs[playernum].binaryToggle("MenuAlt2") )
 			{
@@ -15296,7 +18738,6 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 			&& getSelectedAlchemySlotY() >= 0 && getSelectedAlchemySlotX() < MAX_ALCH_Y
 			&& !tryBrew
 			&& recipes.bOpen
-			/*&& currentView == ALCHEMY_VIEW_RECIPES*/
 			&& itemActionType == ALCHEMY_ACTION_OK )
 		{
 			if ( recipes.isInteractable 
@@ -15376,7 +18817,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 					animPotion1 = 0.0;
 					animPotion1Frame->setDisabled(true);
 					recipes.activateRecipeIndex = -1; // clear active recipe
-					playSound(139, 64); // click sound
+					Player::soundCancel();
 				}
 				else if ( !tryBrew && getSelectedAlchemySlotX() == ALCH_SLOT_SECONDARY_POTION_X )
 				{
@@ -15384,7 +18825,7 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 					animPotion2 = 0.0;
 					animPotion2Frame->setDisabled(true);
 					recipes.activateRecipeIndex = -1; // clear active recipe
-					playSound(139, 64); // click sound
+					Player::soundCancel();
 
 				}
 				else if ( tryBrew || getSelectedAlchemySlotX() == ALCH_SLOT_RESULT_POTION_X )
@@ -15401,7 +18842,15 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 						oldPotion1Type = potion1Item->type;
 						oldPotion2Type = potion2Item->type;
 						potionResultUid = 0;
-						parentGUI.alchemyCombinePotions();
+
+						if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+						{
+							parentGUI.alchemyCombinePotions();
+						}
+						else if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
+						{
+							parentGUI.alchemyCookCombination();
+						}
 						if ( parentGUI.basePotion == nullptr )
 						{
 							potion1Uid = 0;
@@ -15527,38 +18976,145 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 							potion1Uid = 0;
 							animPotion1 = 0.0;
 							animPotion1Frame->setDisabled(true);
+							Player::soundCancel();
 						}
 						else if ( potion2Uid == item->uid )
 						{
 							potion2Uid = 0;
 							animPotion2 = 0.0;
 							animPotion2Frame->setDisabled(true);
+							Player::soundCancel();
 						}
-						else if ( potion1Uid == 0 )
+						else if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+						{
+							if ( potion1Uid == 0 )
+							{
+								if ( !parentGUI.isItemMixable(item) )
+								{
+									continue;
+								}
+								animPotion1 = 1.0;
+								getInventoryItemAlchemyAnimSlotPos(slotFrame, player, item->x, item->y, animPotion1StartX, animPotion1StartY, potionAnimOffsetY);
+								potion1Uid = item->uid;
+								//alchemyResultPotion.type = POTION_EMPTY;
+								playSound(139, 64); // click sound
+							}
+							else
+							{
+								if ( !parentGUI.isItemMixable(item) )
+								{
+									continue;
+								}
+								animPotion2 = 1.0;
+								getInventoryItemAlchemyAnimSlotPos(slotFrame, player, item->x, item->y, animPotion2StartX, animPotion2StartY, potionAnimOffsetY);
+								potion2Uid = item->uid;
+								//alchemyResultPotion.type = POTION_EMPTY;
+								playSound(139, 64); // click sound
+							}
+						}
+						else if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
 						{
 							if ( !parentGUI.isItemMixable(item) )
 							{
 								continue;
 							}
-							animPotion1 = 1.0;
-							getInventoryItemAlchemyAnimSlotPos(slotFrame, player, item->x, item->y, animPotion1StartX, animPotion1StartY, potionAnimOffsetY);
-							potion1Uid = item->uid;
-							//alchemyResultPotion.type = POTION_EMPTY;
-						}
-						else
-						{
-							if ( !parentGUI.isItemMixable(item) )
+							Item* item1 = uidToItem(potion1Uid);
+							Item* item2 = uidToItem(potion2Uid);
+							int replaceSlot = 2;
+							if ( !item1 && !item2 )
 							{
-								continue;
+								replaceSlot = 1;
 							}
-							animPotion2 = 1.0;
-							getInventoryItemAlchemyAnimSlotPos(slotFrame, player, item->x, item->y, animPotion2StartX, animPotion2StartY, potionAnimOffsetY);
-							potion2Uid = item->uid;
-							//alchemyResultPotion.type = POTION_EMPTY;
+							else if ( item->type == FOOD_RATION )
+							{
+								if ( item1 && item1->type == item->type )
+								{
+									replaceSlot = 1;
+								}
+								else if ( item2 && item2->type == item->type )
+								{
+									replaceSlot = 2;
+								}
+								else
+								{
+									if ( item1 &&
+										(GenericGUIMenu::isItemRationSeasoning(item1->type)
+											|| item1->type == TOOL_TOWEL
+											|| item1->type == POTION_WATER) )
+									{
+										replaceSlot = 2;
+									}
+									else if(item2 &&
+										(GenericGUIMenu::isItemRationSeasoning(item2->type)
+											|| item2->type == TOOL_TOWEL
+											|| item2->type == POTION_WATER))
+									{
+										replaceSlot = 1;
+									}
+								}
+							}
+							else if ( GenericGUIMenu::isItemRationSeasoning(item->type)
+								|| item->type == TOOL_TOWEL
+								|| item->type == POTION_WATER )
+							{
+								if ( item1 && 
+									(GenericGUIMenu::isItemRationSeasoning(item1->type)
+										|| item1->type == TOOL_TOWEL
+										|| item1->type == POTION_WATER))
+								{
+									replaceSlot = 1;
+								}
+								else if ( item2 && 
+									(GenericGUIMenu::isItemRationSeasoning(item2->type)
+										|| item2->type == TOOL_TOWEL
+										|| item2->type == POTION_WATER) )
+								{
+									replaceSlot = 2;
+								}
+								else if ( !item1 )
+								{
+									replaceSlot = 1;
+								}
+							}
+							else if ( itemCategory(item) == FOOD && !GenericGUIMenu::isItemRation(item->type) )
+							{
+								if ( item1 && item1->type == item->type )
+								{
+									replaceSlot = 1;
+								}
+								else if ( item2 && item2->type == item->type )
+								{
+									replaceSlot = 2;
+								}
+								else if ( item1 && itemCategory(item1) == FOOD && !GenericGUIMenu::isItemRation(item1->type) )
+								{
+									replaceSlot = 2;
+								}
+								else
+								{
+									replaceSlot = 1;
+								}
+							}
+
+							if ( replaceSlot == 1 )
+							{
+								animPotion1 = 1.0;
+								getInventoryItemAlchemyAnimSlotPos(slotFrame, player, item->x, item->y, animPotion1StartX, animPotion1StartY, potionAnimOffsetY);
+								potion1Uid = item->uid;
+								//alchemyResultPotion.type = POTION_EMPTY;
+								playSound(139, 64); // click sound
+							}
+							else if ( replaceSlot == 2 )
+							{
+								animPotion2 = 1.0;
+								getInventoryItemAlchemyAnimSlotPos(slotFrame, player, item->x, item->y, animPotion2StartX, animPotion2StartY, potionAnimOffsetY);
+								potion2Uid = item->uid;
+								//alchemyResultPotion.type = POTION_EMPTY;
+								playSound(139, 64); // click sound
+							}
 						}
 						recipes.activateRecipeIndex = -1;
 						animRandomPotionTicks = 0;
-						playSound(139, 64); // click sound
 						break;
 					}
 				}
@@ -15680,7 +19236,7 @@ void GenericGUIMenu::AlchemyGUI_t::createAlchemyMenu()
 		clearRecipeBtn->setSize(SDL_Rect{ 0, 0, 172, 26 });
 		clearRecipeBtn->setColor(makeColor(255, 255, 255, 255));
 		clearRecipeBtn->setHighlightColor(makeColor(255, 255, 255, 255));
-		clearRecipeBtn->setText(language[4169]);
+		clearRecipeBtn->setText(Language::get(4169));
 		clearRecipeBtn->setFont("fonts/pixel_maz_multiline.ttf#16#2");
 		clearRecipeBtn->setHideGlyphs(true);
 		clearRecipeBtn->setHideKeyboardGlyphs(true);
@@ -15705,7 +19261,7 @@ void GenericGUIMenu::AlchemyGUI_t::createAlchemyMenu()
 			alchemyGUI.animPotionResult = 0.0;
 			alchemyGUI.animRecipeAutoAddToSlot1Uid = 0;
 			alchemyGUI.animRecipeAutoAddToSlot2Uid = 0;
-			playSound(139, 64); // click sound
+			Player::soundCancel();
 		});
 		clearRecipeBtn->setTickCallback(genericgui_deselect_fn);
 		clearRecipeBtn->setDisabled(true);
@@ -15778,6 +19334,13 @@ void GenericGUIMenu::AlchemyGUI_t::createAlchemyMenu()
 			makeColor(255, 255, 255, 255),
 			"*#images/ui/Alchemy/Alchemy_Base_01.png", "alchemy base img");
 
+		auto alembicItemIcon = bgFrame->addImage(SDL_Rect{ 11, 23, 36, 36 }, 0xFFFFFFFF,
+			"", "alchemy item icon");
+		alembicItemIcon->disabled = true;
+
+		auto alembicAlchemyBadge = bgFrame->addImage(SDL_Rect{ 8, 6, 190, 60 }, 0xFFFFFFFF,
+			"*#images/ui/Alchemy/Alchemy_Badge.png", "alchemy badge");
+
 		auto headerFont = "fonts/pixel_maz_multiline.ttf#16#2";
 		auto alembicTitle = bgFrame->addField("alchemy alembic title", 128);
 		alembicTitle->setFont(headerFont);
@@ -15815,13 +19378,135 @@ void GenericGUIMenu::AlchemyGUI_t::createAlchemyMenu()
 					0xFFFFFFFF, "*#images/ui/Alchemy/Alchemy_LabelName_2Row_00.png", "item text img");
 			}
 		}
+
+		{
+			auto stationCookBtn = bgFrame->addButton("station cook button");
+			stationCookBtn->setInvisible(true);
+			SDL_Rect btnPos{ 62, 28, 82, 30 };
+			stationCookBtn->setSize(btnPos);
+			stationCookBtn->setColor(makeColor(255, 255, 255, 255));
+			stationCookBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			stationCookBtn->setText("");
+			stationCookBtn->setFont(itemFont);
+			stationCookBtn->setHideGlyphs(true);
+			stationCookBtn->setHideKeyboardGlyphs(true);
+			stationCookBtn->setHideSelectors(true);
+			stationCookBtn->setMenuConfirmControlType(0);
+			stationCookBtn->setColor(makeColor(255, 255, 255, 255));
+			stationCookBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			//recipeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			stationCookBtn->setCallback([](Button& button) {
+				int player = button.getOwner();
+				if ( GenericGUI[player].alchemyGUI.bOpen )
+				{
+					if ( GenericGUI[player].alchemyGUI.currentView == GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_BREW
+						|| GenericGUI[player].alchemyGUI.currentView == GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_RECIPES )
+					{
+						GenericGUI[player].alchemyGUI.changeCurrentView(GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_COOK);
+						button.setBackground("*#images/ui/Alchemy/Button_CauldronToggleLeft.png");
+						button.setBackgroundHighlighted("*#images/ui/Alchemy/Button_CauldronToggleLeft.png");
+						button.setBackgroundActivated("*#images/ui/Alchemy/Button_CauldronToggleLeft.png");
+						Player::soundActivate();
+					}
+					else
+					{
+						GenericGUI[player].alchemyGUI.changeCurrentView(GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_BREW);
+						button.setBackground("*#images/ui/Alchemy/Button_CauldronToggleRight.png");
+						button.setBackgroundHighlighted("*#images/ui/Alchemy/Button_CauldronToggleRight.png");
+						button.setBackgroundActivated("*#images/ui/Alchemy/Button_CauldronToggleRight.png");
+						Player::soundActivate();
+					}
+				}
+			});
+			stationCookBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto stationCookText = bgFrame->addField("station cook text", 32);
+			stationCookText->setFont(itemFont);
+			stationCookText->setText(Language::get(6773));
+			stationCookText->setHJustify(Field::justify_t::RIGHT);
+			stationCookText->setVJustify(Field::justify_t::TOP);
+			stationCookText->setSize(SDL_Rect{ btnPos.x - 90 - 8, btnPos.y + 5, 90, 24 });
+			stationCookText->setTextColor(hudColors.characterSheetLightNeutral);
+			stationCookText->setDisabled(true);
+
+			auto stationBrewText = bgFrame->addField("station brew text", 32);
+			stationBrewText->setFont(itemFont);
+			stationBrewText->setText(Language::get(3339));
+			stationBrewText->setHJustify(Field::justify_t::LEFT);
+			stationBrewText->setVJustify(Field::justify_t::TOP);
+			stationBrewText->setSize(SDL_Rect{ btnPos.x + btnPos.w + 8, btnPos.y + 5, 90, 24 });
+			stationBrewText->setTextColor(hudColors.characterSheetLightNeutral);
+			stationBrewText->setDisabled(true);
+
+			auto stationToggleGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "station toggle glyph");
+			stationToggleGlyph->disabled = true;
+			stationToggleGlyph->ontop = true;
+
+			auto stationToggleGlyph2 = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "station toggle glyph 2");
+			stationToggleGlyph2->disabled = true;
+			stationToggleGlyph2->ontop = true;
+
+			if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+			{
+				stationCookBtn->setBackground("*#images/ui/Alchemy/Button_CauldronToggleRight.png");
+				stationCookBtn->setBackgroundHighlighted("*#images/ui/Alchemy/Button_CauldronToggleRight.png");
+				stationCookBtn->setBackgroundActivated("*#images/ui/Alchemy/Button_CauldronToggleRight.png");
+				stationCookText->setTextColor(hudColors.characterSheetFaintText);
+			}
+			else
+			{
+				stationCookBtn->setBackground("*#images/ui/Alchemy/Button_CauldronToggleLeft.png");
+				stationCookBtn->setBackgroundHighlighted("*#images/ui/Alchemy/Button_CauldronToggleLeft.png");
+				stationCookBtn->setBackgroundActivated("*#images/ui/Alchemy/Button_CauldronToggleLeft.png");
+				stationBrewText->setTextColor(hudColors.characterSheetFaintText);
+			}
+
+			//auto stationBrewBtn = bgFrame->addButton("station brew button");
+			//stationBrewBtn->setInvisible(true);
+			//btnPos.x += 92;
+			//stationBrewBtn->setSize(btnPos);
+			//stationBrewBtn->setColor(makeColor(255, 255, 255, 255));
+			//stationBrewBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			//stationBrewBtn->setText(Language::get(3339));
+			//stationBrewBtn->setFont(itemFont);
+			//stationBrewBtn->setHideGlyphs(true);
+			//stationBrewBtn->setHideKeyboardGlyphs(true);
+			//stationBrewBtn->setHideSelectors(true);
+			//stationBrewBtn->setMenuConfirmControlType(0);
+			//stationBrewBtn->setBackground("*#images/ui/Alchemy/Cauldron_ButtonTop_Base_00.png");
+			//stationBrewBtn->setColor(makeColor(255, 255, 255, 255));
+			//stationBrewBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			//stationBrewBtn->setBackgroundHighlighted("*#images/ui/Alchemy/Cauldron_ButtonTop_High_00.png");
+			//stationBrewBtn->setBackgroundActivated("*#images/ui/Alchemy/Cauldron_ButtonTop_Press_00.png");
+			////recipeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			//stationBrewBtn->setCallback([](Button& button) {
+			//	int player = button.getOwner();
+			//	if ( GenericGUI[player].alchemyGUI.bOpen )
+			//	{
+			//		if ( GenericGUI[player].alchemyGUI.currentView == GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_COOK
+			//			|| GenericGUI[player].alchemyGUI.currentView == GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_RECIPES_COOK )
+			//		{
+			//			GenericGUI[player].alchemyGUI.changeCurrentView(GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_BREW);
+			//			Player::soundActivate();
+			//		}
+			//		else
+			//		{
+			//			Player::soundActivate();
+			//		}
+			//	}
+			//	});
+			//stationBrewBtn->setTickCallback(genericgui_deselect_fn);
+		}
+
 		{
 			auto recipeBtn = bgFrame->addButton("recipe button");
 			SDL_Rect recipeBtnPos{ 12, 72, 182, 40 };
 			recipeBtn->setSize(recipeBtnPos);
 			recipeBtn->setColor(makeColor(255, 255, 255, 255));
 			recipeBtn->setHighlightColor(makeColor(255, 255, 255, 255));
-			recipeBtn->setText(language[4170]);
+			recipeBtn->setText(Language::get(4170));
 			recipeBtn->setFont(itemFont);
 			recipeBtn->setHideGlyphs(true);
 			recipeBtn->setHideKeyboardGlyphs(true);
@@ -15837,15 +19522,20 @@ void GenericGUIMenu::AlchemyGUI_t::createAlchemyMenu()
 				int player = button.getOwner();
 				if ( GenericGUI[player].alchemyGUI.bOpen )
 				{
-					if ( GenericGUI[player].alchemyGUI.recipes.bOpen )
+					if ( GenericGUI[player].alchemyGUI.currentView == GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_BREW
+						|| GenericGUI[player].alchemyGUI.currentView == GenericGUIMenu::AlchemyGUI_t::ALCHEMY_VIEW_RECIPES )
 					{
-						GenericGUI[player].alchemyGUI.recipes.closeRecipePanel();
+						if ( GenericGUI[player].alchemyGUI.recipes.bOpen )
+						{
+							GenericGUI[player].alchemyGUI.recipes.closeRecipePanel();
+							Player::soundCancel();
+						}
+						else
+						{
+							GenericGUI[player].alchemyGUI.recipes.openRecipePanel();
+							Player::soundActivate();
+						}
 					}
-					else
-					{
-						GenericGUI[player].alchemyGUI.recipes.openRecipePanel();
-					}
-					playSound(139, 64); // click sound
 				}
 			});
 			recipeBtn->setTickCallback(genericgui_deselect_fn);
@@ -15872,6 +19562,7 @@ void GenericGUIMenu::AlchemyGUI_t::createAlchemyMenu()
 			closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
 			closeBtn->setCallback([](Button& button) {
 				GenericGUI[button.getOwner()].closeGUI();
+				Player::soundCancel();
 			});
 			closeBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -15908,6 +19599,7 @@ void GenericGUIMenu::AlchemyGUI_t::createAlchemyMenu()
 				alchemyGUI.animPotionResult = 0.0;
 				alchemyGUI.animRecipeAutoAddToSlot1Uid = 0;
 				alchemyGUI.animRecipeAutoAddToSlot2Uid = 0;
+				Player::soundCancel();
 			});
 			brewBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -15997,7 +19689,7 @@ Frame* GenericGUIMenu::AlchemyGUI_t::getAlchemySlotFrame(int x, int y) const
 	return nullptr;
 }
 
-void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool isTooltipForResultPotion, bool isTooltipForRecipe)
+void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe)
 {
 	itemActionType = ALCHEMY_ACTION_NONE;
 	if ( !item || item->type == SPELL_ITEM )
@@ -16009,6 +19701,96 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 		return;
 	}
 
+	if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+	{
+		setItemDisplayNameAndPriceBrew(item, isTooltipForResultPotion, isTooltipForRecipe);
+	}
+	else
+	{
+		setItemDisplayNameAndPriceCook(item, isTooltipForResultPotion, isTooltipForRecipe);
+	}
+	return;
+}
+
+
+bool GenericGUIMenu::AlchemyGUI_t::inventoryItemAllowedInGUI(Item* item)
+{
+	if ( !item ) { return false; }
+	if ( item->status == BROKEN )
+	{
+		return false;
+	}
+	if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+	{
+		if ( itemCategory(item) == POTION && item->type != POTION_EMPTY )
+		{
+			return true;
+		}
+	}
+	else if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
+	{
+		Item* item1 = potion1Uid != 0 ? uidToItem(potion1Uid) : nullptr;
+		Item* item2 = potion2Uid != 0 ? uidToItem(potion2Uid) : nullptr;
+
+		if ( GenericGUIMenu::isItemRationSeasoning(item->type) || item->type == TOOL_TOWEL || item->type == POTION_WATER )
+		{
+			if ( !item1 && !item2 )
+			{
+				return true;
+			}
+			if ( (item1 && item1->type == FOOD_RATION) || (item2 && item2->type == FOOD_RATION) )
+			{
+				return true;
+			}
+			if ( (item->type == TOOL_TOWEL || item->type == POTION_WATER || GenericGUIMenu::isItemRationSeasoning(item->type))
+				&&
+				((item1 && item1->type == TOOL_TOWEL) || (item2 && item2->type == TOOL_TOWEL)
+					|| (item1 && item1->type == POTION_WATER) || (item2 && item2->type == POTION_WATER)
+					|| (item1 && GenericGUIMenu::isItemRationSeasoning(item1->type))
+					|| (item2 && GenericGUIMenu::isItemRationSeasoning(item2->type))) )
+			{
+				return true;
+			}
+		}
+		else if ( itemCategory(item) == FOOD )
+		{
+			if ( item->type == FOOD_RATION )
+			{
+				if ( !item1 && !item2 )
+				{
+					return true;
+				}
+				if ( (item1 && itemCategory(item1) == FOOD && item1->type != FOOD_RATION)
+					|| (item2 && itemCategory(item2) == FOOD && item2->type != FOOD_RATION) )
+				{
+					return false;
+				}
+				return true;
+			}
+			else if ( GenericGUIMenu::isItemRation(item->type) )
+			{
+				return false;
+			}
+			else
+			{
+				if ( !item1 && !item2 )
+				{
+					return true;
+				}
+				if ( (item1 && itemCategory(item1) == FOOD && item1->type != FOOD_RATION)
+					|| (item2 && itemCategory(item2) == FOOD && item2->type != FOOD_RATION) )
+				{
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPriceBrew(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe)
+{
 	itemTooltipForRecipe = isTooltipForRecipe;
 
 	char buf[1024];
@@ -16016,7 +19798,7 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 	{
 		if ( isTooltipForResultPotion )
 		{
-			snprintf(buf, sizeof(buf), "%s (?)", language[4161]);
+			snprintf(buf, sizeof(buf), "%s (?)", Language::get(4161));
 		}
 		else
 		{
@@ -16025,7 +19807,7 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 	}
 	else if ( item->type == TOOL_BOMB && isTooltipForResultPotion )
 	{
-		snprintf(buf, sizeof(buf), "%s", language[4167]);
+		snprintf(buf, sizeof(buf), "%s", Language::get(4167));
 	}
 	else
 	{
@@ -16077,7 +19859,7 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 			secondaryPotion = uidToItem(potion2Uid);
 			if ( basePotion && secondaryPotion )
 			{
-				if ( basePotion->identified && secondaryPotion->identified 
+				if ( basePotion->identified && secondaryPotion->identified
 					&& basePotion->type == secondaryPotion->type )
 				{
 					isSameResult = true;
@@ -16099,48 +19881,48 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 		if ( recipeMissingMaterials )
 		{
 			strcat(buf, "\n");
-			strcat(buf, language[4168]);
+			strcat(buf, Language::get(4168));
 		}
 		else if ( isEquipped )
 		{
 			strcat(buf, "\n");
-			strcat(buf, language[4165]);
+			strcat(buf, Language::get(4165));
 		}
 		else if ( isSameResult )
 		{
 			strcat(buf, "\n");
-			strcat(buf, language[4166]);
+			strcat(buf, Language::get(4166));
 		}
 		else if ( isRandomResult )
 		{
 			strcat(buf, "\n");
-			strcat(buf, language[4164]);
+			strcat(buf, Language::get(4164));
 		}
 		else if ( isDuplicationResult )
 		{
 			int skillLVL = 0;
 			if ( stats[parentGUI.getPlayer()] )
 			{
-				skillLVL = stats[parentGUI.getPlayer()]->PROFICIENCIES[PRO_ALCHEMY] / 20; // 0 to 5;
+				skillLVL = stats[parentGUI.getPlayer()]->getModifiedProficiency(PRO_ALCHEMY) / 20; // 0 to 5;
 			}
-			snprintf(buf, sizeof(buf), "%s\n%d%%", language[4163], 50 + skillLVL * 10);
+			snprintf(buf, sizeof(buf), "%s\n%d%%", Language::get(4163), 50 + skillLVL * 10);
 		}
 		else if ( item->identified && find != clientLearnedAlchemyIngredients[player].end() )
 		{
 			if ( parentGUI.isItemBaseIngredient(item->type) )
 			{
 				strcat(buf, "\n");
-				strcat(buf, language[4156]);
+				strcat(buf, Language::get(4156));
 			}
 			else if ( parentGUI.isItemSecondaryIngredient(item->type) )
 			{
 				strcat(buf, "\n");
-				strcat(buf, language[4157]);
+				strcat(buf, Language::get(4157));
 			}
 			else
 			{
 				strcat(buf, "\n");
-				strcat(buf, language[4158]);
+				strcat(buf, Language::get(4158));
 			}
 		}
 		else
@@ -16150,18 +19932,18 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 				if ( isTooltipForResultPotion )
 				{
 					strcat(buf, "\n");
-					strcat(buf, language[4162]);
+					strcat(buf, Language::get(4162));
 				}
 				else
 				{
 					strcat(buf, "\n");
-					strcat(buf, language[4160]);
+					strcat(buf, Language::get(4160));
 				}
 			}
 			else
 			{
 				strcat(buf, "\n");
-				strcat(buf, language[4155]);
+				strcat(buf, Language::get(4155));
 			}
 		}
 	}
@@ -16187,7 +19969,7 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 		if ( isTooltipForRecipe )
 		{
 			int index = 0;
-			activateSelectionPrompt->setText(language[4174]);
+			activateSelectionPrompt->setText(Language::get(4174));
 			if ( recipes.activateRecipeIndex >= 0 )
 			{
 				/*if ( !inputs.getVirtualMouse(player)->draw_cursor )
@@ -16198,7 +19980,7 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 						{
 							if ( recipes.activateRecipeIndex == index )
 							{
-								activateSelectionPrompt->setText(language[4175]);
+								activateSelectionPrompt->setText(Language::get(4175));
 							}
 							break;
 						}
@@ -16212,18 +19994,18 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 			}
 			else
 			{
-				activateSelectionPrompt->setText(language[4174]);
+				activateSelectionPrompt->setText(Language::get(4174));
 			}
 		}
 		else if ( !isTooltipForResultPotion )
 		{
 			if ( item->uid == potion1Uid || item->uid == potion2Uid )
 			{
-				activateSelectionPrompt->setText(language[4173]);
+				activateSelectionPrompt->setText(Language::get(4173));
 			}
 			else
 			{
-				activateSelectionPrompt->setText(language[4172]);
+				activateSelectionPrompt->setText(Language::get(4172));
 			}
 		}
 		else if ( isTooltipForResultPotion )
@@ -16233,20 +20015,224 @@ void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPrice(Item* item, bool i
 			{
 				if ( isSameResult )
 				{
-					activateSelectionPrompt->setText(language[4177]);
+					activateSelectionPrompt->setText(Language::get(4177));
 				}
 				else if ( isDuplicationResult )
 				{
-					activateSelectionPrompt->setText(language[4178]);
+					activateSelectionPrompt->setText(Language::get(4178));
 				}
 				else
 				{
-					activateSelectionPrompt->setText(language[4176]);
+					activateSelectionPrompt->setText(Language::get(4176));
 				}
 			}
 		}
 	}
-	return;
+}
+
+void GenericGUIMenu::AlchemyGUI_t::setItemDisplayNameAndPriceCook(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe)
+{
+	itemTooltipForRecipe = isTooltipForRecipe;
+
+	char buf[1024];
+	if ( !item->identified )
+	{
+		if ( isTooltipForResultPotion )
+		{
+			snprintf(buf, sizeof(buf), "%s (?)", Language::get(4161));
+		}
+		else
+		{
+			snprintf(buf, sizeof(buf), "%s %s (?)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName());
+		}
+	}
+	else if ( item->type == TOOL_BOMB && isTooltipForResultPotion )
+	{
+		snprintf(buf, sizeof(buf), "%s", Language::get(4167));
+	}
+	else
+	{
+		snprintf(buf, sizeof(buf), "%s %s (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName(), item->beatitude);
+	}
+
+	auto activateSelectionPrompt = alchFrame->findField("activate prompt");
+	activateSelectionPrompt->setText("");
+
+	int player = parentGUI.getPlayer();
+	//bool isSameResult = false;
+	//bool isDuplicationResult = false;
+	if ( inventoryItemAllowedInGUI(item) )
+	{
+		bool isEquipped = itemIsEquipped(item, player);
+		if ( (!item->identified || isEquipped) && !isTooltipForResultPotion && !isTooltipForRecipe )
+		{
+			itemActionType = ALCHEMY_ACTION_UNIDENTIFIED_POTION;
+		}
+		else
+		{
+			itemActionType = ALCHEMY_ACTION_OK;
+		}
+
+		if ( isEquipped )
+		{
+			strcat(buf, "\n");
+			strcat(buf, Language::get(4165));
+		}
+		else if ( item->identified && item->type == FOOD_TIN && !hasTinOpener )
+		{
+			itemActionType = ALCHEMY_ACTION_UNIDENTIFIED_POTION;
+			strcat(buf, "\n");
+			strcat(buf, Language::get(6772));
+		}
+		//else if ( recipeMissingMaterials )
+		//{
+		//	strcat(buf, "\n");
+		//	strcat(buf, Language::get(4168));
+		//}
+		//else if ( isSameResult )
+		//{
+		//	strcat(buf, "\n");
+		//	strcat(buf, Language::get(4166));
+		//}
+		//else if ( isRandomResult )
+		//{
+		//	strcat(buf, "\n");
+		//	strcat(buf, Language::get(4164));
+		//}
+		//else if ( isDuplicationResult )
+		//{
+		//	int skillLVL = 0;
+		//	if ( stats[parentGUI.getPlayer()] )
+		//	{
+		//		skillLVL = stats[parentGUI.getPlayer()]->getModifiedProficiency(PRO_ALCHEMY) / 20; // 0 to 5;
+		//	}
+		//	snprintf(buf, sizeof(buf), "%s\n%d%%", Language::get(4163), 50 + skillLVL * 10);
+		//}
+		/*else if ( item->identified && find != clientLearnedAlchemyIngredients[player].end() )
+		{
+			if ( parentGUI.isItemBaseIngredient(item->type) )
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4156));
+			}
+			else if ( parentGUI.isItemSecondaryIngredient(item->type) )
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4157));
+			}
+			else
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4158));
+			}
+		}*/
+		else
+		{
+			if ( !item->identified )
+			{
+				if ( isTooltipForResultPotion )
+				{
+					strcat(buf, "\n");
+					strcat(buf, Language::get(4162));
+				}
+				else
+				{
+					strcat(buf, "\n");
+					strcat(buf, Language::get(4160));
+				}
+			}
+			/*else
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4155));
+			}*/
+		}
+	}
+	else
+	{
+		if ( (item->type == GREASE_BALL 
+				|| item->type == SLOP_BALL
+				|| GenericGUIMenu::isItemRation(item->type))
+			&& isTooltipForResultPotion )
+		{
+			if ( alchemyMissingIngredientQty(nullptr) )
+			{
+				itemActionType = ALCHEMY_ACTION_UNIDENTIFIED_POTION;
+				if ( alchemyResultPotion.appearance != 0 )
+				{
+					// missing ingredient
+					strcat(buf, "\n");
+					strcat(buf, Language::get(6768));
+				}
+				else
+				{
+					// missing fuel
+					strcat(buf, "\n");
+					strcat(buf, Language::get(6774));
+				}
+			}
+			else
+			{
+				itemActionType = ALCHEMY_ACTION_OK; // this is fine :)
+			}
+		}
+		else
+		{
+			itemActionType = ALCHEMY_ACTION_INVALID_ITEM;
+		}
+	}
+	if ( itemDesc != buf )
+	{
+		itemRequiresTitleReflow = true;
+	}
+	itemDesc = buf;
+	itemType = item->type;
+	if ( itemActionType == ALCHEMY_ACTION_OK )
+	{
+		if ( isTooltipForRecipe )
+		{
+			int index = 0;
+			activateSelectionPrompt->setText(Language::get(4174));
+			if ( recipes.activateRecipeIndex >= 0 )
+			{
+				activateSelectionPrompt->setText("");
+			}
+			else
+			{
+				activateSelectionPrompt->setText(Language::get(4174));
+			}
+		}
+		else if ( !isTooltipForResultPotion )
+		{
+			if ( item->uid == potion1Uid || item->uid == potion2Uid )
+			{
+				activateSelectionPrompt->setText(Language::get(4173));
+			}
+			else
+			{
+				activateSelectionPrompt->setText(Language::get(4172));
+			}
+		}
+		else if ( isTooltipForResultPotion )
+		{
+			bool usingGamepad = inputs.hasController(player) && !inputs.getVirtualMouse(player)->draw_cursor;
+			if ( !usingGamepad )
+			{
+				/*if ( isSameResult )
+				{
+					activateSelectionPrompt->setText(Language::get(4177));
+				}
+				else if ( isDuplicationResult )
+				{
+					activateSelectionPrompt->setText(Language::get(4178));
+				}
+				else*/
+				{
+					activateSelectionPrompt->setText(Language::get(6773));
+				}
+			}
+		}
+	}
 }
 
 bool GenericGUIMenu::AlchemyGUI_t::warpMouseToSelectedAlchemyItem(Item* snapToItem, Uint32 flags)
@@ -16302,7 +20288,14 @@ void GenericGUIMenu::AlchemyGUI_t::AlchemyRecipes_t::openRecipePanel()
 	{
 		return;
 	}
-	alchemy.currentView = ALCHEMY_VIEW_RECIPES;
+	if ( alchemy.currentView == ALCHEMY_VIEW_BREW )
+	{
+		alchemy.currentView = ALCHEMY_VIEW_RECIPES;
+	}
+	else if ( alchemy.currentView == ALCHEMY_VIEW_COOK )
+	{
+		alchemy.currentView = ALCHEMY_VIEW_RECIPES_COOK;
+	}
 	bool wasDisabled = alchemy.recipesFrame->isDisabled();
 	alchemy.recipesFrame->setDisabled(false);
 	if ( wasDisabled )
@@ -16325,7 +20318,14 @@ void GenericGUIMenu::AlchemyGUI_t::AlchemyRecipes_t::closeRecipePanel()
 	{
 		alchemy.recipesFrame->setDisabled(true);
 	}
-	alchemy.currentView = ALCHEMY_VIEW_BREW;
+	if ( alchemy.currentView == ALCHEMY_VIEW_RECIPES )
+	{
+		alchemy.currentView = ALCHEMY_VIEW_BREW;
+	}
+	else if ( alchemy.currentView == ALCHEMY_VIEW_RECIPES_COOK )
+	{
+		alchemy.currentView = ALCHEMY_VIEW_COOK;
+	}
 	animx = 0.0;
 	isInteractable = false;
 	currentScrollRow = 0;
@@ -16363,10 +20363,15 @@ void buildRecipeList(const int player)
 
 	std::unordered_map<int, std::pair<std::vector<Item*>, int>> inventoryPotions;
 	bool hasEmptyBottle = false;
+	alchemy.torchCount.count = 0;
 	for ( node_t* node = stats[player]->inventory.first; node; node = node->next )
 	{
 		Item* item = (Item*)node->element;
 		if ( !item ) { continue; }
+		if ( item->type == TOOL_TORCH )
+		{
+			alchemy.torchCount.count += item->count;
+		}
 		if ( itemCategory(item) == POTION )
 		{
 			if ( item->type == POTION_EMPTY )
@@ -16386,6 +20391,34 @@ void buildRecipeList(const int player)
 				inventoryPotions[item->type].first.push_back(item);
 			}
 			inventoryPotions[item->type].second += item->count;
+		}
+	}
+
+	if ( alchemy.currentView == alchemy.ALCHEMY_VIEW_COOK || alchemy.currentView == alchemy.ALCHEMY_VIEW_RECIPES_COOK )
+	{
+		if ( GenericGUI[player].alembicEntityUid != 0 && !GenericGUI[player].alembicItem && uidToEntity(GenericGUI[player].alembicEntityUid) )
+		{
+			alchemy.torchCount.count = -1;
+		}
+		else if ( players[player] && players[player]->entity )
+		{
+			auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(players[player]->entity, 2);
+			for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+			{
+				list_t* currentList = *it;
+				node_t* node;
+				for ( node = currentList->first; node != nullptr; node = node->next )
+				{
+					if ( Entity* entity = ((Entity*)node->element) )
+					{
+						if ( entity->behavior == &actCampfire && entity->skill[3] > 0 /*fire health */ && entityDist(entity, players[player]->entity) < 32.0 )
+						{
+							alchemy.torchCount.count = -1;
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -16627,7 +20660,7 @@ void GenericGUIMenu::AlchemyGUI_t::AlchemyRecipes_t::updateRecipePanel()
 	const int slotSize = players[player]->inventoryUI.getSlotSize();
 	if ( !recipeFrame->isDisabled() && bOpen )
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
 		animx += setpointDiffX;
 		animx = std::min(1.0, animx);
@@ -16754,7 +20787,7 @@ void GenericGUIMenu::AlchemyGUI_t::AlchemyRecipes_t::updateRecipePanel()
 
 	auto title1 = baseFrame->findField("recipe title 1");
 	char titleBuf[64] = "";
-	snprintf(titleBuf, sizeof(titleBuf), language[4181], recipeList.size());
+	snprintf(titleBuf, sizeof(titleBuf), Language::get(4181), recipeList.size());
 	title1->setText(titleBuf);
 	title1->setTextColor(hudColors.characterSheetLightNeutral);
 	title1->setOutlineColor(makeColor(29, 16, 11, 255));
@@ -16928,7 +20961,7 @@ void GenericGUIMenu::AlchemyGUI_t::AlchemyRecipes_t::updateRecipePanel()
 		if ( abs(scrollSetpoint - scrollAnimateX) > 0.00001 )
 		{
 			isInteractable = false;
-			const real_t fpsScale = (60.f / std::max(1U, fpsLimit));
+			const real_t fpsScale = getFPSScale(60.0);
 			real_t setpointDiff = 0.0;
 			if ( scrollSetpoint - scrollAnimateX > 0.0 )
 			{
@@ -17175,7 +21208,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherCharge(void* featherChargeText, 
 		if ( ((ticks - animChargeStartTicks) > TICKS_PER_SECOND) 
 			&& (inscribeSuccessTicks == 0 || (ticks - inscribeSuccessTicks) >= 1.5 * TICKS_PER_SECOND) )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.1, (animCharge)) / 10.0;
 			animCharge -= setpointDiffX;
 			animCharge = std::max(0.0, animCharge);
@@ -17189,7 +21222,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherCharge(void* featherChargeText, 
 		{
 			pauseChangeChargeAnim = true;
 
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animCharge)) / 10.0;
 			animCharge += setpointDiffX;
 			animCharge = std::min(1.0, animCharge);
@@ -17286,10 +21319,10 @@ void GenericGUIMenu::FeatherGUI_t::changeSortingType(GenericGUIMenu::FeatherGUI_
 void GenericGUIMenu::FeatherGUI_t::updateScrolls()
 {
 	scrolls.clear();
-	/*if ( keystatus[SDL_SCANCODE_J] && enableDebugKeys )
+	/*if ( keystatus[SDLK_J] && enableDebugKeys )
 	{
-		keystatus[SDL_SCANCODE_J] = 0;
-		if ( keystatus[SDL_SCANCODE_LCTRL] )
+		keystatus[SDLK_J] = 0;
+		if ( keystatus[SDLK_LCTRL] )
 		{
 			clientLearnedScrollLabels[parentGUI.getPlayer()].clear();
 			for ( int i = 0; i < NUMLABELS; ++i )
@@ -17389,7 +21422,7 @@ void GenericGUIMenu::FeatherGUI_t::updateScrolls()
 			bodyTxt->setColor(hudColors.characterSheetOffWhiteText);
 			if ( scroll.second.second )
 			{
-				std::string scrollShortName = items[scroll.second.first].name_identified;
+				std::string scrollShortName = items[scroll.second.first].getIdentifiedName();
 				if ( scrollShortName.find(ItemTooltips.adjectives["scroll_prefixes"]["scroll_of"]) != std::string::npos )
 				{
 					scrollShortName = scrollShortName.substr(ItemTooltips.adjectives["scroll_prefixes"]["scroll_of"].size());
@@ -17570,7 +21603,7 @@ void GenericGUIMenu::FeatherGUI_t::closeFeatherMenu()
 
 const int featherBaseWidth = 334;
 const int featherBaseHeight = 358;
-const int featherDrawerWidth = 210;
+const int featherDrawerWidth = 214;
 int GenericGUIMenu::FeatherGUI_t::heightOffsetWhenNotCompact = 150;
 
 void onFeatherChangeTabAction(const int playernum, bool changingToNewTab)
@@ -17629,6 +21662,24 @@ void buttonFeatherUpdateSelectorOnHighlight(const int player, Button* button)
 	}
 }
 
+void sliderFeatherUpdateSelectorOnHighlight(const int player, Slider* slider)
+{
+	if ( slider->isHighlighted() )
+	{
+		players[player]->GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_FEATHER);
+		if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_FEATHER )
+		{
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_FEATHER);
+		}
+		SDL_Rect pos = slider->getAbsoluteSize();
+		// make sure to adjust absolute size to camera viewport
+		pos.x -= players[player]->camera_virtualx1();
+		pos.y -= players[player]->camera_virtualy1();
+		players[player]->hud.setCursorDisabled(false);
+		players[player]->hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player)->draw_cursor);
+	}
+}
+
 void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 {
 	const int playernum = parentGUI.getPlayer();
@@ -17651,6 +21702,10 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		players[playernum]->camera_virtualHeight() });
 
 	bool bFeatherDrawerOpen = isInscriptionDrawerOpen();
+	if ( !bFeatherDrawerOpen )
+	{
+		drawerJustifyInverted = false;
+	}
 
 	if ( !featherFrame->isDisabled() && bOpen )
 	{
@@ -17659,7 +21714,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 			createFeatherMenu();
 		}
 
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
 		animx += setpointDiffX;
 		animx = std::min(1.0, animx);
@@ -17716,19 +21771,20 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		&& bDrawerOpen;
 	if ( !usingScribingMenu )
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animFilter)) / 2.0;
 		animFilter += setpointDiffX;
 		animFilter = std::min(1.0, animFilter);
 	}
 	else
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (animFilter)) / 2.0;
 		animFilter -= setpointDiffX;
 		animFilter = std::max(0.0, animFilter);
 	}
 
+	bool reversed = false;
 	auto featherFramePos = featherFrame->getSize();
 	if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT )
 	{
@@ -17747,7 +21803,15 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		}
 		else
 		{
-			featherFramePos.x = player->camera_virtualWidth() - animx * featherFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = featherFramePos.w + 210/* + (40 * (1.0 - animFilter))*/; // inventory width 210
+				featherFramePos.x = -featherFramePos.w + animx * fullWidth;
+			}
+			else
+			{
+				featherFramePos.x = player->camera_virtualWidth() - animx * featherFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -17760,10 +21824,11 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 	}
 	else if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_RIGHT )
 	{
+		reversed = true;
 		if ( !player->inventoryUI.bCompactView )
 		{
 			const int fullWidth = featherFramePos.w + 210 /*+ (40 * (1.0 - animFilter))*/; // inventory width 210
-			featherFramePos.x = player->camera_virtualWidth() - animx * fullWidth * 2;
+			featherFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -17775,7 +21840,15 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		}
 		else
 		{
-			featherFramePos.x = -featherFramePos.w + animx * featherFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = featherFramePos.w + 210 /*+ (40 * (1.0 - animFilter))*/; // inventory width 210
+				featherFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			}
+			else
+			{
+				featherFramePos.x = -featherFramePos.w + animx * featherFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -17786,9 +21859,10 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 			}
 		}
 	}
+	drawerJustifyInverted = reversed;
 
 	int heightOffsetCompact = 0;
-	if ( !player->bUseCompactGUIHeight() )
+	if ( !player->bUseCompactGUIHeight() && !player->bUseCompactGUIWidth() )
 	{
 		featherFramePos.y = heightOffsetWhenNotCompact;
 	}
@@ -17821,9 +21895,17 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 	{
 		drawerFrame->setDisabled(!bFeatherDrawerOpen);
 		SDL_Rect drawerFramePos = drawerFrame->getSize();
-		const int widthDifference = animDrawer * (drawerFramePos.w - 2/* - 8*/);
-		drawerFramePos.x = 0;
-		if ( !player->bUseCompactGUIHeight() )
+		const int widthDifference = animDrawer * (drawerFramePos.w - (drawerJustifyInverted ? 0 : 6)/* - 8*/);
+		if ( drawerJustifyInverted )
+		{
+			drawerFramePos.x = baseFramePos.x + baseFramePos.w + animDrawer * (drawerFramePos.w - 4) - (drawerFramePos.w);
+		}
+		else
+		{
+			drawerFramePos.x = 0;
+		}
+
+		if ( !player->bUseCompactGUIHeight() && !player->bUseCompactGUIWidth() )
 		{
 			drawerFramePos.y = 54;
 		}
@@ -17833,7 +21915,10 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		}
 		drawerFrame->setSize(drawerFramePos);
 
-		featherFramePos.x -= widthDifference;
+		if ( !drawerJustifyInverted )
+		{
+			featherFramePos.x -= widthDifference;
+		}
 		int adjustx = 0;
 		if ( featherFramePos.x < 0 )
 		{
@@ -17843,8 +21928,10 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		featherFramePos.w += (widthDifference);
 		featherFramePos.h = std::max(drawerFramePos.y + drawerFramePos.h, baseFramePos.y + baseFramePos.h);
 		featherFrame->setSize(featherFramePos);
-
-		baseFramePos.x = featherFramePos.w - baseFramePos.w;
+		if ( !drawerJustifyInverted )
+		{
+			baseFramePos.x = featherFramePos.w - baseFramePos.w;
+		}
 		baseFrame->setSize(baseFramePos);
 	}
 
@@ -17866,7 +21953,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 
 	if ( player->entity && player->entity->isBlind() )
 	{
-		messagePlayer(playernum, MESSAGE_MISC, language[4159]);
+		messagePlayer(playernum, MESSAGE_MISC, Language::get(4159));
 		parentGUI.closeGUI();
 		return; // I can't see!
 	}
@@ -17934,7 +22021,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		skillIcon->pos.y = 76 + heightOffsetCompact;
 		for ( auto& skill : Player::SkillSheet_t::skillSheetData.skillEntries )
 		{
-			if ( skill.skillId == PRO_MAGIC )
+			if ( skill.skillId == PRO_SORCERY )
 			{
 				if ( skillCapstoneUnlocked(playernum, skill.skillId) )
 				{
@@ -17963,7 +22050,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 	{
 		// shaking feedback for invalid action
 		// constant decay for animation
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * 1.0 / 25.0;
 		animInvalidAction -= setpointDiffX;
 		animInvalidAction = std::max(0.0, animInvalidAction);
@@ -17975,14 +22062,18 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 	}
 
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.1, (animQtyChange)) / 10.0;
 		animQtyChange -= setpointDiffX;
 		animQtyChange = std::max(0.0, animQtyChange);
 	}
 
 	// held qtys
-	int currentCharge = parentGUI.scribingToolItem->appearance % ENCHANTED_FEATHER_MAX_DURABILITY;
+	int currentCharge = 0;
+	if ( parentGUI.scribingToolItem )
+	{
+		currentCharge = parentGUI.scribingToolItem->appearance % ENCHANTED_FEATHER_MAX_DURABILITY;
+	}
 	auto currentChargeText = baseFrame->findField("current charge txt");
 	auto changeChargeText = baseFrame->findField("change charge txt");
 	{
@@ -18010,7 +22101,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		currentChargeTxtPos.y = currentChargeTextPos.y;
 		currentChargeTxtPos.h = 24;
 		currentChargeLabel->setSize(currentChargeTxtPos);
-		currentChargeLabel->setText(language[4192]);
+		currentChargeLabel->setText(Language::get(4192));
 		if ( invalidActionType == INVALID_ACTION_NO_CHARGE )
 		{
 			currentChargeTextPos.x += -2 + 2 * (cos(animInvalidAction * 4 * PI));
@@ -18061,7 +22152,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		filterBtn->setBackground("*#images/ui/Feather/Feather_Tab_Inscribe_Unselected_01.png");
 		Field* filterTxt = baseFrame->findField("filter inscribe txt");
 		filterTxt->setDisabled(false);
-		filterTxt->setText(language[3718]);
+		filterTxt->setText(Language::get(3718));
 		filterTxt->setColor(inactiveColor);
 		if ( false && filterBtn->isHighlighted() )
 		{
@@ -18109,7 +22200,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		filterBtn->setBackground("*#images/ui/Feather/Feather_Tab_Repair_Unselected_01.png");
 		filterTxt = baseFrame->findField("filter repair txt");
 		filterTxt->setDisabled(false);
-		filterTxt->setText(language[3719]);
+		filterTxt->setText(Language::get(3719));
 		filterTxt->setColor(inactiveColor);
 		if ( false && filterBtn->isHighlighted() )
 		{
@@ -18272,7 +22363,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		modifierPressed = true;
 	}
 	else if ( inputs.bPlayerUsingKeyboardControl(playernum)
-		&& (keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT]) )
+		&& (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT]) )
 	{
 		modifierPressed = true;
 	}
@@ -18284,7 +22375,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 	{
 		if ( isInteractable )
 		{
-			//const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			//real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
 			//animTooltip += setpointDiffX;
 			//animTooltip = std::min(1.0, animTooltip);
@@ -18321,7 +22412,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 						if ( auto frame = getFeatherSlotFrame(0, index) )
 						{
 							auto bodyTxt = frame->findField("body");
-							snprintf(buf, sizeof(buf), language[4191], bodyTxt->getText());
+							snprintf(buf, sizeof(buf), Language::get(4191), bodyTxt->getText());
 						}
 						break;
 					}
@@ -18347,7 +22438,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 					actionPromptImg->path = Input::inputs[playernum].getGlyphPathForBinding("MenuRightClick");
 					if ( modifierPressed )
 					{
-						actionModifierImg->path = GlyphHelper.getGlyphPath(SDL_SCANCODE_LSHIFT, false);
+						actionModifierImg->path = GlyphHelper.getGlyphPath(SDLK_LSHIFT, false);
 					}
 				}
 				if ( auto imgGet = Image::get(actionPromptImg->path.c_str()) )
@@ -18373,7 +22464,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 				{
 					if ( !parentGUI.scribingBlankScrollTarget )
 					{
-						actionPromptTxt->setText(language[4185]);
+						actionPromptTxt->setText(Language::get(4185));
 					}
 					else
 					{
@@ -18388,15 +22479,15 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 							char buf[128];
 							if ( itemActionType == FEATHER_ACTION_MAY_SUCCEED )
 							{
-								snprintf(buf, sizeof(buf), language[4188]);
+								snprintf(buf, sizeof(buf), Language::get(4188));
 							}
 							else if ( itemActionType == FEATHER_ACTION_OK_AND_DESTROY )
 							{
-								snprintf(buf, sizeof(buf), language[4189]);
+								snprintf(buf, sizeof(buf), Language::get(4189));
 							}
 							else
 							{
-								snprintf(buf, sizeof(buf), language[4184]);
+								snprintf(buf, sizeof(buf), Language::get(4184));
 							}
 							actionPromptTxt->setText(buf);
 						}
@@ -18404,7 +22495,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 				}
 				else if ( parentGUI.scribingFilter == GenericGUIMenu::SCRIBING_FILTER_REPAIRABLE )
 				{
-					actionPromptTxt->setText(language[3646]);
+					actionPromptTxt->setText(Language::get(3646));
 				}
 				else
 				{
@@ -18425,17 +22516,17 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 					switch ( itemActionType )
 					{
 						case FEATHER_ACTION_FULLY_REPAIRED:
-							actionPromptTxt->setText(language[4136]);
+							actionPromptTxt->setText(Language::get(4136));
 							break;
 						case FEATHER_ACTION_UNIDENTIFIED:
-							actionPromptTxt->setText(language[4153]);
+							actionPromptTxt->setText(Language::get(4153));
 							break;
 						case FEATHER_ACTION_CANT_AFFORD:
-							actionPromptTxt->setText(language[4186]);
+							actionPromptTxt->setText(Language::get(4186));
 							break;
 						case FEATHER_ACTION_NO_BLANK_SCROLL:
 						case FEATHER_ACTION_NO_BLANK_SCROLL_UNKNOWN_HIGHLIGHT:
-							actionPromptTxt->setText(language[4190]);
+							actionPromptTxt->setText(Language::get(4190));
 							break;
 						default:
 							actionPromptTxt->setText("-");
@@ -18542,7 +22633,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 			|| (usingGamepad && !bFeatherDrawerOpen)
 			|| animTooltip < 0.9999 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animTooltip)) / 2.0;
 			animTooltip -= setpointDiffX;
 			animTooltip = std::max(0.0, animTooltip);
@@ -18552,7 +22643,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 	if ( parentGUI.scribingFilter == SCRIBING_FILTER_CRAFTABLE
 		|| parentGUI.scribingFilter == SCRIBING_FILTER_REPAIRABLE )
 	{
-		costLabel->setText(language[4183]);
+		costLabel->setText(Language::get(4183));
 	}
 
 	auto actionPromptUnselectedTxt = baseFrame->findField("action prompt unselected txt");
@@ -18570,16 +22661,16 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		{
 			if ( bDrawerOpen )
 			{
-				actionPromptUnselectedTxt->setText(language[4187]);
+				actionPromptUnselectedTxt->setText(Language::get(4187));
 			}
 			else
 			{
-				actionPromptUnselectedTxt->setText(language[3720]);
+				actionPromptUnselectedTxt->setText(Language::get(3720));
 			}
 		}
 		else if ( parentGUI.scribingFilter == SCRIBING_FILTER_REPAIRABLE )
 		{
-			actionPromptUnselectedTxt->setText(language[3726]);
+			actionPromptUnselectedTxt->setText(Language::get(3726));
 		}
 
 		{
@@ -18597,7 +22688,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 
 		if ( ticks - animPromptTicks > TICKS_PER_SECOND / 10 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animPrompt)) / 2.0;
 			animPrompt -= setpointDiffX;
 			animPrompt = std::max(0.0, animPrompt);
@@ -18714,10 +22805,12 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 					parentGUI.scribingBlankScrollTarget = nullptr;
 					bDrawerOpen = false;
 					onFeatherChangeTabAction(playernum, true);
+					Player::soundCancel();
 				}
 				else
 				{
 					parentGUI.closeGUI();
+					Player::soundCancel();
 					return;
 				}
 			}
@@ -18742,6 +22835,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 						animPromptMoveLeft = false;
 					}
 					Input::inputs[playernum].consumeBinaryToggle("MenuPageRight");
+					Player::soundModuleNavigation();
 				}
 				else if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuPageLeft") )
 				{
@@ -18752,6 +22846,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 						animPromptMoveLeft = true;
 					}
 					Input::inputs[playernum].consumeBinaryToggle("MenuPageLeft");
+					Player::soundModuleNavigation();
 				}
 				else if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuAlt2") )
 				{
@@ -18768,6 +22863,7 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 					{
 						changeSortingType(SortTypes_t::SORT_SCROLL_DEFAULT);
 					}
+					Player::soundActivate();
 				}
 			}
 		}
@@ -18878,17 +22974,17 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		auto sortGlyph = drawerFrame->findImage("sort glyph");
 		if ( sortType == SortTypes_t::SORT_SCROLL_DEFAULT )
 		{
-			sortBtn->setText(language[4194]);
+			sortBtn->setText(Language::get(4194));
 		}
 		else if ( sortType == SortTypes_t::SORT_SCROLL_DISCOVERED )
 		{
-			sortBtn->setText(language[4195]);
+			sortBtn->setText(Language::get(4195));
 		}
 		else if ( sortType == SortTypes_t::SORT_SCROLL_UNKNOWN )
 		{
-			sortBtn->setText(language[4196]);
+			sortBtn->setText(Language::get(4196));
 		}
-		sortTxt->setText(language[4193]);
+		sortTxt->setText(Language::get(4193));
 		sortGlyph->disabled = true;
 		sortBtn->setDisabled(true);
 		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
@@ -19053,15 +23149,19 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 		if ( abs(scrollSetpoint - scrollAnimateX) > 0.00001 )
 		{
 			isInteractable = false;
-			const real_t fpsScale = (60.f / std::max(1U, fpsLimit));
+			const real_t fpsScale = getFPSScale(60.0);
 			real_t setpointDiff = 0.0;
+
+			// slightly faster on gamepad
+			static ConsoleVariable<float> cvar_feather_slider_speed("/feather_slider_speed", 1.f);
+			const real_t factor = (3.0 * (*cvar_feather_slider_speed + (usingGamepad ? -.25f : 0.f)));
 			if ( scrollSetpoint - scrollAnimateX > 0.0 )
 			{
-				setpointDiff = fpsScale * std::max(3.0, (scrollSetpoint - scrollAnimateX)) / 3.0;
+				setpointDiff = fpsScale * std::max(3.0, (scrollSetpoint - scrollAnimateX)) / (factor);
 			}
 			else
 			{
-				setpointDiff = fpsScale * std::min(-3.0, (scrollSetpoint - scrollAnimateX)) / 3.0;
+				setpointDiff = fpsScale * std::min(-3.0, (scrollSetpoint - scrollAnimateX)) / (factor);
 			}
 			scrollAnimateX += setpointDiff;
 			if ( setpointDiff > 0.0 )
@@ -19081,7 +23181,24 @@ void GenericGUIMenu::FeatherGUI_t::updateFeatherMenu()
 
 	if ( scrollAmount > 0 )
 	{
-		slider->setValue((scrollAnimateX / scrollAmount) * 100.0);
+		if ( !slider->isDisabled() && !usingGamepad )
+		{
+			sliderFeatherUpdateSelectorOnHighlight(playernum, slider);
+		}
+		if ( slider->isCurrentlyPressed() )
+		{
+			auto val = slider->getValue() / 100.0;
+			int animX = val * scrollAmount;
+			animX /= inscriptionSlotHeight;
+			animX *= inscriptionSlotHeight;
+
+			scrollSetpoint = animX;
+			scrollSetpoint = std::min(scrollSetpoint, scrollAmount);
+		}
+		else
+		{
+			slider->setValue((scrollAnimateX / scrollAmount) * 100.0);
+		}
 	}
 	else
 	{
@@ -19182,7 +23299,7 @@ void GenericGUIMenu::FeatherGUI_t::createFeatherMenu()
 		slider->setMinValue(0);
 		slider->setMaxValue(100);
 		slider->setValue(0);
-		SDL_Rect sliderPos{ featherDrawerWidth - 24, 50, 20, drawerPos.h - 44 - 50 };
+		SDL_Rect sliderPos{ featherDrawerWidth - 28, 50, 20, drawerPos.h - 44 - 50 };
 		slider->setRailSize(sliderPos);
 		slider->setHandleSize(SDL_Rect{ 0, 0, 20, 28 });
 		slider->setOrientation(Slider::SLIDER_VERTICAL);
@@ -19243,11 +23360,12 @@ void GenericGUIMenu::FeatherGUI_t::createFeatherMenu()
 				{
 					GenericGUI[button.getOwner()].featherGUI.changeSortingType(SortTypes_t::SORT_SCROLL_DEFAULT);
 				}
+				Player::soundActivate();
 			});
 			sortBtn->setTickCallback(genericgui_deselect_fn);
 
 			auto closeBtn = drawerFrame->addButton("close drawer button");
-			SDL_Rect closeBtnPos{ drawerPos.w - 0 - 28, 4, 26, 26 };
+			SDL_Rect closeBtnPos{ drawerPos.w - 32, 4, 26, 26 };
 			closeBtn->setSize(closeBtnPos);
 			closeBtn->setColor(makeColor(255, 255, 255, 255));
 			closeBtn->setHighlightColor(makeColor(255, 255, 255, 255));
@@ -19265,6 +23383,7 @@ void GenericGUIMenu::FeatherGUI_t::createFeatherMenu()
 				GenericGUI[button.getOwner()].scribingBlankScrollTarget = nullptr;
 				GenericGUI[button.getOwner()].featherGUI.bDrawerOpen = false;
 				onFeatherChangeTabAction(button.getOwner(), true);
+				Player::soundCancel();
 			});
 			closeBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -19387,6 +23506,7 @@ void GenericGUIMenu::FeatherGUI_t::createFeatherMenu()
 			closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
 			closeBtn->setCallback([](Button& button) {
 				GenericGUI[button.getOwner()].closeGUI();
+				Player::soundCancel();
 			});
 			closeBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -19463,6 +23583,10 @@ void GenericGUIMenu::FeatherGUI_t::createFeatherMenu()
 				GenericGUI[button.getOwner()].scribingFilter = GenericGUIMenu::SCRIBING_FILTER_CRAFTABLE;
 				onFeatherChangeTabAction(button.getOwner(), changeToDifferentTab);
 				GenericGUI[button.getOwner()].featherGUI.animPromptMoveLeft = true;
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
 			});
 			filterBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -19492,6 +23616,10 @@ void GenericGUIMenu::FeatherGUI_t::createFeatherMenu()
 				GenericGUI[button.getOwner()].scribingFilter = GenericGUIMenu::SCRIBING_FILTER_REPAIRABLE;
 				onFeatherChangeTabAction(button.getOwner(), changeToDifferentTab);
 				GenericGUI[button.getOwner()].featherGUI.animPromptMoveLeft = false;
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
 			});
 			filterBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -20066,13 +24194,376 @@ bool GenericGUIMenu::FeatherGUI_t::isInscribeOrRepairActive() const
 void GenericGUIMenu::ItemEffectGUI_t::clearItemDisplayed()
 {
 	itemType = -1;
+	costEffectGoldAmount = 0;
+	costEffectMPAmount = 0;
 	itemActionType = ITEMFX_ACTION_NONE;
+}
+
+void GenericGUIMenu::ItemEffectGUI_t::getItemEffectCost(Item* itemUsedWith, int& goldCost, int& manaCost)
+{
+	goldCost = 0;
+	manaCost = 0;
+	if ( !itemUsedWith || modeHasCostEffect == COST_EFFECT_NONE )
+	{
+		return;
+	}
+
+	if ( currentMode == ITEMFX_MODE_RESTORE )
+	{
+		if ( parentGUI.isItemRepairable(itemUsedWith, SCROLL_REPAIR) )
+		{
+			goldCost = itemUsedWith->sellValue(-1); // get value without player CHR/trading influence
+			real_t goldRatio = getSpellDamageFromID(SPELL_RESTORE, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			goldRatio = std::max(goldRatio, getSpellEffectDurationSecondaryFromID(SPELL_RESTORE, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0);
+			goldCost = std::max(1, static_cast<int>(goldCost * goldRatio));
+
+			manaCost = itemUsedWith->sellValue(-1); // get value without player CHR/trading influence
+			real_t manaRatio = getSpellEffectDurationFromID(SPELL_RESTORE, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			manaCost *= manaRatio;
+			int minMana = getSpellDamageSecondaryFromID(SPELL_RESTORE, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+			manaCost = std::max(manaCost, minMana);
+		}
+	}
+	else if ( currentMode == ITEMFX_MODE_SANCTIFY_WATER )
+	{
+		if ( parentGUI.isItemBlessWaterable(itemUsedWith) )
+		{
+			manaCost = 2 * itemUsedWith->count;
+			manaCost += 2 * itemUsedWith->count * std::max(0, (int)itemUsedWith->beatitude);
+		}
+	}
+	else if ( currentMode == ITEMFX_MODE_SCROLL_ENCHANT_ARMOR )
+	{
+		goldCost = 75;
+		if ( parentGUI.isItemEnchantArmorable(itemUsedWith) )
+		{
+			int bless = std::max((int)itemUsedWith->beatitude, 0);
+			for ( int i = 0; i < std::min(10, bless); ++i )
+			{
+				goldCost *= 2;
+			}
+		}
+		goldCost = std::min(10000, goldCost);
+	}
+	else if ( currentMode == ITEMFX_MODE_SCROLL_ENCHANT_WEAPON )
+	{
+		goldCost = 75;
+		if ( parentGUI.isItemEnchantWeaponable(itemUsedWith) )
+		{
+			int bless = std::max((int)itemUsedWith->beatitude, 0);
+			for ( int i = 0; i < std::min(10, bless); ++i )
+			{
+				goldCost *= 2;
+			}
+		}
+		goldCost = std::min(10000, goldCost);
+	}
+	else if ( parentGUI.isItemAlterable(itemUsedWith) )
+	{
+		if ( currentMode == ITEMFX_MODE_ALTER_INSTRUMENT )
+		{
+			goldCost = getSpellDamageFromID(SPELL_ALTER_INSTRUMENT, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+			goldCost = std::max(goldCost, getSpellDamageSecondaryFromID(SPELL_ALTER_INSTRUMENT, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity));
+			manaCost = 15;
+		}
+		else if ( currentMode == ITEMFX_MODE_METALLURGY )
+		{
+			int maxGold = itemUsedWith->sellValue(-1); // get value without player CHR/trading influence
+			real_t ratio = getSpellDamageFromID(SPELL_METALLURGY, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			ratio = std::min(ratio, 1.0);
+			goldCost = -(maxGold * ratio);
+			real_t minMana = getSpellDamageSecondaryFromID(SPELL_METALLURGY, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+			manaCost = std::max(minMana, (maxGold * ratio) / 20.0);
+		}
+		else if ( currentMode == ITEMFX_MODE_GEOMANCY )
+		{
+			int maxGold = itemUsedWith->sellValue(-1); // get value without player CHR/trading influence
+			real_t ratio = getSpellDamageFromID(SPELL_GEOMANCY, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			ratio = std::min(ratio, 1.0);
+			goldCost = -(maxGold * ratio);
+			real_t minMana = getSpellDamageSecondaryFromID(SPELL_GEOMANCY, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+			manaCost = std::max(minMana, (maxGold * ratio) / 20.0);
+		}
+		else if ( currentMode == ITEMFX_MODE_VANDALISE )
+		{
+			manaCost = std::max(20, itemUsedWith->getGoldValue() / 100);
+			goldCost = -itemUsedWith->sellValue(parentGUI.gui_player) / 20;
+		}
+		else if ( currentMode == ITEMFX_MODE_FORGE_KEY )
+		{
+			manaCost = 15;
+			goldCost = 100;
+			//if ( itemUsedWith->type == KEY_IRON )
+			//{
+			//	goldCost = 100;
+			//}
+			//else if ( itemUsedWith->type == KEY_BRONZE )
+			//{
+			//	goldCost = 300;
+			//	manaCost = 25;
+			//}
+			//else if ( itemUsedWith->type == KEY_SILVER )
+			//{
+			//	goldCost = 900;
+			//	manaCost = 40;
+			//}
+			///*else if ( itemUsedWith->type == KEY_GOLD )
+			//{
+			//	goldCost = 1200;
+			//}*/
+			//else if ( (itemCategory(itemUsedWith) == GEM && itemUsedWith->type != GEM_ROCK && itemUsedWith->type != GEM_LUCK /*&& itemUsedWith->type != GEM_GLASS*/) )
+			//{
+			//	goldCost = 300;
+			//}
+
+			int result = parentGUI.getAlterItemResultAtCycle(itemUsedWith);
+			if ( result >= 0 )
+			{
+				int inputValue = 0;
+				if ( itemUsedWith->type == KEY_IRON )
+				{
+					inputValue = 300;
+				}
+				else if ( itemUsedWith->type == KEY_BRONZE )
+				{
+					inputValue = 450;
+				}
+				else if ( itemUsedWith->type == KEY_SILVER )
+				{
+					inputValue = 700;
+				}
+				else if ( itemUsedWith->type == KEY_GOLD )
+				{
+					inputValue = 1500;
+				}
+				else if ( itemCategory(itemUsedWith) == GEM )
+				{
+					inputValue = itemUsedWith->getGoldValue();
+				}
+				inputValue /= 4;
+
+				if ( result == KEY_IRON )
+				{
+					manaCost = 10;
+					goldCost = 300;
+					goldCost = std::max(goldCost / 2, goldCost - inputValue);
+				}
+				else if ( result == KEY_BRONZE )
+				{
+					manaCost = 20;
+					goldCost = 450;
+					goldCost = std::max(goldCost / 2, goldCost - inputValue);
+				}
+				else if ( result == KEY_SILVER )
+				{
+					manaCost = 30;
+					goldCost = 700;
+					goldCost = std::max(goldCost / 2, goldCost - inputValue);
+				}
+				else if ( result == KEY_GOLD )
+				{
+					manaCost = 50;
+					goldCost = 1500;
+					goldCost = std::max(goldCost / 2, goldCost - inputValue);
+				}
+			}
+
+			real_t ratio = getSpellDamageFromID(SPELL_FORGE_KEY, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			real_t minRatio = getSpellDamageSecondaryFromID(SPELL_FORGE_KEY, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			goldCost *= std::max(minRatio, ratio);
+		}
+		else if ( currentMode == ITEMFX_MODE_FORGE_JEWEL )
+		{
+			manaCost = 30;
+			if ( (itemCategory(itemUsedWith) == GEM 
+				&& itemUsedWith->type != GEM_ROCK 
+				&& itemUsedWith->type != GEM_LUCK 
+				/*&& itemUsedWith->type != GEM_GLASS*/)
+				&& !(itemUsedWith->type == GEM_JEWEL && itemUsedWith->status == EXCELLENT) )
+			{
+				int value = itemUsedWith->getGoldValue();
+				if ( value < 250 )
+				{
+					manaCost = 20;
+					goldCost = std::max(100, 250 - value);
+				}
+				else if ( value < 500 )
+				{
+					manaCost = 25;
+					goldCost = std::max(100, 500 - value);
+				}
+				else if ( value < 1000 )
+				{
+					manaCost = 30;
+					goldCost = std::max(100, 1000 - value);
+				}
+				else if ( value >= 1000 )
+				{
+					manaCost = 40;
+					goldCost = std::max(100, 2000 - value);
+				}
+			}
+
+			real_t ratio = getSpellDamageFromID(SPELL_FORGE_JEWEL, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			real_t minRatio = getSpellDamageSecondaryFromID(SPELL_FORGE_JEWEL, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			goldCost *= std::max(minRatio, ratio);
+		}
+		else if ( currentMode == ITEMFX_MODE_ENHANCE_WEAPON )
+		{
+			int skillTier = 0;
+			int skillLVL = 0;
+			if ( spell_t* spell = getSpellFromID(SPELL_ENHANCE_WEAPON) )
+			{
+				skillLVL = stats[parentGUI.gui_player]->getModifiedProficiency(spell->skillID)
+					+ statGetINT(stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+				skillTier = std::max(0, (skillLVL - spell->difficulty)) / 20;
+			}
+
+			int noSkillPenalty = 0;
+			if ( itemUsedWith->type == BRONZE_AXE
+				|| itemUsedWith->type == BRONZE_MACE
+				|| itemUsedWith->type == BRONZE_SWORD
+				|| itemUsedWith->type == BRONZE_TOMAHAWK )
+			{
+				goldCost = 200;
+			}
+			else if ( itemUsedWith->type == IRON_AXE
+				|| itemUsedWith->type == IRON_MACE
+				|| itemUsedWith->type == IRON_SWORD
+				|| itemUsedWith->type == IRON_SPEAR
+				|| itemUsedWith->type == IRON_DAGGER )
+			{
+				goldCost = 400;
+				if ( skillTier < 1 )
+				{
+					noSkillPenalty += 1000000; // denotes no skill lvl
+				}
+			}
+			else if ( itemUsedWith->type == STEEL_AXE
+				|| itemUsedWith->type == STEEL_MACE
+				|| itemUsedWith->type == STEEL_SWORD
+				|| itemUsedWith->type == STEEL_HALBERD
+				|| itemUsedWith->type == STEEL_CHAKRAM )
+			{
+				goldCost = 1600;
+				if ( skillTier < 2 )
+				{
+					noSkillPenalty += 1000000; // denotes no skill lvl
+				}
+			}
+			noSkillPenalty = 0;
+			real_t ratio = getSpellDamageFromID(SPELL_ENHANCE_WEAPON, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			real_t minRatio = getSpellDamageSecondaryFromID(SPELL_ENHANCE_WEAPON, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			goldCost *= std::max(minRatio, ratio);
+			goldCost += noSkillPenalty;
+			manaCost = 10;
+		}
+		else if ( currentMode == ITEMFX_MODE_RESHAPE_WEAPON )
+		{
+			int skillTier = 0;
+			int skillLVL = 0;
+			if ( spell_t* spell = getSpellFromID(SPELL_RESHAPE_WEAPON) )
+			{
+				skillLVL = stats[parentGUI.gui_player]->getModifiedProficiency(spell->skillID)
+					+ statGetINT(stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+				skillTier = std::max(0, (skillLVL - spell->difficulty)) / 20;
+			}
+
+			int noSkillPenalty = 0;
+			if ( itemUsedWith->type == BRONZE_AXE
+				|| itemUsedWith->type == BRONZE_MACE
+				|| itemUsedWith->type == BRONZE_SWORD )
+			{
+				goldCost = 100;
+			}
+			else if ( itemUsedWith->type == IRON_AXE
+				|| itemUsedWith->type == IRON_MACE
+				|| itemUsedWith->type == IRON_SWORD
+				|| itemUsedWith->type == IRON_SPEAR )
+			{
+				goldCost = 200;
+				if ( skillTier < 1 )
+				{
+					noSkillPenalty += 1000000; // denotes no skill lvl
+				}
+			}
+			else if ( itemUsedWith->type == STEEL_AXE
+				|| itemUsedWith->type == STEEL_MACE
+				|| itemUsedWith->type == STEEL_SWORD
+				|| itemUsedWith->type == STEEL_HALBERD )
+			{
+				goldCost = 300;
+				if ( skillTier < 2 )
+				{
+					noSkillPenalty += 1000000; // denotes no skill lvl
+				}
+			}
+			else if ( itemUsedWith->type == CRYSTAL_BATTLEAXE
+				|| itemUsedWith->type == CRYSTAL_MACE
+				|| itemUsedWith->type == CRYSTAL_SWORD
+				|| itemUsedWith->type == CRYSTAL_SPEAR )
+			{
+				goldCost = 400;
+				if ( skillTier < 3 )
+				{
+					noSkillPenalty += 1000000; // denotes no skill lvl
+				}
+			}
+			noSkillPenalty = 0;
+			real_t ratio = getSpellDamageFromID(SPELL_RESHAPE_WEAPON, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			real_t minRatio = getSpellDamageSecondaryFromID(SPELL_RESHAPE_WEAPON, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			goldCost *= std::max(minRatio, ratio);
+			goldCost += noSkillPenalty;
+			manaCost = 10;
+		}
+		else if ( currentMode == ITEMFX_MODE_ALTER_ARROW )
+		{
+			if ( itemTypeIsQuiver(itemUsedWith->type) || itemCategory(itemUsedWith) == GEM )
+			{
+				int result = parentGUI.getAlterItemResultAtCycle(itemUsedWith);
+				if ( result >= 0 )
+				{
+					ItemType prevType = itemUsedWith->type;
+					itemUsedWith->type = (ItemType)(result);
+					goldCost = 100 + itemUsedWith->sellValue(-1);
+					itemUsedWith->type = prevType;
+				}
+			}
+			real_t ratio = getSpellDamageFromID(SPELL_ALTER_ARROW, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			real_t minRatio = getSpellDamageSecondaryFromID(SPELL_ALTER_ARROW, players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity) / 100.0;
+			goldCost *= std::max(minRatio, ratio);
+			manaCost = 5 + itemUsedWith->count / 10;
+		}
+		
+		if ( modeHasTransmuteMenu() && parentGUI.transmuteItemTarget != itemUsedWith )
+		{
+			goldCost = 0;
+			manaCost = 0;
+		}
+	}
+}
+
+bool GenericGUIMenu::ItemEffectGUI_t::modeHasTransmuteMenu()
+{
+	if ( currentMode == ITEMFX_MODE_ALTER_ARROW
+		|| currentMode == ITEMFX_MODE_ALTER_INSTRUMENT
+		|| currentMode == ITEMFX_MODE_RESHAPE_WEAPON
+		|| currentMode == ITEMFX_MODE_FORGE_KEY )
+	{
+		return true;
+	}
+
+	return false;
 }
 
 GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectGUI_t::setItemDisplayNameAndPrice(Item* item, bool checkResultOnly)
 {
 	auto result = ITEMFX_ACTION_NONE;
-
+	if ( !checkResultOnly )
+	{
+		costEffectMPAmount = 0;
+		costEffectGoldAmount = 0;
+	}
 	if ( item )
 	{
 		if ( currentMode == ITEMFX_MODE_SCROLL_IDENTIFY 
@@ -20128,6 +24619,31 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 					result = ITEMFX_ACTION_ITEM_FULLY_CHARGED;
 				}
 			}
+			else if ( item->type == MAGICSTAFF_SCEPTER )
+			{
+				if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX < (MAGICSTAFF_SCEPTER_CHARGE_MAX - 1) )
+				{
+					if ( itemIsEquipped(item, parentGUI.gui_player) )
+					{
+						result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+				else
+				{
+					if ( item->status == EXCELLENT )
+					{
+						result = ITEMFX_ACTION_ITEM_FULLY_CHARGED;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+			}
 			else if ( itemCategory(item) == MAGICSTAFF )
 			{
 				if ( item->status == EXCELLENT )
@@ -20144,73 +24660,386 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 				result = ITEMFX_ACTION_INVALID_ITEM;
 			}
 		}
-		else if ( currentMode == ITEMFX_MODE_SCROLL_REPAIR )
+		else if ( currentMode == ITEMFX_MODE_SCROLL_ENCHANT_ARMOR )
 		{
 			if ( itemCategory(item) == SPELL_CAT )
 			{
 				result = ITEMFX_ACTION_INVALID_ITEM;
 			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				int goldCost = 0;
+				int manaCost = 0;
+				getItemEffectCost(item, goldCost, manaCost);
+
+				if ( !checkResultOnly )
+				{
+					costEffectGoldAmount = goldCost;
+					costEffectMPAmount = manaCost;
+				}
+
+				if ( parentGUI.isItemEnchantArmorable(item) )
+				{
+					if ( goldCost > 0 && goldCost > stats[parentGUI.gui_player]->GOLD )
+					{
+						result = ITEMFX_ACTION_CANT_AFFORD_GOLD;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_SCROLL_ENCHANT_WEAPON )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				int goldCost = 0;
+				int manaCost = 0;
+				getItemEffectCost(item, goldCost, manaCost);
+
+				if ( !checkResultOnly )
+				{
+					costEffectGoldAmount = goldCost;
+					costEffectMPAmount = manaCost;
+				}
+
+				if ( parentGUI.isItemEnchantWeaponable(item) )
+				{
+					if ( goldCost > 0 && goldCost > stats[parentGUI.gui_player]->GOLD )
+					{
+						result = ITEMFX_ACTION_CANT_AFFORD_GOLD;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_ALTER_INSTRUMENT
+			|| currentMode == ITEMFX_MODE_METALLURGY
+			|| currentMode == ITEMFX_MODE_GEOMANCY
+			|| currentMode == ITEMFX_MODE_FORGE_KEY
+			|| currentMode == ITEMFX_MODE_FORGE_JEWEL
+			|| currentMode == ITEMFX_MODE_ENHANCE_WEAPON
+			|| currentMode == ITEMFX_MODE_RESHAPE_WEAPON
+			|| currentMode == ITEMFX_MODE_ALTER_ARROW
+			|| currentMode == ITEMFX_MODE_VANDALISE )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				int goldCost = 0;
+				int manaCost = 0;
+				getItemEffectCost(item, goldCost, manaCost);
+
+				bool lowSkill = false;
+				if ( goldCost >= 1000000 )
+				{
+					lowSkill = true;
+					goldCost = goldCost % 1000000;
+				}
+
+				if ( !checkResultOnly )
+				{
+					costEffectGoldAmount = goldCost;
+					costEffectMPAmount = manaCost;
+				}
+
+				if ( parentGUI.isItemAlterable(item) )
+				{
+					if ( (currentMode == ITEMFX_MODE_RESHAPE_WEAPON || currentMode == ITEMFX_MODE_ENHANCE_WEAPON)
+						&& lowSkill )
+					{
+						result = ITEMFX_ACTION_NEED_SKILL_LVLS;
+					}
+					else if ( goldCost > 0 && goldCost > stats[parentGUI.gui_player]->GOLD )
+					{
+						result = ITEMFX_ACTION_CANT_AFFORD_GOLD;
+					}
+					else if ( manaCost > 0 && manaCost > stats[parentGUI.gui_player]->MP && stats[parentGUI.gui_player]->type != VAMPIRE )
+					{
+						result = ITEMFX_ACTION_CANT_AFFORD_MANA;
+					}
+					else if ( itemIsEquipped(item, parentGUI.gui_player) )
+					{
+						result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_PUNCTURE_VOID )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				if ( !parentGUI.isItemVoidable(item) )
+				{
+					result = ITEMFX_ACTION_UNVOIDABLE;
+				}
+				else if ( itemIsEquipped(item, parentGUI.gui_player) )
+				{
+					result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
+				}
+				else
+				{
+					result = ITEMFX_ACTION_OK;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_SANCTIFY_WATER )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				if ( parentGUI.isItemBlessWaterable(item) )
+				{
+					int goldCost = 0;
+					int manaCost = 0;
+					getItemEffectCost(item, goldCost, manaCost);
+					if ( !checkResultOnly )
+					{
+						costEffectGoldAmount = goldCost;
+						costEffectMPAmount = manaCost;
+					}
+
+					if ( manaCost > 0 && manaCost > stats[parentGUI.gui_player]->MP && stats[parentGUI.gui_player]->type != VAMPIRE )
+					{
+						result = ITEMFX_ACTION_CANT_AFFORD_MANA;
+					}
+					if ( itemIsEquipped(item, parentGUI.gui_player) )
+					{
+						result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_CLEANSE_FOOD )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				if ( parentGUI.isItemCleaseFoodable(item) )
+				{
+					/*if ( item->status == EXCELLENT && item->beatitude >= 1 )
+					{
+						result = ITEMFX_ACTION_AT_MAX_BLESSING;
+					}
+					else */
+					if ( itemIsEquipped(item, parentGUI.gui_player) )
+					{
+						result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_SANCTIFY )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				if ( parentGUI.isItemSanctifiable(item) )
+				{
+					result = ITEMFX_ACTION_OK;
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_DESECRATE )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				if ( parentGUI.isItemDesecratable(item) )
+				{
+					result = ITEMFX_ACTION_OK;
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_ADORCISE_WEAPON 
+			|| currentMode == ITEMFX_MODE_ADORCISE_INSTRUMENT )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				if ( !parentGUI.isItemAdorcisable(item) )
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+				else if ( itemIsEquipped(item, parentGUI.gui_player) )
+				{
+					result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
+				}
+				else
+				{
+					result = ITEMFX_ACTION_OK;
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_SCEPTER_CHARGE )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_OK;
+			}
+			else
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_SCROLL_REPAIR
+			|| currentMode == ITEMFX_MODE_RESTORE )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
 			else 
 			{
-				switch ( itemCategory(item) )
+				if ( parentGUI.isItemRepairable(item, SCROLL_REPAIR) )
 				{
-					case WEAPON:
-						result = ITEMFX_ACTION_OK;
-						break;
-					case ARMOR:
-						result = ITEMFX_ACTION_OK;
-						break;
-					case MAGICSTAFF:
-						result = ITEMFX_ACTION_INVALID_ITEM;
-						break;
-					case THROWN:
-						if ( item->type == BOOMERANG )
+					result = ITEMFX_ACTION_OK;
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
+
+				if ( currentMode == ITEMFX_MODE_RESTORE )
+				{
+					if ( result == ITEMFX_ACTION_OK )
+					{
+						int goldCost = 0;
+						int manaCost = 0;
+						getItemEffectCost(item, goldCost, manaCost);
+						if ( !checkResultOnly )
 						{
-							result = ITEMFX_ACTION_OK;
+							costEffectGoldAmount = goldCost;
+							costEffectMPAmount = manaCost;
 						}
-						else
+
+						if ( goldCost > 0 && goldCost > stats[parentGUI.gui_player]->GOLD )
 						{
-							result = ITEMFX_ACTION_INVALID_ITEM;
+							result = ITEMFX_ACTION_CANT_AFFORD_GOLD;
 						}
-						break;
-					case TOOL:
-						switch ( item->type )
+						if ( manaCost > 0 && manaCost > stats[parentGUI.gui_player]->MP && stats[parentGUI.gui_player]->type != VAMPIRE )
 						{
-							case TOOL_TOWEL:
-							case TOOL_MIRROR:
-							case TOOL_SKELETONKEY:
-							case TOOL_TINOPENER:
-							case TOOL_METAL_SCRAP:
-							case TOOL_MAGIC_SCRAP:
-							case TOOL_TINKERING_KIT:
-							case TOOL_SENTRYBOT:
-							case TOOL_DETONATOR_CHARGE:
-							case TOOL_BOMB:
-							case TOOL_SLEEP_BOMB:
-							case TOOL_FREEZE_BOMB:
-							case TOOL_TELEPORT_BOMB:
-							case TOOL_GYROBOT:
-							case TOOL_SPELLBOT:
-							case TOOL_DECOY:
-							case TOOL_DUMMYBOT:
-							case ENCHANTED_FEATHER:
-								result = ITEMFX_ACTION_INVALID_ITEM;
-								break;
-							default:
-								if ( itemTypeIsQuiver(item->type) )
-								{
-									result = ITEMFX_ACTION_INVALID_ITEM;
-								}
-								else
-								{
-									result = ITEMFX_ACTION_OK;
-								}
-								break;
+							if ( result == ITEMFX_ACTION_CANT_AFFORD_GOLD )
+							{
+								result = ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD;
+							}
+							else
+							{
+								result = ITEMFX_ACTION_CANT_AFFORD_MANA;
+							}
 						}
-						break;
-					default:
-						result = ITEMFX_ACTION_INVALID_ITEM;
-						break;
+					}
 				}
 
 				if ( result == ITEMFX_ACTION_OK )
@@ -20233,8 +25062,26 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 	{
 		if ( result != ITEMFX_ACTION_NONE && item )
 		{
+			ItemType prevItemType = item->type;
+			if ( parentGUI.transmuteItemTarget == item )
+			{
+				int result = parentGUI.getAlterItemResultAtCycle(item);
+				if ( result >= 0 )
+				{
+					item->type = (ItemType)(result);
+				}
+			}
+
 			char buf[1024];
-			if ( !item->identified )
+			if ( item->type == SPELL_ITEM )
+			{
+				if ( auto spell = getSpellFromItem(parentGUI.gui_player, item, false) )
+				{
+					snprintf(buf, sizeof(buf), "%s%s",
+						ItemTooltips.adjectives["spell_prefixes"]["spell_of"].c_str(), spell->getSpellName());
+				}
+			}
+			else if ( !item->identified )
 			{
 				snprintf(buf, sizeof(buf), "%s %s (?)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName());
 			}
@@ -20259,6 +25106,11 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 					snprintf(buf, sizeof(buf), "%s %s %d%% (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
 						item->getName(), item->appearance % ENCHANTED_FEATHER_MAX_DURABILITY, item->beatitude);
 				}
+				else if ( item->type == MAGICSTAFF_SCEPTER && item->identified )
+				{
+					snprintf(buf, sizeof(buf), "%s %s %d%% (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+						item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
+				}
 				else
 				{
 					snprintf(buf, sizeof(buf), "%s %s (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName(), item->beatitude);
@@ -20269,7 +25121,6 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 				itemRequiresTitleReflow = true;
 			}
 			itemDesc = buf;
-			itemType = item->type;
 
 			if ( itemEffectFrame )
 			{
@@ -20282,15 +25133,27 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 					}
 				}
 			}
+
+			itemType = item->type;
+			item->type = prevItemType;
 		}
 		itemActionType = result;
+		if ( itemActionType == ITEMFX_ACTION_OK )
+		{
+			if ( confirmActionOnItemSteps.first != item->uid )
+			{
+				confirmActionOnItemSteps.second = 0;
+			}
+			confirmActionOnItemSteps.first = item->uid;
+		}
 	}
 	return result;
 }
 
 bool GenericGUIMenu::ItemEffectGUI_t::isItemSelectedToEffect(Item* item)
 {
-	if ( !item || itemCategory(item) == SPELL_CAT )
+	if ( !item || (itemCategory(item) == SPELL_CAT && currentMode != ITEMFX_MODE_SCEPTER_CHARGE) 
+		|| (itemCategory(item) != SPELL_CAT && currentMode == ITEMFX_MODE_SCEPTER_CHARGE) )
 	{
 		return false;
 	}
@@ -20300,7 +25163,26 @@ bool GenericGUIMenu::ItemEffectGUI_t::isItemSelectedToEffect(Item* item)
 		return false;
 	}
 
-	if ( players[parentGUI.getPlayer()]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY )
+	if ( players[parentGUI.getPlayer()]->GUI.activeModule == Player::GUI_t::MODULE_SPELLS )
+	{
+		auto& inventoryUI = players[parentGUI.getPlayer()]->inventoryUI;
+		if ( inventoryUI.getSelectedSpellX() >= 0
+			&& inventoryUI.getSelectedSpellX() < inventoryUI.MAX_SPELLS_X
+			&& inventoryUI.getSelectedSpellY() >= 0
+			&& inventoryUI.getSelectedSpellY() < inventoryUI.MAX_SPELLS_Y
+			&& item->x == inventoryUI.getSelectedSpellX() && item->y == inventoryUI.getSelectedSpellY() )
+		{
+			if ( auto slotFrame = inventoryUI.getSpellSlotFrame(item->x, item->y) )
+			{
+				return slotFrame->capturesMouse();
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+	else if ( players[parentGUI.getPlayer()]->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY )
 	{
 		auto& inventoryUI = players[parentGUI.getPlayer()]->inventoryUI;
 		auto& paperDoll = players[parentGUI.getPlayer()]->paperDoll;
@@ -20349,6 +25231,37 @@ void GenericGUIMenu::ItemEffectGUI_t::openItemEffectMenu(GenericGUIMenu::ItemEff
 	auto player = players[playernum];
 
 	currentMode = mode;
+	modeHasCostEffect = COST_EFFECT_NONE;
+	switch ( currentMode )
+	{
+	case ITEMFX_MODE_METALLURGY:
+	case ITEMFX_MODE_GEOMANCY:
+		modeHasCostEffect = COST_EFFECT_MANA_RETURN_GOLD;
+		break;
+	case ITEMFX_MODE_VANDALISE:
+		modeHasCostEffect = COST_EFFECT_MANA_RETURN_GOLD;
+		break;
+	case ITEMFX_MODE_SCROLL_ENCHANT_ARMOR:
+	case ITEMFX_MODE_SCROLL_ENCHANT_WEAPON:
+		modeHasCostEffect = COST_EFFECT_GOLD;
+		break;
+	case ITEMFX_MODE_SANCTIFY_WATER:
+		modeHasCostEffect = COST_EFFECT_MANA;
+		break;
+	case ITEMFX_MODE_FORGE_KEY:
+	case ITEMFX_MODE_FORGE_JEWEL:
+	case ITEMFX_MODE_RESTORE:
+		modeHasCostEffect = COST_EFFECT_MANA_AND_GOLD;
+		break;
+	case ITEMFX_MODE_ENHANCE_WEAPON:
+	case ITEMFX_MODE_ALTER_INSTRUMENT:
+	case ITEMFX_MODE_RESHAPE_WEAPON:
+	case ITEMFX_MODE_ALTER_ARROW:
+		modeHasCostEffect = COST_EFFECT_MANA_AND_GOLD;
+		break;
+	default:
+		break;
+	}
 	if ( itemEffectFrame )
 	{
 		bool wasDisabled = itemEffectFrame->isDisabled();
@@ -20364,6 +25277,10 @@ void GenericGUIMenu::ItemEffectGUI_t::openItemEffectMenu(GenericGUIMenu::ItemEff
 		}
 		player->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
 		player->inventory_mode = INVENTORY_MODE_ITEM;
+		if ( currentMode == ITEMFX_MODE_SCEPTER_CHARGE )
+		{
+			player->inventoryUI.cycleInventoryTab();
+		}
 		bOpen = true;
 	}
 	if ( inputs.getUIInteraction(playernum)->selectedItem )
@@ -20373,6 +25290,10 @@ void GenericGUIMenu::ItemEffectGUI_t::openItemEffectMenu(GenericGUIMenu::ItemEff
 	}
 	inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
 	clearItemDisplayed();
+	confirmActionOnItemSteps.first = 0;
+	confirmActionOnItemSteps.second = 0;
+	parentGUI.transmuteItemTarget = nullptr;
+	parentGUI.transmuteItemScroll = 0;
 }
 
 void GenericGUIMenu::ItemEffectGUI_t::closeItemEffectMenu()
@@ -20391,6 +25312,14 @@ void GenericGUIMenu::ItemEffectGUI_t::closeItemEffectMenu()
 	animInvalidAction = 0.0;
 	animInvalidActionTicks = 0;
 	panelJustifyInverted = false;
+	modeHasCostEffect = COST_EFFECT_NONE;
+	if ( currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCEPTER_CHARGE )
+	{
+		if ( players[playernum]->inventory_mode == INVENTORY_MODE_SPELL )
+		{
+			players[playernum]->inventory_mode = INVENTORY_MODE_ITEM;
+		}
+	}
 	currentMode = ITEMFX_MODE_NONE;
 	invalidActionType = INVALID_ACTION_NONE;
 	isInteractable = false;
@@ -20406,7 +25335,9 @@ void GenericGUIMenu::ItemEffectGUI_t::closeItemEffectMenu()
 		}
 		inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
 	}
-	if ( players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ITEMEFFECTGUI
+
+	if ( (players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ITEMEFFECTGUI
+		|| players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_SPELLS)
 		&& !players[playernum]->shootmode )
 	{
 		// reset to inventory mode if still hanging in itemeffect GUI
@@ -20418,6 +25349,10 @@ void GenericGUIMenu::ItemEffectGUI_t::closeItemEffectMenu()
 		}
 	}
 	clearItemDisplayed();
+	confirmActionOnItemSteps.first = 0;
+	confirmActionOnItemSteps.second = 0;
+	parentGUI.transmuteItemTarget = nullptr;
+	parentGUI.transmuteItemScroll = 0;
 	itemRequiresTitleReflow = true;
 	if ( itemEffectFrame )
 	{
@@ -20499,7 +25434,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			createItemEffectMenu();
 		}
 
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
 		animx += setpointDiffX;
 		animx = std::min(1.0, animx);
@@ -20525,7 +25460,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	}
 
 	{
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animFilter)) / 2.0;
 		animFilter += setpointDiffX;
 		animFilter = std::min(1.0, animFilter);
@@ -20550,7 +25485,15 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		}
 		else
 		{
-			itemFxFramePos.x = player->camera_virtualWidth() - animx * itemFxFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = itemFxFramePos.w + 210; // inventory width 210
+				itemFxFramePos.x = -itemFxFramePos.w + animx * fullWidth;
+			}
+			else
+			{
+				itemFxFramePos.x = player->camera_virtualWidth() - animx * itemFxFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -20567,7 +25510,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		if ( !player->inventoryUI.bCompactView )
 		{
 			const int fullWidth = itemFxFramePos.w + 210; // inventory width 210
-			itemFxFramePos.x = player->camera_virtualWidth() - animx * fullWidth * 2;
+			itemFxFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -20579,7 +25522,15 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		}
 		else
 		{
-			itemFxFramePos.x = -itemFxFramePos.w + animx * itemFxFramePos.w;
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = itemFxFramePos.w + 210; // inventory width 210
+				itemFxFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			}
+			else
+			{
+				itemFxFramePos.x = -itemFxFramePos.w + animx * itemFxFramePos.w;
+			}
 			if ( player->bUseCompactGUIWidth() )
 			{
 				if ( player->inventoryUI.slideOutPercent >= .0001 )
@@ -20592,7 +25543,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	}
 
 	int heightOffsetCompact = 0;
-	if ( !player->bUseCompactGUIHeight() )
+	if ( !player->bUseCompactGUIHeight() && !player->bUseCompactGUIWidth() )
 	{
 		itemFxFramePos.y = heightOffsetWhenNotCompact;
 	}
@@ -20644,9 +25595,16 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		return;
 	}
 
+	if ( currentMode == ITEMFX_MODE_SCEPTER_CHARGE && player->inventory_mode != INVENTORY_MODE_SPELL )
+	{
+		closeItemEffectMenu();
+		parentGUI.closeGUI();
+		return;
+	}
+
 	if ( player->entity && player->entity->isBlind() )
 	{
-		messagePlayer(playernum, MESSAGE_MISC, language[4159]);
+		messagePlayer(playernum, MESSAGE_MISC, Language::get(4159));
 		parentGUI.closeGUI();
 		return; // I can't see!
 	}
@@ -20665,7 +25623,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			if ( item && item->type == SPELL_ITEM )
 			{
 				isSpell = true;
-				spell = getSpellFromItem(parentGUI.getPlayer(), item);
+				spell = getSpellFromItem(parentGUI.getPlayer(), item, false);
 				if ( spell )
 				{
 					spellID = spell->ID;
@@ -20690,7 +25648,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 				std::string statusStr = "";
 				if ( spell )
 				{
-					statusStr = spell->name;
+					statusStr = spell->getSpellName();
 				}
 				if ( !statusStr.empty() )
 				{
@@ -20700,7 +25658,11 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			}
 			else if ( item )
 			{
-				if ( !item->identified )
+				if ( item->type == MAGICSTAFF_SCEPTER )
+				{
+					snprintf(buf, sizeof(buf), "%s", Language::get(6833));
+				}
+				else if ( !item->identified )
 				{
 					std::string prefix = ItemTooltips.adjectives["scroll_prefixes"]["unknown_scroll"].c_str();
 					snprintf(buf, sizeof(buf), "%s (?)", prefix.c_str());
@@ -20723,7 +25685,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 
 				if ( item->identified )
 				{
-					std::string scrollShortName = items[item->type].name_identified;
+					std::string scrollShortName = items[item->type].getIdentifiedName();
 					if ( scrollShortName.find(ItemTooltips.adjectives["scroll_prefixes"]["scroll_of"]) != std::string::npos )
 					{
 						scrollShortName = scrollShortName.substr(ItemTooltips.adjectives["scroll_prefixes"]["scroll_of"].size());
@@ -20733,7 +25695,15 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 						scrollShortName = scrollShortName.substr(ItemTooltips.adjectives["scroll_prefixes"]["piece_of"].size());
 					}
 					camelCaseString(scrollShortName);
-					snprintf(buf, sizeof(buf), "%s (%+d)", scrollShortName.c_str(), item->beatitude);
+					if ( item->type == MAGICSTAFF_SCEPTER )
+					{
+						snprintf(buf, sizeof(buf), "%s (%d%%)", scrollShortName.c_str(), 
+							item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX);
+					}
+					else
+					{
+						snprintf(buf, sizeof(buf), "%s (%+d)", scrollShortName.c_str(), item->beatitude);
+					}
 					itemFxStatus->setText(buf);
 				}
 				else
@@ -20759,16 +25729,16 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		skillIcon->pos.y = 56 + heightOffsetCompact;
 		for ( auto& skill : Player::SkillSheet_t::skillSheetData.skillEntries )
 		{
-			if ( skill.skillId == PRO_MAGIC )
+			if ( skill.skillId == PRO_LEGACY_MAGIC )
 			{
-				if ( skillCapstoneUnlocked(playernum, skill.skillId) )
+				/*if ( skillCapstoneUnlocked(playernum, skill.skillId) )
 				{
 					skillIcon->path = skill.skillIconPathLegend;
 				}
 				else
 				{
-					skillIcon->path = skill.skillIconPath;
-				}
+				}*/
+				skillIcon->path = skill.skillIconPath;
 				skillIcon->disabled = false;
 				break;
 			}
@@ -20782,9 +25752,9 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			{
 				if ( parentGUI.itemEffectScrollItem && parentGUI.itemEffectScrollItem->type == SPELL_ITEM )
 				{
-					if ( spell_t* spell = getSpellFromItem(parentGUI.gui_player, parentGUI.itemEffectScrollItem) )
+					if ( spell_t* spell = getSpellFromItem(parentGUI.gui_player, parentGUI.itemEffectScrollItem, false) )
 					{
-						if ( node_t* spellImageNode = list_Node(&items[SPELL_ITEM].images, spell->ID) )
+						if ( node_t* spellImageNode = ItemTooltips.getSpellNodeFromSpellID(spell->ID) )
 						{
 							string_t* string = (string_t*)spellImageNode->element;
 							if ( string )
@@ -20814,8 +25784,8 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			}
 			else if ( parentGUI.itemEffectUsingSpellbook && items[parentGUI.itemEffectItemType].category == SPELLBOOK )
 			{
-				if ( node_t* spellImageNode = list_Node(&items[SPELL_ITEM].images,
-					getSpellIDFromSpellbook(static_cast<ItemType>(parentGUI.itemEffectItemType))) )
+				if ( node_t* spellImageNode = 
+					ItemTooltips.getSpellNodeFromSpellID(getSpellIDFromSpellbook(static_cast<ItemType>(parentGUI.itemEffectItemType))) )
 				{
 					string_t* string = (string_t*)spellImageNode->element;
 					if ( string )
@@ -20838,6 +25808,29 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 								++itemIcon->pos.y;
 							}
 						}
+					}
+				}
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_SCEPTER_CHARGE )
+		{
+			if ( parentGUI.itemEffectScrollItem )
+			{
+				itemIcon->path = getItemSpritePath(parentGUI.gui_player, *parentGUI.itemEffectScrollItem);
+				if ( auto imgGet = Image::get(itemIcon->path.c_str()) )
+				{
+					itemIcon->pos.w = imgGet->getWidth();
+					itemIcon->pos.h = imgGet->getHeight();
+					itemIcon->disabled = false;
+					itemIcon->pos.x = 48 - itemIcon->pos.w / 2;
+					itemIcon->pos.y = 68 + heightOffsetCompact - itemIcon->pos.h / 2;
+					if ( itemIcon->pos.x % 2 == 1 )
+					{
+						++itemIcon->pos.x;
+					}
+					if ( itemIcon->pos.y % 2 == 1 )
+					{
+						++itemIcon->pos.y;
 					}
 				}
 			}
@@ -20873,7 +25866,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	{
 		// shaking feedback for invalid action
 		// constant decay for animation
-		const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 		real_t setpointDiffX = fpsScale * 1.0 / 25.0;
 		animInvalidAction -= setpointDiffX;
 		animInvalidAction = std::max(0.0, animInvalidAction);
@@ -20886,13 +25879,13 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 
 	bool usingGamepad = inputs.hasController(playernum) && !inputs.getVirtualMouse(playernum)->draw_cursor;
 
+	auto closeGlyph = baseFrame->findImage("close itemfx glyph");
 	{
 		// close btn
 		auto closeBtn = baseFrame->findButton("close itemfx button");
 		SDL_Rect closeBtnPos = closeBtn->getSize();
 		closeBtnPos.y = 34 + heightOffsetCompact;
 		closeBtn->setSize(closeBtnPos);
-		auto closeGlyph = baseFrame->findImage("close itemfx glyph");
 		closeBtn->setDisabled(true);
 		closeGlyph->disabled = true;
 		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
@@ -20900,7 +25893,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			closeBtn->setDisabled(!isInteractable);
 			if ( isInteractable )
 			{
-				buttonTinkerUpdateSelectorOnHighlight(playernum, closeBtn);
+				buttonItemfxSelectorOnHighlight(playernum, closeBtn);
 			}
 		}
 		else if ( closeBtn->isSelected() )
@@ -20931,9 +25924,14 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	auto actionPromptTxt = baseFrame->findField("action prompt txt");
 	actionPromptTxt->setDisabled(false);
 	auto actionPromptImg = baseFrame->findImage("action prompt glyph");
+	auto actionConfirmImg = baseFrame->findImage("action confirm glyph");
+	actionConfirmImg->disabled = true;
+	auto actionRefreshImg = baseFrame->findImage("action refresh glyph");
+	actionRefreshImg->disabled = true;
+	auto actionCancelImg = baseFrame->findImage("action cancel glyph");
+	actionCancelImg->disabled = true;
 	//auto actionModifierImg = baseFrame->findImage("action modifier glyph");
 
-	//int skillLVL = (stats[playernum]->PROFICIENCIES[PRO_LOCKPICKING] + statGetPER(stats[playernum], players[playernum]->entity));
 	Uint32 negativeColor = hudColors.characterSheetRed;
 	Uint32 neutralColor = hudColors.characterSheetLightNeutral;
 	Uint32 positiveColor = hudColors.characterSheetGreen;
@@ -20942,6 +25940,12 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	auto displayItemName = itemDisplayTooltip->findField("item display name");
 	auto displayItemTextImg = itemDisplayTooltip->findImage("item text img");
 	auto itemSlotBg = itemDisplayTooltip->findImage("item bg img");
+	auto itemTransmuteGlow = itemDisplayTooltip->findImage("item transmute gleam img");
+	auto costEffectGoldText = itemDisplayTooltip->findField("item gold value");
+	auto costEffectManaText = itemDisplayTooltip->findField("item mp value");
+	itemTransmuteGlow->disabled = true;
+	itemTransmuteGlow->pos.x = 16;
+	itemTransmuteGlow->pos.y = 16;
 	itemSlotBg->pos.x = 12;
 	itemSlotBg->pos.y = 12;
 	const int displayItemTextImgBaseX = itemSlotBg->pos.x + itemSlotBg->pos.w;
@@ -20952,6 +25956,16 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	displayItemName->setSize(displayItemNamePos);
 	static ConsoleVariable<int> cvar_itemfxPromptY("/itemfx_action_prompt_y", -2);
 	SDL_Rect actionPromptTxtPos{ 0, 205 + *cvar_itemfxPromptY + heightOffsetCompact, baseFrame->getSize().w - 18 - 8, 24 };
+	if ( modeHasCostEffect == COST_EFFECT_GOLD
+		|| modeHasCostEffect == COST_EFFECT_MANA )
+	{
+		actionPromptTxtPos.y += 26;
+	}
+	else if ( modeHasCostEffect == COST_EFFECT_MANA_RETURN_GOLD
+		|| modeHasCostEffect == COST_EFFECT_MANA_AND_GOLD )
+	{
+		actionPromptTxtPos.y += 52;
+	}
 	actionPromptTxt->setSize(actionPromptTxtPos);
 
 	SDL_Rect tooltipPos = itemDisplayTooltip->getSize();
@@ -20961,6 +25975,78 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	tooltipPos.x = 18 - (tooltipPos.w + 18) * (0.0/*1.0 - animTooltip*/);
 	itemDisplayTooltip->setSize(tooltipPos);
 
+	auto costBg = itemDisplayTooltip->findImage("item cost img");
+	auto costLabel = itemDisplayTooltip->findField("item cost label");
+	auto costBg2 = itemDisplayTooltip->findImage("item cost img 2");
+	auto costLabel2 = itemDisplayTooltip->findField("item cost label 2");
+	if ( modeHasCostEffect == COST_EFFECT_NONE )
+	{
+		costBg->disabled = true;
+		costLabel->setDisabled(true);
+		costEffectGoldText->setDisabled(true);
+		costEffectManaText->setDisabled(true);
+	}
+	else
+	{
+		int align_x = displayItemTextImgBaseX + displayItemTextImg->pos.w - costBg->pos.w;
+		int align_y = displayItemTextImg->pos.y + displayItemTextImg->pos.h + 4;
+
+		if ( modeHasCostEffect == COST_EFFECT_MANA
+			|| modeHasCostEffect == COST_EFFECT_MANA_RETURN_GOLD
+			|| modeHasCostEffect == COST_EFFECT_MANA_AND_GOLD )
+		{
+			costBg2->pos.x = align_x;
+			costBg2->pos.y = align_y;
+			costBg2->disabled = false;
+
+			SDL_Rect goldPos{ costBg2->pos.x + 28, costBg2->pos.y + 9, 66, 24 };
+			costEffectManaText->setSize(goldPos);
+			costEffectManaText->setDisabled(false);
+
+			SDL_Rect costLabelTxtPos = costLabel2->getSize();
+			costLabelTxtPos.w = costBg2->pos.x - 4;
+			costLabelTxtPos.x = 0;
+			costLabelTxtPos.y = goldPos.y;
+			costLabelTxtPos.h = 24;
+			costLabel2->setSize(costLabelTxtPos);
+			costLabel2->setDisabled(false);
+			align_y += 28;
+
+			costLabel2->setText(Language::get(6555));
+		}
+
+		if ( modeHasCostEffect == COST_EFFECT_GOLD
+			|| modeHasCostEffect == COST_EFFECT_MANA_RETURN_GOLD
+			|| modeHasCostEffect == COST_EFFECT_MANA_AND_GOLD )
+		{
+			costBg->pos.x = align_x;
+			costBg->pos.y = align_y;
+			costBg->disabled = false;
+
+			SDL_Rect goldPos{ costBg->pos.x + 28, costBg->pos.y + 9, 66, 24 };
+			costEffectGoldText->setSize(goldPos);
+			costEffectGoldText->setDisabled(false);
+
+			SDL_Rect costLabelTxtPos = costLabel->getSize();
+			costLabelTxtPos.w = costBg->pos.x - 4;
+			costLabelTxtPos.x = 0;
+			costLabelTxtPos.y = goldPos.y;
+			costLabelTxtPos.h = 24;
+			costLabel->setSize(costLabelTxtPos);
+			costLabel->setDisabled(false);
+
+			if ( modeHasCostEffect == COST_EFFECT_MANA_RETURN_GOLD )
+			{
+				costLabel->setText(Language::get(6544));
+			}
+			else
+			{
+				costLabel->setText(Language::get(6538));
+			}
+		}
+
+	}
+
 	auto itemSlotFrame = itemDisplayTooltip->findFrame("item slot frame");
 	bool modifierPressed = false;
 	if ( usingGamepad && Input::inputs[playernum].binary("MenuPageLeftAlt") )
@@ -20968,16 +26054,233 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		modifierPressed = true;
 	}
 	else if ( inputs.bPlayerUsingKeyboardControl(playernum)
-		&& (keystatus[SDL_SCANCODE_LSHIFT] || keystatus[SDL_SCANCODE_RSHIFT]) )
+		&& (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT]) )
 	{
 		modifierPressed = true;
+	}
+
+	if ( itemActionType != ITEMFX_ACTION_OK )
+	{
+		confirmActionOnItemSteps.first = 0;
+		confirmActionOnItemSteps.second = 0;
+	}
+
+	auto actionButtonRefresh = baseFrame->findButton("action button refresh");
+	auto actionButtonCancel = baseFrame->findButton("action button cancel");
+	{
+		if ( parentGUI.transmuteItemTarget && itemIsEquipped(parentGUI.transmuteItemTarget, playernum) )
+		{
+			parentGUI.transmuteItemTarget = nullptr;
+		}
+
+		// action btn
+		SDL_Rect btnPos = actionButtonRefresh->getSize();
+		btnPos.x = 38;
+		btnPos.y = 196;
+		actionButtonRefresh->setSize(btnPos);
+		//auto closeGlyph = baseFrame->findImage("close itemfx glyph");
+		actionButtonRefresh->setDisabled(true);
+		//closeGlyph->disabled = true;
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor && parentGUI.transmuteItemTarget && isInteractable )
+		{
+			actionButtonRefresh->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonItemfxSelectorOnHighlight(playernum, actionButtonRefresh);
+			}
+		}
+		else if ( actionButtonRefresh->isSelected() )
+		{
+			actionButtonRefresh->deselect();
+		}
+
+		actionButtonRefresh->setInvisible(actionButtonRefresh->isDisabled());
+		actionButtonRefresh->setStyle(Button::STYLE_NORMAL);
+		if ( usingGamepad )
+		{
+			actionButtonRefresh->setStyle(Button::STYLE_TOGGLE);
+			if ( parentGUI.transmuteItemTarget && isInteractable )
+			{
+				actionButtonRefresh->setInvisible(false);
+				actionButtonRefresh->setDisabled(true);
+
+				btnPos = actionButtonRefresh->getSize();
+				btnPos.x += 16;
+				actionButtonRefresh->setSize(btnPos);
+
+				actionRefreshImg->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt2");
+				if ( auto imgGet = Image::get(actionRefreshImg->path.c_str()) )
+				{
+					actionRefreshImg->pos.w = imgGet->getWidth();
+					actionRefreshImg->pos.h = imgGet->getHeight();
+					actionRefreshImg->disabled = false;
+				}
+				actionRefreshImg->pos.x = actionButtonRefresh->getSize().x - actionRefreshImg->pos.w - 4;
+				if ( actionRefreshImg->pos.x % 2 == 1 )
+				{
+					++actionRefreshImg->pos.x;
+				}
+				actionRefreshImg->pos.y = actionButtonRefresh->getSize().y + actionButtonRefresh->getSize().h / 2 - actionRefreshImg->pos.h / 2;
+				if ( actionRefreshImg->pos.y % 2 == 1 )
+				{
+					--actionRefreshImg->pos.y;
+				}
+			}
+		}
+
+		if ( !actionButtonRefresh->isInvisible() && parentGUI.transmuteItemTarget )
+		{
+			setItemDisplayNameAndPrice(parentGUI.transmuteItemTarget);
+
+			itemTransmuteGlow->disabled = false;
+			itemTransmuteGlow->path = "*#images/ui/ScrollSpells/Gleam_00.png";
+			const int gleam = ((ticks % TICKS_PER_SECOND) / 5) % 5;
+			switch ( gleam )
+			{
+			case 0:
+				itemTransmuteGlow->path = "*#images/ui/ScrollSpells/Gleam_00.png";
+				break;
+			case 1:
+				itemTransmuteGlow->path = "*#images/ui/ScrollSpells/Gleam_01.png";
+				break;
+			case 2:
+				itemTransmuteGlow->path = "*#images/ui/ScrollSpells/Gleam_02.png";
+				break;
+			case 3:
+				itemTransmuteGlow->path = "*#images/ui/ScrollSpells/Gleam_03.png";
+				break;
+			case 4:
+				itemTransmuteGlow->path = "*#images/ui/ScrollSpells/Gleam_04.png";
+				break;
+			default:
+				break;
+			}
+		}
+
+		{
+			actionButtonCancel->setInvisible(true);
+			actionButtonCancel->setDisabled(true);
+			actionButtonCancel->setText(Language::get(6889));
+			// cancel btn
+			SDL_Rect btnPos = actionButtonCancel->getSize();
+			btnPos.x = 26;
+			btnPos.y = actionPromptTxtPos.y - 3;
+			actionButtonCancel->setSize(btnPos);
+			//auto closeGlyph = baseFrame->findImage("close itemfx glyph");
+			actionButtonCancel->setDisabled(true);
+			//closeGlyph->disabled = true;
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && parentGUI.transmuteItemTarget && isInteractable )
+			{
+				actionButtonCancel->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonItemfxSelectorOnHighlight(playernum, actionButtonCancel);
+				}
+			}
+			else if ( actionButtonCancel->isSelected() )
+			{
+				actionButtonCancel->deselect();
+			}
+
+			actionButtonCancel->setInvisible(actionButtonCancel->isDisabled());
+
+			if ( usingGamepad )
+			{
+				if ( parentGUI.transmuteItemTarget && isInteractable )
+				{
+					actionButtonCancel->setInvisible(false);
+					actionButtonCancel->setDisabled(true);
+
+					actionCancelImg->path = Input::inputs[playernum].getGlyphPathForBinding("MenuCancel");
+					if ( auto imgGet = Image::get(actionCancelImg->path.c_str()) )
+					{
+						actionCancelImg->pos.w = imgGet->getWidth();
+						actionCancelImg->pos.h = imgGet->getHeight();
+						actionCancelImg->disabled = false;
+						closeGlyph->disabled = true;
+					}
+					actionCancelImg->pos.x = actionButtonCancel->getSize().x + actionButtonCancel->getSize().w + 4;
+					if ( actionCancelImg->pos.x % 2 == 1 )
+					{
+						++actionCancelImg->pos.x;
+					}
+					actionCancelImg->pos.y = actionButtonCancel->getSize().y + actionButtonCancel->getSize().h / 2 - actionCancelImg->pos.h / 2 + 2;
+					if ( actionCancelImg->pos.y % 2 == 1 )
+					{
+						--actionCancelImg->pos.y;
+					}
+				}
+			}
+		}
+	}
+
+	auto actionButtonConfirm = baseFrame->findButton("action button confirm");
+	{
+		// action btn
+		actionButtonConfirm->setText(Language::get(6888));
+		SDL_Rect btnPos = actionButtonConfirm->getSize();
+		btnPos.x = actionPromptTxtPos.x + actionPromptTxtPos.w - btnPos.w;
+		btnPos.y = actionPromptTxtPos.y - 3;
+		actionButtonConfirm->setSize(btnPos);
+		//auto closeGlyph = baseFrame->findImage("close itemfx glyph");
+		actionButtonConfirm->setDisabled(true);
+		//closeGlyph->disabled = true;
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor && parentGUI.transmuteItemTarget && itemActionType == ITEMFX_ACTION_OK && isInteractable )
+		{
+			actionButtonConfirm->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonItemfxSelectorOnHighlight(playernum, actionButtonConfirm);
+			}
+		}
+		else if ( actionButtonConfirm->isSelected() )
+		{
+			actionButtonConfirm->deselect();
+		}
+
+		actionButtonConfirm->setInvisible(actionButtonConfirm->isDisabled());
+		/*if ( usingGamepad )
+		{
+			if ( parentGUI.transmuteItemTarget && itemActionType == ITEMFX_ACTION_OK && isInteractable )
+			{
+				actionButtonConfirm->setInvisible(false);
+				actionButtonConfirm->setDisabled(true);
+
+				actionConfirmImg->path = Input::inputs[playernum].getGlyphPathForBinding("MenuConfirm");
+				if ( auto imgGet = Image::get(actionConfirmImg->path.c_str()) )
+				{
+					actionConfirmImg->pos.w = imgGet->getWidth();
+					actionConfirmImg->pos.h = imgGet->getHeight();
+					actionConfirmImg->disabled = false;
+				}
+				actionConfirmImg->pos.x = actionButtonConfirm->getSize().x - actionConfirmImg->pos.w - 4;
+				if ( actionConfirmImg->pos.x % 2 == 1 )
+				{
+					++actionConfirmImg->pos.x;
+				}
+				actionConfirmImg->pos.y = actionButtonConfirm->getSize().y + actionButtonConfirm->getSize().h / 2 - actionConfirmImg->pos.h / 2 + 2;
+				if ( actionConfirmImg->pos.y % 2 == 1 )
+				{
+					--actionConfirmImg->pos.y;
+				}
+			}
+			actionButtonConfirm->setHJustify(Field::justify_t::RIGHT);
+			actionButtonConfirm->setColor(makeColor(255, 255, 255, 0));
+			actionButtonConfirm->setHighlightColor(makeColor(255, 255, 255, 0));
+		}
+		else
+		{
+			actionButtonConfirm->setHJustify(Field::justify_t::CENTER);
+			actionButtonConfirm->setColor(makeColor(255, 255, 255, 255));
+			actionButtonConfirm->setHighlightColor(makeColor(255, 255, 255, 255));
+		}*/
 	}
 
 	if ( itemActionType != ITEMFX_ACTION_NONE && itemDesc.size() > 1 )
 	{
 		if ( isInteractable )
 		{
-			//const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			//real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
 			//animTooltip += setpointDiffX;
 			//animTooltip = std::min(1.0, animTooltip);
@@ -21005,7 +26308,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 					actionPromptImg->path = Input::inputs[playernum].getGlyphPathForBinding("MenuRightClick");
 					if ( modifierPressed )
 					{
-						//actionModifierImg->path = GlyphHelper.getGlyphPath(SDL_SCANCODE_LSHIFT, false);
+						//actionModifierImg->path = GlyphHelper.getGlyphPath(SDLK_LSHIFT, false);
 					}
 				}
 				if ( auto imgGet = Image::get(actionPromptImg->path.c_str()) )
@@ -21027,33 +26330,110 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 						actionModifierImg->disabled = true;
 					}*/
 				}
+
+				actionPromptTxt->setDisabled(!actionButtonConfirm->isInvisible());
+				actionPromptImg->disabled = !actionButtonConfirm->isInvisible();
+
 				switch ( currentMode )
 				{
 					case ITEMFX_MODE_NONE:
 						actionPromptTxt->setText("");
 						break;
 					case ITEMFX_MODE_SCROLL_REPAIR:
-						actionPromptTxt->setText(language[4202]);
+					case ITEMFX_MODE_RESTORE:
+						actionPromptTxt->setText(Language::get(4202));
 						break;
 					case ITEMFX_MODE_SCROLL_CHARGING:
-						actionPromptTxt->setText(language[4206]);
+						actionPromptTxt->setText(Language::get(4206));
 						break;
 					case ITEMFX_MODE_SCROLL_IDENTIFY:
-						actionPromptTxt->setText(language[4208]);
+						actionPromptTxt->setText(Language::get(4208));
+						break;
+					case ITEMFX_MODE_SCROLL_ENCHANT_ARMOR:
+						actionPromptTxt->setText(Language::get(6305));
+						break;
+					case ITEMFX_MODE_SCROLL_ENCHANT_WEAPON:
+						actionPromptTxt->setText(Language::get(6304));
 						break;
 					case ITEMFX_MODE_SPELL_IDENTIFY:
-						actionPromptTxt->setText(language[4208]);
+						actionPromptTxt->setText(Language::get(4208));
+						break;
+					case ITEMFX_MODE_ALTER_INSTRUMENT:
+						actionPromptTxt->setText(Language::get(6512));
 						break;
 					case ITEMFX_MODE_SCROLL_REMOVECURSE:
-						actionPromptTxt->setText(language[4204]);
+						actionPromptTxt->setText(Language::get(4204));
 						break;
 					case ITEMFX_MODE_SPELL_REMOVECURSE:
-						actionPromptTxt->setText(language[4204]);
+						actionPromptTxt->setText(Language::get(4204));
+						break;
+					case ITEMFX_MODE_METALLURGY:
+						actionPromptTxt->setText(Language::get(6545));
+						break;
+					case ITEMFX_MODE_GEOMANCY:
+						actionPromptTxt->setText(Language::get(6546));
+						break;
+					case ITEMFX_MODE_FORGE_KEY:
+						actionPromptTxt->setText(Language::get(6547));
+						break;
+					case ITEMFX_MODE_FORGE_JEWEL:
+						actionPromptTxt->setText(Language::get(6548));
+						break;
+					case ITEMFX_MODE_ENHANCE_WEAPON:
+						actionPromptTxt->setText(Language::get(6549));
+						break;
+					case ITEMFX_MODE_RESHAPE_WEAPON:
+						actionPromptTxt->setText(Language::get(6550));
+						break;
+					case ITEMFX_MODE_ALTER_ARROW:
+						actionPromptTxt->setText(Language::get(6551));
+						break;
+					case ITEMFX_MODE_PUNCTURE_VOID:
+						actionPromptTxt->setText(Language::get(6561));
+						break;
+					case ITEMFX_MODE_ADORCISE_WEAPON:
+						actionPromptTxt->setText(Language::get(6616));
+						break;
+					case ITEMFX_MODE_VANDALISE:
+						actionPromptTxt->setText(Language::get(6708));
+						break;
+					case ITEMFX_MODE_DESECRATE:
+						actionPromptTxt->setText(Language::get(6709));
+						break;
+					case ITEMFX_MODE_SANCTIFY:
+						actionPromptTxt->setText(Language::get(6710));
+						break;
+					case ITEMFX_MODE_SANCTIFY_WATER:
+						actionPromptTxt->setText(Language::get(6711));
+						break;
+					case ITEMFX_MODE_CLEANSE_FOOD:
+						actionPromptTxt->setText(Language::get(6712));
+						break;
+					case ITEMFX_MODE_ADORCISE_INSTRUMENT:
+						actionPromptTxt->setText(Language::get(6616));
+						break;
+					case ITEMFX_MODE_SCEPTER_CHARGE:
+						actionPromptTxt->setText(Language::get(6831));
+						if ( confirmActionOnItemSteps.second > 0 )
+						{
+							char buf[128];
+							snprintf(buf, sizeof(buf), Language::get(6835), 3 - confirmActionOnItemSteps.second);
+							actionPromptTxt->setText(buf);
+						}
 						break;
 					default:
 						actionPromptTxt->setText("");
 						break;
 				}
+
+				if ( modeHasTransmuteMenu() )
+				{
+					if ( parentGUI.transmuteItemTarget )
+					{
+						actionPromptTxt->setText(Language::get(6888));
+					}
+				}
+
 				actionPromptTxt->setColor(defaultPromptColor);
 			}
 			else
@@ -21066,25 +26446,64 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 					switch ( itemActionType )
 					{
 						case ITEMFX_ACTION_INVALID_ITEM:
-							actionPromptTxt->setText(language[4210]);
+							actionPromptTxt->setText(Language::get(4210));
 							break;
 						case ITEMFX_ACTION_ITEM_FULLY_REPAIRED:
-							actionPromptTxt->setText(language[4136]);
+							actionPromptTxt->setText(Language::get(4136));
 							break;
 						case ITEMFX_ACTION_ITEM_FULLY_CHARGED:
-							actionPromptTxt->setText(language[4211]);
+							actionPromptTxt->setText(Language::get(4211));
 							break;
 						case ITEMFX_ACTION_ITEM_IDENTIFIED:
-							actionPromptTxt->setText(language[4212]);
+							actionPromptTxt->setText(Language::get(4212));
 							break;
 						case ITEMFX_ACTION_MUST_BE_UNEQUIPPED:
-							actionPromptTxt->setText(language[4136]);
+							actionPromptTxt->setText(Language::get(4132));
 							break;
 						case ITEMFX_ACTION_NOT_IDENTIFIED_YET:
-							actionPromptTxt->setText(language[4153]);
+							actionPromptTxt->setText(Language::get(4153));
 							break;
 						case ITEMFX_ACTION_NOT_CURSED:
-							actionPromptTxt->setText(language[4213]);
+							actionPromptTxt->setText(Language::get(4213));
+							break;
+						case ITEMFX_ACTION_CANT_AFFORD_GOLD:
+							actionPromptTxt->setText(Language::get(6539));
+							break;
+						case ITEMFX_ACTION_CANT_AFFORD_MANA:
+							actionPromptTxt->setText(Language::get(6552));
+							break;
+						case ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD:
+							actionPromptTxt->setText(Language::get(6855));
+							break;
+						case ITEMFX_ACTION_UNVOIDABLE:
+							actionPromptTxt->setText(Language::get(6563));
+							break;
+						case ITEMFX_ACTION_AT_MAX_BLESSING:
+							actionPromptTxt->setText(Language::get(6726));
+							break;
+						case ITEMFX_ACTION_NEED_SKILL_LVLS:
+							if ( currentMode == ITEMFX_MODE_RESHAPE_WEAPON )
+							{
+								if ( auto spell = getSpellFromID(SPELL_RESHAPE_WEAPON) )
+								{
+									char buf[128] = "";
+									snprintf(buf, sizeof(buf), Language::get(6804), getSkillLangEntry(spell->skillID));
+									actionPromptTxt->setText(buf);
+								}
+							}
+							else if ( currentMode == ITEMFX_MODE_ENHANCE_WEAPON )
+							{
+								if ( auto spell = getSpellFromID(SPELL_ENHANCE_WEAPON) )
+								{
+									char buf[128] = "";
+									snprintf(buf, sizeof(buf), Language::get(6804), getSkillLangEntry(spell->skillID));
+									actionPromptTxt->setText(buf);
+								}
+							}
+							else
+							{
+								actionPromptTxt->setText(Language::get(6805));
+							}
 							break;
 						default:
 							actionPromptTxt->setText("-");
@@ -21148,6 +26567,52 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 				itemRequiresTitleReflow = false;
 			}
 		}
+
+		{
+			// charge costs
+			costEffectGoldText->setColor(neutralColor);
+			costEffectManaText->setColor(neutralColor);
+			costEffectGoldText->setText("");
+			if ( itemActionType == ITEMFX_ACTION_OK 
+				|| itemActionType == ITEMFX_ACTION_CANT_AFFORD_GOLD
+				|| itemActionType == ITEMFX_ACTION_CANT_AFFORD_MANA
+				|| itemActionType == ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD
+				|| itemActionType == ITEMFX_ACTION_NEED_SKILL_LVLS
+				|| itemActionType == ITEMFX_ACTION_MUST_BE_UNEQUIPPED )
+			{
+				char buf[32];
+				if ( modeHasCostEffect == COST_EFFECT_MANA_RETURN_GOLD )
+				{
+					snprintf(buf, sizeof(buf), "+%dG", -costEffectGoldAmount);
+					costEffectGoldText->setColor(hudColors.characterSheetLightNeutral);
+				}
+				else
+				{
+					snprintf(buf, sizeof(buf), "%dG", costEffectGoldAmount);
+					if ( itemActionType == ITEMFX_ACTION_CANT_AFFORD_GOLD || itemActionType == ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD )
+					{
+						costEffectGoldText->setColor(negativeColor);
+					}
+				}
+				costEffectGoldText->setText(buf);
+
+				snprintf(buf, sizeof(buf), "%dMP", costEffectMPAmount);
+				if ( itemActionType == ITEMFX_ACTION_CANT_AFFORD_MANA || itemActionType == ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD )
+				{
+					costEffectManaText->setColor(negativeColor);
+				}
+				costEffectManaText->setText(buf);
+
+				if ( modeHasTransmuteMenu() )
+				{
+					if ( !parentGUI.transmuteItemTarget )
+					{
+						costEffectGoldText->setText("-");
+						costEffectManaText->setText("-");
+					}
+				}
+			}
+		}
 	}
 	else
 	{
@@ -21155,7 +26620,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			|| (usingGamepad)
 			|| animTooltip < 0.9999 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animTooltip)) / 2.0;
 			animTooltip -= setpointDiffX;
 			animTooltip = std::max(0.0, animTooltip);
@@ -21164,7 +26629,9 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 
 	auto actionPromptUnselectedTxt = baseFrame->findField("action prompt unselected txt");
 	auto actionPromptCoverLeftImg = baseFrame->findImage("action prompt lcover");
+	actionPromptCoverLeftImg->disabled = true;
 	auto actionPromptCoverRightImg = baseFrame->findImage("action prompt rcover");
+	actionPromptCoverRightImg->disabled = true;
 	actionPromptCoverLeftImg->pos.x = 0;
 	actionPromptCoverRightImg->pos.x = baseFrame->getSize().w - actionPromptCoverLeftImg->pos.w;
 	actionPromptCoverLeftImg->pos.y = 90 + heightOffsetCompact;
@@ -21179,26 +26646,92 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 				actionPromptUnselectedTxt->setText("");
 				break;
 			case ITEMFX_MODE_SCROLL_REPAIR:
-				actionPromptUnselectedTxt->setText(language[4151]);
+			case ITEMFX_MODE_RESTORE:
+				actionPromptUnselectedTxt->setText(Language::get(4151));
 				break;
 			case ITEMFX_MODE_SCROLL_CHARGING:
-				actionPromptUnselectedTxt->setText(language[4207]);
+				actionPromptUnselectedTxt->setText(Language::get(4207));
 				break;
 			case ITEMFX_MODE_SCROLL_IDENTIFY:
-				actionPromptUnselectedTxt->setText(language[4209]);
+				actionPromptUnselectedTxt->setText(Language::get(4209));
+				break;
+			case ITEMFX_MODE_SCROLL_ENCHANT_ARMOR:
+				actionPromptUnselectedTxt->setText(Language::get(6306));
+				break;
+			case ITEMFX_MODE_SCROLL_ENCHANT_WEAPON:
+				actionPromptUnselectedTxt->setText(Language::get(6306));
 				break;
 			case ITEMFX_MODE_SCROLL_REMOVECURSE:
-				actionPromptUnselectedTxt->setText(language[4205]);
+				actionPromptUnselectedTxt->setText(Language::get(4205));
 				break;
 			case ITEMFX_MODE_SPELL_IDENTIFY:
-				actionPromptUnselectedTxt->setText(language[4209]);
+				actionPromptUnselectedTxt->setText(Language::get(4209));
+				break;
+			case ITEMFX_MODE_ALTER_INSTRUMENT:
+				actionPromptUnselectedTxt->setText(Language::get(6513));
 				break;
 			case ITEMFX_MODE_SPELL_REMOVECURSE:
-				actionPromptUnselectedTxt->setText(language[4205]);
+				actionPromptUnselectedTxt->setText(Language::get(4205));
+				break;
+			case ITEMFX_MODE_METALLURGY:
+				actionPromptUnselectedTxt->setText(Language::get(6542));
+				break;
+			case ITEMFX_MODE_GEOMANCY:
+				actionPromptUnselectedTxt->setText(Language::get(6543));
+				break;
+			case ITEMFX_MODE_FORGE_KEY:
+				actionPromptUnselectedTxt->setText(Language::get(6542));
+				break;
+			case ITEMFX_MODE_FORGE_JEWEL:
+				actionPromptUnselectedTxt->setText(Language::get(6543));
+				break;
+			case ITEMFX_MODE_RESHAPE_WEAPON:
+				actionPromptUnselectedTxt->setText(Language::get(6541));
+				break;
+			case ITEMFX_MODE_ENHANCE_WEAPON:
+				actionPromptUnselectedTxt->setText(Language::get(6541));
+				break;
+			case ITEMFX_MODE_ALTER_ARROW:
+				actionPromptUnselectedTxt->setText(Language::get(6542));
+				break;
+			case ITEMFX_MODE_PUNCTURE_VOID:
+				actionPromptUnselectedTxt->setText(Language::get(6560));
+				break;
+			case ITEMFX_MODE_ADORCISE_WEAPON:
+				actionPromptUnselectedTxt->setText(Language::get(6617));
+				break;
+			case ITEMFX_MODE_VANDALISE:
+				actionPromptUnselectedTxt->setText(Language::get(6714));
+				break;
+			case ITEMFX_MODE_DESECRATE:
+				actionPromptUnselectedTxt->setText(Language::get(6715));
+				break;
+			case ITEMFX_MODE_SANCTIFY:
+				actionPromptUnselectedTxt->setText(Language::get(6717));
+				break;
+			case ITEMFX_MODE_SANCTIFY_WATER:
+				actionPromptUnselectedTxt->setText(Language::get(6716));
+				break;
+			case ITEMFX_MODE_CLEANSE_FOOD:
+				actionPromptUnselectedTxt->setText(Language::get(6718));
+				break;
+			case ITEMFX_MODE_ADORCISE_INSTRUMENT:
+				actionPromptUnselectedTxt->setText(Language::get(6713));
+				break;
+			case ITEMFX_MODE_SCEPTER_CHARGE:
+				actionPromptUnselectedTxt->setText(Language::get(6832));
 				break;
 			default:
 				actionPromptUnselectedTxt->setText("");
 				break;
+		}
+
+		if ( modeHasTransmuteMenu() )
+		{
+			if ( parentGUI.transmuteItemTarget )
+			{
+				actionPromptUnselectedTxt->setText(Language::get(6887));
+			}
 		}
 
 		{
@@ -21219,7 +26752,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 
 		if ( ticks - animPromptTicks > TICKS_PER_SECOND / 10 )
 		{
-			const real_t fpsScale = (50.f / std::max(1U, fpsLimit)); // ported from 50Hz
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			real_t setpointDiffX = fpsScale * std::max(.01, (animPrompt)) / 2.0;
 			animPrompt -= setpointDiffX;
 			animPrompt = std::max(0.0, animPrompt);
@@ -21250,11 +26783,24 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		color.a = (Uint8)(255 * animTooltip);
 		displayItemName->setColor(makeColor(color.r, color.g, color.b, color.a));
 	}
+	{
+		SDL_Color color;
+		getColor(costEffectGoldText->getColor(), &color.r, &color.g, &color.b, &color.a);
+		color.a = (Uint8)(255 * animTooltip);
+		costEffectGoldText->setColor(makeColor(color.r, color.g, color.b, color.a));
+	}
+	{
+		SDL_Color color;
+		getColor(costEffectManaText->getColor(), &color.r, &color.g, &color.b, &color.a);
+		color.a = (Uint8)(255 * animTooltip);
+		costEffectManaText->setColor(makeColor(color.r, color.g, color.b, color.a));
+	}
 
 	//itemDisplayTooltip->setOpacity(100.0 * animTooltip);
 	itemSlotFrame->setOpacity(100.0 * animTooltip);
 
 	bool activateSelection = false;
+	bool transmuteActivate = false;
 	if ( isInteractable )
 	{
 		if ( !inputs.getUIInteraction(playernum)->selectedItem
@@ -21266,14 +26812,26 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			if ( Input::inputs[playernum].binaryToggle("MenuCancel") )
 			{
 				Input::inputs[playernum].consumeBinaryToggle("MenuCancel");
-				parentGUI.closeGUI();
-				return;
+				if ( !actionButtonCancel->isInvisible() )
+				{
+					actionButtonCancel->getCallback()(*actionButtonCancel);
+				}
+				else
+				{
+					parentGUI.closeGUI();
+					Player::soundCancel();
+					return;
+				}
 			}
 			else
 			{
 				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuConfirm") )
 				{
 					activateSelection = true;
+					if ( parentGUI.transmuteItemTarget )
+					{
+						transmuteActivate = true;
+					}
 					Input::inputs[playernum].consumeBinaryToggle("MenuConfirm");
 				}
 				else if ( !usingGamepad && Input::inputs[playernum].binaryToggle("MenuRightClick") )
@@ -21281,9 +26839,33 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 					activateSelection = true;
 					Input::inputs[playernum].consumeBinaryToggle("MenuRightClick");
 				}
+
+				if ( usingGamepad )
+				{
+					actionButtonRefresh->setPressed(Input::inputs[playernum].binary("MenuAlt2"));
+					if ( Input::inputs[playernum].binaryToggle("MenuAlt2") )
+					{
+						Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+						if ( !actionButtonRefresh->isInvisible() )
+						{
+							actionButtonRefresh->getCallback()(*actionButtonRefresh);
+						}
+					}
+				}
 			}
 		}
+
+		if ( actionButtonConfirm->getUserData() )
+		{
+			transmuteActivate = true;
+		}
+		if ( parentGUI.transmuteItemTarget && transmuteActivate )
+		{
+			activateSelection = true;
+		}
 	}
+
+	actionButtonConfirm->setUserData(nullptr);
 
 	if ( activateSelection && players[playernum] && players[playernum]->entity )
 	{
@@ -21300,16 +26882,72 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 				if ( node->element )
 				{
 					Item* item = (Item*)node->element;
-					if ( isItemSelectedToEffect(item) )
+					if ( (!transmuteActivate && isItemSelectedToEffect(item)) || (transmuteActivate && item == parentGUI.transmuteItemTarget) )
 					{
 						foundItem = true;
 						if ( itemCategory(item) == SPELLBOOK )
 						{
 							//repairingSpellbook = true;
 						}
+
+						if ( modeHasTransmuteMenu() )
+						{
+							if ( !transmuteActivate )
+							{
+								if ( parentGUI.transmuteItemTarget == nullptr )
+								{
+									if ( itemActionOK )
+									{
+										Player::soundActivate();
+										parentGUI.transmuteItemTarget = item;
+										animPrompt = 1.0;
+										animPromptTicks = ticks;
+										animPromptMoveLeft = false;
+									}
+								}
+								else
+								{
+									Player::soundCancel();
+									parentGUI.transmuteItemTarget = nullptr;
+									animPrompt = 1.0;
+									animPromptTicks = ticks;
+									animPromptMoveLeft = true;
+									animTooltip = 0.0;
+									itemActionOK = true;
+								}
+								break;
+							}
+						}
+
 						if ( itemActionOK )
 						{
-							parentGUI.executeOnItemClick(item);
+							if ( currentMode == ITEMFX_MODE_SCEPTER_CHARGE )
+							{
+								if ( confirmActionOnItemSteps.first == item->uid )
+								{
+									if ( confirmActionOnItemSteps.second < 2 )
+									{
+										++confirmActionOnItemSteps.second;
+									}
+									else
+									{
+										Player::soundActivate();
+										playSoundEntityLocal(players[parentGUI.gui_player]->entity, 167, 128);
+										parentGUI.executeOnItemClick(item);
+										confirmActionOnItemSteps.second = 0;
+									}
+								}
+								else
+								{
+									confirmActionOnItemSteps.second = 0;
+								}
+							}
+							else
+							{
+								Player::soundActivate();
+								playSoundEntityLocal(players[parentGUI.gui_player]->entity, 167, 128);
+								parentGUI.executeOnItemClick(item);
+							}
 						}
 						break;
 					}
@@ -21370,6 +27008,20 @@ void GenericGUIMenu::ItemEffectGUI_t::createItemEffectMenu()
 	}
 
 	SDL_Rect basePos{ 0, 0, itemEffectBaseWidth, 242 };
+	const char* baseWindow = "*images/ui/ScrollSpells/Scroll_Window_00.png";
+	if ( modeHasCostEffect == COST_EFFECT_GOLD
+		|| modeHasCostEffect == COST_EFFECT_MANA )
+	{
+		baseWindow = "*images/ui/ScrollSpells/Scroll_Window_GoldCost_00.png";
+		basePos.h = 268;
+	}
+	else if ( modeHasCostEffect == COST_EFFECT_MANA_RETURN_GOLD
+		|| modeHasCostEffect == COST_EFFECT_MANA_AND_GOLD )
+	{
+		baseWindow = "*images/ui/ScrollSpells/Scroll_Window_GoldManaCost_00.png";
+		basePos.h = 296;
+	}
+
 	{
 		auto bgFrame = itemEffectFrame->addFrame("itemfx base");
 		bgFrame->setSize(basePos);
@@ -21377,7 +27029,7 @@ void GenericGUIMenu::ItemEffectGUI_t::createItemEffectMenu()
 		bgFrame->setDisabled(true);
 		auto bg = bgFrame->addImage(SDL_Rect{ 0, 0, basePos.w, basePos.h },
 			makeColor(255, 255, 255, 255),
-			"*images/ui/ScrollSpells/Scroll_Window_00.png", "itemfx base img");
+			baseWindow, "itemfx base img");
 
 		auto skillIcon = bgFrame->addImage(SDL_Rect{ 270, 36, 24, 24 },
 			makeColor(255, 255, 255, 255),
@@ -21427,6 +27079,56 @@ void GenericGUIMenu::ItemEffectGUI_t::createItemEffectMenu()
 			auto itemBgImg = itemDisplayTooltip->addImage(SDL_Rect{ 0, 0, 54, 54 }, 0xFFFFFFFF,
 				"*images/ui/ScrollSpells/Scroll_ItemBGSurround_00.png", "item bg img");
 
+			auto itemBgTransmuteGlow = itemDisplayTooltip->addImage(SDL_Rect{ 0, 0, 44, 44 }, 0xFFFFFFFF,
+				"*images/ui/ScrollSpells/Gleam_00.png", "item transmute gleam img");
+			itemBgTransmuteGlow->disabled = true;
+
+			{
+				auto itemCostBg = itemDisplayTooltip->addImage(SDL_Rect{ 0, 0, 104, 34 },
+					0xFFFFFFFF, "*images/ui/ScrollSpells/Scroll_CostBacking_00.png", "item cost img");
+				itemCostBg->disabled = true;
+
+				auto itemCostBg2 = itemDisplayTooltip->addImage(SDL_Rect{ 0, 0, 104, 34 },
+					0xFFFFFFFF, "*images/ui/ScrollSpells/Scroll_MPBacking_00.png", "item cost img 2");
+				itemCostBg2->disabled = true;
+
+				auto costEffectGoldText = itemDisplayTooltip->addField("item gold value", 32);
+				costEffectGoldText->setFont(itemFont);
+				costEffectGoldText->setText("");
+				costEffectGoldText->setHJustify(Field::justify_t::RIGHT);
+				costEffectGoldText->setVJustify(Field::justify_t::TOP);
+				costEffectGoldText->setSize(SDL_Rect{ 0, 0, 0, 0 });
+				costEffectGoldText->setColor(hudColors.characterSheetLightNeutral);
+				costEffectGoldText->setDisabled(true);
+
+				auto costEffectMPText = itemDisplayTooltip->addField("item mp value", 32);
+				costEffectMPText->setFont(itemFont);
+				costEffectMPText->setText("");
+				costEffectMPText->setHJustify(Field::justify_t::RIGHT);
+				costEffectMPText->setVJustify(Field::justify_t::TOP);
+				costEffectMPText->setSize(SDL_Rect{ 0, 0, 0, 0 });
+				costEffectMPText->setColor(hudColors.characterSheetLightNeutral);
+				costEffectMPText->setDisabled(true);
+
+				auto costLabel = itemDisplayTooltip->addField("item cost label", 64);
+				costLabel->setFont(itemFont);
+				costLabel->setText("");
+				costLabel->setHJustify(Field::justify_t::RIGHT);
+				costLabel->setVJustify(Field::justify_t::TOP);
+				costLabel->setSize(SDL_Rect{ 0, 0, 90, 0 });
+				costLabel->setColor(hudColors.characterSheetLightNeutral);
+				costLabel->setDisabled(true);
+
+				auto costLabel2 = itemDisplayTooltip->addField("item cost label 2", 64);
+				costLabel2->setFont(itemFont);
+				costLabel2->setText("");
+				costLabel2->setHJustify(Field::justify_t::RIGHT);
+				costLabel2->setVJustify(Field::justify_t::TOP);
+				costLabel2->setSize(SDL_Rect{ 0, 0, 90, 0 });
+				costLabel2->setColor(hudColors.characterSheetLightNeutral);
+				costLabel2->setDisabled(true);
+			}
+
 			auto slotFrame = itemDisplayTooltip->addFrame("item slot frame");
 			SDL_Rect slotPos{ 0, 0, players[player]->inventoryUI.getSlotSize(), players[player]->inventoryUI.getSlotSize() };
 			slotFrame->setSize(slotPos);
@@ -21453,6 +27155,7 @@ void GenericGUIMenu::ItemEffectGUI_t::createItemEffectMenu()
 			closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
 			closeBtn->setCallback([](Button& button) {
 				GenericGUI[button.getOwner()].closeGUI();
+				Player::soundCancel();
 			});
 			closeBtn->setTickCallback(genericgui_deselect_fn);
 
@@ -21479,6 +27182,116 @@ void GenericGUIMenu::ItemEffectGUI_t::createItemEffectMenu()
 				0xFFFFFFFF, "", "action modifier glyph");
 			actionModifierGlyph->ontop = true;
 			actionModifierGlyph->disabled = true;
+		}
+
+		{
+			auto actionButtonConfirm = bgFrame->addButton("action button confirm");
+			SDL_Rect actionBtnPos{ 0, 0, 86, 26 };
+			actionButtonConfirm->setSize(actionBtnPos);
+			actionButtonConfirm->setColor(makeColor(255, 255, 255, 255));
+			actionButtonConfirm->setHighlightColor(makeColor(255, 255, 255, 255));
+			actionButtonConfirm->setText("");
+			actionButtonConfirm->setFont(itemFont);
+			actionButtonConfirm->setHideGlyphs(true);
+			actionButtonConfirm->setHideKeyboardGlyphs(true);
+			actionButtonConfirm->setHideSelectors(true);
+			actionButtonConfirm->setMenuConfirmControlType(0);
+			actionButtonConfirm->setBackground("*images/ui/ScrollSpells/Button_TakeAll_00.png");
+			actionButtonConfirm->setBackgroundHighlighted("*images/ui/ScrollSpells/Button_TakeAllHigh_00.png");
+			actionButtonConfirm->setBackgroundActivated("*images/ui/ScrollSpells/Button_TakeAllPress_00.png");
+			actionButtonConfirm->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			actionButtonConfirm->setCallback([](Button& button) {
+				button.setUserData((void*)(intptr_t)(1));
+				});
+			actionButtonConfirm->setTickCallback(genericgui_deselect_fn);
+			actionButtonConfirm->setInvisible(true);
+			actionButtonConfirm->setDisabled(true);
+
+			auto actionPromptGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "action confirm glyph");
+			actionPromptGlyph->ontop = true;
+			actionPromptGlyph->disabled = true;
+
+			actionPromptGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "action cancel glyph");
+			actionPromptGlyph->ontop = true;
+			actionPromptGlyph->disabled = true;
+
+			actionPromptGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "action refresh glyph");
+			actionPromptGlyph->ontop = true;
+			actionPromptGlyph->disabled = true;
+
+			auto actionButtonCancel = bgFrame->addButton("action button cancel");
+			actionBtnPos = SDL_Rect{ 0, 0, 86, 26 };
+			actionButtonCancel->setSize(actionBtnPos);
+			actionButtonCancel->setColor(makeColor(255, 255, 255, 255));
+			actionButtonCancel->setHighlightColor(makeColor(255, 255, 255, 255));
+			actionButtonCancel->setText("");
+			actionButtonCancel->setFont(itemFont);
+			actionButtonCancel->setHideGlyphs(true);
+			actionButtonCancel->setHideKeyboardGlyphs(true);
+			actionButtonCancel->setHideSelectors(true);
+			actionButtonCancel->setMenuConfirmControlType(0);
+			actionButtonCancel->setBackground("*images/ui/ScrollSpells/Button_Cancel_00.png");
+			actionButtonCancel->setBackgroundHighlighted("*images/ui/ScrollSpells/Button_CancelHigh_00.png");
+			actionButtonCancel->setBackgroundActivated("*images/ui/ScrollSpells/Button_CancelPress_00.png");
+			//actionButtonCancel->setTextColor(hudColors.characterSheetRed);
+			actionButtonCancel->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			actionButtonCancel->setCallback([](Button& button) {
+				if ( button.getOwner() >= 0 && button.getOwner() < MAXPLAYERS )
+				{
+					if ( GenericGUI[button.getOwner()].transmuteItemTarget )
+					{
+						GenericGUI[button.getOwner()].transmuteItemTarget = nullptr;
+						GenericGUI[button.getOwner()].itemfxGUI.animPrompt = 1.0;
+						GenericGUI[button.getOwner()].itemfxGUI.animPromptTicks = ticks;
+						GenericGUI[button.getOwner()].itemfxGUI.animPromptMoveLeft = true;
+						GenericGUI[button.getOwner()].itemfxGUI.animTooltip = 0.0;
+					}
+
+					if ( players[button.getOwner()]->GUI.activeModule == Player::GUI_t::MODULE_ITEMEFFECTGUI )
+					{
+						// reset to inventory mode if still hanging in itemfx GUI
+						players[button.getOwner()]->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
+						players[button.getOwner()]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+						if ( !inputs.getVirtualMouse(button.getOwner())->draw_cursor )
+						{
+							players[button.getOwner()]->GUI.warpControllerToModule(false);
+						}
+					}
+				}
+				Player::soundCancel();
+				});
+			actionButtonCancel->setTickCallback(genericgui_deselect_fn);
+			actionButtonCancel->setInvisible(true);
+			actionButtonCancel->setDisabled(true);
+
+			auto actionButtonRefresh = bgFrame->addButton("action button refresh");
+			actionBtnPos = SDL_Rect{ 0, 0, 40, 40 };
+			actionButtonRefresh->setSize(actionBtnPos);
+			actionButtonRefresh->setColor(makeColor(255, 255, 255, 255));
+			actionButtonRefresh->setHighlightColor(makeColor(255, 255, 255, 255));
+			actionButtonRefresh->setText("");
+			actionButtonRefresh->setFont(itemFont);
+			actionButtonRefresh->setHideGlyphs(true);
+			actionButtonRefresh->setHideKeyboardGlyphs(true);
+			actionButtonRefresh->setHideSelectors(true);
+			actionButtonRefresh->setMenuConfirmControlType(0);
+			actionButtonRefresh->setBackground("*images/ui/ScrollSpells/Button_Refresh00.png");
+			actionButtonRefresh->setBackgroundHighlighted("*images/ui/ScrollSpells/Button_RefreshHigh00.png");
+			actionButtonRefresh->setBackgroundActivated("*images/ui/ScrollSpells/Button_RefreshPress00.png");
+			actionButtonRefresh->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			actionButtonRefresh->setCallback([](Button& button) {
+				Player::soundModuleNavigation();
+				if ( button.getOwner() >= 0 && button.getOwner() < MAXPLAYERS )
+				{
+					GenericGUI[button.getOwner()].transmuteItemScroll++;
+				}
+				});
+			actionButtonRefresh->setTickCallback(genericgui_deselect_fn);
+			actionButtonRefresh->setInvisible(true);
+			actionButtonRefresh->setDisabled(true);
 		}
 
 		{
@@ -21511,4 +27324,13605 @@ void GenericGUIMenu::ItemEffectGUI_t::createItemEffectMenu()
 			itemIncrementText->setOntop(true);
 		}
 	}
+}
+
+void CalloutRadialMenu::loadCalloutJSON()
+{
+	if ( !PHYSFS_getRealDir("/data/callout_wheel.json") )
+	{
+		printlog("[JSON]: Error: Could not find file: data/callout_wheel.json");
+	}
+	else
+	{
+		std::string inputPath = PHYSFS_getRealDir("/data/callout_wheel.json");
+		inputPath.append("/data/callout_wheel.json");
+
+		File* fp = FileIO::open(inputPath.c_str(), "rb");
+		if ( !fp )
+		{
+			printlog("[JSON]: Error: Could not open json file %s", inputPath.c_str());
+		}
+		else
+		{
+			char buf[65536];
+			int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
+			buf[count] = '\0';
+			rapidjson::StringStream is(buf);
+			FileIO::close(fp);
+			rapidjson::Document d;
+			d.ParseStream(is);
+			if ( !d.HasMember("version") )
+			{
+				printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
+			}
+			else
+			{
+				if ( d.HasMember("panel_center_x_offset") )
+				{
+					CalloutRadialMenu::followerWheelFrameOffsetX = d["panel_center_x_offset"].GetInt();
+				}
+				if ( d.HasMember("panel_center_y_offset") )
+				{
+					CalloutRadialMenu::followerWheelFrameOffsetY = d["panel_center_y_offset"].GetInt();
+				}
+				if ( d.HasMember("panel_radius") )
+				{
+					CalloutRadialMenu::followerWheelRadius = d["panel_radius"].GetInt();
+				}
+				if ( d.HasMember("panel_button_thickness") )
+				{
+					CalloutRadialMenu::followerWheelButtonThickness = d["panel_button_thickness"].GetInt();
+				}
+				if ( d.HasMember("panel_inner_circle_radius_offset") )
+				{
+					CalloutRadialMenu::followerWheelInnerCircleRadiusOffset = d["panel_inner_circle_radius_offset"].GetInt();
+				}
+				if ( d.HasMember("colors") )
+				{
+					if ( d["colors"].HasMember("banner_default") )
+					{
+						followerBannerTextColor = makeColor(
+							d["colors"]["banner_default"]["r"].GetInt(),
+							d["colors"]["banner_default"]["g"].GetInt(),
+							d["colors"]["banner_default"]["b"].GetInt(),
+							d["colors"]["banner_default"]["a"].GetInt());
+					}
+					if ( d["colors"].HasMember("banner_highlight_default") )
+					{
+						followerBannerTextHighlightColor = makeColor(
+							d["colors"]["banner_highlight_default"]["r"].GetInt(),
+							d["colors"]["banner_highlight_default"]["g"].GetInt(),
+							d["colors"]["banner_highlight_default"]["b"].GetInt(),
+							d["colors"]["banner_highlight_default"]["a"].GetInt());
+					}
+					if ( d["colors"].HasMember("title") )
+					{
+						followerTitleColor = makeColor(
+							d["colors"]["title"]["r"].GetInt(),
+							d["colors"]["title"]["g"].GetInt(),
+							d["colors"]["title"]["b"].GetInt(),
+							d["colors"]["title"]["a"].GetInt());
+					}
+					if ( d["colors"].HasMember("title_creature_highlight") )
+					{
+						followerTitleHighlightColor = makeColor(
+							d["colors"]["title_creature_highlight"]["r"].GetInt(),
+							d["colors"]["title_creature_highlight"]["g"].GetInt(),
+							d["colors"]["title_creature_highlight"]["b"].GetInt(),
+							d["colors"]["title_creature_highlight"]["a"].GetInt());
+					}
+				}
+				if ( d.HasMember("panels") )
+				{
+					CalloutRadialMenu::panelEntries.clear();
+					for ( rapidjson::Value::ConstValueIterator itr = d["panels"].Begin();
+						itr != d["panels"].End(); ++itr )
+					{
+						CalloutRadialMenu::panelEntries.push_back(CalloutRadialMenu::PanelEntry());
+						auto& entry = CalloutRadialMenu::panelEntries[CalloutRadialMenu::panelEntries.size() - 1];
+						if ( (*itr).HasMember("x") )
+						{
+							entry.x = (*itr)["x"].GetInt();
+						}
+						if ( (*itr).HasMember("y") )
+						{
+							entry.y = (*itr)["y"].GetInt();
+						}
+						if ( (*itr).HasMember("path") )
+						{
+							entry.path = (*itr)["path"].GetString();
+						}
+						if ( (*itr).HasMember("path_hover") )
+						{
+							entry.path_hover = (*itr)["path_hover"].GetString();
+						}
+						if ( (*itr).HasMember("icon_offset_x") )
+						{
+							entry.icon_offsetx = (*itr)["icon_offset_x"].GetInt();
+						}
+						if ( (*itr).HasMember("icon_offset_y") )
+						{
+							entry.icon_offsety = (*itr)["icon_offset_y"].GetInt();
+						}
+					}
+				}
+				if ( d.HasMember("help_strings") )
+				{
+					CalloutRadialMenu::helpDescriptors.clear();
+					for ( rapidjson::Value::ConstMemberIterator itr = d["help_strings"].MemberBegin();
+						itr != d["help_strings"].MemberEnd(); ++itr )
+					{
+						CalloutRadialMenu::helpDescriptors[itr->name.GetString()] = itr->value.GetString();
+					}
+				}
+				if ( d.HasMember("world_icons") )
+				{
+					CalloutRadialMenu::worldIconEntries.clear();
+					CalloutRadialMenu::worldIconIDToEntryKey.clear();
+					int id = 0;
+					for ( rapidjson::Value::ConstMemberIterator itr = d["world_icons"].MemberBegin();
+						itr != d["world_icons"].MemberEnd(); ++itr )
+					{
+						std::string key = (*itr).name.GetString();
+						auto& entry = worldIconEntries[key];
+
+						std::string basePath = "*images/ui/CalloutWheel/WorldIcons/";
+						entry.pathDefault = basePath + (*itr).value["default"].GetString();
+						entry.pathPlayer1 = basePath + (*itr).value["0"].GetString();
+						entry.pathPlayer2 = basePath + (*itr).value["1"].GetString();
+						entry.pathPlayer3 = basePath + (*itr).value["2"].GetString();
+						entry.pathPlayer4 = basePath + (*itr).value["3"].GetString();
+						entry.pathPlayerX = basePath + (*itr).value["4"].GetString();
+						entry.id = id;
+						CalloutRadialMenu::worldIconIDToEntryKey[id] = key;
+						++id;
+						/*if ( auto img = Image::get(entry.pathDefault.c_str()) )
+						{
+						}
+						if ( auto img = Image::get(entry.pathPlayer1.c_str()) )
+						{
+						}
+						if ( auto img = Image::get(entry.pathPlayer2.c_str()) )
+						{
+						}
+						if ( auto img = Image::get(entry.pathPlayer3.c_str()) )
+						{
+						}
+						if ( auto img = Image::get(entry.pathPlayer4.c_str()) )
+						{
+						}
+						if ( auto img = Image::get(entry.pathPlayerX.c_str()) )
+						{
+						}*/
+					}
+				}
+				if ( d.HasMember("icons") )
+				{
+					CalloutRadialMenu::iconEntries.clear();
+					for ( rapidjson::Value::ConstValueIterator itr = d["icons"].Begin();
+						itr != d["icons"].End(); ++itr )
+					{
+						std::string actionName = "";
+						if ( (*itr).HasMember("action") )
+						{
+							actionName = (*itr)["action"].GetString();
+						}
+						if ( actionName == "" )
+						{
+							continue;
+						}
+						CalloutRadialMenu::iconEntries[actionName] = CalloutRadialMenu::IconEntry();
+						CalloutRadialMenu::iconEntries[actionName].name = actionName;
+						if ( (*itr).HasMember("id") )
+						{
+							CalloutRadialMenu::iconEntries[actionName].id = (*itr)["id"].GetInt();
+						}
+						if ( (*itr).HasMember("path") )
+						{
+							CalloutRadialMenu::iconEntries[actionName].path = (*itr)["path"].GetString();
+						}
+						if ( (*itr).HasMember("path_active") )
+						{
+							CalloutRadialMenu::iconEntries[actionName].path_active = (*itr)["path_active"].GetString();
+						}
+						if ( (*itr).HasMember("path_hover") )
+						{
+							CalloutRadialMenu::iconEntries[actionName].path_hover = (*itr)["path_hover"].GetString();
+						}
+						if ( (*itr).HasMember("path_active_hover") )
+						{
+							CalloutRadialMenu::iconEntries[actionName].path_active_hover = (*itr)["path_active_hover"].GetString();
+						}
+						if ( (*itr).HasMember("text_maps") )
+						{
+							for ( rapidjson::Value::ConstValueIterator itr2 = (*itr)["text_maps"].Begin();
+								itr2 != (*itr)["text_maps"].End(); ++itr2 )
+							{
+								for ( rapidjson::Value::ConstMemberIterator itr3 = itr2->MemberBegin();
+									itr3 != itr2->MemberEnd(); ++itr3 )
+								{
+									std::string mapKey = itr3->name.GetString();
+									std::string mapText = itr3->value["text"].GetString();
+									std::set<int> mapHighlights;
+									for ( rapidjson::Value::ConstValueIterator highlightItr = itr3->value["word_highlights"].Begin();
+										highlightItr != itr3->value["word_highlights"].End(); ++highlightItr )
+									{
+										mapHighlights.insert(highlightItr->GetInt());
+									}
+									std::string worldMsg = "";
+									std::string worldMsgSays = "";
+									std::string worldMsgEmote = "";
+									std::string worldMsgEmoteYou = "";
+									std::string worldMsgEmoteToYou = "";
+									std::string worldIcon = "";
+									std::string worldIconMini = "";
+									if ( itr3->value.HasMember("msg") )
+									{
+										worldMsg = itr3->value["msg"].GetString();
+									}
+									if ( itr3->value.HasMember("msg_says") )
+									{
+										worldMsgSays = itr3->value["msg_says"].GetString();
+									}
+									if ( itr3->value.HasMember("msg_emote") )
+									{
+										worldMsgEmote = itr3->value["msg_emote"].GetString();
+									}
+									if ( itr3->value.HasMember("msg_emote_you") )
+									{
+										worldMsgEmoteYou = itr3->value["msg_emote_you"].GetString();
+									}
+									if ( itr3->value.HasMember("msg_emote_to_you") )
+									{
+										worldMsgEmoteToYou = itr3->value["msg_emote_to_you"].GetString();
+									}
+									if ( itr3->value.HasMember("world_icon") )
+									{
+										worldIcon = itr3->value["world_icon"].GetString();
+									}
+									if ( itr3->value.HasMember("world_icon_small") )
+									{
+										worldIconMini = itr3->value["world_icon_small"].GetString();
+									}
+									CalloutRadialMenu::iconEntries[actionName].text_map[mapKey] = CalloutRadialMenu::IconEntry::IconEntryText_t();
+									auto& entry = CalloutRadialMenu::iconEntries[actionName].text_map[mapKey];
+									entry.bannerText = mapText;
+									entry.bannerHighlights = mapHighlights;
+									entry.worldMsg = worldMsg;
+									entry.worldMsgSays = worldMsgSays;
+									entry.worldMsgEmote = worldMsgEmote;
+									entry.worldMsgEmoteYou = worldMsgEmoteYou;
+									entry.worldMsgEmoteToYou = worldMsgEmoteToYou;
+									entry.worldIconTag = worldIcon;
+									entry.worldIconTagMini = worldIconMini;
+
+									if ( worldIcon != "" )
+									{
+										assert(worldIconEntries.find(worldIcon) != worldIconEntries.end());
+									}
+									if ( worldIconMini != "" )
+									{
+										assert(worldIconEntries.find(worldIconMini) != worldIconEntries.end());
+									}
+								}
+							}
+						}
+					}
+				}
+				printlog("[JSON]: Successfully read json file %s", inputPath.c_str());
+			}
+		}
+	}
+}
+
+void setCalloutBannerTextFormatted(const int player, Field* field, Uint32 color, std::set<int>& highlights, char const* const text, ...)
+{
+	if ( !field ) { return; }
+
+	char buf[256] = "";
+	va_list argptr;
+	va_start(argptr, text);
+	vsnprintf(buf, sizeof(buf), text, argptr);
+	va_end(argptr);
+
+	field->setText(buf);
+	field->clearWordsToHighlight();
+	for ( auto v : highlights )
+	{
+		field->addWordToHighlight(v, color);
+	}
+}
+
+void setCalloutBannerTextUnformatted(const int player, Field* field, const char* iconName, const char* textKey, Uint32 color)
+{
+	if ( !field ) { return; }
+	if ( CalloutMenu[player].iconEntries.find(iconName) == CalloutMenu[player].iconEntries.end() )
+	{
+		return;
+	}
+	auto& textMap = CalloutMenu[player].iconEntries[iconName].text_map[textKey];
+	field->setText(textMap.bannerText.c_str());
+	field->clearWordsToHighlight();
+	for ( auto v : textMap.bannerHighlights )
+	{
+		field->addWordToHighlight(v, color);
+	}
+}
+
+std::string CalloutRadialMenu::getCalloutMessage(const IconEntry::IconEntryText_t& text_map, const char* object, const int targetPlayer)
+{
+	if ( text_map.worldMsgEmote != "" )
+	{
+		char buf[512] = "";
+		if ( object )
+		{
+			if ( targetPlayer >= 0 && getPlayer() == targetPlayer && text_map.worldMsgEmoteYou != "" )
+			{
+				// messaging the player that owns the callout "you gesture to"
+				snprintf(buf, sizeof(buf), text_map.worldMsgEmoteYou.c_str(), object);
+			}
+			else
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[getPlayer()]->name, sizeof(shortname), 22);
+				std::string nameStr = shortname;
+				nameStr = messageSanitizePercentSign(nameStr, nullptr);
+				snprintf(buf, sizeof(buf), text_map.worldMsgEmote.c_str(), nameStr.c_str(), object);
+			}
+		}
+		else
+		{
+			if ( targetPlayer >= 0 && getPlayer() == targetPlayer && text_map.worldMsgEmoteYou != "" )
+			{
+				// messaging the player that owns the callout "you gesture to"
+				snprintf(buf, sizeof(buf), text_map.worldMsgEmoteYou.c_str());
+			}
+			else
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[getPlayer()]->name, sizeof(shortname), 22);
+				std::string nameStr = shortname;
+				nameStr = messageSanitizePercentSign(nameStr, nullptr);
+				snprintf(buf, sizeof(buf), text_map.worldMsgEmote.c_str(), nameStr.c_str());
+			}
+		}
+		return buf;
+	}
+	else if ( text_map.worldMsgSays != "" )
+	{
+		char buf[512] = "";
+		if ( object )
+		{
+			if ( targetPlayer >= 0 && getPlayer() == targetPlayer )
+			{
+				// messaging the player that owns the callout "you say:"
+				snprintf(buf, sizeof(buf), text_map.worldMsgSays.c_str(), Language::get(739), object);
+			}
+			else
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[getPlayer()]->name, sizeof(shortname), 22);
+				std::string playerSays = shortname;
+				playerSays = messageSanitizePercentSign(playerSays, nullptr);
+				playerSays += ": ";
+				snprintf(buf, sizeof(buf), text_map.worldMsgSays.c_str(), playerSays.c_str(), object);
+			}
+		}
+		else
+		{
+			if ( targetPlayer >= 0 && getPlayer() == targetPlayer )
+			{
+				// messaging the player that owns the callout "you say:"
+				snprintf(buf, sizeof(buf), text_map.worldMsgSays.c_str(), Language::get(739));
+			}
+			else
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[getPlayer()]->name, sizeof(shortname), 22);
+				std::string playerSays = shortname;
+				playerSays = messageSanitizePercentSign(playerSays, nullptr);
+				playerSays += ": ";
+				snprintf(buf, sizeof(buf), text_map.worldMsgSays.c_str(), playerSays.c_str());
+			}
+		}
+		return buf;
+	}
+	else
+	{
+		char buf[512] = "";
+		if ( object )
+		{
+			snprintf(buf, sizeof(buf), text_map.worldMsg.c_str(), object);
+			return buf;
+		}
+		else
+		{
+			return text_map.worldMsg;
+		}
+	}
+}
+
+std::string CalloutRadialMenu::setCalloutText(Field* field, const char* iconName, Uint32 color,
+	CalloutRadialMenu::CalloutCommand cmd, SetCalloutTextTypes setType, const int targetPlayer)
+{
+	if ( !field && setType == SET_CALLOUT_BANNER_TEXT ) { return ""; }
+	auto findIcon = CalloutRadialMenu::iconEntries.find(iconName);
+	if ( findIcon == CalloutRadialMenu::iconEntries.end() )
+	{
+		return "";
+	}
+	std::string key = "default";
+	Entity* entity = uidToEntity(lockOnEntityUid);
+	const int player = getPlayer();
+
+	Entity* playerEntity = Player::getPlayerInteractEntity(player);
+
+	if ( players[player]->isLocalPlayer() )
+	{
+		if ( lockOnEntityUid == 0 )
+		{
+			if ( cmd == CALLOUT_CMD_AFFIRMATIVE 
+				|| cmd == CALLOUT_CMD_NEGATIVE )
+			{
+				entity = playerEntity;
+			}
+			else if ( cmd == CALLOUT_CMD_HELP )
+			{
+				entity = playerEntity;
+			}
+		}
+
+		if ( cmd == CALLOUT_CMD_SOUTH
+			|| cmd == CALLOUT_CMD_SOUTHWEST
+			|| cmd == CALLOUT_CMD_SOUTHEAST )
+		{
+			int toPlayer = getPlayerForDirectPlayerCmd(getPlayer(), cmd);
+			Entity* toPlayerEntity = Player::getPlayerInteractEntity(toPlayer);
+			if ( toPlayer >= 0 && toPlayer < MAXPLAYERS
+				&& toPlayerEntity && !client_disconnected[toPlayer] )
+			{
+				entity = toPlayerEntity;
+			}
+		}
+	}
+
+	if ( cmd == CALLOUT_CMD_MOVE )
+	{
+		if ( setType == SET_CALLOUT_BANNER_TEXT )
+		{
+			setCalloutBannerTextUnformatted(player, field, iconName, "default", color);
+		}
+		else if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return "default";
+		}
+		else
+		{
+			return getCalloutMessage(findIcon->second.text_map["default"], nullptr, targetPlayer);
+		}
+		return "";
+	}
+	else if ( cmd == CALLOUT_CMD_SOUTH
+		|| cmd == CALLOUT_CMD_SOUTHWEST
+		|| cmd == CALLOUT_CMD_SOUTHEAST )
+	{
+		std::string targetPlayerName = "";
+		
+		int toPlayer = getPlayerForDirectPlayerCmd(getPlayer(), cmd);
+		key = "player_wave";
+
+
+		if ( toPlayer < 0 || toPlayer >= MAXPLAYERS 
+			|| client_disconnected[toPlayer] )
+		{
+			key = "unavailable";
+		}
+		else
+		{
+			Entity* toPlayerEntity = Player::getPlayerInteractEntity(toPlayer);
+			if ( !toPlayerEntity )
+			{
+				key = "unavailable";
+			}
+		}
+
+		if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return key;
+		}
+
+		if ( key != "unavailable" )
+		{
+			char shortname[32];
+			stringCopy(shortname, stats[toPlayer]->name, sizeof(shortname), 22);
+			targetPlayerName = shortname;
+			targetPlayerName = messageSanitizePercentSign(targetPlayerName, nullptr);
+		}
+
+		auto& textMap = findIcon->second.text_map[key];
+		auto highlights = textMap.bannerHighlights;
+		if ( highlights.size() > 0 )
+		{
+			int indexStart = 0;
+			for ( auto highlight : highlights )
+			{
+				indexStart = std::max(highlight, indexStart);
+			}
+			for ( auto c : targetPlayerName )
+			{
+				if ( c == ' ' )
+				{
+					highlights.insert(indexStart + 1);
+					++indexStart;
+				}
+			}
+		}
+		if ( setType == SET_CALLOUT_BANNER_TEXT )
+		{
+			if ( key == "unavailable" )
+			{
+				color = hudColors.characterSheetRed;
+			}
+			setCalloutBannerTextFormatted(player, field, color, highlights, textMap.bannerText.c_str(), targetPlayerName.c_str());
+		}
+		else
+		{
+			if ( entity && entity->skill[2] == targetPlayer )
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[getPlayer()]->name, sizeof(shortname), 22);
+				std::string nameStr = shortname;
+				nameStr = messageSanitizePercentSign(nameStr, nullptr);
+				char buf[128];
+				snprintf(buf, sizeof(buf), textMap.worldMsgEmoteToYou.c_str(), nameStr.c_str());
+				return buf;
+			}
+			else
+			{
+				return getCalloutMessage(textMap, targetPlayerName.c_str(), targetPlayer);
+			}
+		}
+		return "";
+	}
+
+	auto calloutType = getCalloutTypeForEntity(player, entity);
+	auto& text_map = findIcon->second.text_map;
+	switch ( calloutType )
+	{
+	case CALLOUT_TYPE_NO_TARGET:
+		key = "location";
+		break;
+	case CALLOUT_TYPE_PLAYER:
+		if ( cmd == CALLOUT_CMD_HELP && entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost)
+			&& player >= 0 && player < MAXPLAYERS && entity == playerEntity )
+		{
+			if ( players[player]->isLocalPlayer() )
+			{
+				clientCalloutHelpFlags = 0;
+				auto& fx = StatusEffectQueue[player];
+				EntityHungerIntervals hunger = EntityHungerIntervals::HUNGER_INTERVAL_OVERSATIATED;
+				bool hungerBlood = false;
+				for ( auto& eff : fx.effectQueue )
+				{
+					if ( eff.effect == StatusEffectQueue_t::kEffectBread || eff.effect == StatusEffectQueue_t::kEffectBloodHunger )
+					{
+						if ( eff.effect == StatusEffectQueue_t::kEffectBloodHunger )
+						{
+							hungerBlood = true;
+						}
+						if ( eff.customVariable <= getEntityHungerInterval(player, nullptr, stats[player], HUNGER_INTERVAL_STARVING) )
+						{
+							clientCalloutHelpFlags |= hungerBlood ? CALLOUT_HELP_BLOOD_STARVING : CALLOUT_HELP_FOOD_STARVING;
+						}
+						else if ( eff.customVariable <= getEntityHungerInterval(player, nullptr, stats[player], HUNGER_INTERVAL_WEAK) )
+						{
+							clientCalloutHelpFlags |= hungerBlood ? CALLOUT_HELP_BLOOD_WEAK : CALLOUT_HELP_FOOD_WEAK;
+						}
+						else if ( eff.customVariable <= getEntityHungerInterval(player, nullptr, stats[player], HUNGER_INTERVAL_HUNGRY) )
+						{
+							clientCalloutHelpFlags |= hungerBlood ? CALLOUT_HELP_BLOOD_HUNGRY : CALLOUT_HELP_FOOD_HUNGRY;
+						}
+					}
+					else if ( eff.effect == StatusEffectQueue_t::kEffectAutomatonHunger )
+					{
+						if ( eff.customVariable <= getEntityHungerInterval(player, nullptr, stats[player], HUNGER_INTERVAL_AUTOMATON_CRITICAL) )
+						{
+							clientCalloutHelpFlags |= CALLOUT_HELP_STEAM_CRITICAL;
+						}
+					}
+					else if ( eff.effect >= 0 && eff.effect < NUMEFFECTS )
+					{
+						if ( stats[player]->statusEffectRemovedByCureAilment(eff.effect, players[player]->entity) )
+						{
+							clientCalloutHelpFlags |= CALLOUT_HELP_NEGATIVE_FX;
+						}
+					}
+				}
+				bool hpLow = stats[player]->HP < (3 * stats[player]->MAXHP / 5);
+				bool hpCritical = stats[player]->HP < (1 * stats[player]->MAXHP / 4);
+				clientCalloutHelpFlags |= hpLow ? CALLOUT_HELP_HP_LOW : 0;
+				clientCalloutHelpFlags |= hpCritical ? CALLOUT_HELP_HP_CRITICAL : 0;
+			}
+
+			if ( clientCalloutHelpFlags )
+			{
+				key = "help_all_conditions";
+				if ( setType == SET_CALLOUT_ICON_KEY )
+				{
+					if ( stats[player]->HP == 0 || !players[player]->entity )
+					{
+						key = "help_deceased";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_BLOOD_STARVING )
+					{
+						key = "condition_blood_starving";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_FOOD_STARVING )
+					{
+						key = "condition_food_starving";
+					}
+					else if ( (clientCalloutHelpFlags & CALLOUT_HELP_STEAM_CRITICAL) && (svFlags & SV_FLAG_HUNGER) )
+					{
+						key = "condition_steam_empty";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_BLOOD_WEAK )
+					{
+						key = "condition_blood_weak";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_FOOD_WEAK )
+					{
+						key = "condition_food_weak";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_BLOOD_HUNGRY )
+					{
+						key = "condition_blood_hungry";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_FOOD_HUNGRY )
+					{
+						key = "condition_food_hungry";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_HP_CRITICAL )
+					{
+						key = "condition_heal_urgent";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_HP_LOW )
+					{
+						key = "condition_heal";
+					}
+					else if ( (clientCalloutHelpFlags & CALLOUT_HELP_STEAM_CRITICAL) && !(svFlags & SV_FLAG_HUNGER) )
+					{
+						key = "condition_steam_empty";
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_NEGATIVE_FX )
+					{
+						key = "condition_cure_ailment";
+					}
+					return key;
+				}
+
+				if ( stats[player]->HP == 0 || !players[player]->entity )
+				{
+					key = "help_deceased";
+				}
+
+				auto& textMap = text_map[key];
+				auto highlights = textMap.bannerHighlights;
+
+				std::string helpText = "";
+
+				// hunger stats
+				{
+					if ( clientCalloutHelpFlags & CALLOUT_HELP_BLOOD_STARVING )
+					{
+						helpText += helpDescriptors["starving_blood"];
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_FOOD_STARVING )
+					{
+						helpText += helpDescriptors["starving"];
+					}
+					else if ( (clientCalloutHelpFlags & CALLOUT_HELP_STEAM_CRITICAL) && (svFlags & SV_FLAG_HUNGER) )
+					{
+						helpText += helpDescriptors["empty_steam"];
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_BLOOD_WEAK )
+					{
+						helpText += helpDescriptors["very_hungry_blood"];
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_FOOD_WEAK )
+					{
+						helpText += helpDescriptors["very_hungry"];
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_BLOOD_HUNGRY )
+					{
+						helpText += helpDescriptors["hungry_blood"];
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_FOOD_HUNGRY )
+					{
+						helpText += helpDescriptors["hungry"];
+					}
+					else if ( (clientCalloutHelpFlags & CALLOUT_HELP_STEAM_CRITICAL) && !(svFlags & SV_FLAG_HUNGER) )
+					{
+						helpText += helpDescriptors["empty_steam"];
+					}
+				}
+
+				// health stats
+				{
+					if ( clientCalloutHelpFlags & CALLOUT_HELP_HP_CRITICAL )
+					{
+						if ( helpText.size() > 1 )
+						{
+							helpText += helpDescriptors["separator"];
+						}
+						helpText += helpDescriptors["healing_urgent"];
+					}
+					else if ( clientCalloutHelpFlags & CALLOUT_HELP_HP_LOW )
+					{
+						if ( helpText.size() > 1 )
+						{
+							helpText += helpDescriptors["separator"];
+						}
+						helpText += helpDescriptors["healing"];
+					}
+				}
+
+				// effects
+				if ( clientCalloutHelpFlags & CALLOUT_HELP_NEGATIVE_FX )
+				{
+					int numEffectsAdded = 0;
+					for ( int i = 0; i < NUMEFFECTS; ++i )
+					{
+						if ( numEffectsAdded >= 3 )
+						{
+							break;
+						}
+						if ( stats[player]->getEffectActive(i) > 0 
+							&& (stats[player]->statusEffectRemovedByCureAilment(i, players[player]->entity)
+								|| i == EFF_WITHDRAWAL && stats[player]->EFFECTS_TIMERS[EFF_WITHDRAWAL] == -2) )
+						{
+							if ( StatusEffectQueue_t::StatusEffectDefinitions_t::allEffects[i].name == "" )
+							{
+								continue;
+							}
+							if ( helpText.size() > 1 )
+							{
+								helpText += helpDescriptors["separator"];
+							}
+							helpText += StatusEffectQueue_t::StatusEffectDefinitions_t::allEffects[i].name;
+							++numEffectsAdded;
+						}
+					}
+				}
+
+				if ( stats[player]->HP == 0 || !players[player]->entity )
+				{
+					helpText = helpDescriptors["ghost"];
+				}
+
+				if ( setType == SET_CALLOUT_BANNER_TEXT )
+				{
+					setCalloutBannerTextFormatted(player, field, color, highlights, textMap.bannerText.c_str(), helpText.c_str());
+				}
+				else
+				{
+					return getCalloutMessage(textMap, helpText.c_str(), targetPlayer);
+				}
+				return "";
+			}
+		}
+		else if ( cmd == CALLOUT_CMD_LOOK )
+		{
+			std::string targetPlayerName = "";
+			if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost) )
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[entity->skill[2]]->name, sizeof(shortname), 22);
+				targetPlayerName = shortname;
+				targetPlayerName = messageSanitizePercentSign(targetPlayerName, nullptr);
+			}
+
+			key = "player_wave";
+			if ( setType == SET_CALLOUT_ICON_KEY )
+			{
+				return key;
+			}
+
+			auto& textMap = text_map[key];
+			auto highlights = textMap.bannerHighlights;
+			if ( highlights.size() > 0 )
+			{
+				int indexStart = 0;
+				for ( auto highlight : highlights )
+				{
+					indexStart = std::max(highlight, indexStart);
+				}
+				for ( auto c : targetPlayerName )
+				{
+					if ( c == ' ' )
+					{
+						highlights.insert(indexStart + 1);
+						++indexStart;
+					}
+				}
+			}
+			if ( setType == SET_CALLOUT_BANNER_TEXT )
+			{
+				setCalloutBannerTextFormatted(player, field, color, highlights, textMap.bannerText.c_str(), targetPlayerName.c_str());
+			}
+			else
+			{
+				if ( entity && entity->skill[2] == targetPlayer )
+				{
+					char shortname[32];
+					stringCopy(shortname, stats[getPlayer()]->name, sizeof(shortname), 22);
+					std::string nameStr = shortname;
+					nameStr = messageSanitizePercentSign(nameStr, nullptr);
+					char buf[128];
+					snprintf(buf, sizeof(buf), textMap.worldMsgEmoteToYou.c_str(), nameStr.c_str());
+					return buf;
+				}
+				else
+				{
+					return getCalloutMessage(textMap, targetPlayerName.c_str(), targetPlayer);
+				}
+			}
+			return "";
+		}
+		else if ( (cmd == CALLOUT_CMD_AFFIRMATIVE && !(lockOnEntityUid == 0 || (entity && playerEntity == entity)))
+			|| cmd == CALLOUT_CMD_THANKS )
+		{
+			std::string targetPlayerName = "";
+			if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost) )
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[entity->skill[2]]->name, sizeof(shortname), 22);
+				targetPlayerName = shortname;
+				targetPlayerName = messageSanitizePercentSign(targetPlayerName, nullptr);
+			}
+
+			if ( cmd == CALLOUT_CMD_THANKS )
+			{
+				key = "default";
+			}
+			else
+			{
+				key = "player_thanks";
+			}
+			if ( setType == SET_CALLOUT_ICON_KEY )
+			{
+				return key;
+			}
+
+			auto& textMap = text_map[key];
+			auto highlights = textMap.bannerHighlights;
+			if ( highlights.size() > 0 )
+			{
+				int indexStart = 0;
+				for ( auto highlight : highlights )
+				{
+					indexStart = std::max(highlight, indexStart);
+				}
+				for ( auto c : targetPlayerName )
+				{
+					if ( c == ' ' )
+					{
+						highlights.insert(indexStart + 1);
+						++indexStart;
+					}
+				}
+			}
+			if ( setType == SET_CALLOUT_BANNER_TEXT )
+			{
+				setCalloutBannerTextFormatted(player, field, color, highlights, textMap.bannerText.c_str(), targetPlayerName.c_str());
+			}
+			else
+			{
+				if ( entity && entity->skill[2] == targetPlayer )
+				{
+					char shortname[32];
+					stringCopy(shortname, stats[getPlayer()]->name, sizeof(shortname), 22);
+					std::string nameStr = shortname;
+					nameStr = messageSanitizePercentSign(nameStr, nullptr);
+					char buf[128];
+					snprintf(buf, sizeof(buf), textMap.worldMsgEmoteToYou.c_str(), nameStr.c_str());
+					return buf;
+				}
+				else
+				{
+					return getCalloutMessage(textMap, targetPlayerName.c_str(), targetPlayer);
+				}
+			}
+			return "";
+		}
+		break;
+	case CALLOUT_TYPE_NPC:
+	case CALLOUT_TYPE_NPC_ENEMY:
+	case CALLOUT_TYPE_NPC_PLAYERALLY:
+		if ( entity->behavior == &actMonster )
+		{
+			int monsterType = entity->getMonsterTypeFromSprite();
+			if ( monsterType >= NOTHING && monsterType < NUMMONSTERS )
+			{
+				std::string monsterName = getMonsterLocalizedName((Monster)monsterType);
+				bool namedNPC = false;
+				if ( multiplayer != CLIENT && monsterType != SHOPKEEPER )
+				{
+					if ( Stat* stats = entity->getStats() )
+					{
+						if ( monsterNameIsGeneric(*stats) )
+						{
+							monsterName = stats->name;
+						}
+						else if ( strcmp(stats->name, "") )
+						{
+							monsterName = stats->name;
+							namedNPC = true;
+						}
+					}
+				}
+
+				std::string key = "npc";
+				if ( calloutType == CALLOUT_TYPE_NPC_PLAYERALLY )
+				{
+					key = "npc_ally";
+				}
+				else if ( calloutType == CALLOUT_TYPE_NPC_ENEMY )
+				{
+					key = "npc_enemy";
+				}
+
+				if ( namedNPC
+					&& text_map.find(std::string(key + "_named")) != text_map.end() )
+				{
+					key += "_named";
+				}
+				else if ( stringStartsWithVowel(monsterName)
+					&& text_map.find(std::string(key + "_an")) != text_map.end() )
+				{
+					key += "_an";
+				}
+
+				if ( text_map.find(key) == text_map.end() )
+				{
+					key = "default";
+				}
+
+				if ( setType == SET_CALLOUT_ICON_KEY )
+				{
+					return key;
+				}
+				auto& textMap = text_map[key];
+				auto highlights = textMap.bannerHighlights;
+				if ( highlights.size() > 0 )
+				{
+					int indexStart = 0;
+					for ( auto highlight : highlights )
+					{
+						indexStart = std::max(highlight, indexStart);
+					}
+					for ( auto c : monsterName )
+					{
+						if ( c == ' ' )
+						{
+							highlights.insert(indexStart + 1);
+							++indexStart;
+						}
+					}
+				}
+				if ( setType == SET_CALLOUT_BANNER_TEXT )
+				{
+					setCalloutBannerTextFormatted(player, field, color, highlights, textMap.bannerText.c_str(), monsterName.c_str());
+				}
+				else
+				{
+					return getCalloutMessage(textMap, monsterName.c_str(), targetPlayer);
+				}
+				return "";
+			}
+		}
+		break;
+	case CALLOUT_TYPE_SWITCH_ON:
+		key = "switch";
+		if ( text_map.find(std::string(key + "_on")) != text_map.end() )
+		{
+			key += "_on";
+		}
+		break;
+	case CALLOUT_TYPE_SWITCH_OFF:
+		key = "switch";
+		if ( text_map.find(std::string(key + "_off")) != text_map.end() )
+		{
+			key += "_off";
+		}
+		break;
+	case CALLOUT_TYPE_SWITCH:
+		key = "switch";
+		break;
+		break;
+	case CALLOUT_TYPE_WALL_LOCK:
+	case CALLOUT_TYPE_WALL_LOCK_ON:
+	case CALLOUT_TYPE_WALL_LOCK_OFF:
+	{
+		if ( calloutType == CALLOUT_TYPE_WALL_LOCK )
+		{
+			key = "wall_lock";
+		}
+		else if ( calloutType == CALLOUT_TYPE_WALL_LOCK_ON )
+		{
+			key = "wall_lock_on";
+		}
+		else if ( calloutType == CALLOUT_TYPE_WALL_LOCK_OFF )
+		{
+			key = "wall_lock_off";
+		}
+		if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return key;
+		}
+		int wallLockMaterial = entity->wallLockMaterial;
+		if ( entity->sprite >= 1585 && entity->sprite <= 1592 )
+		{
+			if ( Entity* parent = uidToEntity(entity->parent) )
+			{
+				wallLockMaterial = parent->wallLockMaterial;
+			}
+		}
+
+		std::string objectName = Language::get(6383 + wallLockMaterial);
+
+		auto& textMap = text_map[key];
+		if ( setType == SET_CALLOUT_BANNER_TEXT )
+		{
+			setCalloutBannerTextFormatted(player, field, color, textMap.bannerHighlights,
+				textMap.bannerText.c_str(), objectName.c_str());
+		}
+		else
+		{
+			return getCalloutMessage(textMap, objectName.c_str(), targetPlayer);
+		}
+		return "";
+		break;
+	}
+	case CALLOUT_TYPE_WALL_BUTTON_ON:
+		key = "wall_button_on";
+		break;
+	case CALLOUT_TYPE_WALL_BUTTON_OFF:
+		key = "wall_button_off";
+		break;
+	case CALLOUT_TYPE_CHEST:
+		key = "chest";
+		break;
+	case CALLOUT_TYPE_ITEM:
+	{
+		std::string itemName;
+		if ( entity && (multiplayer != CLIENT || (multiplayer == CLIENT && entity->itemReceivedDetailsFromServer == 1)) )
+		{
+			if ( Item* item = newItemFromEntity(entity, true) )
+			{
+				if ( item->type >= WOODEN_SHIELD && item->type < NUMITEMS )
+				{
+					char buf[256];
+					bool manuallyInsertedNewline = false;
+					if ( !item->identified )
+					{
+						if ( itemCategory(item) == BOOK )
+						{
+							if ( setType == SET_CALLOUT_BANNER_TEXT )
+							{
+								snprintf(buf, sizeof(buf), "\"%s\" (?)", getBookLocalizedNameFromIndex(item->appearance% numbooks).c_str());
+							}
+							else
+							{
+								snprintf(buf, sizeof(buf), "%s %s\n\"%s\" (?)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+									Language::get(4214), getBookLocalizedNameFromIndex(item->appearance % numbooks).c_str());
+								manuallyInsertedNewline = true;
+							}
+						}
+						else if ( itemCategory(item) == SCROLL )
+						{
+							if ( setType == SET_CALLOUT_BANNER_TEXT )
+							{
+								snprintf(buf, sizeof(buf), "%s %s %s (?)",
+									items[item->type].getUnidentifiedName(), Language::get(4215), item->getScrollLabel());
+							}
+							else
+							{
+								snprintf(buf, sizeof(buf), "%s %s\n%s %s (?)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+									items[item->type].getUnidentifiedName(), Language::get(4215), item->getScrollLabel());
+								manuallyInsertedNewline = true;
+							}
+						}
+						else
+						{
+							std::string name = item->getName();
+							if ( setType == SET_CALLOUT_WORLD_TEXT && (name.find(' ') != std::string::npos) )
+							{
+								snprintf(buf, sizeof(buf), "%s\n%s (?)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), name.c_str());
+							}
+							else
+							{
+								snprintf(buf, sizeof(buf), "%s %s (?)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), name.c_str());
+							}
+						}
+					}
+					else
+					{
+						if ( item->type == TOOL_SENTRYBOT || item->type == TOOL_SPELLBOT || item->type == TOOL_DUMMYBOT
+							|| item->type == TOOL_GYROBOT )
+						{
+							int health = 100;
+							if ( !item->tinkeringBotIsMaxHealth() )
+							{
+								health = 25 * (item->appearance % 10);
+								if ( health == 0 && item->status != BROKEN )
+								{
+									health = 5;
+								}
+							}
+							std::string name = item->getName();
+							if ( setType == SET_CALLOUT_WORLD_TEXT && (name.find(' ') != std::string::npos) )
+							{
+								std::vector<size_t> spaces;
+								size_t find = name.find(' ');
+								while ( find != std::string::npos )
+								{
+									spaces.push_back(find);
+									find = name.find(' ', find + 1);
+								}
+								if ( spaces.size() == 1 )
+								{
+									snprintf(buf, sizeof(buf), "%s\n%s",
+										ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), name.c_str());
+								}
+								else
+								{
+									size_t split = (spaces.size() / 2);
+									if ( spaces.size() > split )
+									{
+										name.at(spaces[split]) = '\n';
+									}
+									snprintf(buf, sizeof(buf), "%s %s",
+										ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), name.c_str());
+								}
+							}
+							else
+							{
+								snprintf(buf, sizeof(buf), "%s %s", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), 
+									name.c_str());
+							}
+						}
+						else if ( itemCategory(item) == BOOK )
+						{
+							if ( setType == SET_CALLOUT_BANNER_TEXT )
+							{
+								snprintf(buf, sizeof(buf), "\"%s\" (%+d)", getBookLocalizedNameFromIndex(item->appearance % numbooks).c_str(),
+									item->beatitude);
+							}
+							else
+							{
+								snprintf(buf, sizeof(buf), "%s %s\n\"%s\" (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+									Language::get(4214), getBookLocalizedNameFromIndex(item->appearance % numbooks).c_str(), item->beatitude); // brand new copy of
+								manuallyInsertedNewline = true;
+							}
+						}
+						else
+						{
+							std::string name = item->getName();
+							if ( setType == SET_CALLOUT_WORLD_TEXT && (name.find(' ') != std::string::npos) )
+							{
+								std::vector<size_t> spaces;
+								size_t find = name.find(' ');
+								while ( find != std::string::npos )
+								{
+									spaces.push_back(find);
+									find = name.find(' ', find + 1);
+								}
+								if ( spaces.size() == 1 )
+								{
+									snprintf(buf, sizeof(buf), "%s\n%s (%+d)", 
+										ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), name.c_str(), item->beatitude);
+								}
+								else
+								{
+									size_t split = (spaces.size() / 2);
+									if ( spaces.size() > split )
+									{
+										name.at(spaces[split]) = '\n';
+									}
+									snprintf(buf, sizeof(buf), "%s %s (%+d)",
+										ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), name.c_str(), item->beatitude);
+								}
+							}
+							else
+							{
+								snprintf(buf, sizeof(buf), "%s %s (%+d)", 
+									ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), name.c_str(), item->beatitude);
+							}
+						}
+					}
+					itemName = buf;
+					if ( itemName.size() > 0 && itemName[0] >= 'A' && itemName[0] <= 'Z' )
+					{
+						itemName[0] -= 'A' - 'a';
+					}
+				}
+				else
+				{
+					itemName = Language::get(3634);
+				}
+				free(item);
+			}
+		}
+		else
+		{
+			itemName = Language::get(3634);
+		}
+		std::string key = "item";
+		if ( stringStartsWithVowel(itemName) && text_map.find(std::string(key + "_an")) != text_map.end() )
+		{
+			key += "_an";
+		}
+
+		if ( text_map.find(key) == text_map.end() )
+		{
+			key = "default";
+		}
+		if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return key;
+		}
+		auto& textMap = text_map[key];
+		auto highlights = textMap.bannerHighlights;
+		if ( highlights.size() > 0 )
+		{
+			int indexStart = 0;
+			for ( auto highlight : highlights )
+			{
+				indexStart = std::max(highlight, indexStart);
+			}
+			for ( auto c : itemName )
+			{
+				if ( c == ' ' )
+				{
+					highlights.insert(indexStart + 1);
+					++indexStart;
+				}
+			}
+		}
+		if ( setType == SET_CALLOUT_BANNER_TEXT )
+		{
+			setCalloutBannerTextFormatted(player, field, color, highlights, textMap.bannerText.c_str(), itemName.c_str());
+		}
+		else
+		{
+			return getCalloutMessage(textMap, itemName.c_str(), targetPlayer);
+		}
+		return "";
+	}
+	case CALLOUT_TYPE_BOULDER:
+		key = "boulder";
+		break;
+	case CALLOUT_TYPE_TRAP:
+	{
+		key = "trap";
+		if ( text_map.find(key) == text_map.end() )
+		{
+			key = "default";
+		}
+		if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return key;
+		}
+		std::string trapName = Language::get(4362);
+		if ( entity )
+		{
+			if ( entity->behavior == &actBoulderTrapHole )
+			{
+				trapName = Language::get(4349);
+			}
+			else if ( entity->behavior == &actArrowTrap )
+			{
+				trapName = Language::get(4351);
+			}
+			else if ( entity->behavior == &actMagicTrap )
+			{
+				trapName = Language::get(4352);
+			}
+			else if ( entity->behavior == &actMagicTrapCeiling )
+			{
+				trapName = Language::get(4352);
+			}
+			else if ( entity->behavior == &actSpearTrap )
+			{
+				trapName = Language::get(4350);
+			}
+		}
+		auto& textMap = text_map[key];
+		auto highlights = textMap.bannerHighlights;
+		if ( highlights.size() > 0 )
+		{
+			int indexStart = 0;
+			for ( auto highlight : highlights )
+			{
+				indexStart = std::max(highlight, indexStart);
+			}
+			for ( auto c : trapName )
+			{
+				if ( c == ' ' )
+				{
+					highlights.insert(indexStart + 1);
+					++indexStart;
+				}
+			}
+		}
+		if ( setType == SET_CALLOUT_BANNER_TEXT )
+		{
+			setCalloutBannerTextFormatted(player, field, color, highlights,
+				textMap.bannerText.c_str(), trapName.c_str());
+		}
+		else
+		{
+			return getCalloutMessage(textMap, trapName.c_str(), targetPlayer);
+		}
+		return "";
+	}
+	case CALLOUT_TYPE_GENERIC_INTERACTABLE:
+	{
+		key = "generic_interactable";
+		if ( text_map.find(key) == text_map.end() )
+		{
+			key = "default";
+		}
+		if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return key;
+		}
+		std::string objectName = Language::get(4366);
+		if ( entity )
+		{
+			if ( entity->behavior == &actSink )
+			{
+				objectName = Language::get(4354);
+			}
+			else if ( entity->behavior == &actHeadstone )
+			{
+				objectName = Language::get(4357);
+			}
+			else if ( entity->behavior == &actCampfire )
+			{
+				objectName = Language::get(4365);
+			}
+			else if ( entity->behavior == &actCauldron )
+			{
+				objectName = Language::get(6974);
+			}
+			else if ( entity->behavior == &actWorkbench )
+			{
+				objectName = Language::get(6981);
+			}
+			else if ( entity->behavior == &actMailbox )
+			{
+				objectName = Language::get(6986);
+			}
+			else if ( entity->behavior == &actPowerCrystal )
+			{
+				objectName = Language::get(4356);
+			}
+			else if ( entity->behavior == &actPedestalBase )
+			{
+				objectName = Language::get(4364);
+			}
+			else if ( entity->behavior == &actFloorDecoration && entity->sprite == 991 )
+			{
+				objectName = Language::get(4363);
+			}
+		}
+		auto& textMap = text_map[key];
+		if ( setType == SET_CALLOUT_BANNER_TEXT )
+		{
+			setCalloutBannerTextFormatted(player, field, color, textMap.bannerHighlights,
+				textMap.bannerText.c_str(), objectName.c_str());
+		}
+		else
+		{
+			return getCalloutMessage(textMap, objectName.c_str(), targetPlayer);
+		}
+		return "";
+	}
+	case CALLOUT_TYPE_SHRINE:
+		key = "shrine";
+		break;
+	case CALLOUT_TYPE_BELL:
+		key = "bell";
+		break;
+	case CALLOUT_TYPE_DAEDALUS:
+		key = "daedalus";
+		break;
+	case CALLOUT_TYPE_ASSIST_SHRINE:
+		key = "assist_shrine";
+		break;
+	case CALLOUT_TYPE_EXIT:
+		key = "exit";
+		break;
+	case CALLOUT_TYPE_SECRET_EXIT:
+		key = "secret_exit";
+		break;
+	case CALLOUT_TYPE_SECRET_ENTRANCE:
+		key = "secret_entrance";
+		break;
+	case CALLOUT_TYPE_GOLD:
+		key = "gold";
+		break;
+	case CALLOUT_TYPE_FOUNTAIN:
+		key = "fountain";
+		break;
+	case CALLOUT_TYPE_SINK:
+		key = "sink";
+		break;
+	case CALLOUT_TYPE_TELEPORTER_LADDER_UP:
+		key = "teleporter";
+		if ( text_map.find(std::string(key + "_up")) != text_map.end() )
+		{
+			key += "_up";
+		}
+		break;
+	case CALLOUT_TYPE_TELEPORTER_LADDER_DOWN:
+		key = "teleporter";
+		if ( text_map.find(std::string(key + "_down")) != text_map.end() )
+		{
+			key += "_down";
+		}
+		break;
+	case CALLOUT_TYPE_TELEPORTER_PORTAL:
+		key = "teleporter";
+		if ( text_map.find(std::string(key + "_portal")) != text_map.end() )
+		{
+			key += "_portal";
+		}
+		break;
+	case CALLOUT_TYPE_BOMB_TRAP:
+	{
+		key = "bomb";
+		if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return key;
+		}
+		std::string trapName = Language::get(4362);
+		if ( entity )
+		{
+			auto highlights = text_map[key].bannerHighlights;
+			if ( entity->behavior == &actBomb )
+			{
+				if ( entity->skill[21] >= WOODEN_SHIELD && entity->skill[21] < NUMITEMS )
+				{
+					trapName = items[entity->skill[21]].getIdentifiedName();
+					if ( highlights.size() > 0 )
+					{
+						highlights.insert(*highlights.begin() + 1);
+					}
+				}
+			}
+			else if ( entity->behavior == &actBeartrap )
+			{
+				trapName = items[TOOL_BEARTRAP].getIdentifiedName();
+			}
+			auto& textMap = text_map[key];
+			if ( setType == SET_CALLOUT_BANNER_TEXT )
+			{
+				setCalloutBannerTextFormatted(player, field, color, highlights,
+					textMap.bannerText.c_str(), trapName.c_str());
+			}
+			else
+			{
+				return getCalloutMessage(textMap, trapName.c_str(), targetPlayer);
+			}
+		}
+		return "";
+	}
+	case CALLOUT_TYPE_COLLIDER_BREAKABLE:
+	{
+		key = "collider";
+		if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return key;
+		}
+		if ( entity )
+		{
+			auto highlights = text_map[key].bannerHighlights;
+			std::string objectName = Language::get(entity->getColliderLangName());
+
+			if ( highlights.size() > 0 )
+			{
+				int indexStart = *highlights.begin();
+				for ( auto c : objectName )
+				{
+					if ( c == ' ' )
+					{
+						highlights.insert(indexStart + 1);
+						++indexStart;
+					}
+				}
+			}
+			auto& textMap = text_map[key];
+			if ( setType == SET_CALLOUT_BANNER_TEXT )
+			{
+				setCalloutBannerTextFormatted(player, field, color, highlights,
+					textMap.bannerText.c_str(), objectName.c_str());
+			}
+
+			else
+			{
+				return getCalloutMessage(textMap, objectName.c_str(), targetPlayer);
+			}
+		}
+		return "";
+		break;
+	}
+		default:
+			break;
+	}
+
+	if ( text_map.find(key) == text_map.end() )
+	{
+		if ( setType == SET_CALLOUT_BANNER_TEXT )
+		{
+			setCalloutBannerTextUnformatted(player, field, iconName, "default", color);
+		}
+		else if ( setType == SET_CALLOUT_ICON_KEY )
+		{
+			return "default";
+		}
+		else
+		{
+			return getCalloutMessage(text_map["default"], nullptr, targetPlayer);
+		}
+		return "";
+	}
+	if ( setType == SET_CALLOUT_BANNER_TEXT )
+	{
+		setCalloutBannerTextUnformatted(player, field, iconName, key.c_str(), color);
+	}
+	else if ( setType == SET_CALLOUT_ICON_KEY )
+	{
+		return key;
+	}
+	else
+	{
+		return getCalloutMessage(text_map[key], nullptr, targetPlayer);
+	}
+	return "";
+}
+
+void CalloutRadialMenu::initCalloutMenuGUICursor(bool openInventory)
+{
+	bool oldshootmode = players[gui_player]->shootmode;
+	if ( openInventory )
+	{
+		//players[gui_player]->openStatusScreen(GUI_MODE_INVENTORY, INVENTORY_MODE_ITEM);
+		players[gui_player]->closeAllGUIs(DONT_CHANGE_SHOOTMODE, CLOSEGUI_DONT_CLOSE_CALLOUTGUI);
+		players[gui_player]->openStatusScreen(GUI_MODE_CALLOUT, INVENTORY_MODE_ITEM);
+	}
+
+	if ( !oldshootmode )
+	{
+		Uint32 flags = (Inputs::SET_MOUSE | Inputs::SET_CONTROLLER | Inputs::UNSET_RELATIVE_MOUSE);
+		inputs.warpMouse(gui_player,
+			players[gui_player]->camera_x1() + (players[gui_player]->camera_width() / 2),
+			players[gui_player]->camera_y1() + (players[gui_player]->camera_height() / 2), flags);
+	}
+
+	inputs.setMouse(gui_player, Inputs::OX, inputs.getMouse(gui_player, Inputs::X));
+	inputs.setMouse(gui_player, Inputs::OY, inputs.getMouse(gui_player, Inputs::Y));
+
+	if ( menuX == -1 )
+	{
+		menuX = inputs.getMouse(gui_player, Inputs::X);
+	}
+	if ( menuY == -1 )
+	{
+		menuY = inputs.getMouse(gui_player, Inputs::Y);
+	}
+}
+
+bool CalloutRadialMenu::calloutGUIHasBeenCreated() const
+{
+	if ( calloutFrame )
+	{
+		if ( !calloutFrame->getFrames().empty() )
+		{
+			for ( auto f : calloutFrame->getFrames() )
+			{
+				if ( !f->isToBeDeleted() )
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return false;
+}
+
+void CalloutRadialMenu::createCalloutMenuGUI()
+{
+	const int player = getPlayer();
+	if ( !gui || !calloutFrame )
+	{
+		return;
+	}
+	if ( calloutGUIHasBeenCreated() )
+	{
+		return;
+	}
+
+	const int midx = calloutFrame->getSize().w / 2;
+	const int midy = calloutFrame->getSize().h / 2;
+
+	auto bgFrame = calloutFrame->addFrame("wheel base");
+	bgFrame->setSize(SDL_Rect{ 0, 0, calloutFrame->getSize().w, calloutFrame->getSize().h });
+	bgFrame->setHollow(false);
+	bgFrame->setDisabled(false);
+	bgFrame->setInheritParentFrameOpacity(false);
+	bgFrame->setOpacity(0.0);
+
+	const char* font = "fonts/pixel_maz_multiline.ttf#16#2";
+
+	int panelIndex = 0;
+	for ( auto& entry : panelEntries )
+	{
+		if ( panelIndex < PANEL_DIRECTION_END )
+		{
+			SDL_Rect pos{ entry.x + midx, entry.y + midy, 0, 0 };
+			char buf[32] = "";
+			snprintf(buf, sizeof(buf), "panel %d", panelIndex);
+			Frame::image_t* img = bgFrame->addImage(pos, 0xFFFFFFFF, entry.path.c_str(), buf);
+			if ( auto imgGet = Image::get(img->path.c_str()) )
+			{
+				img->pos.w = imgGet->getWidth();
+				img->pos.h = imgGet->getHeight();
+			}
+			img->ontop = true;
+		}
+		++panelIndex;
+	}
+
+	panelIndex = 0;
+	for ( auto& entry : panelEntries )
+	{
+		if ( panelIndex < PANEL_DIRECTION_END )
+		{
+			SDL_Rect pos{ entry.x + midx, entry.y + midy, 0, 0 };
+			char buf[32] = "";
+			snprintf(buf, sizeof(buf), "icon %d", panelIndex);
+			Frame::image_t* imgIcon = bgFrame->addImage(pos, 0xFFFFFFFF, "", buf);
+			imgIcon->disabled = true;
+			imgIcon->ontop = true;
+		}
+		++panelIndex;
+	}
+
+	{
+		// do center panel
+		auto& entry = panelEntries[panelEntries.size() - 1];
+		SDL_Rect pos{ entry.x + midx, entry.y + midy, 0, 0 };
+		char buf[32] = "";
+		snprintf(buf, sizeof(buf), "panel %d", PANEL_DIRECTION_END);
+		Frame::image_t* img = bgFrame->addImage(pos, 0xFFFFFFFF, entry.path.c_str(), buf);
+		if ( auto imgGet = Image::get(img->path.c_str()) )
+		{
+			img->pos.w = imgGet->getWidth();
+			img->pos.h = imgGet->getHeight();
+		}
+	}
+
+	auto bannerFrame = calloutFrame->addFrame("banner frame");
+	bannerFrame->setSize(SDL_Rect{ 0, 0, 0, 40 });
+	bannerFrame->setHollow(false);
+	bannerFrame->setDisabled(false);
+	bannerFrame->setInheritParentFrameOpacity(false);
+	bannerFrame->addImage(SDL_Rect{ 0, 0, 42, 40 }, 0xFFFFFFFF, "#*images/ui/FollowerWheel/banner-cmd_l.png", "banner left");
+	bannerFrame->addImage(SDL_Rect{ 0, 0, 42, 40 }, 0xFFFFFFFF, "#*images/ui/FollowerWheel/banner-cmd_r.png", "banner right");
+	bannerFrame->addImage(SDL_Rect{ 0, 12, 0, 28 }, 0xFFFFFFFF, "*images/ui/FollowerWheel/banner-cmd_c.png", "banner center");
+	auto bannerText = bannerFrame->addField("banner txt", 128);
+	bannerText->setFont(font);
+	bannerText->setText("");
+	bannerText->setHJustify(Field::justify_t::LEFT);
+	bannerText->setVJustify(Field::justify_t::TOP);
+	bannerText->setSize(SDL_Rect{ 0, 0, 0, 24 });
+	bannerText->setTextColor(followerBannerTextColor);
+	bannerText->setOutlineColor(makeColor(29, 16, 11, 255));
+	auto bannerGlyph = bannerFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "banner glyph");
+	bannerGlyph->disabled = true;
+	auto bannerGlyph2 = bannerFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "banner modifier glyph");
+	bannerGlyph2->disabled = true;
+
+	auto wheelTitleText = bgFrame->addField("wheel title", 128);
+	wheelTitleText->setFont(font);
+	wheelTitleText->setText("");
+	wheelTitleText->setHJustify(Field::justify_t::LEFT);
+	wheelTitleText->setVJustify(Field::justify_t::TOP);
+	wheelTitleText->setSize(SDL_Rect{ 0, 0, 240, 24 });
+	wheelTitleText->setTextColor(followerTitleColor);
+	wheelTitleText->setOutlineColor(makeColor(29, 16, 11, 255));
+
+	auto wheelSkillImg = bannerFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "skill img");
+	wheelSkillImg->disabled = true;
+	auto wheelStatImg = bannerFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "", "stat img");
+	wheelStatImg->disabled = true;
+}
+
+bool CalloutRadialMenu::calloutMenuIsOpen()
+{
+	if ( selectMoveTo || bOpen )
+	{
+		return true;
+	}
+	return false;
+}
+
+std::vector<CalloutRadialMenu::PanelEntry> CalloutRadialMenu::panelEntries;
+std::map<std::string, CalloutRadialMenu::IconEntry> CalloutRadialMenu::iconEntries;
+std::map<std::string, CalloutRadialMenu::WorldIconEntry_t> CalloutRadialMenu::worldIconEntries;
+std::map<std::string, std::string> CalloutRadialMenu::helpDescriptors;
+std::map<int, std::string> CalloutRadialMenu::worldIconIDToEntryKey;
+int CalloutRadialMenu::followerWheelButtonThickness = 70;
+int CalloutRadialMenu::followerWheelRadius = 140;
+int CalloutRadialMenu::followerWheelFrameOffsetX = 0;
+int CalloutRadialMenu::followerWheelFrameOffsetY = 0;
+int CalloutRadialMenu::followerWheelInnerCircleRadiusOffset = 0;
+int CalloutRadialMenu::followerWheelInnerCircleRadiusOffsetAlternate = 0;
+Uint32 CalloutRadialMenu::CalloutParticle_t::kParticleLifetime = TICKS_PER_SECOND * 5;
+
+std::vector<CalloutRadialMenu::PanelEntry>& getPanelEntriesForCallout()
+{
+	return CalloutRadialMenu::panelEntries;
+}
+
+CalloutRadialMenu::CalloutType CalloutRadialMenu::getCalloutTypeForEntity(const int player, Entity* parent)
+{
+	if ( !parent )
+	{
+		return CALLOUT_TYPE_NO_TARGET;
+	}
+	CalloutType type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
+
+	if ( parent->behavior == &actPlayer || parent->behavior == &actDeathGhost )
+	{
+		type = CALLOUT_TYPE_PLAYER;
+	}
+	else if ( parent->behavior == &actItem )
+	{
+		type = CALLOUT_TYPE_ITEM;
+	}
+	else if ( parent->behavior == &actGoldBag )
+	{
+		type = CALLOUT_TYPE_GOLD;
+	}
+	else if ( parent->behavior == &actFountain )
+	{
+		type = CALLOUT_TYPE_FOUNTAIN;
+	}
+	else if ( parent->behavior == &actSink )
+	{
+		type = CALLOUT_TYPE_SINK;
+	}
+	else if ( parent->behavior == &actChestLid || parent->behavior == &actChest || parent->isInertMimic() )
+	{
+		type = CALLOUT_TYPE_CHEST;
+	}
+	/*else if ( parent->behavior == &actTorch )
+	{
+	}*/
+	/*else if ( parent->behavior == &actCrystalShard )
+	{
+	}*/
+	else if ( parent->behavior == &actHeadstone )
+	{
+		type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
+	}
+	else if ( parent->behavior == &actColliderDecoration && parent->isDamageableCollider() )
+	{
+		type = CALLOUT_TYPE_COLLIDER_BREAKABLE;
+	}
+	else if ( parent->behavior == &actMonster )
+	{
+		int monsterType = parent->getMonsterTypeFromSprite();
+		bool enemies = false;
+		if ( players[player]->entity )
+		{
+			if ( multiplayer != CLIENT && parent->checkEnemy(players[player]->entity) )
+			{
+				enemies = true;
+			}
+			else if ( multiplayer == CLIENT
+				&& !parent->monsterAllyGetPlayerLeader()
+				&& !monsterally[monsterType][stats[player]->type] )
+			{
+				enemies = true;
+			}
+		}
+		else
+		{
+			if ( !parent->monsterAllyGetPlayerLeader()
+				&& !monsterally[monsterType][stats[player]->type] )
+			{
+				enemies = true;
+			}
+		}
+
+		type = CALLOUT_TYPE_NPC;
+		if ( monsterType == SHOPKEEPER )
+		{
+			type = CALLOUT_TYPE_NPC;
+		}
+		else if ( enemies )
+		{
+			type = CALLOUT_TYPE_NPC_ENEMY;
+		}
+		else if ( parent->monsterAllyGetPlayerLeader() )
+		{
+			type = CALLOUT_TYPE_NPC_PLAYERALLY;
+		}
+	}
+	/*else if ( parent->behavior == &actGate )
+	{
+	}*/
+	else if ( parent->behavior == &actSwitch || parent->behavior == &actSwitchWithTimer )
+	{
+		if ( parent->skill[0] == 1 )
+		{
+			type = CALLOUT_TYPE_SWITCH_ON;
+		}
+		else
+		{
+			type = CALLOUT_TYPE_SWITCH_OFF;
+		}
+	}
+	else if ( parent->behavior == &::actWallLock
+		|| (parent->sprite >= 1585 && parent->sprite <= 1592) )
+	{
+		int wallLockState = parent->wallLockState;
+		if ( parent->sprite >= 1585 && parent->sprite <= 1592 )
+		{
+			if ( Entity* lock = uidToEntity(parent->parent) )
+			{
+				wallLockState = lock->wallLockState;
+			}
+		}
+		if ( wallLockState == Entity::WallLockStates::LOCK_NO_KEY )
+		{
+			type = CALLOUT_TYPE_WALL_LOCK;
+		}
+		else if ( wallLockState == Entity::WallLockStates::LOCK_KEY_ACTIVE_START
+			|| wallLockState == Entity::WallLockStates::LOCK_KEY_ACTIVE )
+		{
+			type = CALLOUT_TYPE_WALL_LOCK_ON;
+		}
+		else if ( wallLockState == Entity::WallLockStates::LOCK_KEY_INACTIVE_START
+			|| wallLockState == Entity::WallLockStates::LOCK_KEY_INACTIVE )
+		{
+			type = CALLOUT_TYPE_WALL_LOCK_OFF;
+		}
+		else
+		{
+			type = CALLOUT_TYPE_NO_TARGET;
+		}
+	}
+	else if ( parent->behavior == &::actWallButton
+		|| parent->sprite == 1151
+		|| parent->sprite == 1152 )
+	{
+		int wallLockState = parent->wallLockState;
+		if ( parent->sprite == 1151
+			|| parent->sprite == 1152 )
+		{
+			if ( Entity* lock = uidToEntity(parent->parent) )
+			{
+				wallLockState = lock->wallLockState;
+			}
+		}
+		if ( wallLockState == 0 )
+		{
+			type = CALLOUT_TYPE_WALL_BUTTON_OFF;
+		}
+		else
+		{
+			type = CALLOUT_TYPE_WALL_BUTTON_ON;
+		}
+	}
+	else if ( parent->behavior == &actPowerCrystal )
+	{
+		type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
+	}
+	else if ( parent->behavior == &actPedestalBase )
+	{
+		type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
+	}
+	else if ( parent->behavior == &actCampfire )
+	{
+		type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
+	}
+	else if ( parent->behavior == &actCauldron
+		|| parent->behavior == &actWorkbench
+		|| parent->behavior == &actMailbox )
+	{
+		type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
+	}
+	else if ( parent->behavior == &actBoulderTrapHole )
+	{
+		type = CALLOUT_TYPE_TRAP;
+	}
+	else if ( parent->behavior == &actFloorDecoration && parent->sprite == 991 )
+	{
+		type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
+	}
+	else if ( parent->behavior == &actBoulder )
+	{
+		type = CALLOUT_TYPE_BOULDER;
+	}
+	else if ( parent->behavior == &actLadder )
+	{
+		if ( secretlevel && parent->skill[3] == 1 ) // secret ladder
+		{
+			type = CALLOUT_TYPE_SECRET_EXIT;
+		}
+		else if ( !secretlevel && parent->skill[3] == 1 ) // secret ladder
+		{
+			type = CALLOUT_TYPE_SECRET_ENTRANCE;
+		}
+		else
+		{
+			type = CALLOUT_TYPE_EXIT;
+		}
+	}
+	else if ( parent->behavior == &actPortal )
+	{
+		if ( parent->skill[3] == 0 ) // secret entrance portal
+		{
+			if ( secretlevel )
+			{
+				type = CALLOUT_TYPE_SECRET_EXIT;
+			}
+			else
+			{
+				type = CALLOUT_TYPE_SECRET_ENTRANCE;
+			}
+		}
+		else
+		{
+			if ( !strcmp(map.name, "Hell") )
+			{
+				type = CALLOUT_TYPE_EXIT;
+			}
+			else if ( !strcmp(map.name, "Mages Guild") )
+			{
+				type = CALLOUT_TYPE_EXIT;
+			}
+			else
+			{
+				type = CALLOUT_TYPE_EXIT;
+			}
+		}
+	}
+	else if ( parent->behavior == &::actMidGamePortal )
+	{
+		type = CALLOUT_TYPE_EXIT;
+	}
+	else if ( parent->behavior == &actCustomPortal )
+	{
+		if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_TUTORIAL )
+		{
+			type = CALLOUT_TYPE_EXIT;
+		}
+		else
+		{
+			if ( parent->portalCustomSpriteAnimationFrames > 0 )
+			{
+				type = CALLOUT_TYPE_EXIT;
+			}
+			else
+			{
+				type = CALLOUT_TYPE_EXIT;
+			}
+		}
+	}
+	else if ( parent->behavior == &::actExpansionEndGamePortal
+		|| parent->behavior == &actWinningPortal )
+		{
+			type = CALLOUT_TYPE_EXIT;
+	}
+	else if ( parent->behavior == &actTeleporter )
+	{
+		if ( parent->teleporterType == 2 || parent->teleporterType == 3 ) // portal
+		{
+			type = CALLOUT_TYPE_TELEPORTER_PORTAL;
+		}
+		else if ( parent->teleporterType == 1 ) // down ladder
+		{
+			type = CALLOUT_TYPE_TELEPORTER_LADDER_DOWN;
+		}
+		else if ( parent->teleporterType == 0 ) // up ladder
+		{
+			type = CALLOUT_TYPE_TELEPORTER_LADDER_UP;
+		}
+	}
+	else if ( parent->behavior == &::actTeleportShrine /*|| parent->behavior == &::actSpellShrine*/ )
+	{
+		type = CALLOUT_TYPE_SHRINE;
+	}
+	else if ( parent->behavior == &::actDaedalusShrine )
+	{
+		type = CALLOUT_TYPE_DAEDALUS;
+	}
+	else if ( parent->behavior == &::actAssistShrine )
+	{
+		type = CALLOUT_TYPE_ASSIST_SHRINE;
+	}
+	else if ( parent->behavior == &actBell )
+	{
+		type = CALLOUT_TYPE_BELL;
+	}
+	else if ( parent->behavior == &actBomb || parent->behavior == &actBeartrap )
+	{
+		type = CALLOUT_TYPE_BOMB_TRAP;
+	}
+	return type;
+}
+
+CalloutRadialMenu::CalloutType CalloutRadialMenu::getCalloutTypeForUid(const int player, Uint32 uid)
+{
+	Entity* parent = uidToEntity(uid);
+	if ( !parent )
+	{
+		return CALLOUT_TYPE_NO_TARGET;
+	}
+
+	return CalloutRadialMenu::getCalloutTypeForEntity(player, parent);
+}
+
+static ConsoleVariable<bool> cvar_callout_debug("/callout_debug", false);
+bool CalloutRadialMenu::calloutMenuEnabledForGamemode()
+{
+	if ( *cvar_callout_debug )
+	{
+		return true;
+	}
+	if ( multiplayer != SINGLE || (multiplayer == SINGLE && splitscreen) )
+	{
+		return true;
+	}
+	return false;
+}
+
+bool CalloutRadialMenu::uidMatchesPlayer(const int playernum, const Uint32 uid)
+{
+	if ( uid == 0 ) { return false; }
+	if ( achievementObserver.playerUids[playernum] == uid )
+	{
+		return true;
+	}
+	else if ( players[playernum]->ghost.uid == uid )
+	{
+		return true;
+	}
+	return false;
+}
+
+Uint32 CalloutRadialMenu::getPlayerUid(const int playernum)
+{
+	if ( players[playernum]->ghost.isActive() )
+	{
+		return players[playernum]->ghost.uid;
+	}
+	else
+	{
+		return achievementObserver.playerUids[playernum];
+	}
+}
+
+void CalloutRadialMenu::CalloutParticle_t::init(const int player)
+{
+	creationTick = ::ticks;
+	messageSentTick = ::ticks;
+	lifetime = kParticleLifetime;
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( i == player && uidMatchesPlayer(player, entityUid) && players[i]->isLocalPlayer() )
+		{
+			lockOnScreen[i] = true;
+		}
+		else
+		{
+			lockOnScreen[i] = true;
+		}
+		big[i] = true;
+		animateScaleForPlayerView[i] = 0.0;
+	}
+	Entity* parent = uidToEntity(entityUid);
+
+	if ( !parent )
+	{
+		return;
+	}
+
+	z = parent->z - 4;
+
+	type = CalloutRadialMenu::getCalloutTypeForEntity(player, parent);
+}
+
+void CalloutRadialMenu::closeCalloutMenuGUI()
+{
+	if ( calloutMenuIsOpen() )
+	{
+		players[gui_player]->worldUI.reset();
+	}
+	bOpen = false;
+	lockOnEntityUid = 0;
+	selectMoveTo = false;
+	menuX = -1;
+	menuY = -1;
+	moveToX = -1;
+	moveToY = -1;
+	menuToggleClick = false;
+	holdWheel = false;
+	optionSelected = -1;
+	if ( calloutFrame )
+	{
+		calloutFrame->setDisabled(true);
+		for ( auto f : calloutFrame->getFrames() )
+		{
+			f->removeSelf();
+		}
+	}
+	animTitle = 0.0;
+	animWheel = 0.0;
+	openedThisTick = 0;
+	animInvalidAction = 0.0;
+	animInvalidActionTicks = 0;
+}
+
+std::string& CalloutRadialMenu::WorldIconEntry_t::getPlayerIconPath(const int playernum)
+{
+	if ( colorblind_lobby )
+	{
+		switch ( playernum )
+		{
+		case 0:
+			return pathPlayer3;
+		case 1:
+			return pathPlayer4;
+		case 2:
+			return pathPlayer2;
+		case 3:
+			return pathPlayerX;
+		default:
+			return pathPlayerX;
+			break;
+		}
+	}
+	else
+	{
+		switch ( playernum )
+		{
+		case 0:
+			return pathPlayer1;
+		case 1:
+			return pathPlayer2;
+		case 2:
+			return pathPlayer3;
+		case 3:
+			return pathPlayer4;
+		default:
+			return pathPlayerX;
+			break;
+		}
+	}
+}
+
+void CalloutRadialMenu::drawCallouts(const int playernum)
+{
+	auto& pingFrame = CalloutMenu[playernum].calloutPingFrame;
+	if ( !pingFrame )
+	{
+		pingFrame = gameUIFrame[playernum]->addFrame("callout pings");
+		pingFrame->setHollow(true);
+		pingFrame->setDisabled(true);
+		pingFrame->setInheritParentFrameOpacity(false);
+		pingFrame->setBorder(0);
+		pingFrame->setOwner(playernum);
+	}
+
+	if ( players[playernum]->hud.hudFrame )
+	{
+		pingFrame->setDisabled(players[playernum]->hud.hudFrame->isDisabled());
+	}
+
+	pingFrame->setSize(SDL_Rect{ players[playernum]->camera_virtualx1(),
+		players[playernum]->camera_virtualy1(),
+		players[playernum]->camera_virtualWidth(),
+		players[playernum]->camera_virtualHeight() });
+
+	struct CalloutToDraw_t
+	{
+		Uint32 creationTick = 0;
+		real_t dist = 0.0;
+		std::string imgPath = "";
+		Uint32 color = 0;
+		SDL_Rect pos;
+		CalloutToDraw_t(std::string _imgPath, Uint32 _color, SDL_Rect _pos, Uint32 _creationTick, real_t _dist)
+		{
+			imgPath = _imgPath;
+			color = _color;
+			pos = _pos;
+			creationTick = _creationTick;
+			dist = _dist;
+		}
+	};
+
+	auto compFunc = [](CalloutToDraw_t& lhs, CalloutToDraw_t& rhs)
+	{
+		return lhs.dist < rhs.dist;
+	};
+	auto compFunc2 = [](CalloutToDraw_t& lhs, CalloutToDraw_t& rhs)
+	{
+		return lhs.creationTick < rhs.creationTick;
+	};
+	std::priority_queue<CalloutToDraw_t, std::vector<CalloutToDraw_t>, decltype(compFunc)> priorityQueue(compFunc);
+	std::priority_queue<CalloutToDraw_t, std::vector<CalloutToDraw_t>, decltype(compFunc2)> priorityQueueSelf(compFunc2);
+
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		for ( auto& callout : CalloutMenu[i].callouts )
+		{
+			bool selfCallout = false;
+			if ( uidMatchesPlayer(playernum, callout.second.entityUid) )
+			{
+				if ( i == playernum && players[i]->entity && players[i]->entity->skill[3] != 0 && !players[i]->ghost.isActive() )
+				{
+					// debug/thirdperson cam.
+				}
+				else
+				{
+					selfCallout = true;
+					//continue; // don't draw self callouts
+				}
+			}
+
+			auto* iconPaths = &CalloutRadialMenu::worldIconEntries[CalloutRadialMenu::worldIconIDToEntryKey[callout.second.tagID]];
+			auto& iconPathsMini = CalloutRadialMenu::worldIconEntries[CalloutRadialMenu::worldIconIDToEntryKey[callout.second.tagSmallID]];
+			if ( selfCallout )
+			{
+				std::string checkTag = CalloutRadialMenu::worldIconIDToEntryKey[callout.second.tagID] + "_display_self";
+				if ( CalloutRadialMenu::worldIconEntries.find(checkTag) != CalloutRadialMenu::worldIconEntries.end() )
+				{
+					iconPaths = &CalloutRadialMenu::worldIconEntries[checkTag];
+				}
+			}
+
+			std::string iconPath = "";
+			std::string iconPathMini = "";
+			int playerColor = i;
+			if ( callout.second.cmd == CALLOUT_CMD_SOUTH
+				|| callout.second.cmd == CALLOUT_CMD_SOUTHWEST
+				|| callout.second.cmd == CALLOUT_CMD_SOUTHEAST )
+			{
+				playerColor = CalloutMenu[i].getPlayerForDirectPlayerCmd(i, callout.second.cmd);
+				if ( playernum == playerColor )
+				{
+					iconPaths = &CalloutRadialMenu::worldIconEntries["tag_btn_player_wave_to_me"];
+				}
+			}
+
+			iconPath = iconPaths->getPlayerIconPath(playerColor);
+			iconPathMini = iconPathsMini.getPlayerIconPath(playerColor);
+
+			if ( iconPath == "" )
+			{
+				continue;
+			}
+
+			vec4_t v;
+			mat4x4_t m, t;
+
+			auto camera = &cameras[playernum];
+			auto& player = players[playernum];
+
+			const int offset = 40;
+			int leftOfWindow = player->camera_virtualx1() + offset;
+			int rightOfWindow = player->camera_virtualx1() + player->camera_virtualWidth() - offset;
+			int topOfWindow = player->camera_virtualy1() + offset;
+			int bottomOfWindow = player->camera_virtualy2() - offset;
+
+			mat4x4_t id;
+			vec4_t world{ (float)callout.second.x * 2.f, -(float)callout.second.z * 2.f, (float)callout.second.y * 2.f, 1.f };
+			if ( selfCallout )
+			{
+				world.x = 32.0 * camera->x + 32.0 * cos(camera->ang);
+				world.z = 32.0 * camera->y + 32.0 * sin(camera->ang);
+			}
+			vec4_t window2{ (float)0, (float)0,
+				(float)player->camera_virtualWidth(), (float)player->camera_virtualHeight() };
+			SDL_Rect dest{ 0, 0, 0, 0 };
+			if ( callout.second.lockOnScreen[playernum] )
+			{
+				auto screen_position = project_clipped2(&world, &id, &camera->projview, &window2);
+				dest = SDL_Rect{ player->camera_virtualx1() + (int)screen_position.clipped_coords.x,
+					player->camera_virtualy1() + Frame::virtualScreenY - (Frame::virtualScreenY - player->camera_virtualHeight()) - (int)screen_position.clipped_coords.y,
+				14, 22 };
+				if ( !screen_position.isBehind
+					&& (screen_position.direction == ClipResult::Direction::Front
+						|| screen_position.direction == ClipResult::Direction::Invalid) )
+				{
+					callout.second.lockOnScreen[playernum] = false;
+				}
+
+				dest.x = std::min(rightOfWindow, std::max(leftOfWindow, dest.x));
+				dest.y = std::min(bottomOfWindow, std::max(topOfWindow, dest.y));
+				real_t tangent = atan2(camera->y * 32.0 - world.z, camera->x * 32.0 - world.x);
+				real_t camang = camera->ang;
+				while ( tangent >= 2 * PI )
+				{
+					tangent -= PI * 2;
+				}
+				while ( tangent < 0 )
+				{
+					tangent += PI * 2;
+				}
+				while ( camang >= 2 * PI )
+				{
+					camang -= PI * 2;
+				}
+				while ( camang < 0 )
+				{
+					camang += PI * 2;
+				}
+				real_t result = tangent - camang;
+				while ( result >= PI )
+				{
+					result -= PI * 2;
+				}
+				while ( result < -PI )
+				{
+					result += PI * 2;
+				}
+				//messagePlayer(player->playernum, MESSAGE_DEBUG, "%f", ((PI - abs(abs(tangent - camang) - PI)) * 2));
+				//messagePlayer(player->playernum, MESSAGE_DEBUG, "%f", result);
+				if ( abs(result) < 0.0001 )
+				{
+					// really small angle due to camera fluctuations, affix to left side to prevent flicker
+					dest.x = leftOfWindow;
+				}
+				else if ( result >= 0.0 && result < PI / 2 )
+				{
+					dest.x = leftOfWindow;
+				}
+				else if ( result < 0.0 && result > -PI / 2 )
+				{
+					dest.x = rightOfWindow;
+				}
+
+				if ( abs(result) < (3 * PI / 4) )
+				{
+					real_t mult = std::min(1.0, ((3 * PI / 4) - abs(result)) / (PI / 2));
+					dest.y += ((player->camera_virtualy1() + (player->camera_virtualHeight() / 2)) - dest.y) * mult;
+				}
+			}
+			else
+			{
+				auto screen_position = project(&world, &id, &camera->projview, &window2);
+				if ( screen_position.z >= 1.0 || screen_position.z < 0.0 )
+				{
+					continue;
+				}
+				dest = SDL_Rect{ player->camera_virtualx1() + (int)screen_position.x,
+					player->camera_virtualy1() + Frame::virtualScreenY - (Frame::virtualScreenY - player->camera_virtualHeight()) -
+					(int)screen_position.y,
+				14, 22 };
+			}
+
+			real_t lifePercent = callout.second.ticks / (real_t)callout.second.lifetime;
+			if ( selfCallout )
+			{
+				// fade early for the self callout player, but not others in splitscreen
+				lifePercent = callout.second.ticks / (real_t)((TICKS_PER_SECOND * 4) / 5);
+			}
+			else
+			{
+				for ( int i = 0; i < MAXPLAYERS; ++i )
+				{
+					if ( uidMatchesPlayer(i, callout.second.entityUid) )
+					{
+						if ( callout.second.cmd == CALLOUT_CMD_AFFIRMATIVE
+							|| callout.second.cmd == CALLOUT_CMD_THANKS
+							|| callout.second.cmd == CALLOUT_CMD_NEGATIVE
+							|| callout.second.cmd == CALLOUT_CMD_LOOK
+							|| callout.second.cmd == CALLOUT_CMD_SOUTH 
+							|| callout.second.cmd == CALLOUT_CMD_SOUTHWEST 
+							|| callout.second.cmd == CALLOUT_CMD_SOUTHEAST
+							|| (callout.second.cmd == CALLOUT_CMD_HELP && players[i]->ghost.isActive()) )
+						{
+							// fade early for simple thumbs up/down for players
+							lifePercent = callout.second.ticks / (real_t)((TICKS_PER_SECOND * 4) / 5);
+						}
+						break;
+					}
+				}
+			}
+			Uint32 alpha = 255;
+			if ( lifePercent >= 0.8 )
+			{
+				alpha -= std::min((Uint32)255, (Uint32)(255 * (lifePercent - 0.8) / 0.2));
+			}
+			Uint32 color = makeColor(255, 255, 255, alpha);
+			SDL_Rect iconPos = dest;
+
+			bool drawMini = false;
+
+			Entity* playerEntity = Player::getPlayerInteractEntity(playernum);
+			if ( playerEntity && playerEntity->bodyparts.size() > 0 )
+			{
+				auto bodypart = playerEntity->bodyparts[0];
+				real_t tempx = bodypart->x;
+				real_t tempy = bodypart->y;
+				bodypart->x = callout.second.x;
+				bodypart->y = callout.second.y;
+
+				real_t tangent = atan2(camera->y * 16.0 - bodypart->y, camera->x * 16.0 - bodypart->x);
+				Entity* ohitentity = hit.entity;
+
+				bool oldPassable = playerEntity->flags[PASSABLE];
+				if ( playerEntity->behavior == &actDeathGhost )
+				{
+					playerEntity->flags[PASSABLE] = false; // hack to make ghosts linetraceable
+				}
+				lineTraceTarget(bodypart, bodypart->x, bodypart->y, tangent, 256, 0, false, playerEntity);
+				playerEntity->flags[PASSABLE] = oldPassable;
+				
+				if ( hit.entity != playerEntity )
+				{
+					// no line of sight through walls
+					drawMini = true;
+				}
+				hit.entity = ohitentity;
+				bodypart->x = tempx;
+				bodypart->y = tempy;
+			}
+
+			callout.second.big[playernum] = !drawMini;
+			drawMini = false;
+
+			real_t dist = pow(camera->y * 32.0 - world.z, 2) + pow(camera->x * 32.0 - world.x, 2);
+
+			if ( !drawMini )
+			{
+				if ( auto image = Image::get(iconPath.c_str()) )
+				{
+					real_t scale = callout.second.scale - callout.second.animateScaleForPlayerView[playernum] * .5;
+					iconPos.w = image->getWidth() * scale;
+					iconPos.h = image->getHeight() * scale;
+					const int heightOffset = image->getHeight() - iconPos.h;
+
+					if ( selfCallout )
+					{
+						real_t y = iconPos.y - players[playernum]->camera_virtualy1();
+						iconPos.y = players[playernum]->camera_virtualHeight() / 4;
+						real_t factor = players[playernum]->camera_virtualHeight() / (real_t)Frame::virtualScreenY;
+						iconPos.y += factor * 16.0 * (y - iconPos.y) 
+							/ (real_t)players[playernum]->camera_virtualHeight();
+						iconPos.y += players[playernum]->camera_virtualy1();
+					}
+
+					iconPos.x -= iconPos.w / 2;
+					iconPos.y -= iconPos.h + heightOffset / 2;
+					iconPos.y -= (iconPos.h / 4) * callout.second.animateBounce;
+					/*image->drawColor(nullptr, iconPos,
+						SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY }, color);*/
+
+					iconPos.x -= players[playernum]->camera_virtualx1();
+					iconPos.y -= players[playernum]->camera_virtualy1();
+
+					priorityQueue.push(CalloutToDraw_t(iconPath, color, iconPos, callout.second.creationTick, dist));
+				}
+			}
+			else
+			{
+				if ( auto image = Image::get(iconPathMini.c_str()) )
+				{
+					dest.w = image->getWidth();
+					dest.h = image->getHeight();
+					dest.x -= dest.w / 2;
+					dest.y -= dest.h;
+					image->drawColor(nullptr, dest,
+						SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY }, color);
+				}
+			}
+		}
+	}
+
+	auto& images = pingFrame->getImages();
+	while ( images.size() > priorityQueue.size() )
+	{
+		images.erase(images.begin());
+	}
+	while ( images.size() < priorityQueue.size() )
+	{
+		pingFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0, "", "img");
+	}
+
+	size_t index = 0;
+	for ( auto img : images )
+	{
+		img->disabled = true;
+	}
+	while ( !priorityQueue.empty() )
+	{
+		auto& top = priorityQueue.top();
+		if ( index < images.size() )
+		{
+			auto img = images[index];
+			img->color = top.color;
+			img->path = top.imgPath;
+			img->pos = top.pos;
+			img->disabled = false;
+		}
+		priorityQueue.pop();
+		++index;
+	}
+}
+
+void CalloutRadialMenu::CalloutParticle_t::animate()
+{
+	static ConsoleVariable<float> cvar_calloutanimspeed("/calloutanimspeed", 0.3);
+	static ConsoleVariable<float> cvar_calloutbouncespeed("/calloutbouncespeed", 0.9);
+	static ConsoleVariable<int> cvar_calloutbouncestate("/calloutbouncestate", 0);
+	real_t animspeed = 5.0 * *cvar_calloutanimspeed;
+	if ( animateState == 0 )
+	{
+		if ( animateStateInit == 0 )
+		{
+			animateStateInit = 1;
+			animateBounce = 0.0;
+		}
+
+		scale = 0.25 + 1.25 * animateX;
+		if ( animateX >= 1.0 )
+		{
+			++animateState;
+			animateX = 0.0;
+		}
+		animspeed *= 2.0;
+	}
+	else if ( animateState == 1 )
+	{
+		if ( animateStateInit == 1 )
+		{
+			animateStateInit = 2;
+		}
+
+		scale = 1.5 - .75 * animateX;
+		if ( animateX >= 1.0 )
+		{
+			++animateState;
+			animateX = 0.0;
+		}
+		animspeed *= 2.0;
+	}
+	else if ( animateState == 2 )
+	{
+		if ( animateStateInit == 2 )
+		{
+			animateStateInit = 3;
+		}
+
+		scale = 0.75 + 0.25 * animateX;
+		if ( animateX >= 1.0 )
+		{
+			++animateState;
+		}
+		animspeed *= 1.5;
+	}
+	//else if ( animateState == 4 )
+	//{
+	//	if ( animateStateInit == 4 )
+	//	{
+	//		animateStateInit = 5;
+	//	}
+
+	//	scale = 1.5 - 0.5 * animateX;
+	//	if ( animateX >= 1.0 )
+	//	{
+	//		++animateState;
+	//		animateX = 0.0;
+	//	}
+	//	animspeed /= 2.0;
+	//}
+	else
+	{
+		scale = 0.5 + 0.5 * animateX;
+	}
+
+	const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+	if ( animateState <= 2 )
+	{
+		real_t setpointDiffX = fpsScale * std::max(.1, (1.0 - animateX)) / (animspeed);
+		animateX += setpointDiffX;
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			animateScaleForPlayerView[i] = 0.0;
+		}
+	}
+	else
+	{
+		animateX = 1.0;
+		/*if ( big )
+		{
+			real_t setpointDiffX = fpsScale * std::max(.1, (1.0 - animateX)) / (animspeed);
+			animateX += setpointDiffX;
+		}
+		else
+		{
+			real_t setpointDiffX = fpsScale * std::max(.1, (animateX)) / (animspeed);
+			animateX -= setpointDiffX;
+		}*/
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( !big[i] )
+			{
+				real_t setpointDiffX = fpsScale * std::max(.1, (1.0 - animateScaleForPlayerView[i])) / (animspeed);
+				animateScaleForPlayerView[i] += setpointDiffX;
+			}
+			else
+			{
+				real_t setpointDiffX = fpsScale * std::max(.1, (animateScaleForPlayerView[i])) / (animspeed);
+				animateScaleForPlayerView[i] -= setpointDiffX;
+			}
+			animateScaleForPlayerView[i] = std::max(0.0, std::min(1.0, animateScaleForPlayerView[i]));
+		}
+	}
+	animateX = std::max(0.0, std::min(1.0, animateX));
+
+	animateBounce = sin(animateY * PI * 2);
+	if ( animateState >= *cvar_calloutbouncestate )
+	{
+		animateY += fpsScale * 0.05 * *cvar_calloutbouncespeed;
+		animateY = std::min(1.0, animateY);
+	}
+}
+
+void CalloutRadialMenu::update()
+{
+	for ( auto& c : callouts )
+	{
+		auto& callout = c.second;
+		Entity* entity = uidToEntity(callout.entityUid);
+		callout.animate();
+		if ( entity )
+		{
+			if ( TimerExperiments::bUseTimerInterpolation && entity->bUseRenderInterpolation )
+			{
+				callout.x = entity->lerpRenderState.x.position * 16.0;
+				callout.y = entity->lerpRenderState.y.position * 16.0;
+				callout.z = entity->lerpRenderState.z.position + enemyBarSettings.getHeightOffset(entity);
+				callout.z -= 4;
+				if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == BAT_SMALL )
+				{
+					if ( entity->bodyparts.size() > 0 )
+					{
+						callout.z += entity->bodyparts[0]->lerpRenderState.z.position;
+					}
+				}
+			}
+			else
+			{
+				callout.x = entity->x;
+				callout.y = entity->y;
+				callout.z = entity->z + enemyBarSettings.getHeightOffset(entity);
+				callout.z -= 4;
+				if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == BAT_SMALL )
+				{
+					if ( entity->bodyparts.size() > 0 )
+					{
+						callout.z += entity->bodyparts[0]->z;
+					}
+				}
+			}
+		}
+		else if ( callout.entityUid != 0 )
+		{
+			callout.expired = true;
+		}
+	}
+
+
+	if ( updatedThisTick == 0 || ticks != updatedThisTick )
+	{
+		updatedThisTick = ticks;
+		for ( auto it = callouts.begin(); it != callouts.end(); ++it )
+		{
+			it->second.ticks++;
+			if ( it->second.ticks >= it->second.lifetime )
+			{
+				it->second.expired = true;
+			}
+		}
+	}
+
+	for ( auto it = callouts.begin(); it != callouts.end(); )
+	{
+		if ( it->second.expired )
+		{
+			it = callouts.erase(it);
+			continue;
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
+
+int CalloutRadialMenu::CALLOUT_SFX_NEUTRAL = 605;
+int CalloutRadialMenu::CALLOUT_SFX_NEGATIVE = 607;
+int CalloutRadialMenu::CALLOUT_SFX_POSITIVE = 606;
+static ConsoleVariable<int> cvar_callout_sfx_vol("/callout_sfx_vol", 128);
+
+bool CalloutRadialMenu::createParticleCallout(Entity* entity, CalloutRadialMenu::CalloutCommand _cmd, Uint32 overrideUID)
+{
+	if ( !entity ) { return false; }
+	if ( _cmd == CALLOUT_CMD_CANCEL ) { return false; }
+
+	Uint32 existingMessageSent = 0;
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		if ( CalloutMenu[i].callouts.find(entity->getUID()) != CalloutMenu[i].callouts.end() )
+		{
+			auto& existingCallout = CalloutMenu[i].callouts[entity->getUID()];
+			if ( i == getPlayer() && existingCallout.cmd == _cmd )
+			{
+				existingMessageSent = existingCallout.messageSentTick;
+			}
+			CalloutMenu[i].callouts.erase(entity->getUID()); // delete other players pings on this object
+		}
+	}
+
+	auto& callout = callouts[entity->getUID()];
+	real_t x = entity->x;
+	real_t y = entity->y;
+	if ( TimerExperiments::bUseTimerInterpolation && entity->bUseRenderInterpolation )
+	{
+		x = entity->lerpRenderState.x.position * 16.0;
+		y = entity->lerpRenderState.y.position * 16.0;
+	}
+	callout = CalloutRadialMenu::CalloutParticle_t(getPlayer(), x, y, entity->z, entity->getUID(), _cmd);
+	if ( existingMessageSent > 0 && multiplayer != CLIENT )
+	{
+		if ( (callout.messageSentTick - existingMessageSent) < (TICKS_PER_SECOND * 3.5) )
+		{
+			callout.doMessage = false;
+			callout.messageSentTick = existingMessageSent;
+		}
+	}
+
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		while ( CalloutMenu[i].callouts.size() > 3 )
+		{
+			Uint32 earliestTick = ::ticks;
+			auto itToDelete = CalloutMenu[i].callouts.end();
+			for ( auto it = CalloutMenu[i].callouts.begin(); it != CalloutMenu[i].callouts.end(); ++it )
+			{
+				if ( it->second.creationTick < earliestTick )
+				{
+					earliestTick = it->second.creationTick;
+					itToDelete = it;
+				}
+			}
+			if ( itToDelete == CalloutMenu[i].callouts.end() )
+			{
+				break;
+			}
+			else
+			{
+				CalloutMenu[i].callouts.erase(itToDelete);
+			}
+		}
+	}
+
+	std::string calloutTypeKey = getCalloutKeyForCommand(_cmd);
+	Uint32 oldTarget = lockOnEntityUid;
+	if ( overrideUID != 0 )
+	{
+		lockOnEntityUid = overrideUID;
+	}
+	else
+	{
+		lockOnEntityUid = entity->getUID();
+	}
+	std::string key = setCalloutText(nullptr, calloutTypeKey.c_str(), 0, _cmd, SET_CALLOUT_ICON_KEY, -1);
+	lockOnEntityUid = oldTarget;
+
+	callout.tagID = worldIconEntries[iconEntries[calloutTypeKey].text_map[key].worldIconTag].id;
+	callout.tagSmallID = worldIconEntries[iconEntries[calloutTypeKey].text_map[key].worldIconTagMini].id;
+
+	if ( callout.cmd == CALLOUT_CMD_AFFIRMATIVE || callout.cmd == CALLOUT_CMD_THANKS )
+	{
+		playSound(CALLOUT_SFX_POSITIVE, *cvar_callout_sfx_vol);
+	}
+	else if ( callout.cmd == CALLOUT_CMD_NEGATIVE )
+	{
+		playSound(CALLOUT_SFX_NEGATIVE, *cvar_callout_sfx_vol);
+	}
+	else
+	{
+		playSound(CALLOUT_SFX_NEUTRAL, *cvar_callout_sfx_vol);
+	}
+
+	if ( multiplayer == SERVER )
+	{
+		for ( int i = 1; i < MAXPLAYERS; ++i )
+		{
+			if ( i == getPlayer() ) { continue; } // don't send clients their own callout
+			if ( players[i]->isLocalPlayer() ) { continue; }
+			if ( client_disconnected[i] ) { continue; }
+
+			strcpy((char*)net_packet->data, "CALL");
+			net_packet->data[4] = getPlayer();
+			SDLNet_Write32(entity->getUID(), &net_packet->data[5]);
+			net_packet->data[9] = (Uint8)_cmd;
+			SDLNet_Write32(clientCalloutHelpFlags, &net_packet->data[10]);
+			net_packet->len = 14;
+			net_packet->address.host = net_clients[i - 1].host;
+			net_packet->address.port = net_clients[i - 1].port;
+			sendPacketSafe(net_sock, -1, net_packet, i - 1);
+		}
+	}
+
+	if ( players[getPlayer()]->ghost.isActive() )
+	{
+		players[getPlayer()]->ghost.createBounceAnimate();
+		if ( players[getPlayer()]->isLocalPlayer() )
+		{
+			Compendium_t::Events_t::eventUpdateMonster(getPlayer(), Compendium_t::CPDM_GHOST_PINGS, players[getPlayer()]->ghost.my, 1);
+		}
+	}
+
+	return callout.doMessage;
+}
+bool CalloutRadialMenu::createParticleCallout(real_t x, real_t y, real_t z, Uint32 uid, CalloutRadialMenu::CalloutCommand _cmd)
+{
+	if ( _cmd == CALLOUT_CMD_CANCEL ) { return false; }
+
+	//for ( int i = 0; i < MAXPLAYERS; ++i )
+	//{
+	//	if ( CalloutMenu[i].callouts.find(uid) != CalloutMenu[i].callouts.end() )
+	//	{
+	//		CalloutMenu[i].callouts.erase(uid);
+	//	}
+	//}
+	Uint32 existingMessageSent = 0;
+	if ( _cmd == CALLOUT_CMD_MOVE && callouts.find(uid) != callouts.end() )
+	{
+		auto& existingCallout = callouts[uid];
+		if ( existingCallout.cmd == _cmd )
+		{
+			existingMessageSent = existingCallout.messageSentTick;
+		}
+	}
+	auto& callout = callouts[uid];
+
+	callout = CalloutRadialMenu::CalloutParticle_t(getPlayer(), x, y, z, uid, _cmd);
+	if ( existingMessageSent > 0 && multiplayer != CLIENT )
+	{
+		if ( (callout.messageSentTick - existingMessageSent) < (TICKS_PER_SECOND * 3.5) )
+		{
+			callout.doMessage = false;
+			callout.messageSentTick = existingMessageSent;
+		}
+	}
+
+	if ( callout.cmd == CALLOUT_CMD_AFFIRMATIVE || callout.cmd == CALLOUT_CMD_THANKS )
+	{
+		playSound(CALLOUT_SFX_POSITIVE, *cvar_callout_sfx_vol);
+	}
+	else if ( callout.cmd == CALLOUT_CMD_NEGATIVE )
+	{
+		playSound(CALLOUT_SFX_NEGATIVE, *cvar_callout_sfx_vol);
+	}
+	else
+	{
+		playSound(CALLOUT_SFX_NEUTRAL, *cvar_callout_sfx_vol);
+	}
+
+	for ( int i = 0; i < MAXPLAYERS; ++i )
+	{
+		while ( CalloutMenu[i].callouts.size() > 3 )
+		{
+			Uint32 earliestTick = ::ticks;
+			auto itToDelete = CalloutMenu[i].callouts.end();
+			for ( auto it = CalloutMenu[i].callouts.begin(); it != CalloutMenu[i].callouts.end(); ++it )
+			{
+				if ( it->second.creationTick < earliestTick )
+				{
+					earliestTick = it->second.creationTick;
+					itToDelete = it;
+				}
+			}
+			if ( itToDelete == CalloutMenu[i].callouts.end() )
+			{
+				break;
+			}
+			else
+			{
+				CalloutMenu[i].callouts.erase(itToDelete);
+			}
+		}
+	}
+
+	std::string calloutTypeKey = getCalloutKeyForCommand(_cmd);
+	Uint32 oldTarget = lockOnEntityUid;
+	lockOnEntityUid = uid;
+	std::string key = setCalloutText(nullptr, calloutTypeKey.c_str(), 0, _cmd, SET_CALLOUT_ICON_KEY, -1);
+	lockOnEntityUid = oldTarget;
+
+	callout.tagID = worldIconEntries[iconEntries[calloutTypeKey].text_map[key].worldIconTag].id;
+	callout.tagSmallID = worldIconEntries[iconEntries[calloutTypeKey].text_map[key].worldIconTagMini].id;
+	if ( uid == 0 && callout.cmd == CALLOUT_CMD_LOOK && multiplayer != CLIENT )
+	{
+		callout.doMessage = false;
+	}
+
+	if ( multiplayer == SERVER )
+	{
+		for ( int i = 1; i < MAXPLAYERS; ++i )
+		{
+			if ( i == getPlayer() ) { continue; } // don't send clients their own callout
+			if ( players[i]->isLocalPlayer() ) { continue; }
+			if ( client_disconnected[i] ) { continue; }
+
+			strcpy((char*)net_packet->data, "CALL");
+			net_packet->data[4] = getPlayer();
+			SDLNet_Write32(uid, &net_packet->data[5]);
+			net_packet->data[9] = (Uint8)_cmd;
+			SDLNet_Write32(clientCalloutHelpFlags, &net_packet->data[10]);
+			net_packet->len = 14;
+			if ( uid == 0 )
+			{
+				Uint16 _x = std::min<Uint16>(std::max<int>(0.0, x / 16), map.width - 1);
+				Uint16 _y = std::min<Uint16>(std::max<int>(0.0, y / 16), map.height - 1);
+				SDLNet_Write16(_x, &net_packet->data[14]);
+				SDLNet_Write16(_y, &net_packet->data[16]);
+				net_packet->len = 18;
+			}
+			net_packet->address.host = net_clients[i - 1].host;
+			net_packet->address.port = net_clients[i - 1].port;
+			sendPacketSafe(net_sock, -1, net_packet, i - 1);
+		}
+	}
+
+	if ( players[getPlayer()]->ghost.isActive() )
+	{
+		players[getPlayer()]->ghost.createBounceAnimate();
+		if ( players[getPlayer()]->isLocalPlayer() )
+		{
+			Compendium_t::Events_t::eventUpdateMonster(getPlayer(), Compendium_t::CPDM_GHOST_PINGS, players[getPlayer()]->ghost.my, 1);
+		}
+	}
+
+	return callout.doMessage;
+}
+
+void CalloutRadialMenu::sendCalloutText(CalloutRadialMenu::CalloutCommand cmd)
+{
+	if ( cmd == CALLOUT_CMD_CANCEL || cmd == CALLOUT_CMD_END )
+	{
+		return;
+	}
+	if ( multiplayer == CLIENT )
+	{
+		strcpy((char*)net_packet->data, "CALL");
+		net_packet->data[4] = getPlayer();
+		SDLNet_Write32(lockOnEntityUid, &net_packet->data[5]);
+		net_packet->data[9] = (Uint8)cmd;
+		SDLNet_Write32(clientCalloutHelpFlags, &net_packet->data[10]);
+		net_packet->len = 14;
+		if ( lockOnEntityUid == 0 )
+		{
+			Uint16 _x = std::min<Uint16>(std::max<int>(0.0, moveToX / 16), map.width - 1);
+			Uint16 _y = std::min<Uint16>(std::max<int>(0.0, moveToY / 16), map.height - 1);
+			SDLNet_Write16(_x, &net_packet->data[14]);
+			SDLNet_Write16(_y, &net_packet->data[16]);
+			net_packet->len = 18;
+		}
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	}
+	else
+	{
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			std::string text = setCalloutText(nullptr, getCalloutKeyForCommand(cmd).c_str(), 0, cmd, SET_CALLOUT_WORLD_TEXT, i);
+			if ( text != "" )
+			{
+				messagePlayerColor(i, MESSAGE_INTERACTION, playerColor(getPlayer(), colorblind_lobby, false),
+					text.c_str());
+			}
+		}
+	}
+}
+
+std::string CalloutRadialMenu::getCalloutKeyForCommand(CalloutRadialMenu::CalloutCommand cmd)
+{
+	if ( cmd == CALLOUT_CMD_LOOK )
+	{
+		return "look_at";
+	}
+	else if ( cmd == CALLOUT_CMD_HELP )
+	{
+		return "help";
+	}
+	else if ( cmd == CALLOUT_CMD_AFFIRMATIVE )
+	{
+		return "affirmative";
+	}
+	else if ( cmd == CALLOUT_CMD_THANKS )
+	{
+		return "thanks";
+	}
+	else if ( cmd == CALLOUT_CMD_NEGATIVE )
+	{
+		return "negative";
+	}
+	else if ( cmd == CALLOUT_CMD_MOVE )
+	{
+		return "move";
+	}
+	else if ( cmd == CALLOUT_CMD_SOUTH )
+	{
+		return "player_wave_1";
+	}
+	else if ( cmd == CALLOUT_CMD_SOUTHWEST )
+	{
+		return "player_wave_2";
+	}
+	else if ( cmd == CALLOUT_CMD_SOUTHEAST )
+	{
+		return "player_wave_3";
+	}
+	return "";
+}
+
+int CalloutRadialMenu::getPlayerForDirectPlayerCmd(const int player, const CalloutRadialMenu::CalloutCommand cmd)
+{
+	if ( cmd == CALLOUT_CMD_SOUTH )
+	{
+		if ( player == 0 )
+		{
+			return 1;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	else if ( cmd == CALLOUT_CMD_SOUTHWEST )
+	{
+		if ( player == 0 )
+		{
+			return 2;
+		}
+		else
+		{
+			return player == 1 ? 2 : 1;
+		}
+	}
+	else if ( cmd == CALLOUT_CMD_SOUTHEAST )
+	{
+		if ( player == 0 || player == 1 )
+		{
+			return 3;
+		}
+		else
+		{
+			return player == 2 ? 3 : 2;
+		}
+	}
+	return -1;
+}
+
+void CalloutRadialMenu::drawCalloutMenu()
+{
+	auto player = players[gui_player];
+	if ( !player->isLocalPlayer() )
+	{
+		closeCalloutMenuGUI();
+		return;
+	}
+
+	Input& input = Input::inputs[gui_player];
+
+	bool allowMenuCancel = true;
+	if ( input.input("Call Out").input
+		== input.input("MenuCancel").input )
+	{
+		allowMenuCancel = false;
+	}
+
+	if ( selectMoveTo )
+	{
+		if ( input.binaryToggle("MenuCancel") )
+		{
+			input.consumeBinaryToggle("MenuCancel");
+			if ( allowMenuCancel )
+			{
+				input.consumeBindingsSharedWithBinding("MenuCancel");
+				closeCalloutMenuGUI();
+				Player::soundCancel();
+			}
+		}
+		if ( calloutFrame )
+		{
+			calloutFrame->setDisabled(true);
+		}
+		return;
+	}
+
+	if ( !calloutFrame )
+	{
+		return;
+	}
+
+	calloutFrame->setSize(SDL_Rect{ players[gui_player]->camera_virtualx1(),
+		players[gui_player]->camera_virtualy1(),
+		players[gui_player]->camera_virtualWidth(),
+		players[gui_player]->camera_virtualHeight() });
+
+	int disableOption = 0;
+	bool keepWheelOpen = false;
+
+	Sint32 omousex = inputs.getMouse(gui_player, Inputs::OX);
+	Sint32 omousey = inputs.getMouse(gui_player, Inputs::OY);
+
+	std::map<int, Frame::image_t*> panelImages;
+	std::map<int, Frame::image_t*> panelIcons;
+	Frame* bannerFrame = nullptr;
+	Field* bannerTxt = nullptr;
+	Frame::image_t* bannerImgLeft = nullptr;
+	Frame::image_t* bannerImgRight = nullptr;
+	Frame::image_t* bannerImgCenter = nullptr;
+	Uint32 textHighlightColor = followerBannerTextHighlightColor;
+
+	if ( !bOpen && (!calloutFrame->isDisabled() || players[gui_player]->gui_mode == GUI_MODE_CALLOUT) )
+	{
+		closeCalloutMenuGUI();
+		players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+		return;
+	}
+	if ( calloutMenuIsOpen() && input.binaryToggle("MenuCancel") )
+	{
+		input.consumeBinaryToggle("MenuCancel");
+		if ( allowMenuCancel || (optionSelected != -1 && optionSelected != CALLOUT_CMD_END && optionSelected != CALLOUT_CMD_SELECT) )
+		{
+			input.consumeBindingsSharedWithBinding("MenuCancel");
+			closeCalloutMenuGUI();
+			players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+			Player::soundCancel();
+			return;
+		}
+	}
+
+	//if ( ticks % 50 == 0 )
+	//{
+	//	consoleCommand("/loadfollowerwheel");
+	//}
+
+	bool modifierPressed = false;
+	bool modifierActiveForOption = false;
+	if ( input.binary("Defend") )
+	{
+		modifierPressed = true;
+	}
+
+	if ( bOpen )
+	{
+		{
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			real_t setpointDiff = fpsScale * std::max(.1, (1.0 - animTitle)) / 2.5;
+			animTitle += setpointDiff;
+			animTitle = std::min(1.0, animTitle);
+
+			real_t setpointDiff2 = fpsScale * std::max(.01, (1.0 - animWheel)) / 2.0;
+			animWheel += setpointDiff2;
+			animWheel = std::min(1.0, animWheel);
+
+			// shaking feedback for invalid action
+			// constant decay for animation
+			real_t setpointDiffX = fpsScale * 1.0 / 25.0;
+			animInvalidAction -= setpointDiffX;
+			animInvalidAction = std::max(0.0, animInvalidAction);
+		}
+
+		if ( optionSelected == CALLOUT_CMD_SOUTH
+			|| optionSelected == CALLOUT_CMD_SOUTHEAST
+			|| optionSelected == CALLOUT_CMD_SOUTHWEST )
+		{
+			int targetPlayer = getPlayerForDirectPlayerCmd(getPlayer(), (CalloutCommand)optionSelected);
+			if ( targetPlayer < 0 || client_disconnected[targetPlayer] || (!Player::getPlayerInteractEntity(targetPlayer)) )
+			{
+				disableOption = true;
+			}
+			else
+			{
+				disableOption = false;
+			}
+		}
+		else
+		{
+			disableOption = false;
+		}
+
+		bool menuConfirmOnGamepad = input.input("MenuConfirm").isBindingUsingGamepad();
+		if ( menuConfirmOnGamepad )
+		{
+			if ( input.input("Call Out").input
+				== input.input("MenuConfirm").input )
+			{
+				menuConfirmOnGamepad = false;
+			}
+		}
+		bool menuLeftClickOnKeyboard = input.input("MenuLeftClick").isBindingUsingKeyboard() && !inputs.hasController(gui_player);
+
+		// process commands if option selected on the wheel.
+		if ( !(players[gui_player]->bControlEnabled && !gamePaused && !players[gui_player]->usingCommand()) )
+		{
+			// no action
+		}
+		else if ( (!menuToggleClick && !holdWheel
+			&& !input.binaryToggle("Use")
+			&& !input.binaryToggle("Call Out")
+			&& !(input.binaryToggle("MenuConfirm") && menuConfirmOnGamepad)
+			&& !(input.binaryToggle("MenuLeftClick") && menuLeftClickOnKeyboard))
+			|| (menuToggleClick && (input.binaryToggle("Use") || input.binaryToggle("Call Out")))
+			|| ((input.binaryToggle("MenuConfirm") && menuConfirmOnGamepad)
+				|| (input.binaryToggle("MenuLeftClick") && menuLeftClickOnKeyboard)
+				|| (input.binaryToggle("Use") && holdWheel))
+			|| (!input.binaryToggle("Call Out") && holdWheel && !menuToggleClick)
+			)
+		{
+			//bool usingShowCmdRelease = (!input.binaryToggle("Call Out") && holdWheel && !menuToggleClick);
+
+			if ( menuToggleClick )
+			{
+				menuToggleClick = false;
+				if ( optionSelected == -1 )
+				{
+					optionSelected = CALLOUT_CMD_CANCEL;
+				}
+			}
+
+			input.consumeBinaryToggle("Use");
+			input.consumeBinaryToggle("MenuConfirm");
+			input.consumeBinaryToggle("MenuLeftClick");
+			input.consumeBinaryToggle("Call Out");
+			input.consumeBindingsSharedWithBinding("Use");
+			input.consumeBindingsSharedWithBinding("MenuConfirm");
+			input.consumeBindingsSharedWithBinding("MenuLeftClick");
+			input.consumeBindingsSharedWithBinding("Call Out");
+
+			if ( disableOption != 0 )
+			{
+				keepWheelOpen = true;
+			}
+
+			bool sfxPlayed = false;
+			if ( disableOption != 0 )
+			{
+				animInvalidAction = 1.0;
+				animInvalidActionTicks = ticks;
+				//if ( !usingShowCmdRelease )
+				//{
+				//	// play bad feedback sfx
+				//}
+				playSound(90, 64);
+				sfxPlayed = true;
+			}
+
+			if ( optionSelected != -1 )
+			{
+				holdWheel = false;
+				if ( optionSelected != CALLOUT_CMD_SELECT )
+				{
+					if ( !sfxPlayed && optionSelected != CALLOUT_CMD_CANCEL )
+					{
+						//playSound(139, 64); // click
+						sfxPlayed = true;
+					}
+				}
+				else
+				{
+					playSound(399, 48); // ping
+				}
+				// return to shootmode and close guis etc. TODO: tidy up interface code into 1 spot?
+				if ( !keepWheelOpen )
+				{
+					if ( optionSelected == CALLOUT_CMD_CANCEL )
+					{
+						players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_DONT_CLOSE_CALLOUTGUI);
+					}
+				}
+
+				if ( disableOption == 0 )
+				{
+					if ( modifierPressed )
+					{
+						if ( stats[gui_player]->shield 
+							&& (itemCategory(stats[gui_player]->shield) == SPELLBOOK
+								|| itemTypeIsFoci(stats[gui_player]->shield->type)
+								|| itemTypeIsInstrument(stats[gui_player]->shield->type)) )
+						{
+							input.consumeBinaryToggle("Defend"); // don't try cast when menu closes.
+						}
+					}
+
+					if ( lockOnEntityUid == 0 )
+					{
+						if ( (CalloutCommand)optionSelected == CALLOUT_CMD_AFFIRMATIVE
+							|| (CalloutCommand)optionSelected == CALLOUT_CMD_NEGATIVE )
+						{
+							lockOnEntityUid = getPlayerUid(gui_player);
+						}
+						else if ( (CalloutCommand)optionSelected == CALLOUT_CMD_HELP )
+						{
+							lockOnEntityUid = getPlayerUid(gui_player);
+						}
+					}
+
+					if ( (CalloutCommand)optionSelected == CALLOUT_CMD_SOUTH
+						|| (CalloutCommand)optionSelected == CALLOUT_CMD_SOUTHWEST
+						|| (CalloutCommand)optionSelected == CALLOUT_CMD_SOUTHEAST )
+					{
+						int toPlayer = getPlayerForDirectPlayerCmd(getPlayer(), (CalloutCommand)optionSelected);
+						if ( toPlayer >= 0 )
+						{
+							lockOnEntityUid = getPlayerUid(toPlayer);
+						}
+					}
+
+					if ( lockOnEntityUid )
+					{
+						if ( Entity* target = uidToEntity(lockOnEntityUid) )
+						{
+							Uint32 overrideUID = 0;
+							if ( (target->behavior == &actPlayer || target->behavior == &actDeathGhost)
+								&& target->skill[2] != getPlayer() )
+							{
+								if ( (CalloutCommand)optionSelected == CALLOUT_CMD_HELP )
+								{
+									lockOnEntityUid = getPlayerUid(getPlayer());
+									target = uidToEntity(lockOnEntityUid);
+								}
+								else if ( (CalloutCommand)optionSelected == CALLOUT_CMD_AFFIRMATIVE )
+								{
+									target = Player::getPlayerInteractEntity(getPlayer());
+									overrideUID = lockOnEntityUid;
+									optionSelected = CALLOUT_CMD_THANKS;
+								}
+								else if ( (CalloutCommand)optionSelected == CALLOUT_CMD_LOOK
+									|| (CalloutCommand)optionSelected == CALLOUT_CMD_NEGATIVE )
+								{
+									target = Player::getPlayerInteractEntity(getPlayer());
+								}
+								else if ( (CalloutCommand)optionSelected == CALLOUT_CMD_SOUTH
+									|| (CalloutCommand)optionSelected == CALLOUT_CMD_SOUTHWEST
+									|| (CalloutCommand)optionSelected == CALLOUT_CMD_SOUTHEAST )
+								{
+									int toPlayer = getPlayerForDirectPlayerCmd(getPlayer(), (CalloutCommand)optionSelected);
+									if ( toPlayer >= 0 )
+									{
+										target = Player::getPlayerInteractEntity(getPlayer());
+									}
+								}
+							}
+
+							if ( createParticleCallout(target, (CalloutCommand)optionSelected, overrideUID) )
+							{
+								sendCalloutText((CalloutCommand)optionSelected);
+							}
+						}
+					}
+					else
+					{
+						if ( createParticleCallout((real_t)moveToX, (real_t)moveToY, -4, 0, (CalloutCommand)optionSelected) )
+						{
+							sendCalloutText((CalloutCommand)optionSelected);
+						}
+					}
+				}
+
+				if ( optionSelected == CALLOUT_CMD_CANCEL && !sfxPlayed )
+				{
+					Player::soundCancel();
+				}
+
+				if ( !keepWheelOpen )
+				{
+					closeCalloutMenuGUI();
+					players[gui_player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+					return;
+				}
+				optionSelected = -1;
+			}
+			else
+			{
+				menuToggleClick = true;
+			}
+		}
+	}
+
+	if ( bOpen )
+	{
+		if ( !calloutGUIHasBeenCreated() )
+		{
+			createCalloutMenuGUI();
+		}
+		calloutFrame->setDisabled(false);
+
+		auto bgFrame = calloutFrame->findFrame("wheel base");
+		bgFrame->setOpacity(100.0 * animWheel);
+		bannerFrame = calloutFrame->findFrame("banner frame");
+		bannerImgLeft = bannerFrame->findImage("banner left");
+		bannerImgRight = bannerFrame->findImage("banner right");
+		bannerImgCenter = bannerFrame->findImage("banner center");
+		bannerTxt = bannerFrame->findField("banner txt");
+		bannerTxt->setText("");
+
+		int direction = NORTH;
+		const int midx = calloutFrame->getSize().w / 2;
+		const int midy = calloutFrame->getSize().h / 2;
+		for ( auto img : bgFrame->getImages() )
+		{
+			if ( direction < PANEL_DIRECTION_END )
+			{
+				panelImages[direction] = img;
+				img->pos.x = getPanelEntriesForCallout()[direction].x + midx + CalloutRadialMenu::followerWheelFrameOffsetX;
+				img->pos.y = getPanelEntriesForCallout()[direction].y + midy + CalloutRadialMenu::followerWheelFrameOffsetY;
+				img->path = getPanelEntriesForCallout()[direction].path;
+			}
+			else if ( direction < 2 * PANEL_DIRECTION_END )
+			{
+				img->disabled = true;
+				img->path = "";
+				int direction2 = direction - PANEL_DIRECTION_END;
+				panelIcons[direction2] = img;
+				panelIcons[direction2]->pos.x = panelImages[direction2]->pos.x + getPanelEntriesForCallout()[direction2].icon_offsetx;
+				panelIcons[direction2]->pos.y = panelImages[direction2]->pos.y + getPanelEntriesForCallout()[direction2].icon_offsety;
+			}
+			else if ( direction == 2 * PANEL_DIRECTION_END ) // center img
+			{
+				panelImages[PANEL_DIRECTION_END] = img;
+				img->pos.x = getPanelEntriesForCallout()[PANEL_DIRECTION_END].x + midx + CalloutRadialMenu::followerWheelFrameOffsetX;
+				img->pos.y = getPanelEntriesForCallout()[PANEL_DIRECTION_END].y + midy + CalloutRadialMenu::followerWheelFrameOffsetY;
+				img->path = getPanelEntriesForCallout()[PANEL_DIRECTION_END].path;
+			}
+			++direction;
+		}
+
+		const int centerx = players[gui_player]->camera_midx();
+		const int centery = players[gui_player]->camera_midy();
+
+		SDL_Rect src;
+		src.x = centerx;
+		src.y = centery;
+
+		int numoptions = 8;
+		real_t angleStart = PI / 2 - (PI / numoptions);
+		real_t angleMiddle = angleStart + PI / numoptions;
+		real_t angleEnd = angleMiddle + PI / numoptions;
+		int radius = 140;
+		int thickness = 70;
+		src.h = radius;
+		src.w = radius;
+		if ( players[gui_player]->camera_height() <= 768 )
+		{
+			radius = 110;
+			thickness = 70;
+			src.h = 125;
+			src.w = 125;
+		}
+
+		radius = CalloutRadialMenu::followerWheelRadius;
+		thickness = CalloutRadialMenu::followerWheelButtonThickness;
+		real_t menuScale = yres / (real_t)Frame::virtualScreenY;
+		radius *= menuScale;
+		thickness *= menuScale;
+		int centerButtonHighlightOffset = CalloutRadialMenu::followerWheelInnerCircleRadiusOffset;
+
+		int highlight = -1;
+		int i = 0;
+
+		if ( inputs.hasController(gui_player) )
+		{
+			auto controller = inputs.getController(gui_player);
+			if ( controller )
+			{
+				GameController::DpadDirection dir = controller->dpadDirToggle();
+				if ( dir != GameController::DpadDirection::INVALID )
+				{
+					if ( !controller->virtualDpad.consumed )
+					{
+						Player::soundMovement();
+					}
+					controller->consumeDpadDirToggle();
+					switch ( dir )
+					{
+					case GameController::DpadDirection::UP:
+						highlight = 0;
+						break;
+					case GameController::DpadDirection::UPLEFT:
+						highlight = 1;
+						break;
+					case GameController::DpadDirection::LEFT:
+						highlight = 2;
+						break;
+					case GameController::DpadDirection::DOWNLEFT:
+						highlight = 3;
+						break;
+					case GameController::DpadDirection::DOWN:
+						highlight = 4;
+						break;
+					case GameController::DpadDirection::DOWNRIGHT:
+						highlight = 5;
+						break;
+					case GameController::DpadDirection::RIGHT:
+						highlight = 6;
+						break;
+					case GameController::DpadDirection::UPRIGHT:
+						highlight = 7;
+						break;
+					default:
+						break;
+					}
+					real_t angleMiddleForOption = PI / 2 + dir * (2 * PI / numoptions);
+					omousex = centerx + (radius + thickness) * .75 * cos(angleMiddleForOption);
+					omousey = centery + (radius + thickness) * .75 * sin(angleMiddleForOption);
+					inputs.setMouse(gui_player, Inputs::OX, omousex);
+					inputs.setMouse(gui_player, Inputs::OY, omousey);
+					inputs.setMouse(gui_player, Inputs::X, omousex);
+					inputs.setMouse(gui_player, Inputs::Y, omousey);
+
+					if ( highlight != -1 )
+					{
+						inputs.getVirtualMouse(gui_player)->draw_cursor = false;
+					}
+				}
+			}
+		}
+
+		bool mouseInCenterButton = sqrt(pow((omousex - menuX), 2) + pow((omousey - menuY), 2)) < (radius - thickness);
+
+		angleStart = PI / 2 - (PI / numoptions);
+		angleMiddle = angleStart + PI / numoptions;
+		angleEnd = angleMiddle + PI / numoptions;
+
+		const real_t mouseDetectionAdjust = PI / 128;
+		for ( i = 0; i < numoptions; ++i )
+		{
+			// see if mouse cursor is within an option.
+			if ( highlight == -1 )
+			{
+				if ( !mouseInCenterButton )
+				{
+					real_t x1 = menuX + (radius + thickness + 45) * cos(angleEnd + mouseDetectionAdjust);
+					real_t y1 = menuY - (radius + thickness + 45) * sin(angleEnd + mouseDetectionAdjust);
+					real_t x2 = menuX + 5 * cos(angleMiddle);
+					real_t y2 = menuY - 5 * sin(angleMiddle);
+					real_t x3 = menuX + (radius + thickness + 45) * cos(angleStart - mouseDetectionAdjust);
+					real_t y3 = menuY - (radius + thickness + 45) * sin(angleStart - mouseDetectionAdjust);
+					real_t a = ((y2 - y3) * (omousex - x3) + (x3 - x2) * (omousey - y3)) / ((y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3));
+					real_t b = ((y3 - y1) * (omousex - x3) + (x1 - x3) * (omousey - y3)) / ((y2 - y3) * (x1 - x3) + (x3 - x2) * (y1 - y3));
+					real_t c = 1 - a - b;
+					if ( (0 <= a && a <= 1) && (0 <= b && b <= 1) && (0 <= c && c <= 1) )
+					{
+						//barycentric calc for figuring if mouse point is within triangle.
+						highlight = i;
+					}
+				}
+				if ( !inputs.hasController(gui_player) )
+				{
+					if ( highlight != -1 && optionSelected != highlight && optionSelected != -1 )
+					{
+						Player::soundMovement();
+					}
+				}
+			}
+
+			SDL_Rect txt;
+			txt.x = src.x + src.w * cos(angleMiddle);
+			txt.y = src.y - src.h * sin(angleMiddle);
+			txt.w = 0;
+			txt.h = 0;
+
+			// draw the text for the menu wheel.
+
+			bool lockedOption = false;
+			panelIcons[i]->color = makeColor(255, 255, 255, 255);
+			{
+				/*if ( i == ALLY_CMD_ATTACK_SELECT )
+				{
+					if ( i == highlight )
+					{
+						panelIcons[i]->path = iconEntries["leader_attack"].path_hover;
+						setCalloutBannerText(gui_player, bannerTxt, "leader_attack", "default", textHighlightColor);
+					}
+					else
+					{
+						panelIcons[i]->path = iconEntries["leader_attack"].path;
+					}
+				}
+				else if ( i == ALLY_CMD_MOVETO_SELECT )
+				{
+					if ( i == highlight )
+					{
+						panelIcons[i]->path = iconEntries["leader_moveto"].path_hover;
+						setCalloutBannerText(gui_player, bannerTxt, "leader_moveto", "default", textHighlightColor);
+					}
+					else
+					{
+						panelIcons[i]->path = iconEntries["leader_moveto"].path;
+					}
+				}
+				else*/
+				{
+					if ( i == CALLOUT_CMD_LOOK )
+					{
+						if ( i == highlight )
+						{
+							panelIcons[i]->path = iconEntries["look_at"].path_hover;
+							setCalloutText(bannerTxt, "look_at", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+						else
+						{
+							panelIcons[i]->path = iconEntries["look_at"].path;
+						}
+					}
+					else if ( i == CALLOUT_CMD_HELP )
+					{
+						if ( i == highlight )
+						{
+							panelIcons[i]->path = iconEntries["help"].path_hover;
+							setCalloutText(bannerTxt, "help", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+						else
+						{
+							panelIcons[i]->path = iconEntries["help"].path;
+						}
+					}
+					else if ( i == CALLOUT_CMD_AFFIRMATIVE )
+					{
+						if ( i == highlight )
+						{
+							panelIcons[i]->path = iconEntries["affirmative"].path_hover;
+							setCalloutText(bannerTxt, "affirmative", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+						else
+						{
+							panelIcons[i]->path = iconEntries["affirmative"].path;
+						}
+					}
+					else if ( i == CALLOUT_CMD_NEGATIVE )
+					{
+						if ( i == highlight )
+						{
+							panelIcons[i]->path = iconEntries["negative"].path_hover;
+							setCalloutText(bannerTxt, "negative", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+						else
+						{
+							panelIcons[i]->path = iconEntries["negative"].path;
+						}
+					}
+					else if ( i == CALLOUT_CMD_MOVE )
+					{
+						if ( i == highlight )
+						{
+							panelIcons[i]->path = iconEntries["move"].path_hover;
+							setCalloutText(bannerTxt, "move", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+						else
+						{
+							panelIcons[i]->path = iconEntries["move"].path;
+						}
+					}
+					else if ( i == CALLOUT_CMD_SOUTH )
+					{
+						int targetPlayer = getPlayerForDirectPlayerCmd(getPlayer(), (CalloutCommand)i);
+						if ( targetPlayer < 0 || client_disconnected[targetPlayer] || !Player::getPlayerInteractEntity(targetPlayer) )
+						{
+							lockedOption = true;
+						}
+						if ( i == highlight )
+						{
+							setCalloutText(bannerTxt, "player_wave_1", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+
+						std::string key = (i == highlight) ? "tag_btn_player_wave_hover" : "tag_btn_player_wave";
+						if ( lockedOption )
+						{
+							panelIcons[i]->color = makeColor(255, 255, 255, 64);
+						}
+						
+						{
+							panelIcons[i]->path = worldIconEntries[key].getPlayerIconPath(targetPlayer);
+						}
+					}
+					else if ( i == CALLOUT_CMD_SOUTHWEST )
+					{
+						int targetPlayer = getPlayerForDirectPlayerCmd(getPlayer(), (CalloutCommand)i);
+						if ( targetPlayer < 0 || client_disconnected[targetPlayer] || !Player::getPlayerInteractEntity(targetPlayer) )
+						{
+							lockedOption = true;
+						}
+						if ( i == highlight )
+						{
+							setCalloutText(bannerTxt, "player_wave_2", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+						
+						std::string key = (i == highlight) ? "tag_btn_player_wave_hover" : "tag_btn_player_wave";
+						if ( lockedOption )
+						{
+							panelIcons[i]->color = makeColor(255, 255, 255, 64);
+						}
+						
+						{
+							panelIcons[i]->path = worldIconEntries[key].getPlayerIconPath(targetPlayer);
+						}
+					}
+					else if ( i == CALLOUT_CMD_SOUTHEAST )
+					{
+						int targetPlayer = getPlayerForDirectPlayerCmd(getPlayer(), (CalloutCommand)i);
+						if ( targetPlayer < 0 || client_disconnected[targetPlayer] || !Player::getPlayerInteractEntity(targetPlayer) )
+						{
+							lockedOption = true;
+						}
+						if ( i == highlight )
+						{
+							setCalloutText(bannerTxt, "player_wave_3", textHighlightColor, (CalloutCommand)i, SET_CALLOUT_BANNER_TEXT, -1);
+						}
+						
+						std::string key = (i == highlight) ? "tag_btn_player_wave_hover" : "tag_btn_player_wave";
+						if ( lockedOption )
+						{
+							panelIcons[i]->color = makeColor(255, 255, 255, 64);
+						}
+						
+						{
+							panelIcons[i]->path = worldIconEntries[key].getPlayerIconPath(targetPlayer);
+						}
+					}
+				}
+			}
+
+			if ( lockedOption )
+			{
+				if ( highlight == i && !mouseInCenterButton )
+				{
+					panelImages[i]->path = getPanelEntriesForCallout()[i].path_hover;
+				}
+				else
+				{
+					panelImages[i]->path = getPanelEntriesForCallout()[i].path;
+				}
+			}
+			else if ( highlight == i && !mouseInCenterButton )
+			{
+				panelImages[i]->path = getPanelEntriesForCallout()[i].path_hover;
+			}
+
+
+			if ( /*!lockedOption &&*/ panelIcons[i]->path != "" )
+			{
+				if ( auto imgGet = Image::get(panelIcons[i]->path.c_str()) )
+				{
+					panelIcons[i]->disabled = false;
+					panelIcons[i]->pos.w = imgGet->getWidth();
+					panelIcons[i]->pos.h = imgGet->getHeight();
+					panelIcons[i]->pos.x -= panelIcons[i]->pos.w / 2;
+					panelIcons[i]->pos.y -= panelIcons[i]->pos.h / 2;
+				}
+			}
+
+			angleStart += 2 * PI / numoptions;
+			angleMiddle = angleStart + PI / numoptions;
+			angleEnd = angleMiddle + PI / numoptions;
+		}
+
+		// draw center text.
+		if ( mouseInCenterButton )
+		{
+			bool mouseInCenterHighlightArea = sqrt(pow((omousex - menuX), 2) + pow((omousey - menuY), 2)) < (radius - thickness + centerButtonHighlightOffset);
+			if ( mouseInCenterHighlightArea )
+			{
+				panelImages[PANEL_DIRECTION_END]->path = getPanelEntriesForCallout()[PANEL_DIRECTION_END].path_hover;
+			}
+
+			highlight = -1;
+		}
+
+		if ( optionSelected == -1 && disableOption == 0 && highlight != -1 )
+		{
+			// in case optionSelected is cleared, but we're still highlighting text (happens on next frame when clicking on disabled option.)
+			if ( highlight == CALLOUT_CMD_SOUTH
+				|| highlight == CALLOUT_CMD_SOUTHEAST
+				|| highlight == CALLOUT_CMD_SOUTHWEST )
+			{
+				int targetPlayer = getPlayerForDirectPlayerCmd(getPlayer(), (CalloutCommand)highlight);
+				if ( targetPlayer < 0 || client_disconnected[targetPlayer] || !Player::getPlayerInteractEntity(targetPlayer) )
+				{
+					disableOption = true;
+				}
+				else
+				{
+					disableOption = false;
+				}
+			}
+			else
+			{
+				disableOption = false;
+			}
+		}
+
+		if ( highlight == -1 )
+		{
+			setCalloutBannerTextUnformatted(gui_player, bannerTxt, "cancel", "default", hudColors.characterSheetRed);
+		}
+
+		bool disableActionGlyph = false;
+		bool missingSkillLevel = false;
+		if ( disableOption != 0 )
+		{
+			disableActionGlyph = true;
+		}
+		//	if ( disableOption == -2 ) // disabled due to cooldown
+		//	{
+		//		setCalloutBannerText(gui_player, bannerTxt, "invalid_action", "rest_cooldown", hudColors.characterSheetRed);
+		//	}
+		//	else if ( disableOption == -1 ) // disabled due to creature type
+		//	{
+		//		auto& textMap = FollowerMenu[gui_player].iconEntries["invalid_action"].text_map["command_unavailable"];
+		//		setCalloutBannerTextFormatted(gui_player, bannerTxt, hudColors.characterSheetRed,
+		//			textMap.second, textMap.first.c_str(),
+		//			getMonsterLocalizedName(HUMAN).c_str());
+		//	}
+		//	else if ( disableOption == -3 ) // disabled due to tinkerbot quality
+		//	{
+		//		auto& textMap = FollowerMenu[gui_player].iconEntries["invalid_action"].text_map["tinker_quality_low"];
+		//		setCalloutBannerTextFormatted(gui_player, bannerTxt, hudColors.characterSheetRed,
+		//			textMap.second, textMap.first.c_str(),
+		//			getMonsterLocalizedName(HUMAN).c_str());
+		//	}
+		//	else
+		//	{
+		//		std::string requirement = "";
+		//		std::string current = "";
+		//		int requirementVal = 0;
+		//		int currentVal = 0;
+		//		if ( highlight >= ALLY_CMD_DEFEND && highlight <= ALLY_CMD_END && highlight != CALLOUT_CMD_CANCEL )
+		//		{
+		//			switch ( std::min(disableOption, SKILL_LEVEL_LEGENDARY) )
+		//			{
+		//			case 0:
+		//				requirement = Language::get(363);
+		//				requirementVal = 0;
+		//				break;
+		//			case SKILL_LEVEL_NOVICE:
+		//				requirement = Language::get(364);
+		//				requirementVal = SKILL_LEVEL_NOVICE;
+		//				break;
+		//			case SKILL_LEVEL_BASIC:
+		//				requirement = Language::get(365);
+		//				requirementVal = SKILL_LEVEL_BASIC;
+		//				break;
+		//			case SKILL_LEVEL_SKILLED:
+		//				requirement = Language::get(366);
+		//				requirementVal = SKILL_LEVEL_SKILLED;
+		//				break;
+		//			case SKILL_LEVEL_EXPERT:
+		//				requirement = Language::get(367);
+		//				requirementVal = SKILL_LEVEL_EXPERT;
+		//				break;
+		//			case SKILL_LEVEL_MASTER:
+		//				requirement = Language::get(368);
+		//				requirementVal = SKILL_LEVEL_MASTER;
+		//				break;
+		//			case SKILL_LEVEL_LEGENDARY:
+		//				requirement = Language::get(369);
+		//				requirementVal = SKILL_LEVEL_LEGENDARY;
+		//				break;
+		//			default:
+		//				break;
+		//			}
+		//			requirement.erase(std::remove(requirement.begin(), requirement.end(), ' '), requirement.end()); // trim whitespace
+
+		//			current = Language::get(363);
+		//			current.erase(std::remove(current.begin(), current.end(), ' '), current.end()); // trim whitespace
+		//			currentVal = 0;
+		//		}
+
+		//		auto& textMap = FollowerMenu[gui_player].iconEntries["invalid_action"].text_map["skill_missing_leader"];
+		//		setFollowerBannerTextFormatted(gui_player, bannerTxt, hudColors.characterSheetRed,
+		//			textMap.second, textMap.first.c_str(),
+		//			currentVal, requirementVal);
+		//		missingSkillLevel = true;
+		//	}
+		//}
+
+		auto wheelSkillImg = bannerFrame->findImage("skill img");
+		wheelSkillImg->disabled = true;
+		auto wheelStatImg = bannerFrame->findImage("stat img");
+		wheelStatImg->disabled = true;
+
+		bannerFrame->setDisabled(false);
+		if ( auto textGet = bannerTxt->getTextObject() )
+		{
+			SDL_Rect txtPos = bannerTxt->getSize();
+			if ( !strcmp(bannerTxt->getText(), "") && txtPos.w == 0 )
+			{
+				txtPos.w = 82;
+			}
+			else if ( strcmp(bannerTxt->getText(), "") )
+			{
+				txtPos.w = textGet->getWidth();
+			}
+
+			auto bannerGlyph = bannerFrame->findImage("banner glyph");
+			bannerGlyph->disabled = true;
+			if ( inputs.hasController(gui_player) )
+			{
+				bannerGlyph->path = Input::inputs[gui_player].getGlyphPathForBinding("MenuConfirm");
+			}
+			else
+			{
+				bannerGlyph->path = Input::inputs[gui_player].getGlyphPathForBinding("MenuLeftClick");
+			}
+			//bannerGlyph->path = Input::inputs[gui_player].getGlyphPathForBinding("Use");
+			auto bannerGlyphModifier = bannerFrame->findImage("banner modifier glyph");
+			bannerGlyphModifier->disabled = true;
+			bannerGlyphModifier->path = Input::inputs[gui_player].getGlyphPathForBinding("Defend");
+			if ( auto imgGet = Image::get(bannerGlyph->path.c_str()) )
+			{
+				bannerGlyph->pos.w = imgGet->getWidth();
+				bannerGlyph->pos.h = imgGet->getHeight();
+				bannerGlyph->disabled = disableActionGlyph || !strcmp(bannerTxt->getText(), "");
+			}
+			if ( auto imgGet = Image::get(bannerGlyphModifier->path.c_str()) )
+			{
+				bannerGlyphModifier->pos.w = imgGet->getWidth();
+				bannerGlyphModifier->pos.h = imgGet->getHeight();
+				bannerGlyphModifier->disabled = bannerGlyph->disabled || !modifierActiveForOption;
+			}
+
+			if ( !bannerGlyph->disabled )
+			{
+				animInvalidAction = 0.0;
+			}
+
+			bannerImgCenter->pos.w = txtPos.w + 16
+				+ (bannerGlyph->disabled ? 0 : ((bannerGlyph->pos.w + 8) / 2))
+				+ (bannerGlyphModifier->disabled ? 0 : (bannerGlyphModifier->pos.w + 2));
+			int missingSkillLevelIconWidth = 0;
+			if ( missingSkillLevel )
+			{
+				missingSkillLevelIconWidth = wheelStatImg->pos.w + wheelSkillImg->pos.w + 8;
+			}
+			bannerImgCenter->pos.w += missingSkillLevelIconWidth / 2;
+			const int totalWidth = bannerImgLeft->pos.w + bannerImgRight->pos.w + bannerImgCenter->pos.w;
+
+			const int midx = calloutFrame->getSize().w / 2;
+			const int midy = calloutFrame->getSize().h / 2;
+
+			SDL_Rect bannerSize = bannerFrame->getSize();
+			bannerSize.w = totalWidth;
+			bannerSize.x = midx - (totalWidth / 2);
+			bannerSize.y = midy + CalloutRadialMenu::followerWheelRadius + CalloutRadialMenu::followerWheelButtonThickness + 4;
+			if ( players[gui_player]->bUseCompactGUIHeight() )
+			{
+				bannerSize.y -= 16;
+			}
+			//bannerSize.y += 32 * (1.0 - animTitle);
+			bannerFrame->setSize(bannerSize);
+			bannerFrame->setOpacity(100.0 * animTitle);
+			bannerImgLeft->pos.x = 0;
+			bannerImgCenter->pos.x = bannerImgLeft->pos.x + bannerImgLeft->pos.w;
+			bannerImgRight->pos.x = bannerImgCenter->pos.x + bannerImgCenter->pos.w;
+
+			txtPos.x = bannerImgCenter->pos.x + (bannerImgCenter->pos.w / 2) - (txtPos.w / 2);
+			txtPos.x += bannerGlyph->disabled ? 0 : ((bannerGlyph->pos.w + 8) / 2);
+			txtPos.x += bannerGlyphModifier->disabled ? 0 : ((bannerGlyphModifier->pos.w + 0) / 2);
+			if ( missingSkillLevel )
+			{
+				txtPos.x -= (missingSkillLevelIconWidth / 2) - 4;
+			}
+			if ( txtPos.x % 2 == 1 )
+			{
+				++txtPos.x;
+			}
+			if ( animInvalidAction > 0.01 )
+			{
+				txtPos.x += -2 + 2 * (cos(animInvalidAction * 4 * PI));
+			}
+			txtPos.y = 17;
+			bannerTxt->setSize(txtPos);
+
+			if ( missingSkillLevel )
+			{
+				wheelSkillImg->pos.x = txtPos.x + txtPos.w;
+				wheelSkillImg->pos.y = txtPos.y - 3;
+				wheelSkillImg->disabled = false;
+
+				wheelStatImg->pos.x = wheelSkillImg->pos.x + wheelSkillImg->pos.w;
+				wheelStatImg->pos.y = wheelSkillImg->pos.y;
+				wheelStatImg->disabled = false;
+			}
+
+			bannerGlyph->pos.x = txtPos.x - bannerGlyph->pos.w - 8;
+			if ( bannerGlyph->pos.x % 2 == 1 )
+			{
+				++bannerGlyph->pos.x;
+			}
+			bannerGlyph->pos.y = txtPos.y + txtPos.h / 2 - bannerGlyph->pos.h / 2;
+			if ( bannerGlyph->pos.y % 2 == 1 )
+			{
+				bannerGlyph->pos.y -= 1;
+			}
+			bannerSize.h = std::max(40, bannerGlyph->pos.y + bannerGlyph->pos.h);
+			if ( !bannerGlyphModifier->disabled )
+			{
+				bannerGlyphModifier->pos.x = txtPos.x - bannerGlyphModifier->pos.w - 8;
+				bannerGlyph->pos.x = bannerGlyphModifier->pos.x - bannerGlyph->pos.w - 2;
+
+				if ( bannerGlyphModifier->pos.x % 2 == 1 )
+				{
+					++bannerGlyphModifier->pos.x;
+				}
+				bannerGlyphModifier->pos.y = txtPos.y + txtPos.h / 2 - bannerGlyphModifier->pos.h / 2;
+				if ( bannerGlyphModifier->pos.y % 2 == 1 )
+				{
+					bannerGlyphModifier->pos.y -= 1;
+				}
+				bannerSize.h = std::max(bannerSize.h, bannerGlyphModifier->pos.y + bannerGlyphModifier->pos.h);
+			}
+			bannerFrame->setSize(bannerSize);
+
+			auto wheelTitleText = bgFrame->findField("wheel title");
+			if ( !strcmp(wheelTitleText->getText(), "") )
+			{
+				char buf[128] = "";
+				int spaces = 0;
+				int spaces2 = 0;
+
+				if ( Entity* target = uidToEntity(lockOnEntityUid) )
+				{
+					bool allowed = allowedInteractEntity(*target, true);
+					if ( allowed )
+					{
+						snprintf(buf, sizeof(buf), "%s...", interactText);
+					}
+					else
+					{
+						snprintf(buf, sizeof(buf), Language::get(4348));
+					}
+					spaces = 1;
+				}
+				else
+				{
+					snprintf(buf, sizeof(buf), Language::get(4348));
+					spaces = 1;
+				}
+
+				for ( int c = 0; c <= strlen(buf); ++c )
+				{
+					if ( buf[c] == '\0' )
+					{
+						break;
+					}
+					if ( buf[c] == ' ' )
+					{
+						++spaces2;
+					}
+				}
+				wheelTitleText->setText(buf);
+				wheelTitleText->clearWordsToHighlight();
+				int wordIndex = 2;
+				while ( spaces2 >= spaces ) // every additional space means +1 word to highlight for the monster's name
+				{
+					wheelTitleText->addWordToHighlight(wordIndex, followerTitleHighlightColor);
+					--spaces2;
+					++wordIndex;
+				}
+			}
+			SDL_Rect titlePos = wheelTitleText->getSize();
+			if ( auto textGet2 = wheelTitleText->getTextObject() )
+			{
+				titlePos.w = textGet2->getWidth();
+				titlePos.x = bannerSize.x + bannerSize.w / 2 - (titlePos.w / 2);
+				if ( titlePos.x % 2 == 1 )
+				{
+					++titlePos.x;
+				}
+				titlePos.y = midy - CalloutRadialMenu::followerWheelRadius - CalloutRadialMenu::followerWheelButtonThickness - 24;
+				titlePos.y -= 32 * (1.0 - animTitle);
+				++titlePos.y; // add 1 to be even pixeled
+				wheelTitleText->setSize(titlePos);
+			}
+		}
+
+		if ( !keepWheelOpen )
+		{
+			optionSelected = highlight; // don't reselect if we're keeping the wheel open by using a toggle option.
+		}
+	}
+}
+
+bool CalloutRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool updateInteractText)
+{
+	if ( optionSelected != CALLOUT_CMD_SELECT )
+	{
+		return false;
+	}
+
+	if ( !players[gui_player] || !Player::getPlayerInteractEntity(gui_player) )
+	{
+		return false;
+	}
+
+	bool interactItems = true; //allowedInteractItems(followerStats->type) || allowedInteractFood(followerStats->type);
+	bool interactWorld = true; //allowedInteractWorld(followerStats->type);
+	bool enableAttack = true;
+
+	if ( updateInteractText )
+	{
+		strcpy(interactText, Language::get(4347)); // "Callout "
+	}
+
+	/*if ( selectedEntity.behavior == &actTorch && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, items[TOOL_TORCH].getIdentifiedName());
+		}
+	}*/
+	if ( (selectedEntity.behavior == &actSwitch || 
+		selectedEntity.behavior == &actSwitchWithTimer ||
+		selectedEntity.sprite == 184) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4044)); // "switch"
+		}
+	}
+	else if ( (selectedEntity.behavior == &actTeleportShrine) && (interactWorld || interactItems || enableAttack) )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4309)); // "shrine"
+		}
+	}
+	else if ( (selectedEntity.behavior == &::actDaedalusShrine) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6261)); // "shrine"
+		}
+	}
+	else if ( (selectedEntity.behavior == &::actAssistShrine) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6353)); // "assist shrine"
+		}
+	}
+	else if ( (selectedEntity.behavior == &::actWallButton
+		|| selectedEntity.sprite == 1151
+		|| selectedEntity.sprite == 1152) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6393)); // "button"
+		}
+	}
+	else if ( (selectedEntity.behavior == &::actWallLock
+		|| (selectedEntity.sprite >= 1585 && selectedEntity.sprite <= 1592)) && interactWorld )
+	{
+		int wallLockState = selectedEntity.wallLockState;
+		int wallLockMaterial = selectedEntity.wallLockMaterial;
+		if ( selectedEntity.sprite >= 1585 && selectedEntity.sprite <= 1592 )
+		{
+			if ( Entity* parent = uidToEntity(selectedEntity.parent) )
+			{
+				wallLockState = parent->wallLockState;
+				wallLockMaterial = parent->wallLockMaterial;
+			}
+		}
+		if ( wallLockState == Entity::WallLockStates::LOCK_NO_KEY )
+		{
+			if ( updateInteractText )
+			{
+				strcat(interactText, Language::get(6383 + wallLockMaterial));
+				strcat(interactText, " ");
+				strcat(interactText, Language::get(6392)); // "%s lock"
+			}
+		}
+		else if ( wallLockState == Entity::WallLockStates::LOCK_KEY_ACTIVE_START
+			|| wallLockState == Entity::WallLockStates::LOCK_KEY_ACTIVE )
+		{
+			if ( updateInteractText )
+			{
+				strcat(interactText, Language::get(6383 + wallLockMaterial));
+				strcat(interactText, " ");
+				strcat(interactText, Language::get(6391)); // "%s key"
+			}
+		}
+		else if ( wallLockState == Entity::WallLockStates::LOCK_KEY_INACTIVE_START
+			|| wallLockState == Entity::WallLockStates::LOCK_KEY_INACTIVE )
+		{
+			if ( updateInteractText )
+			{
+				strcat(interactText, Language::get(6383 + wallLockMaterial));
+				strcat(interactText, " ");
+				strcat(interactText, Language::get(6391)); // "%s key"
+			}
+		}
+		else
+		{
+			if ( updateInteractText )
+			{
+				strcpy(interactText, "");
+			}
+			return false;
+		}
+	}
+	else if ( (selectedEntity.behavior == &actTeleporter) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			switch ( selectedEntity.teleporterType )
+			{
+			case 0:
+			case 1:
+				strcat(interactText, Language::get(4310)); // "ladder"
+				break;
+			case 2:
+			case 3:
+				strcat(interactText, Language::get(4311)); // "portal"
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	else if ( (selectedEntity.behavior == &actBell) && interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6270)); // "bell"
+		}
+	}
+	else if ( selectedEntity.behavior == &actLadder )
+	{
+		if ( updateInteractText )
+		{
+			if ( secretlevel && selectedEntity.skill[3] == 1 ) // secret ladder
+			{
+				strcat(interactText, Language::get(4360)); // "secret exit"
+			}
+			else if ( !secretlevel && selectedEntity.skill[3] == 1 ) // secret ladder
+			{
+				strcat(interactText, Language::get(4359)); // "secret entrance" 
+			}
+			else
+			{
+				strcat(interactText, Language::get(4361)); // "level exit" 
+			}
+		}
+	}
+	else if ( selectedEntity.behavior == &actPortal )
+	{
+		if ( updateInteractText )
+		{
+			if ( selectedEntity.skill[3] == 0 ) // secret entrance portal
+			{
+				if ( secretlevel )
+				{
+					strcat(interactText, Language::get(4360)); // "secret exit" 
+				}
+				else
+				{
+					strcat(interactText, Language::get(4359)); // "secret entrance" 
+				}
+			}
+			else
+			{
+				if ( !strcmp(map.name, "Hell") )
+				{
+					strcat(interactText, Language::get(4361)); // "level exit" 
+				}
+				else if ( !strcmp(map.name, "Mages Guild") )
+				{
+					strcat(interactText, Language::get(4361)); // "level exit"
+				}
+				else
+				{
+					strcat(interactText, Language::get(4361)); // "level exit"
+				}
+			}
+		}
+	}
+	else if ( selectedEntity.behavior == &::actMidGamePortal )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4311)); // "portal"
+		}
+	}
+	else if ( selectedEntity.behavior == &actCustomPortal )
+	{
+		if ( updateInteractText )
+		{
+			if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_TUTORIAL )
+			{
+				strcat(interactText, Language::get(4361)); // "level exit"
+			}
+			else
+			{
+				if ( selectedEntity.portalCustomSpriteAnimationFrames > 0 )
+				{
+					strcat(interactText, Language::get(4361)); // "level exit"
+				}
+				else
+				{
+					strcat(interactText, Language::get(4361)); // "level exit"
+				}
+			}
+		}
+	}
+	else if ( selectedEntity.behavior == &::actExpansionEndGamePortal
+		|| selectedEntity.behavior == &actWinningPortal )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4311)); // "portal"
+		}
+	}
+	else if ( selectedEntity.behavior == &actBomb || selectedEntity.behavior == &actBeartrap )
+	{
+		if ( updateInteractText )
+		{
+			if ( selectedEntity.behavior == &actBomb )
+			{
+				if ( selectedEntity.skill[21] >= WOODEN_SHIELD && selectedEntity.skill[21] < NUMITEMS )
+				{
+					strcat(interactText, items[selectedEntity.skill[21]].getIdentifiedName());
+				}
+			}
+			else if ( selectedEntity.behavior == &actBeartrap )
+			{
+				strcat(interactText, items[TOOL_BEARTRAP].getIdentifiedName());
+			}
+		}
+	}
+	else if ( selectedEntity.behavior == &actBoulderTrapHole
+		&& interactWorld )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4349)); // "trap"
+		}
+	}
+	else if ( selectedEntity.behavior == &actBoulder
+		&& interactWorld )
+		{
+			if ( updateInteractText )
+			{
+				strcat(interactText, Language::get(4358)); // "boulder"
+			}
+	}
+	else if ( selectedEntity.behavior == &actItem && interactItems )
+	{
+		if ( updateInteractText )
+		{
+			if ( multiplayer != CLIENT )
+			{
+				if ( selectedEntity.skill[15] == 0 )
+				{
+					strcat(interactText, items[selectedEntity.skill[10]].getUnidentifiedName());
+				}
+				else
+				{
+					strcat(interactText, items[selectedEntity.skill[10]].getIdentifiedName());
+				}
+			}
+			else
+			{
+				strcat(interactText, Language::get(4046)); // "item"
+			}
+		}
+	}
+	else if ( selectedEntity.behavior == &actGoldBag )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4353)); // "gold"
+		}
+	}
+	else if ( selectedEntity.behavior == &actFountain )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4355)); // "fountain"
+		}
+	}
+	else if ( selectedEntity.behavior == &actSink )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4354)); // "sink"
+		}
+	}
+	else if ( selectedEntity.behavior == &actHeadstone )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4357)); // "grave"
+		}
+	}
+	else if ( selectedEntity.behavior == &actCampfire )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4365)); // "campfire"
+		}
+	}
+	else if ( selectedEntity.behavior == &actCauldron )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6974)); // "cauldron"
+		}
+	}
+	else if ( selectedEntity.behavior == &actWorkbench )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6981)); // "workbench"
+		}
+	}
+	else if ( selectedEntity.behavior == &actMailbox )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(6986)); // "mailbox"
+		}
+	}
+	else if ( selectedEntity.behavior == &actPowerCrystal || selectedEntity.behavior == &actPowerCrystalBase )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4356)); // "crystal"
+		}
+	}
+	else if ( selectedEntity.behavior == &actChestLid || selectedEntity.behavior == &actChest
+		|| selectedEntity.isInertMimic() )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(675)); // "chest"
+		}
+	}
+	else if ( selectedEntity.behavior == &actMonster && enableAttack && selectedEntity.getMonsterTypeFromSprite() != GYROBOT )
+	{
+		if ( updateInteractText )
+		{
+			int monsterType = selectedEntity.getMonsterTypeFromSprite();
+			strcat(interactText, getMonsterLocalizedName((Monster)monsterType).c_str());
+		}
+	}
+	else if ( selectedEntity.behavior == &actPlayer || selectedEntity.behavior == &actDeathGhost )
+	{
+		if ( updateInteractText )
+		{
+			int playernum = selectedEntity.skill[2];
+			if ( playernum >= 0 && playernum < MAXPLAYERS )
+			{
+				char shortname[32];
+				stringCopy(shortname, stats[playernum]->name, sizeof(shortname), 22);
+				std::string nameStr = shortname;
+				nameStr = messageSanitizePercentSign(nameStr, nullptr);
+				strcat(interactText, nameStr.c_str());
+			}
+		}
+	}
+	else if ( selectedEntity.behavior == &actColliderDecoration && selectedEntity.isDamageableCollider() )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(selectedEntity.getColliderLangName()));
+		}
+	}
+	else if ( selectedEntity.behavior == &actFloorDecoration && selectedEntity.sprite == 991 )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4363)); // "sign"
+		}
+	}
+	else if ( selectedEntity.behavior == &actPedestalBase )
+	{
+		if ( updateInteractText )
+		{
+			strcat(interactText, Language::get(4364));
+		}
+	}
+	else
+	{
+		if ( updateInteractText )
+		{
+			strcpy(interactText, "");
+		}
+		return false;
+	}
+	return true;
+}
+
+const int GenericGUIMenu::AssistShrineGUI_t::MAX_ASSISTSHRINE_X = 4;
+const int GenericGUIMenu::AssistShrineGUI_t::MAX_ASSISTSHRINE_Y = 20;
+
+void GenericGUIMenu::AssistShrineGUI_t::openAssistShrine(Entity* shrine)
+{
+	shrineUID = 0;
+	if ( shrine )
+	{
+		shrineUID = shrine->getUID();
+		Compendium_t::Events_t::eventUpdateWorld(parentGUI.gui_player, Compendium_t::CPDM_ASSIST_INTERACTS, "assist shrine", 1);
+	}
+	const int playernum = parentGUI.getPlayer();
+	auto player = players[playernum];
+
+	if ( assistShrineFrame )
+	{
+		bool wasDisabled = assistShrineFrame->isDisabled();
+		assistShrineFrame->setDisabled(false);
+		if ( wasDisabled )
+		{
+			animx = 0.0;
+			animFilter = 0.0;
+			animPrompt = 0.0;
+			animTooltip = 0.0;
+			animInvalidAction = 0.0;
+			animInvalidActionTicks = 0;
+			invalidActionType = INVALID_ACTION_NONE;
+			isInteractable = false;
+			bFirstTimeSnapCursor = false;
+		}
+		selectAssistShrineSlot(ASSIST_SLOT_CLOAK, 0);
+		player->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
+		player->inventory_mode = INVENTORY_MODE_ITEM;
+		bOpen = true;
+		changeCurrentView(ASSIST_SHRINE_VIEW_ITEMS);
+	}
+	if ( inputs.getUIInteraction(playernum)->selectedItem )
+	{
+		inputs.getUIInteraction(playernum)->selectedItem = nullptr;
+		inputs.getUIInteraction(playernum)->toggleclick = false;
+	}
+	inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
+	clearItemDisplayed();
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::changeCurrentView(GenericGUIMenu::AssistShrineGUI_t::AssistShrineView_t view)
+{
+	selectedClass = -1;
+	selectedRace = -1;
+	selectedSex = -1;
+	selectedAppearance = -1;
+	selectedDisableAbilities = -1;
+
+	currentView = view;
+	classSlots.clear();
+	raceSlots.clear();
+
+	animClassRaceTooltipOpacity = 0.0;
+
+	isInteractable = false;
+	bFirstTimeSnapCursor = false;
+
+	int x = 0;
+	int y = 0;
+	for ( int i = 0; i < NUMCLASSES; ++i )
+	{
+		int playerRace = stats[parentGUI.gui_player]->playerRace;
+		int appearance = stats[parentGUI.gui_player]->stat_appearance;
+		if ( savedRace >= RACE_HUMAN )
+		{
+			playerRace = savedRace;
+			if ( savedRace > RACE_HUMAN )
+			{
+				appearance = savedAppearance >= 0 ?
+					std::min(savedAppearance, 1) : stats[parentGUI.gui_player]->stat_appearance;
+			}
+			else if ( savedRace == RACE_HUMAN )
+			{
+				appearance = savedAppearance >= 0 ?
+					savedAppearance : stats[parentGUI.gui_player]->stat_appearance;
+			}
+		}
+
+		auto result = isCharacterValidFromDLC(parentGUI.gui_player, i, playerRace, appearance);
+
+		if ( result == CharacterDLCValidation::VALID_OK_CHARACTER )
+		{
+			int coord = x + y * 100;
+			classSlots[coord] = i;
+			++x;
+			if ( x >= MAX_ASSISTSHRINE_X )
+			{
+				x = 0;
+				++y;
+			}
+		}
+	}
+
+	raceSlots.push_back(RACE_HUMAN);
+	if ( enabledDLCPack1 )
+	{
+		raceSlots.push_back(RACE_SKELETON);
+		raceSlots.push_back(RACE_VAMPIRE);
+		raceSlots.push_back(RACE_SUCCUBUS);
+		raceSlots.push_back(RACE_GOATMAN);
+	}
+	if ( enabledDLCPack2 )
+	{
+		raceSlots.push_back(RACE_AUTOMATON);
+		raceSlots.push_back(RACE_INCUBUS);
+		raceSlots.push_back(RACE_GOBLIN);
+		raceSlots.push_back(RACE_INSECTOID);
+	}
+	if ( enabledDLCPack3 )
+	{
+		raceSlots.push_back(RACE_GNOME);
+		raceSlots.push_back(RACE_GREMLIN);
+		raceSlots.push_back(RACE_DRYAD);
+		raceSlots.push_back(RACE_MYCONID);
+		raceSlots.push_back(RACE_SALAMANDER);
+	}
+
+	if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+	{
+		int index = -1;
+		int raceHighlighted = -1;
+		for ( auto race : raceSlots )
+		{
+			++index;
+			if ( (selectedRace == -1 && (savedRace == -1 && race == stats[parentGUI.gui_player]->playerRace))
+				|| (savedRace >= 0 && race == savedRace)
+				|| (selectedRace >= 0 && race == selectedRace) )
+			{
+				raceHighlighted = race;
+				scrollToSlot(ASSIST_RACE_COLUMN, index, false);
+				selectAssistShrineSlot(ASSIST_RACE_COLUMN, index);
+				break;
+			}
+		}
+
+		if ( raceHighlighted == -1 )
+		{
+			scrollToSlot(0, 0, false);
+			selectAssistShrineSlot(ASSIST_RACE_COLUMN, 0);
+		}
+
+		if ( assistShrineFrame )
+		{
+			if ( auto raceFrame = assistShrineFrame->findFrame("assist races") )
+			{
+				if ( auto sexBtn = raceFrame->findButton("sex toggle button") )
+				{
+					if ( (selectedSex == -1 && savedSex == -1 && stats[parentGUI.gui_player]->sex == MALE)
+						|| (savedSex == MALE && selectedSex == -1)
+						|| selectedSex == MALE )
+					{
+						sexBtn->setPressed(false);
+					}
+					if ( (selectedSex == -1 && savedSex == -1 && stats[parentGUI.gui_player]->sex == FEMALE)
+						|| (savedSex == FEMALE && selectedSex == -1)
+						|| selectedSex == FEMALE )
+					{
+						sexBtn->setPressed(true);
+					}
+				}
+				if ( auto disableBtn = raceFrame->findButton("race ability btn") )
+				{
+					if ( raceHighlighted == RACE_HUMAN || raceHighlighted == -1 )
+					{
+						disableBtn->setPressed(false);
+						selectedDisableAbilities = -1;
+					}
+					else
+					{
+						if ( (selectedDisableAbilities == -1 && savedAppearance == -1 && stats[parentGUI.gui_player]->stat_appearance == 0)
+							|| (savedAppearance == 0 && selectedDisableAbilities == -1)
+							|| selectedDisableAbilities == 0 )
+						{
+							disableBtn->setPressed(false);
+						}
+						else if ( (selectedDisableAbilities == -1 && savedAppearance == -1 && stats[parentGUI.gui_player]->stat_appearance == 1)
+							|| (savedAppearance == 1 && selectedDisableAbilities == -1)
+							|| selectedDisableAbilities == 1 )
+						{
+							disableBtn->setPressed(true);
+						}
+					}
+				}
+			}
+		}
+	}
+	else if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+	{
+		bool found = false;
+		for ( auto& pair : classSlots )
+		{
+			if ( (selectedClass == -1 && (savedClass == -1 && pair.second == client_classes[parentGUI.gui_player]))
+				|| (savedClass >= 0 && pair.second == savedClass)
+				|| (selectedClass >= 0 && pair.second == selectedClass) )
+			{
+				found = true;
+				scrollToSlot(pair.first % 100, pair.first / 100, false);
+				selectAssistShrineSlot(pair.first % 100, pair.first / 100);
+				break;
+			}
+		}
+
+		if ( !found )
+		{
+			scrollToSlot(0, 0, false);
+		}
+
+		if ( selectedAssistShrineSlotX < 0 )
+		{
+			selectAssistShrineSlot(0, 0);
+		}
+	}
+	else if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+	{
+		selectAssistShrineSlot(ASSIST_SLOT_CLOAK, 0);
+	}
+
+	players[parentGUI.gui_player]->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
+	players[parentGUI.gui_player]->GUI.activateModule(Player::GUI_t::MODULE_ASSISTSHRINE);
+	if ( !inputs.getVirtualMouse(parentGUI.gui_player)->draw_cursor )
+	{
+		players[parentGUI.gui_player]->GUI.warpControllerToModule(false);
+	}
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::updateRaceSlots()
+{
+	if ( !assistShrineFrame || !assistShrineGUIHasBeenCreated() )
+	{
+		return;
+	}
+
+	int index = -1;
+	bool usingGamepad = inputs.hasController(parentGUI.gui_player) && !inputs.getVirtualMouse(parentGUI.gui_player)->draw_cursor;
+	for ( auto& race : raceSlots )
+	{
+		++index;
+		static const std::string prefix = "*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/";
+		int x = ASSIST_RACE_COLUMN;
+		int y = index;
+
+		//if ( find != MainMenu::classes.end() )
+		{
+			if ( auto slotFrame = getAssistShrineSlotFrame(ASSIST_RACE_COLUMN, index) )
+			{
+				auto slotBg = slotFrame->findImage("race bg");
+				auto slotFg = slotFrame->findImage("race fg");
+				auto slotGlyph = slotFrame->findImage("race glyph");
+				slotGlyph->disabled = true;
+				slotFg->disabled = false;
+				auto slotTxt = slotFrame->findField("race");
+				if ( slotBg && slotFg )
+				{
+					bool selected = (selectedRace == -1 && savedRace == -1 && stats[parentGUI.gui_player]->playerRace == race)
+						|| (savedRace >= 0 && savedRace == race && selectedRace == -1)
+						|| (selectedRace >= 0 && selectedRace == race);
+					bool highlighted = false;
+					if ( getSelectedAssistShrineX() == x
+						&& getSelectedAssistShrineY() == y
+						&& isInteractable
+						&& abs(scrollSetpoint1 - scrollAnimateX1) < 0.00001
+						&& bOpen
+						&& players[parentGUI.gui_player]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+					{
+						if ( inputs.getVirtualMouse(parentGUI.gui_player)->draw_cursor )
+						{
+							if ( !players[parentGUI.gui_player]->GUI.isDropdownActive()
+								&& slotFrame->capturesMouseInRealtimeCoords() )
+							{
+								highlighted = true;
+							}
+						}
+						else
+						{
+							highlighted = true;
+						}
+					}
+
+					if ( selected )
+					{
+						slotFg->path = "*images/ui/Main Menus/sublist_item-picked.png";
+					}
+					else if ( highlighted )
+					{
+						slotFg->path = "*images/ui/Main Menus/sublist_item-unpickedHigh.png";
+						if ( usingGamepad )
+						{
+							slotFg->path = "*images/ui/Main Menus/sublist_item-unpicked.png";
+						}
+					}
+					else
+					{
+						slotFg->path = "*images/ui/Main Menus/sublist_item-unpicked.png";
+					}
+					auto dlcType = MainMenu::DLC::Base;
+					if ( race >= RACE_SKELETON
+						&& race <= RACE_GOATMAN )
+					{
+						dlcType = MainMenu::DLC::MythsAndOutcasts;
+					}
+					if ( race >= RACE_AUTOMATON
+						&& race <= RACE_INSECTOID )
+					{
+						dlcType = MainMenu::DLC::LegendsAndPariahs;
+					}
+					if ( race > RACE_IMP
+						&& race < RACE_ENUM_END )
+					{
+						dlcType = MainMenu::DLC::DesertersAndDisciples;
+					}
+					std::string str = getMonsterLocalizedName(getMonsterFromPlayerRace(race)).c_str();
+					uppercaseString(str);
+					slotTxt->setText(str.c_str());
+					switch ( dlcType ) {
+					default:
+					case MainMenu::DLC::Base:
+						slotTxt->setColor(hudColors.characterBaseClassText);
+						break;
+					case MainMenu::DLC::MythsAndOutcasts:
+						slotTxt->setColor(hudColors.characterDLC1ClassText);
+						break;
+					case MainMenu::DLC::LegendsAndPariahs:
+						slotTxt->setColor(hudColors.characterDLC2ClassText);
+						break;
+					case MainMenu::DLC::DesertersAndDisciples:
+						slotTxt->setColor(hudColors.characterDLC3ClassText);
+						break;
+					}
+					if ( selected )
+					{
+						slotBg->color = makeColorRGB(143, 105, 60);
+						slotBg->disabled = false;
+					}
+					else
+					{
+						slotBg->color = makeColorRGB(52, 30, 22);
+						slotBg->disabled = true;
+					}
+
+					if ( auto img = Image::get(slotFg->path.c_str()) )
+					{
+						slotFg->pos.x = 4;
+						slotFg->pos.y = 0;
+						slotFg->pos.w = img->getWidth();
+						slotFg->pos.h = img->getHeight();
+						if ( (30 - slotFg->pos.h) > 0 )
+						{
+							int offset = (30 - slotFg->pos.h) / 2;
+							slotFg->pos.x += offset;
+							slotFg->pos.y += offset;
+						}
+					}
+
+					if ( highlighted && usingGamepad )
+					{
+						slotGlyph->path = Input::inputs[parentGUI.gui_player].getGlyphPathForBinding("MenuConfirm");
+						if ( auto img = Image::get(slotGlyph->path.c_str()) )
+						{
+							slotGlyph->disabled = false;
+							slotGlyph->pos.w = img->getWidth();
+							slotGlyph->pos.h = img->getHeight();
+							slotGlyph->pos.x = 8;
+							slotGlyph->pos.y = 4;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::updateClassSlots()
+{
+	if ( !assistShrineFrame || !assistShrineGUIHasBeenCreated() )
+	{
+		return;
+	}
+
+	bool usingGamepad = inputs.hasController(parentGUI.gui_player) && !inputs.getVirtualMouse(parentGUI.gui_player)->draw_cursor;
+	auto classFrame = assistShrineFrame->findFrame("assist classes");
+	if ( !classFrame )
+	{
+		return;
+	}
+	auto classGlyph = classFrame->findImage("class select glyph");
+	classGlyph->disabled = true;
+
+	for ( auto& pair : classSlots )
+	{
+		int classIndex = pair.second;
+		auto key = MainMenu::classes_in_order[classIndex];
+		auto find = MainMenu::classes.find(key);
+		static const std::string prefix = "*images/ui/Main Menus/Play/PlayerCreation/ClassSelection/";
+
+		int x = pair.first % 100;
+		int y = pair.first / 100;
+
+		if ( find != MainMenu::classes.end() )
+		{
+			if ( auto slotFrame = getAssistShrineSlotFrame(x, y) )
+			{
+				auto slotBg = slotFrame->findImage("class bg");
+				auto slotFg = slotFrame->findImage("class fg");
+				/*auto slotGlyph = slotFrame->findImage("class glyph");
+				slotGlyph->disabled = true;*/
+				if ( slotBg && slotFg )
+				{
+					auto& full_class = find->second;
+
+					bool selected = (selectedClass == -1 && savedClass == -1 && client_classes[parentGUI.gui_player] == classIndex)
+						|| (savedClass >= 0 && savedClass == classIndex && selectedClass == -1)
+						|| (selectedClass >= 0 && selectedClass == classIndex);
+					bool highlighted = false;
+					if ( getSelectedAssistShrineX() == x
+						&& getSelectedAssistShrineY() == y
+						&& isInteractable
+						&& bOpen
+						&& players[parentGUI.gui_player]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+					{
+						if ( inputs.getVirtualMouse(parentGUI.gui_player)->draw_cursor )
+						{
+							if ( !players[parentGUI.gui_player]->GUI.isDropdownActive()
+								&& slotFrame->capturesMouseInRealtimeCoords() )
+							{
+								highlighted = true;
+							}
+						}
+						else
+						{
+							highlighted = true;
+						}
+					}
+					if ( selected || highlighted )
+					{
+						slotFg->path = (prefix + full_class.image_highlighted).c_str();
+						if ( highlighted && usingGamepad )
+						{
+							/*slotGlyph->path = Input::inputs[parentGUI.gui_player].getGlyphPathForBinding("MenuConfirm");
+							if ( auto img = Image::get(slotGlyph->path.c_str()) )
+							{
+								slotGlyph->disabled = false;
+								slotGlyph->pos.w = img->getWidth();
+								slotGlyph->pos.h = img->getHeight();
+								slotGlyph->pos.x = slotFg->pos.w / 2 - slotGlyph->pos.w / 2;
+								slotGlyph->pos.y = slotFg->pos.h - slotGlyph->pos.h;
+							}*/
+							classGlyph->path = Input::inputs[parentGUI.gui_player].getGlyphPathForBinding("MenuConfirm");
+							if ( auto img = Image::get(classGlyph->path.c_str()) )
+							{
+								classGlyph->disabled = false;
+								classGlyph->pos.w = img->getWidth();
+								classGlyph->pos.h = img->getHeight();
+								classGlyph->pos.x = slotFg->pos.w / 2 - classGlyph->pos.w / 2;
+								classGlyph->pos.y = slotFg->pos.h - classGlyph->pos.h;
+
+								classGlyph->pos.x += slotFrame->getSize().x;
+								classGlyph->pos.y += slotFrame->getSize().y;
+
+								auto slots = slotFrame->getParent();
+								classGlyph->pos.x += slots->getSize().x;
+								classGlyph->pos.y += slots->getSize().y + 12;
+								classGlyph->pos.y -= slots->getActualSize().y;
+
+								if ( classGlyph->pos.y < slots->getSize().y
+									|| classGlyph->pos.y > slots->getSize().y + slots->getSize().h )
+								{
+									classGlyph->disabled = true;
+								}
+							}
+						}
+					}
+					else
+					{
+						slotFg->path = (prefix + full_class.image).c_str();
+					}
+					switch ( full_class.dlc ) {
+					case MainMenu::DLC::Base:
+						slotBg->path = (prefix + "ClassSelect_IconBGBase_00.png");
+						if ( selected )
+						{
+							slotBg->path = (prefix + "ClassSelect_IconBGBaseHigh_00.png");
+						}
+						break;
+					case MainMenu::DLC::MythsAndOutcasts:
+						slotBg->path = (prefix + "ClassSelect_IconBGMyths_00.png");
+						if ( selected )
+						{
+							slotBg->path = (prefix + "ClassSelect_IconBGMythsHigh_00.png");
+						}
+						break;
+					case MainMenu::DLC::LegendsAndPariahs:
+						slotBg->path = (prefix + "ClassSelect_IconBGLegends_00.png");
+						if ( selected )
+						{
+							slotBg->path = (prefix + "ClassSelect_IconBGLegendsHigh_00.png");
+						}
+						break;
+					case MainMenu::DLC::DesertersAndDisciples:
+						slotBg->path = (prefix + "ClassSelect_IconBGDeserters_00.png");
+						if ( selected )
+						{
+							slotBg->path = (prefix + "ClassSelect_IconBGDesertersHigh_00.png");
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::clearItemDisplayed()
+{
+	itemType = -1;
+	itemActionType = ASSIST_ITEM_NONE;
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::closeAssistShrine()
+{
+	const int playernum = parentGUI.getPlayer();
+	auto& player = *players[playernum];
+
+	if ( assistShrineFrame )
+	{
+		assistShrineFrame->setDisabled(true);
+	}
+	animx = 0.0;
+	animFilter = 0.0;
+	animPrompt = 0.0;
+	animTooltip = 0.0;
+	animInvalidAction = 0.0;
+	animInvalidActionTicks = 0;
+	invalidActionType = INVALID_ACTION_NONE;
+	//resetItems();
+
+	notifications.clear();
+
+	isInteractable = false;
+	bool wasOpen = bOpen;
+	bOpen = false;
+	bFirstTimeSnapCursor = false;
+	if ( wasOpen )
+	{
+		if ( inputs.getUIInteraction(playernum)->selectedItem )
+		{
+			inputs.getUIInteraction(playernum)->selectedItem = nullptr;
+			inputs.getUIInteraction(playernum)->toggleclick = false;
+		}
+		inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
+	}
+	if ( players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE
+		&& !players[playernum]->shootmode )
+	{
+		// reset to inventory mode if still hanging in assist GUI
+		players[playernum]->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
+		players[playernum]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+		if ( !inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			players[playernum]->GUI.warpControllerToModule(false);
+		}
+	}
+	clearItemDisplayed();
+	if ( assistShrineFrame )
+	{
+		for ( auto f : assistShrineFrame->getFrames() )
+		{
+			f->removeSelf();
+		}
+		assistShrineSlotFrames.clear();
+	}
+
+	if ( multiplayer != CLIENT )
+	{
+		if ( Entity* shrine = uidToEntity(shrineUID) )
+		{
+			shrine->skill[0] = 0;
+			serverUpdateEntitySkill(shrine, 0);
+		}
+	}
+
+	if ( multiplayer == CLIENT )
+	{
+		strcpy((char*)net_packet->data, "ASCL");
+		net_packet->data[4] = clientnum;
+		SDLNet_Write32(shrineUID, &net_packet->data[5]);
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		net_packet->len = 9;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	}
+	shrineUID = 0;
+}
+
+int GenericGUIMenu::AssistShrineGUI_t::heightOffsetWhenNotCompact = 150;
+const int assistShrineBaseWidth = 266;
+
+bool GenericGUIMenu::AssistShrineGUI_t::assistShrineGUIHasBeenCreated() const
+{
+	if ( assistShrineFrame )
+	{
+		if ( !assistShrineFrame->getFrames().empty() )
+		{
+			for ( auto f : assistShrineFrame->getFrames() )
+			{
+				if ( !f->isToBeDeleted() )
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return false;
+}
+
+void buttonAssistShrineUpdateSelectorOnHighlight(const int player, Button* button)
+{
+	if ( button->isHighlighted() )
+	{
+		players[player]->GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_ASSISTSHRINE);
+		if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_ASSISTSHRINE )
+		{
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ASSISTSHRINE);
+		}
+		SDL_Rect pos = button->getAbsoluteSize();
+		SDL_Rect off = button->getSelectorOffset();
+		pos.x += off.x;
+		pos.y += off.y;
+		pos.w += off.w;
+		pos.h += off.h;
+
+		// make sure to adjust absolute size to camera viewport
+		pos.x -= players[player]->camera_virtualx1();
+		pos.y -= players[player]->camera_virtualy1();
+		players[player]->hud.setCursorDisabled(false);
+		players[player]->hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player)->draw_cursor);
+	}
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::selectAssistShrineSlot(const int x, const int y)
+{
+	selectedAssistShrineSlotX = x;
+	selectedAssistShrineSlotY = y;
+}
+
+Frame* GenericGUIMenu::AssistShrineGUI_t::getAssistShrineSlotFrame(int x, int y) const
+{
+	if ( assistShrineFrame )
+	{
+		int key = x + y * 100;
+		if ( assistShrineSlotFrames.find(key) != assistShrineSlotFrames.end() )
+		{
+			return assistShrineSlotFrames.at(key);
+		}
+	}
+	return nullptr;
+}
+
+bool GenericGUIMenu::AssistShrineGUI_t::warpMouseToSelectedAssistShrineItem(Item* snapToItem, Uint32 flags)
+{
+	if ( assistShrineGUIHasBeenCreated() )
+	{
+		int x = getSelectedAssistShrineX();
+		int y = getSelectedAssistShrineY();
+		if ( snapToItem )
+		{
+			x = snapToItem->x;
+			y = snapToItem->y;
+		}
+
+		if ( auto slot = getAssistShrineSlotFrame(x, y) )
+		{
+			int playernum = parentGUI.getPlayer();
+			auto player = players[playernum];
+			if ( !isInteractable )
+			{
+				//messagePlayer(0, "[Debug]: select item queued");
+				player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_ASSISTSHRINE;
+				player->inventoryUI.cursor.queuedFrameToWarpTo = slot;
+				return false;
+			}
+			else
+			{
+				//messagePlayer(0, "[Debug]: select item warped");
+				player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+				player->inventoryUI.cursor.queuedFrameToWarpTo = nullptr;
+				slot->warpMouseToFrame(playernum, flags);
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+static ConsoleVariable<int> cvar_assistClassListGridY("/assist_grid_y", 112);
+const int kAssistClassHeaderHeight = 46;
+const int kAssistClassFooterHeight = 32;
+const int kAssistClassGridImgHeight = 240;
+const int GenericGUIMenu::AssistShrineGUI_t::kNumClassesToDisplayVertical = 3;
+const int GenericGUIMenu::AssistShrineGUI_t::kClassSlotHeight = 54;
+const int GenericGUIMenu::AssistShrineGUI_t::kNumRacesToDisplayVertical = 4;
+const int GenericGUIMenu::AssistShrineGUI_t::kRaceSlotHeight = 30;
+const int GenericGUIMenu::AssistShrineGUI_t::kRaceSlotWidth = 164 + 54 + 6;
+const int kAssistClassListHeight = GenericGUIMenu::AssistShrineGUI_t::kNumClassesToDisplayVertical * GenericGUIMenu::AssistShrineGUI_t::kClassSlotHeight;
+const int kAssistRaceListHeight = GenericGUIMenu::AssistShrineGUI_t::kNumRacesToDisplayVertical * GenericGUIMenu::AssistShrineGUI_t::kRaceSlotHeight;
+
+void sliderAssistUpdateSelectorOnHighlight(const int player, Slider* slider)
+{
+	if ( slider->isHighlighted() )
+	{
+		players[player]->GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_ASSISTSHRINE);
+		if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_ASSISTSHRINE )
+		{
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ASSISTSHRINE);
+		}
+		SDL_Rect pos = slider->getAbsoluteSize();
+		// make sure to adjust absolute size to camera viewport
+		pos.x -= players[player]->camera_virtualx1();
+		pos.y -= players[player]->camera_virtualy1();
+		players[player]->hud.setCursorDisabled(false);
+		players[player]->hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player)->draw_cursor);
+	}
+}
+
+int GenericGUIMenu::AssistShrineGUI_t::getAssistPointFromItem(Item* item)
+{
+	if ( item )
+	{
+		int val = 0;
+		if ( item->type == MASK_MARIGOLD )
+		{
+			val = 3;
+			val += 2 * abs(item->beatitude);
+		}
+		else if ( item->type == CLOAK_GUARDIAN )
+		{
+			val = 5;
+			val += 4 * abs(item->beatitude);
+		}
+		else if ( item->type == AMULET_LIFESAVING )
+		{
+			val = 4;
+			val += 2 * abs(item->beatitude);
+		}
+		else if ( item->type == RING_RESOLVE )
+		{
+			val = 3;
+			val += 2 * abs(item->beatitude);
+		}
+		return val;
+	}
+	return 0;
+}
+
+int GenericGUIMenu::AssistShrineGUI_t::getAssistPointsSaved()
+{
+	int val = 0;
+	std::vector<Item*> assistItems;
+	assistItems.push_back(&itemRing);
+	assistItems.push_back(&itemMask);
+	assistItems.push_back(&itemAmulet);
+	assistItems.push_back(&itemCloak);
+	for ( auto type : claimedItems )
+	{
+		for ( auto item : assistItems )
+		{
+			if ( type == item->type )
+			{
+				val += getAssistPointFromItem(item);
+			}
+		}
+	}
+	return val;
+}
+
+int GenericGUIMenu::AssistShrineGUI_t::getAssistPointsPreview()
+{
+	int val = std::max(getAssistPointsSaved(), conductGameChallenges[CONDUCT_ASSISTANCE_CLAIMED]);
+	std::vector<Item*> assistItems;
+	assistItems.push_back(&itemRing);
+	assistItems.push_back(&itemMask);
+	assistItems.push_back(&itemAmulet);
+	assistItems.push_back(&itemCloak);
+	for ( auto item : assistItems )
+	{
+		if ( claimedItems.find(item->type) == claimedItems.end() )
+		{
+			if ( !item->itemHiddenFromShop )
+			{
+				val += getAssistPointFromItem(item);
+			}
+		}
+	}
+
+	return val;
+}
+
+GenericGUIMenu::AssistShrineGUI_t::AssistNotification_t* GenericGUIMenu::AssistShrineGUI_t::addNotification(std::string _title, std::string _body, std::string _img, AssistNotification_t::NotificationTypes _notifType)
+{
+	if ( _notifType == AssistNotification_t::NOTIF_CHARACTER_CHANGE_OK )
+	{
+		for ( auto it = notifications.begin(); it != notifications.end(); ++it )
+		{
+			if ( it->second.notificationType == AssistNotification_t::NOTIF_SEND_REQ )
+			{
+				// replace this notification
+				it->second.state = 0;
+				it->second.animx = 0.0;
+				it->second.notificationType = _notifType;
+				it->first = ticks;
+				it->second.body = _body;
+				it->second.title = _title;
+				it->second.img = _img;
+				it->second.lifetime = 4 * TICKS_PER_SECOND;
+				return &it->second;
+			}
+		}
+	}
+	
+	for ( auto it = notifications.begin(); it != notifications.end(); )
+	{
+		if ( it->second.notificationType == _notifType
+			|| (_notifType == AssistNotification_t::NOTIF_SEND_REQ
+				&& (it->second.notificationType == AssistNotification_t::NOTIF_CHARACTER_CHANGE_OK)) )
+		{
+			// erase matching types
+			it = notifications.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+	notifications.push_back(std::make_pair(ticks, AssistNotification_t(_title, _body, _img, _notifType)));
+	if ( _notifType == AssistNotification_t::NOTIF_CHARACTER_CHANGE_OK )
+	{
+		notifications.back().second.lifetime = 4 * TICKS_PER_SECOND;
+	}
+	return &notifications.back().second;
+
+	return nullptr;
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::serverUpdateStatFlagsForClients()
+{
+	if ( multiplayer != SERVER )
+	{
+		return;
+	}
+	for ( int i = 1; i < MAXPLAYERS; ++i )
+	{
+		if ( !client_disconnected[i] )
+		{
+			for ( int player = 0; player < MAXPLAYERS; ++player )
+			{
+				strcpy((char*)net_packet->data, "ASSU");
+				net_packet->data[4] = player;
+				SDLNet_Write32(stats[player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS], &net_packet->data[5]);
+				net_packet->address.host = net_clients[i - 1].host;
+				net_packet->address.port = net_clients[i - 1].port;
+				net_packet->len = 9;
+				sendPacketSafe(net_sock, -1, net_packet, i - 1);
+			}
+		}
+	}
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::onCharacterChange()
+{
+	receivedCharacterChangeOK = false;
+	if ( multiplayer == SINGLE )
+	{
+		receivedCharacterChangeOK = true;
+		addNotification(Language::get(6334), Language::get(6335), "", GenericGUIMenu::AssistShrineGUI_t::AssistNotification_t::NOTIF_CHARACTER_CHANGE_OK);
+
+		std::string racename = "";
+		if ( savedRace != RACE_HUMAN )
+		{
+			if ( savedAppearance != 0 )
+			{
+				racename = Language::get(4068); // guised
+				racename += ' ';
+			}
+		}
+		racename += getMonsterLocalizedName(getMonsterFromPlayerRace(savedRace)).c_str();
+		camelCaseString(racename);
+		std::string classname = playerClassLangEntry(savedClass >= 0 ? savedClass : client_classes[parentGUI.gui_player], parentGUI.gui_player);
+		camelCaseString(classname);
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( players[i]->isLocalPlayer() )
+			{
+				if ( i != parentGUI.gui_player )
+				{
+					messagePlayer(i, MESSAGE_WORLD, Language::get(6336), stats[parentGUI.gui_player]->name, racename.c_str(), classname.c_str());
+				}
+				else if ( i == parentGUI.gui_player )
+				{
+					messagePlayer(i, MESSAGE_WORLD, Language::get(6355), racename.c_str(), classname.c_str());
+				}
+			}
+		}
+	}
+	else if ( multiplayer == CLIENT )
+	{
+		strcpy((char*)net_packet->data, "ASSC");
+		net_packet->data[4] = (Sint8)savedClass;
+		net_packet->data[5] = (Sint8)savedRace;
+		net_packet->data[6] = (Sint8)savedSex;
+		net_packet->data[7] = (Sint8)savedAppearance;
+		net_packet->data[8] = parentGUI.gui_player;
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		net_packet->len = 9;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+
+		addNotification(Language::get(6334), Language::get(6337), "", AssistNotification_t::NOTIF_SEND_REQ);
+	}
+	else if ( multiplayer == SERVER )
+	{
+		receivedCharacterChangeOK = true;
+		addNotification(Language::get(6334), Language::get(6335), "", GenericGUIMenu::AssistShrineGUI_t::AssistNotification_t::NOTIF_CHARACTER_CHANGE_OK);
+
+		std::string racename = "";
+		if ( savedRace != RACE_HUMAN )
+		{
+			if ( savedAppearance != 0 )
+			{
+				racename = Language::get(4068); // guised
+				racename += ' ';
+			}
+		}
+		racename += getMonsterLocalizedName(getMonsterFromPlayerRace(savedRace)).c_str();
+		camelCaseString(racename);
+		std::string classname = playerClassLangEntry(savedClass >= 0 ? savedClass : client_classes[parentGUI.gui_player], parentGUI.gui_player);
+		camelCaseString(classname);
+		messagePlayer(clientnum, MESSAGE_WORLD, Language::get(6355), racename.c_str(), classname.c_str());
+
+		for ( int i = 1; i < MAXPLAYERS; ++i )
+		{
+			if ( !client_disconnected[i] )
+			{
+				strcpy((char*)net_packet->data, "ASSC");
+				net_packet->data[4] = (Sint8)savedClass;
+				net_packet->data[5] = (Sint8)savedRace;
+				net_packet->data[6] = (Sint8)savedSex;
+				net_packet->data[7] = (Sint8)savedAppearance;
+				net_packet->data[8] = parentGUI.gui_player;
+				net_packet->address.host = net_clients[i - 1].host;
+				net_packet->address.port = net_clients[i - 1].port;
+				net_packet->len = 9;
+				sendPacketSafe(net_sock, -1, net_packet, i - 1);
+			}
+		}
+	}
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::createAssistShrine()
+{
+	const int player = parentGUI.getPlayer();
+	if ( !gui || !assistShrineFrame || !players[player]->inventoryUI.frame )
+	{
+		return;
+	}
+	if ( assistShrineGUIHasBeenCreated() )
+	{
+		return;
+	}
+
+	SDL_Rect basePos{ 0, 0, assistShrineBaseWidth, 334 };
+	assistShrineSlotFrames.clear();
+
+	const int inventorySlotSize = players[player]->inventoryUI.getSlotSize();
+
+	{
+		auto tooltipFrame = assistShrineFrame->addFrame("sheet tooltip");
+		{
+			tooltipFrame->setSize(SDL_Rect{ 200, 0, 200, 200 });
+			tooltipFrame->setHollow(true);
+			tooltipFrame->setInheritParentFrameOpacity(false);
+			tooltipFrame->setDisabled(true);
+			Uint32 color = makeColor(255, 255, 255, 255);
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_LEFT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_RIGHT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_L_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::MIDDLE_LEFT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_R_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::MIDDLE_RIGHT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				makeColor(22, 24, 29, 255), "images/system/white.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::MIDDLE].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BL_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::BOTTOM_LEFT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_BR_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::BOTTOM_RIGHT].c_str());
+			tooltipFrame->addImage(SDL_Rect{ 0, 0, 6, 6 },
+				color, "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_B_00.png", Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::BOTTOM].c_str());
+			Player::GUI_t::imageSetWidthHeight9x9(tooltipFrame, Player::GUI_t::tooltipEffectBackgroundImages);
+			Player::GUI_t::imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, 200, 200 }, Player::GUI_t::tooltipEffectBackgroundImages);
+			auto txt = tooltipFrame->addField("tooltip text", 1024);
+			auto txtRightAlignHint = tooltipFrame->addField("tooltip text right align hint", 128);
+			const char* tooltipFont = "fonts/pixel_maz_multiline.ttf#16#2";
+			txt->setFont(tooltipFont);
+			txt->setColor(makeColor(188, 154, 114, 255));
+			txtRightAlignHint->setFont(tooltipFont);
+			txtRightAlignHint->setColor(hudColors.characterSheetFaintText);
+			auto glyph1 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 1");
+			glyph1->disabled = true;
+			auto glyph2 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 2");
+			glyph2->disabled = true;
+			auto glyph3 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 3");
+			glyph3->disabled = true;
+			auto glyph4 = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 0 }, 0xFFFFFFFF, "images/system/white.png", "glyph 4");
+			glyph4->disabled = true;
+
+			auto div = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 1 },
+				makeColor(49, 53, 61, 255),
+				"images/system/white.png", "tooltip divider 1");
+			div->disabled = true;
+			div = tooltipFrame->addImage(SDL_Rect{ 0, 0, 0, 1 },
+				makeColor(255, 255, 255, 255),
+				"images/system/white.png", "tooltip img");
+			div->disabled = true;
+		}
+		{
+			auto raceTooltip = tooltipFrame->addFrame("race tooltip");
+			raceTooltip->setSize(SDL_Rect{ 0, 24, 324, 664 });
+			raceTooltip->setDisabled(true);
+			raceTooltip->setHollow(true);
+
+			auto details_text = raceTooltip->addField("details", 1024);
+			details_text->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			details_text->setSize(SDL_Rect{ 0, 0, 242, 300 });
+			details_text->setColor(hudColors.characterSheetOffWhiteText);
+
+			auto details_text_right = raceTooltip->addField("details_right", 1024);
+			details_text_right->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			details_text_right->setSize(SDL_Rect{ 121, 0, 121, 300 });
+			details_text_right->setColor(hudColors.characterSheetOffWhiteText);
+		}
+
+		{
+			auto itemTooltip = tooltipFrame->addFrame("item tooltip");
+			itemTooltip->setDisabled(true);
+			itemTooltip->setHollow(true);
+
+			auto details_text = itemTooltip->addField("details", 1024);
+			details_text->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			details_text->setSize(SDL_Rect{ 0, 0, 300, 300 });
+			details_text->setColor(hudColors.characterSheetOffWhiteText);
+
+			auto item_request_btn = itemTooltip->addButton("request btn");
+			item_request_btn->setSize(SDL_Rect{ 0, 0, 188, 26 });
+			item_request_btn->setColor(makeColor(255, 255, 255, 255));
+			item_request_btn->setHighlightColor(makeColor(255, 255, 255, 255));
+			item_request_btn->setText("");
+			item_request_btn->setFont(details_text->getFont());
+			item_request_btn->setHideGlyphs(true);
+			item_request_btn->setHideKeyboardGlyphs(true);
+			item_request_btn->setHideSelectors(true);
+			item_request_btn->setMenuConfirmControlType(0);
+			item_request_btn->setBackground("*images/ui/AssistShrine/Button_Request_00.png");
+			item_request_btn->setBackgroundHighlighted("*images/ui/AssistShrine/Button_RequestHigh_00.png");
+			item_request_btn->setBackgroundActivated("*images/ui/AssistShrine/Button_RequestPress_00.png");
+			item_request_btn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			item_request_btn->setCallback([](Button& button) {
+				if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+				{
+					int player = button.getOwner();
+					if ( player >= 0 && player < MAXPLAYERS && players[player]->entity && players[player]->isLocalPlayer() )
+					{
+						if ( multiplayer == CLIENT )
+						{
+							Player::soundActivate();
+							auto& calloutMenu = CalloutMenu[player];
+							for ( auto node = map.entities->first; node; node = node->next )
+							{
+								Entity* shrine = (Entity*)node->element;
+								if ( shrine && (shrine->behavior == &::actAssistShrine) )
+								{
+									calloutMenu.lockOnEntityUid = shrine->getUID();
+									if ( calloutMenu.createParticleCallout(shrine,
+										CalloutRadialMenu::CALLOUT_CMD_HELP) )
+									{
+										calloutMenu.sendCalloutText(CalloutRadialMenu::CALLOUT_CMD_HELP);
+									}
+								}
+							}
+						}
+						else
+						{
+							if ( button.isSelected() )
+							{
+								button.deselect();
+							}
+							GenericGUI[player].closeGUI();
+							players[player]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+							if ( !gamePaused && !intro )
+							{
+								pauseGame(0, MAXPLAYERS);
+								if ( gamePaused )
+								{
+									MainMenu::pause_menu_owner = player;
+									if ( MainMenu::main_menu_frame )
+									{
+										MainMenu::destroyMainMenu();
+									}
+									MainMenu::createMainMenu(true);
+									if ( MainMenu::main_menu_frame )
+									{
+										if ( auto buttons = MainMenu::main_menu_frame->findFrame("buttons") )
+										{
+											if ( auto settings = buttons->findButton("Settings") )
+											{
+												settings->getCallback()(*settings);
+												if ( auto settings_menu = MainMenu::main_menu_frame->findFrame("settings") )
+												{
+													if ( auto settings_menu_button = settings_menu->findButton("Game") )
+													{
+														settings_menu_button->getCallback()(*settings_menu_button);
+														if ( auto settings_subwindow = settings_menu->findFrame("settings_subwindow") )
+														{
+															if ( auto assist_items_toggle = settings_subwindow->findButton("setting_assist_items_button") )
+															{
+																assist_items_toggle->select();
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			});
+			item_request_btn->setTickCallback(genericgui_deselect_fn);
+			item_request_btn->setDisabled(true);
+			item_request_btn->setInvisible(true);
+
+			auto glyph = itemTooltip->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				makeColor(255, 255, 255, 255),
+				"images/system/white.png", "request glyph");
+			glyph->disabled = true;
+		}
+
+		{
+			auto classTooltip = tooltipFrame->addFrame("class tooltip");
+			classTooltip->setDisabled(true);
+			classTooltip->setHollow(true);
+			auto statGrowths = classTooltip->addFrame("stat growths");
+			// stats definitions
+			const char* class_stats_text[] = {
+				ItemTooltips.getItemStatShortName("STR").c_str(),
+				ItemTooltips.getItemStatShortName("DEX").c_str(),
+				ItemTooltips.getItemStatShortName("CON").c_str(),
+				ItemTooltips.getItemStatShortName("INT").c_str(),
+				ItemTooltips.getItemStatShortName("PER").c_str(),
+				ItemTooltips.getItemStatShortName("CHR").c_str()
+			};
+			constexpr int num_class_stats = sizeof(class_stats_text) / sizeof(class_stats_text[0]);
+			constexpr SDL_Rect bottom{ 0, 0, 236, 36 };
+			constexpr int column = bottom.w / num_class_stats;
+
+			classTooltip->setSize(SDL_Rect{ 0, 0, bottom.w, bottom.h });
+			statGrowths->setSize(bottom);
+
+			for ( int c = 0; c < num_class_stats; ++c )
+			{
+				char buf[16];
+				snprintf(buf, sizeof(buf), "%d", c);
+				auto class_stat = statGrowths->addField(buf, 16);
+				class_stat->setSize(SDL_Rect{
+					bottom.x + column * c, bottom.y, column, bottom.h });
+				class_stat->setHJustify(Field::justify_t::CENTER);
+				class_stat->setVJustify(Field::justify_t::TOP);
+				class_stat->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+				class_stat->setText(class_stats_text[c]);
+				//class_stat->setTickCallback([](Widget& widget) {class_stat_fn(*static_cast<Field*>(&widget), widget.getOwner()); });
+
+				SDL_Rect imgPos = class_stat->getSize();
+				imgPos.x += imgPos.w / 2;
+				imgPos.w = 14;
+				imgPos.x -= imgPos.w / 2;
+				imgPos.h = 16;
+				imgPos.y -= imgPos.h - 4;
+
+				char buf2[32];
+				snprintf(buf2, sizeof(buf2), "stat img bottom %d", c);
+				imgPos.y = class_stat->getSize().y + 17;
+				auto class_stat_img_bottom = statGrowths->addImage(imgPos, 0xFFFFFFFF,
+					"*#images/ui/Main Menus/Play/PlayerCreation/ClassSelection/statgrowth_lo2.png", buf2);
+				class_stat_img_bottom->disabled = true;
+			}
+
+			{
+				SDL_Rect hpmp_size{ 4, 35 + 16, 52, 44 };
+				auto hpmp_header = classTooltip->addField("hpmp_header", 32);
+				hpmp_header->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+				hpmp_header->setColor(makeColorRGB(184, 146, 109));
+				hpmp_header->setText(Language::get(5427));
+				hpmp_header->setHJustify(Field::justify_t::LEFT);
+				hpmp_header->setVJustify(Field::justify_t::TOP);
+				hpmp_header->setSize(hpmp_size);
+				hpmp_header->setPaddingPerLine(-4);
+
+				static constexpr int hpmp_buf_size = 32;
+
+				auto hpmp_values = classTooltip->addField("hpmp_values", 128);
+				hpmp_size.x += 32;
+				hpmp_values->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+				hpmp_values->setPaddingPerLine(-4);
+				hpmp_values->setColor(makeColorRGB(184, 146, 109));
+				hpmp_values->setText("20\n20");
+				hpmp_values->setHJustify(Field::justify_t::RIGHT);
+				if ( hpmp_values->getHJustify() == Field::justify_t::RIGHT )
+				{
+					hpmp_size.x -= 26;
+				}
+				hpmp_values->setVJustify(Field::justify_t::TOP);
+				hpmp_values->setSize(hpmp_size);
+			}
+
+			// difficulty header
+			constexpr SDL_Rect difficulty_size{ 71, 35 + 16, 158, 44 };
+			auto difficulty_header = classTooltip->addField("difficulty_header", 128);
+			difficulty_header->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			difficulty_header->setColor(makeColorRGB(184, 146, 109));
+			difficulty_header->setText(Language::get(5428));
+			difficulty_header->setHJustify(Field::justify_t::LEFT);
+			difficulty_header->setVJustify(Field::justify_t::TOP);
+			difficulty_header->setSize(difficulty_size);
+			difficulty_header->setPaddingPerLine(-4);
+
+			auto difficulty_stars = classTooltip->addField("difficulty_stars", 32);
+			difficulty_stars->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			difficulty_stars->setHJustify(Field::justify_t::RIGHT);
+			difficulty_stars->setVJustify(Field::justify_t::TOP);
+			difficulty_stars->setSize(difficulty_size);
+			difficulty_stars->setPaddingPerLine(-4);
+		}
+	}
+
+	{
+		auto notificationFrame = assistShrineFrame->addFrame("notification");
+		notificationFrame->setHollow(false);
+		notificationFrame->setBorder(0);
+		notificationFrame->setInheritParentFrameOpacity(false);
+		notificationFrame->setDisabled(true);
+		notificationFrame->setSize(SDL_Rect{ 0, 0, 180, 56 });
+
+		auto notifBg = notificationFrame->addImage(SDL_Rect{ 0, 0, 180, 56 }, 0xFFFFFFFF,
+			"*#images/ui/AssistShrine/Assist_Notification_00.png", "notif bg");
+
+		auto notifIcon = notificationFrame->addImage(SDL_Rect{ 8, 56 / 2 - players[player]->inventoryUI.getItemSpriteSize() / 2,
+			players[player]->inventoryUI.getItemSpriteSize(),
+			players[player]->inventoryUI.getItemSpriteSize() }, 0xFFFFFFFF,
+			"", "notif icon");
+		notifIcon->disabled = true;
+		notifIcon->pos.w = 16;
+		notifIcon->pos.h = 0;
+
+		auto title = notificationFrame->addField("notif title", 128);
+		title->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+		title->setText("New Title Unlocked!");
+		title->setHJustify(Field::justify_t::LEFT);
+		title->setVJustify(Field::justify_t::TOP);
+		title->setSize(SDL_Rect{ notifIcon->pos.x + notifIcon->pos.w, 8, notificationFrame->getSize().w, 24 });
+		title->setColor(makeColor(255, 255, 0, 255));
+
+		auto body = notificationFrame->addField("notif body", 128);
+		body->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+		body->setText("Blah Blah Blah!");
+		body->setHJustify(Field::justify_t::LEFT);
+		body->setVJustify(Field::justify_t::TOP);
+		body->setSize(SDL_Rect{ notifIcon->pos.x + notifIcon->pos.w, 8 + 18, notificationFrame->getSize().w, 24 });
+		body->setColor(makeColor(255, 255, 255, 255));
+	}
+
+	{
+		auto bgFrame = assistShrineFrame->addFrame("assist base");
+		bgFrame->setSize(basePos);
+		bgFrame->setHollow(false);
+		bgFrame->setDisabled(true);
+		auto bg = bgFrame->addImage(SDL_Rect{ 0, 0, basePos.w, basePos.h },
+			makeColor(255, 255, 255, 255),
+			"*#images/ui/AssistShrine/AssistShrine_Panel00.png", "assist base img");
+
+		auto assistItemFrame = assistShrineFrame->addFrame("assist items");
+		assistItemFrame->setSize(basePos);
+		assistItemFrame->setHollow(true);
+		assistItemFrame->setDisabled(true);
+
+		{
+			auto titleText = assistItemFrame->addField("title txt", 64);
+			titleText->setFont("fonts/pixel_maz_multiline.ttf#16");
+			titleText->setText(Language::get(6701));
+			titleText->setHJustify(Field::justify_t::CENTER);
+			titleText->setVJustify(Field::justify_t::TOP);
+			titleText->setSize(SDL_Rect{ 0, 59, basePos.w - 8, 24 });
+			titleText->setColor(makeColor(221, 206, 189, 255));
+		}
+
+		auto classFrame = assistShrineFrame->addFrame("assist classes");
+		classFrame->setSize(basePos);
+		classFrame->setHollow(true);
+		classFrame->setDisabled(true);
+
+		{
+			auto titleText = classFrame->addField("title txt", 64);
+			titleText->setFont("fonts/pixel_maz_multiline.ttf#16");
+			titleText->setText(Language::get(6702));
+			titleText->setHJustify(Field::justify_t::CENTER);
+			titleText->setVJustify(Field::justify_t::TOP);
+			titleText->setSize(SDL_Rect{ 0, 59, basePos.w - 8, 24 });
+			titleText->setColor(makeColor(221, 206, 189, 255));
+		}
+
+		auto raceFrame = assistShrineFrame->addFrame("assist races");
+		raceFrame->setSize(basePos);
+		raceFrame->setHollow(true);
+		raceFrame->setDisabled(true);
+
+		{
+			auto titleText = raceFrame->addField("title txt", 64);
+			titleText->setFont("fonts/pixel_maz_multiline.ttf#16");
+			titleText->setText(Language::get(6703));
+			titleText->setHJustify(Field::justify_t::CENTER);
+			titleText->setVJustify(Field::justify_t::TOP);
+			titleText->setSize(SDL_Rect{ 0, 59, basePos.w - 8, 24 });
+			titleText->setColor(makeColor(221, 206, 189, 255));
+		}
+
+		{
+			int numGrids = (MAX_ASSISTSHRINE_Y / kNumClassesToDisplayVertical) + 1;
+			const int baseSlotOffsetX = 0;
+			const int baseSlotOffsetY = 0;
+	
+			SDL_Rect classSlotsPos{ 16, *cvar_assistClassListGridY, 0, kAssistClassListHeight };
+			classSlotsPos.w = basePos.w - classSlotsPos.x;
+			auto classSlotsFrame = classFrame->addFrame("class slots");
+			classSlotsFrame->setSize(classSlotsPos);
+			classSlotsFrame->setActualSize(SDL_Rect{ 0, 0, classSlotsPos.w, (kAssistClassGridImgHeight + 2) * numGrids });
+			classSlotsFrame->setHollow(true);
+			classSlotsFrame->setAllowScrollBinds(false);
+			classSlotsFrame->setScrollBarsEnabled(false);
+
+			auto classText = classFrame->addField("class txt", 64);
+			classText->setFont("fonts/pixel_maz_multiline.ttf#16");
+			classText->setText("");
+			classText->setHJustify(Field::justify_t::CENTER);
+			classText->setVJustify(Field::justify_t::TOP);
+			classText->setSize(SDL_Rect{ 0, 91, classFrame->getSize().w, 24 });
+			classText->setColor(makeColor(121, 117, 116, 255));
+
+			auto classNewText = classFrame->addField("class new txt", 64);
+			classNewText->setFont("fonts/pixel_maz_multiline.ttf#16");
+			classNewText->setText(Language::get(6319));
+			classNewText->setHJustify(Field::justify_t::LEFT);
+			classNewText->setVJustify(Field::justify_t::TOP);
+			classNewText->setSize(SDL_Rect{ 16 + 8, classFrame->getSize().h - 52 + 5, classFrame->getSize().w / 2, 48 });
+			classNewText->setColor(makeColor(221, 206, 189, 255));
+			classNewText->addColorToLine(1, makeColor(122, 192, 243, 255));
+
+			auto confirmBtn = classFrame->addButton("class confirm btn");
+			SDL_Rect btnPos{ basePos.w - 18 - 64 - 16, basePos.h - 20 - 46 - 28 + 50 - 4, 82, 26 };
+			confirmBtn->setSize(btnPos);
+			confirmBtn->setColor(makeColor(255, 255, 255, 255));
+			confirmBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			confirmBtn->setText(Language::get(5007));
+			confirmBtn->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			confirmBtn->setHideGlyphs(true);
+			confirmBtn->setHideKeyboardGlyphs(true);
+			confirmBtn->setHideSelectors(true);
+			confirmBtn->setMenuConfirmControlType(0);
+			confirmBtn->setBackground("*#images/ui/AssistShrine/Button_Confirm_00.png");
+			confirmBtn->setBackgroundHighlighted("*#images/ui/AssistShrine/Button_ConfirmHigh_00.png");
+			confirmBtn->setBackgroundActivated("*#images/ui/AssistShrine/Button_ConfirmPress_00.png");
+			confirmBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			confirmBtn->setCallback([](Button& button) {
+				auto& gui = GenericGUI[button.getOwner()].assistShrineGUI;
+				if ( !gui.classHasChanged() )
+				{
+					playSound(90, 64);
+					return;
+				}
+
+				gui.selectedRace = -1;
+				gui.selectedSex = -1;
+				gui.selectedAppearance = -1;
+				gui.selectedDisableAbilities = -1;
+
+				Player::soundActivate();
+				int prevClass = gui.savedClass == -1 ? client_classes[button.getOwner()] : gui.savedClass;
+				gui.savedClass = gui.selectedClass >= 0 ? gui.selectedClass
+					: (gui.savedClass == -1 ? client_classes[button.getOwner()] : gui.savedClass);
+
+				int prevRace = gui.savedRace == -1 ? stats[button.getOwner()]->playerRace : gui.savedRace;
+				gui.savedRace = gui.selectedRace >= 0 ? gui.selectedRace
+					: (gui.savedRace == -1 ? stats[button.getOwner()]->playerRace : gui.savedRace);
+
+				gui.savedSex = gui.selectedSex >= 0 ? gui.selectedSex
+					: (gui.savedSex == -1 ? stats[button.getOwner()]->sex : gui.savedSex);
+
+				if ( gui.savedRace == RACE_INCUBUS )
+				{
+					gui.savedSex = MALE;
+				}
+				else if ( gui.savedRace == RACE_SUCCUBUS )
+				{
+					gui.savedSex = FEMALE;
+				}
+
+				if ( gui.savedRace > RACE_HUMAN )
+				{
+					if ( prevRace == RACE_HUMAN )
+					{
+						gui.savedAppearance = gui.selectedDisableAbilities >= 0 ? gui.selectedDisableAbilities : 0;
+					}
+					else
+					{
+						gui.savedAppearance = gui.selectedDisableAbilities >= 0 ? gui.selectedDisableAbilities
+							: gui.savedAppearance == -1 ? stats[button.getOwner()]->stat_appearance : gui.savedAppearance;
+					}
+					gui.savedAppearance = std::max(0, std::min(gui.savedAppearance, 1));
+				}
+				else
+				{
+					if ( prevRace != RACE_HUMAN && gui.savedRace == RACE_HUMAN )
+					{
+						gui.savedAppearance = local_rng.rand() % NUMAPPEARANCES; // randomise appearance
+					}
+					else
+					{
+						gui.savedAppearance = gui.selectedAppearance >= 0 ? gui.selectedAppearance
+							: gui.savedAppearance == -1 ? stats[button.getOwner()]->stat_appearance : gui.savedAppearance;
+					}
+				}
+
+				if ( isCharacterValidFromDLC(button.getOwner(), gui.savedClass, gui.savedRace, gui.savedAppearance)
+					!= VALID_OK_CHARACTER )
+				{
+					// reset race
+					if ( gui.savedRace > RACE_HUMAN )
+					{
+						gui.savedRace = RACE_HUMAN;
+						gui.savedAppearance = local_rng.rand() % NUMAPPEARANCES;
+						if ( isCharacterValidFromDLC(button.getOwner(), gui.savedClass, gui.savedRace, gui.savedAppearance)
+							!= VALID_OK_CHARACTER )
+						{
+							// reset class
+							gui.savedClass = CLASS_BARBARIAN;
+						}
+					}
+				}
+
+				gui.selectedClass = -1;
+				gui.onCharacterChange();
+			});
+			confirmBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto claimItemGlyph = classFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "class confirm glyph");
+			claimItemGlyph->disabled = true;
+			claimItemGlyph->ontop = true;
+
+			auto classSelectGlyph = classFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "class select glyph");
+			classSelectGlyph->disabled = true;
+			classSelectGlyph->ontop = true;
+	
+			auto gridImg = classSlotsFrame->addImage(SDL_Rect{ baseSlotOffsetX, 0, 162, (kAssistClassGridImgHeight + 2) * numGrids },
+				0xFFFFFFFF, "*images/ui/AssistShrine/Assist_ScrollGrid.png", "grid img");
+			gridImg->tiled = true;
+			gridImg->disabled = true;
+	
+			SDL_Rect currentSlotPos{ baseSlotOffsetX, baseSlotOffsetY, kClassSlotHeight, kClassSlotHeight };
+			const int maxClassesX = MAX_ASSISTSHRINE_X;
+			const int maxClassesY = MAX_ASSISTSHRINE_Y;
+	
+			for ( int x = 0; x < maxClassesX; ++x )
+			{
+				currentSlotPos.x = baseSlotOffsetX + (x * kClassSlotHeight);
+				for ( int y = 0; y < maxClassesY; ++y )
+				{
+					currentSlotPos.y = baseSlotOffsetY + (y * kClassSlotHeight);
+	
+					char slotname[32] = "";
+					snprintf(slotname, sizeof(slotname), "class %d %d", x, y);
+	
+					auto slotFrame = classSlotsFrame->addFrame(slotname);
+					assistShrineSlotFrames[x + y * 100] = slotFrame;
+					SDL_Rect slotPos{ currentSlotPos.x, currentSlotPos.y, kClassSlotHeight, kClassSlotHeight };
+					slotFrame->setSize(slotPos);
+	
+					auto slotBg = slotFrame->addImage(SDL_Rect{ 0, 0, kClassSlotHeight, kClassSlotHeight }, 0xFFFFFFFF,
+						"", "class bg");
+					auto slotFg = slotFrame->addImage(SDL_Rect{ 0, 0, kClassSlotHeight, kClassSlotHeight }, 0xFFFFFFFF,
+						"", "class fg");
+
+					/*auto classSelectGlyph = slotFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+						0xFFFFFFFF, "", "class glyph");*/
+				}
+			}
+
+			auto slider = classFrame->addSlider("class slider");
+			slider->setBorder(16);
+			slider->setMinValue(0);
+			slider->setMaxValue(100);
+			slider->setValue(0);
+			SDL_Rect sliderPos{ classFrame->getSize().w - 30, *cvar_assistClassListGridY - 2, 20, kAssistClassListHeight + 6 };
+			slider->setRailSize(sliderPos);
+			slider->setHandleSize(SDL_Rect{ 0, 0, 20, 28 });
+			slider->setOrientation(Slider::SLIDER_VERTICAL);
+			//slider->setCallback(callback);
+			slider->setColor(makeColor(255, 255, 255, 255));
+			slider->setHighlightColor(makeColor(255, 255, 255, 255));
+			slider->setHandleImage("*#images/ui/Sliders/HUD_Magic_Slider_Blue_01.png");
+			slider->setRailImage("*#images/ui/Sliders/HUD_Slider_Blank.png");
+			slider->setHideGlyphs(true);
+			slider->setHideKeyboardGlyphs(true);
+			slider->setHideSelectors(true);
+			slider->setMenuConfirmControlType(0);
+
+			auto sliderCapTop = classFrame->addImage(SDL_Rect{ sliderPos.x + 2, sliderPos.y, 16, 16 },
+				0xFFFFFFFF, "*#images/ui/Sliders/HUD_Magic_Slider_SettingTop_01.png", "class slider top");
+			sliderCapTop->ontop = true;
+
+			auto sliderCapBot = classFrame->addImage(SDL_Rect{ sliderPos.x + 2, sliderPos.y + sliderPos.h - 16, 16, 16 },
+				0xFFFFFFFF, "*#images/ui/Sliders/HUD_Magic_Slider_SettingBot_01.png", "class slider bot");
+			sliderCapBot->ontop = true;
+		}
+
+		{
+			int numGrids = (MAX_ASSISTSHRINE_Y / kNumRacesToDisplayVertical) + 1;
+			const int baseSlotOffsetX = 0;
+			const int baseSlotOffsetY = 0;
+
+			SDL_Rect raceSlotsPos{ 6, *cvar_assistClassListGridY, 0, kAssistClassListHeight };
+			raceSlotsPos.w = basePos.w - raceSlotsPos.x;
+			auto raceSlotsFrame = raceFrame->addFrame("race slots");
+			raceSlotsFrame->setSize(raceSlotsPos);
+			raceSlotsFrame->setActualSize(SDL_Rect{ 0, 0, raceSlotsPos.w, (kAssistClassGridImgHeight + 2) * numGrids });
+			raceSlotsFrame->setHollow(true);
+			raceSlotsFrame->setAllowScrollBinds(false);
+			raceSlotsFrame->setScrollBarsEnabled(false);
+
+			auto raceText = raceFrame->addField("race txt", 64);
+			raceText->setFont("fonts/pixel_maz_multiline.ttf#16");
+			raceText->setText("");
+			raceText->setHJustify(Field::justify_t::CENTER);
+			raceText->setVJustify(Field::justify_t::TOP);
+			raceText->setSize(SDL_Rect{ 0, 91, raceFrame->getSize().w, 24 });
+			raceText->setColor(makeColor(121, 117, 116, 255));
+
+			auto confirmBtn = raceFrame->addButton("race confirm btn");
+			SDL_Rect btnPos{ basePos.w - 18 - 64 - 16, basePos.h - 20 - 46 - 28 + 50 - 4, 82, 26 };
+			confirmBtn->setSize(btnPos);
+			confirmBtn->setColor(makeColor(255, 255, 255, 255));
+			confirmBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			confirmBtn->setText(Language::get(5007));
+			confirmBtn->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			confirmBtn->setHideGlyphs(true);
+			confirmBtn->setHideKeyboardGlyphs(true);
+			confirmBtn->setHideSelectors(true);
+			confirmBtn->setMenuConfirmControlType(0);
+			confirmBtn->setBackground("*#images/ui/AssistShrine/Button_Confirm_00.png");
+			confirmBtn->setBackgroundHighlighted("*#images/ui/AssistShrine/Button_ConfirmHigh_00.png");
+			confirmBtn->setBackgroundActivated("*#images/ui/AssistShrine/Button_ConfirmPress_00.png");
+			confirmBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			confirmBtn->setCallback([](Button& button) {
+				auto& gui = GenericGUI[button.getOwner()].assistShrineGUI;
+				if ( !gui.raceHasChanged() )
+				{
+					playSound(90, 64);
+					return;
+				}
+				Player::soundActivate();
+
+				int prevRace = gui.savedRace == -1 ? stats[button.getOwner()]->playerRace : gui.savedRace;
+				gui.savedRace = gui.selectedRace >= 0 ? gui.selectedRace 
+					: (gui.savedRace == -1 ? stats[button.getOwner()]->playerRace : gui.savedRace);
+
+				gui.savedSex = gui.selectedSex >= 0 ? gui.selectedSex
+					: (gui.savedSex == -1 ? stats[button.getOwner()]->sex : gui.savedSex);
+
+				if ( gui.savedRace == RACE_INCUBUS )
+				{
+					gui.savedSex = MALE;
+				}
+				else if ( gui.savedRace == RACE_SUCCUBUS )
+				{
+					gui.savedSex = FEMALE;
+				}
+
+				if ( gui.savedRace > RACE_HUMAN )
+				{
+					if ( prevRace == RACE_HUMAN )
+					{
+						gui.savedAppearance = gui.selectedDisableAbilities >= 0 ? gui.selectedDisableAbilities : 0;
+					}
+					else
+					{
+						gui.savedAppearance = gui.selectedDisableAbilities >= 0 ? gui.selectedDisableAbilities 
+							: gui.savedAppearance == -1 ? stats[button.getOwner()]->stat_appearance : gui.savedAppearance;
+					}
+					gui.savedAppearance = std::max(0, std::min(gui.savedAppearance, 1));
+				}
+				else
+				{
+					if ( prevRace != RACE_HUMAN && gui.savedRace == RACE_HUMAN )
+					{
+						gui.savedAppearance = local_rng.rand() % NUMAPPEARANCES; // randomise appearance
+					}
+					else
+					{
+						gui.savedAppearance = gui.selectedAppearance >= 0 ?	gui.selectedAppearance 
+							: gui.savedAppearance == -1 ? stats[button.getOwner()]->stat_appearance : gui.savedAppearance;
+					}
+				}
+
+				int classToChange = client_classes[button.getOwner()];
+				if ( gui.savedClass >= 0 )
+				{
+					classToChange = gui.savedClass;
+				}
+				if ( isCharacterValidFromDLC(button.getOwner(), classToChange, gui.savedRace, gui.savedAppearance)
+					!= VALID_OK_CHARACTER )
+				{
+					// reset class
+					gui.savedClass = CLASS_BARBARIAN;
+
+					gui.addNotification(Language::get(6338), Language::get(6333), "",
+						GenericGUIMenu::AssistShrineGUI_t::AssistNotification_t::NOTIF_CLASS_RESET);
+
+					if ( isCharacterValidFromDLC(button.getOwner(), gui.savedClass, gui.savedRace, gui.savedAppearance)
+						!= VALID_OK_CHARACTER )
+					{
+						// reset race
+						gui.savedRace = RACE_HUMAN;
+						gui.savedAppearance = local_rng.rand() % NUMAPPEARANCES;
+					}
+				}
+
+				gui.selectedClass = -1;
+				gui.selectedRace = -1;
+				gui.selectedSex = -1;
+				gui.selectedAppearance = -1;
+				gui.selectedDisableAbilities = -1;
+
+				gui.onCharacterChange();
+			});
+			confirmBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto claimItemGlyph = raceFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "race confirm glyph");
+			claimItemGlyph->disabled = true;
+			claimItemGlyph->ontop = true;
+
+			auto disableAbilityTxt = raceFrame->addField("race ability txt", 64);
+			disableAbilityTxt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			disableAbilityTxt->setText(Language::get(5423));
+			disableAbilityTxt->setHJustify(Field::justify_t::LEFT);
+			disableAbilityTxt->setVJustify(Field::justify_t::TOP);
+			disableAbilityTxt->setSize(SDL_Rect{ 16 + 8, raceFrame->getSize().h - 52 + 5 - 46, raceFrame->getSize().w - 24, 48 });
+			disableAbilityTxt->setColor(makeColor(121, 117, 116, 255));
+			disableAbilityTxt->setTickCallback([](Widget& widget) {
+				auto field = static_cast<Field*>(&widget); assert(field);
+				auto parent = static_cast<Frame*>(widget.getParent()); assert(parent);
+				auto button = parent->findButton("race ability btn"); assert(button);
+				const auto player = widget.getOwner();
+				auto& gui = GenericGUI[player].assistShrineGUI;
+				if ( (gui.selectedRace == -1 && gui.savedRace == -1 && stats[widget.getOwner()]->playerRace == RACE_HUMAN)
+					|| (gui.savedRace == RACE_HUMAN && gui.selectedRace == -1)
+					|| gui.selectedRace == RACE_HUMAN )
+				{
+					field->setColor(makeColor(121, 117, 116, 255));
+					button->setDisabled(true);
+					button->setPressed(false);
+				}
+				else
+				{
+					field->setColor(makeColor(221, 206, 189, 255));
+					button->setDisabled(false);
+				}
+			});
+
+			auto disableAbilityBtn = raceFrame->addButton("race ability btn");
+			disableAbilityBtn->setSize(SDL_Rect{ raceFrame->getSize().w - 44 - 8 - 24, raceFrame->getSize().h - 44 - 44 - 6, 44, 44 });
+			disableAbilityBtn->setColor(0);
+			disableAbilityBtn->setBorderColor(0);
+			disableAbilityBtn->setBorder(0);
+			disableAbilityBtn->setHighlightColor(0);
+			disableAbilityBtn->setHideGlyphs(true);
+			disableAbilityBtn->setHideKeyboardGlyphs(true);
+			disableAbilityBtn->setHideSelectors(true);
+			disableAbilityBtn->setSelectorOffset(SDL_Rect{ 6, 8, -16, -16 });
+			disableAbilityBtn->setStyle(Button::style_t::STYLE_CHECKBOX);
+			disableAbilityBtn->setMenuConfirmControlType(0);
+			disableAbilityBtn->setIcon("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/Fill_Checked_00.png");
+			disableAbilityBtn->setDisabled(true);
+			disableAbilityBtn->setPressed(false);
+			disableAbilityBtn->setCallback([](Button& button) {
+				const auto player = button.getOwner();
+				auto& gui = GenericGUI[player].assistShrineGUI;
+				gui.selectedDisableAbilities = -1;
+				if ( (gui.selectedRace == -1 && gui.savedRace == -1 && stats[player]->playerRace == RACE_HUMAN)
+					|| (gui.savedRace == RACE_HUMAN && gui.selectedRace == -1)
+					|| gui.selectedRace == RACE_HUMAN )
+				{
+					playSound(498, 48);
+					button.setPressed(false);
+					return;
+				}
+				else {
+					playSound(494, 48);
+					gui.selectedDisableAbilities = button.isPressed() ? 1 : 0;
+				}
+			});
+			disableAbilityBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto disableAbilityGlyph = raceFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "race ability glyph");
+			disableAbilityGlyph->disabled = true;
+			disableAbilityGlyph->ontop = true;
+
+			auto gridImg = raceSlotsFrame->addImage(SDL_Rect{ baseSlotOffsetX, 0, 162, (kAssistClassGridImgHeight + 2) * numGrids },
+				0xFFFFFFFF, "*images/ui/AssistShrine/Assist_ScrollGrid.png", "grid img");
+			gridImg->tiled = true;
+			gridImg->disabled = true;
+
+			SDL_Rect currentSlotPos{ baseSlotOffsetX, baseSlotOffsetY, kRaceSlotWidth, kRaceSlotHeight };
+			const int maxRacesX = 1;
+			const int maxRacesY = MAX_ASSISTSHRINE_Y;
+
+			for ( int x = 0; x < maxRacesX; ++x )
+			{
+				currentSlotPos.x = baseSlotOffsetX + (x * kRaceSlotWidth);
+				for ( int y = 0; y < maxRacesY; ++y )
+				{
+					currentSlotPos.y = baseSlotOffsetY + (y * kRaceSlotHeight);
+
+					char slotname[32] = "";
+					snprintf(slotname, sizeof(slotname), "race %d %d", x, y);
+
+					auto slotFrame = raceSlotsFrame->addFrame(slotname);
+					assistShrineSlotFrames[ASSIST_RACE_COLUMN + y * 100] = slotFrame;
+					SDL_Rect slotPos{ currentSlotPos.x, currentSlotPos.y, kRaceSlotWidth, kRaceSlotHeight };
+					slotFrame->setSize(slotPos);
+
+					auto slotBg = slotFrame->addImage(SDL_Rect{ 0, 0, kRaceSlotWidth, kRaceSlotHeight }, makeColorRGB(52, 30, 22),
+						"images/system/white.png", "race bg");
+					slotBg->disabled = true;
+					auto slotFg = slotFrame->addImage(SDL_Rect{ 4, 0, kRaceSlotHeight, kRaceSlotHeight }, 0xFFFFFFFF,
+						"", "race fg");
+					auto slotGlyph = slotFrame->addImage(SDL_Rect{ 4, 0, 0, 0 }, 0xFFFFFFFF,
+						"", "race glyph");
+					slotGlyph->disabled = true;
+
+					auto slotTxt = slotFrame->addField("race", 32);
+					slotTxt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+					slotTxt->setText("");
+					slotTxt->setHJustify(Field::justify_t::LEFT);
+					slotTxt->setVJustify(Field::justify_t::TOP);
+					int txtx = 32 + 10;
+					slotTxt->setSize(SDL_Rect{ txtx, 4 + 1, kRaceSlotWidth - txtx, 24 });
+					slotTxt->setColor(makeColor(121, 117, 116, 255));
+				}
+			}
+
+			auto slider = raceFrame->addSlider("race slider");
+			slider->setBorder(16);
+			slider->setMinValue(0);
+			slider->setMaxValue(100);
+			slider->setValue(0);
+			SDL_Rect sliderPos{ raceFrame->getSize().w - 30, *cvar_assistClassListGridY - 2, 20, kAssistRaceListHeight + 6 };
+			slider->setRailSize(sliderPos);
+			slider->setHandleSize(SDL_Rect{ 0, 0, 20, 28 });
+			slider->setOrientation(Slider::SLIDER_VERTICAL);
+			//slider->setCallback(callback);
+			slider->setColor(makeColor(255, 255, 255, 255));
+			slider->setHighlightColor(makeColor(255, 255, 255, 255));
+			slider->setHandleImage("*#images/ui/Sliders/HUD_Magic_Slider_Blue_01.png");
+			slider->setRailImage("*#images/ui/Sliders/HUD_Slider_Blank.png");
+			slider->setHideGlyphs(true);
+			slider->setHideKeyboardGlyphs(true);
+			slider->setHideSelectors(true);
+			slider->setMenuConfirmControlType(0);
+
+			auto sliderCapTop = raceFrame->addImage(SDL_Rect{ sliderPos.x + 2, sliderPos.y, 16, 16 },
+				0xFFFFFFFF, "*#images/ui/Sliders/HUD_Magic_Slider_SettingTop_01.png", "race slider top");
+			sliderCapTop->ontop = true;
+
+			auto sliderCapBot = raceFrame->addImage(SDL_Rect{ sliderPos.x + 2, sliderPos.y + sliderPos.h - 16, 16, 16 },
+				0xFFFFFFFF, "*#images/ui/Sliders/HUD_Magic_Slider_SettingBot_01.png", "race slider bot");
+			sliderCapBot->ontop = true;
+
+			{
+				Button* sexBtn = raceFrame->addButton("sex toggle button");
+				SDL_Rect sexPos{ 42, basePos.h - 58 - 16 + 28 - 4, 82, 30 };
+				sexBtn->setSize(sexPos);
+				sexBtn->setColor(makeColor(255, 255, 255, 255));
+				sexBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+				sexBtn->setHideGlyphs(true);
+				sexBtn->setHideKeyboardGlyphs(true);
+				sexBtn->setHideSelectors(true);
+				sexBtn->setStyle(Button::style_t::STYLE_CHECKBOX);
+				sexBtn->setMenuConfirmControlType(0);
+				sexBtn->setIcon("*images/ui/AssistShrine/Button_SexToggleF_00.png");
+				sexBtn->setBackground("*images/ui/AssistShrine/Button_SexToggleM_00.png");
+				sexBtn->setBackgroundHighlighted("*images/ui/AssistShrine/Button_SexToggleM_00.png");
+				sexBtn->setBackgroundActivated("*images/ui/AssistShrine/Button_SexToggleM_00.png");
+				sexBtn->setCallback([](Button& button) {
+					auto& gui = GenericGUI[button.getOwner()].assistShrineGUI;
+					gui.selectedSex = -1;
+					if ( (gui.selectedRace == -1 && gui.savedRace == -1 && stats[button.getOwner()]->playerRace == RACE_SUCCUBUS)
+						|| (gui.savedRace == RACE_SUCCUBUS && gui.selectedRace == -1)
+						|| gui.selectedRace == RACE_SUCCUBUS )
+					{
+						playSound(498, 48);
+						button.setPressed(true);
+						return;
+					}
+					if ( (gui.selectedRace == -1 && gui.savedRace == -1 && stats[button.getOwner()]->playerRace == RACE_INCUBUS)
+						|| (gui.savedRace == RACE_INCUBUS && gui.selectedRace == -1)
+						|| gui.selectedRace == RACE_INCUBUS )
+					{
+						playSound(498, 48);
+						button.setPressed(false);
+						return;
+					}
+
+					//playSound(494, 48); // checkmark
+					Player::soundActivate();
+					button.setPressed(button.isPressed());
+					gui.selectedSex = button.isPressed() ? 1 : 0;
+				});
+				sexBtn->setPressed(false);
+				sexBtn->setTickCallback(genericgui_deselect_fn);
+				sexBtn->setDrawCallback([](const Widget& widget, SDL_Rect pos) {
+					auto& gui = GenericGUI[widget.getOwner()].assistShrineGUI;
+					auto button = const_cast<Button*>((Button*)(&widget));
+					pos.y += 2;
+					if ( (gui.selectedRace == -1 && gui.savedRace == -1 && stats[widget.getOwner()]->playerRace == RACE_AUTOMATON)
+						|| (gui.savedRace == RACE_AUTOMATON && gui.selectedRace == -1)
+						|| gui.selectedRace == RACE_AUTOMATON )
+					{
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Sex_AutomatonM_02.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x -= img->getWidth();
+							pos2.x -= 8;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								!widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Sex_AutomatonF_02.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x += button->getSize().w + 8;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+					}
+					else if ( (gui.selectedRace == -1 && gui.savedRace == -1 && stats[widget.getOwner()]->playerRace == RACE_MYCONID)
+						|| (gui.savedRace == RACE_MYCONID && gui.selectedRace == -1)
+						|| gui.selectedRace == RACE_MYCONID)
+					{
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Height_S_00.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x -= img->getWidth();
+							pos2.x -= 8;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								!widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Height_T_00.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x += button->getSize().w + 8;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+					}
+					else if ( (gui.selectedRace == -1 && gui.savedRace == -1 && stats[widget.getOwner()]->playerRace == RACE_DRYAD)
+						|| (gui.savedRace == RACE_DRYAD && gui.selectedRace == -1)
+						|| gui.selectedRace == RACE_DRYAD )
+					{
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Height_T_00.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x -= img->getWidth();
+							pos2.x -= 8;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								!widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Height_S_00.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x += button->getSize().w + 8;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+					}
+					else
+					{
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Sex_M_02.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x -= img->getWidth();
+							pos2.x -= 4;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								!widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+						if ( auto img = Image::get("*images/ui/CharSheet/HUD_CharSheet_Sex_F_02.png") )
+						{
+							SDL_Rect pos2 = pos;
+							pos2.x += button->getSize().w + 8;
+							pos2.w = img->getWidth();
+							pos2.h = img->getHeight();
+							img->drawColor(nullptr, pos2, SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+								widget.isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(128, 128, 128));
+						}
+					}
+				});
+
+				auto sexToggleGlyph1 = raceFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+					0xFFFFFFFF, "", "sex toggle glyph 1");
+				sexToggleGlyph1->disabled = true;
+				sexToggleGlyph1->ontop = true;
+
+				auto sexToggleGlyph2 = raceFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+					0xFFFFFFFF, "", "sex toggle glyph 2");
+				sexToggleGlyph2->disabled = true;
+				sexToggleGlyph2->ontop = true;
+			}
+
+			//{
+			//	Button* sexBtn = raceFrame->addButton("sex m button");
+			//	SDL_Rect sexPos{ 16, basePos.h - 58 - 16, 58, 52 };
+			//	sexBtn->setSize(sexPos);
+			//	sexBtn->setColor(makeColor(255, 255, 255, 255));
+			//	sexBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			//	sexBtn->setHideGlyphs(true);
+			//	sexBtn->setHideKeyboardGlyphs(true);
+			//	sexBtn->setHideSelectors(true);
+			//	sexBtn->setStyle(Button::style_t::STYLE_RADIO);
+			//	sexBtn->setMenuConfirmControlType(0);
+			//	if ( (selectedRace == -1 && stats[parentGUI.getPlayer()]->playerRace == RACE_AUTOMATON)
+			//		|| selectedRace == RACE_AUTOMATON )
+			//	{
+			//		sexBtn->setIcon("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMAutoOn_00.png");
+			//		sexBtn->setBackground("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMAuto_00.png");
+			//		sexBtn->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMAutoHigh_00.png");
+			//		sexBtn->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMAutoPress_00.png");
+			//	}
+			//	else
+			//	{
+			//		sexBtn->setIcon("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMaleOn_00.png");
+			//		sexBtn->setBackground("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMale_00.png");
+			//		sexBtn->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMaleHigh_00.png");
+			//		sexBtn->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonMalePress_00.png");
+			//	}
+			//	sexBtn->setCallback([](Button& button) {
+			//		if ( gameModeManager.currentSession.challengeRun.isActive()
+			//			&& gameModeManager.currentSession.challengeRun.race == RACE_SUCCUBUS
+			//			&& stats[button.getOwner()]->playerRace == RACE_SUCCUBUS )
+			//		{
+			//			//soundError();
+			//			button.setPressed(false);
+			//			return;
+			//		}
+			//		Player::soundActivate();
+			//		
+			//		button.setPressed(true);
+			//		if ( Frame* parent = static_cast<Frame*>(button.getParent()) )
+			//		{
+			//			auto female = parent->findButton("sex f button");
+			//			female->setPressed(false);
+			//			female->setColor(female->isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(127, 127, 127));
+			//			female->setHighlightColor(female->isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(127, 127, 127));
+			//		}
+			//	});
+			//	sexBtn->setTickCallback(genericgui_deselect_fn);
+			//	sexBtn->setPressed(false);
+			//}
+
+			//{
+			//	Button* sexBtn = raceFrame->addButton("sex f button");
+			//	SDL_Rect sexPos{ 16 + 58 + 8, basePos.h - 58 - 16, 58, 52 };
+			//	sexBtn->setSize(sexPos);
+			//	sexBtn->setColor(makeColor(255, 255, 255, 255));
+			//	sexBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			//	sexBtn->setHideGlyphs(true);
+			//	sexBtn->setHideKeyboardGlyphs(true);
+			//	sexBtn->setHideSelectors(true);
+			//	sexBtn->setStyle(Button::style_t::STYLE_RADIO);
+			//	sexBtn->setMenuConfirmControlType(0);
+			//	if ( (selectedRace == -1 && stats[parentGUI.getPlayer()]->playerRace == RACE_AUTOMATON)
+			//		|| selectedRace == RACE_AUTOMATON )
+			//	{
+			//		sexBtn->setIcon("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFAutoOn_00.png");
+			//		sexBtn->setBackground("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFAuto_00.png");
+			//		sexBtn->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFAutoHigh_00.png");
+			//		sexBtn->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFAutoPress_00.png");
+			//	}
+			//	else
+			//	{
+			//		sexBtn->setIcon("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFemaleOn_00.png");
+			//		sexBtn->setBackground("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFemale_00.png");
+			//		sexBtn->setBackgroundHighlighted("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFemaleHigh_00.png");
+			//		sexBtn->setBackgroundActivated("*images/ui/Main Menus/Play/PlayerCreation/RaceSelection/UI_RaceSelection_ButtonFemalePress_00.png");
+			//	}
+			//	sexBtn->setCallback([](Button& button) {
+			//		if ( gameModeManager.currentSession.challengeRun.isActive()
+			//		&& gameModeManager.currentSession.challengeRun.race == RACE_INCUBUS
+			//			&& stats[button.getOwner()]->playerRace == RACE_INCUBUS )
+			//		{
+			//			//soundError();
+			//			button.setPressed(false);
+			//			return;
+			//		}
+			//		Player::soundActivate();
+
+			//		button.setPressed(true);
+			//		if ( Frame* parent = static_cast<Frame*>(button.getParent()) )
+			//		{
+			//			auto male = parent->findButton("sex m button");
+			//			male->setPressed(false);
+			//			male->setColor(male->isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(127, 127, 127));
+			//			male->setHighlightColor(male->isPressed() ? makeColorRGB(255, 255, 255) : makeColorRGB(127, 127, 127));
+			//		}
+			//	});
+			//	sexBtn->setTickCallback(genericgui_deselect_fn);
+			//	sexBtn->setPressed(false);
+			//}
+		}
+
+		auto headerFont = "fonts/pixel_maz_multiline.ttf#16#2";
+		auto itemFont = "fonts/pixel_maz_multiline.ttf#16#2";
+
+		// filters
+		{
+			Button* filterBtn = bgFrame->addButton("filter item btn");
+			filterBtn->setColor(makeColor(255, 255, 255, 255));
+			filterBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			filterBtn->setText("");
+			filterBtn->setFont(itemFont);
+			filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterInactive00.png");
+			filterBtn->setHideGlyphs(true);
+			filterBtn->setHideKeyboardGlyphs(true);
+			filterBtn->setHideSelectors(true);
+			filterBtn->setMenuConfirmControlType(0);
+			filterBtn->setCallback([](Button& button) {
+				auto oldTab = GenericGUI[button.getOwner()].assistShrineGUI.currentView;
+				bool changeToDifferentTab = oldTab != GenericGUIMenu::AssistShrineGUI_t::ASSIST_SHRINE_VIEW_ITEMS;
+				GenericGUI[button.getOwner()].assistShrineGUI.changeCurrentView(GenericGUIMenu::AssistShrineGUI_t::ASSIST_SHRINE_VIEW_ITEMS);
+				//GenericGUI[button.getOwner()].assistShrineGUI.animPromptMoveLeft = false;
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
+			});
+			filterBtn->setTickCallback(genericgui_deselect_fn);
+
+			Field* filterTxt = bgFrame->addField("filter item txt", 64);
+			filterTxt->setFont(itemFont);
+			filterTxt->setText(Language::get(6321));
+			filterTxt->setHJustify(Field::justify_t::CENTER);
+			filterTxt->setVJustify(Field::justify_t::TOP);
+			filterTxt->setSize(SDL_Rect{ 0, 0, 0, 0 });
+			filterTxt->setColor(0xFFFFFFFF);
+			filterTxt->setDisabled(true);
+			filterTxt->setOntop(true);
+
+			filterBtn = bgFrame->addButton("filter race btn");
+			filterBtn->setColor(makeColor(255, 255, 255, 255));
+			filterBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			filterBtn->setText("");
+			filterBtn->setFont(itemFont);
+			filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterInactive00.png");
+			filterBtn->setHideGlyphs(true);
+			filterBtn->setHideKeyboardGlyphs(true);
+			filterBtn->setHideSelectors(true);
+			filterBtn->setMenuConfirmControlType(0);
+			filterBtn->setCallback([](Button& button) {
+				auto oldTab = GenericGUI[button.getOwner()].assistShrineGUI.currentView;
+				bool changeToDifferentTab = oldTab != GenericGUIMenu::AssistShrineGUI_t::ASSIST_SHRINE_VIEW_RACE;
+				GenericGUI[button.getOwner()].assistShrineGUI.changeCurrentView(GenericGUIMenu::AssistShrineGUI_t::ASSIST_SHRINE_VIEW_RACE);
+				if ( oldTab == GenericGUIMenu::AssistShrineGUI_t::ASSIST_SHRINE_VIEW_CLASSES )
+				{
+					//GenericGUI[button.getOwner()].assistShrineGUI.animPromptMoveLeft = false;
+				}
+				else
+				{
+					//GenericGUI[button.getOwner()].assistShrineGUI.animPromptMoveLeft = true;
+				}
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
+			});
+			filterBtn->setTickCallback(genericgui_deselect_fn);
+
+			filterTxt = bgFrame->addField("filter race txt", 64);
+			filterTxt->setFont(itemFont);
+			filterTxt->setText(Language::get(6322));
+			filterTxt->setHJustify(Field::justify_t::CENTER);
+			filterTxt->setVJustify(Field::justify_t::TOP);
+			filterTxt->setSize(SDL_Rect{ 0, 0, 0, 0 });
+			filterTxt->setColor(0xFFFFFFFF);
+			filterTxt->setDisabled(true);
+			filterTxt->setOntop(true);
+			filterTxt->setTickCallback([](Widget& widget) {
+				widget.setInvisible(false);
+				if ( auto parent = static_cast<Frame*>(widget.getParent()) )
+				{
+					if ( auto filterBtn = parent->findButton("filter race btn") )
+					{
+						widget.setInvisible(filterBtn->isInvisible());
+					}
+				}
+			});
+
+			filterBtn = bgFrame->addButton("filter class btn");
+			filterBtn->setColor(makeColor(255, 255, 255, 255));
+			filterBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			filterBtn->setText("");
+			filterBtn->setFont(itemFont);
+			filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterInactive00.png");
+			filterBtn->setHideGlyphs(true);
+			filterBtn->setHideKeyboardGlyphs(true);
+			filterBtn->setHideSelectors(true);
+			filterBtn->setMenuConfirmControlType(0);
+			filterBtn->setCallback([](Button& button) {
+				auto oldTab = GenericGUI[button.getOwner()].assistShrineGUI.currentView;
+				bool changeToDifferentTab = oldTab != GenericGUIMenu::AssistShrineGUI_t::ASSIST_SHRINE_VIEW_CLASSES;
+				GenericGUI[button.getOwner()].assistShrineGUI.changeCurrentView(GenericGUIMenu::AssistShrineGUI_t::ASSIST_SHRINE_VIEW_CLASSES);
+				//GenericGUI[button.getOwner()].assistShrineGUI.animPromptMoveLeft = false;
+				if ( changeToDifferentTab )
+				{
+					Player::soundModuleNavigation();
+				}
+			});
+			filterBtn->setTickCallback(genericgui_deselect_fn);
+
+			filterTxt = bgFrame->addField("filter class txt", 64);
+			filterTxt->setFont(itemFont);
+			filterTxt->setText(Language::get(6323));
+			filterTxt->setHJustify(Field::justify_t::CENTER);
+			filterTxt->setVJustify(Field::justify_t::TOP);
+			filterTxt->setSize(SDL_Rect{ 0, 0, 0, 0 });
+			filterTxt->setColor(0xFFFFFFFF);
+			filterTxt->setDisabled(true);
+			filterTxt->setOntop(true);
+			filterTxt->setTickCallback([](Widget& widget) {
+				widget.setInvisible(false);
+				if ( auto parent = static_cast<Frame*>(widget.getParent()) )
+				{
+					if ( auto filterBtn = parent->findButton("filter class btn") )
+					{
+						widget.setInvisible(filterBtn->isInvisible());
+					}
+				}
+			});
+
+			auto filterGlyphLeft = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "filter left glyph");
+			filterGlyphLeft->disabled = true;
+			filterGlyphLeft->ontop = true;
+
+			auto filterGlyphRight = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "filter right glyph");
+			filterGlyphRight->disabled = true;
+			filterGlyphRight->ontop = true;
+		}
+
+		{
+			auto closeBtn = bgFrame->addButton("close assist button");
+			SDL_Rect closeBtnPos{ basePos.w - 0 - 26 - 4, 48, 26, 26 };
+			closeBtn->setSize(closeBtnPos);
+			closeBtn->setColor(makeColor(255, 255, 255, 255));
+			closeBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			closeBtn->setText("X");
+			closeBtn->setFont(itemFont);
+			closeBtn->setHideGlyphs(true);
+			closeBtn->setHideKeyboardGlyphs(true);
+			closeBtn->setHideSelectors(true);
+			closeBtn->setMenuConfirmControlType(0);
+			closeBtn->setBackground("*#images/ui/AssistShrine/Button_X_00.png");
+			closeBtn->setBackgroundHighlighted("*#images/ui/AssistShrine/Button_XHigh_00.png");
+			closeBtn->setBackgroundActivated("*#images/ui/AssistShrine/Button_XPress_00.png");
+			closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			closeBtn->setOntop(true);
+			closeBtn->setCallback([](Button& button) {
+				GenericGUI[button.getOwner()].closeGUI();
+				Player::soundCancel();
+				});
+			closeBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto closeGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "close assist glyph");
+			closeGlyph->disabled = true;
+			closeGlyph->ontop = true;
+
+			auto itemBtn = assistItemFrame->addButton("claim item button");
+			SDL_Rect itemPos{ basePos.w - 18 - 64 - 16, 0, 82, 26 };
+			itemBtn->setSize(itemPos);
+			itemBtn->setColor(makeColor(255, 255, 255, 255));
+			itemBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			itemBtn->setText(Language::get(6316));
+			itemBtn->setFont(itemFont);
+			itemBtn->setHideGlyphs(true);
+			itemBtn->setHideKeyboardGlyphs(true);
+			itemBtn->setHideSelectors(true);
+			itemBtn->setMenuConfirmControlType(0);
+			itemBtn->setBackground("*#images/ui/AssistShrine/Button_Confirm_00.png");
+			itemBtn->setBackgroundHighlighted("*#images/ui/AssistShrine/Button_ConfirmHigh_00.png");
+			itemBtn->setBackgroundActivated("*#images/ui/AssistShrine/Button_ConfirmPress_00.png");
+			itemBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			itemBtn->setCallback([](Button& button) {
+				if ( !GenericGUI[button.getOwner()].assistShrineGUI.hasItemsToClaim() )
+				{
+					playSound(90, 64);
+					return;
+				}
+				bool success = GenericGUI[button.getOwner()].assistShrineGUI.claimItems(nullptr);
+				if ( success )
+				{
+					Player::soundActivate();
+				}
+				else
+				{
+					playSound(90, 64);
+				}
+			});
+			itemBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto assistPtBackingImg = assistItemFrame->addImage(SDL_Rect{ 0, 0, 246, 24 },
+				0xFFFFFFFF, "*#images/ui/AssistShrine/AssistPtBacking_00.png", "assist pt img");
+			assistPtBackingImg->disabled = true;
+
+			auto assistPtTitle = assistItemFrame->addField("assist pt title", 64);
+			assistPtTitle->setFont("fonts/pixel_maz_multiline.ttf#16");
+			assistPtTitle->setText("");
+			assistPtTitle->setHJustify(Field::justify_t::LEFT);
+			assistPtTitle->setVJustify(Field::justify_t::TOP);
+			assistPtTitle->setSize(SDL_Rect{ 0, 0, 148, 24 });
+			assistPtTitle->setColor(makeColorRGB(221, 206, 189));
+			assistPtTitle->setDisabled(true);
+
+			auto assistPtVal = assistItemFrame->addField("assist pt val", 64);
+			assistPtVal->setFont("fonts/pixel_maz_multiline.ttf#16");
+			assistPtVal->setText("15");
+			assistPtVal->setHJustify(Field::justify_t::RIGHT);
+			assistPtVal->setVJustify(Field::justify_t::TOP);
+			assistPtVal->setSize(SDL_Rect{ 0, 0, 130, 24 });
+			assistPtVal->setColor(makeColorRGB(221, 206, 189));
+			assistPtVal->setDisabled(true);
+
+			auto assistScoreTitle = assistItemFrame->addField("assist score title", 64);
+			assistScoreTitle->setFont("fonts/pixel_maz_multiline.ttf#16");
+			assistScoreTitle->setText("");
+			assistScoreTitle->setHJustify(Field::justify_t::LEFT);
+			assistScoreTitle->setVJustify(Field::justify_t::TOP);
+			assistScoreTitle->setSize(SDL_Rect{ 0, 0, 148, 24 });
+			assistScoreTitle->setColor(makeColorRGB(221, 206, 189));
+			assistScoreTitle->setDisabled(true);
+
+			auto assistScoreVal = assistItemFrame->addField("assist score val", 64);
+			assistScoreVal->setFont("fonts/pixel_maz_multiline.ttf#16");
+			assistScoreVal->setText("-50%");
+			assistScoreVal->setHJustify(Field::justify_t::CENTER);
+			assistScoreVal->setVJustify(Field::justify_t::TOP);
+			assistScoreVal->setSize(SDL_Rect{ 148 + 16, 0, 90, 24 });
+			assistScoreVal->setColor(makeColorRGB(221, 206, 189));
+			assistScoreVal->setDisabled(true);
+
+			auto assistAchievementTitle = assistItemFrame->addField("assist ach title", 64);
+			assistAchievementTitle->setFont("fonts/pixel_maz_multiline.ttf#16");
+			assistAchievementTitle->setText("");
+			assistAchievementTitle->setHJustify(Field::justify_t::LEFT);
+			assistAchievementTitle->setVJustify(Field::justify_t::TOP);
+			assistAchievementTitle->setSize(SDL_Rect{ 0, 0, 148, 24 });
+			assistAchievementTitle->setColor(makeColorRGB(221, 206, 189));
+			assistAchievementTitle->setDisabled(true);
+
+			auto assistAchievementVal = assistItemFrame->addField("assist ach val", 64);
+			assistAchievementVal->setFont("fonts/pixel_maz_multiline.ttf#16");
+			assistAchievementVal->setText("ENABLED");
+			assistAchievementVal->setHJustify(Field::justify_t::CENTER);
+			assistAchievementVal->setVJustify(Field::justify_t::TOP);
+			assistAchievementVal->setSize(SDL_Rect{ 148 + 16, 0, 90, 24 });
+			assistAchievementVal->setColor(makeColorRGB(221, 206, 189));
+			assistAchievementVal->setDisabled(true);
+
+			auto claimItemGlyph = assistItemFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "claim item glyph");
+			claimItemGlyph->disabled = true;
+			claimItemGlyph->ontop = true;
+		}
+
+		{
+			Frame* slotFrame = assistItemFrame->addFrame("assist item 1 frame");
+			SDL_Rect slotPos{ 0, 0, players[player]->inventoryUI.getSlotSize(), players[player]->inventoryUI.getSlotSize() };
+			slotFrame->setSize(slotPos);
+			slotFrame->setDisabled(true);
+			slotFrame->setInheritParentFrameOpacity(false);
+			createPlayerInventorySlotFrameElements(slotFrame);
+			assistShrineSlotFrames[ASSIST_SLOT_CLOAK + 0 * 100] = slotFrame;
+
+			slotFrame = assistItemFrame->addFrame("assist item 2 frame");
+			slotFrame->setSize(slotPos);
+			slotFrame->setDisabled(true);
+			slotFrame->setInheritParentFrameOpacity(false);
+			createPlayerInventorySlotFrameElements(slotFrame);
+			assistShrineSlotFrames[ASSIST_SLOT_MASK + 0 * 100] = slotFrame;
+
+			slotFrame = assistItemFrame->addFrame("assist item 3 frame");
+			slotFrame->setSize(slotPos);
+			slotFrame->setDisabled(true);
+			slotFrame->setInheritParentFrameOpacity(false);
+			createPlayerInventorySlotFrameElements(slotFrame);
+			assistShrineSlotFrames[ASSIST_SLOT_AMULET + 0 * 100] = slotFrame;
+
+			slotFrame = assistItemFrame->addFrame("assist item 4 frame");
+			slotFrame->setSize(slotPos);
+			slotFrame->setDisabled(true);
+			slotFrame->setInheritParentFrameOpacity(false);
+			createPlayerInventorySlotFrameElements(slotFrame);
+			assistShrineSlotFrames[ASSIST_SLOT_RING + 0 * 100] = slotFrame;
+
+			Field* slotHeader = assistItemFrame->addField("assist item 1 title", 32);
+			slotHeader->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotHeader->setDisabled(true);
+			slotHeader->setColor(makeColorRGB(121, 117, 116));
+			slotHeader->setHJustify(Field::justify_t::CENTER);
+			slotHeader->setVJustify(Field::justify_t::TOP);
+			slotHeader->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			slotHeader = assistItemFrame->addField("assist item 2 title", 32);
+			slotHeader->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotHeader->setDisabled(true);
+			slotHeader->setColor(makeColorRGB(121, 117, 116));
+			slotHeader->setHJustify(Field::justify_t::CENTER);
+			slotHeader->setVJustify(Field::justify_t::TOP);
+			slotHeader->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			slotHeader = assistItemFrame->addField("assist item 3 title", 32);
+			slotHeader->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotHeader->setDisabled(true);
+			slotHeader->setColor(makeColorRGB(121, 117, 116));
+			slotHeader->setHJustify(Field::justify_t::CENTER);
+			slotHeader->setVJustify(Field::justify_t::TOP);
+			slotHeader->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			slotHeader = assistItemFrame->addField("assist item 4 title", 32);
+			slotHeader->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotHeader->setDisabled(true);
+			slotHeader->setColor(makeColorRGB(121, 117, 116));
+			slotHeader->setHJustify(Field::justify_t::CENTER);
+			slotHeader->setVJustify(Field::justify_t::TOP);
+			slotHeader->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			Field* slotBless = assistItemFrame->addField("assist item 1 bless", 32);
+			slotBless->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotBless->setDisabled(true);
+			slotBless->setColor(makeColorRGB(121, 117, 116));
+			slotBless->setHJustify(Field::justify_t::CENTER);
+			slotBless->setVJustify(Field::justify_t::TOP);
+			slotBless->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			slotBless = assistItemFrame->addField("assist item 2 bless", 32);
+			slotBless->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotBless->setDisabled(true);
+			slotBless->setColor(makeColorRGB(121, 117, 116));
+			slotBless->setHJustify(Field::justify_t::CENTER);
+			slotBless->setVJustify(Field::justify_t::TOP);
+			slotBless->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			slotBless = assistItemFrame->addField("assist item 3 bless", 32);
+			slotBless->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotBless->setDisabled(true);
+			slotBless->setColor(makeColorRGB(121, 117, 116));
+			slotBless->setHJustify(Field::justify_t::CENTER);
+			slotBless->setVJustify(Field::justify_t::TOP);
+			slotBless->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			slotBless = assistItemFrame->addField("assist item 4 bless", 32);
+			slotBless->setFont("fonts/pixel_maz_multiline.ttf#16");
+			slotBless->setDisabled(true);
+			slotBless->setColor(makeColorRGB(121, 117, 116));
+			slotBless->setHJustify(Field::justify_t::CENTER);
+			slotBless->setVJustify(Field::justify_t::TOP);
+			slotBless->setSize(SDL_Rect{ 0, 0, 0, 0 });
+
+			static auto minus_callback_fn = [](Button& button) {
+				auto& gui = GenericGUI[button.getOwner()].assistShrineGUI;
+				auto slotIndex = reinterpret_cast<intptr_t>(button.getUserData());
+				if ( slotIndex > 0 )
+				{
+					Item* item = nullptr;
+					switch ( slotIndex )
+					{
+					case 1:
+						item = &gui.itemCloak;
+						break;
+					case 2:
+						item = &gui.itemMask;
+						break;
+					case 3:
+						item = &gui.itemAmulet;
+						break;
+					case 4:
+						item = &gui.itemRing;
+						break;
+					default:
+						break;
+					}
+
+					if ( item )
+					{
+						if ( gui.claimedItems.find(item->type) == gui.claimedItems.end() )
+						{
+							if ( !item->itemHiddenFromShop )
+							{
+								if ( item->beatitude > -2 )
+								{
+									item->beatitude -= 1;
+									playSound(494, 48);
+								}
+								else
+								{
+									playSound(498, 48);
+								}
+							}
+						}
+					}
+				}
+			};
+
+			static auto plus_callback_fn = [](Button& button) {
+				auto& gui = GenericGUI[button.getOwner()].assistShrineGUI;
+				auto slotIndex = reinterpret_cast<intptr_t>(button.getUserData());
+				if ( slotIndex > 0 )
+				{
+					Item* item = nullptr;
+					switch ( slotIndex )
+					{
+					case 1:
+						item = &gui.itemCloak;
+						break;
+					case 2:
+						item = &gui.itemMask;
+						break;
+					case 3:
+						item = &gui.itemAmulet;
+						break;
+					case 4:
+						item = &gui.itemRing;
+						break;
+					default:
+						break;
+					}
+
+					if ( item )
+					{
+						if ( gui.claimedItems.find(item->type) == gui.claimedItems.end() )
+						{
+							if ( !item->itemHiddenFromShop )
+							{
+								if ( item->beatitude < 2 )
+								{
+									item->beatitude += 1;
+									Player::soundMovement();
+								}
+								else
+								{
+									playSound(498, 48);
+								}
+							}
+						}
+					}
+				}
+			};
+
+			for ( int i = 1; i <= 4; ++i )
+			{
+				char buf[128];
+				snprintf(buf, sizeof(buf), "assist item %d minus", i);
+				Button* slotMinus = assistItemFrame->addButton(buf);
+				SDL_Rect btnPos{ 0, 0, 26, 26 };
+				slotMinus->setSize(btnPos);
+				slotMinus->setDisabled(true);
+				slotMinus->setColor(makeColor(255, 255, 255, 255));
+				slotMinus->setHighlightColor(makeColor(255, 255, 255, 255));
+				slotMinus->setText("-");
+				slotMinus->setFont(itemFont);
+				slotMinus->setHideGlyphs(true);
+				slotMinus->setHideKeyboardGlyphs(true);
+				slotMinus->setHideSelectors(true);
+				slotMinus->setMenuConfirmControlType(0);
+				slotMinus->setBackground("*#images/ui/AssistShrine/Button_X_00.png");
+				slotMinus->setBackgroundHighlighted("*#images/ui/AssistShrine/Button_XHigh_00.png");
+				slotMinus->setBackgroundActivated("*#images/ui/AssistShrine/Button_XPress_00.png");
+				slotMinus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotMinus->setOntop(true);
+				slotMinus->setUserData((void*)(intptr_t)i);
+				slotMinus->setCallback(minus_callback_fn);
+				slotMinus->setTickCallback(genericgui_deselect_fn);
+
+				snprintf(buf, sizeof(buf), "assist item %d plus", i);
+				Button* slotPlus = assistItemFrame->addButton(buf);
+				slotPlus->setSize(btnPos);
+				slotPlus->setDisabled(true);
+				slotPlus->setColor(makeColor(255, 255, 255, 255));
+				slotPlus->setHighlightColor(makeColor(255, 255, 255, 255));
+				slotPlus->setText("+");
+				slotPlus->setFont(itemFont);
+				slotPlus->setHideGlyphs(true);
+				slotPlus->setHideKeyboardGlyphs(true);
+				slotPlus->setHideSelectors(true);
+				slotPlus->setMenuConfirmControlType(0);
+				slotPlus->setBackground("*#images/ui/AssistShrine/Button_X_00.png");
+				slotPlus->setBackgroundHighlighted("*#images/ui/AssistShrine/Button_XHigh_00.png");
+				slotPlus->setBackgroundActivated("*#images/ui/AssistShrine/Button_XPress_00.png");
+				slotPlus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotPlus->setOntop(true);
+				slotPlus->setUserData((void*)(intptr_t)i);
+				slotPlus->setCallback(plus_callback_fn);
+				slotPlus->setTickCallback(genericgui_deselect_fn);
+
+				/*auto glyphMinus = assistItemFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+					0xFFFFFFFF, "", "assist item minus glyph");
+				glyphMinus->ontop = true;
+				auto glyphPlus = assistItemFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+					0xFFFFFFFF, "", "assist item plus glyph");
+				glyphPlus->ontop = true;*/
+
+			}
+		}
+
+		auto actionPromptBacking = bgFrame->addImage(SDL_Rect{ 0, 0, 246, 32 },
+			0xFFFFFFFF, "*#images/ui/AssistShrine/PromptBacking_00.png", "action prompt img");
+		actionPromptBacking->disabled = true;
+
+		{
+			auto actionPromptTxt = bgFrame->addField("action prompt txt", 64);
+			actionPromptTxt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			actionPromptTxt->setText("");
+			actionPromptTxt->setHJustify(Field::justify_t::RIGHT);
+			actionPromptTxt->setVJustify(Field::justify_t::TOP);
+			actionPromptTxt->setSize(SDL_Rect{ 0, 0, 0, 0 });
+			actionPromptTxt->setColor(makeColor(255, 255, 255, 255));
+
+			auto actionPromptGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "action prompt glyph");
+			actionPromptGlyph->ontop = true;
+		}
+
+		{
+			auto actionPromptTxt = bgFrame->addField("action prompt txt2", 64);
+			actionPromptTxt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+			actionPromptTxt->setText("");
+			actionPromptTxt->setHJustify(Field::justify_t::RIGHT);
+			actionPromptTxt->setVJustify(Field::justify_t::TOP);
+			actionPromptTxt->setSize(SDL_Rect{ 0, 0, 0, 0 });
+			actionPromptTxt->setColor(makeColor(255, 255, 255, 255));
+
+			auto actionPromptGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "action prompt glyph2");
+			actionPromptGlyph->ontop = true;
+			actionPromptGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "action prompt glyph3");
+			actionPromptGlyph->ontop = true;
+		}
+
+
+	}
+}
+
+bool GenericGUIMenu::AssistShrineGUI_t::hasItemsToClaim()
+{
+	if ( !itemMask.itemHiddenFromShop
+		&& claimedItems.find(itemMask.type) == claimedItems.end() )
+	{
+		return true;
+	}
+	if ( !itemAmulet.itemHiddenFromShop
+		&& claimedItems.find(itemAmulet.type) == claimedItems.end() )
+	{
+		return true;
+	}
+	if ( !itemCloak.itemHiddenFromShop
+		&& claimedItems.find(itemCloak.type) == claimedItems.end() )
+	{
+		return true;
+	}
+	if ( !itemRing.itemHiddenFromShop
+		&& claimedItems.find(itemRing.type) == claimedItems.end() )
+	{
+		return true;
+	}
+	return false;
+}
+
+bool GenericGUIMenu::AssistShrineGUI_t::classHasChanged()
+{
+	if ( selectedClass >= 0 )
+	{
+		if ( selectedClass != savedClass && savedClass >= 0 )
+		{
+			return true;
+		}
+		else if ( savedClass == -1 && client_classes[parentGUI.gui_player] != selectedClass )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool GenericGUIMenu::AssistShrineGUI_t::raceHasChanged()
+{
+	if ( selectedRace >= 0 )
+	{
+		if ( selectedRace != savedRace && savedRace >= 0 )
+		{
+			return true;
+		}
+		else if ( savedRace == -1 && stats[parentGUI.gui_player]->playerRace != selectedRace )
+		{
+			return true;
+		}
+	}
+	if ( selectedDisableAbilities >= 0 
+		&& ((selectedRace == -1 && savedRace == -1 && stats[parentGUI.gui_player]->playerRace != RACE_HUMAN)
+			|| (savedRace != RACE_HUMAN && selectedRace == -1)
+			|| selectedRace != RACE_HUMAN) )
+	{
+		if ( selectedDisableAbilities != savedAppearance )
+		{
+			return true;
+		}
+	}
+	if ( selectedSex >= 0 )
+	{
+		if ( selectedSex != savedSex )
+		{
+			return true;
+		}
+	}
+	if ( selectedAppearance >= 0 
+		&& ((selectedRace == -1 && savedRace == -1 && stats[parentGUI.gui_player]->playerRace == RACE_HUMAN)
+		|| (savedRace == RACE_HUMAN && selectedRace == -1)
+		|| selectedRace == RACE_HUMAN) )
+	{
+		if ( selectedAppearance != savedAppearance )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool GenericGUIMenu::AssistShrineGUI_t::claimItems(bool* isEquipped)
+{
+	if ( parentGUI.gui_player < 0 || parentGUI.gui_player >= MAXPLAYERS )
+	{
+		return false;
+	}
+	if ( !players[parentGUI.gui_player]->isLocalPlayerAlive() )
+	{
+		return false;
+	}
+
+	int prevPoints = getAssistPointsSaved();
+
+	int playernum = parentGUI.gui_player;
+	if ( isEquipped )
+	{
+		*isEquipped = false;
+	}
+	bool success = false;
+	if ( !itemMask.itemHiddenFromShop 
+		&& claimedItems.find(itemMask.type) == claimedItems.end() )
+	{
+		success = true;
+		Item* item = newItem(itemMask.type, itemMask.status, itemMask.beatitude, 1, itemMask.appearance, true, nullptr);
+		Item* pickedUp = itemPickup(parentGUI.gui_player, item);
+		if ( pickedUp )
+		{
+			players[playernum]->inventoryUI.activateItemContextMenuOption(pickedUp, ItemContextMenuPrompts::PROMPT_EQUIP);
+			if ( itemIsEquipped(pickedUp, playernum) )
+			{
+				if ( isEquipped )
+				{
+					*isEquipped = true;
+				}
+			}
+			claimedItems.insert(pickedUp->type);
+			Compendium_t::Events_t::eventUpdateWorld(parentGUI.gui_player, Compendium_t::CPDM_ASSIST_MASKS, "assist shrine", 1);
+		}
+		free(item);
+	}
+	if ( !itemAmulet.itemHiddenFromShop 
+		&& claimedItems.find(itemAmulet.type) == claimedItems.end() )
+	{
+		success = true;
+		Item* item = newItem(itemAmulet.type, itemAmulet.status, itemAmulet.beatitude, 1, itemAmulet.appearance, true, nullptr);
+		Item* pickedUp = itemPickup(parentGUI.gui_player, item);
+		if ( pickedUp )
+		{
+			players[playernum]->inventoryUI.activateItemContextMenuOption(pickedUp, ItemContextMenuPrompts::PROMPT_EQUIP);
+			if ( itemIsEquipped(pickedUp, playernum) )
+			{
+				if ( isEquipped )
+				{
+					*isEquipped = true;
+				}
+			}
+			claimedItems.insert(pickedUp->type);
+			Compendium_t::Events_t::eventUpdateWorld(parentGUI.gui_player, Compendium_t::CPDM_ASSIST_AMULETS, "assist shrine", 1);
+		}
+		free(item);
+	}
+	if ( !itemCloak.itemHiddenFromShop 
+		&& claimedItems.find(itemCloak.type) == claimedItems.end() )
+	{
+		success = true;
+		Item* item = newItem(itemCloak.type, itemCloak.status, itemCloak.beatitude, 1, itemCloak.appearance, true, nullptr);
+		Item* pickedUp = itemPickup(parentGUI.gui_player, item);
+		if ( pickedUp )
+		{
+			players[playernum]->inventoryUI.activateItemContextMenuOption(pickedUp, ItemContextMenuPrompts::PROMPT_EQUIP);
+			if ( itemIsEquipped(pickedUp, playernum) )
+			{
+				if ( isEquipped )
+				{
+					*isEquipped = true;
+				}
+			}
+			claimedItems.insert(pickedUp->type);
+			Compendium_t::Events_t::eventUpdateWorld(parentGUI.gui_player, Compendium_t::CPDM_ASSIST_CLOAKS, "assist shrine", 1);
+		}
+		free(item);
+	}
+	if ( !itemRing.itemHiddenFromShop 
+		&& claimedItems.find(itemRing.type) == claimedItems.end() )
+	{
+		success = true;
+		Item* item = newItem(itemRing.type, itemRing.status, itemRing.beatitude, 1, itemRing.appearance, true, nullptr);
+		Item* pickedUp = itemPickup(parentGUI.gui_player, item);
+		if ( pickedUp )
+		{
+			players[playernum]->inventoryUI.activateItemContextMenuOption(pickedUp, ItemContextMenuPrompts::PROMPT_EQUIP);
+			if ( itemIsEquipped(pickedUp, playernum) )
+			{
+				if ( isEquipped )
+				{
+					*isEquipped = true;
+				}
+			}
+			claimedItems.insert(pickedUp->type);
+			Compendium_t::Events_t::eventUpdateWorld(parentGUI.gui_player, Compendium_t::CPDM_ASSIST_RINGS, "assist shrine", 1);
+		}
+		free(item);
+	}
+
+	stats[parentGUI.gui_player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS] = getAssistPointsSaved();
+
+	if ( multiplayer == SINGLE || multiplayer == SERVER )
+	{
+		int totalClaimed = 0;
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( !client_disconnected[i] )
+			{
+				totalClaimed += stats[i]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS];
+			}
+		}
+
+		if ( getAssistPointsSaved() - prevPoints > 0 )
+		{
+			messagePlayer(parentGUI.gui_player, MESSAGE_WORLD, Language::get(6356), getAssistPointsSaved() - prevPoints);
+		}
+
+		conductGameChallenges[CONDUCT_ASSISTANCE_CLAIMED] = 
+			std::max(totalClaimed, 
+				conductGameChallenges[CONDUCT_ASSISTANCE_CLAIMED]);
+		if ( multiplayer == SERVER )
+		{
+			for ( int i = 1; i < MAXPLAYERS; ++i )
+			{
+				if ( !client_disconnected[i] )
+				{
+					serverUpdatePlayerConduct(i, CONDUCT_ASSISTANCE_CLAIMED, conductGameChallenges[CONDUCT_ASSISTANCE_CLAIMED]);
+				}
+			}
+			GenericGUIMenu::AssistShrineGUI_t::serverUpdateStatFlagsForClients();
+		}
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( !client_disconnected[i] )
+			{
+				if ( i != parentGUI.gui_player )
+				{
+					if ( getAssistPointsSaved() - prevPoints > 0 )
+					{
+						messagePlayer(i, MESSAGE_WORLD, Language::get(6357), stats[parentGUI.gui_player]->name, getAssistPointsSaved() - prevPoints);
+					}
+				}
+			}
+		}
+	}
+	else if ( multiplayer == CLIENT )
+	{
+		strcpy((char*)net_packet->data, "ASSI");
+		net_packet->data[4] = parentGUI.gui_player;
+		SDLNet_Write32(stats[parentGUI.gui_player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS], &net_packet->data[5]);
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		net_packet->len = 9;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	}
+	return success;
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::resetSavedCharacterChanges()
+{
+	selectedClass = -1;
+	selectedRace = -1;
+	selectedSex = -1;
+	selectedAppearance = -1;
+	selectedDisableAbilities = -1;
+
+	savedClass = -1;
+	savedRace = -1;
+	savedSex = -1;
+	savedAppearance = -1;
+	receivedCharacterChangeOK = false;
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::onMainMenuEnd()
+{
+	resetSavedCharacterChanges();
+	resetItems();
+	shrineUID = 0;
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::onGameStart()
+{
+	shrineUID = 0;
+	claimedItems.clear();
+
+	if ( savedClass >= 0 )
+	{
+		client_classes[parentGUI.gui_player] = savedClass;
+	}
+	if ( savedRace >= 0 )
+	{
+		stats[parentGUI.gui_player]->playerRace = savedRace;
+	}
+	if ( savedSex >= 0 )
+	{
+		stats[parentGUI.gui_player]->sex = (sex_t)savedSex;
+	}
+	if ( savedAppearance >= 0 )
+	{
+		stats[parentGUI.gui_player]->stat_appearance = savedAppearance;
+		if ( stats[parentGUI.gui_player]->playerRace == RACE_HUMAN )
+		{
+			stats[parentGUI.gui_player]->stat_appearance = stats[parentGUI.gui_player]->stat_appearance % NUMAPPEARANCES;
+		}
+		else
+		{
+			stats[parentGUI.gui_player]->stat_appearance = std::max(0, (Sint32)stats[parentGUI.gui_player]->stat_appearance);
+			stats[parentGUI.gui_player]->stat_appearance = std::min(1, (Sint32)stats[parentGUI.gui_player]->stat_appearance);
+		}
+	}
+
+	resetSavedCharacterChanges();
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::resetItems()
+{
+	itemCloak.appearance = 0;
+	itemCloak.type = CLOAK_GUARDIAN;
+	itemCloak.node = nullptr;
+	itemCloak.status = EXCELLENT;
+	itemCloak.beatitude = 0;
+	itemCloak.count = 1;
+	itemCloak.identified = true;
+	itemCloak.itemHiddenFromShop = true;
+
+	itemMask.appearance = 0;
+	itemMask.type = MASK_MARIGOLD;
+	itemMask.node = nullptr;
+	itemMask.status = EXCELLENT;
+	itemMask.beatitude = 0;
+	itemMask.count = 1;
+	itemMask.identified = true;
+	itemMask.itemHiddenFromShop = true;
+
+	itemAmulet.appearance = 0;
+	itemAmulet.type = AMULET_LIFESAVING;
+	itemAmulet.node = nullptr;
+	itemAmulet.status = EXCELLENT;
+	itemAmulet.beatitude = 0;
+	itemAmulet.count = 1;
+	itemAmulet.identified = true;
+	itemAmulet.itemHiddenFromShop = true;
+
+	itemRing.appearance = 0;
+	itemRing.type = RING_RESOLVE;
+	itemRing.node = nullptr;
+	itemRing.status = EXCELLENT;
+	itemRing.beatitude = 0;
+	itemRing.count = 1;
+	itemRing.identified = true;
+	itemRing.itemHiddenFromShop = true;
+}
+
+bool GenericGUIMenu::AssistShrineGUI_t::itemIsFromGUI(Item* item)
+{
+	if ( item )
+	{
+		if ( item == &itemAmulet
+			|| item == &itemRing
+			|| item == &itemCloak
+			|| item == &itemMask )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+GenericGUIMenu::AssistShrineGUI_t::AssistItemActions_t GenericGUIMenu::AssistShrineGUI_t::setItemDisplayNameAndPrice(Item* item, bool checkResultOnly)
+{
+	auto result = ASSIST_ITEM_NONE;
+	if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) && claimedItems.find(item->type) == claimedItems.end() )
+	{
+		result = ASSIST_ITEM_FLAG_DISABLED;
+	}
+	else if ( item )
+	{
+		result = item->itemHiddenFromShop ? ASSIST_ITEM_ACTIVATE : ASSIST_ITEM_DEACTIVATE;
+		if ( claimedItems.find(item->type) != claimedItems.end() )
+		{
+			result = ASSIST_ITEM_CLAIMED;
+		}
+	}
+	else
+	{
+		if ( !checkResultOnly )
+		{
+			clearItemDisplayed();
+		}
+	}
+	if ( !checkResultOnly )
+	{
+		itemActionType = result;
+		if ( item )
+		{
+			itemType = item->type;
+		}
+	}
+	return result;
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::updateAssistShrine()
+{
+	const int playernum = parentGUI.getPlayer();
+	auto player = players[playernum];
+
+	if ( !player->isLocalPlayer() )
+	{
+		closeAssistShrine();
+		return;
+	}
+
+	if ( !assistShrineFrame )
+	{
+		return;
+	}
+
+	if ( bOpen )
+	{
+		if ( shrineUID == 0 )
+		{
+			closeAssistShrine();
+			return;
+		}
+		Entity* shrine = uidToEntity(shrineUID);
+		if ( !shrine )
+		{
+			closeAssistShrine();
+			return;
+		}
+		else if ( player->entity && (entityDist(player->entity, shrine) > TOUCHRANGE) )
+		{
+			closeAssistShrine();
+			return;
+		}
+	}
+
+	//if ( keystatus[SDLK_LCTRL] )
+	/*{
+		if ( inputs.bPlayerUsingKeyboardControl(playernum) )
+		{
+		if ( keystatus[SDLK_g] )
+		{
+			keystatus[SDLK_g] = 0;
+			Entity* dummy = nullptr;
+			parentGUI.openGUI(GUI_TYPE_ASSIST, dummy);
+		}
+		if ( keystatus[SDLK_h] )
+		{
+			keystatus[SDLK_h] = 0;
+			claimedItems.clear();
+			resetItems();
+		}
+		if ( keystatus[SDLK_j] )
+		{
+			keystatus[SDLK_j] = 0;
+			if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+			{
+				changeCurrentView(ASSIST_SHRINE_VIEW_RACE);
+			}
+			else if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+			{
+				changeCurrentView(ASSIST_SHRINE_VIEW_CLASSES);
+			}
+			else
+			{
+				changeCurrentView(ASSIST_SHRINE_VIEW_ITEMS);
+			}
+		}
+		}
+	}*/
+
+	assistShrineFrame->setSize(SDL_Rect{ players[playernum]->camera_virtualx1(),
+		players[playernum]->camera_virtualy1(),
+		assistShrineBaseWidth,
+		players[playernum]->camera_virtualHeight() });
+
+	if ( !assistShrineFrame->isDisabled() && bOpen )
+	{
+		if ( !assistShrineGUIHasBeenCreated() )
+		{
+			createAssistShrine();
+		}
+
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
+		animx += setpointDiffX;
+		animx = std::min(1.0, animx);
+		if ( animx >= .9999 )
+		{
+			if ( !bFirstTimeSnapCursor )
+			{
+				bFirstTimeSnapCursor = true;
+				if ( !inputs.getUIInteraction(playernum)->selectedItem
+					&& player->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+				{
+					warpMouseToSelectedAssistShrineItem(nullptr, (Inputs::SET_CONTROLLER));
+				}
+			}
+			isInteractable = true;
+		}
+	}
+	else
+	{
+		animx = 0.0;
+		//animTooltip = 0.0;
+		isInteractable = false;
+	}
+
+	auto assistFramePos = assistShrineFrame->getSize();
+	if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT )
+	{
+		if ( !player->inventoryUI.bCompactView )
+		{
+			const int fullWidth = assistFramePos.w + 210; // inventory width 210
+			assistFramePos.x = -assistFramePos.w + animx * fullWidth;
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				assistFramePos.x -= player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+			}
+		}
+		else
+		{
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = assistFramePos.w + 210; // inventory width 210
+				assistFramePos.x = -assistFramePos.w + animx * fullWidth;
+			}
+			else
+			{
+				assistFramePos.x = player->camera_virtualWidth() - animx * assistFramePos.w;
+			}
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				assistFramePos.x -= -player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+			}
+		}
+	}
+	else if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_RIGHT )
+	{
+		if ( !player->inventoryUI.bCompactView )
+		{
+			const int fullWidth = assistFramePos.w + 210; // inventory width 210
+			assistFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				assistFramePos.x -= -player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+			}
+		}
+		else
+		{
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = assistFramePos.w + 210; // inventory width 210
+				assistFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			}
+			else
+			{
+				assistFramePos.x = -assistFramePos.w + animx * assistFramePos.w;
+			}
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				assistFramePos.x -= player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+				assistFramePos.w = player->camera_virtualWidth();
+			}
+		}
+	}
+
+	if ( !player->bUseCompactGUIHeight() && !player->bUseCompactGUIWidth() )
+	{
+		assistFramePos.y = heightOffsetWhenNotCompact;
+	}
+	else
+	{
+		assistFramePos.y = 0;
+	}
+
+	if ( !assistShrineGUIHasBeenCreated() )
+	{
+		return;
+	}
+
+	auto baseFrame = assistShrineFrame->findFrame("assist base");
+	baseFrame->setDisabled(false);
+
+	auto bg = baseFrame->findImage("assist base img");
+	if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+	{
+		bg->path = "*#images/ui/AssistShrine/AssistShrine_Panel00.png";
+	}
+	else if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+	{
+		bg->path = "*#images/ui/AssistShrine/AssistShrine_Panel_Classes00.png";
+	}
+	else if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+	{
+		bg->path = "*#images/ui/AssistShrine/AssistShrine_Panel_Races00.png";
+	}
+
+	auto assistItemFrame = assistShrineFrame->findFrame("assist items");
+	assistItemFrame->setDisabled(currentView != ASSIST_SHRINE_VIEW_ITEMS);
+
+	auto assistClassFrame = assistShrineFrame->findFrame("assist classes");
+	assistClassFrame->setDisabled(currentView != ASSIST_SHRINE_VIEW_CLASSES);
+
+	auto assistRaceFrame = assistShrineFrame->findFrame("assist races");
+	assistRaceFrame->setDisabled(currentView != ASSIST_SHRINE_VIEW_RACE);
+
+	assistShrineFrame->setSize(assistFramePos);
+
+	SDL_Rect baseFramePos = baseFrame->getSize();
+	baseFramePos.x = 0;
+	baseFramePos.w = assistShrineBaseWidth;
+	baseFrame->setSize(baseFramePos);
+
+	assistFramePos.h = player->camera_virtualHeight() - assistFramePos.y;
+	if ( animx >= .9999 )
+	{
+		baseFramePos.x += assistFramePos.x;
+		assistFramePos.w += assistFramePos.x;
+
+		if ( !player->inventoryUI.bCompactView )
+		{
+			if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT )
+			{
+				assistFramePos.w += 600;
+			}
+		}
+		else
+		{
+			if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT
+				&& player->bAlignGUINextToInventoryCompact() )
+			{
+				assistFramePos.w += 600;
+			}
+		}
+
+		assistFramePos.w = std::min(player->camera_virtualWidth(), assistFramePos.w);
+		assistFramePos.x = 0;
+		baseFrame->setSize(baseFramePos);
+	}
+	assistShrineFrame->setSize(assistFramePos);
+	assistItemFrame->setSize(baseFramePos);
+	assistClassFrame->setSize(baseFramePos);
+	assistRaceFrame->setSize(baseFramePos);
+
+	if ( !bOpen )
+	{
+		return;
+	}
+
+	if ( !parentGUI.isGUIOpen()
+		|| parentGUI.guiType != GUICurrentType::GUI_TYPE_ASSIST
+		|| !stats[playernum]
+		|| stats[playernum]->HP <= 0
+		|| !player->entity
+		|| player->shootmode )
+	{
+		closeAssistShrine();
+		return;
+	}
+
+	/*if ( keystatus[SDLK_LCTRL] || true )
+	{
+		if ( inputs.bPlayerUsingKeyboardControl(playernum) )
+		{
+			if ( keystatus[SDLK_b] && enableDebugKeys )
+			{
+				keystatus[SDLK_b] = 0;
+				addNotification(Language::get(6334), Language::get(6333), "", AssistNotification_t::NOTIF_DEFAULT);
+			}
+		}
+	}*/
+	auto notificationFrame = assistShrineFrame->findFrame("notification");
+	notificationFrame->setDisabled(true);
+	if ( !notifications.empty() )
+	{
+		auto& n = notifications.front();
+		SDL_Rect notifPos = notificationFrame->getSize();
+		auto notifImg = notificationFrame->findImage("notif bg");
+		if ( auto img = Image::get(notifImg->path.c_str()) )
+		{
+			notifImg->pos.w = img->getWidth();
+			notifImg->pos.h = img->getHeight();
+		}
+		notifPos.w = notifImg->pos.w;
+		notifPos.h = notifImg->pos.h;
+		if ( (player->inventoryUI.inventoryPanelJustify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT
+			&& !player->inventoryUI.bCompactView)
+			|| (player->inventoryUI.inventoryPanelJustify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT
+				&& player->inventoryUI.bCompactView) )
+		{
+			notifPos.x = -8 + baseFrame->getSize().x + baseFrame->getSize().w - (notifPos.w) * (1.0 - n.second.animx);
+		}
+		else
+		{
+			notifPos.x = 8 + baseFrame->getSize().x - (notifPos.w) * (n.second.animx);
+		}
+		notifPos.y = 52;
+		notificationFrame->setSize(notifPos);
+		notificationFrame->setOpacity(100.0 * n.second.animx);
+		notificationFrame->setDisabled(false);
+
+		auto notifTitle = notificationFrame->findField("notif title");
+		if ( n.second.notificationType == AssistNotification_t::NOTIF_CLASS_RESET )
+		{
+			notifTitle->setColor(makeColor(255, 255, 0, 255));
+		}
+		else
+		{
+			notifTitle->setColor(hudColors.characterSheetHeadingText);
+		}
+		notifTitle->setText(n.second.title.c_str());
+		SDL_Rect pos = notifTitle->getSize();
+		pos.w = notificationFrame->getSize().w;
+		notifTitle->setSize(pos);
+		auto notifBody = notificationFrame->findField("notif body");
+		notifBody->setText(n.second.body.c_str());
+		pos = notifBody->getSize();
+		pos.w = notificationFrame->getSize().w;
+		pos.h = notifBody->getNumTextLines() * 24;
+		notifBody->setSize(pos);
+		auto notifIcon = notificationFrame->findImage("notif icon");
+		notifIcon->path = n.second.img;
+		notifIcon->disabled = true;
+
+		if ( n.second.state == 0 )
+		{
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - n.second.animx)) / 2.0;
+			n.second.animx += setpointDiffX;
+			n.second.animx = std::min(1.0, n.second.animx);
+			if ( n.second.animx >= 0.999 )
+			{
+				n.second.state = 1;
+				n.first = ticks;
+			}
+		}
+		else if ( n.second.state == 1 )
+		{
+			if ( ticks - n.first > n.second.lifetime )
+			{
+				n.second.state = 2;
+			}
+		}
+		else if ( n.second.state == 2 )
+		{
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			real_t setpointDiffX = fpsScale * std::max(.05, (n.second.animx)) / 3.0;
+			n.second.animx -= setpointDiffX;
+			n.second.animx = std::max(0.0, n.second.animx);
+			if ( n.second.animx <= 0.001 )
+			{
+				n.second.state = 3;
+				notifications.erase(notifications.begin());
+			}
+		}
+	}
+
+	auto tooltipFrame = assistShrineFrame->findFrame("sheet tooltip");
+	tooltipFrame->setDisabled(!(currentView == ASSIST_SHRINE_VIEW_RACE 
+		|| currentView == ASSIST_SHRINE_VIEW_CLASSES
+		|| currentView == ASSIST_SHRINE_VIEW_ITEMS));
+	auto raceTooltip = tooltipFrame->findFrame("race tooltip");
+	raceTooltip->setDisabled(currentView != ASSIST_SHRINE_VIEW_RACE);
+	auto classTooltip = tooltipFrame->findFrame("class tooltip");
+	classTooltip->setDisabled(currentView != ASSIST_SHRINE_VIEW_CLASSES);
+	auto itemTooltip = tooltipFrame->findFrame("item tooltip");
+	itemTooltip->setDisabled(currentView != ASSIST_SHRINE_VIEW_ITEMS);
+
+	bool usingGamepad = inputs.hasController(playernum) && !inputs.getVirtualMouse(playernum)->draw_cursor;
+	{
+		// close btn
+		auto closeBtn = baseFrame->findButton("close assist button");
+		auto closeGlyph = baseFrame->findImage("close assist glyph");
+		closeBtn->setDisabled(true);
+		closeGlyph->disabled = true;
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			closeBtn->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonAssistShrineUpdateSelectorOnHighlight(playernum, closeBtn);
+			}
+		}
+		else if ( closeBtn->isSelected() )
+		{
+			closeBtn->deselect();
+		}
+		if ( closeBtn->isDisabled() && usingGamepad )
+		{
+			closeGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuCancel");
+			if ( auto imgGet = Image::get(closeGlyph->path.c_str()) )
+			{
+				closeGlyph->pos.w = imgGet->getWidth();
+				closeGlyph->pos.h = imgGet->getHeight();
+				closeGlyph->disabled = false;
+			}
+			closeGlyph->pos.x = closeBtn->getSize().x + closeBtn->getSize().w / 2 - closeGlyph->pos.w / 2;
+			if ( closeGlyph->pos.x % 2 == 1 )
+			{
+				++closeGlyph->pos.x;
+			}
+			closeGlyph->pos.y = closeBtn->getSize().y + closeBtn->getSize().h - 4;
+		}
+	}
+
+	bool inventoryControlActive = player->bControlEnabled
+		&& !gamePaused
+		&& !player->usingCommand()
+		&& !player->GUI.isDropdownActive();
+
+	static ConsoleVariable<float> cvar_assist_slider_speed("/assist_slider_speed", 1.f);
+	{
+		auto slider = assistClassFrame->findSlider("class slider");
+		auto drawerSlotsFrame = assistClassFrame->findFrame("class slots");
+		{
+			auto classText = assistClassFrame->findField("class txt");
+			std::string txt = "";
+			int classnum = -1;
+			Uint32 color = makeColor(121, 117, 116, 255);
+			if ( savedClass == -1 )
+			{
+				txt = Language::get(6320);
+				classnum = client_classes[parentGUI.gui_player];
+			}
+			else
+			{
+				txt = Language::get(6327);
+				classnum = savedClass;
+				color = hudColors.characterBaseClassText;
+				if ( classnum >= CLASS_CONJURER && classnum <= CLASS_BREWER )
+				{
+					color = hudColors.characterDLC1ClassText;
+				}
+				else if ( classnum >= CLASS_MACHINIST && classnum <= CLASS_HUNTER )
+				{
+					color = hudColors.characterDLC2ClassText;
+				}
+				else if ( classnum >= CLASS_BARD && classnum <= CLASS_PALADIN )
+				{
+					color = hudColors.characterDLC3ClassText;
+				}
+			}
+			std::string classname = playerClassLangEntry(classnum, parentGUI.gui_player);
+			uppercaseString(classname);
+			txt += classname;
+			classText->setText(txt.c_str());
+			classText->setColor(color);
+		}
+		{
+			auto classNewText = assistClassFrame->findField("class new txt");
+			std::string txt = Language::get(6319);
+			if ( selectedClass == -1 
+				|| (selectedClass == client_classes[parentGUI.gui_player] && savedClass == -1) )
+			{
+				txt += '-';
+				classNewText->addColorToLine(1, makeColor(121, 117, 116, 255));
+			}
+			else
+			{
+				std::string classname = playerClassLangEntry(selectedClass, parentGUI.gui_player);
+				uppercaseString(classname);
+				txt += classname;
+				classNewText->addColorToLine(1, hudColors.characterBaseClassText);
+				if ( selectedClass >= CLASS_CONJURER && selectedClass <= CLASS_BREWER )
+				{
+					classNewText->addColorToLine(1, hudColors.characterDLC1ClassText);
+				}
+				else if ( selectedClass >= CLASS_MACHINIST && selectedClass <= CLASS_HUNTER )
+				{
+					classNewText->addColorToLine(1, hudColors.characterDLC2ClassText);
+				}
+				else if ( selectedClass >= CLASS_BARD && selectedClass <= CLASS_PALADIN )
+				{
+					classNewText->addColorToLine(1, hudColors.characterDLC3ClassText);
+				}
+			}
+			classNewText->setText(txt.c_str());
+		}
+
+		int lowestItemY = 0;
+		for ( auto& pair : classSlots )
+		{
+			lowestItemY = std::max(lowestItemY, pair.first / 100);
+		}
+		lowestItemY += 1;
+
+		// handle height changing..
+		{
+			int numGrids = (lowestItemY / kNumClassesToDisplayVertical) + 1;
+			auto gridImg = drawerSlotsFrame->findImage("grid img");
+
+			SDL_Rect drawerSlotsFramePos = drawerSlotsFrame->getSize();
+			drawerSlotsFramePos.h = ((kNumClassesToDisplayVertical * kClassSlotHeight) + 2);
+
+			SDL_Rect drawerSlotsFrameActualPos{ drawerSlotsFrame->getActualSize().x,
+				drawerSlotsFrame->getActualSize().y,
+				drawerSlotsFrame->getActualSize().w,
+				(drawerSlotsFramePos.h) * numGrids };
+			drawerSlotsFrame->setActualSize(drawerSlotsFrameActualPos);
+			drawerSlotsFrame->setScrollBarsEnabled(false);
+			drawerSlotsFrame->setSize(drawerSlotsFramePos);
+			gridImg->pos.y = 0;
+			gridImg->pos.h = (drawerSlotsFramePos.h) * numGrids;
+		}
+
+		int scrollAmount = std::max((lowestItemY)-(kNumClassesToDisplayVertical), 0) * kClassSlotHeight;
+		if ( scrollAmount == 0 || currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			slider->setDisabled(true);
+		}
+		else
+		{
+			slider->setDisabled(false);
+		}
+
+		SDL_Rect sliderPos = slider->getRailSize();
+		auto sliderCapTop = assistClassFrame->findImage("class slider top");
+		/*if ( usingGamepad )
+		{
+			sliderPos.y = 104;
+			sliderPos.h = assistClassFrame->getSize().h - 16 - 104;
+		}
+		else*/
+		{
+			sliderPos.y = *cvar_assistClassListGridY - 2;
+			sliderPos.h = kAssistClassListHeight + 6;
+		}
+		sliderCapTop->pos.y = sliderPos.y;
+		slider->setRailSize(sliderPos);
+
+
+		currentScrollRow1 = scrollSetpoint1 / kClassSlotHeight;
+
+		if ( bOpen && isInteractable )
+		{
+			// do sliders
+			if ( !slider->isDisabled() && !(abs(scrollSetpoint1 - scrollAnimateX1) > 0.00001 && usingGamepad) )
+			{
+				if ( !inputs.getUIInteraction(playernum)->selectedItem
+					&& players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE
+					&& inventoryControlActive
+					&& currentView == ASSIST_SHRINE_VIEW_CLASSES )
+				{
+					auto& input = Input::inputs[playernum];
+					if ( inputs.bPlayerUsingKeyboardControl(playernum) )
+					{
+						if ( input.binaryToggle("MenuMouseWheelDown") )
+						{
+							scrollSetpoint1 = std::max(scrollSetpoint1 + kClassSlotHeight, 0);
+						}
+						if ( input.binaryToggle("MenuMouseWheelUp") )
+						{
+							scrollSetpoint1 = std::max(scrollSetpoint1 - kClassSlotHeight, 0);
+						}
+					}
+					if ( input.binaryToggle("MenuScrollDown") )
+					{
+						scrollSetpoint1 = std::max(scrollSetpoint1 + kClassSlotHeight * kNumClassesToDisplayVertical, 0);
+						if ( player->inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+						{
+							player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+						}
+					}
+					else if ( input.binaryToggle("MenuScrollUp") )
+					{
+						scrollSetpoint1 = std::max(scrollSetpoint1 - kClassSlotHeight * kNumClassesToDisplayVertical, 0);
+						if ( player->inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+						{
+							player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+						}
+					}
+				}
+			}
+
+			scrollSetpoint1 = std::min(scrollSetpoint1, scrollAmount);
+			currentScrollRow1 = scrollSetpoint1 / kClassSlotHeight;
+
+			if ( abs(scrollSetpoint1 - scrollAnimateX1) > 0.00001 )
+			{
+				isInteractable = false;
+				const real_t fpsScale = getFPSScale(60.0);
+				real_t setpointDiff = 0.0;
+
+				// slightly faster on gamepad
+				const real_t factor = (3.0 * (*cvar_assist_slider_speed + (usingGamepad ? -.25f : 0.f)));
+				if ( scrollSetpoint1 - scrollAnimateX1 > 0.0 )
+				{
+					setpointDiff = fpsScale * std::max(3.0, (scrollSetpoint1 - scrollAnimateX1)) / (factor);
+				}
+				else
+				{
+					setpointDiff = fpsScale * std::min(-3.0, (scrollSetpoint1 - scrollAnimateX1)) / (factor);
+				}
+				scrollAnimateX1 += setpointDiff;
+				if ( setpointDiff > 0.0 )
+				{
+					scrollAnimateX1 = std::min((real_t)scrollSetpoint1, scrollAnimateX1);
+				}
+				else
+				{
+					scrollAnimateX1 = std::max((real_t)scrollSetpoint1, scrollAnimateX1);
+				}
+			}
+			else
+			{
+				scrollAnimateX1 = scrollSetpoint1;
+			}
+		}
+
+		if ( scrollAmount > 0 )
+		{
+			if ( !slider->isDisabled() && !usingGamepad )
+			{
+				sliderAssistUpdateSelectorOnHighlight(playernum, slider);
+			}
+			if ( slider->isCurrentlyPressed() )
+			{
+				auto val = slider->getValue() / 100.0;
+				int animX = val * scrollAmount;
+				animX /= kClassSlotHeight;
+				animX *= kClassSlotHeight;
+
+				scrollSetpoint1 = animX;
+				scrollSetpoint1 = std::min(scrollSetpoint1, scrollAmount);
+			}
+			else
+			{
+				slider->setValue((scrollAnimateX1 / scrollAmount) * 100.0);
+			}
+		}
+		else
+		{
+			slider->setValue(0.0);
+		}
+
+		SDL_Rect actualSize = drawerSlotsFrame->getActualSize();
+		actualSize.y = scrollAnimateX1;
+		drawerSlotsFrame->setActualSize(actualSize);
+	}
+
+	{
+		auto slider = assistRaceFrame->findSlider("race slider");
+		auto drawerSlotsFrame = assistRaceFrame->findFrame("race slots");
+		{
+			auto raceText = assistRaceFrame->findField("race txt");
+			std::string txt = "";
+			int race = -1;
+			Uint32 color = makeColor(121, 117, 116, 255);
+			if ( savedRace == -1 )
+			{
+				txt = Language::get(6320);
+				race = stats[parentGUI.gui_player]->playerRace;
+			}
+			else
+			{
+				txt = Language::get(6327);
+				race = savedRace;
+				color = hudColors.characterBaseClassText;
+				if ( race >= RACE_SKELETON
+					&& race <= RACE_GOATMAN )
+				{
+					color = hudColors.characterDLC1ClassText;
+				}
+				if ( race >= RACE_AUTOMATON
+					&& race <= RACE_INSECTOID )
+				{
+					color = hudColors.characterDLC2ClassText;
+				}
+				if ( race > RACE_IMP
+					&& race < RACE_ENUM_END )
+				{
+					color = hudColors.characterDLC3ClassText;
+				}
+			}
+			std::string racename = getMonsterLocalizedName(getMonsterFromPlayerRace(race)).c_str();
+			uppercaseString(racename);
+			txt += racename;
+			raceText->setText(txt.c_str());
+			raceText->setColor(color);
+		}
+		/*{
+			auto classNewText = assistClassFrame->findField("class new txt");
+			std::string txt = Language::get(6319);
+			if ( selectedClass == -1 || selectedClass == client_classes[parentGUI.gui_player] )
+			{
+				txt += '-';
+				classNewText->addColorToLine(1, makeColor(121, 117, 116, 255));
+			}
+			else
+			{
+				std::string classname = playerClassLangEntry(selectedClass, parentGUI.gui_player);
+				uppercaseString(classname);
+				txt += classname;
+				classNewText->addColorToLine(1, hudColors.characterBaseClassText);
+				if ( selectedClass >= CLASS_CONJURER && selectedClass <= CLASS_BREWER )
+				{
+					classNewText->addColorToLine(1, hudColors.characterDLC1ClassText);
+				}
+				else if ( selectedClass >= CLASS_MACHINIST && selectedClass <= CLASS_HUNTER )
+				{
+					classNewText->addColorToLine(1, hudColors.characterDLC2ClassText);
+				}
+			}
+			classNewText->setText(txt.c_str());
+		}*/
+
+		int lowestItemY = 0;
+		lowestItemY = std::max((int)raceSlots.size() - 1, lowestItemY);
+		lowestItemY += 1;
+
+		// handle height changing..
+		{
+			int numGrids = (lowestItemY / kNumRacesToDisplayVertical) + 1;
+			auto gridImg = drawerSlotsFrame->findImage("grid img");
+
+			SDL_Rect drawerSlotsFramePos = drawerSlotsFrame->getSize();
+			drawerSlotsFramePos.h = ((kNumRacesToDisplayVertical * kRaceSlotHeight) + 2);
+
+			SDL_Rect drawerSlotsFrameActualPos{ drawerSlotsFrame->getActualSize().x,
+				drawerSlotsFrame->getActualSize().y,
+				drawerSlotsFrame->getActualSize().w,
+				(drawerSlotsFramePos.h) * numGrids };
+			drawerSlotsFrame->setActualSize(drawerSlotsFrameActualPos);
+			drawerSlotsFrame->setScrollBarsEnabled(false);
+			drawerSlotsFrame->setSize(drawerSlotsFramePos);
+			gridImg->pos.y = 0;
+			gridImg->pos.h = (drawerSlotsFramePos.h) * numGrids;
+		}
+
+		int scrollAmount = std::max((lowestItemY)-(kNumRacesToDisplayVertical), 0) * kRaceSlotHeight;
+		if ( scrollAmount == 0 || currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			slider->setDisabled(true);
+		}
+		else
+		{
+			slider->setDisabled(false);
+		}
+
+		SDL_Rect sliderPos = slider->getRailSize();
+		auto sliderCapTop = assistRaceFrame->findImage("race slider top");
+		/*if ( usingGamepad )
+		{
+			sliderPos.y = 104;
+			sliderPos.h = assistRaceFrame->getSize().h - 16 - 104;
+		}
+		else*/
+		{
+			sliderPos.y = *cvar_assistClassListGridY - 2;
+			sliderPos.h = kAssistRaceListHeight + 6;
+		}
+		sliderCapTop->pos.y = sliderPos.y;
+		slider->setRailSize(sliderPos);
+
+
+		currentScrollRow2 = scrollSetpoint2 / kRaceSlotHeight;
+
+		if ( bOpen && isInteractable )
+		{
+			// do sliders
+			if ( !slider->isDisabled() && !(abs(scrollSetpoint2 - scrollAnimateX2) > 0.00001 && usingGamepad) )
+			{
+				if ( !inputs.getUIInteraction(playernum)->selectedItem
+					&& players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE
+					&& inventoryControlActive
+					&& currentView == ASSIST_SHRINE_VIEW_RACE )
+				{
+					auto& input = Input::inputs[playernum];
+					if ( inputs.bPlayerUsingKeyboardControl(playernum) )
+					{
+						if ( input.binaryToggle("MenuMouseWheelDown") )
+						{
+							scrollSetpoint2 = std::max(scrollSetpoint2 + kRaceSlotHeight, 0);
+						}
+						if ( input.binaryToggle("MenuMouseWheelUp") )
+						{
+							scrollSetpoint2 = std::max(scrollSetpoint2 - kRaceSlotHeight, 0);
+						}
+					}
+					if ( input.binaryToggle("MenuScrollDown") )
+					{
+						scrollSetpoint2 = std::max(scrollSetpoint2 + kRaceSlotHeight * kNumRacesToDisplayVertical, 0);
+						if ( player->inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+						{
+							player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+						}
+					}
+					else if ( input.binaryToggle("MenuScrollUp") )
+					{
+						scrollSetpoint2 = std::max(scrollSetpoint2 - kRaceSlotHeight * kNumRacesToDisplayVertical, 0);
+						if ( player->inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+						{
+							player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+						}
+					}
+				}
+			}
+
+			scrollSetpoint2 = std::min(scrollSetpoint2, scrollAmount);
+			currentScrollRow2 = scrollSetpoint2 / kRaceSlotHeight;
+
+			if ( abs(scrollSetpoint2 - scrollAnimateX2) > 0.00001 )
+			{
+				isInteractable = false;
+				const real_t fpsScale = getFPSScale(60.0);
+				real_t setpointDiff = 0.0;
+
+				// slightly faster on gamepad
+				const real_t factor = (3.0 * (*cvar_assist_slider_speed + (usingGamepad ? -.25f : 0.f)));
+				if ( scrollSetpoint2 - scrollAnimateX2 > 0.0 )
+				{
+					setpointDiff = fpsScale * std::max(3.0, (scrollSetpoint2 - scrollAnimateX2)) / (factor);
+				}
+				else
+				{
+					setpointDiff = fpsScale * std::min(-3.0, (scrollSetpoint2 - scrollAnimateX2)) / (factor);
+				}
+				scrollAnimateX2 += setpointDiff;
+				if ( setpointDiff > 0.0 )
+				{
+					scrollAnimateX2 = std::min((real_t)scrollSetpoint2, scrollAnimateX2);
+				}
+				else
+				{
+					scrollAnimateX2 = std::max((real_t)scrollSetpoint2, scrollAnimateX2);
+				}
+			}
+			else
+			{
+				scrollAnimateX2 = scrollSetpoint2;
+			}
+		}
+
+		if ( scrollAmount > 0 )
+		{
+			if ( !slider->isDisabled() && !usingGamepad )
+			{
+				sliderAssistUpdateSelectorOnHighlight(playernum, slider);
+			}
+			if ( slider->isCurrentlyPressed() )
+			{
+				auto val = slider->getValue() / 100.0;
+				int animX = val * scrollAmount;
+				animX /= kRaceSlotHeight;
+				animX *= kRaceSlotHeight;
+
+				scrollSetpoint2 = animX;
+				scrollSetpoint2 = std::min(scrollSetpoint2, scrollAmount);
+			}
+			else
+			{
+				slider->setValue((scrollAnimateX2 / scrollAmount) * 100.0);
+			}
+		}
+		else
+		{
+			slider->setValue(0.0);
+		}
+
+		SDL_Rect actualSize = drawerSlotsFrame->getActualSize();
+		actualSize.y = scrollAnimateX2;
+		drawerSlotsFrame->setActualSize(actualSize);
+	}
+
+	if ( bOpen )
+	{
+		updateClassSlots();
+		updateRaceSlots();
+
+		for ( int x = 0; x < MAX_ASSISTSHRINE_X; ++x )
+		{
+			for ( int y = 0; y < MAX_ASSISTSHRINE_Y; ++y )
+			{
+				if ( auto slotFrame = getAssistShrineSlotFrame(x, y) )
+				{
+					if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+					{
+						if ( classSlots.find(x + y * 100) != classSlots.end() )
+						{
+							slotFrame->setDisabled(false);
+						}
+						else
+						{
+							slotFrame->setDisabled(true);
+						}
+					}
+					else
+					{
+						slotFrame->setDisabled(true);
+					}
+				}
+			}
+		}
+
+		for ( int y = 0; y < MAX_ASSISTSHRINE_Y; ++y )
+		{
+			if ( auto slotFrame = getAssistShrineSlotFrame(ASSIST_RACE_COLUMN, y) )
+			{
+				if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+				{
+					if ( y < raceSlots.size() )
+					{
+						slotFrame->setDisabled(false);
+					}
+					else
+					{
+						slotFrame->setDisabled(true);
+					}
+				}
+				else
+				{
+					slotFrame->setDisabled(true);
+				}
+			}
+		}
+	}
+
+	Frame* itemFrameBlessModifierHovered = nullptr;
+	const int blessButtonY = -4;
+	Frame* item1Frame = getAssistShrineSlotFrame(ASSIST_SLOT_CLOAK, 0);
+	{
+		auto pos = item1Frame->getSize();
+		pos.x = 22;
+		pos.y = 112;
+		item1Frame->setSize(pos);
+		item1Frame->setDisabled(true);
+		if ( claimedItems.find(itemCloak.type) == claimedItems.end() )
+		{
+			if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+			{
+				itemCloak.itemHiddenFromShop = true;
+			}
+			updateSlotFrameFromItem(item1Frame, &itemCloak, itemCloak.itemHiddenFromShop);
+		}
+
+		auto header = assistItemFrame->findField("assist item 1 title");
+		header->setText(Language::get(6312));
+		header->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y - 24 + 5, 64, 24 });
+		header->setDisabled(false);
+		if ( auto textGet = header->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = header->getSize();
+				pos.x += 1;
+				header->setSize(pos);
+			}
+		}
+
+		auto bless = assistItemFrame->findField("assist item 1 bless");
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%+d", itemCloak.beatitude);
+		bless->setText(buf);
+		bless->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y + pos.h + 8, 64, 24 });
+		bless->setDisabled(false);
+		auto color = makeColorRGB(121, 117, 116);
+		if ( itemCloak.beatitude > 0 )
+		{
+			color = hudColors.characterSheetGreen;
+		}
+		else if ( itemCloak.beatitude < 0 )
+		{
+			color = hudColors.characterSheetRed;
+		}
+		bless->setColor(color);
+		if ( auto textGet = bless->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = bless->getSize();
+				pos.x += 1;
+				bless->setSize(pos);
+			}
+		}
+
+		auto slotMinus = assistItemFrame->findButton("assist item 1 minus");
+		auto slotPlus = assistItemFrame->findButton("assist item 1 plus");
+		slotMinus->setDisabled(true);
+		slotPlus->setDisabled(true);
+		slotMinus->setInvisible(slotMinus->isDisabled());
+		slotPlus->setInvisible(slotPlus->isDisabled());
+		if ( !usingGamepad )
+		{
+			if ( claimedItems.find(itemCloak.type) == claimedItems.end()
+				&& !itemCloak.itemHiddenFromShop )
+			{
+				slotMinus->setDisabled(false);
+				SDL_Rect pos = slotMinus->getSize();
+				pos.x = item1Frame->getSize().x - 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotMinus->setSize(pos);
+
+				slotPlus->setDisabled(false);
+				pos = slotPlus->getSize();
+				pos.x = item1Frame->getSize().x + item1Frame->getSize().w - pos.w + 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotPlus->setSize(pos);
+
+				slotMinus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotMinus->setTextColor(0xFFFFFFFF);
+				slotPlus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotPlus->setTextColor(0xFFFFFFFF);
+				if ( itemCloak.beatitude <= -2 )
+				{
+					slotMinus->setTextColor(hudColors.characterSheetFaintText);
+					slotMinus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+				else if ( itemCloak.beatitude >= 2 )
+				{
+					slotPlus->setTextColor(hudColors.characterSheetFaintText);
+					slotPlus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+			}
+			slotMinus->setInvisible(slotMinus->isDisabled());
+			slotPlus->setInvisible(slotPlus->isDisabled());
+
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotMinus->isInvisible() )
+			{
+				slotMinus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotMinus);
+					if ( slotMinus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_CLOAK, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_CLOAK, 0);
+					}
+				}
+			}
+			else if ( slotMinus->isSelected() )
+			{
+				slotMinus->deselect();
+			}
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotPlus->isInvisible() )
+			{
+				slotPlus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotPlus);
+					if ( slotPlus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_CLOAK, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_CLOAK, 0);
+					}
+				}
+			}
+			else if ( slotPlus->isSelected() )
+			{
+				slotPlus->deselect();
+			}
+		}
+	}
+	Frame* item2Frame = getAssistShrineSlotFrame(ASSIST_SLOT_MASK, 0);
+	{
+		auto pos = item2Frame->getSize();
+		pos.x = 22 + 60;
+		pos.y = 112;
+		item2Frame->setSize(pos);
+		item2Frame->setDisabled(true);
+
+		if ( claimedItems.find(itemMask.type) == claimedItems.end() )
+		{
+			if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+			{
+				itemMask.itemHiddenFromShop = true;
+			}
+			updateSlotFrameFromItem(item2Frame, &itemMask, itemMask.itemHiddenFromShop);
+		}
+
+		auto header = assistItemFrame->findField("assist item 2 title");
+		header->setText(Language::get(6313));
+		header->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y - 24 + 5, 64, 24 });
+		header->setDisabled(false);
+		if ( auto textGet = header->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = header->getSize();
+				pos.x += 1;
+				header->setSize(pos);
+			}
+		}
+
+		auto bless = assistItemFrame->findField("assist item 2 bless");
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%+d", itemMask.beatitude);
+		bless->setText(buf);
+		bless->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y + pos.h + 8, 64, 24 });
+		bless->setDisabled(false);
+		auto color = makeColorRGB(121, 117, 116);
+		if ( itemMask.beatitude > 0 )
+		{
+			color = hudColors.characterSheetGreen;
+		}
+		else if ( itemMask.beatitude < 0 )
+		{
+			color = hudColors.characterSheetRed;
+		}
+		bless->setColor(color);
+		if ( auto textGet = bless->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = bless->getSize();
+				pos.x += 1;
+				bless->setSize(pos);
+			}
+		}
+
+		auto slotMinus = assistItemFrame->findButton("assist item 2 minus");
+		auto slotPlus = assistItemFrame->findButton("assist item 2 plus");
+		slotMinus->setDisabled(true);
+		slotPlus->setDisabled(true);
+		slotMinus->setInvisible(slotMinus->isDisabled());
+		slotPlus->setInvisible(slotPlus->isDisabled());
+		if ( !usingGamepad )
+		{
+			if ( claimedItems.find(itemMask.type) == claimedItems.end()
+				&& !itemMask.itemHiddenFromShop )
+			{
+				slotMinus->setDisabled(false);
+				SDL_Rect pos = slotMinus->getSize();
+				pos.x = item2Frame->getSize().x - 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotMinus->setSize(pos);
+
+				slotPlus->setDisabled(false);
+				pos = slotPlus->getSize();
+				pos.x = item2Frame->getSize().x + item2Frame->getSize().w - pos.w + 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotPlus->setSize(pos);
+
+				slotMinus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotMinus->setTextColor(0xFFFFFFFF);
+				slotPlus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotPlus->setTextColor(0xFFFFFFFF);
+				if ( itemMask.beatitude <= -2 )
+				{
+					slotMinus->setTextColor(hudColors.characterSheetFaintText);
+					slotMinus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+				else if ( itemMask.beatitude >= 2 )
+				{
+					slotPlus->setTextColor(hudColors.characterSheetFaintText);
+					slotPlus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+			}
+			slotMinus->setInvisible(slotMinus->isDisabled());
+			slotPlus->setInvisible(slotPlus->isDisabled());
+
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotMinus->isInvisible() )
+			{
+				slotMinus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotMinus);
+					if ( slotMinus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_MASK, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_MASK, 0);
+					}
+				}
+			}
+			else if ( slotMinus->isSelected() )
+			{
+				slotMinus->deselect();
+			}
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotPlus->isInvisible() )
+			{
+				slotPlus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotPlus);
+					if ( slotPlus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_MASK, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_MASK, 0);
+					}
+				}
+			}
+			else if ( slotPlus->isSelected() )
+			{
+				slotPlus->deselect();
+			}
+		}
+	}
+	Frame* item3Frame = getAssistShrineSlotFrame(ASSIST_SLOT_AMULET, 0);
+	{
+		auto pos = item3Frame->getSize();
+		pos.x = 22 + 60 * 2;
+		pos.y = 112;
+		item3Frame->setSize(pos);
+		item3Frame->setDisabled(true);
+
+		if ( claimedItems.find(itemAmulet.type) == claimedItems.end() )
+		{
+			if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+			{
+				itemAmulet.itemHiddenFromShop = true;
+			}
+			updateSlotFrameFromItem(item3Frame, &itemAmulet, itemAmulet.itemHiddenFromShop);
+		}
+
+		auto header = assistItemFrame->findField("assist item 3 title");
+		header->setText(Language::get(6314));
+		header->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y - 24 + 5, 64, 24 });
+		header->setDisabled(false);
+		if ( auto textGet = header->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = header->getSize();
+				pos.x += 1;
+				header->setSize(pos);
+			}
+		}
+
+		auto bless = assistItemFrame->findField("assist item 3 bless");
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%+d", itemAmulet.beatitude);
+		bless->setText(buf);
+		bless->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y + pos.h + 8, 64, 24 });
+		bless->setDisabled(false);
+		auto color = makeColorRGB(121, 117, 116);
+		if ( itemAmulet.beatitude > 0 )
+		{
+			color = hudColors.characterSheetGreen;
+		}
+		else if ( itemAmulet.beatitude < 0 )
+		{
+			color = hudColors.characterSheetRed;
+		}
+		bless->setColor(color);
+		if ( auto textGet = bless->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = bless->getSize();
+				pos.x += 1;
+				bless->setSize(pos);
+			}
+		}
+
+		auto slotMinus = assistItemFrame->findButton("assist item 3 minus");
+		auto slotPlus = assistItemFrame->findButton("assist item 3 plus");
+		slotMinus->setDisabled(true);
+		slotPlus->setDisabled(true);
+		slotMinus->setInvisible(slotMinus->isDisabled());
+		slotPlus->setInvisible(slotPlus->isDisabled());
+		if ( !usingGamepad )
+		{
+			if ( claimedItems.find(itemAmulet.type) == claimedItems.end()
+				&& !itemAmulet.itemHiddenFromShop )
+			{
+				slotMinus->setDisabled(false);
+				SDL_Rect pos = slotMinus->getSize();
+				pos.x = item3Frame->getSize().x - 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotMinus->setSize(pos);
+
+				slotPlus->setDisabled(false);
+				pos = slotPlus->getSize();
+				pos.x = item3Frame->getSize().x + item3Frame->getSize().w - pos.w + 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotPlus->setSize(pos);
+
+				slotMinus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotMinus->setTextColor(0xFFFFFFFF);
+				slotPlus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotPlus->setTextColor(0xFFFFFFFF);
+				if ( itemAmulet.beatitude <= -2 )
+				{
+					slotMinus->setTextColor(hudColors.characterSheetFaintText);
+					slotMinus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+				else if ( itemAmulet.beatitude >= 2 )
+				{
+					slotPlus->setTextColor(hudColors.characterSheetFaintText);
+					slotPlus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+			}
+			slotMinus->setInvisible(slotMinus->isDisabled());
+			slotPlus->setInvisible(slotPlus->isDisabled());
+
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotMinus->isInvisible() )
+			{
+				slotMinus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotMinus);
+					if ( slotMinus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_AMULET, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_AMULET, 0);
+					}
+				}
+			}
+			else if ( slotMinus->isSelected() )
+			{
+				slotMinus->deselect();
+			}
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotPlus->isInvisible() )
+			{
+				slotPlus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotPlus);
+					if ( slotPlus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_AMULET, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_AMULET, 0);
+					}
+				}
+			}
+			else if ( slotPlus->isSelected() )
+			{
+				slotPlus->deselect();
+			}
+		}
+	}
+	Frame* item4Frame = getAssistShrineSlotFrame(ASSIST_SLOT_RING, 0);
+	{
+		auto pos = item4Frame->getSize();
+		pos.x = 22 + 60 * 3;
+		pos.y = 112;
+		item4Frame->setSize(pos);
+		item4Frame->setDisabled(true);
+
+		if ( claimedItems.find(itemRing.type) == claimedItems.end() )
+		{
+			if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+			{
+				itemRing.itemHiddenFromShop = true;
+			}
+			updateSlotFrameFromItem(item4Frame, &itemRing, itemRing.itemHiddenFromShop);
+		}
+
+		auto header = assistItemFrame->findField("assist item 4 title");
+		header->setText(Language::get(6315));
+		header->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y - 24 + 5, 64, 24 });
+		header->setDisabled(false);
+		if ( auto textGet = header->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = header->getSize();
+				pos.x += 1;
+				header->setSize(pos);
+			}
+		}
+
+		auto bless = assistItemFrame->findField("assist item 4 bless");
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%+d", itemRing.beatitude);
+		bless->setText(buf);
+		bless->setSize(SDL_Rect{ pos.x + pos.w / 2 - 32, pos.y + pos.h + 8, 64, 24 });
+		bless->setDisabled(false);
+		auto color = makeColorRGB(121, 117, 116);
+		if ( itemRing.beatitude > 0 )
+		{
+			color = hudColors.characterSheetGreen;
+		}
+		else if ( itemRing.beatitude < 0 )
+		{
+			color = hudColors.characterSheetRed;
+		}
+		bless->setColor(color);
+		if ( auto textGet = bless->getTextObject() )
+		{
+			if ( (textGet->getWidth() / 2) % 2 == 1 )
+			{
+				SDL_Rect pos = bless->getSize();
+				pos.x += 1;
+				bless->setSize(pos);
+			}
+		}
+
+		auto slotMinus = assistItemFrame->findButton("assist item 4 minus");
+		auto slotPlus = assistItemFrame->findButton("assist item 4 plus");
+		slotMinus->setDisabled(true);
+		slotPlus->setDisabled(true);
+		slotMinus->setInvisible(slotMinus->isDisabled());
+		slotPlus->setInvisible(slotPlus->isDisabled());
+		if ( !usingGamepad )
+		{
+			if ( claimedItems.find(itemRing.type) == claimedItems.end()
+				&& !itemRing.itemHiddenFromShop )
+			{
+				slotMinus->setDisabled(false);
+				SDL_Rect pos = slotMinus->getSize();
+				pos.x = item4Frame->getSize().x - 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotMinus->setSize(pos);
+
+				slotPlus->setDisabled(false);
+				pos = slotPlus->getSize();
+				pos.x = item4Frame->getSize().x + item4Frame->getSize().w - pos.w + 6;
+				pos.y = bless->getSize().y + bless->getSize().h;
+				pos.y += blessButtonY;
+				slotPlus->setSize(pos);
+
+				slotMinus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotMinus->setTextColor(0xFFFFFFFF);
+				slotPlus->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				slotPlus->setTextColor(0xFFFFFFFF);
+				if ( itemRing.beatitude <= -2 )
+				{
+					slotMinus->setTextColor(hudColors.characterSheetFaintText);
+					slotMinus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+				else if ( itemRing.beatitude >= 2 )
+				{
+					slotPlus->setTextColor(hudColors.characterSheetFaintText);
+					slotPlus->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+			}
+			slotMinus->setInvisible(slotMinus->isDisabled());
+			slotPlus->setInvisible(slotPlus->isDisabled());
+
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotMinus->isInvisible() )
+			{
+				slotMinus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotMinus);
+					if ( slotMinus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_RING, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_RING, 0);
+					}
+				}
+			}
+			else if ( slotMinus->isSelected() )
+			{
+				slotMinus->deselect();
+			}
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && !slotPlus->isInvisible() )
+			{
+				slotPlus->setDisabled(!isInteractable);
+				if ( isInteractable )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, slotPlus);
+					if ( slotPlus->isHighlighted() )
+					{
+						itemFrameBlessModifierHovered = getAssistShrineSlotFrame(ASSIST_SLOT_RING, 0);
+						selectAssistShrineSlot(ASSIST_SLOT_RING, 0);
+					}
+				}
+			}
+			else if ( slotPlus->isSelected() )
+			{
+				slotPlus->deselect();
+			}
+		}
+	}
+
+	// filters
+	{
+		auto filterNavLeft = baseFrame->findImage("filter left glyph");
+		filterNavLeft->disabled = true;
+		auto filterNavRight = baseFrame->findImage("filter right glyph");
+		filterNavRight->disabled = true;
+
+		// filters
+		const int btnWidth = 68;
+		const int txtY = 13;
+		SDL_Rect prevBtn = { 30, 12, btnWidth, 32 };
+
+		Button* filterBtn = baseFrame->findButton("filter item btn");
+		filterBtn->setDisabled(true);
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			filterBtn->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonAssistShrineUpdateSelectorOnHighlight(playernum, filterBtn);
+			}
+		}
+		else if ( filterBtn->isSelected() )
+		{
+			filterBtn->deselect();
+		}
+
+		Uint32 inactiveColor = makeColorRGB(161, 103, 33);
+		Uint32 inactiveBorderColor = makeColorRGB(65, 8, 0);
+		Uint32 activeColor = hudColors.characterSheetOffWhiteText;
+		Uint32 highlightColor = hudColors.characterSheetLighter1Neutral;
+
+		filterBtn->setColor(makeColor(255, 255, 255, 255));
+		filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterInactive00.png");
+		Field* filterTxt = baseFrame->findField("filter item txt");
+		filterTxt->setDisabled(false);
+		filterTxt->setText(Language::get(6321));
+		filterTxt->setTextColor(inactiveColor);
+		filterTxt->setOutlineColor(inactiveBorderColor);
+		if ( false && filterBtn->isHighlighted() )
+		{
+			filterTxt->setTextColor(highlightColor);
+		}
+		else if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			filterTxt->setTextColor(activeColor);
+			filterTxt->setOutlineColor(0);
+		}
+		{
+			SDL_Rect btnPos = prevBtn;
+			filterBtn->setSize(btnPos);
+			SDL_Rect txtPos = btnPos;
+			txtPos.y += txtY;
+			txtPos.h = 24;
+			filterTxt->setSize(txtPos);
+		}
+		if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			filterBtn->setColor(makeColor(255, 255, 255, 255));
+			filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterActive00.png");
+			SDL_Rect txtPos = filterTxt->getSize();
+			txtPos.y -= 6;
+			filterTxt->setSize(txtPos);
+		}
+		filterBtn->setHighlightColor(filterBtn->getColor());
+
+		if ( usingGamepad )
+		{
+			filterNavLeft->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageLeft");
+			if ( auto imgGet = Image::get(filterNavLeft->path.c_str()) )
+			{
+				filterNavLeft->pos.w = imgGet->getWidth();
+				filterNavLeft->pos.h = imgGet->getHeight();
+				filterNavLeft->disabled = false;
+
+				filterNavLeft->pos.x = filterBtn->getSize().x + 2;
+				filterNavLeft->pos.x -= filterNavLeft->pos.w;
+				filterNavLeft->pos.y = filterBtn->getSize().y + filterBtn->getSize().h;
+				filterNavLeft->pos.y -= filterNavLeft->pos.h;
+				if ( filterNavLeft->pos.y % 2 == 1 )
+				{
+					++filterNavLeft->pos.y;
+				}
+			}
+		}
+
+		filterBtn = baseFrame->findButton("filter race btn");
+		filterBtn->setDisabled(true);
+		filterBtn->setInvisible(false);
+
+		if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_CUSTOM_RUN_ONESHOT )
+		{
+			filterBtn->setInvisible(true);
+		}
+		else if ( gameModeManager.currentSession.challengeRun.isActive()
+			&& (gameModeManager.currentSession.challengeRun.race >= 0
+				|| gameModeManager.currentSession.challengeRun.classnum >= 0) )
+		{
+			filterBtn->setInvisible(true);
+		}
+
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor && !filterBtn->isInvisible() )
+		{
+			filterBtn->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonAssistShrineUpdateSelectorOnHighlight(playernum, filterBtn);
+			}
+		}
+		else if ( filterBtn->isSelected() )
+		{
+			filterBtn->deselect();
+		}
+		filterBtn->setColor(makeColor(255, 255, 255, 255));
+		filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterInactive00.png");
+		filterTxt = baseFrame->findField("filter race txt");
+		filterTxt->setDisabled(false);
+		filterTxt->setText(Language::get(6322));
+		filterTxt->setTextColor(inactiveColor);
+		filterTxt->setOutlineColor(inactiveBorderColor);
+		if ( false && filterBtn->isHighlighted() )
+		{
+			filterTxt->setTextColor(highlightColor);
+		}
+		else if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+		{
+			filterTxt->setTextColor(activeColor);
+			filterTxt->setOutlineColor(0);
+		}
+		{
+			SDL_Rect btnPos = prevBtn;
+			btnPos.x += btnPos.w;
+			prevBtn = btnPos;
+			filterBtn->setSize(btnPos);
+			SDL_Rect txtPos = btnPos;
+			txtPos.y += txtY;
+			txtPos.h = 24;
+			filterTxt->setSize(txtPos);
+		}
+		if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+		{
+			filterBtn->setColor(makeColor(255, 255, 255, 255));
+			filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterActive00.png");
+			SDL_Rect txtPos = filterTxt->getSize();
+			txtPos.y -= 6;
+			filterTxt->setSize(txtPos);
+		}
+		filterBtn->setHighlightColor(filterBtn->getColor());
+
+		int numTabs = 1;
+		if ( !filterBtn->isInvisible() )
+		{
+			++numTabs;
+		}
+
+		filterBtn = baseFrame->findButton("filter class btn");
+		filterBtn->setDisabled(true);
+		filterBtn->setInvisible(false);
+
+		if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_CUSTOM_RUN_ONESHOT )
+		{
+			filterBtn->setInvisible(true);
+		}
+		else if ( gameModeManager.currentSession.challengeRun.isActive()
+			&& (gameModeManager.currentSession.challengeRun.race >= 0
+				|| gameModeManager.currentSession.challengeRun.classnum >= 0) )
+		{
+			filterBtn->setInvisible(true);
+		}
+
+		if ( !filterBtn->isInvisible() )
+		{
+			++numTabs;
+		}
+
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor && !filterBtn->isInvisible() )
+		{
+			filterBtn->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonAssistShrineUpdateSelectorOnHighlight(playernum, filterBtn);
+			}
+		}
+		else if ( filterBtn->isSelected() )
+		{
+			filterBtn->deselect();
+		}
+		filterBtn->setColor(makeColor(255, 255, 255, 255));
+		filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterInactive00.png");
+		filterTxt = baseFrame->findField("filter class txt");
+		filterTxt->setDisabled(false);
+		filterTxt->setText(Language::get(6323));
+		filterTxt->setTextColor(inactiveColor);
+		filterTxt->setOutlineColor(inactiveBorderColor);
+		if ( false && filterBtn->isHighlighted() )
+		{
+			filterTxt->setTextColor(highlightColor);
+		}
+		else if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+		{
+			filterTxt->setTextColor(activeColor);
+			filterTxt->setOutlineColor(0);
+		}
+		{
+			SDL_Rect btnPos = prevBtn;
+			btnPos.x += btnPos.w;
+			filterBtn->setSize(btnPos);
+			SDL_Rect txtPos = btnPos;
+			txtPos.y += txtY;
+			txtPos.h = 24;
+			filterTxt->setSize(txtPos);
+		}
+		if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+		{
+			filterBtn->setColor(makeColor(255, 255, 255, 255));
+			filterBtn->setBackground("*#images/ui/AssistShrine/AssistShrine_FilterActive00.png");
+			SDL_Rect txtPos = filterTxt->getSize();
+			txtPos.y -= 6;
+			filterTxt->setSize(txtPos);
+		}
+		filterBtn->setHighlightColor(filterBtn->getColor());
+
+		if ( usingGamepad )
+		{
+			filterNavRight->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageRight");
+			if ( auto imgGet = Image::get(filterNavRight->path.c_str()) )
+			{
+				filterNavRight->pos.w = imgGet->getWidth();
+				filterNavRight->pos.h = imgGet->getHeight();
+				filterNavRight->disabled = false;
+
+				filterNavRight->pos.x = filterBtn->getSize().x + filterBtn->getSize().w - 2;
+				filterNavRight->pos.y = filterBtn->getSize().y + filterBtn->getSize().h;
+				filterNavRight->pos.y -= filterNavRight->pos.h;
+				if ( filterNavRight->pos.y % 2 == 1 )
+				{
+					++filterNavRight->pos.y;
+				}
+			}
+		}
+
+		if ( numTabs <= 1 )
+		{
+			filterNavLeft->disabled = true;
+			filterNavRight->disabled = true;
+		}
+	}
+
+	const Uint32 defaultPromptColor = makeColor(255, 255, 255, 255);
+	const Uint32 negativeColor = hudColors.characterSheetRed;
+
+	auto claimItemGlyph = assistItemFrame->findImage("claim item glyph");
+	static ConsoleVariable<int> cvar_assist_pt_y("/assist_pt_y", -94);
+	static ConsoleVariable<int> cvar_assist_pt_y2("/assist_pt_y2", -54);
+	{
+		auto claimItemBtn = assistItemFrame->findButton("claim item button");
+		claimItemBtn->setDisabled(true);
+		SDL_Rect pos = claimItemBtn->getSize();
+		pos.y = assistItemFrame->getSize().h + *cvar_assist_pt_y;
+		claimItemBtn->setSize(pos);
+
+		auto assistPtImg = assistItemFrame->findImage("assist pt img");
+		assistPtImg->disabled = false;
+		assistPtImg->pos.x = 10;
+		assistPtImg->pos.y = pos.y + 2;
+
+		{
+			auto assistPtTitle = assistItemFrame->findField("assist pt title");
+			assistPtTitle->setText(Language::get(6328));
+			assistPtTitle->setDisabled(false);
+			SDL_Rect pos = assistPtTitle->getSize();
+			pos.x = assistPtImg->pos.x + 6;
+			pos.y = assistPtImg->pos.y + 5;
+			assistPtTitle->setSize(pos);
+			auto assistPtVal = assistItemFrame->findField("assist pt val");
+
+			int assistPointsClaimed = std::max(getAssistPointsSaved(), conductGameChallenges[CONDUCT_ASSISTANCE_CLAIMED]);
+			int assistPointsPreview = getAssistPointsPreview();
+			int assistPointChange = assistPointsPreview - assistPointsClaimed;
+			char buf[32];
+			if ( assistPointChange > 0 )
+			{
+				if ( false )
+				{
+					snprintf(buf, sizeof(buf), "%+d", assistPointChange);
+				}
+				else
+				{
+					snprintf(buf, sizeof(buf), "%d", assistPointsPreview);
+				}
+			}
+			else
+			{
+				snprintf(buf, sizeof(buf), "%d", assistPointsClaimed);
+			}
+			assistPtVal->setText(buf);
+			if ( assistPointsClaimed == assistPointsPreview )
+			{
+				assistPtVal->setColor(makeColorRGB(221, 206, 189));
+			}
+			else
+			{
+				animAssistValueFade += 0.003;
+				if ( animAssistValueFade >= 1.0 )
+				{
+					animAssistValueFade = 0.0;
+				}
+				real_t opacity = 0.5 + .4 * (1.0 * cos(animAssistValueFade * 2 * PI) + 1.0);
+				Uint8 r = 122;
+				Uint8 g = 192;
+				Uint8 b = 243;
+				Uint8 a = std::max(0.25, std::min(opacity, 1.0)) * 255;
+				assistPtVal->setColor(makeColor(r, g, b, a));
+			}
+			assistPtVal->setDisabled(false);
+			pos = assistPtVal->getSize();
+			pos.x = assistPtTitle->getSize().x;
+			pos.y = assistPtTitle->getSize().y;
+			assistPtVal->setSize(pos);
+
+			auto assistScoreTitle = assistItemFrame->findField("assist score title");
+			assistScoreTitle->setText(Language::get(6329));
+			assistScoreTitle->setDisabled(false);
+			pos = assistScoreTitle->getSize();
+			pos.x = assistPtTitle->getSize().x;
+			pos.y = assistItemFrame->getSize().h + *cvar_assist_pt_y2 - 1;
+			assistScoreTitle->setSize(pos);
+
+			auto assistScoreVal = assistItemFrame->findField("assist score val");
+			assistScoreVal->setDisabled(false);
+			pos = assistScoreVal->getSize();
+			pos.y = assistScoreTitle->getSize().y;
+			assistScoreVal->setSize(pos);
+
+			auto assistAchievementTitle = assistItemFrame->findField("assist ach title");
+			assistAchievementTitle->setText(Language::get(6330));
+			assistAchievementTitle->setDisabled(false);
+			pos = assistAchievementTitle->getSize();
+			pos.x = assistScoreTitle->getSize().x;
+			pos.y = assistScoreTitle->getSize().y + 24;
+			assistAchievementTitle->setSize(pos);
+
+			auto assistAchievementVal = assistItemFrame->findField("assist ach val");
+			assistAchievementVal->setDisabled(false);
+			pos = assistAchievementVal->getSize();
+			pos.y = assistAchievementTitle->getSize().y;
+			assistAchievementVal->setSize(pos);
+
+			int scorePenalty = 100 - std::max(5, 100 - assistPointsPreview * 10);
+			Uint32 colorPositive = makeColorRGB(122, 192, 243);
+
+			real_t opacity = 0.5 + .4 * (1.0 * cos(animAssistValueFade * 2 * PI) + 1.0);
+			if ( assistPointsClaimed == assistPointsPreview )
+			{
+				if ( assistPointsClaimed >= achievementDisabledLimit )
+				{
+					assistAchievementVal->setColor(hudColors.characterSheetRed);
+					assistAchievementVal->setText(Language::get(6332));
+				}
+				else
+				{
+					assistAchievementVal->setColor(colorPositive);
+					assistAchievementVal->setText(Language::get(6331));
+				}
+
+				if ( scorePenalty > 0 )
+				{
+					assistScoreVal->setColor(hudColors.characterSheetRed);
+					snprintf(buf, sizeof(buf), "%d%%", -scorePenalty);
+					assistScoreVal->setText(buf);
+				}
+				else
+				{
+					assistScoreVal->setColor(makeColorRGB(221, 206, 189));
+					assistScoreVal->setText("-");
+				}
+			}
+			else
+			{
+				Uint8 r, g, b, a;
+				if ( assistPointsClaimed < achievementDisabledLimit && assistPointsPreview >= achievementDisabledLimit )
+				{
+					getColor(hudColors.characterSheetRed, &r, &g, &b, &a);
+					a = std::max(0.25, std::min(opacity, 1.0)) * 255;
+					assistAchievementVal->setText(Language::get(6332));
+					assistAchievementVal->setColor(makeColor(r, g, b, a));
+				}
+				else if ( assistPointsClaimed >= achievementDisabledLimit )
+				{
+					assistAchievementVal->setColor(hudColors.characterSheetRed);
+					assistAchievementVal->setText(Language::get(6332));
+				}
+				else
+				{
+					getColor(colorPositive, &r, &g, &b, &a);
+					assistAchievementVal->setText(Language::get(6331));
+					assistAchievementVal->setColor(makeColor(r, g, b, a));
+				}
+
+				if ( scorePenalty > 0 )
+				{
+					getColor(hudColors.characterSheetRed, &r, &g, &b, &a);
+					a = std::max(0.25, std::min(opacity, 1.0)) * 255;
+					assistScoreVal->setColor(makeColor(r, g, b, a));
+					snprintf(buf, sizeof(buf), "%d%%", -scorePenalty);
+					assistScoreVal->setText(buf);
+				}
+				else
+				{
+					assistScoreVal->setColor(makeColorRGB(221, 206, 189));
+					assistScoreVal->setText("-");
+				}
+			}
+		}
+
+		claimItemGlyph->disabled = true;
+		claimItemBtn->setText(Language::get(6316));
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			if ( currentView != ASSIST_SHRINE_VIEW_ITEMS )
+			{
+				if ( claimItemBtn->isSelected() )
+				{
+					claimItemBtn->deselect();
+				}
+			}
+			if ( isInteractable )
+			{
+				claimItemBtn->setDisabled(false);
+				if ( !hasItemsToClaim() )
+				{
+					claimItemBtn->setTextColor(hudColors.characterSheetFaintText);
+					claimItemBtn->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+				else
+				{
+					claimItemBtn->setTextColor(makeColor(255, 255, 255, 255));
+					claimItemBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				}
+				if ( claimItemBtn->isSelected() )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, claimItemBtn);
+				}
+			}
+			else
+			{
+				claimItemBtn->setTextColor(hudColors.characterSheetFaintText);
+				claimItemBtn->setTextHighlightColor(hudColors.characterSheetFaintText);
+			}
+		}
+		else if ( claimItemBtn->isSelected() )
+		{
+			claimItemBtn->deselect();
+		}
+		if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			claimItemBtn->setText(Language::get(6316));
+			claimItemBtn->setDisabled(true);
+			if ( !hasItemsToClaim() || players[playernum]->GUI.activeModule != Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				claimItemBtn->setTextColor(hudColors.characterSheetFaintText);
+			}
+			else
+			{
+				claimItemBtn->setTextColor(makeColor(255, 255, 255, 255));
+				claimItemGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt1");
+				if ( auto imgGet = Image::get(claimItemGlyph->path.c_str()) )
+				{
+					claimItemGlyph->pos.w = imgGet->getWidth();
+					claimItemGlyph->pos.h = imgGet->getHeight();
+					claimItemGlyph->disabled = false;
+				}
+				claimItemGlyph->pos.x = claimItemBtn->getSize().x + claimItemBtn->getSize().w - 8;
+				if ( claimItemGlyph->pos.x % 2 == 1 )
+				{
+					++claimItemGlyph->pos.x;
+				}
+				claimItemGlyph->pos.y = claimItemBtn->getSize().y + claimItemBtn->getSize().h / 2 - claimItemGlyph->pos.h / 2;
+				if ( claimItemGlyph->pos.y % 2 == 1 )
+				{
+					++claimItemGlyph->pos.y;
+				}
+			}
+		}
+	}
+
+	{
+		auto confirmBtn = assistRaceFrame->findButton("race confirm btn");
+		auto confirmGlyph = assistRaceFrame->findImage("race confirm glyph");
+		confirmBtn->setDisabled(true);
+		confirmGlyph->disabled = true;
+		confirmBtn->setText(Language::get(5007));
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			if ( currentView != ASSIST_SHRINE_VIEW_RACE )
+			{
+				if ( confirmBtn->isSelected() )
+				{
+					confirmBtn->deselect();
+				}
+			}
+			if ( isInteractable )
+			{
+				confirmBtn->setDisabled(false);
+				if ( !raceHasChanged() )
+				{
+					confirmBtn->setTextColor(hudColors.characterSheetFaintText);
+					confirmBtn->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+				else
+				{
+					confirmBtn->setTextColor(makeColor(255, 255, 255, 255));
+					confirmBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				}
+				if ( confirmBtn->isSelected() )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, confirmBtn);
+				}
+			}
+			else
+			{
+				if ( !raceHasChanged() )
+				{
+					confirmBtn->setTextColor(hudColors.characterSheetFaintText);
+					confirmBtn->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+			}
+		}
+		else if ( confirmBtn->isSelected() )
+		{
+			confirmBtn->deselect();
+		}
+		if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			confirmBtn->setText(Language::get(5007));
+			confirmBtn->setDisabled(true);
+			if ( !raceHasChanged() || players[playernum]->GUI.activeModule != Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				confirmBtn->setTextColor(hudColors.characterSheetFaintText);
+			}
+			else
+			{
+				confirmBtn->setTextColor(makeColor(255, 255, 255, 255));
+				confirmGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt1");
+				if ( auto imgGet = Image::get(confirmGlyph->path.c_str()) )
+				{
+					confirmGlyph->pos.w = imgGet->getWidth();
+					confirmGlyph->pos.h = imgGet->getHeight();
+					confirmGlyph->disabled = false;
+				}
+				confirmGlyph->pos.x = confirmBtn->getSize().x + confirmBtn->getSize().w / 2;
+				confirmGlyph->pos.x -= confirmGlyph->pos.w / 2;
+				if ( confirmGlyph->pos.x % 2 == 1 )
+				{
+					++confirmGlyph->pos.x;
+				}
+				confirmGlyph->pos.y = confirmBtn->getSize().y + confirmBtn->getSize().h - 4;
+			}
+		}
+	}
+
+	{
+		auto confirmBtn = assistClassFrame->findButton("class confirm btn");
+		auto confirmGlyph = assistClassFrame->findImage("class confirm glyph");
+		confirmBtn->setDisabled(true);
+		confirmGlyph->disabled = true;
+		confirmBtn->setText(Language::get(5007));
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			if ( currentView != ASSIST_SHRINE_VIEW_CLASSES )
+			{
+				if ( confirmBtn->isSelected() )
+				{
+					confirmBtn->deselect();
+				}
+			}
+			if ( isInteractable )
+			{
+				confirmBtn->setDisabled(false);
+				if ( !classHasChanged() )
+				{
+					confirmBtn->setTextColor(hudColors.characterSheetFaintText);
+					confirmBtn->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+				else
+				{
+					confirmBtn->setTextColor(makeColor(255, 255, 255, 255));
+					confirmBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+				}
+				if ( confirmBtn->isSelected() )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, confirmBtn);
+				}
+			}
+			else
+			{
+				if ( !classHasChanged() )
+				{
+					confirmBtn->setTextColor(hudColors.characterSheetFaintText);
+					confirmBtn->setTextHighlightColor(hudColors.characterSheetFaintText);
+				}
+			}
+		}
+		else if ( confirmBtn->isSelected() )
+		{
+			confirmBtn->deselect();
+		}
+		if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			confirmBtn->setText(Language::get(5007));
+			confirmBtn->setDisabled(true);
+			if ( !classHasChanged() || players[playernum]->GUI.activeModule != Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				confirmBtn->setTextColor(hudColors.characterSheetFaintText);
+			}
+			else
+			{
+				confirmBtn->setTextColor(makeColor(255, 255, 255, 255));
+				confirmGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt1");
+				if ( auto imgGet = Image::get(confirmGlyph->path.c_str()) )
+				{
+					confirmGlyph->pos.w = imgGet->getWidth();
+					confirmGlyph->pos.h = imgGet->getHeight();
+					confirmGlyph->disabled = false;
+				}
+				confirmGlyph->pos.x = confirmBtn->getSize().x + confirmBtn->getSize().w / 2;
+				confirmGlyph->pos.x -= confirmGlyph->pos.w / 2;
+				if ( confirmGlyph->pos.x % 2 == 1 )
+				{
+					++confirmGlyph->pos.x;
+				}
+				confirmGlyph->pos.y = confirmBtn->getSize().y + confirmBtn->getSize().h - 4;
+			}
+		}
+	}
+
+	//if ( assistRaceFrame )
+	//{
+	//	auto sexBtn = assistRaceFrame->findButton("sex m button");
+	//	//auto sexGlyph = assistItemFrame->findImage("sex m glyph");
+	//	sexBtn->setDisabled(true);
+	//	//sexGlyph->disabled = true;
+
+	//	if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+	//	{
+	//		if ( currentView != ASSIST_SHRINE_VIEW_RACE )
+	//		{
+	//			if ( sexBtn->isSelected() )
+	//			{
+	//				sexBtn->deselect();
+	//			}
+	//		}
+	//		if ( isInteractable )
+	//		{
+	//			sexBtn->setDisabled(false);
+	//			if ( sexBtn->isSelected() )
+	//			{
+	//				buttonAssistShrineUpdateSelectorOnHighlight(playernum, sexBtn);
+	//			}
+	//		}
+	//		else
+	//		{
+	//			sexBtn->setTextColor(hudColors.characterSheetFaintText);
+	//		}
+	//	}
+	//	else if ( sexBtn->isSelected() )
+	//	{
+	//		sexBtn->deselect();
+	//	}
+	//	if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+	//	{
+	//		sexBtn->setText(Language::get(6316));
+	//		sexBtn->setDisabled(true);
+	//		/*sexGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt1");
+	//		if ( auto imgGet = Image::get(sexGlyph->path.c_str()) )
+	//		{
+	//			sexGlyph->pos.w = imgGet->getWidth();
+	//			sexGlyph->pos.h = imgGet->getHeight();
+	//			sexGlyph->disabled = false;
+	//		}
+	//		sexGlyph->pos.x = sexBtn->getSize().x + sexBtn->getSize().w - 16;
+	//		if ( sexGlyph->pos.x % 2 == 1 )
+	//		{
+	//			++sexGlyph->pos.x;
+	//		}
+	//		sexGlyph->pos.y = sexBtn->getSize().y + sexBtn->getSize().h - 16;*/
+	//	}
+	//}
+	//if ( assistRaceFrame )
+	//{
+	//	auto sexBtn = assistRaceFrame->findButton("sex f button");
+	//	//auto sexGlyph = assistItemFrame->findImage("sex f glyph");
+	//	sexBtn->setDisabled(true);
+	//	//sexGlyph->disabled = true;
+
+	//	if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+	//	{
+	//		if ( currentView != ASSIST_SHRINE_VIEW_RACE )
+	//		{
+	//			if ( sexBtn->isSelected() )
+	//			{
+	//				sexBtn->deselect();
+	//			}
+	//		}
+	//		if ( isInteractable )
+	//		{
+	//			sexBtn->setDisabled(false);
+	//			if ( sexBtn->isSelected() )
+	//			{
+	//				buttonAssistShrineUpdateSelectorOnHighlight(playernum, sexBtn);
+	//			}
+	//		}
+	//		else
+	//		{
+	//			sexBtn->setTextColor(hudColors.characterSheetFaintText);
+	//		}
+	//	}
+	//	else if ( sexBtn->isSelected() )
+	//	{
+	//		sexBtn->deselect();
+	//	}
+	//	if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+	//	{
+	//		sexBtn->setText(Language::get(6316));
+	//		sexBtn->setDisabled(true);
+	//		/*sexGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt1");
+	//		if ( auto imgGet = Image::get(sexGlyph->path.c_str()) )
+	//		{
+	//			sexGlyph->pos.w = imgGet->getWidth();
+	//			sexGlyph->pos.h = imgGet->getHeight();
+	//			sexGlyph->disabled = false;
+	//		}
+	//		sexGlyph->pos.x = sexBtn->getSize().x + sexBtn->getSize().w - 16;
+	//		if ( sexGlyph->pos.x % 2 == 1 )
+	//		{
+	//			++sexGlyph->pos.x;
+	//		}
+	//		sexGlyph->pos.y = sexBtn->getSize().y + sexBtn->getSize().h - 16;*/
+	//	}
+	//}
+	if ( assistRaceFrame )
+	{
+		auto sexBtn = assistRaceFrame->findButton("sex toggle button");
+		auto sexToggleGlyph1 = assistRaceFrame->findImage("sex toggle glyph 1");
+		auto sexToggleGlyph2 = assistRaceFrame->findImage("sex toggle glyph 2");
+		sexBtn->setDisabled(true);
+		sexToggleGlyph1->disabled = true;
+		sexToggleGlyph2->disabled = true;
+
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			if ( currentView != ASSIST_SHRINE_VIEW_RACE )
+			{
+				if ( sexBtn->isSelected() )
+				{
+					sexBtn->deselect();
+				}
+			}
+			if ( isInteractable )
+			{
+				sexBtn->setDisabled(false);
+				if ( sexBtn->isSelected() )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, sexBtn);
+				}
+			}
+			else
+			{
+				sexBtn->setTextColor(hudColors.characterSheetFaintText);
+			}
+		}
+		else if ( sexBtn->isSelected() )
+		{
+			sexBtn->deselect();
+		}
+		if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			sexBtn->setDisabled(true);
+
+			if ( players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				sexToggleGlyph1->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageLeftAlt");
+				if ( auto imgGet = Image::get(sexToggleGlyph1->path.c_str()) )
+				{
+					sexToggleGlyph1->pos.w = imgGet->getWidth();
+					sexToggleGlyph1->pos.h = imgGet->getHeight();
+					sexToggleGlyph1->disabled = false;
+				}
+				sexToggleGlyph1->pos.x = sexBtn->getSize().x + 16;
+				sexToggleGlyph1->pos.x -= sexToggleGlyph1->pos.w / 2;
+				if ( sexToggleGlyph1->pos.x % 2 == 1 )
+				{
+					++sexToggleGlyph1->pos.x;
+				}
+				sexToggleGlyph1->pos.y = sexBtn->getSize().y + sexBtn->getSize().h - 4;
+				if ( sexToggleGlyph1->pos.y % 2 == 1 )
+				{
+					++sexToggleGlyph1->pos.y;
+				}
+
+				sexToggleGlyph2->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageRightAlt");
+				if ( auto imgGet = Image::get(sexToggleGlyph2->path.c_str()) )
+				{
+					sexToggleGlyph2->pos.w = imgGet->getWidth();
+					sexToggleGlyph2->pos.h = imgGet->getHeight();
+					sexToggleGlyph2->disabled = false;
+				}
+				sexToggleGlyph2->pos.x = sexBtn->getSize().x + sexBtn->getSize().w - 16;
+				sexToggleGlyph2->pos.x -= sexToggleGlyph2->pos.w / 2;
+				if ( sexToggleGlyph2->pos.x % 2 == 1 )
+				{
+					++sexToggleGlyph2->pos.x;
+				}
+				sexToggleGlyph2->pos.y = sexBtn->getSize().y + sexBtn->getSize().h - 4;
+				if ( sexToggleGlyph2->pos.y % 2 == 1 )
+				{
+					++sexToggleGlyph2->pos.y;
+				}
+			}
+		}
+
+		auto abilityBtn = assistRaceFrame->findButton("race ability btn");
+		auto abilityGlyph = assistRaceFrame->findImage("race ability glyph");
+		auto disableAbilityTxt = assistRaceFrame->findField("race ability txt");
+		abilityBtn->setDisabled(true);
+		abilityGlyph->disabled = true;
+
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			if ( currentView != ASSIST_SHRINE_VIEW_RACE )
+			{
+				if ( abilityBtn->isSelected() )
+				{
+					abilityBtn->deselect();
+				}
+			}
+			if ( isInteractable )
+			{
+				abilityBtn->setDisabled(false);
+				if ( abilityBtn->isSelected() )
+				{
+					buttonAssistShrineUpdateSelectorOnHighlight(playernum, abilityBtn);
+				}
+			}
+		}
+		else if ( abilityBtn->isSelected() )
+		{
+			abilityBtn->deselect();
+		}
+		if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			abilityBtn->setDisabled(true);
+			if ( disableAbilityTxt->getColor() == makeColor(121, 117, 116, 255) || players[playernum]->GUI.activeModule != Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				// disabled button via text color
+			}
+			else
+			{
+				abilityGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt2");
+				if ( auto imgGet = Image::get(abilityGlyph->path.c_str()) )
+				{
+					abilityGlyph->pos.w = imgGet->getWidth();
+					abilityGlyph->pos.h = imgGet->getHeight();
+					abilityGlyph->disabled = false;
+				}
+				abilityGlyph->pos.x = abilityBtn->getSize().x + abilityBtn->getSize().w - 4;
+				if ( abilityGlyph->pos.x % 2 == 1 )
+				{
+					++abilityGlyph->pos.x;
+				}
+				abilityGlyph->pos.y = abilityBtn->getSize().y + abilityBtn->getSize().h / 2 - abilityGlyph->pos.h / 2;
+				if ( abilityGlyph->pos.y % 2 == 1 )
+				{
+					++abilityGlyph->pos.y;
+				}
+			}
+		}
+	}
+
+	bool requestAssistItemButtonActive = false;
+	auto request_btn = itemTooltip->findButton("request btn");
+	request_btn->setDisabled(true);
+	request_btn->setInvisible(true);
+	auto request_glyph = itemTooltip->findImage("request glyph");
+	request_glyph->disabled = true;
+
+	clearItemDisplayed();
+
+	bool moduleActive = isInteractable 
+		&& !inputs.getUIInteraction(playernum)->selectedItem
+		&& inventoryControlActive
+		&& player->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_ASSISTSHRINE)
+		&& player->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE;
+
+	bool classRaceTooltipActive = false;
+
+	if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+	{
+		// default tooltip for assist items
+		if ( isInteractable
+			&& !inputs.getUIInteraction(playernum)->selectedItem
+			&& inventoryControlActive 
+			&& player->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_ASSISTSHRINE)
+			&& ( (!usingGamepad && !(player->bUseCompactGUIWidth() && !moduleActive))
+				|| (usingGamepad && moduleActive)) 
+			&& notifications.size() == 0 )
+		{
+			classRaceTooltipActive = true;
+
+			Uint32 defaultColor = hudColors.characterSheetNeutral;
+			auto txt = tooltipFrame->findField("tooltip text");
+			txt->setColor(defaultColor);
+
+			auto div = tooltipFrame->findImage("tooltip divider 1");
+			div->disabled = true;
+			auto img = tooltipFrame->findImage("tooltip img");
+			img->disabled = false;
+			img->path = "*#images/ui/AssistShrine/AssistIcon_00.png";
+			img->pos.w = 42;
+			img->pos.h = 42;
+
+			auto tooltipTopLeft = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_LEFT].c_str());
+			tooltipTopLeft->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_Blue_00.png";
+			auto tooltipTop = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP].c_str());
+			tooltipTop->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_Blue_00.png";
+			auto tooltipTopRight = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_RIGHT].c_str());
+			tooltipTopRight->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_Blue_00.png";
+			Player::GUI_t::imageSetWidthHeight9x9(tooltipFrame, Player::GUI_t::tooltipEffectBackgroundImages);
+
+			int maxWidth = 308;
+			int minWidth = 308;
+
+			const int padx = 16;
+			const int pady1 = 8;
+			const int pady2 = 4;
+			const int padxMid = 4;
+			const int padyMid = 8;
+			SDL_Rect tooltipPos = SDL_Rect{ 400, 0, maxWidth, 100 };
+
+			txt->setText(Language::get(6340));
+			SDL_Rect txtPos = SDL_Rect{ padx, pady1 - 3, maxWidth - padx * 2, 80 };
+			txt->setSize(txtPos);
+			txt->setColor(hudColors.characterSheetHeadingText);
+			Font* actualFont = Font::get(txt->getFont());
+			int txtHeight = txt->getNumTextLines() * actualFont->height(true);
+			txtPos.h = txtHeight + 4;
+			auto txtGet = Text::get(txt->getLongestLine().c_str(), txt->getFont(),
+				txt->getTextColor(), txt->getOutlineColor());
+			txtPos.w = txtGet->getWidth();
+			txtPos.w = std::max(minWidth - padx * 2, txtPos.w);
+			txt->setSize(txtPos);
+
+			tooltipPos.w = (txtPos.w + padx * 2);
+
+			int currentHeight = txtPos.y + (actualFont->height(true) * 1) + 2;
+			const int extraTextHeightForLowerCharacters = 4;
+			currentHeight += padyMid;
+
+			if ( itemTooltip )
+			{
+				itemTooltip->setDisabled(false);
+
+				SDL_Rect itemTooltipPos = itemTooltip->getSize();
+				itemTooltipPos.x = txtPos.x + padxMid;
+				itemTooltipPos.y = currentHeight;
+				itemTooltipPos.w = maxWidth;
+				int heightOffset = 0;
+				if ( auto details_text = itemTooltip->findField("details") )
+				{
+					details_text->clearLinesToColor();
+					if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+					{
+						if ( multiplayer == CLIENT )
+						{
+							details_text->setText(Language::get(6348));
+						}
+						else
+						{
+							details_text->setText(Language::get(6347));
+						}
+						std::string txt = details_text->getText();
+						std::vector<std::string> lines;
+						for ( int c = 0; c < txt.size(); ++c )
+						{
+							if ( txt[c] == '\n' )
+							{
+								if ( lines.size() > 0 && lines.back() == "" )
+								{
+									// found paragraph
+									break;
+								}
+								lines.push_back("");
+							}
+							else if ( txt[c] != '\r' )
+							{
+								if ( lines.size() == 0 )
+								{
+									lines.push_back("");
+								}
+								lines.back().push_back(txt[c]);
+							}
+						}
+						for ( int i = 0; i < 10; ++i )
+						{
+							details_text->addColorToLine(lines.size() + i, hudColors.characterSheetRed);
+						}
+					}
+					else
+					{
+						details_text->setText(Language::get(6339));
+					}
+					SDL_Rect pos = details_text->getSize();
+					if ( auto actualFont = Font::get(details_text->getFont()) )
+					{
+						const int numlines = details_text->getNumTextLines();
+						const int pad = details_text->getPaddingPerLine();
+						const int actualHeight = actualFont->height(true);
+						pos.h = 4;
+						for ( int line = 0; line < numlines; ++line )
+						{
+							pos.h += actualHeight + pad;// +details_text->getIndividualLinePadding(line);
+							heightOffset += details_text->getIndividualLinePadding(line);
+						}
+					}
+					itemTooltipPos.h = pos.h + pos.y + extraTextHeightForLowerCharacters;
+					details_text->setSize(pos);
+				}
+				itemTooltip->setSize(itemTooltipPos);
+				tooltipPos.w = itemTooltipPos.w + padxMid * 2;
+				currentHeight = std::max(itemTooltipPos.y + itemTooltipPos.h - extraTextHeightForLowerCharacters + heightOffset, 0);
+
+				if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+				{
+					request_btn->setInvisible(false);
+					if ( tooltipFrame->getOpacity() > 99.0 )
+					{
+						requestAssistItemButtonActive = true;
+					}
+					SDL_Rect pos = request_btn->getSize();
+					pos.x = tooltipPos.w / 2 - itemTooltipPos.x - pos.w / 2;
+					pos.y = itemTooltipPos.h - pos.h - 8;
+					request_btn->setSize(pos);
+				}
+			}
+
+			tooltipPos.h = pady1 + currentHeight + pady2;
+
+			Player::PanelJustify_t justify = player->inventoryUI.inventoryPanelJustify;
+			if ( player->inventoryUI.bCompactView )
+			{
+				if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT )
+				{
+					justify = Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+				}
+				else if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+				{
+					justify = Player::PanelJustify_t::PANEL_JUSTIFY_LEFT;
+				}
+				if ( player->bAlignGUINextToInventoryCompact() ) // flip justify if next to inventory
+				{
+					justify = (justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT)
+						? Player::PanelJustify_t::PANEL_JUSTIFY_LEFT
+						: Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+				}
+			}
+			if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+			{
+				tooltipPos.x = assistItemFrame->getSize().x - tooltipPos.w;
+				tooltipPos.x -= 8;
+			}
+			else
+			{
+				tooltipPos.x = assistItemFrame->getSize().x + assistItemFrame->getSize().w;
+				tooltipPos.x += 8;
+			}
+
+			img->pos.x = tooltipPos.w - img->pos.w - 16;
+			img->pos.y = tooltipPos.y + 32;
+
+			tooltipPos.y = assistItemFrame->getSize().y + 52 + 22;
+			if ( tooltipPos.y + tooltipPos.h > assistShrineFrame->getSize().h )
+			{
+				// keep on-screen
+				tooltipPos.y -= ((tooltipPos.y + tooltipPos.h) - assistShrineFrame->getSize().h);
+				tooltipFrame->setSize(tooltipPos);
+			}
+			tooltipFrame->setSize(tooltipPos);
+			Player::GUI_t::imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, tooltipPos.w, tooltipPos.h },
+				Player::GUI_t::tooltipEffectBackgroundImages);
+		}
+	}
+
+	if ( moduleActive )
+	{
+		if ( player->GUI.bActiveModuleUsesInventory() && getSelectedAssistShrineX() >= 0 && getSelectedAssistShrineX() < MAX_ASSISTSHRINE_X
+			&& getSelectedAssistShrineY() >= 0 && getSelectedAssistShrineY() < MAX_ASSISTSHRINE_Y
+			&& currentView == ASSIST_SHRINE_VIEW_CLASSES )
+		{
+			if ( auto slotFrame = getAssistShrineSlotFrame(getSelectedAssistShrineX(), getSelectedAssistShrineY()) )
+			{
+				if ( !slotFrame->isDisabled() && slotFrame->capturesMouse() )
+				{
+					auto find = classSlots.find(getSelectedAssistShrineX() + getSelectedAssistShrineY() * 100);
+					if ( find != classSlots.end() )
+					{
+						itemActionType = ASSIST_CLASS_OK;
+						itemType = find->second;
+
+						if ( inventoryControlActive && !player->inventoryUI.bIsTooltipDelayed() )
+						{
+							if ( notifications.size() == 0 )
+							{
+								classRaceTooltipActive = true;
+							}
+						}
+
+						if ( classRaceTooltipActive )
+						{
+							Uint32 defaultColor = hudColors.characterSheetNeutral;
+							auto txt = tooltipFrame->findField("tooltip text");
+							txt->setColor(defaultColor);
+
+							auto div = tooltipFrame->findImage("tooltip divider 1");
+							div->disabled = true;
+							auto img = tooltipFrame->findImage("tooltip img");
+							img->disabled = true;
+
+							auto tooltipTopLeft = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_LEFT].c_str());
+							tooltipTopLeft->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_Blue_00.png";
+							auto tooltipTop = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP].c_str());
+							tooltipTop->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_Blue_00.png";
+							auto tooltipTopRight = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_RIGHT].c_str());
+							tooltipTopRight->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_Blue_00.png";
+							Player::GUI_t::imageSetWidthHeight9x9(tooltipFrame, Player::GUI_t::tooltipEffectBackgroundImages);
+
+							int maxWidth = 260;
+							int minWidth = 260;
+
+							const int padx = 16;
+							const int pady1 = 8;
+							const int pady2 = 4;
+							const int padxMid = 4;
+							const int padyMid = 8;
+							SDL_Rect tooltipPos = SDL_Rect{ 400, 0, maxWidth, 100 };
+
+							char titleBuf[64];
+							std::string classname = playerClassLangEntry(itemType, parentGUI.gui_player);
+							uppercaseString(classname);
+							txt->setText(classname.c_str());
+							SDL_Rect txtPos = SDL_Rect{ padx, pady1 - 3, maxWidth - padx * 2, 80 };
+							txt->setSize(txtPos);
+							if ( itemType >= CLASS_CONJURER && itemType <= CLASS_BREWER )
+							{
+								txt->setColor(hudColors.characterDLC1ClassText);
+							}
+							else if ( itemType >= CLASS_MACHINIST && itemType <= CLASS_HUNTER )
+							{
+								txt->setColor(hudColors.characterDLC2ClassText);
+							}
+							else if ( itemType >= CLASS_BARD && itemType <= CLASS_PALADIN )
+							{
+								txt->setColor(hudColors.characterDLC3ClassText);
+							}
+							else
+							{
+								txt->setColor(hudColors.characterBaseClassText);
+							}
+							Font* actualFont = Font::get(txt->getFont());
+							int txtHeight = txt->getNumTextLines() * actualFont->height(true);
+							txtPos.h = txtHeight + 4;
+							auto txtGet = Text::get(txt->getLongestLine().c_str(), txt->getFont(),
+								txt->getTextColor(), txt->getOutlineColor());
+							txtPos.w = txtGet->getWidth();
+							txtPos.w = std::max(minWidth - padx * 2, txtPos.w);
+							txt->setSize(txtPos);
+
+							tooltipPos.w = (txtPos.w + padx * 2);
+
+							int currentHeight = txtPos.y + (actualFont->height(true) * 1) + 2;
+							const int extraTextHeightForLowerCharacters = 4;
+							currentHeight += padyMid;
+
+							if ( classTooltip )
+							{
+								classTooltip->setDisabled(false);
+								auto statGrowths = classTooltip->findFrame("stat growths");
+								MainMenu::ClassDescriptions::update_stat_growths(*statGrowths, itemType, 0);
+
+								div->pos.x = padx;
+								div->pos.y = currentHeight + statGrowths->getSize().h + 5;
+								div->pos.w = txtPos.w;
+								div->disabled = false;
+
+								// hp/mp
+								{
+									auto hpmp_values = classTooltip->findField("hpmp_values");
+									const int i = std::min((Sint32)itemType, (Sint32)(MainMenu::ClassDescriptions::data.size() - 1));
+									char buf[32];
+									snprintf(buf, sizeof(buf), "%d\n%d",
+										MainMenu::ClassDescriptions::data[i].hp,
+										MainMenu::ClassDescriptions::data[i].mp);
+									hpmp_values->setText(buf);
+								}
+
+								// difficulty stars
+								auto difficulty_stars = classTooltip->findField("difficulty_stars");
+								{
+									const int i = std::min((Sint32)itemType, (Sint32)(MainMenu::ClassDescriptions::data.size() - 1));
+									for ( int c = 0; c < 2; ++c ) {
+										difficulty_stars->addColorToLine(c, std::get<2>(MainMenu::ClassDescriptions::data[i].survivalComplexity[c]));
+									}
+									char buf[32];
+									snprintf(buf, sizeof(buf), "%s\n%s",
+										std::get<1>(MainMenu::ClassDescriptions::data[i].survivalComplexity[0]).c_str(),
+										std::get<1>(MainMenu::ClassDescriptions::data[i].survivalComplexity[1]).c_str());
+									difficulty_stars->setText(buf);
+								}
+
+								SDL_Rect classTooltipPos = classTooltip->getSize();
+								classTooltipPos.w = statGrowths->getSize().w;
+								classTooltipPos.h = difficulty_stars->getSize().y + difficulty_stars->getSize().h;
+								classTooltipPos.x = tooltipPos.w / 2 - classTooltipPos.w / 2;
+								classTooltipPos.y = currentHeight;
+								classTooltip->setSize(classTooltipPos);
+
+								currentHeight += classTooltipPos.h - 1;
+
+								std::string descText = "";
+								descText = Player::CharacterSheet_t::getHoverTextString("stat_growth_info");
+							}
+
+							tooltipPos.h = pady1 + currentHeight + pady2 - 8;
+
+							Player::PanelJustify_t justify = player->inventoryUI.inventoryPanelJustify;
+							if ( player->inventoryUI.bCompactView )
+							{
+								if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT )
+								{
+									justify = Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+								}
+								else if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+								{
+									justify = Player::PanelJustify_t::PANEL_JUSTIFY_LEFT;
+								}
+								if ( player->bAlignGUINextToInventoryCompact() ) // flip justify if next to inventory
+								{
+									justify = (justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT)
+										? Player::PanelJustify_t::PANEL_JUSTIFY_LEFT
+										: Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+								}
+							}
+							if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+							{
+								tooltipPos.x = assistItemFrame->getSize().x - tooltipPos.w;
+								tooltipPos.x -= 8;
+							}
+							else
+							{
+								tooltipPos.x = assistItemFrame->getSize().x + assistItemFrame->getSize().w;
+								tooltipPos.x += 8;
+							}
+							auto parentGrid = slotFrame->getParent();
+							tooltipPos.y = assistItemFrame->getSize().y + slotFrame->getSize().y + parentGrid->getSize().y - parentGrid->getActualSize().y;
+							if ( tooltipPos.y + tooltipPos.h > assistShrineFrame->getSize().h )
+							{
+								// keep on-screen
+								tooltipPos.y -= ((tooltipPos.y + tooltipPos.h) - assistShrineFrame->getSize().h);
+								tooltipFrame->setSize(tooltipPos);
+							}
+							tooltipFrame->setSize(tooltipPos);
+							Player::GUI_t::imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, tooltipPos.w, tooltipPos.h },
+								Player::GUI_t::tooltipEffectBackgroundImages);
+						}
+					}
+				}
+			}
+		}
+		else if ( player->GUI.bActiveModuleUsesInventory() && getSelectedAssistShrineX() == ASSIST_RACE_COLUMN
+			&& getSelectedAssistShrineY() >= 0 && getSelectedAssistShrineY() < MAX_ASSISTSHRINE_Y
+			&& currentView == ASSIST_SHRINE_VIEW_RACE )
+		{
+			if ( auto slotFrame = getAssistShrineSlotFrame(getSelectedAssistShrineX(), getSelectedAssistShrineY()) )
+			{
+				if ( !slotFrame->isDisabled() && slotFrame->capturesMouse() )
+				{
+					if ( getSelectedAssistShrineY() < raceSlots.size() )
+					{
+						itemActionType = ASSIST_RACE_OK;
+						itemType = raceSlots[getSelectedAssistShrineY()];
+
+						if ( inventoryControlActive && !player->inventoryUI.bIsTooltipDelayed() )
+						{
+							if ( notifications.size() == 0 )
+							{
+								classRaceTooltipActive = true;
+							}
+						}
+
+						if ( classRaceTooltipActive )
+						{
+							Uint32 defaultColor = hudColors.characterSheetNeutral;
+							auto txt = tooltipFrame->findField("tooltip text");
+							txt->setColor(defaultColor);
+
+							auto div = tooltipFrame->findImage("tooltip divider 1");
+							div->disabled = true;
+							auto img = tooltipFrame->findImage("tooltip img");
+							img->disabled = true;
+
+							auto tooltipTopLeft = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_LEFT].c_str());
+							tooltipTopLeft->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TL_Blue_00.png";
+							auto tooltipTop = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP].c_str());
+							tooltipTop->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_T_Blue_00.png";
+							auto tooltipTopRight = tooltipFrame->findImage(Player::GUI_t::tooltipEffectBackgroundImages[Player::GUI_t::TOP_RIGHT].c_str());
+							tooltipTopRight->path = "*#images/ui/CharSheet/HUD_CharSheet_Tooltip_TR_Blue_00.png";
+							Player::GUI_t::imageSetWidthHeight9x9(tooltipFrame, Player::GUI_t::tooltipEffectBackgroundImages);
+
+							int maxWidth = 260;
+							int minWidth = 260;
+
+							const int padx = 16;
+							const int pady1 = 8;
+							const int pady2 = 4;
+							const int padxMid = 4;
+							const int padyMid = 8;
+							SDL_Rect tooltipPos = SDL_Rect{ 400, 0, maxWidth, 100 };
+
+							Monster race = getMonsterFromPlayerRace(itemType);
+
+							char titleBuf[64];
+							std::string racename;
+							if ( selectedDisableAbilities == 1 && itemType != RACE_HUMAN )
+							{
+								racename += Language::get(4068);
+								racename += ' ';
+								racename += getMonsterLocalizedName(race);
+								race = HUMAN;
+							}
+							else
+							{
+								racename = getMonsterLocalizedName(race);
+							}
+							uppercaseString(racename);
+							txt->setText(racename.c_str());
+							SDL_Rect txtPos = SDL_Rect{ padx, pady1 - 3, maxWidth - padx * 2, 80 };
+							txt->setSize(txtPos);
+							if ( itemType >= RACE_SKELETON
+								&& itemType <= RACE_GOATMAN )
+							{
+								txt->setColor(hudColors.characterDLC1ClassText);
+							}
+							else if ( itemType >= RACE_AUTOMATON
+								&& itemType <= RACE_INSECTOID )
+							{
+								txt->setColor(hudColors.characterDLC2ClassText);
+							}
+							else if ( itemType > RACE_IMP
+								&& itemType < RACE_ENUM_END )
+							{
+								txt->setColor(hudColors.characterDLC3ClassText);
+							}
+							else
+							{
+								txt->setColor(hudColors.characterBaseClassText);
+							}
+							Font* actualFont = Font::get(txt->getFont());
+							int txtHeight = txt->getNumTextLines() * actualFont->height(true);
+							txtPos.h = txtHeight + 4;
+							auto txtGet = Text::get(txt->getLongestLine().c_str(), txt->getFont(),
+								txt->getTextColor(), txt->getOutlineColor());
+							txtPos.w = txtGet->getWidth();
+							txtPos.w = std::max(minWidth - padx * 2, txtPos.w);
+							txt->setSize(txtPos);
+
+							tooltipPos.w = (txtPos.w + padx * 2);
+
+							int currentHeight = txtPos.y + (actualFont->height(true) * 1) + 2;
+							const int extraTextHeightForLowerCharacters = 4;
+							currentHeight += padyMid;
+
+							if ( raceTooltip )
+							{
+								raceTooltip->setDisabled(false);
+								MainMenu::RaceDescriptions::update_details_text(*raceTooltip, race, race);
+
+								SDL_Rect raceTooltipPos = raceTooltip->getSize();
+								raceTooltipPos.x = txtPos.x + padxMid;
+								raceTooltipPos.y = currentHeight;
+								raceTooltipPos.w = 272;
+								int heightOffset = 0;
+								if ( auto details_text = raceTooltip->findField("details") )
+								{
+									SDL_Rect pos = details_text->getSize();
+									if ( auto actualFont = Font::get(details_text->getFont()) )
+									{
+										const int numlines = details_text->getNumTextLines();
+										const int pad = details_text->getPaddingPerLine();
+										const int actualHeight = actualFont->height(true);
+										pos.h = 0;
+										for ( int line = 0; line < numlines; ++line )
+										{
+											pos.h += actualHeight + pad;// +details_text->getIndividualLinePadding(line);
+											heightOffset += details_text->getIndividualLinePadding(line);
+										}
+									}
+									raceTooltipPos.h = pos.h + pos.y + extraTextHeightForLowerCharacters;
+									details_text->setSize(pos);
+								}
+								if ( auto details_text_right = raceTooltip->findField("details_right") )
+								{
+									SDL_Rect pos = details_text_right->getSize();
+									if ( auto actualFont = Font::get(details_text_right->getFont()) )
+									{
+										const int numlines = details_text_right->getNumTextLines();
+										const int pad = details_text_right->getPaddingPerLine();
+										const int actualHeight = actualFont->height(true);
+										pos.h = 0;
+										for ( int line = 0; line < numlines; ++line )
+										{
+											pos.h += actualHeight + pad;// +details_text_right->getIndividualLinePadding(line);
+										}
+									}
+
+									details_text_right->setSize(pos);
+								}
+								raceTooltip->setSize(raceTooltipPos);
+								tooltipPos.w = raceTooltipPos.w + padxMid * 2;
+								currentHeight = std::max(raceTooltipPos.y + raceTooltipPos.h - extraTextHeightForLowerCharacters + heightOffset, 0);
+							}
+
+							tooltipPos.h = pady1 + currentHeight + pady2;
+
+							Player::PanelJustify_t justify = player->inventoryUI.inventoryPanelJustify;
+							if ( player->inventoryUI.bCompactView )
+							{
+								if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT )
+								{
+									justify = Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+								}
+								else if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+								{
+									justify = Player::PanelJustify_t::PANEL_JUSTIFY_LEFT;
+								}
+								if ( player->bAlignGUINextToInventoryCompact() ) // flip justify if next to inventory
+								{
+									justify = (justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT)
+										? Player::PanelJustify_t::PANEL_JUSTIFY_LEFT
+										: Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+								}
+							}
+							if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+							{
+								tooltipPos.x = assistItemFrame->getSize().x - tooltipPos.w;
+								tooltipPos.x -= 8;
+							}
+							else
+							{
+								tooltipPos.x = assistItemFrame->getSize().x + assistItemFrame->getSize().w;
+								tooltipPos.x += 8;
+							}
+							auto parentGrid = slotFrame->getParent();
+							tooltipPos.y = assistItemFrame->getSize().y + parentGrid->getSize().y - 40;
+							if ( tooltipPos.y + tooltipPos.h > assistShrineFrame->getSize().h )
+							{
+								// keep on-screen
+								tooltipPos.y -= ((tooltipPos.y + tooltipPos.h) - assistShrineFrame->getSize().h);
+								tooltipFrame->setSize(tooltipPos);
+							}
+							tooltipFrame->setSize(tooltipPos);
+							Player::GUI_t::imageResizeToContainer9x9(tooltipFrame, SDL_Rect{ 0, 0, tooltipPos.w, tooltipPos.h },
+								Player::GUI_t::tooltipEffectBackgroundImages);
+						}
+					}
+				}
+			}
+		}
+		else if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			Frame* slotFrame = itemFrameBlessModifierHovered;
+			if ( !slotFrame && player->GUI.bActiveModuleUsesInventory() )
+			{
+				if ( getSelectedAssistShrineX() >= ASSIST_SLOT_RING && getSelectedAssistShrineX() < 0
+					&& getSelectedAssistShrineY() == 0 )
+				{
+					if ( slotFrame = getAssistShrineSlotFrame(getSelectedAssistShrineX(), getSelectedAssistShrineY()) )
+					{
+						if ( !slotFrame->capturesMouse() )
+						{
+							slotFrame = nullptr;
+						}
+					}
+				}
+			}
+
+			if ( slotFrame )
+			{
+				if ( /*!slotFrame->isDisabled() && */true )
+				{
+					Item* item = nullptr;
+					switch ( getSelectedAssistShrineX() )
+					{
+					case ASSIST_SLOT_AMULET:
+						item = &itemAmulet;
+						break;
+					case ASSIST_SLOT_CLOAK:
+						item = &itemCloak;
+						break;
+					case ASSIST_SLOT_MASK:
+						item = &itemMask;
+						break;
+					case ASSIST_SLOT_RING:
+						item = &itemRing;
+						break;
+					default:
+						break;
+					}
+
+					if ( item )
+					{
+						setItemDisplayNameAndPrice(item);
+						if ( itemFrameBlessModifierHovered )
+						{
+							itemActionType = ASSIST_ITEM_NONE;
+						}
+
+						if ( !slotFrame->isDisabled() )
+						{
+							Player::PanelJustify_t justify = player->inventoryUI.inventoryPanelJustify;
+							if ( player->inventoryUI.bCompactView )
+							{
+								if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT )
+								{
+									justify = Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+								}
+								else if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT )
+								{
+									justify = Player::PanelJustify_t::PANEL_JUSTIFY_LEFT;
+								}
+								if ( player->bAlignGUINextToInventoryCompact() ) // flip justify if next to inventory
+								{
+									justify = (justify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT)
+										? Player::PanelJustify_t::PANEL_JUSTIFY_LEFT
+										: Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT;
+								}
+							}
+
+							int tooltipCoordX = 0;
+
+							auto bgFrame = assistShrineFrame->findFrame("assist base");
+							auto bg = bgFrame->findImage("assist base img");
+							if ( !player->inventoryUI.bCompactView )
+							{
+								if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT )
+								{
+									tooltipCoordX = assistShrineFrame->getSize().x + bgFrame->getSize().x + 8;
+									tooltipCoordX += bg->pos.w;
+								}
+								else
+								{
+									tooltipCoordX = assistShrineFrame->getSize().x + bgFrame->getSize().x - 8;
+									tooltipCoordX += bg->pos.x;
+								}
+							}
+							else
+							{
+								if ( justify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT )
+								{
+									tooltipCoordX = assistShrineFrame->getSize().x + bgFrame->getSize().x + 8;
+									tooltipCoordX += bg->pos.w;
+								}
+								else
+								{
+									tooltipCoordX = assistShrineFrame->getSize().x + bgFrame->getSize().x - 8;
+									tooltipCoordX += bg->pos.x;
+								}
+							}
+							int tooltipCoordY = slotFrame->getAbsoluteSize().y - player->camera_virtualy1() - 38 + 16;
+
+							if ( inventoryControlActive && !player->inventoryUI.bIsTooltipDelayed() )
+							{
+								bool itemTooltipOpen = false;
+								if ( !(svFlags & SV_FLAG_ASSIST_ITEMS) )
+								{
+									itemTooltipOpen = false;
+								}
+								else if ( notifications.size() == 0 )
+								{
+									if ( usingGamepad )
+									{
+										if ( itemActionType == ASSIST_ITEM_DEACTIVATE )
+										{
+											itemTooltipOpen = true;
+										}
+									}
+									else
+									{
+										itemTooltipOpen = true;
+									}
+								}
+
+								if ( itemTooltipOpen )
+								{
+									player->hud.updateFrameTooltip(item, tooltipCoordX, tooltipCoordY, justify);
+									if ( classRaceTooltipActive )
+									{
+										animClassRaceTooltipTicks = ticks;
+									}
+									classRaceTooltipActive = false;
+									animClassRaceTooltipOpacity = 0.0;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	const real_t fpsScale = getFPSScale(144.0);
+	if ( classRaceTooltipActive )
+	{
+		if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			bool fadein = false;
+			if ( animClassRaceTooltipOpacity < 0.001 )
+			{
+				if ( ticks - animClassRaceTooltipTicks > (usingGamepad ? (TICKS_PER_SECOND / 4) : TICKS_PER_SECOND) )
+				{
+					fadein = true;
+				}
+			}
+			else
+			{
+				fadein = true;
+				animClassRaceTooltipTicks = ticks;
+			}
+
+			if ( fadein )
+			{
+				real_t factor = 10.0;
+				real_t setpointDiff = fpsScale * std::max(.05, (1.0 - animClassRaceTooltipOpacity)) / (factor);
+				animClassRaceTooltipOpacity += setpointDiff;
+				animClassRaceTooltipOpacity = std::min(1.0, animClassRaceTooltipOpacity);
+			}
+
+		}
+		else
+		{
+			animClassRaceTooltipOpacity = 1.0;
+			animClassRaceTooltipTicks = ticks;
+		}
+	}
+
+	if ( ticks - animClassRaceTooltipTicks > 0 )
+	{
+		real_t factor = 10.0;
+		real_t setpointDiff = fpsScale * std::max(.05, (animClassRaceTooltipOpacity)) / (factor);
+		animClassRaceTooltipOpacity -= setpointDiff;
+		animClassRaceTooltipOpacity = std::max(0.0, animClassRaceTooltipOpacity);
+	}
+	tooltipFrame->setOpacity(animClassRaceTooltipOpacity * 100);
+
+	if ( itemActionType == ASSIST_ITEM_ACTIVATE || itemActionType == ASSIST_ITEM_DEACTIVATE )
+	{
+		animInvalidAction = 0.0;
+		animInvalidActionTicks = 0;
+	}
+	else
+	{
+		// shaking feedback for invalid action
+		// constant decay for animation
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+		real_t setpointDiffX = fpsScale * 1.0 / 25.0;
+		animInvalidAction -= setpointDiffX;
+		animInvalidAction = std::max(0.0, animInvalidAction);
+	}
+	bool bInvalidActionAnimating = false;
+	if ( animInvalidAction > 0.001 || (ticks - animInvalidActionTicks) < TICKS_PER_SECOND * .8 )
+	{
+		bInvalidActionAnimating = true;
+	}
+
+	auto actionPromptTxt = baseFrame->findField("action prompt txt");
+	actionPromptTxt->setDisabled(false);
+	auto actionPromptImg = baseFrame->findImage("action prompt glyph");
+
+	auto actionPromptTxt2 = baseFrame->findField("action prompt txt2");
+	actionPromptTxt2->setDisabled(false);
+	auto actionPromptImg2 = baseFrame->findImage("action prompt glyph2");
+	auto actionPromptImg3 = baseFrame->findImage("action prompt glyph3");
+
+	static ConsoleVariable<int> cvar_assistPromptY("/assist_action_prompt_y", -28);
+	SDL_Rect actionPromptTxtPos{ 0, 211 + *cvar_assistPromptY, baseFrame->getSize().w - 18 - 8, 24 };
+	actionPromptTxt->setSize(actionPromptTxtPos);
+
+	auto actionPromptBacking = baseFrame->findImage("action prompt img");
+	actionPromptBacking->disabled = true;
+	if ( currentView == ASSIST_SHRINE_VIEW_ITEMS && usingGamepad )
+	{
+		actionPromptBacking->pos.x = 10;
+		actionPromptBacking->pos.y = actionPromptTxtPos.y - 5;
+		actionPromptBacking->disabled = false;
+	}
+
+	if ( multiplayer == CLIENT )
+	{
+		request_btn->setText(Language::get(6349));
+	}
+	else
+	{
+		request_btn->setText(Language::get(6350));
+	}
+	if ( inputs.getVirtualMouse(playernum)->draw_cursor && !request_btn->isInvisible() )
+	{
+		if ( currentView != ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			request_btn->setDisabled(true);
+			if ( request_btn->isSelected() )
+			{
+				request_btn->deselect();
+			}
+		}
+		if ( isInteractable )
+		{
+			if ( !requestAssistItemButtonActive )
+			{
+				request_btn->setDisabled(true);
+				request_btn->setTextColor(hudColors.characterSheetFaintText);
+				request_btn->setTextHighlightColor(hudColors.characterSheetFaintText);
+				if ( request_btn->isSelected() )
+				{
+					request_btn->deselect();
+				}
+			}
+			else
+			{
+				request_btn->setDisabled(false);
+				request_btn->setTextColor(makeColor(255, 255, 255, 255));
+				request_btn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			}
+			if ( request_btn->isSelected() )
+			{
+				buttonAssistShrineUpdateSelectorOnHighlight(playernum, request_btn);
+			}
+		}
+		else
+		{
+			request_btn->setDisabled(true);
+			request_btn->setTextColor(hudColors.characterSheetFaintText);
+			request_btn->setTextHighlightColor(hudColors.characterSheetFaintText);
+		}
+	}
+	else if ( request_btn->isSelected() )
+	{
+		request_btn->deselect();
+	}
+	if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+	{
+		request_btn->setDisabled(true);
+		if ( !requestAssistItemButtonActive || players[playernum]->GUI.activeModule != Player::GUI_t::MODULE_ASSISTSHRINE )
+		{
+			request_btn->setTextColor(hudColors.characterSheetFaintText);
+		}
+		else
+		{
+			request_btn->setTextColor(makeColor(255, 255, 255, 255));
+			request_glyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt2");
+			if ( auto imgGet = Image::get(request_glyph->path.c_str()) )
+			{
+				request_glyph->pos.w = imgGet->getWidth();
+				request_glyph->pos.h = imgGet->getHeight();
+				request_glyph->disabled = false;
+			}
+			request_glyph->pos.x = request_btn->getSize().x + request_btn->getSize().w + 4;
+			if ( request_glyph->pos.x % 2 == 1 )
+			{
+				++request_glyph->pos.x;
+			}
+			request_glyph->pos.y = request_btn->getSize().y + request_btn->getSize().h / 2 - request_glyph->pos.h / 2;
+			if ( request_glyph->pos.y % 2 == 1 )
+			{
+				++request_glyph->pos.y;
+			}
+		}
+	}
+
+	if ( currentView == ASSIST_SHRINE_VIEW_ITEMS
+		&& itemActionType != ASSIST_ITEM_NONE 
+		&& (itemType != -1 || itemActionType == ASSIST_ITEM_NOTHING_TO_CLAIM)
+		&& usingGamepad )
+	{
+		if ( isInteractable )
+		{
+			//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			//real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
+			//animTooltip += setpointDiffX;
+			//animTooltip = std::min(1.0, animTooltip);
+			animTooltip = 1.0;
+			animTooltipTicks = ticks;
+		}
+
+		//itemDisplayTooltip->setDisabled(false);
+		{
+			// prompt + glyph
+			actionPromptTxt->setDisabled(false);
+			actionPromptTxt2->setDisabled(false);
+			if ( itemActionType == ASSIST_ITEM_DEACTIVATE || itemActionType == ASSIST_ITEM_ACTIVATE )
+			{
+				actionPromptImg->path = Input::inputs[playernum].getGlyphPathForBinding("MenuConfirm");
+				actionPromptImg2->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageRightAlt");
+				actionPromptImg3->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageLeftAlt");
+
+				if ( itemActionType == ASSIST_ITEM_DEACTIVATE )
+				{
+					actionPromptTxt->setText("Deselect");
+					actionPromptTxt2->setText("Bless");
+				}
+				else
+				{
+					actionPromptTxt->setText("Select");
+					actionPromptTxt2->setText("");
+				}
+
+				if ( auto imgGet = Image::get(actionPromptImg->path.c_str()) )
+				{
+					actionPromptImg->pos.w = imgGet->getWidth();
+					actionPromptImg->pos.h = imgGet->getHeight();
+					actionPromptImg->disabled = false;
+				}
+				if ( auto imgGet = Image::get(actionPromptImg2->path.c_str()) )
+				{
+					actionPromptImg2->pos.w = imgGet->getWidth();
+					actionPromptImg2->pos.h = imgGet->getHeight();
+					actionPromptImg2->disabled = !strcmp(actionPromptTxt2->getText(), "");
+				}
+				if ( auto imgGet = Image::get(actionPromptImg3->path.c_str()) )
+				{
+					actionPromptImg3->pos.w = imgGet->getWidth();
+					actionPromptImg3->pos.h = imgGet->getHeight();
+					actionPromptImg3->disabled = actionPromptImg2->disabled;
+
+				}
+				actionPromptTxt->setColor(defaultPromptColor);
+				actionPromptTxt2->setColor(defaultPromptColor);
+			}
+			else
+			{
+				actionPromptTxt->setText("");
+				actionPromptImg->disabled = true;
+				actionPromptTxt2->setText("");
+				actionPromptImg2->disabled = true;
+				actionPromptImg3->disabled = true;
+				switch ( itemActionType )
+				{
+				case ASSIST_ITEM_CLAIMED:
+					actionPromptTxt->setText(Language::get(6317));
+					break;
+				case ASSIST_ITEM_FLAG_DISABLED:
+					actionPromptTxt->setText(Language::get(6346));
+					break;
+				case ASSIST_ITEM_NOTHING_TO_CLAIM:
+					actionPromptTxt->setText(Language::get(6318));
+					break;
+				default:
+					actionPromptTxt->setText("-");
+					break;
+				}
+				actionPromptTxt->setColor(negativeColor);
+			}
+			if ( auto textGet = actionPromptTxt->getTextObject() )
+			{
+				actionPromptImg->pos.x = actionPromptTxtPos.x + actionPromptTxtPos.w
+					- textGet->getWidth() - 8 - actionPromptImg->pos.w;
+				actionPromptImg->pos.y = actionPromptTxtPos.y + actionPromptTxtPos.h / 2 - actionPromptImg->pos.h / 2;
+				if ( actionPromptImg->pos.y % 2 == 1 )
+				{
+					actionPromptImg->pos.y -= 1;
+				}
+
+				actionPromptTxtPos.w = (actionPromptImg->pos.x - 8);
+				actionPromptTxt2->setSize(actionPromptTxtPos);
+				if ( auto textGet = actionPromptTxt2->getTextObject() )
+				{
+					actionPromptImg2->pos.x = actionPromptTxtPos.x + actionPromptTxtPos.w
+						- textGet->getWidth() - 8 - actionPromptImg2->pos.w;
+					actionPromptImg2->pos.y = actionPromptTxtPos.y + actionPromptTxtPos.h / 2 - actionPromptImg2->pos.h / 2;
+					if ( actionPromptImg2->pos.y % 2 == 1 )
+					{
+						actionPromptImg2->pos.y -= 1;
+					}
+				}
+
+				actionPromptImg3->pos.x = actionPromptImg2->pos.x - 4 - actionPromptImg3->pos.w;
+				actionPromptImg3->pos.y = actionPromptTxtPos.y + actionPromptTxtPos.h / 2 - actionPromptImg3->pos.h / 2;
+				if ( actionPromptImg3->pos.y % 2 == 1 )
+				{
+					actionPromptImg3->pos.y -= 1;
+				}
+			}
+		}
+	}
+	else
+	{
+		if ( (!usingGamepad && (ticks - animTooltipTicks > TICKS_PER_SECOND / 3))
+			|| (usingGamepad)
+			|| animTooltip < 0.9999 )
+		{
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			real_t setpointDiffX = fpsScale * std::max(.01, (animTooltip)) / 2.0;
+			animTooltip -= setpointDiffX;
+			animTooltip = std::max(0.0, animTooltip);
+		}
+		if ( currentView != ASSIST_SHRINE_VIEW_ITEMS || !usingGamepad )
+		{
+			animTooltip = 0.0;
+		}
+	}
+
+	{
+		if ( ticks - animPromptTicks > TICKS_PER_SECOND / 10 )
+		{
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			real_t setpointDiffX = fpsScale * std::max(.01, (animPrompt)) / 2.0;
+			animPrompt -= setpointDiffX;
+			animPrompt = std::max(0.0, animPrompt);
+		}
+	}
+
+	{
+		SDL_Color color;
+		getColor(actionPromptTxt->getColor(), &color.r, &color.g, &color.b, &color.a);
+		color.a = (Uint8)(255 * animTooltip);
+		actionPromptImg->color = makeColor(255, 255, 255, color.a);
+		actionPromptTxt->setColor(makeColor(color.r, color.g, color.b, color.a));
+
+		actionPromptImg2->color = makeColor(255, 255, 255, color.a);
+		actionPromptImg3->color = makeColor(255, 255, 255, color.a);
+		actionPromptTxt2->setColor(makeColor(color.r, color.g, color.b, color.a));
+		if ( invalidActionType == INVALID_ACTION_SHAKE_PROMPT )
+		{
+			SDL_Rect pos = actionPromptTxt->getSize();
+			pos.x += -4 + 4 * (cos(animInvalidAction * 4 * PI));
+			actionPromptTxt->setSize(pos);
+		}
+	}
+
+	bool tryClaim = false;
+	bool activateSelection = false;
+	int blessToggle = 0;
+	if ( isInteractable )
+	{
+		if ( !inputs.getUIInteraction(playernum)->selectedItem
+			&& !player->GUI.isDropdownActive()
+			&& (player->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_ASSISTSHRINE)
+				|| player->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_INVENTORY))
+			&& player->bControlEnabled && !gamePaused
+			&& !itemFrameBlessModifierHovered
+			&& !player->usingCommand() )
+		{
+			if ( Input::inputs[playernum].binaryToggle("MenuCancel") )
+			{
+				Input::inputs[playernum].consumeBinaryToggle("MenuCancel");
+				parentGUI.closeGUI();
+				Player::soundCancel();
+				return;
+			}
+			else if ( Input::inputs[playernum].binaryToggle("MenuPageLeft") || Input::inputs[playernum].binaryToggle("MenuPageRight") )
+			{
+				{
+					bool left = Input::inputs[playernum].consumeBinaryToggle("MenuPageLeft");
+					bool right = Input::inputs[playernum].consumeBinaryToggle("MenuPageRight");
+					if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+					{
+						if ( right )
+						{
+							if ( auto filterBtn = baseFrame->findButton("filter race btn") )
+							{
+								if ( !filterBtn->isInvisible() )
+								{
+									filterBtn->getCallback()(*filterBtn);
+								}
+								else
+								{
+									if ( auto filterBtn = baseFrame->findButton("filter class btn") )
+									{
+										if ( !filterBtn->isInvisible() )
+										{
+											filterBtn->getCallback()(*filterBtn);
+										}
+									}
+								}
+							}
+						}
+					}
+					else if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+					{
+						if ( left )
+						{
+							if ( auto filterBtn = baseFrame->findButton("filter item btn") )
+							{
+								filterBtn->getCallback()(*filterBtn);
+							}
+						}
+						else if ( right )
+						{
+							if ( auto filterBtn = baseFrame->findButton("filter class btn") )
+							{
+								if ( !filterBtn->isInvisible() )
+								{
+									filterBtn->getCallback()(*filterBtn);
+								}
+							}
+						}
+					}
+					else if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+					{
+						if ( left )
+						{
+							if ( auto filterBtn = baseFrame->findButton("filter race btn") )
+							{
+								if ( !filterBtn->isInvisible() )
+								{
+									filterBtn->getCallback()(*filterBtn);
+								}
+								else
+								{
+									if ( auto filterBtn = baseFrame->findButton("filter item btn") )
+									{
+										filterBtn->getCallback()(*filterBtn);
+									}
+								}
+							}
+						}
+					}
+				}
+				return;
+			}
+			else if ( currentView == ASSIST_SHRINE_VIEW_CLASSES && player->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuAlt1") )
+				{
+					Input::inputs[playernum].consumeBinaryToggle("MenuAlt1");
+
+					auto confirmGlyph = assistClassFrame->findImage("class confirm glyph");
+					if ( confirmGlyph && !confirmGlyph->disabled )
+					{
+						animInvalidAction = 0.0;
+						animInvalidActionTicks = 0;
+						invalidActionType = INVALID_ACTION_NONE;
+
+						if ( auto confirmBtn = assistClassFrame->findButton("class confirm btn") )
+						{
+							confirmBtn->getCallback()(*confirmBtn);
+						}
+					}
+				}
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuConfirm") )
+				{
+					activateSelection = true;
+					Input::inputs[playernum].consumeBinaryToggle("MenuConfirm");
+				}
+				else if ( !usingGamepad && Input::inputs[playernum].binaryToggle("MenuLeftClick") )
+				{
+					activateSelection = true;
+					Input::inputs[playernum].consumeBinaryToggle("MenuLeftClick");
+				}
+			}
+			else if ( currentView == ASSIST_SHRINE_VIEW_RACE && player->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuAlt1") )
+				{
+					Input::inputs[playernum].consumeBinaryToggle("MenuAlt1");
+
+					auto confirmGlyph = assistRaceFrame->findImage("race confirm glyph");
+					if ( confirmGlyph && !confirmGlyph->disabled )
+					{
+						animInvalidAction = 0.0;
+						animInvalidActionTicks = 0;
+						invalidActionType = INVALID_ACTION_NONE;
+
+						if ( auto confirmBtn = assistRaceFrame->findButton("race confirm btn") )
+						{
+							confirmBtn->getCallback()(*confirmBtn);
+						}
+					}
+				}
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuAlt2") )
+				{
+					Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+					animInvalidAction = 0.0;
+					animInvalidActionTicks = 0;
+					invalidActionType = INVALID_ACTION_NONE;
+
+					auto abilityGlyph = assistRaceFrame->findImage("race ability glyph");
+					if ( abilityGlyph && !abilityGlyph->disabled )
+					{
+						if ( auto abilityBtn = assistRaceFrame->findButton("race ability btn") )
+						{
+							abilityBtn->setPressed(!abilityBtn->isPressed());
+							abilityBtn->getCallback()(*abilityBtn);
+						}
+					}
+				}
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuPageLeftAlt") )
+				{
+					Input::inputs[playernum].consumeBinaryToggle("MenuPageLeftAlt");
+
+					auto toggleglyph = assistRaceFrame->findImage("sex toggle glyph 1");
+					if ( toggleglyph && !toggleglyph->disabled )
+					{
+						animInvalidAction = 0.0;
+						animInvalidActionTicks = 0;
+						invalidActionType = INVALID_ACTION_NONE;
+
+						if ( auto sexToggleBtn = assistRaceFrame->findButton("sex toggle button") )
+						{
+							if ( sexToggleBtn->isPressed() )
+							{
+								sexToggleBtn->setPressed(!sexToggleBtn->isPressed());
+								sexToggleBtn->getCallback()(*sexToggleBtn);
+							}
+						}
+					}
+				}
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuPageRightAlt") )
+				{
+					Input::inputs[playernum].consumeBinaryToggle("MenuPageRightAlt");
+
+					auto toggleglyph = assistRaceFrame->findImage("sex toggle glyph 2");
+					if ( toggleglyph && !toggleglyph->disabled )
+					{
+						animInvalidAction = 0.0;
+						animInvalidActionTicks = 0;
+						invalidActionType = INVALID_ACTION_NONE;
+
+						if ( auto sexToggleBtn = assistRaceFrame->findButton("sex toggle button") )
+						{
+							if ( !sexToggleBtn->isPressed() )
+							{
+								sexToggleBtn->setPressed(!sexToggleBtn->isPressed());
+								sexToggleBtn->getCallback()(*sexToggleBtn);
+							}
+						}
+					}
+				}
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuConfirm") )
+				{
+					activateSelection = true;
+					Input::inputs[playernum].consumeBinaryToggle("MenuConfirm");
+				}
+				else if ( !usingGamepad && Input::inputs[playernum].binaryToggle("MenuLeftClick") )
+				{
+					activateSelection = true;
+					Input::inputs[playernum].consumeBinaryToggle("MenuLeftClick");
+				}
+			}
+			else if ( currentView == ASSIST_SHRINE_VIEW_ITEMS && player->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
+			{
+				if ( Input::inputs[playernum].binaryToggle("MenuAlt2") )
+				{
+					if ( request_glyph && !request_glyph->disabled )
+					{
+						Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+
+						animInvalidAction = 0.0;
+						animInvalidActionTicks = 0;
+						invalidActionType = INVALID_ACTION_NONE;
+
+						if ( request_btn )
+						{
+							request_btn->getCallback()(*request_btn);
+						}
+					}
+				}
+				else if ( Input::inputs[playernum].binaryToggle("MenuAlt1") )
+				{
+					if ( !claimItemGlyph->disabled )
+					{
+						activateSelection = true;
+						tryClaim = true;
+						Input::inputs[playernum].consumeBinaryToggle("MenuAlt1");
+					}
+				}
+				else
+				{
+					if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuConfirm") )
+					{
+						activateSelection = true;
+						Input::inputs[playernum].consumeBinaryToggle("MenuConfirm");
+					}
+					else if ( !usingGamepad && Input::inputs[playernum].binaryToggle("MenuLeftClick") )
+					{
+						activateSelection = true;
+						Input::inputs[playernum].consumeBinaryToggle("MenuLeftClick");
+					}
+					else if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuPageLeftAlt") )
+					{
+						activateSelection = true;
+						blessToggle = -1;
+						Input::inputs[playernum].consumeBinaryToggle("MenuPageLeftAlt");
+					}
+					else if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuPageRightAlt") )
+					{
+						activateSelection = true;
+						blessToggle = 1;
+						Input::inputs[playernum].consumeBinaryToggle("MenuPageRightAlt");
+					}
+				}
+			}
+		}
+	}
+
+	if ( activateSelection )
+	{
+		if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+		{
+			animInvalidAction = 0.0;
+			animInvalidActionTicks = 0;
+			invalidActionType = INVALID_ACTION_NONE;
+
+			bool success = itemActionType == ASSIST_CLASS_OK;
+			if ( success )
+			{
+				//if ( itemType == selectedClass )
+				//{
+				//	// deselect
+				//	selectedClass = -1;
+				//	Player::soundCancel();
+				//}
+				//else
+				{
+					Player::soundActivate();
+					selectedClass = itemType;
+				}
+			}
+			else if ( itemType >= 0 )
+			{
+				playSound(90, 64);
+			}
+		}
+		else if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+		{
+			animInvalidAction = 0.0;
+			animInvalidActionTicks = 0;
+			invalidActionType = INVALID_ACTION_NONE;
+
+			bool success = itemActionType == ASSIST_RACE_OK;
+			if ( success )
+			{
+				Player::soundActivate();
+				selectedRace = itemType;
+
+				Button* sexBtn = assistRaceFrame->findButton("sex toggle button");
+				if ( selectedRace == RACE_SUCCUBUS )
+				{
+					if ( sexBtn )
+					{
+						sexBtn->setPressed(true);
+						selectedSex = FEMALE;
+					}
+				}
+				else if ( selectedRace == RACE_INCUBUS )
+				{
+					if ( sexBtn )
+					{
+						sexBtn->setPressed(false);
+						selectedSex = MALE;
+					}
+				}
+			}
+			else if ( itemType >= 0 )
+			{
+				playSound(90, 64);
+			}
+		}
+		else if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			Item* item = nullptr;
+			if ( itemType == itemAmulet.type )
+			{
+				item = &itemAmulet;
+			}
+			else if ( itemType == itemCloak.type )
+			{
+				item = &itemCloak;
+			}
+			else if ( itemType == itemMask.type )
+			{
+				item = &itemMask;
+			}
+			else if ( itemType == itemRing.type )
+			{
+				item = &itemRing;
+			}
+			animInvalidAction = 0.0;
+			animInvalidActionTicks = 0;
+			invalidActionType = INVALID_ACTION_NONE;
+			if ( itemActionType == ASSIST_ITEM_FLAG_DISABLED )
+			{
+				animInvalidAction = 1.0;
+				animInvalidActionTicks = ticks;
+				invalidActionType = INVALID_ACTION_SHAKE_PROMPT;
+				// play bad feedback sfx
+				playSound(90, 64);
+			}
+			else if ( !tryClaim && itemActionType == ASSIST_ITEM_CLAIMED )
+			{
+				if ( blessToggle == 0 )
+				{
+					animInvalidAction = 1.0;
+					animInvalidActionTicks = ticks;
+					invalidActionType = INVALID_ACTION_SHAKE_PROMPT;
+					// play bad feedback sfx
+					playSound(90, 64);
+				}
+			}
+			else if ( tryClaim && players[playernum]->entity )
+			{
+				bool success = claimItems(nullptr);
+				if ( success )
+				{
+					Player::soundActivate();
+				}
+				else
+				{
+					playSound(90, 64);
+				}
+			}
+			else if ( player->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE
+				&& players[playernum]->entity
+				&& item
+				&& getSelectedAssistShrineX() < 0 && getSelectedAssistShrineX() >= ASSIST_SLOT_RING
+				&& getSelectedAssistShrineY() == 0 )
+			{
+				int i = 0;
+				if ( blessToggle != 0 )
+				{
+					switch ( getSelectedAssistShrineX() )
+					{
+					case ASSIST_SLOT_CLOAK:
+						i = 1;
+						break;
+					case ASSIST_SLOT_MASK:
+						i = 2;
+						break;
+					case ASSIST_SLOT_RING:
+						i = 4;
+						break;
+					case ASSIST_SLOT_AMULET:
+						i = 3;
+						break;
+					default:
+						break;
+					}
+
+					if ( i > 0 )
+					{
+						char buf[128];
+						if ( blessToggle > 0 )
+						{
+							snprintf(buf, sizeof(buf), "assist item %d plus", i);
+						}
+						else
+						{
+							snprintf(buf, sizeof(buf), "assist item %d minus", i);
+						}
+						if ( auto button = assistItemFrame->findButton(buf) )
+						{
+							button->getCallback()(*button);
+						}
+					}
+				}
+				else if ( itemActionType == ASSIST_ITEM_ACTIVATE )
+				{
+					Player::soundActivate();
+					item->itemHiddenFromShop = false;
+				}
+				else if ( itemActionType == ASSIST_ITEM_DEACTIVATE )
+				{
+					Player::soundCancel();
+					item->itemHiddenFromShop = true;
+				}
+			}
+		}
+	}
+}
+
+void GenericGUIMenu::AssistShrineGUI_t::scrollToSlot(int x, int y, bool instantly)
+{
+	auto& currentScrollRow = (currentView == ASSIST_SHRINE_VIEW_CLASSES ? currentScrollRow1 : currentScrollRow2);
+	auto& scrollSetpoint = (currentView == ASSIST_SHRINE_VIEW_CLASSES ? scrollSetpoint1 : scrollSetpoint2);
+	auto& scrollAnimateX = (currentView == ASSIST_SHRINE_VIEW_CLASSES ? scrollAnimateX1 : scrollAnimateX2);
+	int lowerY = currentScrollRow;
+	int upperY = currentScrollRow;
+	int lowestItemY = 0;
+	int slotSize = kClassSlotHeight;
+	int numDisplayVertical = 0;
+	if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+	{
+		numDisplayVertical = kNumClassesToDisplayVertical;
+		slotSize = kClassSlotHeight;
+		upperY += numDisplayVertical - 1;
+		for ( auto& pair : classSlots )
+		{
+			lowestItemY = std::max(lowestItemY, pair.first / 100);
+		}
+	}
+	else if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+	{
+		numDisplayVertical = kNumRacesToDisplayVertical;
+		slotSize = kRaceSlotHeight;
+		upperY += numDisplayVertical - 1;
+		lowestItemY = std::max(lowestItemY, (int)raceSlots.size() - 1);
+	}
+
+	if ( y >= lowerY && y <= upperY )
+	{
+		// no work to do.
+		return;
+	}
+	int player = parentGUI.getPlayer();
+	int maxScroll = std::max((lowestItemY + 1) - (numDisplayVertical), 0) * slotSize;
+
+	int scrollAmount = 0;
+	if ( y < lowerY )
+	{
+		scrollAmount = (y)*slotSize;
+		//scrollAmount += scrollSetpoint;
+	}
+	else if ( y > upperY )
+	{
+		scrollAmount = (y - upperY) * slotSize;
+		scrollAmount += scrollSetpoint;
+	}
+	scrollAmount = std::min(scrollAmount, maxScroll);
+
+	scrollSetpoint = scrollAmount;
+	if ( instantly )
+	{
+		scrollAnimateX = scrollSetpoint;
+	}
+	currentScrollRow = scrollSetpoint / slotSize;
+	if ( abs(scrollSetpoint - scrollAnimateX) > 0.00001 )
+	{
+		isInteractable = false;
+	}
+}
+
+bool GenericGUIMenu::AssistShrineGUI_t::isSlotVisible(int x, int y) const
+{
+	if ( assistShrineFrame )
+	{
+		if ( assistShrineFrame->isDisabled() )
+		{
+			return false;
+		}
+	}
+
+	if ( x < 0 )
+	{
+		if ( currentView == ASSIST_SHRINE_VIEW_ITEMS )
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else if ( x >= 0 )
+	{
+		if ( currentView == ASSIST_SHRINE_VIEW_CLASSES )
+		{
+			int lowerY = currentScrollRow1;
+			int upperY = currentScrollRow1 + kNumClassesToDisplayVertical - 1;
+
+			if ( y >= lowerY && y <= upperY )
+			{
+				if ( classSlots.find(x + y * 100) != classSlots.end() )
+				{
+					return true;
+				}
+			}
+		}
+		else if ( currentView == ASSIST_SHRINE_VIEW_RACE )
+		{
+			int lowerY = currentScrollRow2;
+			int upperY = currentScrollRow2 + kNumRacesToDisplayVertical - 1;
+
+			if ( y >= lowerY && y <= upperY )
+			{
+				if ( x == ASSIST_RACE_COLUMN && y < raceSlots.size() )
+				{
+					return true;
+				}
+			}
+		}
+		else
+		{
+			return false;
+		}
+
+		return false;
+	}
+	return false;
+}
+
+void GenericGUIMenu::MailboxGui_t::closeMailMenu()
+{
+	const int playernum = parentGUI.getPlayer();
+	auto& player = *players[playernum];
+
+	if ( mailFrame )
+	{
+		mailFrame->setDisabled(true);
+	}
+	animx = 0.0;
+	animTooltip = 0.0;
+
+	animSendItem1 = 0.0;
+	sendItem1Uid = 0;
+	mailReceiveItem.type = POTION_EMPTY;
+	recvItemUid = 0;
+	animRecvItem = 0.0;
+
+	isInteractable = false;
+	bool wasOpen = bOpen;
+	bOpen = false;
+	bFirstTimeSnapCursor = false;
+	if ( wasOpen )
+	{
+		if ( inputs.getUIInteraction(playernum)->selectedItem )
+		{
+			inputs.getUIInteraction(playernum)->selectedItem = nullptr;
+			inputs.getUIInteraction(playernum)->toggleclick = false;
+		}
+		inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
+	}
+	if ( players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_MAILBOX
+		&& !players[playernum]->shootmode )
+	{
+		// reset to inventory mode if still hanging in alchemy GUI
+		players[playernum]->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
+		players[playernum]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+		if ( !inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			players[playernum]->GUI.warpControllerToModule(false);
+		}
+	}
+	clearItemDisplayed();
+	itemRequiresTitleReflow = true;
+	if ( mailFrame )
+	{
+		for ( auto f : mailFrame->getFrames() )
+		{
+			f->removeSelf();
+		}
+		mailSlotFrames.clear();
+	}
+	//notifications.clear();
+
+	if ( multiplayer != CLIENT )
+	{
+		if ( Entity* mailbox = uidToEntity(parentGUI.mailboxEntityUid) )
+		{
+			mailbox->skill[6] = 0;
+			serverUpdateEntitySkill(mailbox, 6);
+		}
+	}
+
+	if ( multiplayer == CLIENT && parentGUI.mailboxEntityUid > 0 )
+	{
+		strcpy((char*)net_packet->data, "MBXC");
+		net_packet->data[4] = clientnum;
+		SDLNet_Write32(parentGUI.mailboxEntityUid, &net_packet->data[5]);
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		net_packet->len = 9;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	}
+	parentGUI.mailboxEntityUid = 0;
+}
+
+int GenericGUIMenu::MailboxGui_t::heightOffsetWhenNotCompact = 150;
+const int mailBaseWidth = 206;
+
+void getInventoryItemMailboxAnimSlotPos(Frame* slotFrame, Player* player, int itemx, int itemy, int& outPosX, int& outPosY, int yOffset)
+{
+	outPosX = slotFrame->getSize().x + slotFrame->getParent()->getSize().x;
+	outPosY = slotFrame->getSize().y + (player->inventoryUI.bCompactView ? 8 : 0) + yOffset;
+	if ( itemy >= player->inventoryUI.DEFAULT_INVENTORY_SIZEY )
+	{
+		// backpack slots, add another offset.
+		if ( auto invSlotsFrame = player->inventoryUI.frame->findFrame("inventory slots") )
+		{
+			outPosY += invSlotsFrame->getSize().h;
+		}
+	}
+}
+
+bool GenericGUIMenu::MailboxGui_t::mailGUIHasBeenCreated() const
+{
+	if ( mailFrame )
+	{
+		if ( !mailFrame->getFrames().empty() )
+		{
+			for ( auto f : mailFrame->getFrames() )
+			{
+				if ( !f->isToBeDeleted() )
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return false;
+}
+
+void buttonMailUpdateSelectorOnHighlight(const int player, Button* button)
+{
+	if ( button->isHighlighted() )
+	{
+		players[player]->GUI.setHoveringOverModuleButton(Player::GUI_t::MODULE_MAILBOX);
+		if ( players[player]->GUI.activeModule != Player::GUI_t::MODULE_MAILBOX )
+		{
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_MAILBOX);
+		}
+		SDL_Rect pos = button->getAbsoluteSize();
+		// make sure to adjust absolute size to camera viewport
+		pos.x -= players[player]->camera_virtualx1();
+		pos.y -= players[player]->camera_virtualy1();
+		players[player]->hud.setCursorDisabled(false);
+		players[player]->hud.updateCursorAnimation(pos.x - 1, pos.y - 1, pos.w, pos.h, inputs.getVirtualMouse(player)->draw_cursor);
+	}
+}
+
+void GenericGUIMenu::MailboxGui_t::openMailMenu()
+{
+	const int playernum = parentGUI.getPlayer();
+	auto player = players[playernum];
+
+	if ( mailFrame )
+	{
+		bool wasDisabled = mailFrame->isDisabled();
+		mailFrame->setDisabled(false);
+		if ( wasDisabled )
+		{
+			//notifications.clear();
+			animx = 0.0;
+			animTooltip = 0.0;
+			isInteractable = false;
+			bFirstTimeSnapCursor = false;
+		}
+		selectMailSlot(MAIL_SLOT_SEND, 0);
+		player->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
+		player->inventory_mode = INVENTORY_MODE_ITEM;
+		bOpen = true;
+	}
+	if ( inputs.getUIInteraction(playernum)->selectedItem )
+	{
+		inputs.getUIInteraction(playernum)->selectedItem = nullptr;
+		inputs.getUIInteraction(playernum)->toggleclick = false;
+	}
+	inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
+	clearItemDisplayed();
+}
+
+void GenericGUIMenu::MailboxGui_t::updateMailMenu()
+{
+	const int playernum = parentGUI.getPlayer();
+	auto player = players[playernum];
+
+	if ( !player->isLocalPlayer() )
+	{
+		closeMailMenu();
+		return;
+	}
+
+	Entity* mailboxStation = nullptr;
+	if ( bOpen )
+	{
+		if ( parentGUI.mailboxEntityUid != 0 )
+		{
+			mailboxStation = uidToEntity(parentGUI.mailboxEntityUid);
+			if ( !mailboxStation )
+			{
+				parentGUI.closeGUI();
+				return;
+			}
+		}
+
+		if ( mailboxStation )
+		{
+			if ( player->entity && (entityDist(player->entity, mailboxStation) > TOUCHRANGE) )
+			{
+				parentGUI.closeGUI();
+				return;
+			}
+		}
+	}
+
+	if ( !mailFrame )
+	{
+		return;
+	}
+
+	mailFrame->setSize(SDL_Rect{ players[playernum]->camera_virtualx1(),
+		players[playernum]->camera_virtualy1(),
+		mailBaseWidth,
+		players[playernum]->camera_virtualHeight() });
+
+	if ( !mailFrame->isDisabled() && bOpen )
+	{
+		if ( !mailGUIHasBeenCreated() )
+		{
+			createMailMenu();
+		}
+
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animx)) / 2.0;
+		animx += setpointDiffX;
+		animx = std::min(1.0, animx);
+		if ( animx >= .9999 )
+		{
+			if ( !bFirstTimeSnapCursor )
+			{
+				bFirstTimeSnapCursor = true;
+				if ( !inputs.getUIInteraction(playernum)->selectedItem
+					&& player->GUI.activeModule == Player::GUI_t::MODULE_MAILBOX )
+				{
+					//warpMouseToSelectedAlchemyItem(nullptr, (Inputs::SET_CONTROLLER));
+				}
+			}
+			isInteractable = true;
+		}
+	}
+	else
+	{
+		animx = 0.0;
+		animTooltip = 0.0;
+		isInteractable = false;
+	}
+
+	auto mailFramePos = mailFrame->getSize();
+	if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT )
+	{
+		if ( !player->inventoryUI.bCompactView )
+		{
+			const int fullWidth = mailFramePos.w + 210; // inventory width 210
+			mailFramePos.x = -mailFramePos.w + animx * fullWidth;
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				mailFramePos.x -= player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+			}
+		}
+		else
+		{
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = mailFramePos.w + 210; // inventory width 210
+				mailFramePos.x = -mailFramePos.w + animx * fullWidth;
+			}
+			else
+			{
+				mailFramePos.x = player->camera_virtualWidth() - animx * mailFramePos.w;
+			}
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				mailFramePos.x -= -player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+			}
+		}
+	}
+	else if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_RIGHT )
+	{
+		if ( !player->inventoryUI.bCompactView )
+		{
+			const int fullWidth = mailFramePos.w + 210; // inventory width 210
+			mailFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				mailFramePos.x -= -player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+			}
+		}
+		else
+		{
+			if ( player->bAlignGUINextToInventoryCompact() )
+			{
+				const int fullWidth = mailFramePos.w + 210; // inventory width 210
+				mailFramePos.x = player->camera_virtualWidth() - animx * fullWidth;
+			}
+			else
+			{
+				mailFramePos.x = -mailFramePos.w + animx * mailFramePos.w;
+			}
+			if ( player->bUseCompactGUIWidth() )
+			{
+				if ( player->inventoryUI.slideOutPercent >= .0001 )
+				{
+					isInteractable = false;
+				}
+				mailFramePos.x -= player->inventoryUI.slideOutWidth * player->inventoryUI.slideOutPercent;
+				mailFramePos.w = player->camera_virtualWidth();
+			}
+		}
+	}
+
+	int mailItemAnimOffsetY = 0; // all animations tested at heightOffsetWhenNotCompact = 200, so needs offset
+	if ( !player->bUseCompactGUIHeight() && !player->bUseCompactGUIWidth() )
+	{
+		mailFramePos.y = heightOffsetWhenNotCompact;
+		mailItemAnimOffsetY = 200 - heightOffsetWhenNotCompact;
+	}
+	else
+	{
+		mailFramePos.y = 0;
+	}
+
+	if ( !mailGUIHasBeenCreated() )
+	{
+		return;
+	}
+
+	auto baseFrame = mailFrame->findFrame("mail base");
+	baseFrame->setDisabled(false);
+	if ( auto baseFrameImg = baseFrame->findImage("mail base img") )
+	{
+		baseFrameImg->path = "*#images/ui/Shrines/pillar_box/PillarBox_Base_00.png";
+	}
+
+	mailFrame->setSize(mailFramePos);
+
+	SDL_Rect baseFramePos = baseFrame->getSize();
+	baseFramePos.x = 0;
+	baseFramePos.w = mailBaseWidth;
+	baseFrame->setSize(baseFramePos);
+
+	mailFramePos.h = baseFramePos.y + baseFramePos.h;
+	if ( animx >= .9999 )
+	{
+		baseFramePos.x += mailFramePos.x;
+		mailFramePos.w += mailFramePos.x;
+		mailFramePos.w = std::min(player->camera_virtualWidth(), mailFramePos.w);
+		mailFramePos.x = 0;
+		baseFrame->setSize(baseFramePos);
+	}
+	mailFrame->setSize(mailFramePos);
+
+	/*if ( bOpen )
+	{
+		for ( int x = 0; x < MAX_ALCH_X; ++x )
+		{
+			for ( int y = 0; y < MAX_ALCH_Y; ++y )
+			{
+				if ( auto slotFrame = getMailSlotFrame(x, y) )
+				{
+					slotFrame->setDisabled(true);
+				}
+			}
+		}
+	}*/
+
+	/*if ( animx >= 0.999 )
+	{
+		SDL_Rect recipePos = recipesFrame->getSize();
+		if ( !player->inventoryUI.bCompactView )
+		{
+			if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT )
+			{
+				alchFramePos.w += recipePos.w;
+				alchFrame->setSize(alchFramePos);
+			}
+		}
+		else
+		{
+			if ( player->inventoryUI.inventoryPanelJustify == Player::PANEL_JUSTIFY_LEFT
+				&& player->bAlignGUINextToInventoryCompact() )
+			{
+				alchFramePos.w += recipePos.w;
+				alchFrame->setSize(alchFramePos);
+			}
+		}
+	}*/
+
+	/*if ( auto emptyBottleFrame = baseFrame->findFrame("empty bottles") )
+	{
+		emptyBottleFrame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_RECIPE_ENTRY);
+		if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+		{
+			updateSlotFrameFromItem(emptyBottleFrame, &emptyBottleCount);
+		}
+		else
+		{
+			updateSlotFrameFromItem(emptyBottleFrame, &torchCount);
+			if ( torchCount.count < 0 )
+			{
+				auto spriteImageFrame = emptyBottleFrame->findFrame("item sprite frame");
+				auto spriteImage = spriteImageFrame->findImage("item sprite img");
+				spriteImage->path = "*#images/ui/Alchemy/Campfire.png";
+			}
+		}
+	}*/
+
+	static ConsoleVariable<int> cvar_mail_send_item_destx1("/mail_send_item_destx1", 36);
+	static ConsoleVariable<int> cvar_mail_send_item_desty1("/mail_send_item_desty1", 128);
+	animSendItem1DestX = baseFrame->getSize().x + *cvar_mail_send_item_destx1;
+	animSendItem1DestY = baseFrame->getSize().y + *cvar_mail_send_item_desty1;
+	animRecvItemStartX = baseFrame->getSize().x + 74;
+	animRecvItemStartY = baseFrame->getSize().y + 286;
+
+	{
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+		real_t setpointDiffX = fpsScale * std::max(.05, (animRecvItem)) / 3.0;
+		animRecvItem -= setpointDiffX;
+		animRecvItem = std::max(0.0, animRecvItem);
+	}
+
+	auto animSendItem1Frame = getMailSlotFrame(MAIL_SLOT_SEND, 0);
+	animSendItem1Frame->setDisabled(true);
+	Item* mailSendItem1 = nullptr;
+
+	{
+		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+		real_t setpointDiffX = fpsScale * std::max(.05, (animSendItem1)) / 3.0;
+		animSendItem1 -= setpointDiffX;
+		animSendItem1 = std::max(0.0, animSendItem1);
+	}
+	if ( sendItem1Uid != 0 )
+	{
+		if ( mailSendItem1 = uidToItem(sendItem1Uid) )
+		{
+			if ( !mailSendItem1->identified || itemIsEquipped(mailSendItem1, playernum)
+				|| mailSendItem1->status == BROKEN )
+			{
+				mailSendItem1 = nullptr; // if this got unidentified somehow, remove it
+				sendItem1Uid = 0;
+				animSendItem1 = 0.0;
+			}
+			else
+			{
+				animSendItem1Frame->setDisabled(false);
+				if ( animSendItem1 < 0.001 )
+				{
+					animSendItem1Frame->setUserData(nullptr);
+				}
+				else
+				{
+					animSendItem1Frame->setUserData(&GAMEUI_FRAMEDATA_ANIMATING_ITEM);
+				}
+				//if ( potionResultUid == potion1Uid && animPotionResult > 0.001 ) // we're animating to this potion
+				//{
+				//	animPotion1Frame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_ITEM);
+				//	int oldCount = potion1Item->count;
+				//	potion1Item->count = std::max(0, potion1Item->count - animPotionResultCount);
+				//	updateSlotFrameFromItem(animPotion1Frame, potion1Item);
+				//	potion1Item->count = oldCount;
+				//}
+				//else
+				//{
+				//	if ( alchemyMissingIngredientQty(potion1Item) )
+				//	{
+				//		if ( animPotion1 < 0.001 )
+				//		{
+				//			animPotion1Frame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_MISSING_QTY);
+				//		}
+				//	}
+				//}
+				updateSlotFrameFromItem(animSendItem1Frame, mailSendItem1);
+			}
+		}
+	}
+	auto animSendItem1Pos = animSendItem1Frame->getSize();
+	animSendItem1Pos.x = animSendItem1StartX + (1.0 - animSendItem1) * (animSendItem1DestX - animSendItem1StartX);
+	animSendItem1Pos.y = animSendItem1StartY + (1.0 - animSendItem1) * (animSendItem1DestY - animSendItem1StartY);
+	animSendItem1Frame->setSize(animSendItem1Pos);
+
+	auto recvItemFrame = getMailSlotFrame(MAIL_SLOT_RECV, 0);
+	recvItemFrame->setDisabled(true);
+
+	if ( keystatus[SDLK_g] )
+	{
+		mailReceiveItem.type = IRON_AXE;
+	}
+
+	{
+		if ( animRecvItem < 0.001 )
+		{
+			if ( auto item = uidToItem(recvItemUid) )
+			{
+				if ( auto slotFrame = player->inventoryUI.getInventorySlotFrame(item->x, item->y) )
+				{
+					// one-off update to prevent a blank frame
+					slotFrame->setUserData(nullptr);
+					updateSlotFrameFromItem(slotFrame, item);
+				}
+			}
+			recvItemUid = 0;
+		}
+	}
+	auto animRecvItemPos = recvItemFrame->getSize();
+	if ( recvItemUid == 0 )
+	{
+		animRecvItemPos.x = animRecvItemStartX;
+		animRecvItemPos.y = animRecvItemStartY;
+	}
+	else
+	{
+		animRecvItemPos.x = animRecvItemStartX + (1.0 - animRecvItem) * (animRecvItemDestX - animRecvItemStartX);
+		animRecvItemPos.y = animRecvItemStartY + (1.0 - animRecvItem) * (animRecvItemDestY - animRecvItemStartY);
+	}
+	recvItemFrame->setSize(animRecvItemPos);
+	recvItemFrame->setOpacity(100.0);
+	if ( recvItemUid != 0 )
+	{
+		if ( auto item = uidToItem(recvItemUid) )
+		{
+			recvItemFrame->setDisabled(false);
+			int oldCount = item->count;
+			item->count = 1;
+			recvItemFrame->setUserData(&GAMEUI_FRAMEDATA_ANIMATING_ITEM);
+			updateSlotFrameFromItem(recvItemFrame, item);
+			if ( animRecvItem < .25 && itemIsEquipped(item, playernum) )
+			{
+				recvItemFrame->setOpacity(100.0 * (animRecvItem / .25));
+			}
+			item->count = oldCount;
+		}
+	}
+	else if ( mailReceiveItem.type != POTION_EMPTY )
+	{
+		recvItemFrame->setDisabled(false);
+		recvItemFrame->setUserData(nullptr);
+		updateSlotFrameFromItem(recvItemFrame, &mailReceiveItem);
+	}
+
+	if ( !bOpen )
+	{
+		return;
+	}
+
+	if ( !parentGUI.isGUIOpen()
+		|| parentGUI.guiType != GUICurrentType::GUI_TYPE_MAILBOX
+		|| !stats[playernum]
+		|| stats[playernum]->HP <= 0
+		|| !player->entity
+		|| player->shootmode )
+	{
+		closeMailMenu();
+		return;
+	}
+
+	if ( player->entity && player->entity->isBlind() )
+	{
+		messagePlayer(playernum, MESSAGE_MISC, Language::get(4159));
+		parentGUI.closeGUI();
+		return; // I can't see!
+	}
+
+	/*if ( keystatus[SDLK_B] && enableDebugKeys )
+	{
+		keystatus[SDLK_B] = 0;
+		notifications.push_back(std::make_pair(ticks, AlchNotification_t("Wow a title!", "This is a body", "items/images/Alembic.png")));
+	}*/
+	//auto notificationFrame = alchFrame->findFrame("notification");
+	//notificationFrame->setDisabled(true);
+	//if ( !notifications.empty() )
+	//{
+	//	auto& n = notifications.front();
+	//	SDL_Rect notifPos = notificationFrame->getSize();
+	//	if ( (player->inventoryUI.inventoryPanelJustify == Player::PanelJustify_t::PANEL_JUSTIFY_LEFT
+	//		&& !player->inventoryUI.bCompactView)
+	//		|| (player->inventoryUI.inventoryPanelJustify == Player::PanelJustify_t::PANEL_JUSTIFY_RIGHT
+	//			&& player->inventoryUI.bCompactView) )
+	//	{
+	//		notifPos.x = baseFrame->getSize().x + baseFrame->getSize().w - notifPos.w * (1.0 - n.second.animx);
+	//	}
+	//	else
+	//	{
+	//		notifPos.x = baseFrame->getSize().x - notifPos.w * (n.second.animx);
+	//	}
+	//	notifPos.y = 4;
+	//	notificationFrame->setSize(notifPos);
+	//	notificationFrame->setOpacity(100.0 * n.second.animx);
+	//	notificationFrame->setDisabled(false);
+
+	//	auto notifTitle = notificationFrame->findField("notif title");
+	//	notifTitle->setText(n.second.title.c_str());
+	//	auto notifBody = notificationFrame->findField("notif body");
+	//	notifBody->setText(n.second.body.c_str());
+	//	auto notifIcon = notificationFrame->findImage("notif icon");
+	//	notifIcon->path = n.second.img;
+
+	//	if ( n.second.state == 0 )
+	//	{
+	//		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+	//		real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - n.second.animx)) / 2.0;
+	//		n.second.animx += setpointDiffX;
+	//		n.second.animx = std::min(1.0, n.second.animx);
+	//		if ( n.second.animx >= 0.999 )
+	//		{
+	//			n.second.state = 1;
+	//			n.first = ticks;
+	//		}
+	//	}
+	//	else if ( n.second.state == 1 )
+	//	{
+	//		if ( ticks - n.first > TICKS_PER_SECOND * 3 )
+	//		{
+	//			n.second.state = 2;
+	//		}
+	//	}
+	//	else if ( n.second.state == 2 )
+	//	{
+	//		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+	//		real_t setpointDiffX = fpsScale * std::max(.05, (n.second.animx)) / 3.0;
+	//		n.second.animx -= setpointDiffX;
+	//		n.second.animx = std::max(0.0, n.second.animx);
+	//		if ( n.second.animx <= 0.001 )
+	//		{
+	//			n.second.state = 3;
+	//			notifications.erase(notifications.begin());
+	//		}
+	//	}
+	//}
+
+	// alembic status
+	{
+		auto mailTitle = baseFrame->findField("mail title");
+		if ( mailboxStation )
+		{
+			mailTitle->setText(Language::get(6983));
+		}
+		else
+		{
+			mailTitle->setText("");
+		}
+
+		SDL_Rect textPos{ 0, 21, baseFrame->getSize().w, 24 };
+		textPos.y -= 14;
+		mailTitle->setSize(textPos);
+	}
+
+	bool usingGamepad = inputs.hasController(playernum) && !inputs.getVirtualMouse(playernum)->draw_cursor;
+
+	{
+		// close btn
+		auto closeBtn = baseFrame->findButton("close mail button");
+		auto closeGlyph = baseFrame->findImage("close mail glyph");
+		closeBtn->setDisabled(true);
+		closeGlyph->disabled = true;
+		if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+		{
+			closeBtn->setDisabled(!isInteractable);
+			if ( isInteractable )
+			{
+				buttonMailUpdateSelectorOnHighlight(playernum, closeBtn);
+			}
+		}
+		else if ( closeBtn->isSelected() )
+		{
+			closeBtn->deselect();
+		}
+		if ( closeBtn->isDisabled() && usingGamepad && sendItem1Uid == 0 )
+		{
+			closeGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuCancel");
+			if ( auto imgGet = Image::get(closeGlyph->path.c_str()) )
+			{
+				closeGlyph->pos.w = imgGet->getWidth();
+				closeGlyph->pos.h = imgGet->getHeight();
+				closeGlyph->disabled = false;
+			}
+
+			closeGlyph->pos.x = closeBtn->getSize().x - closeGlyph->pos.w;
+			closeGlyph->pos.y = closeBtn->getSize().y + closeBtn->getSize().h / 2 - closeGlyph->pos.h / 2;
+			if ( closeGlyph->pos.y % 2 == 1 )
+			{
+				++closeGlyph->pos.y;
+			}
+		}
+	}
+
+	//{
+	//	stationCookBtn->setDisabled(true);
+	//	//recipeGlyph->disabled = true;
+	//	if ( inputs.getVirtualMouse(playernum)->draw_cursor && !stationCookBtn->isInvisible() )
+	//	{
+	//		stationCookBtn->setDisabled(!isInteractable);
+	//		if ( isInteractable )
+	//		{
+	//			buttonAlchemyUpdateSelectorOnHighlight(playernum, stationCookBtn);
+	//		}
+	//	}
+	//	else if ( stationCookBtn->isSelected() )
+	//	{
+	//		stationCookBtn->deselect();
+	//	}
+
+	//	stationToggleGlyph->disabled = true;
+	//	if ( stationCookBtn->isDisabled() && usingGamepad && !stationCookBtn->isInvisible() )
+	//	{
+	//		stationToggleGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageLeft");
+	//		if ( auto imgGet = Image::get(stationToggleGlyph->path.c_str()) )
+	//		{
+	//			stationToggleGlyph->pos.w = imgGet->getWidth();
+	//			stationToggleGlyph->pos.h = imgGet->getHeight();
+	//			stationToggleGlyph->disabled = false;
+	//		}
+	//		stationToggleGlyph->pos.x = stationCookBtn->getSize().x - stationToggleGlyph->pos.w - 12;
+	//		if ( stationToggleGlyph->pos.x % 2 == 1 )
+	//		{
+	//			++stationToggleGlyph->pos.x;
+	//		}
+	//		stationToggleGlyph->pos.y = stationCookBtn->getSize().y + stationCookBtn->getSize().h - 6;
+	//	}
+
+	//	stationToggleGlyph2->disabled = true;
+	//	if ( stationCookBtn->isDisabled() && usingGamepad && !stationCookBtn->isInvisible() )
+	//	{
+	//		stationToggleGlyph2->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageRight");
+	//		if ( auto imgGet = Image::get(stationToggleGlyph2->path.c_str()) )
+	//		{
+	//			stationToggleGlyph2->pos.w = imgGet->getWidth();
+	//			stationToggleGlyph2->pos.h = imgGet->getHeight();
+	//			stationToggleGlyph2->disabled = false;
+	//		}
+	//		stationToggleGlyph2->pos.x = stationCookBtn->getSize().x + stationCookBtn->getSize().w + 12;
+	//		if ( stationToggleGlyph2->pos.x % 2 == 1 )
+	//		{
+	//			++stationToggleGlyph2->pos.x;
+	//		}
+	//		stationToggleGlyph2->pos.y = stationCookBtn->getSize().y + stationCookBtn->getSize().h - 6;
+	//	}
+	//}
+
+	Uint32 negativeColor = hudColors.characterSheetRed;
+	Uint32 neutralColor = hudColors.characterSheetLightNeutral;
+	Uint32 positiveColor = hudColors.characterSheetGreen;
+	Uint32 secondaryPositiveColor = hudColors.characterSheetHighlightText;
+	Uint32 defaultPromptColor = makeColor(255, 255, 255, 255);
+
+	auto itemDisplayTooltip = baseFrame->findFrame("mail display tooltip");
+	itemDisplayTooltip->setDisabled(false);
+	auto displayItemName = itemDisplayTooltip->findField("item display name");
+	auto displayItemTextImg = itemDisplayTooltip->findImage("item text img");
+	const int displayItemTextImgBaseX = 0;
+	displayItemTextImg->pos.x = displayItemTextImgBaseX;
+	displayItemTextImg->pos.y = 0;
+	SDL_Rect displayItemNamePos{ displayItemTextImg->pos.x + 8, displayItemTextImg->pos.y - 4, 170, displayItemName->getSize().h };
+	displayItemName->setSize(displayItemNamePos);
+
+	SDL_Rect tooltipPos = itemDisplayTooltip->getSize();
+	tooltipPos.w = 186;
+	tooltipPos.h = baseFrame->getSize().h - 100;
+	tooltipPos.y = 152;
+	tooltipPos.x = 10;// 18 - (tooltipPos.w + 18) * (1.0 - animTooltip);
+	itemDisplayTooltip->setSize(tooltipPos);
+
+	// calculate resultant potion
+	//{
+	//	if ( potion1Item && potion2Item && (currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK) )
+	//	{
+	//		int createCount = 1;
+	//		Status status = SERVICABLE;
+	//		int missingPotion1Count = 0;
+	//		int missingPotion2Count = 0;
+	//		ItemType res = alchemyCookResult(playernum, potion1Item, potion2Item, createCount, status, missingPotion1Count, missingPotion2Count);
+	//		alchemyResultPotion.type = res;
+	//		alchemyResultPotion.count = createCount;
+	//		alchemyResultPotion.status = status;
+	//		alchemyResultPotion.identified = true;
+	//		int appearance = 0;
+	//		int blessing = 0;
+	//		alchemyResultPotion.beatitude = 0;
+	//		alchemyResultPotion.appearance = 0;
+	//		alchemyResultPotion.appearance |= (missingPotion1Count & 0xFF) << 0;
+	//		alchemyResultPotion.appearance |= (missingPotion2Count & 0xFF) << 8;
+	//	}
+	//	else if ( potion1Item && potion2Item && (currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES) )
+	//	{
+	//		bool tryDuplicatePotion = false;
+	//		bool randomResult = false;
+	//		bool explodeSelf = false;
+	//		bool samePotion = false;
+	//		ItemType res = alchemyMixResult(potion1Item->type, potion2Item->type, randomResult, tryDuplicatePotion, samePotion, explodeSelf);
+	//		Status status = EXCELLENT;
+	//		alchemyResultPotion.identified = false;
+	//		alchemyResultPotion.type = POTION_EMPTY;
+	//		if ( samePotion || tryDuplicatePotion )
+	//		{
+	//			alchemyResultPotion.count = 2;
+	//		}
+	//		else
+	//		{
+	//			alchemyResultPotion.count = 1;
+	//		}
+	//		int appearance = -1;
+	//		int blessing = 0;
+	//		if ( potion1Item->beatitude > 0 && potion2Item->beatitude > 0 )
+	//		{
+	//			blessing = std::min(potion1Item->beatitude, potion2Item->beatitude); // take least blessed
+	//		}
+	//		else if ( potion1Item->beatitude < 0 && potion2Item->beatitude < 0 )
+	//		{
+	//			blessing = std::min(potion1Item->beatitude, potion2Item->beatitude); // take most cursed
+	//		}
+	//		else if ( (potion1Item->beatitude < 0 && potion2Item->beatitude > 0)
+	//			|| (potion2Item->beatitude < 0 && potion1Item->beatitude > 0) )
+	//		{
+	//			blessing = 0;
+	//		}
+	//		else if ( potion1Item->beatitude < 0 && potion2Item->beatitude == 0 )
+	//		{
+	//			blessing = potion1Item->beatitude; // curse the result
+	//		}
+	//		else if ( potion1Item->beatitude == 0 && potion2Item->beatitude < 0 )
+	//		{
+	//			blessing = potion2Item->beatitude; // curse the result
+	//		}
+	//		else if ( potion1Item->beatitude > 0 && potion2Item->beatitude == 0 )
+	//		{
+	//			blessing = 0; // negate the blessing
+	//		}
+	//		else if ( potion1Item->beatitude == 0 && potion2Item->beatitude > 0 )
+	//		{
+	//			blessing = 0; // negate the blessing
+	//		}
+	//		if ( samePotion )
+	//		{
+	//			// same potion, keep the first potion only.
+	//			res = potion1Item->type;
+	//			if ( potion1Item->beatitude == potion2Item->beatitude )
+	//			{
+	//				blessing = potion1Item->beatitude;
+	//			}
+	//			appearance = potion1Item->appearance;
+	//			status = potion1Item->status;
+	//		}
+
+	//		if ( tryDuplicatePotion && !explodeSelf && !randomResult )
+	//		{
+	//			// duplicate chance
+	//			if ( potion1Item->type == POTION_WATER )
+	//			{
+	//				res = potion2Item->type;
+	//				status = potion2Item->status;
+	//				blessing = potion2Item->beatitude;
+	//				appearance = potion2Item->appearance;
+	//			}
+	//			else if ( potion2Item->type == POTION_WATER )
+	//			{
+	//				res = potion1Item->type;
+	//				status = potion1Item->status;
+	//				blessing = potion1Item->beatitude;
+	//				appearance = potion1Item->appearance;
+	//			}
+	//		}
+	//		else
+	//		{
+	//			tryDuplicatePotion = false;
+	//		}
+	//		alchemyResultPotion.status = status;
+	//		if ( !(potion1Item->identified && potion2Item->identified) || randomResult )
+	//		{
+	//			alchemyResultPotion.identified = false;
+	//		}
+	//		else
+	//		{
+	//			alchemyResultPotion.identified = tryDuplicatePotion || samePotion ||
+	//				playerKnowsRecipe(playernum, potion1Item->type, potion2Item->type, res);
+	//		}
+	//		bool doRandomAppearances = false;
+	//		if ( alchemyResultPotion.identified )
+	//		{
+	//			alchemyResultPotion.type = res;
+	//			if ( res == POTION_SICKNESS && !samePotion )
+	//			{
+	//				doRandomAppearances = true;
+	//			}
+	//			else
+	//			{
+	//				animRandomPotionTicks = 0;
+	//			}
+	//		}
+	//		else
+	//		{
+	//			alchemyResultPotion.type = POTION_BOOZE;
+	//			doRandomAppearances = true;
+	//		}
+
+	//		if ( doRandomAppearances )
+	//		{
+	//			if ( animRandomPotionTicks == 0 )
+	//			{
+	//				animRandomPotionTicks = ticks;
+	//				animRandomPotionUpdatedThisTick = ticks;
+	//			}
+	//			else if ( (ticks != animRandomPotionTicks) && (ticks - animRandomPotionTicks) % TICKS_PER_SECOND == 0 )
+	//			{
+	//				if ( animRandomPotionUpdatedThisTick != ticks )
+	//				{
+	//					++animRandomPotionVariation;
+	//					animRandomPotionUpdatedThisTick = ticks;
+	//				}
+	//				if ( animRandomPotionVariation >= items[alchemyResultPotion.type].variations )
+	//				{
+	//					animRandomPotionVariation = 0;
+	//				}
+	//			}
+	//		}
+
+	//		// blessings
+	//		if ( !tryDuplicatePotion && !samePotion )
+	//		{
+	//			if ( parentGUI.alembicItem )
+	//			{
+	//				if ( parentGUI.alembicItem->beatitude >= 1 )
+	//				{
+	//					blessing = 1;
+	//				}
+	//				else if ( parentGUI.alembicItem->beatitude <= -1 )
+	//				{
+	//					blessing = parentGUI.alembicItem->beatitude;
+	//				}
+	//			}
+	//			if ( skillCapstoneUnlocked(playernum, PRO_ALCHEMY) )
+	//			{
+	//				blessing = 2;
+	//				if ( parentGUI.alembicItem )
+	//				{
+	//					if ( parentGUI.alembicItem->beatitude <= -1 )
+	//					{
+	//						blessing = std::min(-2, (int)parentGUI.alembicItem->beatitude);
+	//					}
+	//					else
+	//					{
+	//						blessing = std::max(2, (int)parentGUI.alembicItem->beatitude);
+	//					}
+	//				}
+	//			}
+	//		}
+
+	//		if ( explodeSelf && alchemyResultPotion.identified )
+	//		{
+	//			alchemyResultPotion.beatitude = 0;
+	//		}
+	//		else
+	//		{
+	//			alchemyResultPotion.beatitude = blessing;
+	//		}
+
+	//		// appearances
+	//		for ( auto it = potionStandardAppearanceMap.begin(); it != potionStandardAppearanceMap.end(); ++it )
+	//		{
+	//			if ( (*it).first == alchemyResultPotion.type )
+	//			{
+	//				if ( appearance == -1 )
+	//				{
+	//					appearance = (*it).second;
+	//				}
+	//			}
+	//		}
+	//		alchemyResultPotion.appearance = std::max(0, appearance);
+	//		if ( doRandomAppearances )
+	//		{
+	//			alchemyResultPotion.appearance = animRandomPotionVariation;
+	//		}
+	//	}
+	//	else
+	//	{
+	//		animRandomPotionTicks = 0;
+	//	}
+	//}
+
+	bool modifierPressed = false;
+	if ( usingGamepad && Input::inputs[playernum].binary("MenuPageLeftAlt") )
+	{
+		modifierPressed = true;
+	}
+	else if ( inputs.bPlayerUsingKeyboardControl(playernum)
+		&& (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT]) )
+	{
+		modifierPressed = true;
+	}
+
+	/*auto brewBtn = baseFrame->findButton("brew button");
+	auto brewGlyph = baseFrame->findImage("brew glyph");
+	brewBtn->setDisabled(true);
+	brewGlyph->disabled = true;
+	if ( inputs.getVirtualMouse(playernum)->draw_cursor )
+	{
+		brewBtn->setText(Language::get(4175));
+		if ( (potion1Uid != 0 || potion2Uid != 0) && isInteractable )
+		{
+			brewBtn->setDisabled(false);
+			brewBtn->setTextColor(makeColor(255, 255, 255, 255));
+			buttonAlchemyUpdateSelectorOnHighlight(playernum, brewBtn);
+		}
+		else
+		{
+			brewBtn->setTextColor(hudColors.characterSheetFaintText);
+		}
+	}
+	else if ( brewBtn->isSelected() )
+	{
+		brewBtn->deselect();
+	}
+	if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+	{
+		if ( potionResultFrame->isDisabled() || alchemyMissingIngredientQty(nullptr) )
+		{
+			brewBtn->setTextColor(hudColors.characterSheetFaintText);
+		}
+		else
+		{
+			brewBtn->setTextColor(makeColor(255, 255, 255, 255));
+		}
+		if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
+		{
+			brewBtn->setText(Language::get(6773));
+		}
+		else
+		{
+			brewBtn->setText(Language::get(4178));
+		}
+		brewBtn->setDisabled(true);
+		if ( !potionResultFrame->isDisabled() && !alchemyMissingIngredientQty(nullptr) )
+		{
+			brewGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt2");
+			if ( auto imgGet = Image::get(brewGlyph->path.c_str()) )
+			{
+				brewGlyph->pos.w = imgGet->getWidth();
+				brewGlyph->pos.h = imgGet->getHeight();
+				brewGlyph->disabled = false;
+			}
+			brewGlyph->pos.x = brewBtn->getSize().x + brewBtn->getSize().w - 16;
+			if ( brewGlyph->pos.x % 2 == 1 )
+			{
+				++brewGlyph->pos.x;
+			}
+			brewGlyph->pos.y = brewBtn->getSize().y + brewBtn->getSize().h - 16;
+		}
+	}*/
+
+	bool inventoryControlActive = player->bControlEnabled
+		&& !gamePaused
+		&& !player->usingCommand()
+		&& !player->GUI.isDropdownActive();
+
+	if ( isInteractable && !inputs.getUIInteraction(playernum)->selectedItem
+		&& inventoryControlActive
+		&& player->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_MAILBOX)
+		&& player->GUI.bActiveModuleUsesInventory()
+		&& player->GUI.activeModule == Player::GUI_t::MODULE_MAILBOX )
+	{
+		if ( getSelectedMailSlotX() >= MAIL_SLOT_RECV && getSelectedMailSlotX() < 0
+			&& getSelectedMailSlotY() == 0 )
+		{
+			if ( auto slotFrame = getMailSlotFrame(getSelectedMailSlotX(), getSelectedMailSlotY()) )
+			{
+				if ( !slotFrame->isDisabled() && slotFrame->capturesMouse() )
+				{
+					switch ( getSelectedMailSlotX() )
+					{
+					case MAIL_SLOT_SEND:
+						setItemDisplayNameAndPrice(mailSendItem1, false);
+						break;
+					case MAIL_SLOT_RECV:
+						setItemDisplayNameAndPrice(&mailReceiveItem, true);
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	auto activateSelectionGlyph = mailFrame->findImage("activate glyph");
+	auto activateSelectionPrompt = mailFrame->findField("activate prompt");
+	if ( !strcmp(activateSelectionPrompt->getText(), "") )
+	{
+		activateSelectionGlyph->disabled = true;
+		activateSelectionPrompt->setDisabled(true);
+	}
+
+	if ( itemType != -1 && itemDesc.size() > 1 )
+	{
+		if ( isInteractable )
+		{
+			//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			//real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
+			//animTooltip += setpointDiffX;
+			//animTooltip = std::min(1.0, animTooltip);
+			animTooltip = 1.0;
+			animTooltipTicks = ticks;
+		}
+
+		itemDisplayTooltip->setDisabled(false);
+
+		{
+			// item name + text bg
+			displayItemName->setVJustify(Field::justify_t::CENTER);
+			displayItemName->setHJustify(Field::justify_t::CENTER);
+			if ( itemRequiresTitleReflow )
+			{
+				displayItemName->setText(itemDesc.c_str());
+				displayItemName->reflowTextToFit(0);
+
+				if ( displayItemName->getNumTextLines() > 2 || true )
+				{
+					auto pos = displayItemName->getSize();
+					pos.h = 74;
+					displayItemName->setSize(pos);
+					displayItemTextImg->path = "*#images/ui/Alchemy/Alchemy_LabelName_3Row_00.png";
+					displayItemTextImg->pos.h = 64;
+				}
+				else
+				{
+					auto pos = displayItemName->getSize();
+					pos.h = 50;
+					displayItemName->setSize(pos);
+					displayItemTextImg->path = "*#images/ui/Alchemy/Alchemy_LabelName_2Row_00.png";
+					displayItemTextImg->pos.h = 42;
+				}
+				if ( displayItemName->getNumTextLines() > 3 )
+				{
+					// more than 2 lines, append ...
+					std::string copiedName = displayItemName->getText();
+					auto lastNewline = copiedName.find_last_of('\n');
+					copiedName = copiedName.substr(0U, lastNewline);
+					copiedName += "...";
+					displayItemName->setText(copiedName.c_str());
+					displayItemName->reflowTextToFit(0);
+					if ( displayItemName->getNumTextLines() > 3 )
+					{
+						// ... doesn't fit, replace last 3 characters with ...
+						copiedName = copiedName.substr(0U, copiedName.size() - 6);
+						copiedName += "...";
+						displayItemName->setText(copiedName.c_str());
+						displayItemName->reflowTextToFit(0);
+					}
+				}
+
+				// do highlights
+				displayItemName->clearWordsToHighlight();
+				std::string str = displayItemName->getText();
+				if ( str == Language::get(4167) )
+				{
+					displayItemName->setTextColor(hudColors.characterSheetRed);
+				}
+				else
+				{
+					displayItemName->setTextColor(hudColors.characterSheetLightNeutral);
+				}
+				int wordIndex = 0;
+				bool prevCharWasWordSeparator = false;
+				int numLines = 0;
+				for ( size_t c = 0; c < str.size(); ++c )
+				{
+					if ( str[c] == '\n' )
+					{
+						wordIndex = -1;
+						++numLines;
+						prevCharWasWordSeparator = true;
+						continue;
+					}
+
+					if ( prevCharWasWordSeparator && !charIsWordSeparator(str[c]) )
+					{
+						++wordIndex;
+						if ( str[c] == '[' )
+						{
+							std::string toCompare = str.substr(str.find('[', c));
+							Uint32 color = 0;
+							if ( toCompare == Language::get(4155) )
+							{
+								// unknown
+								color = hudColors.characterSheetLightNeutral;
+							}
+							else if ( toCompare == Language::get(4162)
+								|| toCompare == Language::get(4164) || toCompare == Language::get(4166) )
+							{
+								color = makeColor(54, 144, 171, 255);
+							}
+							else if ( toCompare == Language::get(4156) )
+							{
+								// base pot
+								color = hudColors.characterSheetGreen;
+							}
+							else if ( toCompare == Language::get(4163) )
+							{
+								// duplication chance
+								color = hudColors.characterSheetGreen;
+							}
+							else if ( toCompare == Language::get(4157) )
+							{
+								// secondary pot
+								color = hudColors.characterSheetHighlightText;
+							}
+							else if ( toCompare == Language::get(4158) )
+							{
+								color = hudColors.characterSheetFaintText;
+							}
+							else if ( toCompare == Language::get(4160)
+								|| toCompare == Language::get(4165)
+								|| toCompare == Language::get(6772)
+								|| toCompare == Language::get(6768)
+								|| toCompare == Language::get(6774)
+								|| toCompare == Language::get(4168) )
+							{
+								color = hudColors.characterSheetRed;
+							}
+							displayItemName->addWordToHighlight(wordIndex + numLines * Field::TEXT_HIGHLIGHT_WORDS_PER_LINE,
+								color);
+							displayItemName->addWordToHighlight((wordIndex + 1) + numLines * Field::TEXT_HIGHLIGHT_WORDS_PER_LINE,
+								color);
+							displayItemName->addWordToHighlight((wordIndex + 2) + numLines * Field::TEXT_HIGHLIGHT_WORDS_PER_LINE,
+								color);
+							displayItemName->addWordToHighlight((wordIndex + 3) + numLines * Field::TEXT_HIGHLIGHT_WORDS_PER_LINE,
+								color);
+						}
+						prevCharWasWordSeparator = false;
+						if ( !(c + 1 < str.size() && charIsWordSeparator(str[c + 1])) )
+						{
+							continue;
+						}
+					}
+
+					if ( charIsWordSeparator(str[c]) )
+					{
+						prevCharWasWordSeparator = true;
+					}
+					else
+					{
+						prevCharWasWordSeparator = false;
+					}
+				}
+				itemRequiresTitleReflow = false;
+			}
+		}
+
+		if ( itemActionType == MAIL_ACTION_OK && strcmp(activateSelectionPrompt->getText(), "") )
+		{
+			if ( usingGamepad )
+			{
+				activateSelectionGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuConfirm");
+			}
+			else
+			{
+				activateSelectionGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuRightClick");
+			}
+			if ( auto imgGet = Image::get(activateSelectionGlyph->path.c_str()) )
+			{
+				activateSelectionGlyph->pos.w = imgGet->getWidth();
+				activateSelectionGlyph->pos.h = imgGet->getHeight();
+			}
+
+			SDL_Rect pos{ 0, 0, activateSelectionGlyph->pos.w, activateSelectionGlyph->pos.h };
+			pos.x += baseFrame->getSize().x + itemDisplayTooltip->getSize().x;
+			pos.y += baseFrame->getSize().y + itemDisplayTooltip->getSize().y;
+			pos.x += displayItemTextImg->pos.x + displayItemTextImg->pos.w / 2;
+			pos.y += displayItemTextImg->pos.y + displayItemTextImg->pos.h;
+			pos.y += 4;
+
+			auto activateSelectionPromptPos = SDL_Rect{ pos.x, pos.y + 1, baseFrame->getSize().w, 24 };
+			if ( auto textGet = activateSelectionPrompt->getTextObject() )
+			{
+				activateSelectionPromptPos.x -= textGet->getWidth() / 2;
+				activateSelectionPromptPos.x += (8 + pos.w) / 2;
+				pos.x = activateSelectionPromptPos.x - 8 - pos.w;
+				pos.y += activateSelectionPrompt->getSize().h / 2;
+				pos.y -= pos.h / 2;
+			}
+			activateSelectionPrompt->setSize(activateSelectionPromptPos);
+			if ( pos.x % 2 == 1 )
+			{
+				++pos.x;
+			}
+			if ( pos.y % 2 == 1 )
+			{
+				--pos.y;
+			}
+			activateSelectionGlyph->pos = pos;
+			activateSelectionGlyph->disabled = false;
+			activateSelectionPrompt->setDisabled(false);
+		}
+	}
+	else
+	{
+		if ( (!usingGamepad && (ticks - animTooltipTicks > TICKS_PER_SECOND / 3))
+			|| (usingGamepad)
+			|| animTooltip < 0.9999 )
+		{
+			const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
+			real_t setpointDiffX = fpsScale * std::max(.01, (animTooltip)) / 2.0;
+			animTooltip -= setpointDiffX;
+			animTooltip = std::max(0.0, animTooltip);
+		}
+	}
+
+	{
+		SDL_Color color;
+		getColor(displayItemTextImg->color, &color.r, &color.g, &color.b, &color.a);
+		color.a = (Uint8)(192 * animTooltip);
+		displayItemTextImg->color = (makeColor(color.r, color.g, color.b, color.a));
+	}
+
+	{
+		SDL_Color color;
+		getColor(displayItemName->getColor(), &color.r, &color.g, &color.b, &color.a);
+		color.a = (Uint8)(255 * animTooltip);
+		displayItemName->setColor(makeColor(color.r, color.g, color.b, color.a));
+	}
+
+	{
+		SDL_Color color;
+		getColor(activateSelectionPrompt->getColor(), &color.r, &color.g, &color.b, &color.a);
+		color.a = (Uint8)(255 * animTooltip);
+		activateSelectionPrompt->setColor(makeColor(color.r, color.g, color.b, color.a));
+	}
+
+	{
+		SDL_Color color;
+		getColor(activateSelectionGlyph->color, &color.r, &color.g, &color.b, &color.a);
+		color.a = (Uint8)(255 * animTooltip);
+		activateSelectionGlyph->color = (makeColor(color.r, color.g, color.b, color.a));
+	}
+
+	bool tryBrew = false;
+	bool activateSelection = false;
+	if ( isInteractable )
+	{
+		if ( !inputs.getUIInteraction(playernum)->selectedItem
+			&& !player->GUI.isDropdownActive()
+			&& (player->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_MAILBOX)
+				|| player->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_INVENTORY))
+			&& player->bControlEnabled && !gamePaused
+			&& !player->usingCommand() )
+		{
+
+			if ( Input::inputs[playernum].binaryToggle("MenuCancel") )
+			{
+				Input::inputs[playernum].consumeBinaryToggle("MenuCancel");
+				if ( sendItem1Uid == 0 )
+				{
+					parentGUI.closeGUI();
+					Player::soundCancel();
+					return;
+				}
+				else if ( animRecvItem < 0.001 )
+				{
+					if ( sendItem1Uid != 0 )
+					{
+						sendItem1Uid = 0;
+						animSendItem1 = 0.0;
+						//animPotion1Frame->setDisabled(true);
+					}
+					Player::soundCancel();
+				}
+			}
+			//else if ( Input::inputs[playernum].binaryToggle("MenuPageRightAlt") || Input::inputs[playernum].binaryToggle("MenuPageLeftAlt") )
+			//{
+			//	bool left = Input::inputs[playernum].consumeBinaryToggle("MenuPageLeftAlt");
+			//	bool right = Input::inputs[playernum].consumeBinaryToggle("MenuPageRightAlt");
+			//	/*if ( left && !stationCookBtn->isInvisible() )
+			//	{
+			//		stationCookBtn->activate();
+			//	}*/
+			//	if ( (left || right) && !recipeBtn->isInvisible() )
+			//	{
+			//		recipeBtn->activate();
+			//		return;
+			//	}
+			//}
+			//else if ( Input::inputs[playernum].binaryToggle("MenuPageRight") || Input::inputs[playernum].binaryToggle("MenuPageLeft") )
+			//{
+			//	bool left = Input::inputs[playernum].consumeBinaryToggle("MenuPageLeft");
+			//	bool right = Input::inputs[playernum].consumeBinaryToggle("MenuPageRight");
+			//	if ( (left || right) && !stationCookBtn->isInvisible() )
+			//	{
+			//		if ( left && (currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES) )
+			//		{
+			//			stationCookBtn->activate();
+			//			return;
+			//		}
+			//		if ( right && (currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK) )
+			//		{
+			//			stationCookBtn->activate();
+			//			return;
+			//		}
+			//	}
+			//}
+			//else if ( Input::inputs[playernum].binaryToggle("MenuAlt2") )
+			//{
+			//	if ( !brewGlyph->disabled )
+			//	{
+			//		activateSelection = true;
+			//		tryBrew = true;
+			//		Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+			//	}
+			//}
+			else
+			{
+				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuConfirm") )
+				{
+					activateSelection = true;
+					Input::inputs[playernum].consumeBinaryToggle("MenuConfirm");
+				}
+				else if ( !usingGamepad && Input::inputs[playernum].binaryToggle("MenuRightClick") )
+				{
+					activateSelection = true;
+					Input::inputs[playernum].consumeBinaryToggle("MenuRightClick");
+				}
+			}
+		}
+	}
+
+	if ( activateSelection && players[playernum] && players[playernum]->entity
+		&& animRecvItem < 0.001 )
+	{
+		parentGUI.basePotion = nullptr;
+		parentGUI.secondaryPotion = nullptr;
+		if ( itemActionType != MAIL_ACTION_OK && itemActionType != MAIL_ACTION_NONE )
+		{
+			playSound(90, 64);
+		}
+		if ( (player->GUI.activeModule == Player::GUI_t::MODULE_MAILBOX || (tryBrew && player->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY))
+			&& (itemActionType == MAIL_ACTION_OK || tryBrew)
+		 )
+		{
+			ItemType oldPotion1Type = WOODEN_SHIELD;
+			ItemType oldPotion2Type = WOODEN_SHIELD;
+			if ( (getSelectedMailSlotX() >= MAIL_SLOT_RECV && getSelectedMailSlotX() < 0
+				&& getSelectedMailSlotY() == 0) || tryBrew )
+			{
+				if ( !tryBrew && getSelectedMailSlotX() == MAIL_SLOT_SEND )
+				{
+					sendItem1Uid = 0;
+					animSendItem1 = 0.0;
+					animSendItem1Frame->setDisabled(true);
+					Player::soundCancel();
+				}
+				else if ( tryBrew || getSelectedMailSlotX() == MAIL_SLOT_RECV )
+				{
+					// recv it
+					if ( !recvItemFrame->isDisabled()
+						&& mailReceiveItem.type != POTION_EMPTY
+						&& recvItemUid == 0 )
+					{
+						recvItemUid = 0;
+
+						parentGUI.mailboxClaimItem();
+
+						if ( recvItemUid != 0 )
+						{
+							if ( auto item = uidToItem(recvItemUid) )
+							{
+								auto slotType = player->paperDoll.getSlotForItem(*item);
+								if ( recvItemUid == sendItem1Uid )
+								{
+									animRecvItemDestX = animSendItem1DestX;
+									animRecvItemDestY = animSendItem1DestY;
+									animRecvItem = 1.0;
+								}
+								else if ( slotType != Player::PaperDoll_t::SLOT_MAX ) // on paper doll
+								{
+									animRecvItemDestX = animRecvItemStartX;
+									animRecvItemDestY = animRecvItemStartY - player->inventoryUI.getSlotSize();
+									animRecvItem = 1.0;
+								}
+								else if ( auto slotFrame = player->inventoryUI.getInventorySlotFrame(item->x, item->y) )
+								{
+									getInventoryItemAlchemyAnimSlotPos(slotFrame, player, item->x, item->y, animRecvItemDestX, animRecvItemDestY, mailItemAnimOffsetY);
+									animRecvItemDestY += 2;
+									animRecvItemDestY += (player->inventoryUI.bCompactView ? -2 : 0);
+									animRecvItem = 1.0;
+								}
+							}
+						}
+						if ( animRecvItem < .999 )
+						{
+							recvItemUid = 0;
+						}
+					}
+				}
+			}
+		}
+		else if ( player->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY
+			&& itemActionType == MAIL_ACTION_OK )
+		{
+			if ( auto slotFrame = player->inventoryUI.getInventorySlotFrame(player->inventoryUI.getSelectedSlotX(),
+				player->inventoryUI.getSelectedSlotY()) )
+			{
+				for ( node_t* node = stats[playernum]->inventory.first; node != NULL; node = node->next )
+				{
+					Item* item = (Item*)node->element;
+					if ( !item )
+					{
+						continue;
+					}
+					if ( itemCategory(item) == SPELL_CAT )
+					{
+						continue;
+					}
+
+					if ( item->x == player->inventoryUI.getSelectedSlotX()
+						&& item->y == player->inventoryUI.getSelectedSlotY()
+						&& item->x >= 0 && item->x < player->inventoryUI.getPlayerItemInventoryX()
+						&& item->y >= 0 && item->y < player->inventoryUI.getPlayerItemInventoryY() )
+					{
+						if ( sendItem1Uid == item->uid )
+						{
+							sendItem1Uid = 0;
+							animSendItem1 = 0.0;
+							animSendItem1Frame->setDisabled(true);
+							Player::soundCancel();
+						}
+						else
+						{
+							if ( sendItem1Uid == 0 || true )
+							{
+								if ( !parentGUI.isItemMailable(item) )
+								{
+									continue;
+								}
+								animSendItem1 = 1.0;
+								getInventoryItemMailboxAnimSlotPos(slotFrame, player, item->x, item->y, animSendItem1StartX, animSendItem1StartY, mailItemAnimOffsetY);
+								sendItem1Uid = item->uid;
+								//alchemyResultPotion.type = POTION_EMPTY;
+								playSound(139, 64); // click sound
+							}
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void GenericGUIMenu::mailboxClaimItem()
+{
+	auto& item = mailboxGUI.mailReceiveItem;
+
+	Item* claimedItem = newItem(item.type, item.status, item.beatitude, item.count, item.appearance, item.identified, nullptr);
+	Item* pickedUp = itemPickup(gui_player, claimedItem);
+	if ( pickedUp )
+	{
+		mailboxGUI.recvItemUid = pickedUp->uid;
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(504), claimedItem->description());
+		//mailboxGUI.animPotionResultCount = alchemyGUI.alchemyResultPotion.count;
+		playSoundEntity(players[gui_player]->entity, 35 + local_rng.rand() % 3, 64);
+	}
+
+	free(claimedItem);
+	claimedItem = nullptr;
+
+	mailboxGUI.mailReceiveItem.type = POTION_EMPTY;
+}
+
+void GenericGUIMenu::MailboxGui_t::createMailMenu()
+{
+	const int player = parentGUI.getPlayer();
+	if ( !gui || !mailFrame || !players[player]->inventoryUI.frame )
+	{
+		return;
+	}
+	if ( mailGUIHasBeenCreated() )
+	{
+		return;
+	}
+
+	SDL_Rect basePos{ 0, 0, mailBaseWidth, 308 };
+	mailSlotFrames.clear();
+
+	const int inventorySlotSize = players[player]->inventoryUI.getSlotSize();
+
+	/*{
+		auto notificationFrame = alchFrame->addFrame("notification");
+		notificationFrame->setHollow(false);
+		notificationFrame->setBorder(0);
+		notificationFrame->setInheritParentFrameOpacity(false);
+		notificationFrame->setDisabled(true);
+		notificationFrame->setSize(SDL_Rect{ 0, 0, 180, 56 });
+
+		auto notifBg = notificationFrame->addImage(SDL_Rect{ 0, 0, 180, 56 }, 0xFFFFFFFF,
+			"*#images/ui/Alchemy/Alchemy_Notification_00.png", "notif bg");
+
+		auto notifIcon = notificationFrame->addImage(SDL_Rect{ 8, 56 / 2 - players[player]->inventoryUI.getItemSpriteSize() / 2,
+			players[player]->inventoryUI.getItemSpriteSize(),
+			players[player]->inventoryUI.getItemSpriteSize() }, 0xFFFFFFFF,
+			"", "notif icon");
+
+		auto title = notificationFrame->addField("notif title", 128);
+		title->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+		title->setText("New Title Unlocked!");
+		title->setHJustify(Field::justify_t::LEFT);
+		title->setVJustify(Field::justify_t::TOP);
+		title->setSize(SDL_Rect{ notifIcon->pos.x + notifIcon->pos.w, 8, notificationFrame->getSize().w, 24 });
+		title->setColor(makeColor(255, 255, 0, 255));
+
+		auto body = notificationFrame->addField("notif body", 128);
+		body->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+		body->setText("Blah Blah Blah!");
+		body->setHJustify(Field::justify_t::LEFT);
+		body->setVJustify(Field::justify_t::TOP);
+		body->setSize(SDL_Rect{ notifIcon->pos.x + notifIcon->pos.w, 8 + 18, notificationFrame->getSize().w, 24 });
+		body->setColor(makeColor(255, 255, 255, 255));
+	}*/
+
+	{
+		auto bgFrame = mailFrame->addFrame("mail base");
+		bgFrame->setSize(basePos);
+		bgFrame->setHollow(false);
+		bgFrame->setDisabled(true);
+		auto bg = bgFrame->addImage(SDL_Rect{ 0, 0, basePos.w, basePos.h },
+			makeColor(255, 255, 255, 255),
+			"*#images/ui/Shrines/pillar_box/PillarBox_Base_00.png", "mail base img");
+
+		/*auto alembicItemIcon = bgFrame->addImage(SDL_Rect{ 11, 23, 36, 36 }, 0xFFFFFFFF,
+			"", "alchemy item icon");
+		alembicItemIcon->disabled = true;
+
+		auto alembicAlchemyBadge = bgFrame->addImage(SDL_Rect{ 8, 6, 190, 60 }, 0xFFFFFFFF,
+			"*#images/ui/Alchemy/Alchemy_Badge.png", "alchemy badge");*/
+
+		auto headerFont = "fonts/pixel_maz_multiline.ttf#16#2";
+		auto mailTitle = bgFrame->addField("mail title", 128);
+		mailTitle->setFont(headerFont);
+		mailTitle->setText("");
+		mailTitle->setHJustify(Field::justify_t::CENTER);
+		mailTitle->setVJustify(Field::justify_t::TOP);
+		mailTitle->setSize(SDL_Rect{ 0, 0, 0, 0 });
+		mailTitle->setTextColor(hudColors.characterSheetLightNeutral);
+		mailTitle->setOutlineColor(makeColor(29, 16, 11, 255));
+		/*auto alembicStatus = bgFrame->addField("alchemy alembic status", 128);
+		alembicStatus->setFont(headerFont);
+		alembicStatus->setText("");
+		alembicStatus->setHJustify(Field::justify_t::CENTER);
+		alembicStatus->setVJustify(Field::justify_t::TOP);
+		alembicStatus->setSize(SDL_Rect{ 0, 0, 0, 0 });
+		alembicStatus->setTextColor(hudColors.characterSheetLightNeutral);
+		alembicStatus->setOutlineColor(makeColor(29, 16, 11, 255));*/
+
+		auto itemFont = "fonts/pixel_maz_multiline.ttf#16#2";
+		{
+			auto itemDisplayTooltip = bgFrame->addFrame("mail display tooltip");
+			itemDisplayTooltip->setSize(SDL_Rect{ 0, 0, 186, 108 });
+			itemDisplayTooltip->setHollow(true);
+			itemDisplayTooltip->setInheritParentFrameOpacity(false);
+			{
+				auto itemNameText = itemDisplayTooltip->addField("item display name", 1024);
+				itemNameText->setFont(itemFont);
+				itemNameText->setText("");
+				itemNameText->setHJustify(Field::justify_t::LEFT);
+				itemNameText->setVJustify(Field::justify_t::TOP);
+				itemNameText->setSize(SDL_Rect{ 0, 0, 0, 0 });
+				itemNameText->setTextColor(hudColors.characterSheetLightNeutral);
+
+				auto itemDisplayTextBg = itemDisplayTooltip->addImage(SDL_Rect{ 0, 0, 186, 42 },
+					0xFFFFFFFF, "*#images/ui/Alchemy/Alchemy_LabelName_2Row_00.png", "item text img");
+			}
+		}
+
+		{
+			auto closeBtn = bgFrame->addButton("close mail button");
+			SDL_Rect closeBtnPos{ basePos.w - 0 - 26, 0, 26, 26 };
+			closeBtn->setSize(closeBtnPos);
+			closeBtn->setColor(makeColor(255, 255, 255, 255));
+			closeBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			closeBtn->setText("X");
+			closeBtn->setFont(itemFont);
+			closeBtn->setHideGlyphs(true);
+			closeBtn->setHideKeyboardGlyphs(true);
+			closeBtn->setHideSelectors(true);
+			closeBtn->setMenuConfirmControlType(0);
+			closeBtn->setBackground("*#images/ui/Alchemy/Button_X_00.png");
+			closeBtn->setBackgroundHighlighted("*#images/ui/Alchemy/Button_XHigh_00.png");
+			closeBtn->setBackgroundActivated("*#images/ui/Alchemy/Button_XPress_00.png");
+			closeBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			closeBtn->setCallback([](Button& button) {
+				GenericGUI[button.getOwner()].closeGUI();
+				Player::soundCancel();
+				});
+			closeBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto closeGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "close mail glyph");
+			closeGlyph->disabled = true;
+			closeGlyph->ontop = true;
+
+			/*auto brewBtn = bgFrame->addButton("brew button");
+			SDL_Rect brewPos{ basePos.w - 18 - 64, basePos.h - 20 - 46, 64, 46 };
+			brewBtn->setSize(brewPos);
+			brewBtn->setColor(makeColor(255, 255, 255, 255));
+			brewBtn->setHighlightColor(makeColor(255, 255, 255, 255));
+			brewBtn->setText("Brew");
+			brewBtn->setFont(itemFont);
+			brewBtn->setHideGlyphs(true);
+			brewBtn->setHideKeyboardGlyphs(true);
+			brewBtn->setHideSelectors(true);
+			brewBtn->setMenuConfirmControlType(0);
+			brewBtn->setBackground("*#images/ui/Alchemy/Alchemy_ButtonBrew_Base_00.png");
+			brewBtn->setBackgroundHighlighted("*#images/ui/Alchemy/Alchemy_ButtonBrew_High_00.png");
+			brewBtn->setBackgroundActivated("*#images/ui/Alchemy/Alchemy_ButtonBrew_Press_00.png");
+			brewBtn->setTextHighlightColor(makeColor(201, 162, 100, 255));
+			brewBtn->setCallback([](Button& button) {
+				int player = button.getOwner();
+				auto& alchemyGUI = GenericGUI[player].alchemyGUI;
+				alchemyGUI.recipes.activateRecipeIndex = -1;
+				alchemyGUI.potion1Uid = 0;
+				alchemyGUI.animPotion1 = 0.0;
+				alchemyGUI.potion2Uid = 0;
+				alchemyGUI.animPotion2 = 0.0;
+				alchemyGUI.alchemyResultPotion.type = POTION_EMPTY;
+				alchemyGUI.potionResultUid = 0;
+				alchemyGUI.animPotionResult = 0.0;
+				alchemyGUI.animRecipeAutoAddToSlot1Uid = 0;
+				alchemyGUI.animRecipeAutoAddToSlot2Uid = 0;
+				Player::soundCancel();
+				});
+			brewBtn->setTickCallback(genericgui_deselect_fn);
+
+			auto brewGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "brew glyph");
+			brewGlyph->disabled = true;
+			brewGlyph->ontop = true;*/
+		}
+
+		{
+			Frame* slotFrame = mailFrame->addFrame("mail send frame");
+			SDL_Rect slotPos{ 0, 0, players[player]->inventoryUI.getSlotSize(), players[player]->inventoryUI.getSlotSize() };
+			slotFrame->setSize(slotPos);
+			slotFrame->setDisabled(true);
+			slotFrame->setInheritParentFrameOpacity(false);
+			createPlayerInventorySlotFrameElements(slotFrame);
+			mailSlotFrames[MAIL_SLOT_SEND + 0 * 100] = slotFrame;
+
+			slotFrame = mailFrame->addFrame("mail recv frame");
+			slotFrame->setSize(slotPos);
+			slotFrame->setDisabled(true);
+			slotFrame->setInheritParentFrameOpacity(false);
+			createPlayerInventorySlotFrameElements(slotFrame);
+			mailSlotFrames[MAIL_SLOT_RECV + 0 * 100] = slotFrame;
+		}
+	}
+
+	auto activateSelectionGlyph = mailFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+		0xFFFFFFFF, "", "activate glyph");
+	activateSelectionGlyph->disabled = true;
+	activateSelectionGlyph->ontop = true;
+	auto activateSelectionPrompt = mailFrame->addField("activate prompt", 64);
+	activateSelectionPrompt->setFont("fonts/pixel_maz_multiline.ttf#16#2");
+	activateSelectionPrompt->setText("");
+	activateSelectionPrompt->setHJustify(Field::justify_t::LEFT);
+	activateSelectionPrompt->setVJustify(Field::justify_t::TOP);
+	activateSelectionPrompt->setSize(SDL_Rect{ 0, 0, 0, 0 });
+	activateSelectionPrompt->setColor(makeColor(255, 255, 255, 255));
+	activateSelectionPrompt->setDisabled(true);
+	activateSelectionPrompt->setOntop(true);
+}
+
+void GenericGUIMenu::MailboxGui_t::selectMailSlot(const int x, const int y)
+{
+	selectedMailSlotX = x;
+	selectedMailSlotY = y;
+}
+
+Frame* GenericGUIMenu::MailboxGui_t::getMailSlotFrame(int x, int y) const
+{
+	if ( mailFrame )
+	{
+		int key = x + y * 100;
+		if ( mailSlotFrames.find(key) != mailSlotFrames.end() )
+		{
+			return mailSlotFrames.at(key);
+		}
+	}
+	return nullptr;
+}
+
+bool GenericGUIMenu::MailboxGui_t::inventoryItemAllowedInGUI(Item* item)
+{
+	if ( !item ) { return false; }
+	if ( item->status == BROKEN )
+	{
+		return false;
+	}
+
+	if ( item->type == READABLE_BOOK || itemCategory(item) == SCROLL )
+	{
+		return true;
+	}
+	/*if ( currentView == ALCHEMY_VIEW_BREW || currentView == ALCHEMY_VIEW_RECIPES )
+	{
+		if ( itemCategory(item) == POTION && item->type != POTION_EMPTY )
+		{
+			return true;
+		}
+	}
+	else if ( currentView == ALCHEMY_VIEW_COOK || currentView == ALCHEMY_VIEW_RECIPES_COOK )
+	{
+		Item* item1 = potion1Uid != 0 ? uidToItem(potion1Uid) : nullptr;
+		Item* item2 = potion2Uid != 0 ? uidToItem(potion2Uid) : nullptr;
+
+		if ( GenericGUIMenu::isItemRationSeasoning(item->type) || item->type == TOOL_TOWEL || item->type == POTION_WATER )
+		{
+			if ( !item1 && !item2 )
+			{
+				return true;
+			}
+			if ( (item1 && item1->type == FOOD_RATION) || (item2 && item2->type == FOOD_RATION) )
+			{
+				return true;
+			}
+			if ( (item->type == TOOL_TOWEL || item->type == POTION_WATER || GenericGUIMenu::isItemRationSeasoning(item->type))
+				&&
+				((item1 && item1->type == TOOL_TOWEL) || (item2 && item2->type == TOOL_TOWEL)
+					|| (item1 && item1->type == POTION_WATER) || (item2 && item2->type == POTION_WATER)
+					|| (item1 && GenericGUIMenu::isItemRationSeasoning(item1->type))
+					|| (item2 && GenericGUIMenu::isItemRationSeasoning(item2->type))) )
+			{
+				return true;
+			}
+		}
+		else if ( itemCategory(item) == FOOD )
+		{
+			if ( item->type == FOOD_RATION )
+			{
+				if ( !item1 && !item2 )
+				{
+					return true;
+				}
+				if ( (item1 && itemCategory(item1) == FOOD && item1->type != FOOD_RATION)
+					|| (item2 && itemCategory(item2) == FOOD && item2->type != FOOD_RATION) )
+				{
+					return false;
+				}
+				return true;
+			}
+			else if ( GenericGUIMenu::isItemRation(item->type) )
+			{
+				return false;
+			}
+			else
+			{
+				if ( !item1 && !item2 )
+				{
+					return true;
+				}
+				if ( (item1 && itemCategory(item1) == FOOD && item1->type != FOOD_RATION)
+					|| (item2 && itemCategory(item2) == FOOD && item2->type != FOOD_RATION) )
+				{
+					return true;
+				}
+			}
+		}
+	}*/
+
+	return false;
+}
+
+void GenericGUIMenu::MailboxGui_t::setItemDisplayNameAndPrice(Item* item, const bool isTooltipForRecvItem)
+{
+	itemActionType = MAIL_ACTION_NONE;
+	if ( !item || item->type == SPELL_ITEM )
+	{
+		clearItemDisplayed();
+	}
+	if ( !item )
+	{
+		return;
+	}
+
+	char buf[1024];
+	if ( !item->identified )
+	{
+		if ( isTooltipForRecvItem )
+		{
+			snprintf(buf, sizeof(buf), "%s (?)", Language::get(4161));
+		}
+		else
+		{
+			snprintf(buf, sizeof(buf), "%s %s (?)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName());
+		}
+	}
+	else
+	{
+		snprintf(buf, sizeof(buf), "%s %s (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName(), item->beatitude);
+	}
+
+	auto activateSelectionPrompt = mailFrame->findField("activate prompt");
+	activateSelectionPrompt->setText("");
+
+	int player = parentGUI.getPlayer();
+	if ( isTooltipForRecvItem )
+	{
+		if ( item->type != POTION_EMPTY )
+		{
+			itemActionType = MAIL_ACTION_OK;
+		}
+	}
+	else if ( itemCategory(item) == SCROLL || item->type == READABLE_BOOK )
+	{
+		bool isEquipped = itemIsEquipped(item, player);
+		if ( (!item->identified || isEquipped) && !isTooltipForRecvItem )
+		{
+			itemActionType = MAIL_ACTION_UNIDENTIFIED;
+		}
+		else
+		{
+			itemActionType = MAIL_ACTION_OK;
+		}
+		Item* basePotion = nullptr;
+		Item* secondaryPotion = nullptr;
+		if ( isEquipped )
+		{
+			strcat(buf, "\n");
+			strcat(buf, Language::get(4165));
+		}
+		else if ( item->identified )
+		{
+			/*if ( parentGUI.isItemBaseIngredient(item->type) )
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4156));
+			}
+			else if ( parentGUI.isItemSecondaryIngredient(item->type) )
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4157));
+			}
+			else
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4158));
+			}*/
+		}
+		else
+		{
+			/*if ( !item->identified )
+			{
+				if ( isTooltipForResultPotion )
+				{
+					strcat(buf, "\n");
+					strcat(buf, Language::get(4162));
+				}
+				else
+				{
+					strcat(buf, "\n");
+					strcat(buf, Language::get(4160));
+				}
+			}
+			else
+			{
+				strcat(buf, "\n");
+				strcat(buf, Language::get(4155));
+			}*/
+		}
+	}
+	else
+	{
+		itemActionType = MAIL_ACTION_INVALID_ITEM;
+	}
+	if ( itemDesc != buf )
+	{
+		itemRequiresTitleReflow = true;
+	}
+	itemDesc = buf;
+	itemType = item->type;
+	if ( itemActionType == MAIL_ACTION_OK )
+	{
+		if ( !isTooltipForRecvItem )
+		{
+			if ( item->uid == sendItem1Uid )
+			{
+				activateSelectionPrompt->setText(Language::get(4173));
+			}
+			else
+			{
+				activateSelectionPrompt->setText(Language::get(4172));
+			}
+		}
+		else if ( isTooltipForRecvItem )
+		{
+			bool usingGamepad = inputs.hasController(player) && !inputs.getVirtualMouse(player)->draw_cursor;
+			if ( !usingGamepad )
+			{
+				activateSelectionPrompt->setText(Language::get(6988));
+			}
+		}
+	}
+}
+
+bool GenericGUIMenu::MailboxGui_t::warpMouseToSelectedMailItem(Item* snapToItem, Uint32 flags)
+{
+	if ( mailGUIHasBeenCreated() )
+	{
+		int x = getSelectedMailSlotX();
+		int y = getSelectedMailSlotY();
+		if ( snapToItem )
+		{
+			x = snapToItem->x;
+			y = snapToItem->y;
+		}
+
+		if ( auto slot = getMailSlotFrame(x, y) )
+		{
+			int playernum = parentGUI.getPlayer();
+			auto player = players[playernum];
+			if ( !isInteractable )
+			{
+				//messagePlayer(0, "[Debug]: select item queued");
+				player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_MAILBOX;
+				player->inventoryUI.cursor.queuedFrameToWarpTo = slot;
+				return false;
+			}
+			else
+			{
+				//messagePlayer(0, "[Debug]: select item warped");
+				player->inventoryUI.cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+				player->inventoryUI.cursor.queuedFrameToWarpTo = nullptr;
+				slot->warpMouseToFrame(playernum, flags);
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+void GenericGUIMenu::MailboxGui_t::clearItemDisplayed()
+{
+	itemType = -1;
+	itemActionType = MAIL_ACTION_NONE;
+}
+
+bool GenericGUIMenu::isItemMailable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+
+	if ( !mailboxGUI.inventoryItemAllowedInGUI(const_cast<Item*>(item)) )
+	{
+		return false;
+	}
+
+	if ( itemIsEquipped(item, gui_player) )
+	{
+		return false; // don't want to deal with client/server desync problems here.
+	}
+
+	return true;
 }

@@ -16,6 +16,8 @@
 #include "entity.hpp"
 #include "prng.hpp"
 #include "monster.hpp"
+#include "shops.hpp"
+#include "net.hpp"
 
 #include <cassert>
 
@@ -34,6 +36,37 @@ void Entity::initMonster(int mySprite)
 				{
 					sprite = specialNPCModel;
 				}
+				else
+				{
+					if ( skill[3] != 0 ) // MONSTER_INIT, loading a savefile
+					{
+						auto key = MonsterData_t::getKeyFromSprite(sprite);
+						if ( myStats->sex == sex_t::MALE )
+						{
+							if ( key == "monster female" )
+							{
+								// need to swap
+								int newsprite = MonsterData_t::getSpriteFromKey(sprite, "monster male");
+								if ( newsprite != 0 )
+								{
+									sprite = newsprite;
+								}
+							}
+						}
+						else if ( myStats->sex == sex_t::FEMALE )
+						{
+							if ( key == "monster male" )
+							{
+								// need to swap
+								int newsprite = MonsterData_t::getSpriteFromKey(sprite, "monster female");
+								if ( newsprite != 0 )
+								{
+									sprite = newsprite;
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -49,6 +82,15 @@ void Entity::initMonster(int mySprite)
 	    focalx = limbs[monsterType][0][0];
 	    focaly = limbs[monsterType][0][1];
 	    focalz = limbs[monsterType][0][2];
+
+		if ( monsterType == MIMIC )
+		{
+			z = limbs[MIMIC][5][2];
+		}
+		if ( monsterType == MINIMIMIC )
+		{
+			z = limbs[MINIMIMIC][5][2];
+		}
 	} else {
 		if (arachnophobia_filter)
 		{
@@ -94,7 +136,7 @@ void Entity::initMonster(int mySprite)
 			monsterFootstepType = MONSTER_FOOTSTEP_STOMP;
 			monsterSpellAnimation = MONSTER_SPELLCAST_NONE;
 			break;
-		case OCTOPUS:
+		case BAT_SMALL:
 			// unused
 			break;
 		case SPIDER:
@@ -129,7 +171,9 @@ void Entity::initMonster(int mySprite)
 			monsterSpellAnimation = MONSTER_SPELLCAST_HUMANOID;
 			break;
 		case MIMIC:
-			// unused
+		case MINIMIMIC:
+			monsterFootstepType = MONSTER_FOOTSTEP_NONE;
+			monsterSpellAnimation = MONSTER_SPELLCAST_NONE;
 			break;
 		case LICH:
 			monsterFootstepType = MONSTER_FOOTSTEP_NONE;
@@ -198,6 +242,38 @@ void Entity::initMonster(int mySprite)
 			monsterFootstepType = MONSTER_FOOTSTEP_NONE;
 			monsterSpellAnimation = MONSTER_SPELLCAST_NONE;
 			break;
+		case BUGBEAR:
+			monsterFootstepType = MONSTER_FOOTSTEP_STOMP;
+			monsterSpellAnimation = MONSTER_SPELLCAST_NONE;
+			break;
+		case DRYAD:
+			monsterFootstepType = MONSTER_FOOTSTEP_USE_BOOTS;
+			monsterSpellAnimation = MONSTER_SPELLCAST_HUMANOID;
+			break;
+		case MYCONID:
+			monsterFootstepType = MONSTER_FOOTSTEP_USE_BOOTS;
+			monsterSpellAnimation = MONSTER_SPELLCAST_HUMANOID;
+			break;
+		case SALAMANDER:
+			monsterFootstepType = MONSTER_FOOTSTEP_USE_BOOTS;
+			monsterSpellAnimation = MONSTER_SPELLCAST_HUMANOID;
+			break;
+		case GREMLIN:
+			monsterFootstepType = MONSTER_FOOTSTEP_USE_BOOTS;
+			monsterSpellAnimation = MONSTER_SPELLCAST_HUMANOID;
+			break;
+		case REVENANT_SKULL:
+		case MONSTER_ADORCISED_WEAPON:
+		case FLAME_ELEMENTAL:
+		case HOLOGRAM:
+		case MOTH_SMALL:
+		case EARTH_ELEMENTAL:
+		case DUCK_SMALL:
+		case MONSTER_UNUSED_6:
+		case MONSTER_UNUSED_7:
+		case MONSTER_UNUSED_8:
+			// unused
+			break;
 		default:
 			monsterFootstepType = MONSTER_FOOTSTEP_NONE;
 			monsterSpellAnimation = MONSTER_SPELLCAST_NONE;
@@ -209,7 +285,18 @@ void Entity::initMonster(int mySprite)
 Monster Entity::getMonsterTypeFromSprite() const
 {
 	Sint32 mySprite = this->sprite;
-	return Entity::getMonsterTypeFromSprite(mySprite);
+	Monster result = Entity::getMonsterTypeFromSprite(mySprite);
+	if ( result != NOTHING )
+	{
+		if ( flags[SPRITE] )
+		{
+#ifndef NDEBUG
+			assert(true && "getMonsterTypeFromSprite found a conflicting SPRITE flag!");
+#endif
+			return NOTHING;
+		}
+	}
+	return result;
 }
 
 Monster Entity::getMonsterTypeFromSprite(const int sprite)
@@ -275,32 +362,32 @@ void Entity::actMonsterLimb(bool processLight)
 			light = nullptr;
 		}
 
-		int carryingLightSource = 0;
+        const char* lightName = nullptr;
 		if ( flags[INVISIBLE] == false )
 		{
 			if ( sprite == 93 )   // torch
 			{
-				carryingLightSource = 6;
+                lightName = "npc_torch";
 			}
 			else if ( sprite == 94 )     // lantern
 			{
-				carryingLightSource = 9;
+                lightName = "npc_lantern";
 			}
 			else if ( sprite == 529 )	// crystal shard
 			{
-				carryingLightSource = 4;
+                lightName = "npc_shard";
 			}
 		}
 
-		if ( carryingLightSource != 0 )
+		if ( lightName )
 		{
-			light = lightSphereShadow(x / 16, y / 16, carryingLightSource, 50 + 15 * carryingLightSource);
+			light = addLight(x / 16, y / 16, lightName);
 		}
 	}
 
-	if ( parentEnt && parentEnt->behavior == &actMonster && parentEnt->monsterEntityRenderAsTelepath == 1 )
+	if ( parentEnt && parentEnt->behavior == &actMonster && parentEnt->monsterEntityRenderAsTelepath != 0 )
 	{
-		monsterEntityRenderAsTelepath = 1;
+		monsterEntityRenderAsTelepath = parentEnt->monsterEntityRenderAsTelepath;
 	}
 	else
 	{
@@ -310,6 +397,27 @@ void Entity::actMonsterLimb(bool processLight)
 
 void Entity::removeMonsterDeathNodes()
 {
+	if ( monsterCanTradeWith(-1) )
+	{
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( players[i]->isLocalPlayer() && shopkeeper[i] == getUID() )
+			{
+				players[i]->closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_CLOSE_ALL);
+			}
+			else if ( i > 0 && !client_disconnected[i] && multiplayer == SERVER && !players[i]->isLocalPlayer() )
+			{
+				// inform client of abandonment
+				strcpy((char*)net_packet->data, "SHPC");
+				SDLNet_Write32(getUID(), &net_packet->data[4]);
+				net_packet->address.host = net_clients[i - 1].host;
+				net_packet->address.port = net_clients[i - 1].port;
+				net_packet->len = 8;
+				sendPacketSafe(net_sock, -1, net_packet, i - 1);
+			}
+		}
+	}
+
 	removeLightField();
 	int i = 0;
 	node_t *nextnode = nullptr;
@@ -360,7 +468,58 @@ void Entity::spawnBlood(int bloodSprite)
 
 MonsterData_t monsterData;
 std::map<int, MonsterData_t::MonsterDataEntry_t> MonsterData_t::monsterDataEntries;
-std::string MonsterData_t::iconDefaultString = "";
+std::string MonsterData_t::iconDefaultString = "#*images/ui/HUD/allies/icons/Icon_HeadDefaultM_00.png";
+std::string MonsterData_t::keyDefaultString = "";
+
+int MonsterData_t::getSpriteFromKey(int sprite, std::string key, int type)
+{
+	if ( type < NOTHING || type >= NUMMONSTERS )
+	{
+		type = Entity::getMonsterTypeFromSprite(sprite);
+	}
+
+	if ( type < NOTHING || type >= NUMMONSTERS )
+	{
+		return 0;
+	}
+
+	auto& data = monsterDataEntries[type];
+	auto find = data.keyToSpriteLookup.find(key);
+	if ( find == data.keyToSpriteLookup.end() ) {
+		return 0;
+	}
+	else 
+	{
+		if ( find->second.size() > 0 )
+		{
+			return find->second[0];
+		}
+		return 0;
+	}
+}
+
+std::string& MonsterData_t::getKeyFromSprite(int sprite, int type)
+{
+	if ( type < NOTHING || type >= NUMMONSTERS )
+	{
+		type = Entity::getMonsterTypeFromSprite(sprite);
+	}
+
+	if ( type < NOTHING || type >= NUMMONSTERS )
+	{
+		return keyDefaultString;
+	}
+
+	auto& data = monsterDataEntries[type];
+	auto find = data.iconSpritesAndPaths.find(sprite);
+	if ( find == data.iconSpritesAndPaths.end() ) {
+		return keyDefaultString;
+	}
+	else 
+	{
+		return find->second.key;
+	}
+}
 std::string& MonsterData_t::getAllyIconFromSprite(int sprite, int type)
 {
 	if ( type < NOTHING || type >= NUMMONSTERS )
@@ -372,8 +531,14 @@ std::string& MonsterData_t::getAllyIconFromSprite(int sprite, int type)
 	{
 		return iconDefaultString;
 	}
-
-	return monsterDataEntries[type].iconSpritesAndPaths[sprite];
+    
+    auto& data = monsterDataEntries[type];
+    auto find = data.iconSpritesAndPaths.find(sprite);
+    if (find == data.iconSpritesAndPaths.end()) {
+        return data.defaultIconPath;
+    } else {
+        return find->second.iconPath;
+    }
 }
 
 int MonsterData_t::getSpecialNPCBaseModel(Stat& myStats)

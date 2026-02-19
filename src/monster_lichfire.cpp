@@ -21,6 +21,7 @@
 #include "player.hpp"
 #include "magic/magic.hpp"
 #include "prng.hpp"
+#include "scores.hpp"
 
 static const int LICH_BODY = 0;
 static const int LICH_RIGHTARM = 2;
@@ -47,6 +48,8 @@ void initLichFire(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -55,7 +58,7 @@ void initLichFire(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			for ( int c = 1; c < MAXPLAYERS; ++c )
 			{
@@ -74,14 +77,14 @@ void initLichFire(Entity* my, Stat* myStats)
 			// boss variants
 
 			// random effects
-			myStats->EFFECTS[EFF_LEVITATING] = true;
+			myStats->setEffectActive(EFF_LEVITATING, 1);
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -107,7 +110,7 @@ void initLichFire(Entity* my, Stat* myStats)
 			//give weapon
 			if ( myStats->weapon == NULL && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 			{
-				myStats->weapon = newItem(CRYSTAL_SWORD, EXCELLENT, -5, 1, local_rng.rand(), false, NULL);
+				myStats->weapon = newItem(CRYSTAL_SWORD, EXCELLENT, -5, 1, rng.rand(), false, NULL);
 			}
 		}
 	}
@@ -254,11 +257,11 @@ void lichFireDie(Entity* my)
 			{
 				continue;
 			}
-			if ( entity->behavior == &actMonster )
+			if ( entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() )
 			{
 				spawnExplosion(entity->x, entity->y, entity->z);
 				Stat* stats = entity->getStats();
-				if ( stats )
+				if ( stats && achievementObserver.checkUidIsFromPlayer(stats->leader_uid) < 0 )
 				{
 					if ( stats->type != HUMAN )
 					{
@@ -313,7 +316,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 			{
 				wearingring = true;
 			}
-		if ( myStats->EFFECTS[EFF_INVISIBLE] == true || wearingring == true )
+		if ( myStats->getEffectActive(EFF_INVISIBLE) || wearingring == true )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[BLOCKSIGHT] = false;
@@ -365,6 +368,10 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 			}
 		}
 
+		if ( my->monsterLichBattleState == LICH_BATTLE_IMMOBILE )
+		{
+			my->flags[PASSABLE] = true;
+		}
 		if ( my->monsterLichBattleState == LICH_BATTLE_IMMOBILE && my->ticks > TICKS_PER_SECOND )
 		{
 			int sides = 0;
@@ -393,6 +400,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 			if ( sides != 4 )
 			{
 				my->monsterLichBattleState = LICH_BATTLE_READY;
+				my->flags[PASSABLE] = false;
 				real_t distToPlayer = 0;
 				int c, playerToChase = -1;
 				for ( c = 0; c < MAXPLAYERS; c++ )
@@ -469,7 +477,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 
 	if ( !my->light )
 	{
-		my->light = lightSphereShadow(my->x / 16, my->y / 16, 4, 192);
+		my->light = addLight(my->x / 16, my->y / 16, "fire_lich_glow");
 	}
 
 	//Lich stares you down while he does his special ability windup, and any of his spellcasting animations.
@@ -702,12 +710,12 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 							{
 								my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 								// lich can't be paralyzed, use EFF_STUNNED instead.
-								myStats->EFFECTS[EFF_STUNNED] = true;
+								myStats->setEffectActive(EFF_STUNNED, 1);
 								myStats->EFFECTS_TIMERS[EFF_STUNNED] = 50;
 							}
 							else
 							{
-								myStats->EFFECTS[EFF_STUNNED] = true;
+								myStats->setEffectActive(EFF_STUNNED, 1);
 								myStats->EFFECTS_TIMERS[EFF_STUNNED] = 25;
 							}
 						}
@@ -789,7 +797,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 				else if ( my->monsterAttack == MONSTER_POSE_MELEE_WINDUP3 )
 				{
 					int windupDuration = (my->monsterState == MONSTER_STATE_LICH_CASTSPELLS) ? 20 : 40;
-					if ( multiplayer != CLIENT && myStats->EFFECTS[EFF_VAMPIRICAURA] )
+					if ( multiplayer != CLIENT && myStats->getEffectActive(EFF_VAMPIRICAURA) )
 					{
 						windupDuration = 20;
 					}
@@ -804,7 +812,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 						{
 							my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 						//	// lich can't be paralyzed, use EFF_STUNNED instead.
-							myStats->EFFECTS[EFF_STUNNED] = true;
+							myStats->setEffectActive(EFF_STUNNED, 1);
 							myStats->EFFECTS_TIMERS[EFF_STUNNED] = windupDuration;
 						}
 					}
@@ -869,7 +877,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 					playSoundEntityLocal(my, 170, 32);
 					if ( multiplayer != CLIENT )
 					{
-						myStats->EFFECTS[EFF_STUNNED] = true;
+						myStats->setEffectActive(EFF_STUNNED, 1);
 						myStats->EFFECTS_TIMERS[EFF_STUNNED] = 20;
 					}
 				}
@@ -944,12 +952,12 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 							if ( local_rng.rand() % 2 )
 							{
 								if ( my->monsterLichAllyStatus == LICH_ALLY_DEAD
-									&& !myStats->EFFECTS[EFF_VAMPIRICAURA]
+									&& !myStats->getEffectActive(EFF_VAMPIRICAURA)
 									&& my->monsterState != MONSTER_STATE_LICH_CASTSPELLS )
 								{
 									createParticleDropRising(my, 600, 0.7);
 									serverSpawnMiscParticles(my, PARTICLE_EFFECT_VAMPIRIC_AURA, 600);
-									myStats->EFFECTS[EFF_VAMPIRICAURA] = true;
+									myStats->setEffectActive(EFF_VAMPIRICAURA, 1);
 									myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = 600;
 								}
 								else
@@ -1026,7 +1034,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 				// set sprites, invisibility check etc.
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->weapon == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->weapon == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}

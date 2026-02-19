@@ -5,7 +5,15 @@
 
 #ifdef USE_EOS
 
+#include "main.hpp"
 #include "eos.hpp"
+
+EOSFuncs EOS;
+
+bool EOSFuncs::initAuth(std::string hostname, std::string tokenName)
+{
+	return true;
+}
 
 bool EOSFuncs::initPlatform(bool enableLogging)
 {

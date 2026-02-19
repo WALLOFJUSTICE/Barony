@@ -15,17 +15,41 @@
 #include "../game.hpp"
 #include "../draw.hpp"
 #include "../ui/Frame.hpp"
+#include "../items.hpp"
 
 class Item;
 
-typedef struct damageIndicator_t
+struct DamageIndicatorHandler_t
 {
-	double x, y;  // x and y of the attacker in world coordinates
-	double alpha; // alpha value of the indicator
-	node_t* node; // node in the damageIndicator list
-	Sint32 ticks; // birthtime of the damage indicator
-} damageIndicator_t;
-extern list_t damageIndicators[MAXPLAYERS];
+	struct DamageIndicator_t
+	{
+		int player = -1;
+		real_t x = 0.0; // x and y of the attacker in world coordinates
+		real_t y = 0.0;
+		real_t alpha = 0.0;
+		Uint32 ticks = 0;
+		Uint32 animateTicks = 0;
+		Uint32 uid = 0;
+
+		int size = 0;
+		int w = 0;
+		int h = 0;
+		Uint32 flashTicks = 0;
+		Uint32 flashProcessedOnTick = 0;
+		int flashAnimState = -1;
+		bool hitDealtDamage = false;
+		bool expired = false;
+		DamageIndicator_t(const int _player)
+		{
+			player = _player;
+		}
+		void process();
+	};
+	void update();
+	void insert(const int player, const real_t _x, const real_t _y, const bool damaged);
+	std::vector<DamageIndicator_t> indicators[MAXPLAYERS];
+};
+extern DamageIndicatorHandler_t DamageIndicatorHandler;
 
 extern bool hide_statusbar;
 extern real_t uiscale_chatlog;
@@ -35,19 +59,48 @@ extern bool uiscale_skillspage;
 extern real_t uiscale_hotbar;
 extern real_t uiscale_inventory;
 
+#include "../entity.hpp"
+
+enum DamageGib {
+	DMG_DEFAULT,
+	DMG_WEAKER,
+	DMG_WEAKEST,
+	DMG_STRONGER,
+	DMG_STRONGEST,
+	DMG_FIRE,
+	DMG_BLEED,
+	DMG_POISON,
+	DMG_HEAL,
+	DMG_MISS,
+	DMG_GUARD,
+	DMG_TODO,
+	DMG_DETECT_MONSTER
+};
+enum DamageGibDisplayType {
+	DMG_GIB_NUMBER,
+	DMG_GIB_MISS,
+	DMG_GIB_SPRITE,
+	DMG_GIB_GUARD,
+	DMG_GIB_DPS_CHECK
+};
 class EnemyHPDamageBarHandler
 {
 public:
+	static bool bDamageGibTypesEnabled;
 	static int maxTickLifetime;
 	static int maxTickFurnitureLifetime;
 	static int shortDistanceHPBarFadeTicks;
 	static real_t shortDistanceHPBarFadeDistance;
+	static bool bEnemyBarSimpleBlit;
+	static std::map<int, std::vector<int>> damageGibAnimCurves;
+	static void dumpCache();
 	static std::vector<std::pair<real_t, int>>widthHealthBreakpointsMonsters;
 	static std::vector<std::pair<real_t, int>>widthHealthBreakpointsFurniture;
 	enum HPBarType {
 		BAR_TYPE_CREATURE,
 		BAR_TYPE_FURNITURE
 	};
+
 	struct BarAnimator_t
 	{
 		real_t foregroundValue = 0.0;
@@ -79,25 +132,34 @@ public:
 		Sint32 enemy_maxhp = 0;
 		Sint32 enemy_oldhp = 0;
 		Uint32 enemy_timer = 0;
-		Uint32 enemy_bar_color = 0;
 		Uint32 enemy_uid = 0;
 		Uint32 enemy_statusEffects1 = 0;
 		Uint32 enemy_statusEffects2 = 0;
+		Uint32 enemy_statusEffects3 = 0;
+		Uint32 enemy_statusEffects4 = 0;
+		Uint32 enemy_statusEffects5 = 0;
 		Uint32 enemy_statusEffectsLowDuration1 = 0;
 		Uint32 enemy_statusEffectsLowDuration2 = 0;
+		Uint32 enemy_statusEffectsLowDuration3 = 0;
+		Uint32 enemy_statusEffectsLowDuration4 = 0;
+		Uint32 enemy_statusEffectsLowDuration5 = 0;
 		bool lowPriorityTick = false;
 		bool shouldDisplay = true;
 		bool hasDistanceCheck = false;
 		bool displayOnHUD = false;
 		bool expired = false;
+		bool detectMonsterCheckStatus = false;
 		real_t depletionAnimationPercent = 100.0;
-		float glWorldOffsetY = 0.0;
 		EnemyHPDetails() {};
-		EnemyHPDetails(Uint32 uid, Sint32 HP, Sint32 maxHP, Sint32 oldHP, Uint32 color, const char* name, bool isLowPriority)
+		EnemyHPDetails(Uint32 uid, Sint32 HP, Sint32 maxHP, Sint32 oldHP, const char* name, bool isLowPriority)
 		{
 			if ( Entity* entity = uidToEntity(uid) )
 			{
 				if ( entity->behavior != &actMonster && entity->behavior != actPlayer )
+				{
+					barType = BAR_TYPE_FURNITURE;
+				}
+				else if ( entity->isInertMimic() )
 				{
 					barType = BAR_TYPE_FURNITURE;
 				}
@@ -109,27 +171,11 @@ public:
 			depletionAnimationPercent =
 				enemy_oldhp / static_cast<real_t>(enemy_maxhp);
 			enemy_timer = ticks;
-			enemy_bar_color = color;
 			lowPriorityTick = isLowPriority;
 			shouldDisplay = true;
 			enemy_name = name;
 		}
-		~EnemyHPDetails()
-		{
-			if ( worldTexture )
-			{
-				delete worldTexture;
-				worldTexture = nullptr;
-			}
-			if ( worldSurfaceSpriteStatusEffects ) {
-				SDL_FreeSurface(worldSurfaceSpriteStatusEffects);
-				worldSurfaceSpriteStatusEffects = nullptr;
-			}
-			if ( worldSurfaceSprite ) {
-				SDL_FreeSurface(worldSurfaceSprite);
-				worldSurfaceSprite = nullptr;
-			}
-		}
+		~EnemyHPDetails();
 
 		real_t worldX = 0.0;
 		real_t worldY = 0.0;
@@ -139,12 +185,12 @@ public:
 		SDL_Surface* worldSurfaceSprite = nullptr;
 		SDL_Surface* worldSurfaceSpriteStatusEffects = nullptr;
 		SDL_Surface* blitEnemyBarStatusEffects(const int player);
+		SDL_Surface* blitEnemyBar(const int player, SDL_Surface* statusEffectSprite);
 		void updateWorldCoordinates();
 	};
 
-	Uint32 enemy_bar_client_color = 0;
 	std::unordered_map<Uint32, EnemyHPDetails> HPBars;
-	void addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 oldHP, Uint32 color, Uint32 uid, const char* name, bool isLowPriority);
+	EnemyHPDetails* addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 oldHP, Uint32 uid, const char* name, bool isLowPriority, DamageGib gibDmgType);
 	void displayCurrentHPBar(const int player);
 	void cullExpiredHPBars();
 	EnemyHPDetails* getMostRecentHPBar(int index = 0);
@@ -164,29 +210,8 @@ static const int GUI_MODE_MAGIC = 1;
 static const int GUI_MODE_SHOP = 2;
 static const int GUI_MODE_FOLLOWERMENU = 3;
 static const int GUI_MODE_SIGN = 4;
+static const int GUI_MODE_CALLOUT = 5;
 
-extern SDL_Surface* font12x12_small_bmp;
-extern SDL_Surface* backdrop_blessed_bmp;
-extern SDL_Surface* backdrop_cursed_bmp;
-extern SDL_Surface* status_bmp;
-extern SDL_Surface* character_bmp;
-extern SDL_Surface* hunger_bmp;
-extern SDL_Surface* hunger_blood_bmp;
-extern SDL_Surface* hunger_boiler_bmp;
-extern SDL_Surface* hunger_boiler_hotflame_bmp;
-extern SDL_Surface* hunger_boiler_flame_bmp;
-extern SDL_Surface* minotaur_bmp;
-extern SDL_Surface* textup_bmp;
-extern SDL_Surface* textdown_bmp;
-extern SDL_Surface* attributesleft_bmp, *attributesleftunclicked_bmp;
-extern SDL_Surface* attributesright_bmp, *attributesrightunclicked_bmp;
-extern SDL_Surface* button_bmp, *smallbutton_bmp, *invup_bmp, *invdown_bmp;
-extern SDL_Surface* inventory_bmp, *inventoryoption_bmp, *inventoryoptionChest_bmp, *equipped_bmp;
-extern SDL_Surface* itembroken_bmp;
-//extern SDL_Surface *category_bmp[NUMCATEGORIES];
-extern SDL_Surface* shopkeeper_bmp;
-extern SDL_Surface* shopkeeper2_bmp;
-extern SDL_Surface* damage_bmp;
 extern int textscroll;
 extern int inventorycategory;
 extern int itemscroll;
@@ -200,17 +225,16 @@ void select_shop_slot(int player, int currentx, int currenty, int diffx, int dif
 void select_tinkering_slot(int player, int currentx, int currenty, int diffx, int diffy);
 void select_alchemy_slot(int player, int currentx, int currenty, int diffx, int diffy);
 void select_feather_slot(int player, int currentx, int currenty, int diffx, int diffy);
+void select_assistshrine_slot(int player, int currentx, int currenty, int diffx, int diffy);
+void select_mail_slot(int player, int currentx, int currenty, int diffx, int diffy);
 
-extern SDL_Surface* inventoryChest_bmp;
-extern SDL_Surface* invclose_bmp;
-extern SDL_Surface* invgraball_bmp;
 extern Entity* openedChest[MAXPLAYERS]; //One for each client. //TODO: Clientside, [0] will always point to something other than NULL when a chest is open and it will be NULL when a chest is closed.
 extern list_t chestInv[MAXPLAYERS]; //This is just for the client, so that it can populate the chest inventory on its end.
 
-extern bool gui_clickdrag[MAXPLAYERS]; //True as long as an interface element is being dragged.
-extern int dragoffset_x[MAXPLAYERS];
-extern int dragoffset_y[MAXPLAYERS];
-extern int buttonclick;
+//extern bool gui_clickdrag[MAXPLAYERS]; //True as long as an interface element is being dragged.
+//extern int dragoffset_x[MAXPLAYERS];
+//extern int dragoffset_y[MAXPLAYERS];
+//extern int buttonclick;
 
 // function prototypes
 void takeScreenshot(const char* output_path = nullptr);
@@ -218,8 +242,12 @@ bool loadInterfaceResources();
 void freeInterfaceResources();
 void clickDescription(const int player, Entity* entity);
 void consoleCommand(char const * const command);
-void drawMinimap(const int player, SDL_Rect rect);
-void handleDamageIndicators(const int player);
+void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap);
+struct MinimapHighlight_t
+{
+	Uint32 ticks = 0;
+};
+extern std::map<int, MinimapHighlight_t> minimapHighlights;
 void handleDamageIndicatorTicks();
 void drawStatus(const int player);
 void drawStatusNew(const int player);
@@ -229,11 +257,11 @@ int saveConfig(char const * const filename);
 void defaultConfig();
 void updateChestInventory(const int player);
 Item* takeItemFromChest(int player, Item* item, int amount, Item* addToSpecificInventoryItem, bool forceNewStack, bool bDoPickupMessage = true);
-void updateAppraisalItemBox(const int player);
 void updateShopWindow(const int player);
 bool getShopFreeSlot(const int player, list_t* shopInventory, Item* itemToSell, int& xout, int& yout, Item*& itemToStackInto);
-void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp, Sint32 maxhp, bool lowPriorityTick = false);
-damageIndicator_t* newDamageIndicator(const int player, double x, double y);
+
+void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp, Sint32 maxhp, 
+	bool lowPriorityTick, DamageGib gibType);
 
 bool autoAddHotbarFilter(const Item& item);
 void quickStackItems(const int player);
@@ -253,26 +281,22 @@ bool playerLearnedSpellbook(const int player, Item* current_item);
 //Inventory GUI definitions.
 static const int INVENTORY_MODE_ITEM = 0;
 static const int INVENTORY_MODE_SPELL = 1;
-extern SDL_Surface* inventory_mode_item_img;
-extern SDL_Surface* inventory_mode_item_highlighted_img;
-extern SDL_Surface* inventory_mode_spell_img;
-extern SDL_Surface* inventory_mode_spell_highlighted_img;
 extern bool restrictPaperDollMovement;
 
 //Chest GUI definitions.
 int numItemsInChest(const int player);
 
 //Magic GUI definitions.
-extern SDL_Surface* magicspellList_bmp;
-extern SDL_Surface* spell_list_titlebar_bmp;
-extern SDL_Surface* spell_list_gui_slot_bmp;
-extern SDL_Surface* spell_list_gui_slot_highlighted_bmp;
-extern int spellscroll; //Same as itemscroll, but for the spell list GUI.
-extern int magicspell_list_offset_x;
-extern int magicspell_list_offset_y;
-#define MAGICSPELL_LIST_X (((xres / 2) - (magicspellList_bmp->w / 2)) + magicspell_list_offset_x)
-#define MAGICSPELL_LIST_Y (((yres / 2) - (magicspellList_bmp->h / 2)) + magicspell_list_offset_y)
-extern bool dragging_magicspell_list_GUI; //The magic spell list GUI is being dragged.
+//extern SDL_Surface* magicspellList_bmp;
+//extern SDL_Surface* spell_list_titlebar_bmp;
+//extern SDL_Surface* spell_list_gui_slot_bmp;
+//extern SDL_Surface* spell_list_gui_slot_highlighted_bmp;
+//extern int spellscroll; //Same as itemscroll, but for the spell list GUI.
+//extern int magicspell_list_offset_x;
+//extern int magicspell_list_offset_y;
+//#define MAGICSPELL_LIST_X (((xres / 2) - (magicspellList_bmp->w / 2)) + magicspell_list_offset_x)
+//#define MAGICSPELL_LIST_Y (((yres / 2) - (magicspellList_bmp->h / 2)) + magicspell_list_offset_y)
+//extern bool dragging_magicspell_list_GUI; //The magic spell list GUI is being dragged.
 /*
  * The state of the magic GUI.
  * 0 = spell list.
@@ -292,9 +316,6 @@ void updateMagicGUI();
 #define SUST_SPELLS_Y 32
 #define SUST_SPELLS_RIGHT_ALIGN true //If true, overrides settings and makes the sustained spells draw alongside the right edge of the screen, vertically.
 
-//Identify GUI definitions.
-extern SDL_Surface* identifyGUI_img;
-
 void drawSustainedSpells(const int player); //Draws an icon for every sustained spell.
 
 enum GUICurrentType
@@ -303,37 +324,32 @@ enum GUICurrentType
 	GUI_TYPE_ALCHEMY,
 	GUI_TYPE_TINKERING,
 	GUI_TYPE_SCRIBING,
-	GUI_TYPE_ITEMFX
+	GUI_TYPE_ITEMFX,
+	GUI_TYPE_ASSIST,
+	GUI_TYPE_MAILBOX
 };
 
 // Generic GUI Stuff (repair/alchemy)
 class GenericGUIMenu
 {
 	int gui_player = 0;
-	int offsetx = 0;
-	int offsety = 0;
-	int gui_starty = ((xres / 2) - (420 / 2)) + offsetx;
-	int gui_startx = ((yres / 2) - (96 / 2)) + offsety;
-	int windowX1 = 0;
-	int windowX2 = 0;
-	int windowY1 = 0;
-	int windowY2 = 0;
-	int scroll = 0;
 	GUICurrentType guiType;
 public:
 	static const int kNumShownItems = 4;
-	bool draggingGUI; // if gui is being dragged
-	Item* itemsDisplayed[kNumShownItems];
 	bool guiActive;
-	int selectedSlot;
-
 
 	// Alchemy
 	Item* basePotion;
 	Item* secondaryPotion;
 	Item* alembicItem;
+	Uint32 alembicEntityUid = 0;
 	bool experimentingAlchemy;
 	
+	bool isItemMailable(const Item* item);
+	Uint32 mailboxEntityUid = 0;
+	void mailboxClaimItem();
+	bool mailboxSendItem();
+
 	// Misc item/spell effects
 	Item* itemEffectScrollItem;
 	bool itemEffectUsingSpell;
@@ -361,6 +377,7 @@ public:
 	bool tinkeringBulkSalvage = false;
 	Sint32 tinkeringBulkSalvageMetalScrap = 0;
 	Sint32 tinkeringBulkSalvageMagicScrap = 0;
+	Uint32 workstationEntityUid = 0;
 
 	// Scribing
 	Item* scribingToolItem;
@@ -374,13 +391,11 @@ public:
 	};
 	ScribingFilter scribingFilter;
 
+	Item* transmuteItemTarget = nullptr;
+	int transmuteItemScroll = 0;
+
 	GenericGUIMenu() :
 		guiActive(false),
-		offsetx(0),
-		offsety(0),
-		selectedSlot(-1),
-		scroll(0),
-		draggingGUI(false),
 		basePotion(nullptr),
 		secondaryPotion(nullptr),
 		alembicItem(nullptr),
@@ -404,12 +419,10 @@ public:
 		tinkerGUI(*this),
 		alchemyGUI(*this),
 		featherGUI(*this),
-		itemfxGUI(*this)
+		itemfxGUI(*this),
+		assistShrineGUI(*this),
+		mailboxGUI(*this)
 	{
-		for ( int i = 0; i < kNumShownItems; ++i )
-		{
-			itemsDisplayed[i] = nullptr;
-		}
 		tinkeringTotalItems.first = nullptr;
 		tinkeringTotalItems.last = nullptr;
 		scribingTotalItems.first = nullptr;
@@ -418,21 +431,15 @@ public:
 
 	void setPlayer(const int p) { gui_player = p; }
 	const int getPlayer() { return gui_player;  }
-	void warpMouseToSelectedSlot();
-	void selectSlot(int slot);
 	void closeGUI();
 	void openGUI(int type, Item* effectItem, int effectBeatitude, int effectItemType, int usingSpellID);
 	void openGUI(int type, bool experimenting, Item* itemOpenedWith);
 	void openGUI(int type, Item* itemOpenedWith);
-	inline Item* getItemInfo(int slot);
+	void openGUI(int type, Entity* interactable);
 	void updateGUI();
 	void rebuildGUIInventory();
 	bool shouldDisplayItemInGUI(Item* item);
 	bool executeOnItemClick(Item* item);
-	void getDimensions(SDL_Rect& r) const 
-	{
-		r.x = windowX1; r.w = windowX2 - windowX1; r.y = windowY1; r.h = windowY2 - windowY1;
-	}
 
 	// repair menu funcs
 	void repairItem(Item* item);
@@ -446,12 +453,47 @@ public:
 	bool isItemIdentifiable(const Item* item);
 	void identifyItem(Item* item);
 
+	//enchant
+	bool isItemEnchantWeaponable(const Item* item);
+	bool isItemEnchantArmorable(const Item* item);
+	void enchantItem(Item* item);
+
+	// transmute
+	bool isItemAlterable(const Item* item);
+	void alterItem(Item* item);
+	int getAlterItemResultAtCycle(Item* item);
+
+	// void
+	bool isItemVoidable(const Item* item);
+	void sendItemToVoid(Item* item);
+
+	// adorcise
+	bool isItemAdorcisable(const Item* item);
+	void adorciseItem(Item* item);
+
+	// scepter charge
+	bool isItemScepterChargeable(const Item* item);
+	void rechargeScepterUsingItem(Item* item);
+
+	// misc
+	bool isItemDesecratable(const Item* item);
+	void desecrateItem(Item* item);
+	bool isItemBlessWaterable(const Item* item);
+	void blessWater(Item* item);
+	bool isItemSanctifiable(const Item* item);
+	void sanctifyItem(Item* item);
+	bool isItemCleaseFoodable(const Item* item);
+	void cleanseFood(Item* item);
+
 	//alchemy menu funcs
 	bool isItemMixable(const Item* item);
 	void alchemyCombinePotions();
+	void alchemyCookCombination();
 	bool alchemyLearnRecipe(int type, bool increaseskill, bool notify = true);
 	bool isItemBaseIngredient(int type);
 	bool isItemSecondaryIngredient(int type);
+	static int isItemRationSeasoning(int type);
+	static bool isItemRation(int type);
 	void alchemyLearnRecipeOnLevelUp(int skill);
 
 	// tinkering menu foncs
@@ -513,6 +555,7 @@ public:
 	{
 		if ( &item == scribingToolItem || &item == tinkeringKitItem || &item == alembicItem
 			|| &item == scribingBlankScrollTarget
+			|| &item == transmuteItemTarget
 			|| &item == basePotion || &item == secondaryPotion || &item == itemEffectScrollItem )
 		{
 			return true;
@@ -524,6 +567,10 @@ public:
 		if ( &item == scribingToolItem )
 		{
 			scribingToolItem = nullptr;
+		}
+		if ( &item == transmuteItemTarget )
+		{
+			transmuteItemTarget = nullptr;
 		}
 		if ( &item == scribingBlankScrollTarget )
 		{
@@ -607,6 +654,7 @@ public:
 		bool animPromptMoveLeft = false;
 		real_t animInvalidAction = 0.0;
 		Uint32 animInvalidActionTicks = 0;
+		bool drawerJustifyInverted = false;
 		enum InvalidActionFeedback_t : int
 		{
 			INVALID_ACTION_NONE,
@@ -655,6 +703,18 @@ public:
 		bool isInteractable = true;
 		bool bOpen = false;
 		bool bFirstTimeSnapCursor = false;
+		enum CostEffectTypes
+		{
+			COST_EFFECT_NONE,
+			COST_EFFECT_GOLD,
+			COST_EFFECT_MANA,
+			COST_EFFECT_MANA_RETURN_GOLD,
+			COST_EFFECT_MANA_AND_GOLD
+		};
+		CostEffectTypes modeHasCostEffect = COST_EFFECT_NONE;
+		bool modeHasTransmuteMenu();
+		int costEffectGoldAmount = 0;
+		int costEffectMPAmount = 0;
 		enum ItemEffectModes : int
 		{
 			ITEMFX_MODE_NONE,
@@ -663,7 +723,27 @@ public:
 			ITEMFX_MODE_SCROLL_IDENTIFY,
 			ITEMFX_MODE_SCROLL_REMOVECURSE,
 			ITEMFX_MODE_SPELL_IDENTIFY,
-			ITEMFX_MODE_SPELL_REMOVECURSE
+			ITEMFX_MODE_SPELL_REMOVECURSE,
+			ITEMFX_MODE_SCROLL_ENCHANT_WEAPON,
+			ITEMFX_MODE_SCROLL_ENCHANT_ARMOR,
+			ITEMFX_MODE_ALTER_INSTRUMENT,
+			ITEMFX_MODE_METALLURGY,
+			ITEMFX_MODE_GEOMANCY,
+			ITEMFX_MODE_FORGE_KEY,
+			ITEMFX_MODE_FORGE_JEWEL,
+			ITEMFX_MODE_ENHANCE_WEAPON,
+			ITEMFX_MODE_RESHAPE_WEAPON,
+			ITEMFX_MODE_ALTER_ARROW,
+			ITEMFX_MODE_PUNCTURE_VOID,
+			ITEMFX_MODE_ADORCISE_WEAPON,
+			ITEMFX_MODE_RESTORE,
+			ITEMFX_MODE_VANDALISE,
+			ITEMFX_MODE_DESECRATE,
+			ITEMFX_MODE_SANCTIFY,
+			ITEMFX_MODE_SANCTIFY_WATER,
+			ITEMFX_MODE_CLEANSE_FOOD,
+			ITEMFX_MODE_ADORCISE_INSTRUMENT,
+			ITEMFX_MODE_SCEPTER_CHARGE
 		};
 		void openItemEffectMenu(ItemEffectModes mode);
 		ItemEffectModes currentMode = ITEMFX_MODE_NONE;
@@ -676,6 +756,7 @@ public:
 		std::string itemDesc = "";
 		int itemType = -1;
 		int itemRequirement = -1;
+		int confirmActionSteps = 0;
 		enum ItemEffectActions_t : int
 		{
 			ITEMFX_ACTION_NONE,
@@ -686,8 +767,15 @@ public:
 			ITEMFX_ACTION_ITEM_IDENTIFIED,
 			ITEMFX_ACTION_MUST_BE_UNEQUIPPED,
 			ITEMFX_ACTION_NOT_IDENTIFIED_YET,
-			ITEMFX_ACTION_NOT_CURSED
+			ITEMFX_ACTION_CANT_AFFORD_GOLD,
+			ITEMFX_ACTION_CANT_AFFORD_MANA,
+			ITEMFX_ACTION_NOT_CURSED,
+			ITEMFX_ACTION_UNVOIDABLE,
+			ITEMFX_ACTION_AT_MAX_BLESSING,
+			ITEMFX_ACTION_NEED_SKILL_LVLS,
+			ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD
 		};
+		std::pair<Uint32, int> confirmActionOnItemSteps;
 		ItemEffectActions_t itemActionType = ITEMFX_ACTION_NONE;
 		bool itemRequiresTitleReflow = true;
 		real_t animTooltip = 0.0;
@@ -708,10 +796,268 @@ public:
 
 		ItemEffectActions_t setItemDisplayNameAndPrice(Item* item, bool checkResultOnly = false);
 		void clearItemDisplayed();
-
+		bool consumeResourcesForTransmute();
+		void getItemEffectCost(Item* itemUsedWith, int& goldCost, int& manaCost);
 		static int heightOffsetWhenNotCompact;
 	};
 	ItemEffectGUI_t itemfxGUI;
+
+	struct AssistShrineGUI_t
+	{
+		GenericGUIMenu& parentGUI;
+		AssistShrineGUI_t(GenericGUIMenu& g) :
+			parentGUI(g)
+		{
+#ifndef EDITOR
+			resetItems();
+#endif
+		}
+
+		static constexpr int ASSIST_SLOT_CLOAK = -1;
+		static constexpr int ASSIST_SLOT_MASK = -2;
+		static constexpr int ASSIST_SLOT_AMULET = -3;
+		static constexpr int ASSIST_SLOT_RING = -4;
+		static constexpr int ASSIST_RACE_COLUMN = 10;
+		static constexpr int ASSIST_CHAR_NAME = -10;
+		static constexpr int ASSIST_CHAR_RACE = -11;
+		static constexpr int ASSIST_CHAR_CLASS = -12;
+
+		static constexpr int achievementDisabledLimit = 10;
+
+		Item itemCloak;
+		Item itemMask;
+		Item itemAmulet;
+		Item itemRing;
+
+		void resetItems();
+		void onGameStart();
+		void resetSavedCharacterChanges();
+		void onMainMenuEnd();
+		bool hasItemsToClaim();
+		bool raceHasChanged();
+		bool classHasChanged();
+		bool claimItems(bool* isEquipped);
+
+		enum AssistShrineView_t : int
+		{
+			ASSIST_SHRINE_VIEW_ITEMS,
+			ASSIST_SHRINE_VIEW_CLASSES,
+			ASSIST_SHRINE_VIEW_RACE
+		};
+
+		AssistShrineView_t currentView = ASSIST_SHRINE_VIEW_ITEMS;
+		std::map<int, int> classSlots;
+		std::vector<int> raceSlots;
+		int selectedClass = -1;
+		int selectedRace = -1;
+		int selectedSex = -1;
+		int selectedAppearance = -1;
+		int selectedDisableAbilities = -1;
+		int savedClass = -1;
+		int savedRace = -1;
+		int savedSex = -1;
+		int savedAppearance = -1;
+		void changeCurrentView(AssistShrineView_t view);
+		void updateClassSlots();
+		void updateRaceSlots();
+		bool receivedCharacterChangeOK = false;
+		void onCharacterChange();
+		static void serverUpdateStatFlagsForClients();
+		real_t animx = 0.0;
+		real_t animFilter = 0.0;
+		real_t animPrompt = 0.0;
+		real_t animTooltip = 0.0;
+		real_t animAssistValueFade = 0.0;
+		Uint32 animPromptTicks = 0;
+		Uint32 animTooltipTicks = 0;
+		real_t animClassRaceTooltipOpacity = 0.0;
+		Uint32 animClassRaceTooltipTicks = 0;
+		std::set<ItemType> claimedItems;
+		bool isInteractable = true;
+		bool bOpen = false;
+		bool bFirstTimeSnapCursor = false;
+		Frame* assistShrineFrame = nullptr;
+		Uint32 shrineUID = 0;
+
+		void openAssistShrine(Entity* shrine);
+		void closeAssistShrine();
+		void updateAssistShrine();
+		void createAssistShrine();
+		bool assistShrineGUIHasBeenCreated() const;
+		std::unordered_map<int, Frame*> assistShrineSlotFrames;
+		void selectAssistShrineSlot(const int x, const int y);
+		int getAssistPointsSaved();
+		int getAssistPointsPreview();
+		int getAssistPointFromItem(Item* item);
+
+		int selectedAssistShrineSlotX = -1;
+		int selectedAssistShrineSlotY = -1;
+		int currentScrollRow1 = 0;
+		int currentScrollRow2 = 0;
+		real_t scrollPercent1 = 0.0;
+		real_t scrollInertia1 = 0.0;
+		int scrollSetpoint1 = 0;
+		real_t scrollAnimateX1 = 0.0;
+		real_t scrollPercent2 = 0.0;
+		real_t scrollInertia2 = 0.0;
+		int scrollSetpoint2 = 0;
+		real_t scrollAnimateX2 = 0.0;
+		static const int kNumClassesToDisplayVertical;
+		static const int kNumRacesToDisplayVertical;
+		static const int kClassSlotHeight;
+		static const int kRaceSlotHeight;
+		static const int kRaceSlotWidth;
+		static const int MAX_ASSISTSHRINE_X;
+		static const int MAX_ASSISTSHRINE_Y;
+		const int getSelectedAssistShrineX() const { return selectedAssistShrineSlotX; }
+		const int getSelectedAssistShrineY() const { return selectedAssistShrineSlotY; }
+		Frame* getAssistShrineSlotFrame(int x, int y) const;
+		//void setItemDisplayNameAndPrice(Item* item, bool isTooltipForResultPotion, bool isTooltipForRecipe);
+		bool warpMouseToSelectedAssistShrineItem(Item* snapToItem, Uint32 flags);
+		bool itemIsFromGUI(Item* item);
+		bool isSlotVisible(int x, int y) const;
+		void scrollToSlot(int x, int y, bool instantly);
+		static int heightOffsetWhenNotCompact;
+
+		struct AssistNotification_t
+		{
+			std::string img = "";
+			std::string title = "";
+			std::string body = "";
+			enum NotificationTypes
+			{
+				NOTIF_DEFAULT,
+				NOTIF_SEND_REQ,
+				NOTIF_CHARACTER_CHANGE_OK,
+				NOTIF_CLASS_RESET
+			};
+			Uint32 lifetime = 3 * TICKS_PER_SECOND;
+			NotificationTypes notificationType = NOTIF_DEFAULT;
+			real_t animx = 0.0;
+			int state = 0;
+			AssistNotification_t(std::string _title, std::string _body, std::string _img, NotificationTypes _notifType)
+			{
+				title = _title;
+				img = _img;
+				body = _body;
+				notificationType = _notifType;
+			}
+		};
+		std::vector<std::pair<Uint32, AssistNotification_t>> notifications;
+		AssistNotification_t* addNotification(std::string _title, std::string _body, std::string _img, AssistNotification_t::NotificationTypes _notifType);
+
+		enum AssistItemActions_t
+		{
+			ASSIST_ITEM_NONE,
+			ASSIST_ITEM_ACTIVATE,
+			ASSIST_ITEM_DEACTIVATE,
+			ASSIST_ITEM_CLAIMED,
+			ASSIST_ITEM_NOTHING_TO_CLAIM,
+			ASSIST_ITEM_FLAG_DISABLED,
+			ASSIST_CLASS_OK,
+			ASSIST_RACE_OK,
+		};
+		AssistItemActions_t itemActionType = ASSIST_ITEM_NONE;
+		real_t animInvalidAction = 0.0;
+		Uint32 animInvalidActionTicks = 0;
+		enum InvalidActionFeedback_t : int
+		{
+			INVALID_ACTION_NONE,
+			INVALID_ACTION_SHAKE_PROMPT
+		};
+		InvalidActionFeedback_t invalidActionType = INVALID_ACTION_NONE;
+		int itemType = -1;
+		AssistItemActions_t setItemDisplayNameAndPrice(Item* item, bool checkResultOnly = false);
+		void clearItemDisplayed();
+	};
+	AssistShrineGUI_t assistShrineGUI;
+
+	struct MailboxGui_t
+	{
+		GenericGUIMenu& parentGUI;
+
+		static const int MAIL_SLOT_SEND = -1;
+		static const int MAIL_SLOT_RECV = -2;
+
+		Item mailReceiveItem;
+		MailboxGui_t(GenericGUIMenu& g) :
+			parentGUI(g)
+		{
+			mailReceiveItem.appearance = 0;
+			mailReceiveItem.type = POTION_EMPTY;
+			mailReceiveItem.node = nullptr;
+			mailReceiveItem.status = SERVICABLE;
+			mailReceiveItem.beatitude = 0;
+			mailReceiveItem.count = 1;
+			mailReceiveItem.appearance = 0;
+			mailReceiveItem.identified = false;
+			mailReceiveItem.uid = 0;
+			mailReceiveItem.isDroppable = false;
+			mailReceiveItem.x = MAIL_SLOT_RECV;
+			mailReceiveItem.y = 0;
+		}
+
+		enum MailActions_t : int
+		{
+			MAIL_ACTION_NONE,
+			MAIL_ACTION_OK,
+			MAIL_ACTION_INVALID_ITEM,
+			MAIL_ACTION_UNIDENTIFIED
+		};
+		MailActions_t itemActionType = MAIL_ACTION_NONE;
+		/*enum AlchemyView_t : int
+		{
+			ALCHEMY_VIEW_BREW,
+			ALCHEMY_VIEW_RECIPES,
+			ALCHEMY_VIEW_COOK,
+			ALCHEMY_VIEW_RECIPES_COOK
+		};*/
+		//AlchemyView_t currentView = ALCHEMY_VIEW_BREW;
+		Frame* mailFrame = nullptr;
+		real_t animx = 0.0;
+		real_t animTooltip = 0.0;
+		Uint32 animTooltipTicks = 0;
+		real_t animSendItem1 = 0.0;
+		int animSendItem1StartX = 0;
+		int animSendItem1StartY = 0;
+		int animSendItem1DestX = 0;
+		int animSendItem1DestY = 0;
+		Uint32 sendItem1Uid = 0;
+		real_t animRecvItem = 0.0;
+		int animRecvItemStartX = 0;
+		int animRecvItemStartY = 0;
+		int animRecvItemDestX = 0;
+		int animRecvItemDestY = 0;
+		Uint32 recvItemUid = 0;
+		//int animRecvItemCount = 1;
+		bool isInteractable = true;
+		bool bOpen = false;
+		bool bFirstTimeSnapCursor = false;
+		void openMailMenu(/*AlchemyView_t view*/);
+		//void changeCurrentView(AlchemyView_t view);
+		void closeMailMenu();
+		void updateMailMenu();
+		void createMailMenu();
+		bool mailGUIHasBeenCreated() const;
+		std::string itemDesc = "";
+		int itemType = -1;
+		bool itemRequiresTitleReflow = true;
+		int selectedMailSlotX = -1;
+		int selectedMailSlotY = -1;
+		std::unordered_map<int, Frame*> mailSlotFrames;
+		void selectMailSlot(const int x, const int y);
+		const int getSelectedMailSlotX() const { return selectedMailSlotX; }
+		const int getSelectedMailSlotY() const { return selectedMailSlotY; }
+		Frame* getMailSlotFrame(int x, int y) const;
+		void setItemDisplayNameAndPrice(Item* item, const bool isTooltipForRecvItem);
+		//void setItemDisplayNameAndPriceBrew(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe);
+		//void setItemDisplayNameAndPriceCook(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe);
+		bool inventoryItemAllowedInGUI(Item* item);
+		bool warpMouseToSelectedMailItem(Item* snapToItem, Uint32 flags);
+		void clearItemDisplayed();
+		static int heightOffsetWhenNotCompact;
+	};
+	MailboxGui_t mailboxGUI;
 
 	struct FeatherGUI_t
 	{
@@ -760,6 +1106,7 @@ public:
 		bool bDrawerOpen = false;
 		Uint32 inscribeSuccessTicks = 0;
 		std::string inscribeSuccessName = "";
+		bool drawerJustifyInverted = false;
 
 		real_t scrollPercent = 0.0;
 		real_t scrollInertia = 0.0;
@@ -934,6 +1281,7 @@ public:
 
 		Item alchemyResultPotion;
 		Item emptyBottleCount;
+		Item torchCount;
 		AlchemyGUI_t(GenericGUIMenu& g) :
 			parentGUI(g),
 			recipes(*this)
@@ -963,6 +1311,19 @@ public:
 			emptyBottleCount.isDroppable = false;
 			emptyBottleCount.x = 0;
 			emptyBottleCount.y = 0;
+
+			torchCount.appearance = 0;
+			torchCount.type = TOOL_TORCH;
+			torchCount.node = nullptr;
+			torchCount.status = SERVICABLE;
+			torchCount.beatitude = 0;
+			torchCount.count = 0;
+			torchCount.appearance = 0;
+			torchCount.identified = true;
+			torchCount.uid = 0;
+			torchCount.isDroppable = false;
+			torchCount.x = 0;
+			torchCount.y = 0;
 		}
 		enum AlchemyActions_t : int
 		{
@@ -975,7 +1336,9 @@ public:
 		enum AlchemyView_t : int
 		{
 			ALCHEMY_VIEW_BREW,
-			ALCHEMY_VIEW_RECIPES
+			ALCHEMY_VIEW_RECIPES,
+			ALCHEMY_VIEW_COOK,
+			ALCHEMY_VIEW_RECIPES_COOK
 		};
 		struct AlchNotification_t
 		{
@@ -993,6 +1356,7 @@ public:
 		};
 		std::vector<std::pair<Uint32, AlchNotification_t>> notifications;
 		AlchemyView_t currentView = ALCHEMY_VIEW_BREW;
+		bool hasTinOpener = false;
 		Frame* alchFrame = nullptr;
 		real_t animx = 0.0;
 		real_t animTooltip = 0.0;
@@ -1024,7 +1388,8 @@ public:
 		bool isInteractable = true;
 		bool bOpen = false;
 		bool bFirstTimeSnapCursor = false;
-		void openAlchemyMenu();
+		void openAlchemyMenu(AlchemyView_t view);
+		void changeCurrentView(AlchemyView_t view);
 		void closeAlchemyMenu();
 		void updateAlchemyMenu();
 		void createAlchemyMenu();
@@ -1046,9 +1411,13 @@ public:
 		const int getSelectedAlchemySlotX() const { return selectedAlchemySlotX; }
 		const int getSelectedAlchemySlotY() const { return selectedAlchemySlotY; }
 		Frame* getAlchemySlotFrame(int x, int y) const;
-		void setItemDisplayNameAndPrice(Item* item, bool isTooltipForResultPotion, bool isTooltipForRecipe);
+		void setItemDisplayNameAndPrice(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe);
+		void setItemDisplayNameAndPriceBrew(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe);
+		void setItemDisplayNameAndPriceCook(Item* item, const bool isTooltipForResultPotion, const bool isTooltipForRecipe);
+		bool inventoryItemAllowedInGUI(Item* item);
 		bool warpMouseToSelectedAlchemyItem(Item* snapToItem, Uint32 flags);
 		void clearItemDisplayed();
+		bool alchemyMissingIngredientQty(Item* item);
 		static int heightOffsetWhenNotCompact;
 	};
 	AlchemyGUI_t alchemyGUI;
@@ -1060,29 +1429,25 @@ extern GenericGUIMenu GenericGUI[MAXPLAYERS];
  */
 bool mouseInBounds(const int player, int x1, int x2, int y1, int y2);
 
-void updateCharacterSheet(const int player);
-void drawPartySheet(const int player);
-void drawSkillsSheet(const int player);
-
 //Right sidebar defines.
-#define RIGHTSIDEBAR_X (xres - rightsidebar_titlebar_img->w)
-#define RIGHTSIDEBAR_Y 0
+//#define RIGHTSIDEBAR_X (xres - rightsidebar_titlebar_img->w)
+//#define RIGHTSIDEBAR_Y 0
 //Note: Just using the spell versions of these for now.
-extern SDL_Surface* rightsidebar_titlebar_img;
-extern SDL_Surface* rightsidebar_slot_img;
-extern SDL_Surface* rightsidebar_slot_highlighted_img;
-extern SDL_Surface* rightsidebar_slot_grayedout_img;
-extern int rightsidebar_height;
+//extern SDL_Surface* rightsidebar_titlebar_img;
+//extern SDL_Surface* rightsidebar_slot_img;
+//extern SDL_Surface* rightsidebar_slot_highlighted_img;
+//extern SDL_Surface* rightsidebar_slot_grayedout_img;
+//extern int rightsidebar_height;
 
 void updateRightSidebar(); //Updates the sidebar on the right side of the screen, the one containing spells, skills, etc.
 
 //------book_t Defines-----
-extern SDL_Surface* bookgui_img;
+//extern SDL_Surface* bookgui_img;
 //extern SDL_Surface *nextpage_img;
 //extern SDL_Surface *previouspage_img;
 //extern SDL_Surface *bookclose_img;
-extern SDL_Surface* book_highlighted_left_img; //Draw this when the mouse is over the left half of the book.
-extern SDL_Surface* book_highlighted_right_img; //Draw this when the mouse is over the right half of the book.
+//extern SDL_Surface* book_highlighted_left_img; //Draw this when the mouse is over the left half of the book.
+//extern SDL_Surface* book_highlighted_right_img; //Draw this when the mouse is over the right half of the book.
 class BookParser_t;
 
 //------Hotbar Defines-----
@@ -1090,8 +1455,8 @@ class BookParser_t;
  * The hotbar itself is an array.
  * NOTE: If the status bar width is changed, you need to change the slot image too. Make sure the status bar width stays divisible by 10.
  */
-extern SDL_Surface* hotbar_img; //A 64x64 slot.
-extern SDL_Surface* hotbar_spell_img; //Drawn when a spell is in the hotbar. TODO: Replace with unique images for every spell. (Or draw this by default if none found?)
+//extern SDL_Surface* hotbar_img; //A 64x64 slot.
+//extern SDL_Surface* hotbar_spell_img; //Drawn when a spell is in the hotbar. TODO: Replace with unique images for every spell. (Or draw this by default if none found?)
 
 //NOTE: Each hotbar slot is "constructed" in loadInterfaceResources() in interface.c. If you add anything, make sure to initialize it there.
 typedef struct hotbar_slot_t
@@ -1100,9 +1465,15 @@ typedef struct hotbar_slot_t
 	* This is an item's ID. It just resolves to NULL if an item is no longer valid.
 	*/
 	Uint32 item = 0;
-	Uint32 lastItemUid = 0;
-	int lastItemCategory = -1;
-	int lastItemType = -1;
+	Item lastItem;
+	int lastCategory = -1;
+	bool matchesExactLastItem(int player, Item* item);
+	void resetLastItem();
+	hotbar_slot_t()
+	{
+		resetLastItem();
+	}
+	void storeLastItem(Item* item);
 } hotbar_slot_t;
 
 
@@ -1110,7 +1481,7 @@ typedef struct hotbar_slot_t
 // Used for such things as dragging and dropping items. Uses realtime (mousex/mousey) coords as may be dragging
 hotbar_slot_t* getCurrentHotbarUnderMouse(int player, int* outSlotNum = nullptr);
 
-void warpMouseToSelectedHotbarSlot(const int player);
+bool warpMouseToSelectedHotbarSlot(const int player);
 
 /*
  * True = automatically place items you pick up in your hotbar.
@@ -1121,8 +1492,6 @@ extern bool auto_hotbar_new_items;
 extern bool auto_hotbar_categories[NUM_HOTBAR_CATEGORIES]; // true = enable auto add to hotbar. else don't add.
 
 extern int autosort_inventory_categories[NUM_AUTOSORT_CATEGORIES]; // 0 = disable priority sort, fill rightmost first. greater than 0, fill leftmost using value as priority (0 = lowest priority)
-
-extern bool hotbar_numkey_quick_add; // use number keys to add items to hotbar if mouse in inventory panel.
 
 extern bool disable_messages;
 
@@ -1151,34 +1520,14 @@ enum CloseGUIIgnore : int
 	CLOSEGUI_DONT_CLOSE_FOLLOWERGUI,
 	CLOSEGUI_DONT_CLOSE_CHEST,
 	CLOSEGUI_DONT_CLOSE_SHOP,
-	CLOSEGUI_DONT_CLOSE_INVENTORY
+	CLOSEGUI_DONT_CLOSE_INVENTORY,
+	CLOSEGUI_DONT_CLOSE_CALLOUTGUI
 };
 
 static const int SCANCODE_UNASSIGNED_BINDING = 399;
 
 const bool hotbarGamepadControlEnabled(const int player);
 
-extern SDL_Surface *str_bmp64u;
-extern SDL_Surface *dex_bmp64u;
-extern SDL_Surface *con_bmp64u;
-extern SDL_Surface *int_bmp64u;
-extern SDL_Surface *per_bmp64u;
-extern SDL_Surface *chr_bmp64u;
-extern SDL_Surface *str_bmp64;
-extern SDL_Surface *dex_bmp64;
-extern SDL_Surface *con_bmp64;
-extern SDL_Surface *int_bmp64;
-extern SDL_Surface *per_bmp64;
-extern SDL_Surface *chr_bmp64;
-
-extern SDL_Surface *sidebar_lock_bmp;
-extern SDL_Surface *sidebar_unlock_bmp;
-
-extern SDL_Surface *effect_drunk_bmp;
-extern SDL_Surface *effect_polymorph_bmp;
-extern SDL_Surface *effect_hungover_bmp;
-
-void printStatBonus(TTF_Font* outputFont, Sint32 stat, Sint32 statWithModifiers, int x, int y);
 struct AttackHoverText_t
 {
 	enum HoverTypes
@@ -1194,7 +1543,9 @@ struct AttackHoverText_t
 		ATK_HOVER_TYPE_MAGICSTAFF,
 		ATK_HOVER_TYPE_TOOL,
 		ATK_HOVER_TYPE_PICKAXE,
-		ATK_HOVER_TYPE_TOOL_TRAP
+		ATK_HOVER_TYPE_TOOL_TRAP,
+		ATK_HOVER_TYPE_THROWN_MISC,
+		ATK_HOVER_TYPE_RAPIER
 	};
 	HoverTypes hoverType = ATK_HOVER_TYPE_DEFAULT;
 	Sint32 totalAttack = 0;
@@ -1208,30 +1559,45 @@ struct AttackHoverText_t
 	Sint32 equipmentAndEffectBonus = 0;
 	int proficiency = -1;
 };
-void attackHoverText(const int player, AttackHoverText_t& output);
 Sint32 displayAttackPower(const int player, AttackHoverText_t& output);
 
 class MinimapPing
 {
 public:
-	Sint32 tickStart;
+	Uint32 tickStart;
 	Uint8 player;
 	Uint8 x;
 	Uint8 y;
 	bool radiusPing;
-	MinimapPing(Sint32 tickStart, Uint8 player, Uint8 x, Uint8 y) :
+	enum PingType : Uint8
+	{
+		PING_DEFAULT,
+		PING_DEATH_MARKER
+	};
+	PingType pingType = PING_DEFAULT;
+	MinimapPing(Uint32 tickStart, Uint8 player, Uint8 x, Uint8 y) :
 		tickStart(tickStart),
 		player(player),
 		x(x),
 		y(y),
-		radiusPing(false) {}
+		radiusPing(false),
+		pingType(PING_DEFAULT) {}
 
-	MinimapPing(Sint32 tickStart, Uint8 player, Uint8 x, Uint8 y, bool radiusPing) :
+	MinimapPing(Uint32 tickStart, Uint8 player, Uint8 x, Uint8 y, bool radiusPing) :
 		tickStart(tickStart),
 		player(player),
 		x(x),
 		y(y),
-		radiusPing(radiusPing) {}
+		radiusPing(radiusPing),
+		pingType(PING_DEFAULT) {}
+
+	MinimapPing(Uint32 tickStart, Uint8 player, Uint8 x, Uint8 y, bool radiusPing, PingType pingType) :
+		tickStart(tickStart),
+		player(player),
+		x(x),
+		y(y),
+		radiusPing(radiusPing),
+		pingType(pingType) {}
 };
 
 extern std::vector<MinimapPing> minimapPings[MAXPLAYERS];
@@ -1366,6 +1732,274 @@ public:
 };
 extern FollowerRadialMenu FollowerMenu[MAXPLAYERS];
 
+struct CalloutRadialMenu
+{
+	int menuX; // starting mouse coordinates that are the center of the circle.
+	int menuY; // starting mouse coordinates that are the center of the circle.
+	int optionSelected; // current moused over option.
+	bool selectMoveTo; // player is choosing a point or target to interact with.
+	int moveToX; // x position for follower to move to.
+	int moveToY; // y position for follower to move to.
+	bool menuToggleClick; // user pressed menu key but did not select option before letting go. keeps the menu open without input.
+	bool holdWheel; // user pressed quick menu for last follower.
+	char interactText[128]; // user moused over object while selecting interact object.
+	int maxMonstersToDraw;
+	int gui_player = 0;
+	Frame* calloutFrame = nullptr;
+	Frame* calloutPingFrame = nullptr;
+	bool bOpen = false;
+	Uint32 lockOnEntityUid = 0;
+
+	CalloutRadialMenu() :
+		calloutFrame(nullptr),
+		calloutPingFrame(nullptr),
+		menuX(-1),
+		menuY(-1),
+		optionSelected(-1),
+		selectMoveTo(false),
+		moveToX(-1),
+		moveToY(-1),
+		menuToggleClick(false),
+		holdWheel(false),
+		bOpen(false)
+	{
+		memset(interactText, 0, 128);
+	}
+
+	void createCalloutMenuGUI();
+	bool calloutGUIHasBeenCreated() const;
+	static void loadCalloutJSON();
+	enum PanelDirections : int
+	{
+		NORTH,
+		NORTHWEST,
+		WEST,
+		SOUTHWEST,
+		SOUTH,
+		SOUTHEAST,
+		EAST,
+		NORTHEAST,
+		PANEL_DIRECTION_END
+	};
+	struct PanelEntry
+	{
+		int x = 0;
+		int y = 0;
+		std::string path = "";
+		std::string path_hover = "";
+		int icon_offsetx = 0;
+		int icon_offsety = 0;
+	};
+	static std::vector<PanelEntry> panelEntries;
+	struct IconEntry
+	{
+		std::string name = "";
+		int id = -1;
+		std::string path = "";
+		std::string path_hover = "";
+		std::string path_active = "";
+		std::string path_active_hover = "";
+		int icon_offsetx = 0;
+		int icon_offsety = 0;
+		struct IconEntryText_t
+		{
+			std::string bannerText = "";
+			std::set<int> bannerHighlights;
+			std::string worldMsgSays = "";
+			std::string worldMsg = "";
+			std::string worldMsgEmote = "";
+			std::string worldMsgEmoteYou = "";
+			std::string worldMsgEmoteToYou = "";
+			std::string worldIconTag = "";
+			std::string worldIconTagMini = "";
+		};
+		std::map<std::string, IconEntryText_t> text_map;
+	};
+	static std::map<std::string, IconEntry> iconEntries;
+	struct WorldIconEntry_t
+	{
+		std::string pathDefault = "";
+		std::string pathPlayer1 = "";
+		std::string pathPlayer2 = "";
+		std::string pathPlayer3 = "";
+		std::string pathPlayer4 = "";
+		std::string pathPlayerX = "";
+		int id = 0;
+		std::string& getPlayerIconPath(const int playernum);
+	};
+	static std::map<std::string, WorldIconEntry_t> worldIconEntries;
+	static std::map<std::string, std::string> helpDescriptors;
+	static std::map<int, std::string> worldIconIDToEntryKey;
+	static int followerWheelRadius;
+	static int followerWheelButtonThickness;
+	static int followerWheelFrameOffsetX;
+	static int followerWheelFrameOffsetY;
+	static int followerWheelInnerCircleRadiusOffset;
+	static int followerWheelInnerCircleRadiusOffsetAlternate;
+	static int CALLOUT_SFX_NEUTRAL;
+	static int CALLOUT_SFX_NEGATIVE;
+	static int CALLOUT_SFX_POSITIVE;
+
+	enum CalloutCommand : int
+	{
+		CALLOUT_CMD_LOOK,
+		CALLOUT_CMD_HELP,
+		CALLOUT_CMD_NEGATIVE,
+		CALLOUT_CMD_SOUTHWEST,
+		CALLOUT_CMD_SOUTH,
+		CALLOUT_CMD_SOUTHEAST,
+		CALLOUT_CMD_AFFIRMATIVE,
+		CALLOUT_CMD_MOVE,
+		CALLOUT_CMD_CANCEL,
+		CALLOUT_CMD_SELECT,
+		CALLOUT_CMD_END,
+		CALLOUT_CMD_THANKS
+	};
+	int getPlayerForDirectPlayerCmd(const int player, const CalloutCommand cmd);
+	enum CalloutType : int
+	{
+		CALLOUT_TYPE_NO_TARGET,
+		CALLOUT_TYPE_NPC,
+		CALLOUT_TYPE_PLAYER,
+		CALLOUT_TYPE_BOULDER,
+		CALLOUT_TYPE_TRAP,
+		CALLOUT_TYPE_GENERIC_INTERACTABLE,
+		CALLOUT_TYPE_CHEST,
+		CALLOUT_TYPE_ITEM,
+		CALLOUT_TYPE_SWITCH,
+		CALLOUT_TYPE_SWITCH_ON,
+		CALLOUT_TYPE_SWITCH_OFF,
+		CALLOUT_TYPE_SHRINE,
+		CALLOUT_TYPE_EXIT,
+		CALLOUT_TYPE_SECRET_EXIT,
+		CALLOUT_TYPE_SECRET_ENTRANCE,
+		CALLOUT_TYPE_GOLD,
+		CALLOUT_TYPE_FOUNTAIN,
+		CALLOUT_TYPE_SINK,
+		CALLOUT_TYPE_NPC_ENEMY,
+		CALLOUT_TYPE_NPC_PLAYERALLY,
+		CALLOUT_TYPE_TELEPORTER_LADDER_UP,
+		CALLOUT_TYPE_TELEPORTER_LADDER_DOWN,
+		CALLOUT_TYPE_TELEPORTER_PORTAL,
+		CALLOUT_TYPE_BOMB_TRAP,
+		CALLOUT_TYPE_COLLIDER_BREAKABLE,
+		CALLOUT_TYPE_BELL,
+		CALLOUT_TYPE_DAEDALUS,
+		CALLOUT_TYPE_ASSIST_SHRINE,
+		CALLOUT_TYPE_WALL_LOCK,
+		CALLOUT_TYPE_WALL_LOCK_ON,
+		CALLOUT_TYPE_WALL_LOCK_OFF,
+		CALLOUT_TYPE_WALL_BUTTON_ON,
+		CALLOUT_TYPE_WALL_BUTTON_OFF
+		/*,CALLOUT_TYPE_PEDESTAL*/
+	};
+	enum CalloutHelpFlags : int
+	{
+		CALLOUT_HELP_FOOD_HUNGRY =		0b1,
+		CALLOUT_HELP_BLOOD_HUNGRY =		0b10,
+		CALLOUT_HELP_FOOD_WEAK =		0b100,
+		CALLOUT_HELP_BLOOD_WEAK =		0b1000,
+		CALLOUT_HELP_FOOD_STARVING =	0b10000,
+		CALLOUT_HELP_BLOOD_STARVING =	0b100000,
+		CALLOUT_HELP_STEAM_CRITICAL =	0b1000000,
+		CALLOUT_HELP_HP_LOW =			0b10000000,
+		CALLOUT_HELP_HP_CRITICAL =		0b100000000,
+		CALLOUT_HELP_NEGATIVE_FX =		0b1000000000,
+	};
+	Uint32 clientCalloutHelpFlags = 0;
+	struct CalloutParticle_t
+	{
+		real_t x = 0.0;
+		real_t y = 0.0;
+		real_t z = 0.0;
+		Uint32 entityUid = 0;
+		Uint32 ticks = 0;
+		Uint32 lifetime = 1;
+		Uint32 creationTick = 0;
+		CalloutCommand cmd = CALLOUT_CMD_END;
+		CalloutType type = CALLOUT_TYPE_NO_TARGET;
+		bool expired = false;
+		bool lockOnScreen[MAXPLAYERS];
+		int playerColor = -1;
+		int tagID = -1;
+		int tagSmallID = -1;
+		int animateState = 0;
+		int animateStateInit = 0;
+		real_t scale = 1.0;
+		real_t animateX = 0.0;
+		real_t animateScaleForPlayerView[MAXPLAYERS];
+		real_t animateBounce = 0.0;
+		real_t animateY = 0.0;
+		bool noUpdate = false;
+		bool selfCallout = false;
+		bool doMessage = true;
+		Uint32 messageSentTick = 0;
+		bool big[MAXPLAYERS];
+		void animate();
+		void init(const int player);
+		CalloutParticle_t() = default;
+		CalloutParticle_t(const int player, real_t _x, real_t _y, real_t _z, Uint32 _uid, CalloutCommand _cmd) :
+			x(_x),
+			y(_y),
+			z(_z),
+			entityUid(_uid),
+			cmd(_cmd)
+		{
+			init(player);
+		};
+		static Uint32 kParticleLifetime;
+	};
+	std::map<Uint32, CalloutParticle_t> callouts;
+
+	real_t animTitle = 0.0;
+	real_t animWheel = 0.0;
+	Uint32 openedThisTick = 0;
+	real_t animInvalidAction = 0.0;
+	Uint32 animInvalidActionTicks = 0;
+	Uint32 updatedThisTick = 0;
+
+	bool calloutMenuIsOpen();
+	void drawCalloutMenu();
+	void initCalloutMenuGUICursor(bool openInventory);
+	void closeCalloutMenuGUI();
+	bool allowedInteractEntity(Entity& selectedEntity, bool updateInteractText = true);
+	bool createParticleCallout(real_t x, real_t y, real_t z, Uint32 uid, CalloutCommand _cmd = CALLOUT_CMD_LOOK); // if true, send message
+	bool createParticleCallout(Entity* entity, CalloutCommand _cmd, Uint32 overrideUID = 0); // if true, send message
+	enum SetCalloutTextTypes : int {
+		SET_CALLOUT_BANNER_TEXT,
+		SET_CALLOUT_WORLD_TEXT,
+		SET_CALLOUT_ICON_KEY
+	};
+	std::string setCalloutText(Field* field, const char* iconName, Uint32 color, CalloutCommand cmd, SetCalloutTextTypes setType, const int targetPlayer);
+	std::string getCalloutMessage(const IconEntry::IconEntryText_t& text_map, const char* object, const int targetPlayer);
+	void sendCalloutText(CalloutCommand cmd);
+	static std::string getCalloutKeyForCommand(CalloutCommand cmd);
+	static CalloutType getCalloutTypeForUid(const int player, Uint32 uid);
+	static CalloutType getCalloutTypeForEntity(const int player, Entity* parent);
+	static void drawCallouts(const int playernum);
+	/*void selectNextFollower();
+	int numMonstersToDrawInParty();
+	void updateScrollPartySheet();
+	int optionDisabledForCreature(int playerSkillLVL, int monsterType, int option, Entity* follower);
+	bool allowedClassToggle(int monsterType);
+	bool allowedItemPickupToggle(int monsterType);
+	static bool allowedInteractFood(int monsterType);
+	static bool allowedInteractWorld(int monsterType);
+	bool allowedInteractItems(int monsterType);
+	bool attackCommandOnly(int monsterType);
+	void monsterGyroBotConvertCommand(int* option);
+	bool monsterGyroBotOnlyCommand(int option);
+	bool monsterGyroBotDisallowedCommands(int option);
+	bool isTinkeringFollower(int type);*/
+	void setPlayer(const int p) { gui_player = p; }
+	const int getPlayer() const { return gui_player; }
+	static bool uidMatchesPlayer(const int playernum, const Uint32 uid);
+	static Uint32 getPlayerUid(const int playernum);
+	static bool calloutMenuEnabledForGamemode();
+	void update();
+};
+extern CalloutRadialMenu CalloutMenu[MAXPLAYERS];
+
 std::string getItemSpritePath(const int player, Item& item);
 
 enum ItemContextMenuPrompts {
@@ -1373,9 +2007,11 @@ enum ItemContextMenuPrompts {
 	PROMPT_UNEQUIP,
 	PROMPT_SPELL_EQUIP,
 	PROMPT_SPELL_QUICKCAST,
+	PROMPT_SPELL_CHANGE_FOCUS,
 	PROMPT_APPRAISE,
 	PROMPT_DROPDOWN,
 	PROMPT_INTERACT,
+	PROMPT_INTERACT_SPELLBOOK_HOTBAR,
 	PROMPT_EAT,
 	PROMPT_CONSUME,
 	PROMPT_CONSUME_ALTERNATE,
@@ -1391,7 +2027,9 @@ enum ItemContextMenuPrompts {
 	PROMPT_TINKER,
 	PROMPT_GRAB,
 	PROMPT_UNEQUIP_FOR_DROP,
-	PROMPT_CLEAR_HOTBAR_SLOT
+	PROMPT_CLEAR_HOTBAR_SLOT,
+	PROMPT_COOK,
+	PROMPT_SCEPTER_CHARGE
 };
 
 std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int player, Item* item);

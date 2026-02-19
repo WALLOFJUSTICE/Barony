@@ -21,6 +21,7 @@
 #include "player.hpp"
 #include "magic/magic.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 void initIncubus(Entity* my, Stat* myStats)
 {
@@ -39,6 +40,8 @@ void initIncubus(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -80,60 +83,6 @@ void initIncubus(Entity* my, Stat* myStats)
 						myStats->GOLD = 0;
 			
 						myStats->weapon = newItem(TOOL_WHIP, EXCELLENT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, true, nullptr);
-						/*if ( parentStats->shield )
-						{
-							myStats->shield = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->shield, parentStats->shield);
-							myStats->shield->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->helmet )
-						{
-							myStats->helmet = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->helmet, parentStats->helmet);
-							myStats->helmet->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->breastplate )
-						{
-							myStats->breastplate = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->breastplate, parentStats->breastplate);
-							myStats->breastplate->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->shoes )
-						{
-							myStats->shoes = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->shoes, parentStats->shoes);
-							myStats->shoes->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->gloves )
-						{
-							myStats->gloves = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->gloves, parentStats->gloves);
-							myStats->gloves->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->cloak )
-						{
-							myStats->cloak = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->cloak, parentStats->cloak);
-							myStats->cloak->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->ring )
-						{
-							myStats->ring = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->ring, parentStats->ring);
-							myStats->ring->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->amulet )
-						{
-							myStats->amulet = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->amulet, parentStats->amulet);
-							myStats->amulet->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}
-						if ( parentStats->mask )
-						{
-							myStats->mask = newItem(BRONZE_SWORD, EXCELLENT, 0, 1, 0, true, nullptr);
-							copyItem(myStats->mask, parentStats->mask);
-							myStats->mask->appearance = MONSTER_ITEM_UNDROPPABLE_APPEARANCE;
-						}*/
 					}
 				}
 			}
@@ -156,7 +105,7 @@ void initIncubus(Entity* my, Stat* myStats)
 					myStats->LVL = 15;
 				}
 				// apply random stat increases if set in stat_shared.cpp or editor
-				setRandomMonsterStats(myStats);
+				setRandomMonsterStats(myStats, rng);
 
 				// generate 6 items max, less if there are any forced items from boss variants
 				int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
@@ -166,10 +115,10 @@ void initIncubus(Entity* my, Stat* myStats)
 				// random effects
 
 				// generates equipment and weapons if available from editor
-				createMonsterEquipment(myStats);
+				createMonsterEquipment(myStats, rng);
 
 				// create any custom inventory items from editor if available
-				createCustomInventory(myStats, customItemsToGenerate);
+				createCustomInventory(myStats, customItemsToGenerate, rng);
 
 				// count if any custom inventory items from editor
 				int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -183,13 +132,21 @@ void initIncubus(Entity* my, Stat* myStats)
 				newItem(SPELLBOOK_STEAL_WEAPON, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
 				newItem(SPELLBOOK_CHARM_MONSTER, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
 
-				if ( local_rng.rand() % 4 == 0 ) // 1 in 4
+				if ( myStats->getAttribute("special_npc") == "johann" )
 				{
-					newItem(POTION_CONFUSION, SERVICABLE, 0, 0 + local_rng.rand() % 3, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+					//newItem(POTION_CONFUSION, SERVICABLE, 0, 10 + rng.rand() % 3, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+					//newItem(POTION_THUNDERSTORM, SERVICABLE, 0, 10 + rng.rand() % 3, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
 				}
-				else // 3 in 4
+				else
 				{
-					newItem(POTION_BOOZE, SERVICABLE, 0, 1 + local_rng.rand() % 3, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+					if ( rng.rand() % 4 == 0 ) // 1 in 4
+					{
+						newItem(POTION_CONFUSION, SERVICABLE, 0, 0 + rng.rand() % 3, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+					}
+					else // 3 in 4
+					{
+						newItem(POTION_BOOZE, SERVICABLE, 0, 1 + rng.rand() % 3, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+					}
 				}
 
 
@@ -200,19 +157,26 @@ void initIncubus(Entity* my, Stat* myStats)
 					case 5:
 					case 4:
 					case 3:
-						if ( local_rng.rand() % 2 == 0 && !lesserMonster ) // 1 in 2
+						if ( rng.rand() % 2 == 0 && !lesserMonster ) // 1 in 2
 						{
-							newItem(MAGICSTAFF_COLD, SERVICABLE, 0, 1, local_rng.rand(), false, &myStats->inventory);
+							newItem(MAGICSTAFF_COLD, SERVICABLE, 0, 1, rng.rand(), false, &myStats->inventory);
 						}
 					case 2:
-						if ( local_rng.rand() % 5 == 0 ) // 1 in 5
+						if ( rng.rand() % 5 == 0 ) // 1 in 5
 						{
-							newItem(POTION_CONFUSION, SERVICABLE, 0, 1 + local_rng.rand() % 2, local_rng.rand(), false, &myStats->inventory);
+							if ( rng.rand() % 2 == 0 )
+							{
+								newItem(MASK_MASQUERADE, WORN, -2 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
+							}
+							else
+							{
+								newItem(POTION_CONFUSION, SERVICABLE, 0, 1 + rng.rand() % 2, rng.rand(), false, &myStats->inventory);
+							}
 						}
 					case 1:
-						if ( local_rng.rand() % 3 == 0 ) // 1 in 3
+						if ( rng.rand() % 3 == 0 ) // 1 in 3
 						{
-							newItem(POTION_BOOZE, SERVICABLE, 0, 1 + local_rng.rand() % 3, local_rng.rand(), false, &myStats->inventory);
+							newItem(POTION_BOOZE, SERVICABLE, 0, 1 + rng.rand() % 3, rng.rand(), false, &myStats->inventory);
 						}
 						break;
 					default:
@@ -224,11 +188,11 @@ void initIncubus(Entity* my, Stat* myStats)
 				{
 					if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 					{
-						switch ( local_rng.rand() % 10 )
+						switch ( rng.rand() % 10 )
 						{
 							case 0:
 							case 1:
-								myStats->weapon = newItem(CROSSBOW, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+								myStats->weapon = newItem(CROSSBOW, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 							case 2:
 							case 3:
@@ -237,35 +201,35 @@ void initIncubus(Entity* my, Stat* myStats)
 							case 6:
 							case 7:
 							case 8:
-								myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+								myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 							case 9:
-								myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+								myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 						}
 					}
 				}
 				else if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 				{
-					switch ( local_rng.rand() % 10 )
+					switch ( rng.rand() % 10 )
 					{
 						case 0:
 						case 1:
 						case 2:
 						case 3:
-							myStats->weapon = newItem(CRYSTAL_SPEAR, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+							myStats->weapon = newItem(CRYSTAL_SPEAR, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 4:
 						case 5:
 						case 6:
-							myStats->weapon = newItem(CROSSBOW, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+							myStats->weapon = newItem(CROSSBOW, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 7:
 						case 8:
-							myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+							myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 9:
-							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 					}
 				}
@@ -279,7 +243,7 @@ void initIncubus(Entity* my, Stat* myStats)
 					}
 					else
 					{
-						switch ( local_rng.rand() % 10 )
+						switch ( rng.rand() % 10 )
 						{
 							case 0:
 							case 1:
@@ -292,7 +256,7 @@ void initIncubus(Entity* my, Stat* myStats)
 								break;
 							case 8:
 							case 9:
-								myStats->shield = newItem(MIRROR_SHIELD, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, nullptr);
+								myStats->shield = newItem(MIRROR_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 						}
 					}
@@ -302,7 +266,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	}
 
 	// torso
-	Entity* entity = newEntity(446, 1, map.entities, nullptr); //Limb entity.
+	Entity* entity = newEntity(my->sprite == 445 ? 446 : 1827, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -321,7 +285,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// right leg
-	entity = newEntity(450, 1, map.entities, nullptr); //Limb entity.
+	entity = newEntity(my->sprite == 445 ? 450 : 1831, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -340,7 +304,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// left leg
-	entity = newEntity(449, 1, map.entities, nullptr); //Limb entity.
+	entity = newEntity(my->sprite == 445 ? 449 : 1830, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -359,7 +323,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// right arm
-	entity = newEntity(448, 1, map.entities, nullptr); //595 //Limb entity.
+	entity = newEntity(my->sprite == 445 ? 448 : 1829, 1, map.entities, nullptr); //595 //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -378,7 +342,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(447, 1, map.entities, nullptr); //447 //Limb entity.
+	entity = newEntity(my->sprite == 445 ? 447 : 1828, 1, map.entities, nullptr); //447 //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -404,6 +368,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	entity->flags[PASSABLE] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[INCUBUS][6][0]; // 
 	entity->focaly = limbs[INCUBUS][6][1]; // 
 	entity->focalz = limbs[INCUBUS][6][2]; // 
@@ -424,6 +389,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	entity->flags[PASSABLE] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[INCUBUS][7][0]; // 
 	entity->focaly = limbs[INCUBUS][7][1]; // 
 	entity->focalz = limbs[INCUBUS][7][2]; // 
@@ -447,6 +413,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[INCUBUS][8][0]; // 0
 	entity->focaly = limbs[INCUBUS][8][1]; // 0
 	entity->focalz = limbs[INCUBUS][8][2]; // 4
@@ -470,6 +437,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[INCUBUS][9][0]; // 0
 	entity->focaly = limbs[INCUBUS][9][1]; // 0
 	entity->focalz = limbs[INCUBUS][9][2]; // -2
@@ -490,6 +458,7 @@ void initIncubus(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->flags[INVISIBLE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[INCUBUS][10][0]; // 0
 	entity->focaly = limbs[INCUBUS][10][1]; // 0
 	entity->focalz = limbs[INCUBUS][10][2]; // .5
@@ -527,8 +496,8 @@ void incubusDie(Entity* my)
 	{
 		Entity* gib = spawnGib(my);
 		if (c < 6) {
-		    gib->sprite = 445 + c;
-		    gib->skill[5] = 1; // poof
+			gib->sprite = my->sprite + c;
+			gib->skill[5] = 1; // poof
 		}
 		serverSpawnGibForClient(gib);
 	}
@@ -571,7 +540,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				wearingring = true;
 			}
 		}
-		if ( myStats->EFFECTS[EFF_INVISIBLE] == true )
+		if ( myStats->getEffectActive(EFF_INVISIBLE) )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[BLOCKSIGHT] = false;
@@ -637,7 +606,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		}
 
 		// sleeping
-		if ( myStats->EFFECTS[EFF_ASLEEP] )
+		if ( myStats->getEffectActive(EFF_ASLEEP) )
 		{
 			my->z = 1.5;
 		}
@@ -645,6 +614,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			my->z = -1;
 		}
+		my->creatureHandleLiftZ();
 	}
 
 	Entity* shieldarm = nullptr;
@@ -818,7 +788,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							{
 								// set overshoot for head, freeze incubus in place
 								my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
-								myStats->EFFECTS[EFF_PARALYZED] = true;
+								myStats->setEffectActive(EFF_PARALYZED, 1);
 								if ( my->monsterAttack == MONSTER_POSE_INCUBUS_TAUNT )
 								{
 									myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 250;
@@ -928,7 +898,14 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			// torso
 			case LIMB_HUMANOID_TORSO:
+				entity->focalx = limbs[INCUBUS][1][0];
+				entity->focaly = limbs[INCUBUS][1][1];
+				entity->focalz = limbs[INCUBUS][1][2];
+				entity->sprite = my->sprite == 445 ? 446 : 1827;
 				my->setHumanoidLimbOffset(entity, INCUBUS, LIMB_HUMANOID_TORSO);
+				entity->scalex = 0.975;
+				entity->scaley = 0.975;
+				entity->scalez = 0.975;
 				break;
 			// right leg
 			case LIMB_HUMANOID_RIGHTLEG:
@@ -936,7 +913,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				{
 					if ( myStats->shoes == nullptr )
 					{
-						entity->sprite = 450;
+						entity->sprite = my->sprite == 445 ? 450 : 1831;
 					}
 					else
 					{
@@ -945,14 +922,22 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -964,7 +949,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				{
 					if ( myStats->shoes == nullptr )
 					{
-						entity->sprite = 449;
+						entity->sprite = my->sprite == 445 ? 449 : 1830;
 					}
 					else
 					{
@@ -973,14 +958,22 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -999,7 +992,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][4][0] - 0.25; // 0
 						entity->focaly = limbs[INCUBUS][4][1] - 0.25; // 0
 						entity->focalz = limbs[INCUBUS][4][2]; // 2
-						entity->sprite = 448;
+						entity->sprite = my->sprite == 445 ? 448 : 1829;
 						if ( my->monsterAttack == 0 )
 						{
 							entity->roll = -PI / 32;
@@ -1011,7 +1004,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][4][0];
 						entity->focaly = limbs[INCUBUS][4][1];
 						entity->focalz = limbs[INCUBUS][4][2];
-						entity->sprite = 595;
+						entity->sprite = my->sprite == 445 ? 595 : 1833;
 					}
 				}
 				my->setHumanoidLimbOffset(entity, INCUBUS, LIMB_HUMANOID_RIGHTARM);
@@ -1032,7 +1025,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][5][0] - 0.25; // 0
 						entity->focaly = limbs[INCUBUS][5][1] + 0.25; // 0
 						entity->focalz = limbs[INCUBUS][5][2]; // 2
-						entity->sprite = 447;
+						entity->sprite = my->sprite == 445 ? 447 : 1828;
 						if ( my->monsterAttack == 0 )
 						{
 							entity->roll = PI / 32;
@@ -1044,7 +1037,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][5][0];
 						entity->focaly = limbs[INCUBUS][5][1];
 						entity->focalz = limbs[INCUBUS][5][2];
-						entity->sprite = 594;
+						entity->sprite = my->sprite == 445 ? 594 : 1832;
 						if ( my->monsterSpecialState == INCUBUS_STEAL )
 						{
 							entity->yaw -= MONSTER_WEAPONYAW;
@@ -1068,7 +1061,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			{
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->weapon == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->weapon == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1087,19 +1080,27 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1135,26 +1136,34 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							entity->handleQuiverThirdPersonModel(*myStats);
 						}
 					}
-					if ( myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1171,7 +1180,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			case LIMB_HUMANOID_CLOAK:
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->cloak == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->cloak == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1183,19 +1192,27 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1221,7 +1238,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				if ( multiplayer != CLIENT )
 				{
 					entity->sprite = itemModel(myStats->helmet);
-					if ( myStats->helmet == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->helmet == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1232,19 +1249,27 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1266,17 +1291,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				entity->roll = PI / 2;
 				if ( multiplayer != CLIENT )
 				{
-					bool hasSteelHelm = false;
-					if ( myStats->helmet )
-					{
-						if ( myStats->helmet->type == STEEL_HELM
-							|| myStats->helmet->type == CRYSTAL_HELM
-							|| myStats->helmet->type == ARTIFACT_HELM )
-						{
-							hasSteelHelm = true;
-						}
-					}
-					if ( myStats->mask == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring || hasSteelHelm ) //TODO: isInvisible()?
+					if ( myStats->mask == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1290,6 +1305,10 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						{
 							entity->sprite = 165; // GlassesWorn.vox
 						}
+						else if ( myStats->mask->type == MONOCLE )
+						{
+							entity->sprite = 1196; // monocleWorn.vox
+						}
 						else
 						{
 							entity->sprite = itemModel(myStats->mask);
@@ -1298,19 +1317,27 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1321,7 +1348,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->flags[INVISIBLE] = true;
 					}
 				}
-				if ( entity->sprite != 165 )
+				if ( entity->sprite != 165 && entity->sprite != 1196 )
 				{
 					if ( entity->sprite == items[MASK_SHAMAN].index )
 					{
@@ -1329,18 +1356,28 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						my->setHelmetLimbOffset(entity);
 						my->setHelmetLimbOffsetWithMask(helmet, entity);
 					}
+					else if ( EquipmentModelOffsets.modelOffsetExists(INCUBUS, entity->sprite, my->sprite) )
+					{
+						my->setHelmetLimbOffset(entity);
+						my->setHelmetLimbOffsetWithMask(helmet, entity);
+					}
 					else
 					{
 						entity->focalx = limbs[INCUBUS][10][0] + .35; // .35
-						entity->focaly = limbs[INCUBUS][10][1] - 2; // -2
+						entity->focaly = limbs[INCUBUS][10][1] - 2.5; // -2
 						entity->focalz = limbs[INCUBUS][10][2]; // .5
 					}
 				}
 				else
 				{
 					entity->focalx = limbs[INCUBUS][10][0] + .25; // .25
-					entity->focaly = limbs[INCUBUS][10][1] - 2.25; // -2.25
+					entity->focaly = limbs[INCUBUS][10][1] - 2.5; // -2.25
 					entity->focalz = limbs[INCUBUS][10][2]; // .5
+
+					if ( entity->sprite == 1196 ) // MonocleWorn.vox
+					{
+						entity->focalx -= .4;
+					}
 				}
 				break;
 			}
@@ -1428,7 +1465,7 @@ void Entity::incubusChooseWeapon(const Entity* target, double dist)
 
 		bool tryCharm = true;
 		bool trySteal = true;
-		if ( targetStats->EFFECTS[EFF_PACIFY] )
+		if ( targetStats->getEffectActive(EFF_PACIFY) )
 		{
 			tryCharm = false;
 		}
@@ -1448,9 +1485,9 @@ void Entity::incubusChooseWeapon(const Entity* target, double dist)
 				bonusFromHP += 1; // +extra 2.5% chance if on lower health
 			}
 
-			int requiredRoll = (1 + bonusFromHP + (targetStats->EFFECTS[EFF_CONFUSED] ? 4 : 0)
-				+ (targetStats->EFFECTS[EFF_DRUNK] ? 2 : 0)
-				+ (targetStats->EFFECTS[EFF_PACIFY] ? 2 : 0)); // +2.5% base, + extra if target is inebriated
+			int requiredRoll = (1 + bonusFromHP + (targetStats->getEffectActive(EFF_CONFUSED) ? 4 : 0)
+				+ (targetStats->getEffectActive(EFF_DRUNK) ? 2 : 0)
+				+ (targetStats->getEffectActive(EFF_PACIFY) ? 2 : 0)); // +2.5% base, + extra if target is inebriated
 
 			if ( trySteal && tryCharm )
 			{
@@ -1514,7 +1551,14 @@ void Entity::incubusChooseWeapon(const Entity* target, double dist)
 		if ( specialRoll < (2 + bonusFromHP) ) // +5% base
 		{
 			node_t* node = nullptr;
-			node = itemNodeInInventory(myStats, -1, POTION);
+			if ( myStats->getAttribute("special_npc") == "johann" )
+			{
+				node = itemNodeInInventory(myStats, -1, POTION, true);
+			}
+			else
+			{
+				node = itemNodeInInventory(myStats, -1, POTION);
+			}
 			if ( node != nullptr )
 			{
 				swapMonsterWeaponWithInventoryItem(this, myStats, node, true, true);

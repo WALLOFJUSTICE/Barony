@@ -57,6 +57,13 @@ Field::~Field() {
 		delete[] text;
 		text = nullptr;
 	}
+	while ( !cache.empty() ) {
+		auto text = cache.back().second;
+		if ( text ) {
+			delete text;
+		}
+		cache.pop_back();
+	}
 }
 
 void Field::activate() {
@@ -82,7 +89,7 @@ void Field::activate() {
         cursorflash = ticks;
 	    activated = true;
 	    inputstr = text;
-	    inputlen = textlen;
+	    inputlen = (int)textlen;
 	    SDL_StartTextInput();
 	}
 #endif
@@ -161,6 +168,64 @@ static bool bWordHighlightMapAreSame(const std::map<int, Uint32>& textMap, const
 	return true;
 }
 
+void blitFieldToFrame(SDL_Surface* textSurf, SDL_Surface* destSurf, SDL_Rect src, SDL_Rect dest, const SDL_Rect viewport)
+{
+	if ( !textSurf )
+	{
+		return;
+	}
+
+	src.w = src.w <= 0 ? textSurf->w : src.w;
+	src.h = src.h <= 0 ? textSurf->h : src.h;
+	dest.w = dest.w <= 0 ? textSurf->w : dest.w;
+	dest.h = dest.h <= 0 ? textSurf->h : dest.h;
+
+	SDL_SetSurfaceBlendMode(textSurf, SDL_BLENDMODE_BLEND);
+	SDL_BlitSurface(textSurf, &src, destSurf, &dest);
+}
+
+#ifndef EDITOR
+static ConsoleVariable<bool> cvar_enableFieldCache(
+	"/fieldcache", false, "toggle fields caching their own text");
+#endif
+
+void Field::buildCache() {
+	while ( !cache.empty() ) {
+		auto text = cache.back().second;
+		if ( text ) {
+			delete text;
+		}
+		cache.pop_back();
+	}
+	char* buf = (char*)malloc(textlen + 1);
+	if ( buf ) {
+		dirty = false;
+		memcpy(buf, text ? text : "\0", textlen + 1);
+#ifdef EDITOR
+		for ( char *nexttoken = buf, *token; (token = nexttoken) != nullptr;) {
+			nexttoken = tokenize(token, "\n");
+			auto line = Text::hash(token, font.c_str(), textColor, outlineColor);
+			cache.push_back(std::make_pair(token, new Text(line.second)));
+		}
+#else
+		if ( *cvar_enableFieldCache ) {
+			for ( char *nexttoken = buf, *token; (token = nexttoken) != nullptr;) {
+				nexttoken = tokenize(token, "\n");
+				auto line = Text::hash(token, font.c_str(), textColor, outlineColor);
+				cache.push_back(std::make_pair(token, new Text(line.second)));
+			}
+		}
+		else {
+			for ( char *nexttoken = buf, *token; (token = nexttoken) != nullptr;) {
+				nexttoken = tokenize(token, "\n");
+				cache.push_back(std::make_pair(token, nullptr));
+			}
+		}
+#endif
+		free(buf);
+	}
+}
+
 void Field::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const Widget*>& selectedWidgets) const {
 	if ( invisible || isDisabled() ) {
 		return;
@@ -180,14 +245,30 @@ void Field::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const W
 	scaledRect.w = rect.w;
 	scaledRect.h = rect.h;
 
-	auto white = Image::get("images/system/white.png");
 	const SDL_Rect viewport{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY };
-	if (activated && selectAll) {
-		white->drawColor(nullptr, scaledRect, viewport, backgroundSelectAllColor);
-	} else if (activated) {
-		white->drawColor(nullptr, scaledRect, viewport, backgroundActivatedColor);
-	} else {
-		white->drawColor(nullptr, scaledRect, viewport, backgroundColor);
+	if ( activated && selectAll ) {
+		uint8_t a;
+		::getColor(backgroundSelectAllColor, nullptr, nullptr, nullptr, &a);
+		if ( a ) {
+			auto white = Image::get("images/system/white.png");
+			white->drawColor(nullptr, scaledRect, viewport, backgroundSelectAllColor);
+		}
+	}
+	else if ( activated ) {
+		uint8_t a;
+		::getColor(backgroundActivatedColor, nullptr, nullptr, nullptr, &a);
+		if ( a ) {
+			auto white = Image::get("images/system/white.png");
+			white->drawColor(nullptr, scaledRect, viewport, backgroundActivatedColor);
+		}
+	}
+	else {
+		uint8_t a;
+		::getColor(backgroundColor, nullptr, nullptr, nullptr, &a);
+		if ( a ) {
+			auto white = Image::get("images/system/white.png");
+			white->drawColor(nullptr, scaledRect, viewport, backgroundColor);
+		}
 	}
 
 	bool showCursor = (ticks - cursorflash) % TICKS_PER_SECOND < TICKS_PER_SECOND / 2;
@@ -197,22 +278,24 @@ void Field::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const W
 		return;
 	}
 	int lines = std::max(1, getNumTextLines());
-	int fullH = lines * (actualFont->height(false) + actualFont->getOutline() * 2);
+	int fullH = lines * (actualFont->height(false) + paddingPerLine + actualFont->getOutline() * 2);
 
-	char* buf = (char*)malloc(textlen + 1);
-	memcpy(buf, text ? text : "\0", textlen + 1);
-
-	int yoff = 0;
-	int currentLine = -1;
-	char* nexttoken;
-	char* token = buf;
-	do {
-	    ++currentLine;
-		nexttoken = tokenize(token, "\n");
-
-		Text* text = Text::get(token, font.c_str(), textColor, outlineColor);
-		assert(text);
-
+	for ( int yoff = 0, currentLine = 0; currentLine < cache.size(); ++currentLine ) {
+#ifdef EDITOR
+		auto& text = cache[currentLine].second;
+#else
+		Text* text;
+		if ( *cvar_enableFieldCache ) {
+			text = cache[currentLine].second;
+		}
+		else {
+			text = Text::get(cache[currentLine].first.c_str(),
+				font.c_str(), textColor, outlineColor);
+		}
+#endif
+		if ( !text ) {
+			continue;
+		}
 		if ( getWordsToHighlight().size() > 0 )
 		{
 			// Field() has words to highlight, check if the pulled Text() object has a copy of the data.
@@ -227,7 +310,7 @@ void Field::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const W
 					Uint32 color = keyValue.second;
 					// Field() stores the whole sentence structure, every newline it adds 10000
 					// check the key is within 0-9999 of our current line.
-					if ( (wordIndex - currentLine * TEXT_HIGHLIGHT_WORDS_PER_LINE) >= 0 
+					if ( (wordIndex - currentLine * TEXT_HIGHLIGHT_WORDS_PER_LINE) >= 0
 						&& (wordIndex < (currentLine + 1) * TEXT_HIGHLIGHT_WORDS_PER_LINE) )
 					{
 						// To handle tokenizing here, pass the mod % 10000 of the word index, since the
@@ -256,24 +339,33 @@ void Field::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const W
 		int textSizeH = text->getHeight();
 
 		SDL_Rect pos;
-		if (hjustify == LEFT || hjustify == TOP) {
+		if ( hjustify == LEFT || hjustify == TOP ) {
 			pos.x = _size.x + size.x - _actualSize.x;
-		} else if (hjustify == CENTER) {
+		}
+		else if ( hjustify == CENTER ) {
 			pos.x = _size.x + size.x + size.w / 2 - textSizeW / 2 - _actualSize.x;
-		} else if (hjustify == RIGHT || hjustify == BOTTOM) {
+		}
+		else if ( hjustify == RIGHT || hjustify == BOTTOM ) {
 			pos.x = _size.x + size.x + size.w - textSizeW - _actualSize.x;
 		}
-		if (vjustify == LEFT || vjustify == TOP) {
+		if ( vjustify == LEFT || vjustify == TOP ) {
 			pos.y = _size.y + size.y + yoff - _actualSize.y + std::min(size.h - fullH, 0);
-		} else if (vjustify == CENTER) {
+		}
+		else if ( vjustify == CENTER ) {
 			pos.y = _size.y + size.y + yoff - _actualSize.y + (size.h - fullH) / 2;
-		} else if (vjustify == RIGHT || vjustify == BOTTOM) {
+		}
+		else if ( vjustify == RIGHT || vjustify == BOTTOM ) {
 			pos.y = _size.y + size.y + yoff - _actualSize.y + std::max(size.h - fullH, 0);
 		}
 		pos.w = textSizeW;
 		pos.h = textSizeH;
 
 		yoff += actualFont->height(true) + paddingPerLine;
+		auto findIndividualLinePadding = individualLinePadding.find(currentLine);
+		if ( findIndividualLinePadding != individualLinePadding.end() )
+		{
+			yoff += findIndividualLinePadding->second;
+		}
 
 		SDL_Rect dest;
 		dest.x = std::max(rect.x, pos.x);
@@ -288,11 +380,11 @@ void Field::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const W
 		src.h = pos.h - (dest.y - pos.y) - std::max(0, (pos.y + pos.h) - (rect.y + rect.h));
 
 		// fit text to window
-		if ((hjustify == LEFT || hjustify == TOP) && scroll && activated) {
+		if ( (hjustify == LEFT || hjustify == TOP) && scroll && activated ) {
 			src.x = std::max(src.x, textSizeW - rect.w);
 		}
 
-		if (src.w <= 0 || src.h <= 0 || dest.w <= 0 || dest.h <= 0) {
+		if ( src.w <= 0 || src.h <= 0 || dest.w <= 0 || dest.h <= 0 ) {
 			continue;
 		}
 
@@ -305,26 +397,73 @@ void Field::draw(SDL_Rect _size, SDL_Rect _actualSize, const std::vector<const W
 		auto find = linesToColor.find(currentLine);
 		Uint32 blendColor = find == linesToColor.end() ? color : find->second;
 
-		if (parent && static_cast<Frame*>(parent)->getOpacity() < 100.0) {
+		if ( parent && static_cast<Frame*>(parent)->getOpacity() < 100.0 ) {
 			Uint8 r, g, b, a;
 			::getColor(blendColor, &r, &g, &b, &a);
 			a *= static_cast<Frame*>(parent)->getOpacity() / 100.0;
-			if( a > 0 )
+
+			if ( a > 0 )
 			{
-				text->drawColor(src, scaledDest, viewport, makeColor(r, g, b, a));
+				Frame* toBlit = nullptr;
+				if ( parent )
+				{
+					toBlit = static_cast<Frame*>(parent)->findParentToBlitTo();
+				}
+
+				if ( toBlit )
+				{
+					if ( !toBlit->bIsDirtyBlit() )
+					{
+						return;
+					}
+					//scaledDest.x += this->getAbsoluteSize().x - toBlit->getAbsoluteSize().x;
+					//scaledDest.y += this->getAbsoluteSize().y - toBlit->getAbsoluteSize().y;
+					scaledDest.x -= toBlit->getAbsoluteSize().x;
+					scaledDest.y -= toBlit->getAbsoluteSize().y;
+					blitFieldToFrame(const_cast<SDL_Surface*>(text->getSurf()), toBlit->getBlitSurface(), src, scaledDest, viewport);
+				}
+				else
+				{
+					text->drawColor(src, scaledDest, viewport, makeColor(r, g, b, a));
+				}
 			}
-		} else {
-			text->drawColor(src, scaledDest, viewport, blendColor);
+		}
+		else {
+			Frame* toBlit = nullptr;
+			if ( parent )
+			{
+				toBlit = static_cast<Frame*>(parent)->findParentToBlitTo();
+			}
+
+			if ( toBlit )
+			{
+				if ( !toBlit->bIsDirtyBlit() )
+				{
+					return;
+				}
+				//scaledDest.x += this->getAbsoluteSize().x - toBlit->getAbsoluteSize().x;
+				//scaledDest.y += this->getAbsoluteSize().y - toBlit->getAbsoluteSize().y;
+				scaledDest.x -= toBlit->getAbsoluteSize().x;
+				scaledDest.y -= toBlit->getAbsoluteSize().y;
+				blitFieldToFrame(const_cast<SDL_Surface*>(text->getSurf()), toBlit->getBlitSurface(), src, scaledDest, viewport);
+			}
+			else
+			{
+				text->drawColor(src, scaledDest, viewport, blendColor);
+			}
 		}
 
 		// draw cursor
-		if (!nexttoken && showCursor && activated) {
-			SDL_Rect cursorSize{scaledDest.x + scaledDest.w - 2, scaledDest.y, 2, scaledDest.h};
-			white->drawColor(nullptr, cursorSize, viewport, blendColor);
+		if ( showCursor && activated && currentLine == cache.size() - 1 ) {
+			SDL_Rect cursorSize{ scaledDest.x + scaledDest.w - 2, scaledDest.y, 2, scaledDest.h };
+			uint8_t a;
+			::getColor(blendColor, nullptr, nullptr, nullptr, &a);
+			if ( a ) {
+				auto white = Image::get("images/system/white.png");
+				white->drawColor(nullptr, cursorSize, viewport, blendColor);
+			}
 		}
-	} while ((token = nexttoken) != NULL);
-
-	free(buf);
+	}
 
 	// draw user stuff
 	if (drawCallback) {
@@ -352,6 +491,10 @@ void Field::drawPost(SDL_Rect _size, SDL_Rect _actualSize,
 Field::result_t Field::process(SDL_Rect _size, SDL_Rect _actualSize, const bool usable) {
 	Widget::process();
 
+	if ( dirty || activated ) {
+		buildCache();
+	}
+
 	result_t result;
 	result.tooltip = nullptr;
 	result.highlighted = false;
@@ -361,14 +504,14 @@ Field::result_t Field::process(SDL_Rect _size, SDL_Rect _actualSize, const bool 
 	    if (!editable || inputstr != text) {
 			deactivate();
 		} else if (editable) {
-		    if (Input::keys[SDL_SCANCODE_RETURN] || Input::keys[SDL_SCANCODE_KP_ENTER]) {
-			    Input::keys[SDL_SCANCODE_RETURN] = 0;
-			    Input::keys[SDL_SCANCODE_KP_ENTER] = 0;
+		    if (Input::keys[SDLK_RETURN] || Input::keys[SDLK_KP_ENTER]) {
+			    Input::keys[SDLK_RETURN] = 0;
+			    Input::keys[SDLK_KP_ENTER] = 0;
 			    result.entered = true;
 			    deactivate();
 		    }
-		    if (Input::keys[SDL_SCANCODE_ESCAPE]) {
-			    Input::keys[SDL_SCANCODE_ESCAPE] = 0;
+		    if (Input::keys[SDLK_ESCAPE]) {
+			    Input::keys[SDLK_ESCAPE] = 0;
 			    deactivate();
 		    }
 	    }
@@ -451,14 +594,14 @@ Field::result_t Field::process(SDL_Rect _size, SDL_Rect _actualSize, const bool 
 }
 
 void Field::setText(const char* _text) {
-	if (_text == nullptr) {
+	if ( _text == nullptr ) {
 		return;
 	}
-	int size = std::min(std::max(0, (int)strlen(_text)), (int)textlen);
-	if (size > 0) {
-		memcpy(text, _text, size);
+	size_t len = std::min(strlen(_text), (size_t)textlen);
+	if ( stringCmp(text, _text, textlen, len) ) {
+		stringCopy(text, _text, textlen, len);
+		dirty = true;
 	}
-	text[size] = '\0';
 }
 
 void Field::scrollParent() {
@@ -480,20 +623,18 @@ void Field::scrollParent() {
 	fparent->setActualSize(fActualSize);
 }
 
-std::unordered_map<size_t, std::string> reflowTextLine(std::string& input, int width, const char* font)
+void reflowTextLine(std::string& input, int width, const char* font, std::vector<std::string>& result)
 {
-	std::unordered_map<size_t, std::string> result;
-
 	Font* actualFont = Font::get(font);
 	if ( !actualFont )
 	{
-		return result;
+		return;
 	}
 	int charWidth = 0;
 	actualFont->sizeText("_", &charWidth, nullptr);
 	if ( charWidth == 0 )
 	{
-		return result;
+		return;
 	}
 	++charWidth;
 
@@ -523,6 +664,7 @@ std::unordered_map<size_t, std::string> reflowTextLine(std::string& input, int w
 	size_t currentLine = 0;
 	Text* getText = nullptr;
 	bool lastInsertedManualSpace = false;
+	result.push_back("");
 	for ( auto& token : tokens )
 	{
 		size_t currentLength = result[currentLine].size();
@@ -536,6 +678,7 @@ std::unordered_map<size_t, std::string> reflowTextLine(std::string& input, int w
 			if ( getText->getWidth() > width )
 			{
 				++currentLine;
+				result.push_back("");
 			}
 		}
 
@@ -569,7 +712,7 @@ std::unordered_map<size_t, std::string> reflowTextLine(std::string& input, int w
 		}
 		assert(result[0] == input);
 	}*/
-	return result;
+	return;
 }
 
 std::string Field::getLongestLine()
@@ -645,19 +788,19 @@ int Field::getLastLineThatFitsWithinHeight()
 	return -1;
 }
 
-void Field::reflowTextToFit(const int characterOffset) {
+void Field::reflowTextToFit(const int characterOffset, bool check) {
 	if ( text == nullptr || textlen <= 1 ) {
 		return;
 	}
 
-	if ( auto getText = Text::get(text, font.c_str(), textColor, outlineColor) )
-	{
-		if ( getText->getWidth() <= (getSize().w) )
-		{
-			// no work to do
-			return;
-		}
-	}
+    if (check) {
+        if (auto getText = Text::get(text, font.c_str(), textColor, outlineColor)) {
+            if (getText->getWidth() <= (getSize().w)) {
+                // no work to do
+                return;
+            }
+        }
+    }
 	std::string reflowText = "";
 
 #ifndef EDITOR
@@ -674,7 +817,8 @@ void Field::reflowTextToFit(const int characterOffset) {
 		do {
 			nexttoken = tokenize(token, "\n");
 			std::string tokenStr(token);
-			auto result = reflowTextLine(tokenStr, (getSize().w), font.c_str());
+			std::vector<std::string> result;
+			reflowTextLine(tokenStr, (getSize().w), font.c_str(), result);
 			for ( size_t i = 0; i < result.size(); ++i )
 			{
 				allLines.push_back(result[i]);
@@ -719,12 +863,12 @@ void Field::reflowTextToFit(const int characterOffset) {
 	{
 		if ( (currentCharacters - characterOffset) > charactersPerLine )
 		{
-			int findSpace = reflowText.rfind(' ', reflowText.size());
+			size_t findSpace = reflowText.rfind(' ', reflowText.size());
 			if ( findSpace != std::string::npos )
 			{
-				int lastWordEnd = reflowText.size();
+				size_t lastWordEnd = reflowText.size();
 				reflowText.at(findSpace) = '\n';
-				currentCharacters = lastWordEnd - findSpace;
+				currentCharacters = (int)(lastWordEnd - findSpace);
 			}
 			else
 			{

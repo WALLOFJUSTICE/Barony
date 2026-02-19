@@ -22,6 +22,7 @@ See LICENSE for details.
 #include "magic/magic.hpp"
 #include "paths.hpp"
 #include "prng.hpp"
+#include "scores.hpp"
 
 static const int LICH_BODY = 0;
 static const int LICH_RIGHTARM = 2;
@@ -47,6 +48,8 @@ void initLichIce(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -55,7 +58,7 @@ void initLichIce(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			for ( int c = 1; c < MAXPLAYERS; ++c )
 			{
@@ -74,14 +77,14 @@ void initLichIce(Entity* my, Stat* myStats)
 			// boss variants
 
 			// random effects
-			myStats->EFFECTS[EFF_LEVITATING] = true;
+			myStats->setEffectActive(EFF_LEVITATING, 1);
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -107,7 +110,7 @@ void initLichIce(Entity* my, Stat* myStats)
 			//give weapon
 			if ( myStats->weapon == NULL && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 			{
-				myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -5, 1, local_rng.rand(), false, NULL);
+				myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -5, 1, rng.rand(), false, NULL);
 			}
 		}
 	}
@@ -254,11 +257,11 @@ void lichIceDie(Entity* my)
 			{
 				continue;
 			}
-			if ( entity->behavior == &actMonster )
+			if ( entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() )
 			{
 				spawnExplosion(entity->x, entity->y, entity->z);
 				Stat* stats = entity->getStats();
-				if ( stats )
+				if ( stats && achievementObserver.checkUidIsFromPlayer(stats->leader_uid) < 0 )
 				{
 					if ( stats->type != HUMAN )
 					{
@@ -313,7 +316,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 			{
 				wearingring = true;
 			}
-		if ( myStats->EFFECTS[EFF_INVISIBLE] == true || wearingring == true )
+		if ( myStats->getEffectActive(EFF_INVISIBLE) || wearingring == true )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[BLOCKSIGHT] = false;
@@ -366,6 +369,10 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 		}
 
 		// check tiles around the monster to be freed.
+		if ( my->monsterLichBattleState == LICH_BATTLE_IMMOBILE )
+		{
+			my->flags[PASSABLE] = true;
+		}
 		if ( my->monsterLichBattleState == LICH_BATTLE_IMMOBILE && my->ticks > TICKS_PER_SECOND )
 		{
 			int sides = 0;
@@ -394,6 +401,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 			if ( sides != 4 )
 			{
 				my->monsterLichBattleState = LICH_BATTLE_READY;
+				my->flags[PASSABLE] = false;
 				generatePathMaps();
 				/*swornenemies[LICH_ICE][AUTOMATON] = false;
 				swornenemies[LICH_FIRE][AUTOMATON] = false;
@@ -474,7 +482,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 
 	if ( !my->light )
 	{
-		my->light = lightSphereShadow(my->x / 16, my->y / 16, 4, 192);
+		my->light = addLight(my->x / 16, my->y / 16, "ice_lich_glow");
 	}
 
 	//Lich stares you down while he does his special ability windup, and any of his spellcasting animations.
@@ -712,7 +720,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 						{
 							my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 							// lich can't be paralyzed, use EFF_STUNNED instead.
-							myStats->EFFECTS[EFF_STUNNED] = true;
+							myStats->setEffectActive(EFF_STUNNED, 1);
 							myStats->EFFECTS_TIMERS[EFF_STUNNED] = 50;
 						}
 					}
@@ -751,7 +759,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 						{
 							my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 							//	// lich can't be paralyzed, use EFF_STUNNED instead.
-							myStats->EFFECTS[EFF_STUNNED] = true;
+							myStats->setEffectActive(EFF_STUNNED, 1);
 							myStats->EFFECTS_TIMERS[EFF_STUNNED] = windupDuration;
 						}
 					}
@@ -809,12 +817,12 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 							{
 								my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 								// lich can't be paralyzed, use EFF_STUNNED instead.
-								myStats->EFFECTS[EFF_STUNNED] = true;
+								myStats->setEffectActive(EFF_STUNNED, 1);
 								myStats->EFFECTS_TIMERS[EFF_STUNNED] = 50;
 							}
 							else
 							{
-								myStats->EFFECTS[EFF_STUNNED] = true;
+								myStats->setEffectActive(EFF_STUNNED, 1);
 								myStats->EFFECTS_TIMERS[EFF_STUNNED] = 25;
 							}
 						}
@@ -887,7 +895,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 						{
 							my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 							// lich can't be paralyzed, use EFF_STUNNED instead.
-							myStats->EFFECTS[EFF_STUNNED] = true;
+							myStats->setEffectActive(EFF_STUNNED, 1);
 							myStats->EFFECTS_TIMERS[EFF_STUNNED] = 50;
 						}
 					}
@@ -946,7 +954,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 						{
 							my->monsterAnimationLimbOvershoot = ANIMATE_OVERSHOOT_TO_SETPOINT;
 							// lich can't be paralyzed, use EFF_STUNNED instead.
-							myStats->EFFECTS[EFF_STUNNED] = true;
+							myStats->setEffectActive(EFF_STUNNED, 1);
 							myStats->EFFECTS_TIMERS[EFF_STUNNED] = 80;
 						}
 					}
@@ -993,7 +1001,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 					playSoundEntityLocal(my, 170, 32);
 					if ( multiplayer != CLIENT )
 					{
-						myStats->EFFECTS[EFF_STUNNED] = true;
+						myStats->setEffectActive(EFF_STUNNED, 1);
 						myStats->EFFECTS_TIMERS[EFF_STUNNED] = 20;
 					}
 				}
@@ -1136,7 +1144,7 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 				// set sprites, invisibility check etc.
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->weapon == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->weapon == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}

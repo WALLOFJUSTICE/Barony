@@ -44,6 +44,8 @@ void initLich(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != NULL )
 		{
 			if ( !myStats->leader_uid )
@@ -65,7 +67,7 @@ void initLich(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
@@ -73,14 +75,14 @@ void initLich(Entity* my, Stat* myStats)
 			// boss variants
 
 			// random effects
-			myStats->EFFECTS[EFF_LEVITATING] = true;
+			myStats->setEffectActive(EFF_LEVITATING, 1);
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -232,7 +234,7 @@ void lichDie(Entity* my)
 		{
 			spawnExplosion(entity->x, entity->y, entity->z);
 			Stat* stats = entity->getStats();
-			if ( stats )
+			if ( stats && achievementObserver.checkUidIsFromPlayer(stats->leader_uid) < 0 )
 			{
 				if ( stats->type != HUMAN )
 				{
@@ -292,7 +294,7 @@ void lichAnimate(Entity* my, double dist)
 	if ( multiplayer != CLIENT )
 	{
 		Stat* myStats = my->getStats();
-		if ( myStats->EFFECTS[EFF_INVISIBLE] == true )
+		if ( myStats->getEffectActive(EFF_INVISIBLE) )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[BLOCKSIGHT] = false;
@@ -337,19 +339,19 @@ void lichAnimate(Entity* my, double dist)
 		}
 		if ( myStats->HP > myStats->MAXHP / 2 )
 		{
-			my->light = lightSphereShadow(my->x / 16, my->y / 16, 4, 192);
+			my->light = addLight(my->x / 16, my->y / 16, "herx_glow");
 		}
-		else if ( !my->skill[27] )
+		else if ( !my->monsterLichBattleState )
 		{
-			my->skill[27] = 1;
+			my->monsterLichBattleState = 1;
 			serverUpdateEntitySkill(my, 27);
 		}
 	}
 	else
 	{
-		if ( !my->skill[27] )
+		if ( !my->monsterLichBattleState )
 		{
-			my->light = lightSphereShadow(my->x / 16, my->y / 16, 4, 192);
+			my->light = addLight(my->x / 16, my->y / 16, "herx_glow");
 		}
 	}
 

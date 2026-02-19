@@ -17,6 +17,7 @@
 #include "net.hpp"
 #include "collision.hpp"
 #include "player.hpp"
+#include "mod_tools.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -36,11 +37,36 @@
 
 void actSpearTrap(Entity* my)
 {
-	SPEARTRAP_AMBIENCE--;
-	if ( SPEARTRAP_AMBIENCE <= 0 )
+	if ( my->actTrapSabotaged == 0 )
 	{
-		SPEARTRAP_AMBIENCE = TICKS_PER_SECOND * 30;
-		playSoundEntityLocal( my, 149, 64 );
+#ifdef USE_FMOD
+		if ( SPEARTRAP_AMBIENCE == 0 )
+		{
+			SPEARTRAP_AMBIENCE--;
+			my->stopEntitySound();
+			my->entity_sound = playSoundEntityLocal(my, 149, 64);
+		}
+		if ( my->entity_sound )
+		{
+			bool playing = false;
+			my->entity_sound->isPlaying(&playing);
+			if ( !playing )
+			{
+				my->entity_sound = nullptr;
+			}
+		}
+#else
+		SPEARTRAP_AMBIENCE--;
+		if ( SPEARTRAP_AMBIENCE <= 0 )
+		{
+			SPEARTRAP_AMBIENCE = TICKS_PER_SECOND * 30;
+			playSoundEntityLocal(my, 149, 64);
+		}
+#endif
+	}
+	else
+	{
+		my->stopEntitySound();
 	}
 
 	if ( multiplayer != CLIENT )
@@ -50,7 +76,7 @@ void actSpearTrap(Entity* my)
 			return;
 		}
 
-		if (my->skill[28] == 2)
+		if (my->skill[28] == 2 && my->actTrapSabotaged == 0 )
 		{
 			// shoot out the spears
 			if (!SPEARTRAP_STATUS )
@@ -124,13 +150,20 @@ void actSpearTrap(Entity* my)
 						Stat* stats = entity->getStats();
 						if ( stats )
 						{
+							if ( stats->type == DUCK_SMALL && entityInsideEntity(my, entity) )
+							{
+								if ( entity->monsterAttack == 0 )
+								{
+									entity->attack(local_rng.rand() % 2 ? MONSTER_POSE_MELEE_WINDUP2 : MONSTER_POSE_MELEE_WINDUP3, 0, nullptr);
+								}
+							}
 							if ( !entity->flags[PASSABLE] && entityInsideEntity(my, entity) )
 							{
 								// do damage!
 								if ( entity->behavior == &actPlayer )
 								{
 									Uint32 color = makeColorRGB(255, 0, 0);
-									messagePlayerColor(entity->skill[2], MESSAGE_STATUS, color, language[586]);
+									messagePlayerColor(entity->skill[2], MESSAGE_STATUS, color, Language::get(586));
 									if ( players[entity->skill[2]]->isLocalPlayer() )
 									{
 										cameravars[entity->skill[2]].shakex += .1;
@@ -150,19 +183,66 @@ void actSpearTrap(Entity* my)
 										}
 									}
 								}
-								playSoundEntity(entity, 28, 64);
-								spawnGib(entity);
-								entity->modHP(-50);
-								if ( stats->HP <= 0 )
+
+								int damage = 50;
+								if ( gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_STRONG_TRAPS) )
 								{
-									if ( stats->type == AUTOMATON )
-									{
-										entity->playerAutomatonDeathCounter = TICKS_PER_SECOND * 5; // set the death timer to immediately pop for players.
-									}
+									damage *= 1.5;
 								}
-								// set obituary
-								entity->setObituary(language[1507]);
-						        stats->killer = KilledBy::TRAP_SPIKE;
+								int trapResist = entity->getEntityBonusTrapResist();
+								if ( trapResist != 0 )
+								{
+									real_t mult = std::max(0.0, 1.0 - (trapResist / 100.0));
+									damage *= mult;
+								}
+
+								if ( entity->onEntityTrapHitSacredPath(my) )
+								{
+									if ( entity->behavior == &actPlayer )
+									{
+										messagePlayerColor(entity->skill[2], MESSAGE_COMBAT, makeColorRGB(0, 255, 0),
+											Language::get(6492));
+									}
+									playSoundEntity(entity, 166, 128);
+								}
+								else if ( damage > 0 )
+								{
+									playSoundEntity(entity, 28, 64);
+									spawnGib(entity);
+
+									Sint32 oldHP = stats->HP;
+									entity->modHP(-damage);
+
+									if ( oldHP > stats->HP )
+									{
+										if ( entity->behavior == &actPlayer )
+										{
+											Compendium_t::Events_t::eventUpdateWorld(entity->skill[2], Compendium_t::CPDM_TRAP_DAMAGE, "spike trap", oldHP - stats->HP);
+											if ( stats->HP <= 0 )
+											{
+												Compendium_t::Events_t::eventUpdateWorld(entity->skill[2], Compendium_t::CPDM_TRAP_KILLED_BY, "spike trap", 1);
+											}
+										}
+										else if ( entity->behavior == &actMonster )
+										{
+											if ( auto leader = entity->monsterAllyGetPlayerLeader() )
+											{
+												Compendium_t::Events_t::eventUpdateWorld(entity->monsterAllyIndex, Compendium_t::CPDM_TRAP_FOLLOWERS_KILLED, "spike trap", 1);
+											}
+										}
+									}
+
+									if ( stats->HP <= 0 )
+									{
+										if ( stats->type == AUTOMATON && entity->behavior == &actPlayer )
+										{
+											entity->playerAutomatonDeathCounter = TICKS_PER_SECOND * 5; // set the death timer to immediately pop for players.
+										}
+									}
+									// set obituary
+									entity->setObituary(Language::get(1507));
+									stats->killer = KilledBy::TRAP_SPIKE;
+								}
 							}
 						}
 					}

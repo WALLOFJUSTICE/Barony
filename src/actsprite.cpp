@@ -34,13 +34,44 @@
 #define SPRITE_FRAMES my->skill[1]
 #define SPRITE_ANIMSPEED my->skill[2]
 #define SPRITE_LIT my->skill[5]
+#define SPRITE_ROTATE my->fskill[0]
+#define SPRITE_CURRENT_ALPHA my->fskill[1]
+#define SPRITE_ALPHA_VAR my->fskill[2]
+#define SPRITE_ALPHA_ANIM_SIZE my->fskill[3]
+#define SPRITE_CHECK_PARENT_EXISTS my->skill[8]
 
 void actSprite(Entity* my)
 {
-	if ( !my->skill[6] && SPRITE_LIT )
+	if ( SPRITE_CHECK_PARENT_EXISTS > 0 )
 	{
-		my->skill[6] = 1;
-		my->light = lightSphereShadow(my->x / 16, my->y / 16, SPRITE_LIT, 256);
+		if ( !uidToEntity(SPRITE_CHECK_PARENT_EXISTS) )
+		{
+			if ( my->actSpriteUseCustomSurface != 0 )
+			{
+				if ( auto fx = AOEIndicators_t::getIndicator(my->actSpriteUseCustomSurface) )
+				{
+					fx->expired = true;
+				}
+			}
+
+			my->removeLightField();
+			list_RemoveNode(my->mynode);
+			return;
+		}
+	}
+	if ( my->actSpriteFollowUID > 0 )
+	{
+		if ( Entity* parent = uidToEntity(my->actSpriteFollowUID) )
+		{
+			my->x = parent->x;
+			my->y = parent->y;
+		}
+	}
+
+	if ( !my->actSpriteHasLightInit && SPRITE_LIT )
+	{
+		my->actSpriteHasLightInit = 1;
+		my->light = addLight(my->x / 16, my->y / 16, "explosion");
 	}
 	else if ( !SPRITE_LIT )
 	{
@@ -64,6 +95,28 @@ void actSprite(Entity* my)
 			}
 		}
 	}
+
+	if ( SPRITE_ROTATE > 0.0001 )
+	{
+		my->yaw += SPRITE_ROTATE;
+	}
+	if ( my->actSpritePitchRotate > 0.0001 )
+	{
+		my->pitch += my->actSpritePitchRotate;
+	}
+	if ( SPRITE_ALPHA_VAR > 0.0001 )
+	{
+		SPRITE_CURRENT_ALPHA = SPRITE_ALPHA_VAR + SPRITE_ALPHA_ANIM_SIZE * sin(2 * PI * (my->ticks % TICKS_PER_SECOND) / (real_t)(TICKS_PER_SECOND));
+	}
+	if ( abs(my->vel_z) > 0.001 )
+	{
+		my->z += my->vel_z;
+	}
+	if ( my->actSpriteVelXY != 0 )
+	{
+		my->x += my->vel_x;
+		my->y += my->vel_y;
+	}
 }
 
 void actSpriteNametag(Entity* my)
@@ -71,15 +124,31 @@ void actSpriteNametag(Entity* my)
 	Entity* parent = uidToEntity(my->parent);
 	if ( parent )
 	{
-		if ( !hide_playertags )
+        my->flags[INVISIBLE] = false;
+		if ( hide_playertags )
 		{
-			my->flags[INVISIBLE] = false;
-			my->x = parent->x;
-			my->y = parent->y;
+			if ( my->skill[3] == 0 )
+			{
+				my->skill[3] = 1; // keep track but don't draw for voice icons
+			}
 		}
 		else
 		{
-			my->flags[INVISIBLE] = true;
+			if ( my->skill[3] == 1 )
+			{
+				my->skill[3] = 0;
+			}
+		}
+        my->x = parent->x;
+        my->y = parent->y;
+        my->z = parent->z - 6;
+		if ( parent->getMonsterTypeFromSprite() == SLIME )
+		{
+			my->z -= 3.0;
+			if ( parent->monsterAttack == MONSTER_POSE_MAGIC_WINDUP2 )
+			{
+				my->z += parent->focalz / 2;
+			}
 		}
 	}
 	else
@@ -99,7 +168,7 @@ void actSpriteWorldTooltip(Entity* my)
 		my->x = parent->x;
 		my->y = parent->y;
 
-		if ( parent->behavior == &actDoor )
+		if ( parent->behavior == &actDoor || parent->behavior == &actIronDoor )
 		{
 			if ( parent->flags[PASSABLE] )
 			{
@@ -112,6 +181,11 @@ void actSpriteWorldTooltip(Entity* my)
 					my->x -= 5;
 				}
 			}
+		}
+		else if ( parent->behavior == &actBell )
+		{
+			my->x += parent->focalx * cos(parent->yaw) + parent->focaly * cos(parent->yaw + PI / 2);
+			my->y += parent->focalx * sin(parent->yaw) + parent->focaly * sin(parent->yaw + PI / 2);
 		}
 
 		bool inrange = (my->worldTooltipActive == 1);
@@ -207,11 +281,11 @@ void actSpriteWorldTooltip(Entity* my)
 			}
 			if ( bFound && index >= 0 && index < players[i]->worldUI.tooltipsInRange.size() )
 			{
-				players[i]->worldUI.tooltipsInRange.erase(players[i]->worldUI.tooltipsInRange.begin() + index);
-				if ( players[i]->worldUI.bTooltipActiveForPlayer(*my) )
+				if ( players[i]->worldUI.bTooltipActiveForPlayer(*my) && players[i]->worldUI.tooltipsInRange.size() > 1 )
 				{
 					players[i]->worldUI.cycleToNextTooltip();
 				}
+				players[i]->worldUI.tooltipsInRange.erase(players[i]->worldUI.tooltipsInRange.begin() + index);
 			}
 		}
 
@@ -246,11 +320,12 @@ Entity* spawnBang(Sint16 x, Sint16 y, Sint16 z)
 	entity->x = x;
 	entity->y = y;
 	entity->z = z;
+    entity->ditheringDisabled = true;
 	entity->flags[SPRITE] = true;
 	entity->flags[PASSABLE] = true;
-	entity->flags[BRIGHT] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[UNCLICKABLE] = true;
+	entity->flags[BRIGHT] = true;
 	entity->behavior = &actSprite;
 	entity->skill[0] = 1;
 	entity->skill[1] = 4;
@@ -291,9 +366,9 @@ Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z)
 	entity->x = x;
 	entity->y = y;
 	entity->z = z;
+    entity->ditheringDisabled = true;
 	entity->flags[SPRITE] = true;
 	entity->flags[PASSABLE] = true;
-	entity->flags[BRIGHT] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[UNCLICKABLE] = true;
 	entity->behavior = &actSprite;
@@ -303,7 +378,7 @@ Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z)
 	Entity* my = entity;
 	SPRITE_FRAMES = 10;
 	SPRITE_ANIMSPEED = 2;
-	SPRITE_LIT = 4;
+	SPRITE_LIT = 1;
 	playSoundEntityLocal(entity, 153, 128);
 	Entity* explosion = entity;
 	for (i = 0; i < 10; ++i)
@@ -313,10 +388,10 @@ Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z)
 		entity->x = explosion->x;
 		entity->y = explosion->y;
 		entity->z = explosion->z;
+        entity->ditheringDisabled = true;
 		entity->flags[SPRITE] = true;
 		entity->flags[NOUPDATE] = true;
 		entity->flags[UPDATENEEDED] = false;
-		entity->flags[BRIGHT] = true;
 		entity->flags[PASSABLE] = true;
 		//entity->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
 		//entity->scaley = 0.25f;
@@ -370,9 +445,9 @@ Entity* spawnExplosionFromSprite(Uint16 sprite, Sint16 x, Sint16 y, Sint16 z)
 	entity->x = x;
 	entity->y = y;
 	entity->z = z;
+    entity->ditheringDisabled = true;
 	entity->flags[SPRITE] = true;
 	entity->flags[PASSABLE] = true;
-	entity->flags[BRIGHT] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[UNCLICKABLE] = true;
 	entity->behavior = &actSprite;
@@ -382,7 +457,7 @@ Entity* spawnExplosionFromSprite(Uint16 sprite, Sint16 x, Sint16 y, Sint16 z)
 	Entity* my = entity;
 	SPRITE_FRAMES = 10;
 	SPRITE_ANIMSPEED = 2;
-	SPRITE_LIT = 4;
+	SPRITE_LIT = 1;
 	playSoundEntityLocal(entity, 153, 128);
 	Entity* explosion = entity;
 	for ( int i = 0; i < 10; ++i )
@@ -392,10 +467,10 @@ Entity* spawnExplosionFromSprite(Uint16 sprite, Sint16 x, Sint16 y, Sint16 z)
 		entity->x = explosion->x;
 		entity->y = explosion->y;
 		entity->z = explosion->z;
+        entity->ditheringDisabled = true;
 		entity->flags[SPRITE] = true;
 		entity->flags[NOUPDATE] = true;
 		entity->flags[UPDATENEEDED] = false;
-		entity->flags[BRIGHT] = true;
 		entity->flags[PASSABLE] = true;
 		//entity->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
 		//entity->scaley = 0.25f;
@@ -413,16 +488,19 @@ Entity* spawnExplosionFromSprite(Uint16 sprite, Sint16 x, Sint16 y, Sint16 z)
 	return explosion;
 }
 
-Entity* spawnPoof(Sint16 x, Sint16 y, Sint16 z)
+Entity* spawnPoof(Sint16 x, Sint16 y, Sint16 z, real_t scale, bool updateClients)
 {
 	// poof
 	auto entity = newEntity(170, 1, map.entities, nullptr);
 	entity->x = x;
 	entity->y = y;
 	entity->z = z;
+	entity->scalex = scale;
+	entity->scaley = scale;
+	entity->scalez = scale;
+    entity->ditheringDisabled = true;
 	entity->flags[SPRITE] = true;
 	entity->flags[PASSABLE] = true;
-	//entity->flags[BRIGHT] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[UNCLICKABLE] = true;
 	entity->behavior = &actSprite;
@@ -436,6 +514,27 @@ Entity* spawnPoof(Sint16 x, Sint16 y, Sint16 z)
 		entity_uids--;
 	}
 	entity->setUID(-3);
+
+	if ( updateClients && multiplayer == SERVER )
+	{
+		for ( int c = 1; c < MAXPLAYERS; c++ )
+		{
+			if ( client_disconnected[c] == true || players[c]->isLocalPlayer() )
+			{
+				continue;
+			}
+			strcpy((char*)net_packet->data, "PUFF");
+			SDLNet_Write16(x, &net_packet->data[4]);
+			SDLNet_Write16(y, &net_packet->data[6]);
+			SDLNet_Write16(z, &net_packet->data[8]);
+			SDLNet_Write16(static_cast<Uint16>(scale * 100), &net_packet->data[10]);
+			net_packet->address.host = net_clients[c - 1].host;
+			net_packet->address.port = net_clients[c - 1].port;
+			net_packet->len = 12;
+			sendPacketSafe(net_sock, -1, net_packet, c - 1);
+		}
+	}
+
 	return entity;
 }
 
@@ -491,6 +590,7 @@ Entity* spawnSleepZ(Sint16 x, Sint16 y, Sint16 z)
 	entity->x = x;
 	entity->y = y;
 	entity->z = z;
+    entity->ditheringDisabled = true;
 	entity->flags[SPRITE] = true;
 	entity->flags[PASSABLE] = true;
 	entity->flags[UPDATENEEDED] = false;
@@ -539,6 +639,7 @@ Entity* spawnFloatingSpriteMisc(int sprite, Sint16 x, Sint16 y, Sint16 z)
 	entity->x = x;
 	entity->y = y;
 	entity->z = z;
+    entity->ditheringDisabled = true;
 	entity->flags[SPRITE] = true;
 	entity->flags[PASSABLE] = true;
 	entity->flags[UPDATENEEDED] = false;

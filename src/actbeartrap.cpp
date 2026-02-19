@@ -23,6 +23,8 @@
 #include "scores.hpp"
 #include "monster.hpp"
 #include "prng.hpp"
+#include "paths.hpp"
+#include "mod_tools.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -39,6 +41,8 @@
 #define BEARTRAP_APPEARANCE my->skill[14]
 #define BEARTRAP_IDENTIFIED my->skill[15]
 #define BEARTRAP_OWNER my->skill[17]
+
+std::map<Uint32, MonsterTrapIgnoreEntities_t> monsterTrapIgnoreEntities;
 
 void actBeartrap(Entity* my)
 {
@@ -87,7 +91,7 @@ void actBeartrap(Entity* my)
 				entity->skill[15] = BEARTRAP_IDENTIFIED;
 				entity->itemNotMoving = 1;
 				entity->itemNotMovingClient = 1;
-				messagePlayer(i, MESSAGE_INTERACTION, language[1300]);
+				messagePlayer(i, MESSAGE_INTERACTION, Language::get(1300));
 				list_RemoveNode(my->mynode);
 				return;
 			}
@@ -99,8 +103,15 @@ void actBeartrap(Entity* my)
 		return;
 	}
 
+	MonsterTrapIgnoreEntities_t* trapProps = nullptr;
+	if ( my->parent != 0 && monsterTrapIgnoreEntities.find(my->getUID()) != monsterTrapIgnoreEntities.end() )
+	{
+		trapProps = &monsterTrapIgnoreEntities[my->getUID()];
+	}
+
 	// launch beartrap
 	node_t* node;
+	Entity* parent = uidToEntity(my->parent);
 	for ( node = map.creatures->first; node != nullptr; node = node->next )
 	{
 		Entity* entity = (Entity*)node->element;
@@ -113,12 +124,20 @@ void actBeartrap(Entity* my)
 			Stat* stat = entity->getStats();
 			if ( stat )
 			{
-				Entity* parent = uidToEntity(my->parent);
 				if ( (parent && parent->checkFriend(entity)) )
 				{
 					continue;
 				}
-				if ( stat->type == GYROBOT )
+				if ( trapProps && trapProps->parent == my->parent 
+					&& trapProps->ignoreEntities.find(entity->getUID()) != trapProps->ignoreEntities.end() )
+				{
+					continue;
+				}
+				if ( !entity->monsterIsTargetable() )
+				{
+					continue;
+				}
+				if ( entity->isInertMimic() )
 				{
 					continue;
 				}
@@ -136,7 +155,25 @@ void actBeartrap(Entity* my)
 				if ( entityDist(my, entity) < 6.5 )
 				{
 					entity->setEffect(EFF_PARALYZED, true, 200, false);
-					entity->setEffect(EFF_BLEEDING, true, 300, false);
+					if ( entity->setEffect(EFF_BLEEDING, true, 300, false) )
+					{
+						if ( parent && parent->behavior == &actPlayer )
+						{
+							if ( stats[parent->skill[2]]->helmet && stats[parent->skill[2]]->helmet->type == PUNISHER_HOOD )
+							{
+								int mpAmount = parent->modMP(1 + local_rng.rand() % 2);
+								parent->playerInsectoidIncrementHungerToMP(mpAmount);
+								Uint32 color = makeColorRGB(0, 255, 0);
+								parent->setEffect(EFF_MP_REGEN, true, std::max(stats[parent->skill[2]]->EFFECTS_TIMERS[EFF_MP_REGEN], 10 * TICKS_PER_SECOND), false);
+								if ( parent->behavior == &actPlayer )
+								{
+									messagePlayerColor(parent->skill[2], MESSAGE_HINT, color, Language::get(3753));
+									steamStatisticUpdateClient(parent->skill[2], STEAM_STAT_ITS_A_LIVING, STEAM_STAT_INT, 1);
+								}
+								playSoundEntity(parent, 168, 128);
+							}
+						}
+					}
 					int damage = 10 + 3 * (BEARTRAP_STATUS + BEARTRAP_BEATITUDE);
 					if ( parent )
 					{
@@ -155,8 +192,19 @@ void actBeartrap(Entity* my)
 					//		entity->monsterAcquireAttackTarget(*attackTarget, MONSTER_STATE_PATH);
 					//	}
 					//}
+					
+					if ( parent && parent->behavior == &actPlayer )
+					{
+						Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_BEARTRAP_TRAPPED, TOOL_BEARTRAP, 1);
+						if ( stat->HP < oldHP )
+						{
+							Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_BEARTRAP_DMG, TOOL_BEARTRAP, oldHP - stat->HP);
+						}
+					}
+					
 					// set obituary
-					entity->setObituary(language[1504]);
+					entity->updateEntityOnHit(parent, true);
+					entity->setObituary(Language::get(1504));
 					stat->killer = KilledBy::TRAP_BEAR;
 
 					if ( stat->HP <= 0 && oldHP > 0 )
@@ -170,7 +218,7 @@ void actBeartrap(Entity* my)
 					{
 						int player = entity->skill[2];
 						Uint32 color = makeColorRGB(255, 0, 0);
-						messagePlayerColor(player, MESSAGE_STATUS, color, language[454]);
+						messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(454));
 						if ( !players[player]->isLocalPlayer() )
 						{
 							serverUpdateEffects(player);
@@ -200,29 +248,32 @@ void actBeartrap(Entity* my)
 							{
 								if ( entityDist(my, parent) >= 64 && entityDist(my, parent) < 128 )
 								{
-									messagePlayer(player, MESSAGE_HINT, language[2521]);
+									messagePlayer(player, MESSAGE_HINT, Language::get(2521));
 								}
 								else
 								{
-									messagePlayer(player, MESSAGE_HINT, language[2522]);
+									messagePlayer(player, MESSAGE_HINT, Language::get(2522));
 								}
-								if ( local_rng.rand() % 10 == 0 )
+								if ( local_rng.rand() % 10 == 0 && !stat->getEffectActive(EFF_STASIS)
+									&& !monsterIsImmobileTurret(entity, stat) )
 								{
 									parent->increaseSkill(PRO_LOCKPICKING);
 								}
-								if ( local_rng.rand() % 5 == 0 )
-								{
-									parent->increaseSkill(PRO_RANGED);
-								}
+								//if ( local_rng.rand() % 5 == 0 )
+								//{
+								//	parent->increaseSkill(PRO_RANGED);
+								//}
 							}
 							// update enemy bar for attacker
 							if ( !strcmp(stat->name, "") )
 							{
-								updateEnemyBar(parent, entity, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP);
+								updateEnemyBar(parent, entity, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP,
+									false, DamageGib::DMG_DEFAULT);
 							}
 							else
 							{
-								updateEnemyBar(parent, entity, stat->name, stat->HP, stat->MAXHP);
+								updateEnemyBar(parent, entity, stat->name, stat->HP, stat->MAXHP,
+									false, DamageGib::DMG_DEFAULT);
 							}
 						}
 					}
@@ -290,6 +341,7 @@ void actBeartrapLaunched(Entity* my)
 #define BOMB_TRIGGER_TYPE my->skill[22]
 #define BOMB_CHEST_STATUS my->skill[23]
 #define BOMB_HIT_BY_PROJECTILE my->skill[24]
+#define BOMB_CURSED_RNG_EXPLODE my->skill[25]
 
 void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spawnMagicOnTriggeredMonster, bool hitByAOE )
 {
@@ -342,17 +394,32 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 		doVertical = true;
 	}
 
+	int oldHP = stat->HP;
+	if ( stat )
+	{
+		damage *= Entity::getDamageTableMultiplier(triggered, *stat, DAMAGE_TABLE_MAGIC); // reduce/increase by magic table.
+	}
+	bool wasAsleep = false;
+	if ( stat )
+	{
+		wasAsleep = stat->getEffectActive(EFF_ASLEEP);
+	}
+	if ( damage > 0 )
+	{
+		triggered->modHP(-damage);
+	}
+
 	// stumbled into the trap!
 	Uint32 color = makeColorRGB(0, 255, 0);
 	if ( parent && parent->behavior == &actPlayer && triggered != parent )
 	{
 		if ( !hitByAOE )
 		{
-			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3498], language[3499], MSG_TOOL_BOMB, my);
+			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3498), Language::get(3499), MSG_TOOL_BOMB, my);
 		}
 		else
 		{
-			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3613], language[3614], MSG_TOOL_BOMB, my);
+			messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3613), Language::get(3614), MSG_TOOL_BOMB, my);
 		}
 	}
 	if ( triggered->behavior == &actPlayer )
@@ -362,11 +429,25 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 		// you stumbled into the trap!
 		if ( !hitByAOE )
 		{
-			messagePlayerColor(player, MESSAGE_STATUS, color, language[3497], items[BOMB_ITEMTYPE].name_identified);
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3497), items[BOMB_ITEMTYPE].getIdentifiedName());
 		}
 		else
 		{
-			messagePlayerColor(player, MESSAGE_STATUS, color, language[3612], items[BOMB_ITEMTYPE].name_identified);
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3612), items[BOMB_ITEMTYPE].getIdentifiedName());
+		}
+	}
+
+	if ( parent && parent->behavior == &actPlayer )
+	{
+		if ( triggered && (triggered == parent || parent->checkFriend(triggered)) )
+		{
+			Compendium_t::Events_t::eventUpdate(parent->skill[2],
+				Compendium_t::CPDM_BOMB_DETONATED_ALLY, (ItemType)BOMB_ITEMTYPE, 1);
+		}
+		else
+		{
+			Compendium_t::Events_t::eventUpdate(parent->skill[2],
+				Compendium_t::CPDM_BOMB_DETONATED, (ItemType)BOMB_ITEMTYPE, 1);
 		}
 	}
 
@@ -378,7 +459,7 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			if ( parent && parent->behavior == &actPlayer )
 			{
 				Uint32 color = makeColorRGB(255, 0, 0);
-				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3603], language[3604], MSG_COMBAT);
+				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3603), Language::get(3604), MSG_COMBAT);
 			}
 			return;
 		}
@@ -432,13 +513,13 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 				if ( triggered != parent )
 				{
 					Uint32 color = makeColorRGB(0, 255, 0);
-					messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3601], language[3602], MSG_COMBAT);
+					messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3601), Language::get(3602), MSG_COMBAT);
 				}
 			}
 			if ( triggered->behavior == &actPlayer )
 			{
 				Uint32 color = makeColorRGB(255, 255, 255);
-				messagePlayerColor(triggered->skill[2], MESSAGE_STATUS, color, language[3611]);
+				messagePlayerColor(triggered->skill[2], MESSAGE_STATUS, color, Language::get(3611));
 				achievementObserver.playerAchievements[triggered->skill[2]].checkPathBetweenObjects(triggered, my, AchievementObserver::BARONY_ACH_WONDERFUL_TOYS);
 			}
 
@@ -455,70 +536,72 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			if ( parent && parent->behavior == &actPlayer && triggered != parent )
 			{
 				Uint32 color = makeColorRGB(255, 0, 0);
-				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), language[3615], language[3616], MSG_COMBAT);
+				messagePlayerMonsterEvent(parent->skill[2], color, *triggered->getStats(), Language::get(3615), Language::get(3616), MSG_COMBAT);
 			}
 		}
 		return;
 	}
 	else if ( doSpell != SPELL_NONE )
 	{
-		Entity* spell = castSpell(my->getUID(), getSpellFromID(doSpell), false, true);
-		spell->parent = my->parent;
-		spell->x = triggered->x;
-		spell->y = triggered->y;
-		if ( !doVertical )
+		if ( !stat || (stat && stat->HP > 0) )
 		{
-			real_t speed = 1.f;
-			real_t ticksToHit = (entityDistance / speed);
-			/*real_t predictx = triggered->x + (triggered->vel_x * ticksToHit);
-			real_t predicty = triggered->y + (triggered->vel_y * ticksToHit);
-			double tangent = atan2(predicty - my->y, predictx - my->x);*/
-			double tangent = atan2(triggered->y - my->y, triggered->x - my->x);
-			spell->yaw = tangent;
-			spell->vel_x = speed * cos(spell->yaw);
-			spell->vel_y = speed * sin(spell->yaw);
-		}
-		else
-		{
-			spell->x = my->x;
-			spell->y = my->y;
-			real_t speed = 3.f;
-			real_t ticksToHit = (entityDistance / speed);
-			real_t predictx = triggered->x + (triggered->vel_x * ticksToHit);
-			real_t predicty = triggered->y + (triggered->vel_y * ticksToHit);
-			double tangent = atan2(predicty - my->y, predictx - my->x);
-			spell->yaw = tangent;
-			spell->vel_z = -2.f;
-			spell->vel_x = speed * cos(spell->yaw);
-			spell->vel_y = speed * sin(spell->yaw);
-			spell->pitch = atan2(spell->vel_z, speed);
-			spell->actmagicIsVertical = MAGIC_ISVERTICAL_XYZ;
-		}
-		spell->actmagicCastByTinkerTrap = 1;
-		if ( BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL )
-		{
-			spell->actmagicTinkerTrapFriendlyFire = 1;
-			if ( triggered == parent )
+			Entity* spell = castSpell(my->getUID(), getSpellFromID(doSpell), false, true);
+			spell->parent = my->parent;
+			spell->x = triggered->x;
+			spell->y = triggered->y;
+			if ( !doVertical )
 			{
-				spell->parent = 0;
+				real_t speed = 1.f;
+				real_t ticksToHit = (entityDistance / speed);
+				/*real_t predictx = triggered->x + (triggered->vel_x * ticksToHit);
+				real_t predicty = triggered->y + (triggered->vel_y * ticksToHit);
+				double tangent = atan2(predicty - my->y, predictx - my->x);*/
+				double tangent = atan2(triggered->y - my->y, triggered->x - my->x);
+				spell->yaw = tangent;
+				spell->vel_x = speed * cos(spell->yaw);
+				spell->vel_y = speed * sin(spell->yaw);
 			}
+			else
+			{
+				spell->x = my->x;
+				spell->y = my->y;
+				real_t speed = 3.f;
+				real_t ticksToHit = (entityDistance / speed);
+				real_t predictx = triggered->x + (triggered->vel_x * ticksToHit);
+				real_t predicty = triggered->y + (triggered->vel_y * ticksToHit);
+				double tangent = atan2(predicty - my->y, predictx - my->x);
+				spell->yaw = tangent;
+				spell->vel_z = -2.f;
+				spell->vel_x = speed * cos(spell->yaw);
+				spell->vel_y = speed * sin(spell->yaw);
+				spell->pitch = atan2(spell->vel_z, speed);
+				spell->actmagicIsVertical = MAGIC_ISVERTICAL_XYZ;
+			}
+			spell->actmagicCastByTinkerTrap = 1;
+			if ( BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL )
+			{
+				spell->actmagicTinkerTrapFriendlyFire = 1;
+				if ( triggered == parent )
+				{
+					spell->parent = 0;
+				}
+			}
+			spell->skill[5] = 10; // travel time
 		}
-		spell->skill[5] = 10; // travel time
 	}
 	// set obituary
-	int oldHP = stat->HP;
-	if ( stat )
-	{
-		damage *= triggered->getDamageTableMultiplier(*stat, DAMAGE_TABLE_MAGIC); // reduce/increase by magic table.
-	}
-	bool wasAsleep = false;
-	if ( stat )
-	{
-		wasAsleep = stat->EFFECTS[EFF_ASLEEP];
-	}
-	triggered->modHP(-damage);
-	triggered->setObituary(language[3496]);
+	triggered->setObituary(Language::get(3496));
+	triggered->updateEntityOnHit(parent, true);
 	stat->killer = KilledBy::TRAP_BOMB;
+
+	if ( stat->HP < oldHP )
+	{
+		if ( parent && parent->behavior == &actPlayer )
+		{
+			Compendium_t::Events_t::eventUpdate(parent->skill[2],
+				Compendium_t::CPDM_BOMB_DMG, (ItemType)BOMB_ITEMTYPE, oldHP - stat->HP);
+		}
+	}
 
 	if ( stat->HP <= 0 && oldHP > 0 )
 	{
@@ -573,32 +656,51 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			{
 				if ( entityDist(my, parent) >= 64 && entityDist(my, parent) < 128 )
 				{
-					messagePlayer(player, MESSAGE_HINT, language[3494]);
+					messagePlayer(player, MESSAGE_HINT, Language::get(3494));
 				}
 				else
 				{
-					messagePlayer(player, MESSAGE_HINT, language[3495]);
+					messagePlayer(player, MESSAGE_HINT, Language::get(3495));
 				}
 			}
 			if ( triggered->behavior == &actMonster )
 			{
-				if ( oldHP > 0 && stat->HP == 0 ) // got a kill
+				bool doSkillIncrease = true;
+				Stat* triggeredStats = triggered->getStats();
+				if ( monsterIsImmobileTurret(triggered, triggeredStats) )
 				{
-					if ( local_rng.rand() % 5 == 0 )
+					doSkillIncrease = false;
+				}
+				else if ( triggered->monsterAllyGetPlayerLeader() 
+					|| (triggeredStats && achievementObserver.checkUidIsFromPlayer(triggeredStats->leader_uid) >= 0) )
+				{
+					doSkillIncrease = false;
+				}
+				else if ( triggeredStats && triggeredStats->getEffectActive(EFF_STASIS) )
+				{
+					doSkillIncrease = false;
+				}
+
+				if ( doSkillIncrease )
+				{
+					if ( oldHP > 0 && stat->HP == 0 ) // got a kill
+					{
+						if ( local_rng.rand() % 5 == 0 )
+						{
+							parent->increaseSkill(PRO_LOCKPICKING);
+						}
+					}
+					else if ( oldHP > stat->HP )
+					{
+						if ( local_rng.rand() % 20 == 0 ) // wounded
+						{
+							parent->increaseSkill(PRO_LOCKPICKING);
+						}
+					}
+					else if( local_rng.rand() % 20 == 0) // any other effect
 					{
 						parent->increaseSkill(PRO_LOCKPICKING);
 					}
-				}
-				else if ( oldHP > stat->HP )
-				{
-					if ( local_rng.rand() % 20 == 0 ) // wounded
-					{
-						parent->increaseSkill(PRO_LOCKPICKING);
-					}
-				}
-				else if( local_rng.rand() % 20 == 0) // any other effect
-				{
-					parent->increaseSkill(PRO_LOCKPICKING);
 				}
 
 				if ( !achievementObserver.playerAchievements[player].bombTrack )
@@ -623,11 +725,13 @@ void bombDoEffect(Entity* my, Entity* triggered, real_t entityDistance, bool spa
 			{
 				if ( !strcmp(stat->name, "") )
 				{
-					updateEnemyBar(parent, triggered, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP);
+					updateEnemyBar(parent, triggered, getMonsterLocalizedName(stat->type).c_str(), stat->HP, stat->MAXHP,
+						false, DamageGib::DMG_DEFAULT);
 				}
 				else
 				{
-					updateEnemyBar(parent, triggered, stat->name, stat->HP, stat->MAXHP);
+					updateEnemyBar(parent, triggered, stat->name, stat->HP, stat->MAXHP,
+						false, DamageGib::DMG_DEFAULT);
 				}
 				Entity* gib = spawnGib(triggered);
 				serverSpawnGibForClient(gib);
@@ -648,7 +752,7 @@ void actBomb(Entity* my)
 		if ( BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TELEPORT_RECEIVER )
 		{
 			my->spawnAmbientParticles(25, 576, 10 + local_rng.rand() % 40, 1.0, false);
-			my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 92);
+			my->light = addLight(my->x / 16, my->y / 16, "trap_teleport");
 		}
 		return;
 	}
@@ -696,7 +800,7 @@ void actBomb(Entity* my)
 					entity->itemNotMoving = 0;
 					entity->itemNotMovingClient = 0;
 				}
-				messagePlayer(i, MESSAGE_INTERACTION, language[3600], items[BOMB_ITEMTYPE].name_identified);
+				messagePlayer(i, MESSAGE_INTERACTION, Language::get(3600), items[BOMB_ITEMTYPE].getIdentifiedName());
 				list_RemoveNode(my->mynode);
 				return;
 			}
@@ -724,7 +828,7 @@ void actBomb(Entity* my)
 	if ( BOMB_ITEMTYPE == TOOL_TELEPORT_BOMB && BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TELEPORT_RECEIVER )
 	{
 		my->spawnAmbientParticles(25, 576, 10 + local_rng.rand() % 40, 1.0, false);
-		my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 92);
+		my->light = addLight(my->x / 16, my->y / 16, "trap_teleport");
 		my->sprite = 899;
 		return;
 	}
@@ -735,6 +839,18 @@ void actBomb(Entity* my)
 
 	// launch bomb
 	std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
+	std::vector<Entity*> entitiesWithinRadius;
+	for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+	{
+		list_t* currentList = *it;
+		node_t* node;
+		for ( node = currentList->first; node != nullptr; node = node->next )
+		{
+			entitiesWithinRadius.push_back((Entity*)node->element);
+		}
+	}
+
+
 	Entity* triggered = nullptr;
 	real_t entityDistance = 0.f;
 	bool bombExplodeAOETargets = false;
@@ -754,7 +870,21 @@ void actBomb(Entity* my)
 		explosionSprite = 0;
 	}
 
-	if ( BOMB_ENTITY_ATTACHED_TO != 0 || BOMB_HIT_BY_PROJECTILE == 1 || BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_WALL )
+	bool cursedExplode = false;
+	if ( BOMB_CURSED_RNG_EXPLODE )
+	{
+		if ( my->ticks >= TICKS_PER_SECOND / 2 )
+		{
+			if ( my->ticks % TICKS_PER_SECOND == (5 * (my->getUID() % 10)) ) // randomly explode
+			{
+				cursedExplode = true;
+			}
+		}
+	}
+
+	if ( BOMB_ENTITY_ATTACHED_TO != 0 || BOMB_HIT_BY_PROJECTILE == 1 
+		|| BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_WALL
+		|| cursedExplode )
 	{
 		Entity* onEntity = uidToEntity(static_cast<Uint32>(BOMB_ENTITY_ATTACHED_TO));
 		bool shouldExplode = false;
@@ -792,9 +922,9 @@ void actBomb(Entity* my)
 		}
 		else if ( onEntity )
 		{
-			if ( onEntity->behavior == &actDoor )
+			if ( onEntity->behavior == &actDoor || onEntity->behavior == &actIronDoor )
 			{
-				if ( onEntity->doorHealth < BOMB_ENTITY_ATTACHED_START_HP || onEntity->flags[PASSABLE]
+				if ( onEntity->doorHealth < BOMB_ENTITY_ATTACHED_START_HP || onEntity->flags[PASSABLE] || cursedExplode
 					|| BOMB_HIT_BY_PROJECTILE == 1 )
 				{
 					if ( onEntity->doorHealth > 0 )
@@ -804,9 +934,21 @@ void actBomb(Entity* my)
 					shouldExplode = true;
 				}
 			}
+			else if ( onEntity->behavior == &actMonster && onEntity->getMonsterTypeFromSprite() == MIMIC )
+			{
+				if ( !onEntity->isInertMimic() || BOMB_HIT_BY_PROJECTILE == 1 || cursedExplode )
+				{
+					if ( onEntity->isInertMimic() )
+					{
+						onEntity->chestHandleDamageMagic(20, *my, uidToEntity(my->parent));
+					}
+					shouldExplode = true;
+				}
+			}
 			else if ( onEntity->behavior == &actChest )
 			{
 				if ( onEntity->skill[3] < BOMB_ENTITY_ATTACHED_START_HP || BOMB_CHEST_STATUS != onEntity->skill[1]
+					|| cursedExplode
 					|| BOMB_HIT_BY_PROJECTILE == 1 )
 				{
 					if ( onEntity->skill[3] > 0 )
@@ -823,10 +965,35 @@ void actBomb(Entity* my)
 					shouldExplode = true;
 				}
 			}
+			else if ( onEntity->behavior == &actColliderDecoration )
+			{
+				if ( onEntity->colliderCurrentHP < BOMB_ENTITY_ATTACHED_START_HP
+					|| cursedExplode
+					|| BOMB_HIT_BY_PROJECTILE == 1 )
+				{
+					if ( onEntity->colliderCurrentHP > 0 )
+					{
+						if ( BOMB_ITEMTYPE == TOOL_BOMB ) // fire bomb do more.
+						{
+							onEntity->colliderHandleDamageMagic(50, *my, uidToEntity(my->parent));
+						}
+						else
+						{
+							onEntity->colliderHandleDamageMagic(20, *my, uidToEntity(my->parent));
+						}
+					}
+					shouldExplode = true;
+				}
+			}
 		}
 		else
 		{
 			shouldExplode = true; // my attached entity died.
+		}
+
+		if ( cursedExplode )
+		{
+			shouldExplode = true;
 		}
 
 		if ( shouldExplode )
@@ -844,133 +1011,145 @@ void actBomb(Entity* my)
 		}
 	}
 
-	for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !triggered; ++it )
+	MonsterTrapIgnoreEntities_t* trapProps = nullptr;
+	if ( my->parent != 0 && monsterTrapIgnoreEntities.find(my->getUID()) != monsterTrapIgnoreEntities.end() )
 	{
-		list_t* currentList = *it;
-		node_t* node;
-		for ( node = currentList->first; node != nullptr && !triggered; node = node->next )
+		trapProps = &monsterTrapIgnoreEntities[my->getUID()];
+	}
+
+	for ( auto it = entitiesWithinRadius.begin(); it != entitiesWithinRadius.end() && !triggered; ++it )
+	{
+		Entity* entity = *it;
+		if ( !entity )
 		{
-			Entity* entity = (Entity*)node->element;
-			if ( !entity )
+			continue;
+		}
+		if ( my->parent == entity->getUID() && !(BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL) )
+		{
+			continue;
+		}
+		if ( entity->behavior == &actMonster || entity->behavior == &actPlayer )
+		{
+			Stat* stat = entity->getStats();
+			if ( stat )
 			{
-				continue;
-			}
-			if ( my->parent == entity->getUID() && !(BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL) )
-			{
-				continue;
-			}
-			if ( entity->behavior == &actMonster || entity->behavior == &actPlayer )
-			{
-				Stat* stat = entity->getStats();
-				if ( stat )
+				Entity* parent = uidToEntity(my->parent);
+				if ( parent && parent->checkFriend(entity) && !(BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL) )
 				{
-					Entity* parent = uidToEntity(my->parent);
-					if ( parent && parent->checkFriend(entity) && !(BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL) )
+					continue;
+				}
+				if ( trapProps && trapProps->parent == my->parent && trapProps->ignoreEntities.find(entity->getUID()) != trapProps->ignoreEntities.end()
+					 && !(BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL) )
+				{
+					continue;
+				}
+				if ( !entity->monsterIsTargetable() )
+				{
+					continue;
+				}
+				if ( entity->isInertMimic() )
+				{
+					continue;
+				}
+				if ( !parent && BOMB_PLAYER_OWNER >= 0 && !(BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL) )
+				{
+					if ( entity->behavior == &actPlayer )
 					{
-						continue;
+						continue; // players won't trigger if owner dead.
 					}
-					if ( stat->type == GYROBOT )
+					else if ( entity->monsterAllyGetPlayerLeader() )
 					{
-						continue;
+						continue; // player followers won't trigger if owner dead.
 					}
-					if ( !parent && BOMB_PLAYER_OWNER >= 0 && !(BOMB_TRIGGER_TYPE == Item::ItemBombTriggerType::BOMB_TRIGGER_ALL) )
+				}
+				if ( BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_FLOOR )
+				{
+					entityDistance = entityDist(my, entity);
+					if ( entityDistance < 6.5 )
 					{
-						if ( entity->behavior == &actPlayer )
-						{
-							continue; // players won't trigger if owner dead.
-						}
-						else if ( entity->monsterAllyGetPlayerLeader() )
-						{
-							continue; // player followers won't trigger if owner dead.
-						}
+						spawnExplosionFromSprite(explosionSprite, my->x - 4 + local_rng.rand() % 9, my->y + local_rng.rand() % 9, my->z - 2);
+						triggered = entity;
 					}
-					if ( BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_FLOOR )
+				}
+				else if ( bombExplodeAOETargets )
+				{
+					Entity* onEntity = uidToEntity(static_cast<Uint32>(BOMB_ENTITY_ATTACHED_TO));
+					if ( onEntity )
 					{
-						entityDistance = entityDist(my, entity);
-						if ( entityDistance < 6.5 )
+						entityDistance = entityDist(onEntity, entity);
+						if ( entityDistance < STRIKERANGE )
 						{
-							spawnExplosionFromSprite(explosionSprite, my->x - 4 + local_rng.rand() % 9, my->y + local_rng.rand() % 9, my->z - 2);
-							triggered = entity;
-						}
-					}
-					else if ( bombExplodeAOETargets )
-					{
-						Entity* onEntity = uidToEntity(static_cast<Uint32>(BOMB_ENTITY_ATTACHED_TO));
-						if ( onEntity )
-						{
-							entityDistance = entityDist(onEntity, entity);
-							if ( entityDistance < STRIKERANGE )
-							{
-								spawnExplosionFromSprite(explosionSprite, entity->x, entity->y, entity->z);
-								bombDoEffect(my, entity, entityDistance, true, true);
-							}
-						}
-						else
-						{
-							entityDistance = entityDist(my, entity);
-							if ( entityDistance < STRIKERANGE )
-							{
-								spawnExplosionFromSprite(explosionSprite, entity->x, entity->y, entity->z);
-								bombDoEffect(my, entity, entityDistance, true, true);
-							}
+							spawnExplosionFromSprite(explosionSprite, entity->x, entity->y, entity->z);
+							bombDoEffect(my, entity, entityDistance, true, true);
 						}
 					}
 					else
 					{
-						real_t oldx = my->x;
-						real_t oldy = my->y;
-						// pretend the bomb is in the center of the tile it's facing.
-						switch ( BOMB_DIRECTION )
+						entityDistance = entityDist(my, entity);
+						if ( entityDistance < STRIKERANGE )
 						{
-							case Item::ItemBombFacingDirection::BOMB_EAST:
-								my->x += 8;
-								entityDistance = entityDist(my, entity);
-								if ( entityDistance < 12 )
-								{
-									triggered = entity;
-									spawnExplosionFromSprite(explosionSprite, my->x - local_rng.rand() % 9, my->y - 4 + local_rng.rand() % 9, my->z);
-								}
-								break;
-							case Item::ItemBombFacingDirection::BOMB_WEST:
-								my->x -= 8;
-								entityDistance = entityDist(my, entity);
-								if ( entityDistance < 12 )
-								{
-									triggered = entity;
-									spawnExplosionFromSprite(explosionSprite, my->x + local_rng.rand() % 9, my->y - 4 + local_rng.rand() % 9, my->z);
-								}
-								break;
-							case Item::ItemBombFacingDirection::BOMB_SOUTH:
-								my->y += 8;
-								entityDistance = entityDist(my, entity);
-								if ( entityDistance < 12 )
-								{
-									triggered = entity;
-									spawnExplosionFromSprite(explosionSprite, my->x - 4 + local_rng.rand() % 9, my->y - local_rng.rand() % 9, my->z);
-								}
-								break;
-							case Item::ItemBombFacingDirection::BOMB_NORTH:
-								my->y -= 8;
-								entityDistance = entityDist(my, entity);
-								if ( entityDistance < 12 )
-								{
-									triggered = entity;
-									spawnExplosionFromSprite(explosionSprite, my->x - 4 + local_rng.rand() % 9, my->y + local_rng.rand() % 9, my->z);
-								}
-								break;
-							default:
-								break;
+							spawnExplosionFromSprite(explosionSprite, entity->x, entity->y, entity->z);
+							bombDoEffect(my, entity, entityDistance, true, true);
 						}
-						my->x = oldx;
-						my->y = oldy;
 					}
+				}
+				else
+				{
+					real_t oldx = my->x;
+					real_t oldy = my->y;
+					// pretend the bomb is in the center of the tile it's facing.
+					switch ( BOMB_DIRECTION )
+					{
+						case Item::ItemBombFacingDirection::BOMB_EAST:
+							my->x += 8;
+							entityDistance = entityDist(my, entity);
+							if ( entityDistance < 12 )
+							{
+								triggered = entity;
+								spawnExplosionFromSprite(explosionSprite, my->x - local_rng.rand() % 9, my->y - 4 + local_rng.rand() % 9, my->z);
+							}
+							break;
+						case Item::ItemBombFacingDirection::BOMB_WEST:
+							my->x -= 8;
+							entityDistance = entityDist(my, entity);
+							if ( entityDistance < 12 )
+							{
+								triggered = entity;
+								spawnExplosionFromSprite(explosionSprite, my->x + local_rng.rand() % 9, my->y - 4 + local_rng.rand() % 9, my->z);
+							}
+							break;
+						case Item::ItemBombFacingDirection::BOMB_SOUTH:
+							my->y += 8;
+							entityDistance = entityDist(my, entity);
+							if ( entityDistance < 12 )
+							{
+								triggered = entity;
+								spawnExplosionFromSprite(explosionSprite, my->x - 4 + local_rng.rand() % 9, my->y - local_rng.rand() % 9, my->z);
+							}
+							break;
+						case Item::ItemBombFacingDirection::BOMB_NORTH:
+							my->y -= 8;
+							entityDistance = entityDist(my, entity);
+							if ( entityDistance < 12 )
+							{
+								triggered = entity;
+								spawnExplosionFromSprite(explosionSprite, my->x - 4 + local_rng.rand() % 9, my->y + local_rng.rand() % 9, my->z);
+							}
+							break;
+						default:
+							break;
+					}
+					my->x = oldx;
+					my->y = oldy;
 				}
 			}
 		}
 	}
 
 	if ( !bombExplodeAOETargets && triggered 
-		&& (BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_DOOR || BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_CHEST) )
+		&& (BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_DOOR 
+			|| BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_CHEST
+			|| BOMB_PLACEMENT == Item::ItemBombPlacement::BOMB_COLLIDER) )
 	{
 		// found enemy, do AoE effect.
 		BOMB_HIT_BY_PROJECTILE = 1;
@@ -1009,11 +1188,14 @@ void actBomb(Entity* my)
 		//	entity->itemNotMoving = 0;
 		//	entity->itemNotMovingClient = 0;
 		//}
-		Item* charge = newItem(TOOL_DETONATOR_CHARGE, BROKEN, 0, 1, ITEM_TINKERING_APPEARANCE, true, nullptr);
-		Entity* dropped = dropItemMonster(charge, my, nullptr);
-		if ( dropped )
+		if ( BEARTRAP_BEATITUDE >= 0 )
 		{
-			dropped->flags[USERFLAG1] = true;
+			Item* charge = newItem(TOOL_DETONATOR_CHARGE, BROKEN, 0, 1, ITEM_TINKERING_APPEARANCE, true, nullptr);
+			Entity* dropped = dropItemMonster(charge, my, nullptr);
+			if ( dropped )
+			{
+				dropped->flags[USERFLAG1] = true;
+			}
 		}
 		my->removeLightField();
 		if ( triggered )
@@ -1024,6 +1206,63 @@ void actBomb(Entity* my)
 		list_RemoveNode(my->mynode);
 		return;
 	}
+}
+
+bool Entity::entityCheckIfTriggeredWallButton()
+{
+	if ( multiplayer == CLIENT )
+	{
+		return false;
+	}
+	if ( this->behavior != &actThrown && this->behavior != &actArrow )
+	{
+		return false;
+	}
+
+	bool foundButton = false;
+
+	real_t height_limit_low = (behavior == &actThrown) ? 5.0 : 4.0;
+	real_t height_limit_high = -8.0;
+
+	// check for wall buttons
+	if ( z < height_limit_low && z > height_limit_high )
+	{
+		std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(this, 1);
+		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+		{
+			list_t* currentList = *it;
+			node_t* node;
+			for ( node = currentList->first; node != nullptr; node = node->next )
+			{
+				if ( Entity* entity = ((Entity*)node->element) )
+				{
+					if ( entity->behavior == &::actWallButton )
+					{
+						Sint32 tmpsizex = sizex;
+						Sint32 tmpsizey = sizey;
+						sizex = std::max(sizex, 2);
+						sizey = std::max(sizey, 2);
+						if ( entityInsideEntity(this, entity) )
+						{
+							entity->wallLockPlayerInteracting = MAXPLAYERS + 1;
+							foundButton = true;
+							if ( Entity* parent = uidToEntity(this->parent) )
+							{
+								if ( parent->behavior == &actPlayer )
+								{
+									entity->wallLockPlayerInteracting = 1 + parent->skill[2];
+								}
+							}
+						}
+						sizex = tmpsizex;
+						sizey = tmpsizey;
+					}
+				}
+			}
+		}
+	}
+
+	return foundButton;
 }
 
 bool Entity::entityCheckIfTriggeredBomb(bool triggerBomb)
@@ -1126,6 +1365,7 @@ void actDecoyBox(Entity* my)
 		entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, decoyBoxRange);
 		bool message = false;
 		bool detected = false;
+		int lured = 0;
 		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
 		{
 			list_t* currentList = *it;
@@ -1168,8 +1408,8 @@ void actDecoyBox(Entity* my)
 							{
 								// ignore pathing to this noisemaker as we're already distracted by it.
 								if ( entityDist(entity, my) < TOUCHRANGE 
-									&& !myStats->EFFECTS[EFF_DISORIENTED]
-									&& !myStats->EFFECTS[EFF_DISTRACTED_COOLDOWN] )
+									&& !myStats->getEffectActive(EFF_DISORIENTED)
+									&& !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN) )
 								{
 									// if we pathed within range
 									detected = false; // skip the message.
@@ -1193,6 +1433,7 @@ void actDecoyBox(Entity* my)
 										}
 										spawnFloatingSpriteMisc(134, entity->x + (-4 + local_rng.rand() % 9) + cos(entity->yaw) * 2,
 											entity->y + (-4 + local_rng.rand() % 9) + sin(entity->yaw) * 2, entity->z + local_rng.rand() % 4);
+										++lured;
 									}
 								}
 								break;
@@ -1201,8 +1442,9 @@ void actDecoyBox(Entity* my)
 							{
 								break;
 							}
-							if ( !myStats->EFFECTS[EFF_DISTRACTED_COOLDOWN] 
-								&& entity->monsterSetPathToLocation(my->x / 16, my->y / 16, 2) && entity->children.first )
+							if ( !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN) 
+								&& entity->monsterSetPathToLocation(my->x / 16, my->y / 16, 2,
+									GeneratePathTypes::GENERATE_PATH_DEFAULT) && entity->children.first )
 							{
 								// path only if we're not on cooldown
 								entity->monsterLastDistractedByNoisemaker = my->getUID();
@@ -1210,10 +1452,11 @@ void actDecoyBox(Entity* my)
 								entity->monsterState = MONSTER_STATE_HUNT; // hunt state
 								serverUpdateEntitySkill(entity, 0);
 								detected = true;
+								++lured;
 
 								if ( entityDist(entity, my) < TOUCHRANGE 
-									&& !myStats->EFFECTS[EFF_DISORIENTED]
-									&& !myStats->EFFECTS[EFF_DISTRACTED_COOLDOWN] )
+									&& !myStats->getEffectActive(EFF_DISORIENTED)
+									&& !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN) )
 								{
 									detected = false; // skip the message.
 
@@ -1248,9 +1491,11 @@ void actDecoyBox(Entity* my)
 										Entity* gyrobot = uidToEntity(*c);
 										if ( gyrobot && gyrobot->getRace() == GYROBOT )
 										{
-											if ( entity->entityShowOnMap < 250 )
+											if ( entity->getEntityShowOnMapDuration() == 0
+												|| (entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+													&& entity->getEntityShowOnMapDuration() < TICKS_PER_SECOND * 5) )
 											{
-												entity->entityShowOnMap = TICKS_PER_SECOND * 5;
+												entity->setEntityShowOnMap(Entity::SHOW_MAP_GYRO, TICKS_PER_SECOND * 5);
 												if ( parent->skill[2] != 0 )
 												{
 													serverUpdateEntitySkill(entity, 59);
@@ -1258,7 +1503,7 @@ void actDecoyBox(Entity* my)
 											}
 											if ( !message )
 											{
-												messagePlayer(parent->skill[2], MESSAGE_WORLD, language[3671]);
+												messagePlayer(parent->skill[2], MESSAGE_WORLD, Language::get(3671));
 												message = true;
 											}
 											break;
@@ -1271,11 +1516,19 @@ void actDecoyBox(Entity* my)
 				}
 			}
 		}
+		if ( detected && lured > 0 )
+		{
+			if ( parent && parent->behavior == &actPlayer )
+			{
+				Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_NOISEMAKER_LURED, TOOL_DECOY, lured);
+				Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_NOISEMAKER_MOST_LURED, TOOL_DECOY, lured);
+			}
+		}
 		if ( !message && detected )
 		{
 			if ( parent && parent->behavior == &actPlayer )
 			{
-				messagePlayer(parent->skill[2], MESSAGE_HINT, language[3882]);
+				messagePlayer(parent->skill[2], MESSAGE_HINT, Language::get(3882));
 			}
 		}
 	}
@@ -1297,7 +1550,7 @@ void actDecoyBox(Entity* my)
 			}
 			/*if ( parent && parent->behavior == &actPlayer )
 			{
-				messagePlayer(parent->skill[2], language[3769]);
+				messagePlayer(parent->skill[2], Language::get(3769));
 			}*/
 			list_RemoveNode(my->mynode);
 			return;
@@ -1329,7 +1582,7 @@ void actDecoyBox(Entity* my)
 			}
 			if ( parent && parent->behavior == &actPlayer )
 			{
-				messagePlayer(parent->skill[2], MESSAGE_EQUIPMENT, language[3770]);
+				messagePlayer(parent->skill[2], MESSAGE_EQUIPMENT, Language::get(3770));
 			}
 			list_RemoveNode(my->mynode);
 			return;

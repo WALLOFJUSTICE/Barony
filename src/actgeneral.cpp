@@ -23,6 +23,7 @@
 #include "items.hpp"
 #include "scores.hpp"
 #include "mod_tools.hpp"
+#include "paths.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -69,9 +70,9 @@ void actRotate(Entity* my)
 	my->flags[PASSABLE] = true; // this entity should always be passable
 
 #ifdef TESTSPRITES
-	if ( keystatus[SDL_SCANCODE_HOME] )
+	if ( keystatus[SDLK_HOME] )
 	{
-		keystatus[SDL_SCANCODE_HOME] = 0;
+		keystatus[SDLK_HOME] = 0;
 		my->sprite++;
 		if ( my->sprite >= nummodels )
 		{
@@ -79,9 +80,9 @@ void actRotate(Entity* my)
 		}
 		messagePlayer(clientnum, MESSAGE_MISC, "test sprite: %d", my->sprite);
 	}
-	if ( keystatus[SDL_SCANCODE_END] )
+	if ( keystatus[SDLK_END] )
 	{
-		keystatus[SDL_SCANCODE_END] = 0;
+		keystatus[SDLK_END] = 0;
 		my->sprite += 10;
 		if ( my->sprite >= nummodels )
 		{
@@ -103,50 +104,6 @@ void actLiquid(Entity* my)
 
 	list_RemoveNode(my->mynode);
 	return;
-
-	if ( !LIQUID_INIT )
-	{
-		LIQUID_INIT = 1;
-		LIQUID_TIMER = 60 * (local_rng.rand() % 20);
-		if ( LIQUID_LAVA )
-		{
-			my->light = lightSphereShadow(my->x / 16, my->y / 16, 2, 128);
-		}
-	}
-	LIQUID_TIMER--;
-	if ( LIQUID_TIMER <= 0 )
-	{
-		LIQUID_TIMER = 60 * 20 + 60 * (local_rng.rand() % 20);
-		if ( !LIQUID_LAVA )
-		{
-			playSoundEntityLocal( my, 135, 32 );
-		}
-		else
-		{
-			playSoundEntityLocal( my, 155, 100 );
-		}
-	}
-	if ( LIQUID_LAVA && !LIQUID_LAVANOBUBBLE )
-	{
-		if ( ticks % 40 == my->getUID() % 40 && local_rng.rand() % 3 == 0 )
-		{
-			int c, j = 1 + local_rng.rand() % 2;
-			for ( c = 0; c < j; c++ )
-			{
-				Entity* entity = spawnGib( my );
-				entity->x += local_rng.rand() % 16 - 8;
-				entity->y += local_rng.rand() % 16 - 8;
-				entity->flags[SPRITE] = true;
-				entity->sprite = 42;
-				entity->fskill[3] = 0.01;
-				double vel = (local_rng.rand() % 10) / 20.f;
-				entity->vel_x = vel * cos(entity->yaw);
-				entity->vel_y = vel * sin(entity->yaw);
-				entity->vel_z = -.15 - (local_rng.rand() % 15) / 100.f;
-				entity->z = 7.5;
-			}
-		}
-	}
 }
 
 void actEmpty(Entity* my)
@@ -170,10 +127,97 @@ void actFurniture(Entity* my)
 	my->actFurniture();
 }
 
+void Entity::furnitureHandleDamageMagic(int damage, Entity& magicProjectile, Entity* caster, bool messages, bool doSound)
+{
+	updateEntityOldHPBeforeMagicHit(*this, magicProjectile);
+	int oldHP = this->furnitureHealth;
+	this->furnitureHealth -= damage;
+	if ( caster )
+	{
+		if ( caster->behavior == &actPlayer )
+		{
+			bool destroyed = oldHP > 0 && this->furnitureHealth <= 0;
+			if ( destroyed )
+			{
+				gameModeManager.currentSession.challengeRun.updateKillEvent(this);
+				players[caster->skill[2]]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, this);
+			}
+			switch ( this->furnitureType )
+			{
+			case FURNITURE_CHAIR:
+				if ( destroyed && messages )
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(388));
+				}
+				break;
+			case FURNITURE_TABLE:
+				if ( destroyed && messages )
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(389));
+				}
+				break;
+			case FURNITURE_BED:
+				if ( destroyed && messages )
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(2508), Language::get(2505));
+				}
+				break;
+			case FURNITURE_BUNKBED:
+				if ( destroyed && messages )
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(2508), Language::get(2506));
+				}
+				break;
+			case FURNITURE_PODIUM:
+				if ( destroyed && messages )
+				{
+					messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(2508), Language::get(2507));
+				}
+				break;
+			default:
+				break;
+			}
+		}
+
+		switch ( this->furnitureType )
+		{
+		case FURNITURE_CHAIR:
+			updateEnemyBar(caster, this, Language::get(677), this->furnitureHealth, this->furnitureMaxHealth,
+				false, DamageGib::DMG_DEFAULT);
+			break;
+		case FURNITURE_TABLE:
+			updateEnemyBar(caster, this, Language::get(676), this->furnitureHealth, this->furnitureMaxHealth,
+				false, DamageGib::DMG_DEFAULT);
+			break;
+		case FURNITURE_BED:
+			updateEnemyBar(caster, this, Language::get(2505), this->furnitureHealth, this->furnitureMaxHealth,
+				false, DamageGib::DMG_DEFAULT);
+			break;
+		case FURNITURE_BUNKBED:
+			updateEnemyBar(caster, this, Language::get(2506), this->furnitureHealth, this->furnitureMaxHealth,
+				false, DamageGib::DMG_DEFAULT);
+			break;
+		case FURNITURE_PODIUM:
+			updateEnemyBar(caster, this, Language::get(2507), this->furnitureHealth, this->furnitureMaxHealth,
+				false, DamageGib::DMG_DEFAULT);
+			break;
+		default:
+			break;
+		}
+	}
+
+	if ( doSound )
+	{
+		playSoundEntity(this, 28, 128);
+	}
+}
+
 void Entity::actFurniture()
 {
+
 	if ( !furnitureInit )
 	{
+		auto& rng = entity_rng ? *entity_rng : local_rng;
 		if ( furnitureType == FURNITURE_BUNKBED )
 		{
 			this->createWorldUITooltip();
@@ -181,11 +225,11 @@ void Entity::actFurniture()
 		furnitureInit = 1;
 		if ( furnitureType == FURNITURE_TABLE || furnitureType == FURNITURE_BUNKBED || furnitureType == FURNITURE_BED || furnitureType == FURNITURE_PODIUM )
 		{
-			furnitureHealth = 15 + local_rng.rand() % 5;
+			furnitureHealth = 15 + rng.rand() % 5;
 		}
 		else
 		{
-			furnitureHealth = 4 + local_rng.rand() % 4;
+			furnitureHealth = 4 + rng.rand() % 4;
 		}
 		furnitureMaxHealth = furnitureHealth;
 		furnitureOldHealth = furnitureHealth;
@@ -253,29 +297,29 @@ void Entity::actFurniture()
 						switch ( furnitureType )
 						{
 							case FURNITURE_CHAIR:
-								messagePlayer(i, MESSAGE_INTERACTION, language[476]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(476));
 								break;
 							case FURNITURE_TABLE:
-								messagePlayer(i, MESSAGE_INTERACTION, language[477]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(477));
 								break;
 							case FURNITURE_BED:
-								messagePlayer(i, MESSAGE_INTERACTION, language[2493]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(2493));
 								break;
 							case FURNITURE_BUNKBED:
 								if ( i == 0 || i == 2 )
 								{
-									messagePlayer(i, MESSAGE_INTERACTION, language[2494]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2494));
 								}
 								else
 								{
-									messagePlayer(i, MESSAGE_INTERACTION, language[2495]);
+									messagePlayer(i, MESSAGE_INTERACTION, Language::get(2495));
 								}
 								break;
 							case FURNITURE_PODIUM:
-								messagePlayer(i, MESSAGE_INTERACTION, language[2496]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(2496));
 								break;
 							default:
-								messagePlayer(i, MESSAGE_INTERACTION, language[477]);
+								messagePlayer(i, MESSAGE_INTERACTION, Language::get(477));
 								break;
 						}
 					}
@@ -313,7 +357,7 @@ void actMCaxe(Entity* my)
 				{
 					if (inrange[i])
 					{
-						messagePlayer(i, MESSAGE_INTERACTION, language[478 + local_rng.rand() % 5]);
+						messagePlayer(i, MESSAGE_INTERACTION, Language::get(478 + local_rng.rand() % 5));
 						MCAXE_USED = 1;
 						serverUpdateEntitySkill(my, 0);
 					}
@@ -348,7 +392,11 @@ void actStalagFloor(Entity* my)
 	{
 		return;
 	}
-
+	if ( my->flags[BLOCKSIGHT] 
+		&& (my->sprite == 581 || my->sprite == 582) ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
+	}
 	my->actStalagFloor();
 }
 
@@ -363,6 +411,11 @@ void actStalagCeiling(Entity* my)
 	if ( !my )
 	{
 		return;
+	}
+	if ( my->flags[BLOCKSIGHT] 
+		&& (my->sprite == 583 || my->sprite == 584) ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
 	}
 	my->actStalagCeiling();
 }
@@ -379,7 +432,10 @@ void actStalagColumn(Entity* my)
 	{
 		return;
 	}
-
+	if ( my->flags[BLOCKSIGHT] && my->sprite == 580 ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
+	}
 	my->actStalagColumn();
 }
 
@@ -508,7 +564,7 @@ void actColumn(Entity* my)
 	{
 		return;
 	}
-	if ( my->flags[BLOCKSIGHT] ) // stop the compiler optimising into a different entity.
+	if ( my->flags[BLOCKSIGHT] && my->sprite == 629 ) // stop the compiler optimising into a different entity.
 	{
 		my->flags[BLOCKSIGHT] = false;
 	}
@@ -541,6 +597,10 @@ void actPistonBase(Entity* my)
 	if ( !my )
 	{
 		return;
+	}
+	if ( my->flags[BLOCKSIGHT] && my->sprite == 631 ) // stop the compiler optimising into a different entity.
+	{
+		my->flags[BLOCKSIGHT] = false;
 	}
 }
 
@@ -614,6 +674,1747 @@ void Entity::actPistonCam()
 	}
 }
 
+int colliderGetSpellRange(Entity* my)
+{
+	if ( my->colliderSpellEvent % 1000 == 0 ) { return 0; }
+	int range = 32;
+	int effectType = my->colliderSpellEvent % 1000;
+	switch ( effectType )
+	{
+	case 3:
+	case 4:
+	case 7:
+		range = 128;
+		break;
+	default:
+		break;
+	}
+	return range;
+}
+
+void actColliderMushroomCap(Entity* my)
+{
+	Entity* parent = uidToEntity(my->parent);
+	if ( !parent )
+	{
+		Entity* gib = spawnGib(my);
+		gib->sprite = my->sprite;
+		gib->z = my->z;
+		gib->skill[5] = 1; // poof
+		list_RemoveNode(my->mynode);
+		return;
+	}
+
+	my->z = parent->z - 7.0 + 1.5;
+	my->pitch = (my->fskill[2]) * (PI / 24) * sin(my->fskill[1]);
+	my->roll =  (my->fskill[2]) * (PI / 24) * sin(my->fskill[1] + PI / 2);
+
+	real_t bobScale = 0.08 * my->skill[0];
+	my->scalex = 1.0 + bobScale * sin(my->fskill[0]);
+	my->scaley = 1.0 + bobScale * sin(my->fskill[0]);
+	my->scalez = 1.0 - bobScale * sin(my->fskill[0]);
+
+	parent->scalex = 1.0 - bobScale * 0.25 * sin(my->fskill[0]);
+	parent->scaley = 1.0 - bobScale * 0.25 * sin(my->fskill[0]);
+	parent->scalez = 1.0 + bobScale * 0.25 * sin(my->fskill[0]);
+
+	int trigger = 0;
+	if ( parent->colliderSpellEventTrigger != 0 )
+	{
+		trigger = parent->colliderSpellEventTrigger;
+		parent->colliderSpellEventTrigger = 0;
+	}
+
+	auto& friendlyFire = my->skill[1];
+
+	if ( trigger > 0 )
+	{
+		real_t percent = (trigger % 100) / 100.0;
+		my->skill[0] = 4;
+
+		if ( percent < 0.5 )
+		{
+			playSoundEntityLocal(parent, 711 + local_rng.rand() % 3, 128);
+		}
+		else
+		{
+			playSoundEntityLocal(parent, 714 + local_rng.rand() % 3, 128);
+		}
+		my->fskill[0] = 0.0;
+		my->fskill[1] = 2 * PI * percent;
+		my->fskill[2] = 0.0;
+
+		if ( trigger >= 100 )
+		{
+			friendlyFire = 1;
+			/*if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+			{
+				friendlyFire = 0;
+			}*/
+		}
+		else
+		{
+			friendlyFire = 0;
+		}
+	}
+
+	if ( my->skill[0] > 0 )
+	{
+		int range = colliderGetSpellRange(parent);
+		int effectType = parent->colliderSpellEvent % 1000;
+		if ( effectType == 3 || effectType == 4 || effectType == 7 )
+		{
+			range = 32;
+		}
+
+		auto cacheType = AOEIndicators_t::CACHE_MUSHROOM_1;
+		Uint32 color = makeColorRGB(0, 145, 16);
+		int gibSprite = 1885;
+		switch ( effectType )
+		{
+		case 4:
+			color = makeColorRGB(206, 162, 146);
+			cacheType = AOEIndicators_t::CACHE_MUSHROOM_2;
+			gibSprite = 1887;
+			break;
+		case 5:
+			color = makeColorRGB(116, 128, 180);
+			cacheType = AOEIndicators_t::CACHE_MUSHROOM_3;
+			gibSprite = 1888;
+			break;
+		case 2:
+			color = makeColorRGB(180, 116, 160);
+			cacheType = AOEIndicators_t::CACHE_MUSHROOM_4;
+			gibSprite = 1889;
+			break;
+		default:
+			break;
+		}
+
+		my->fskill[2] = std::min(1.0, std::max(0.05, my->fskill[2] * 1.15));
+		if ( my->skill[0] == 4 ) // circle first
+		{
+			if ( my->fskill[1] >= 2 * PI )
+			{
+				my->skill[0]--;
+
+				if ( (effectType == 3 || effectType == 4 || effectType == 7) && multiplayer != CLIENT )
+				{
+					if ( Entity* target = uidToEntity(parent->colliderSpellTarget) )
+					{
+						real_t tangent = atan2(target->y - parent->y, target->x - parent->x);
+
+						Entity* caster = parent;
+						if ( parent->colliderCreatedParent != 0 )
+						{
+							if ( Entity* ent = uidToEntity(parent->colliderCreatedParent) )
+							{
+								caster = ent;
+							}
+						}
+						if ( Entity* missile = castSpell(
+							caster ? caster->getUID() : 0,
+							getSpellFromID(
+								(effectType == 3 || effectType == 7) ? SPELL_SPORE_BOMB : SPELL_MYCELIUM_BOMB
+							), false, true) )
+						{
+							missile->collisionIgnoreTargets.insert(parent->getUID());
+							missile->x = parent->x;
+							missile->y = parent->y;
+							missile->z = 6.0;
+							real_t vel = sqrt(pow(missile->vel_x, 2) + pow(missile->vel_y, 2));
+							missile->vel_z = -1.2;
+							missile->vel_x = vel * cos(tangent);
+							missile->vel_y = vel * sin(tangent);
+						}
+					}
+				}
+
+				for ( int i = 0; i < 8; ++i )
+				{
+					Entity* fx = createParticleAestheticOrbit(parent, gibSprite, 3 * TICKS_PER_SECOND, PARTICLE_EFFECT_MUSHROOM_SPELL);
+					fx->x = parent->x;
+					fx->y = parent->y;
+					fx->actmagicOrbitDist = range;
+					fx->yaw = parent->yaw + (i * PI / 4.0);
+					fx->pitch = -PI;
+					fx->fskill[4] = fx->yaw;
+
+					Entity* gib = spawnGib(parent);
+					gib->sprite = gibSprite;
+					gib->vel_x = 1.5 * cos(fx->yaw);
+					gib->vel_y = 1.5 * sin(fx->yaw);
+					gib->lightBonus = vec4{ 0.25f, 0.25f, 0.25f, 0.f };
+				}
+
+				if ( Entity* fx = createParticleAOEIndicator(parent, parent->x, parent->y, 0.0, TICKS_PER_SECOND * 2, range) )
+				{
+					//fx->actSpriteFollowUID = 0;
+					fx->actSpriteCheckParentExists = 0;
+					//fx->scalex = 0.8;
+					//fx->scaley = 0.8;
+					if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+					{
+						//indicator->arc = PI / 2;
+						indicator->indicatorColor = color;
+						indicator->loop = false;
+						indicator->gradient = 4;
+						indicator->framesPerTick = 2;
+						indicator->ticksPerUpdate = 1;
+						indicator->delayTicks = 0;
+						indicator->expireAlphaRate = 0.95;
+						indicator->cacheType = cacheType;
+					}
+				}
+				playSoundEntityLocal(parent, 169, 128);
+				playSoundEntityLocal(parent, 717 + local_rng.rand() % 3, 128);
+			}
+		}
+		else
+		{
+			my->fskill[0] += 0.25;
+			if ( my->fskill[0] >= 2 * PI )
+			{
+				my->fskill[0] -= 2 * PI;
+				my->skill[0]--;
+				if ( my->skill[0] == 1 )
+				{
+					auto& colliderData = EditorEntityData_t::colliderData[parent->colliderDamageTypes];
+					if ( (effectType == 3 || effectType == 4) &&
+						colliderData.name.find("_fragile") != std::string::npos )
+					{
+						if ( multiplayer != CLIENT )
+						{
+							parent->colliderCurrentHP = 0;
+							parent->colliderKillerUid = 0;
+						}
+					}
+					else
+					{
+						playSoundEntityLocal(parent, 717 + local_rng.rand() % 3, 128);
+						for ( int i = 0; i < 8; ++i )
+						{
+							Entity* fx = createParticleAestheticOrbit(parent, gibSprite, 3 * TICKS_PER_SECOND, PARTICLE_EFFECT_MUSHROOM_SPELL);
+							fx->x = parent->x;
+							fx->y = parent->y;
+							fx->actmagicOrbitDist = range;
+							fx->yaw = parent->yaw + (i * PI / 4.0) + PI / 8;
+							fx->pitch = -PI;
+							fx->fskill[4] = fx->yaw;
+
+							Entity* gib = spawnGib(parent);
+							gib->sprite = gibSprite;
+							gib->vel_x = 1.0 * cos(fx->yaw);
+							gib->vel_y = 1.0 * sin(fx->yaw);
+							gib->lightBonus = vec4{ 0.25f, 0.25f, 0.25f, 0.f };
+						}
+					}
+				}
+				else if ( friendlyFire == 0 )
+				{
+					auto& colliderData = EditorEntityData_t::colliderData[parent->colliderDamageTypes];
+					if ( !(effectType == 3 || effectType == 4) &&
+						colliderData.name.find("_fragile") != std::string::npos )
+					{
+						if ( multiplayer != CLIENT )
+						{
+							parent->colliderCurrentHP = 0;
+							parent->colliderKillerUid = 0;
+						}
+					}
+				}
+			}
+
+			if ( multiplayer != CLIENT )
+			{
+				Entity* caster = uidToEntity(parent->colliderCreatedParent);
+				std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1 + (range / 16));
+				for ( auto it : entLists )
+				{
+					node_t* node;
+					for ( node = it->first; node != nullptr; node = node->next )
+					{
+						Entity* entity = (Entity*)node->element;
+						if ( !(entity->behavior == &actPlayer || entity->behavior == &actMonster) )
+						{
+							continue;
+						}
+						if ( !entity->monsterIsTargetable() )
+						{
+							continue;
+						}
+						if ( entityDist(my, entity) > (real_t)(range + 4.0) )
+						{
+							continue;
+						}
+						Stat* stats = entity->getStats();
+						if ( !stats ) { continue; }
+
+						if ( caster && caster->behavior == &actMonster )
+						{
+							if ( caster == entity )
+							{
+								continue;
+							}
+							if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+							{
+								if ( caster->checkFriend(entity) && caster->friendlyFireProtection(entity) )
+								{
+									continue;
+								}
+							}
+						}
+						if ( caster && caster->behavior == &actPlayer )
+						{
+							if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+							{
+								if ( caster->checkFriend(entity) && caster->friendlyFireProtection(entity) )
+								{
+									continue;
+								}
+							}
+						}
+
+						if ( entity->behavior == &actMonster 
+							&& stats->type == MYCONID )
+						{
+							continue;
+						}
+
+						auto props = getParticleEmitterHitProps(parent->getUID(), entity);
+						if ( !props )
+						{
+							continue;
+						}
+						if ( props->hits > 0 && (ticks - props->tick) < 50 )
+						{
+							continue;
+						}
+
+						real_t tangent = atan2(entity->y - parent->y, entity->x - parent->x);
+						bool oldPassable = entity->flags[PASSABLE];
+						entity->flags[PASSABLE] = false;
+						real_t d = lineTraceTarget(parent, parent->x, parent->y, tangent, (real_t)(range + 4.0), 0, false, entity);
+						entity->flags[PASSABLE] = oldPassable;
+						if ( hit.entity != entity )
+						{
+							continue;
+						}
+
+						int damage = 5;
+						bool alertTarget = true;
+						bool friendlyFireTarget = false;
+						if ( effectType == 6 || effectType == 7 ) // player casted
+						{
+							damage = getSpellDamageFromID(SPELL_MUSHROOM, caster, nullptr, my);
+
+							int bonusEffect = 0;
+							if ( parent && parent->colliderDropVariable > 0 )
+							{
+								bonusEffect = parent->colliderDropVariable;
+							}
+							if ( caster && caster->behavior == &actPlayer )
+							{
+								if ( Stat* casterStats = caster->getStats() )
+								{
+									if ( casterStats->type == MYCONID && casterStats->getEffectActive(EFF_GROWTH) >= 2 )
+									{
+										bonusEffect = std::max(bonusEffect, casterStats->getEffectActive(EFF_GROWTH) - 1);
+									}
+								}
+							}
+							damage += damage * (bonusEffect * 1.0);
+
+							if ( caster && caster->behavior == &actPlayer )
+							{
+								if ( caster->checkFriend(entity) && caster->friendlyFireProtection(entity) )
+								{
+									damage = 0;
+									alertTarget = false;
+									friendlyFireTarget = true;
+								}
+							}
+							else if ( achievementObserver.checkUidIsFromPlayer(parent->colliderCreatedParent) >= 0 )
+							{
+								if ( (entity->behavior == &actMonster && entity->monsterAllyGetPlayerLeader())
+									|| entity->behavior == &actPlayer )
+								{
+									damage = 0;
+									alertTarget = false;
+									friendlyFireTarget = true;
+								}
+							}
+						}
+
+						if ( applyGenericMagicDamage(caster ? caster : parent, entity, caster ? *caster : *parent, SPELL_MUSHROOM, damage, alertTarget, true) )
+						{
+							stats->killer = KilledBy::MUSHROOM;
+							entity->setObituary(Language::get(6753));
+
+							props->hits++;
+							props->tick = ticks;
+							if ( effectType == 1 )
+							{
+								bool wasEffected = stats->getEffectActive(EFF_POISONED);
+								if ( entity->setEffect(EFF_POISONED, true, 3 * TICKS_PER_SECOND + 10, false) )
+								{
+									spawnMagicEffectParticles(entity->x, entity->y, entity->z, 944);
+									if ( caster )
+									{
+										stats->poisonKiller = caster->getUID();
+									}
+								}
+							}
+							else if ( effectType == 5 )
+							{
+								bool wasEffected = stats->getEffectActive(EFF_DUSTED);
+								if ( entity->setEffect(EFF_DUSTED, true, 10 * TICKS_PER_SECOND + 10, true) )
+								{
+									spawnMagicEffectParticles(entity->x, entity->y, entity->z, 944);
+									if ( !wasEffected )
+									{
+										messagePlayerColor(entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6752));
+									}
+								}
+							}
+							else if ( effectType == 2 || effectType == 3 || effectType == 4 || effectType == 6 || effectType == 7 )
+							{
+								spawnMagicEffectParticles(entity->x, entity->y, entity->z, 944);
+
+								if ( effectType == 3 || effectType == 6 || effectType == 7 )
+								{
+									if ( !friendlyFireTarget )
+									{
+										bool wasEffected = stats->getEffectActive(EFF_POISONED);
+										if ( entity->setEffect(EFF_POISONED, true, 3 * TICKS_PER_SECOND + 10, false) )
+										{
+											spawnMagicEffectParticles(entity->x, entity->y, entity->z, 944);
+											if ( caster )
+											{
+												stats->poisonKiller = caster->getUID();
+											}
+										}
+									}
+								}
+
+								if ( entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
+								{
+									real_t pushbackMultiplier = 0.9;
+									real_t tangent = atan2(entity->y - parent->y, entity->x - parent->x);
+									if ( entity->behavior == &actPlayer )
+									{
+										if ( !players[entity->skill[2]]->isLocalPlayer() )
+										{
+											entity->monsterKnockbackVelocity = pushbackMultiplier;
+											entity->monsterKnockbackTangentDir = tangent;
+											serverUpdateEntityFSkill(entity, 11);
+											serverUpdateEntityFSkill(entity, 9);
+										}
+										else
+										{
+											entity->monsterKnockbackVelocity = pushbackMultiplier;
+											entity->monsterKnockbackTangentDir = tangent;
+										}
+									}
+									else if ( entity->behavior == &actMonster )
+									{
+										entity->vel_x = cos(tangent) * pushbackMultiplier;
+										entity->vel_y = sin(tangent) * pushbackMultiplier;
+										entity->monsterKnockbackVelocity = 0.01;
+										entity->monsterKnockbackUID = parent->colliderCreatedParent;
+										entity->monsterKnockbackTangentDir = tangent;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		my->fskill[2] *= 0.95;
+	}
+
+	my->fskill[1] += 0.125;
+	my->focalz = -1.5;
+}
+
+bool Entity::isColliderShownAsWallOnMinimap() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.showAsWallOnMinimap;
+}
+
+bool Entity::isColliderWeakToBoulders() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.boulderDestroys;
+}
+
+bool Entity::isColliderWeakToSkill(const int proficiency) const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.proficiencyBonusDamage.find(proficiency) != colliderDmgType.proficiencyBonusDamage.end();
+}
+
+bool Entity::isColliderResistToSkill(const int proficiency) const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.proficiencyResistDamage.find(proficiency) != colliderDmgType.proficiencyResistDamage.end();
+}
+
+bool Entity::isColliderDamageableByMelee() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.meleeAffects;
+}
+
+bool Entity::isColliderDamageableByMagic() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.magicAffects;
+}
+
+bool Entity::isColliderAttachableToBombs() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+	return colliderDmgType.bombsAttach;
+}
+
+bool Entity::isColliderPathableMonster(Monster type) const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.pathableMonsters.find(type) != colliderData.pathableMonsters.end();
+}
+
+bool Entity::isDamageableCollider() const 
+{ 
+	return behavior == &actColliderDecoration && colliderMaxHP > 0;
+}
+
+bool Entity::isColliderWall() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	if ( colliderData.hpbarLookupName.find("_wall") != std::string::npos )
+	{
+		return true;
+	}
+	return false;
+}
+
+bool Entity::isColliderBreakableContainer() const
+{
+	if ( !isDamageableCollider() ) { return false; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	if ( colliderData.damageCalculationType.find("breakable") != std::string::npos )
+	{
+		return true;
+	}
+	return false;
+}
+
+void Entity::colliderOnDestroy()
+{
+	removeLightField();
+	if ( multiplayer == CLIENT ) { return; }
+	flags[PASSABLE] = true;
+
+	Entity* killer = nullptr;
+	if ( colliderKillerUid != 0 )
+	{
+		killer = uidToEntity(colliderKillerUid);
+		if ( killer )
+		{
+			if ( isColliderBreakableContainer() )
+			{
+				Compendium_t::Events_t::eventUpdateWorld(killer->skill[2], Compendium_t::CPDM_CONTAINER_BROKEN, "containers", 1);
+			}
+		}
+	}
+
+	auto find = EditorEntityData_t::colliderData.find(colliderDamageTypes);
+	if ( find != EditorEntityData_t::colliderData.end() )
+	{
+		if ( find->second.name == "mushroom_spell_casted" )
+		{
+			for ( int i = 0; i < this->colliderDropVariable; ++i )
+			{
+				if ( local_rng.rand() % 10 == 0 )
+				{
+					if ( Entity* ent = dropItemMonster(newItem(DUST_BALL, SERVICABLE, 0, 1, 0, true, nullptr), this, nullptr) )
+					{
+						ent->itemOriginalOwner = colliderCreatedParent;
+						ent->itemGerminateResult = 1;
+					}
+				}
+				else
+				{
+					if ( Entity* ent = dropItemMonster(newItem(FOOD_SHROOM, SERVICABLE, 0, 1, 0, true, nullptr), this, nullptr) )
+					{
+						ent->itemOriginalOwner = colliderCreatedParent;
+						ent->itemGerminateResult = 1;
+					}
+				}
+			}
+			Entity* parent = uidToEntity(this->colliderCreatedParent);
+			floorMagicCreateSpores(this, this->x, this->y, parent ? parent : this, 0, SPELL_SPORES);
+		}
+		else if ( find->second.name == "germinate_spell_casted" )
+		{
+			for ( int i = 0; i < this->colliderDropVariable; ++i )
+			{
+				if ( Entity* ent = dropItemMonster(newItem(FOOD_NUT, SERVICABLE, 0, 1, 0, true, nullptr), this, nullptr) )
+				{
+					ent->itemOriginalOwner = colliderCreatedParent;
+					ent->itemGerminateResult = 1;
+				}
+			}
+		}
+	}
+
+	if ( colliderHideMonster != 0 )
+	{
+		int type = colliderHideMonster % 1000;
+		int numSpawns = type == BAT_SMALL ? 2 : 1;
+		int successes = 0;
+		for ( int i = 0; i < numSpawns; ++i )
+		{
+			auto monster = summonMonster((Monster)type, ((int)(x / 16)) * 16 + 8, ((int)(y / 16)) * 16 + 8);
+			if ( monster )
+			{
+				monster->yaw = yaw;
+				monster->lookAtEntity(*monster);
+				monster->monsterLookDir = yaw;
+				if ( Stat* stats = monster->getStats() )
+				{
+					stats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS] = 1;
+					if ( stats->type == GHOUL && currentlevel >= 15 )
+					{
+						strcpy(stats->name, "enslaved ghoul");
+						stats->setAttribute("special_npc", "enslaved ghoul");
+					}
+					stats->setAttribute("spawn_no_sleep", "1");
+					if ( stats->type == AUTOMATON && strcmp(map.filename, "automat.lmp") )
+					{
+						monster->monsterStoreType = 1; // damaged
+					}
+					++successes;
+				}
+				//monster->attack(monster->getAttackPose(), 0, nullptr);
+			}
+		}
+
+		if ( killer )
+		{
+			if ( killer->behavior == &actPlayer )
+			{
+				if ( successes >= 1 )
+				{
+					Compendium_t::Events_t::eventUpdateWorld(killer->skill[2], Compendium_t::CPDM_CONTAINER_MONSTERS, "containers", successes);
+				}
+				if ( successes == 1 )
+				{
+					if ( getColliderOnJumpLangEntry() == 6815 )
+					{
+						messagePlayer(killer->skill[2], MESSAGE_INTERACTION, Language::get(getColliderOnJumpLangEntry()),
+							Language::get(getColliderLangName()));
+					}
+					else
+					{
+						messagePlayer(killer->skill[2], MESSAGE_INTERACTION, Language::get(getColliderOnJumpLangEntry()),
+							getMonsterLocalizedName((Monster)type).c_str(), Language::get(getColliderLangName()));
+					}
+				}
+				else if ( successes > 1 )
+				{
+					messagePlayer(killer->skill[2], MESSAGE_INTERACTION, Language::get(6253),
+						getMonsterLocalizedPlural((Monster)type).c_str(), Language::get(getColliderLangName()));
+				}
+			}
+		}
+	}
+	if ( colliderContainedEntity != 0 )
+	{
+		if ( auto entity = uidToEntity(colliderContainedEntity) )
+		{
+			if ( entity->behavior == &actItem || entity->behavior == &actGoldBag )
+			{
+				if ( entity->flags[INVISIBLE] )
+				{
+					if ( entity->behavior == &actGoldBag )
+					{
+						entity->vel_x = (0.25 + .025 * (local_rng.rand() % 11)) * cos(entity->yaw);
+						entity->vel_y = (0.25 + .025 * (local_rng.rand() % 11)) * sin(entity->yaw);
+						entity->vel_z = (-40 - local_rng.rand() % 10) * .01;
+						entity->goldBouncing = 0;
+						entity->z = 0.0 - (local_rng.rand() % 3);
+						entity->flags[INVISIBLE] = false;
+						entity->goldAmountBonus = entity->goldAmount;
+
+						if ( multiplayer == SERVER )
+						{
+							for ( int i = 1; i < MAXPLAYERS; ++i )
+							{
+								if ( !client_disconnected[i] )
+								{
+									strcpy((char*)net_packet->data, "BREK");
+									SDLNet_Write32(static_cast<Uint32>(entity->getUID()), &net_packet->data[4]);
+									net_packet->address.host = net_clients[i - 1].host;
+									net_packet->address.port = net_clients[i - 1].port;
+									net_packet->len = 8;
+									sendPacketSafe(net_sock, -1, net_packet, i - 1);
+								}
+							}
+						}
+
+						int totalGold = entity->goldAmount;
+
+						// find other matching gold piles
+						auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(entity, 2);
+						for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+						{
+							list_t* currentList = *it;
+							node_t* node;
+							for ( node = currentList->first; node != nullptr; node = node->next )
+							{
+								Entity* ent = (Entity*)node->element;
+								if ( ent && ent->behavior == &actGoldBag && ent != entity && ent->goldInContainer != 0
+									&& ent->goldInContainer == entity->goldInContainer )
+								{
+									ent->vel_x = (0.25 + .025 * (local_rng.rand() % 11)) * cos(ent->yaw);
+									ent->vel_y = (0.25 + .025 * (local_rng.rand() % 11)) * sin(ent->yaw);
+									ent->vel_z = (-40 - local_rng.rand() % 10) * .01;
+									ent->goldBouncing = 0;
+									ent->goldInContainer = 0;
+									ent->z = 0.0 - (local_rng.rand() % 3);
+									ent->flags[INVISIBLE] = false;
+									ent->goldAmountBonus = ent->goldAmount;
+
+									if ( multiplayer == SERVER )
+									{
+										for ( int i = 1; i < MAXPLAYERS; ++i )
+										{
+											if ( !client_disconnected[i] )
+											{
+												strcpy((char*)net_packet->data, "BREK");
+												SDLNet_Write32(static_cast<Uint32>(ent->getUID()), &net_packet->data[4]);
+												net_packet->address.host = net_clients[i - 1].host;
+												net_packet->address.port = net_clients[i - 1].port;
+												net_packet->len = 8;
+												sendPacketSafe(net_sock, -1, net_packet, i - 1);
+											}
+										}
+									}
+
+									totalGold += ent->goldAmount;
+								}
+							}
+						}
+						if ( totalGold > 0 && killer )
+						{
+							if ( killer->behavior == &actPlayer )
+							{
+								Compendium_t::Events_t::eventUpdateWorld(killer->skill[2], Compendium_t::CPDM_CONTAINER_GOLD, "containers", totalGold);
+							}
+						}
+						entity->goldInContainer = 0;
+					}
+					else if ( entity->behavior == &actItem )
+					{
+						//entity->flags[UPDATENEEDED] = true;
+						entity->vel_x = (0.25 + .025 * (local_rng.rand() % 11)) * cos(entity->yaw);
+						entity->vel_y = (0.25 + .025 * (local_rng.rand() % 11)) * sin(entity->yaw);
+						entity->vel_z = (-40 - local_rng.rand() % 5) * .01;
+						entity->itemContainer = 0;
+						entity->z = 0.0;
+						entity->itemNotMoving = 0;
+						entity->itemNotMovingClient = 0;
+						entity->flags[USERFLAG1] = false; // enable collision
+
+						if ( multiplayer == SERVER )
+						{
+							for ( int i = 1; i < MAXPLAYERS; ++i )
+							{
+								if ( !client_disconnected[i] )
+								{
+									strcpy((char*)net_packet->data, "BREK");
+									SDLNet_Write32(static_cast<Uint32>(entity->getUID()), &net_packet->data[4]);
+									net_packet->address.host = net_clients[i - 1].host;
+									net_packet->address.port = net_clients[i - 1].port;
+									net_packet->len = 8;
+									sendPacketSafe(net_sock, -1, net_packet, i - 1);
+								}
+							}
+						}
+
+						if ( killer )
+						{
+							if ( killer->behavior == &actPlayer )
+							{
+								Compendium_t::Events_t::eventUpdateWorld(killer->skill[2], Compendium_t::CPDM_CONTAINER_ITEMS, "containers", 1);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+int Entity::getColliderLangName() const
+{
+	if ( !isDamageableCollider() ) { return 1; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.entityLangEntry;
+}
+
+int Entity::getColliderOnHitLangEntry() const
+{
+	if ( !isDamageableCollider() ) { return 1; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.hitMessageLangEntry;
+}
+
+int Entity::getColliderOnBreakLangEntry() const
+{
+	if ( !isDamageableCollider() ) { return 1; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.breakMessageLangEntry;
+}
+
+int Entity::getColliderOnJumpLangEntry() const
+{
+	if ( !isDamageableCollider() ) { return 1; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.colliderJumpLangEntry;
+}
+
+int Entity::getColliderSfxOnHit() const
+{
+	if ( !isDamageableCollider() ) { return 0; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	return colliderData.sfxHit;
+}
+
+int Entity::getColliderSfxOnBreak() const
+{
+	if ( !isDamageableCollider() ) { return 0; }
+	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
+	if ( colliderData.sfxBreak.size() == 0 ) { return 0; }
+	return colliderData.sfxBreak[local_rng.rand() % colliderData.sfxBreak.size()];
+}
+
+Entity* Entity::createBreakableCollider(int colliderDamageType, real_t _x, real_t _y, Entity* parent)
+{
+	if ( colliderDamageType == 0 )
+	{
+		return nullptr;
+	}
+	int x = static_cast<int>(_x) >> 4;
+	int y = static_cast<int>(_y) >> 4;
+	if ( !(x > 0 && x < map.width - 1 && y > 0 && y < map.height - 1) )
+	{
+		return nullptr;
+	}
+	int mapIndex = (y)*MAPLAYERS + (x)*MAPLAYERS * map.height;
+	if ( !map.tiles[mapIndex] || swimmingtiles[map.tiles[mapIndex]] || lavatiles[map.tiles[mapIndex]] )
+	{
+		return nullptr;
+	}
+
+	auto find = EditorEntityData_t::colliderData.find(colliderDamageType);
+	if ( find == EditorEntityData_t::colliderData.end() )
+	{
+		return nullptr;
+	}
+
+
+	Entity* breakable = newEntity(-1, 1, map.entities, nullptr);
+	breakable->x = x * 16.0 + 8.0;
+	breakable->y = y * 16.0 + 8.0;
+	std::vector<std::pair<int, int>> coords =
+	{
+		{0, 1},
+		{0, -1},
+		{1, 0},
+		{1, 1},
+		{1, -1},
+		{-1, 0},
+		{-1, 1},
+		{-1, -1}
+	};
+
+	bool goodspot = false;
+	if ( checkObstacle(breakable->x, breakable->y, breakable, nullptr, true, true, true, false) )
+	{
+		while ( coords.size() > 0 )
+		{
+			int pick = local_rng.rand() % coords.size();
+			if ( checkObstacle(breakable->x + coords[pick].first * 16, breakable->y + coords[pick].second * 16, breakable, nullptr, true, true, true, false) )
+			{
+				coords.erase(coords.begin() + pick);
+			}
+			else
+			{
+				goodspot = true;
+				breakable->x += coords[pick].first * 16;
+				breakable->y += coords[pick].second * 16;
+				break;
+			}
+		}
+
+		if ( !goodspot )
+		{
+			list_RemoveNode(breakable->mynode);
+			return nullptr;
+		}
+	}
+
+	breakable->colliderDamageTypes = colliderDamageType;
+	breakable->colliderCreatedParent = parent ? parent->getUID() : 0;
+	breakable->colliderDecorationRotation = 2 * (local_rng.rand() % 3);
+	Entity::colliderAssignProperties(breakable, false, &map);
+
+	breakable->colliderSetServerSkillOnSpawned();
+	breakable->flags[UPDATENEEDED] = true;
+	breakable->flags[NOUPDATE] = false;
+	return breakable;
+}
+
+void Entity::colliderSetServerSkillOnSpawned()
+{
+	Sint32 val = (1 << 31);
+	val |= (Uint8)(25);
+	val |= (Uint8)(colliderDamageTypes) << 8;
+	val |= (Uint8)(colliderSpellEvent % 1000) << 16;
+	skill[2] = val;
+}
+
+void Entity::colliderAssignProperties(Entity* entity, bool mapGeneration, map_t* whichMap)
+{
+	auto& rng = mapGeneration ? map_rng : local_rng;
+
+	entity->seedEntityRNG(rng.getU32());
+
+	if ( mapGeneration || multiplayer != CLIENT )
+	{
+		int dir = entity->colliderDecorationRotation;
+		if ( dir == -1 )
+		{
+			dir = rng.rand() % 8;
+			entity->colliderDecorationRotation = dir;
+		}
+		entity->yaw = dir * (PI / 4);
+	}
+	/*static ConsoleVariable<int> debugColliderType("/collider_type", 14);
+	entity->colliderDamageTypes = *debugColliderType;*/
+	auto find = EditorEntityData_t::colliderData.find(entity->colliderDamageTypes);
+	if ( find != EditorEntityData_t::colliderData.end() )
+	{
+		auto& data = find->second;
+		if ( data.hasOverride("dir_offset") )
+		{
+			if ( mapGeneration || multiplayer != CLIENT )
+			{
+				entity->yaw = ((entity->colliderDecorationRotation + data.getOverride("dir_offset")) * (PI / 4));
+			}
+		}
+		if ( data.hasOverride("model") )
+		{
+			entity->colliderDecorationModel = data.getOverride("model");
+		}
+		if ( data.hasOverride("height") )
+		{
+			entity->colliderDecorationHeightOffset = data.getOverride("height");
+		}
+		if ( entity->colliderDecorationRotation == 0 )
+		{
+			if ( data.hasOverride("east_x") )
+			{
+				entity->colliderDecorationXOffset = data.getOverride("east_x");
+			}
+			if ( data.hasOverride("east_y") )
+			{
+				entity->colliderDecorationYOffset = data.getOverride("east_y");
+			}
+		}
+		else if ( entity->colliderDecorationRotation == 2 )
+		{
+			if ( data.hasOverride("south_x") )
+			{
+				entity->colliderDecorationXOffset = data.getOverride("south_x");
+			}
+			if ( data.hasOverride("south_y") )
+			{
+				entity->colliderDecorationYOffset = data.getOverride("south_y");
+			}
+		}
+		else if ( entity->colliderDecorationRotation == 4 )
+		{
+			if ( data.hasOverride("west_x") )
+			{
+				entity->colliderDecorationXOffset = data.getOverride("west_x");
+			}
+			if ( data.hasOverride("west_y") )
+			{
+				entity->colliderDecorationYOffset = data.getOverride("west_y");
+			}
+		}
+		else if ( entity->colliderDecorationRotation == 6 )
+		{
+			if ( data.hasOverride("north_x") )
+			{
+				entity->colliderDecorationXOffset = data.getOverride("north_x");
+			}
+			if ( data.hasOverride("north_y") )
+			{
+				entity->colliderDecorationYOffset = data.getOverride("north_y");
+			}
+		}
+		if ( data.hasOverride("collision") )
+		{
+			entity->colliderHasCollision = data.getOverride("collision");
+		}
+		if ( data.hasOverride("collision_x") )
+		{
+			entity->colliderSizeX = data.getOverride("collision_x");
+		}
+		if ( data.hasOverride("collision_y") )
+		{
+			entity->colliderSizeY = data.getOverride("collision_y");
+		}
+		if ( data.hasOverride("hp") )
+		{
+			entity->colliderMaxHP = data.getOverride("hp");
+		}
+		if ( data.hasOverride("diggable") )
+		{
+			entity->colliderDiggable = data.getOverride("diggable");
+		}
+
+		if ( entity->colliderIsMapGenerated == 0 && (mapGeneration || multiplayer != CLIENT)
+			&& entity->entity_rng )
+		{
+			static int lastSpellEvent = 0;
+			if ( data.spellTriggers.size() > 0 )
+			{
+				std::vector<unsigned int> chances;
+				bool avoidLastSpell = false;
+				for ( auto s : data.spellTriggers )
+				{
+					chances.push_back(1);
+					if ( lastSpellEvent != 0 && s != lastSpellEvent )
+					{
+						avoidLastSpell = true;
+					}
+				}
+
+				if ( avoidLastSpell )
+				{
+					int unusedChances = 0;
+					for ( size_t i = 0; i < chances.size(); ++i )
+					{
+						if ( chances[i] != lastSpellEvent )
+						{
+							++unusedChances;
+						}
+					}
+					if ( unusedChances > 0 )
+					{
+						for ( size_t i = 0; i < chances.size(); ++i )
+						{
+							if ( data.spellTriggers[i] == lastSpellEvent )
+							{
+								chances[i] = 0;
+							}
+						}
+					}
+				}
+
+				int pickIndex = entity->entity_rng->discrete(chances.data(), chances.size());
+				int picked = data.spellTriggers[pickIndex];
+				if ( picked > 0 )
+				{
+					if ( entity->entity_rng->rand() % 5 > 0 )
+					{
+						picked += 1000;
+					}
+					entity->colliderSpellEvent = picked;
+					lastSpellEvent = picked % 1000;
+				}
+			}
+		}
+	}
+
+	entity->sprite = entity->colliderDecorationModel;
+	entity->sizex = entity->colliderSizeX;
+	entity->sizey = entity->colliderSizeY;
+
+	if ( mapGeneration || multiplayer != CLIENT )
+	{
+		entity->x += entity->colliderDecorationXOffset * 0.25;
+		entity->y += entity->colliderDecorationYOffset * 0.25;
+		entity->z = 7.5 - entity->colliderDecorationHeightOffset * 0.25;
+		bool modifiedFocal = false;
+		if ( entity->x < 0.0 )
+		{
+			while ( entity->x < 0.0 )
+			{
+				entity->x += 16.0;
+				entity->focalx -= 16.0;
+			}
+			modifiedFocal = true;
+		}
+		if ( entity->y < 0 )
+		{
+			while ( entity->y < 0.0 )
+			{
+				entity->y += 16.0;
+				entity->focaly -= 16.0;
+			}
+			modifiedFocal = true;
+		}
+		if ( static_cast<int>(entity->x) >= whichMap->width * 16 )
+		{
+			while ( static_cast<int>(entity->x) >= whichMap->width * 16 )
+			{
+				entity->x -= 16.0;
+				entity->focalx += 16.0;
+			}
+			modifiedFocal = true;
+		}
+		if ( static_cast<int>(entity->y) >= whichMap->height * 16 )
+		{
+			while ( static_cast<int>(entity->y) >= whichMap->height * 16 )
+			{
+				entity->y -= 16.0;
+				entity->focaly += 16.0;
+			}
+			modifiedFocal = true;
+		}
+		if ( modifiedFocal )
+		{
+			real_t fx = entity->focalx;
+			real_t fy = entity->focaly;
+			entity->focalx = fx * cos(entity->yaw) - fy * cos(entity->yaw + PI / 2);
+			entity->focaly = -fx * sin(entity->yaw) + fy * sin(entity->yaw + PI / 2);
+		}
+	}
+
+	if ( mapGeneration )
+	{
+		entity->flags[PASSABLE] = entity->colliderHasCollision == 0;
+	}
+	else
+	{
+		entity->flags[PASSABLE] = true; // set later in act()
+	}
+	entity->flags[BLOCKSIGHT] = false;
+	entity->behavior = &actColliderDecoration;
+	entity->colliderCurrentHP = entity->colliderMaxHP;
+	entity->colliderOldHP = entity->colliderMaxHP;
+	if ( entity->isDamageableCollider() )
+	{
+		entity->flags[UNCLICKABLE] = false;
+	}
+	else
+	{
+		entity->flags[UNCLICKABLE] = true;
+	}
+	/*if ( multiplayer != CLIENT )
+	{
+	entity_uids--;
+	}
+	entity->setUID(-3);*/
+}
+
+std::set<Uint32> collidersToRaiseToHeight;
+void actColliderDecoration(Entity* my)
+{
+	if ( !my )
+	{
+		return;
+	}
+
+	if ( !my->colliderInit )
+	{
+		my->colliderInit = 1;
+		if ( my->colliderDiggable != 0 )
+		{
+			my->colliderHasCollision = 1;
+		}
+		if ( my->isDamageableCollider() )
+		{
+			auto& colliderData = EditorEntityData_t::colliderData[my->colliderDamageTypes];
+			auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
+			if ( colliderDmgType.burnable )
+			{
+				my->flags[BURNABLE] = true;
+			}
+			if ( colliderDmgType.minotaurPathThroughAndBreak )
+			{
+				my->colliderHasCollision |= EditorEntityData_t::COLLIDER_COLLISION_FLAG_MINO;
+			}
+			if ( colliderDmgType.allowNPCPathing )
+			{
+				my->colliderHasCollision |= EditorEntityData_t::COLLIDER_COLLISION_FLAG_NPC;
+			}
+
+			if ( colliderData.name.find("mushroom_spell") != std::string::npos )
+			{
+				collidersToRaiseToHeight.insert(my->getUID());
+				my->z = 16.0;
+				Entity* entity = newEntity(my->sprite + 1, 1, map.entities, nullptr); //Sprite entity.
+				entity->x = my->x;
+				entity->y = my->y;
+				entity->z = my->z - 7.0;
+				entity->behavior = &actColliderMushroomCap;
+				entity->flags[PASSABLE] = true;
+				entity->flags[NOUPDATE] = true;
+				entity->flags[UPDATENEEDED] = false;
+				entity->flags[UNCLICKABLE] = true;
+				entity->yaw = my->yaw;
+				entity->parent = my->getUID();
+				if ( multiplayer != CLIENT )
+				{
+					entity_uids--;
+				}
+				entity->setUID(-3);
+			}
+			else if ( colliderData.name.find("germinate_spell") != std::string::npos )
+			{
+				collidersToRaiseToHeight.insert(my->getUID());
+				my->z = 16.0;
+			}
+		}
+	}
+
+	if ( collidersToRaiseToHeight.find(my->getUID()) != collidersToRaiseToHeight.end() )
+	{
+		// mushroom_spell
+		my->z = std::max(8.0, my->z - 0.25);
+		if ( my->z <= 8.0 )
+		{
+			collidersToRaiseToHeight.erase(my->getUID());
+
+			if ( multiplayer != CLIENT )
+			{
+				auto& colliderData = EditorEntityData_t::colliderData[my->colliderDamageTypes];
+				if ( colliderData.name.find("germinate_spell") != std::string::npos )
+				{
+					Entity* caster = my->colliderCreatedParent != 0 ? uidToEntity(my->colliderCreatedParent) : my;
+					createRadiusMagic(SPELL_HEAL_PULSE, caster,
+						my->x, my->y, 24, 10 * TICKS_PER_SECOND, nullptr);
+				}
+			}
+		}
+		if ( my->z > 8.5 )
+		{
+			if ( my->ticks % 2 == 0 ) {
+				const int x = my->x + local_rng.uniform(-3, 3);
+				const int y = my->y + local_rng.uniform(-3, 3);
+				auto poof = spawnPoof(x, y, 6, 0.33);
+			}
+		}
+	}
+
+	my->removeLightField();
+	if ( my->flags[BURNABLE] && my->flags[BURNING] )
+	{
+		my->light = addLight(my->x / 16, my->y / 16, "object_burning");
+	}
+
+	if ( (my->colliderHasCollision == 0) )
+	{
+		my->flags[PASSABLE] = true;
+	}
+	else if ( my->flags[PASSABLE] )
+	{
+		// check inside
+		std::vector<list_t*> entLists;
+		if ( multiplayer == CLIENT )
+		{
+			entLists.push_back(map.entities); // clients use old map.entities method
+		}
+		else
+		{
+			entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
+		}
+		bool somebodyinside = false;
+		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !somebodyinside; ++it )
+		{
+			list_t* currentList = *it;
+			for ( node_t* node = currentList->first; node != nullptr; node = node->next )
+			{
+				Entity* entity = (Entity*)node->element;
+				if ( !(entity->behavior == &actPlayer || entity->behavior == &actMonster) )
+				{
+					continue;
+				}
+				if ( entityInsideEntity(my, entity) )
+				{
+					somebodyinside = true;
+					break;
+				}
+			}
+		}
+		if ( !somebodyinside )
+		{
+			my->flags[PASSABLE] = false;
+		}
+	}
+
+	if ( multiplayer != CLIENT )
+	{
+		bool checkWallDeletion = false;
+		if ( my->colliderHasCollision != 0 )
+		{
+			if ( my->sprite == 1203 || my->sprite == 1204 )
+			{
+				if ( my->z > -8.51 && my->z < -8.49 )
+				{
+					checkWallDeletion = true;
+				}
+			}
+			else if ( my->sprite == 1197 || my->sprite == 1198 )
+			{
+				if ( my->z > 7.49 || my->z < 7.51 )
+				{
+					checkWallDeletion = true;
+				}
+			}
+		}
+		if ( checkWallDeletion )
+		{
+			int x = static_cast<int>(my->x) >> 4;
+			int y = static_cast<int>(my->y) >> 4;
+			if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
+			{
+				//messagePlayer(0, MESSAGE_DEBUG, "[Collider]: Destroyed self at x: %d, y: %d", x, y);
+				my->removeLightField();
+				list_RemoveNode(my->mynode);
+				return;
+			}
+		}
+	}
+
+
+
+	if ( my->isDamageableCollider() )
+	{
+		if ( my->ticks == 1 )
+		{
+			my->createWorldUITooltip();
+		}
+
+		my->colliderTelepathy = 0;
+		if ( my->colliderContainedEntity != 0 )
+		{
+			Sint32 telepathy = 0;
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				if ( players[i]->isLocalPlayer() )
+				{
+					if ( players[i]->entity && players[i]->entity->isBlind() )
+					{
+						if ( stats[i]->type == GNOME )
+						{
+							telepathy |= (1 << i);
+						}
+					}
+				}
+			}
+			if ( telepathy )
+			{
+				if ( Entity* containedEntity = uidToEntity(my->colliderContainedEntity) )
+				{
+					if ( containedEntity->behavior == &actGoldBag )
+					{
+						my->colliderTelepathy = telepathy;
+					}
+				}
+			}
+		}
+
+		if ( multiplayer != CLIENT )
+		{
+			auto& colliderData = EditorEntityData_t::colliderData[my->colliderDamageTypes];
+			if ( my->flags[BURNING] && my->flags[BURNABLE] )
+			{
+				if ( ticks % 30 == 0 )
+				{
+					my->colliderCurrentHP--;
+					if ( my->colliderCurrentHP <= 0 )
+					{
+						my->colliderKillerUid = 0;
+					}
+				}
+			}
+
+			auto prevOldHP = my->colliderOldHP;
+			my->colliderOldHP = my->colliderCurrentHP;
+
+			if ( my->colliderCurrentHP > 0 )
+			{
+				if ( my->colliderSpellEvent > 0 )
+				{
+					if ( my->colliderCreatedParent != 0 && my->ticks >= 10 * TICKS_PER_SECOND )
+					{
+						// destroy self
+						my->colliderCurrentHP = 0;
+						my->colliderKillerUid = 0;
+					}
+					else if ( my->colliderSpellEventCooldown > 0 )
+					{
+						my->colliderSpellEventCooldown--;
+					}
+					else if ( (my->colliderSpellEvent % 1000) != 8 && (my->colliderSpellEvent % 1000) != 9 )
+					{
+						Entity* found = nullptr;
+						bool rescan = false;
+						int effectType = my->colliderSpellEvent % 1000;
+						if ( prevOldHP != my->colliderCurrentHP )
+						{
+							my->colliderSpellEventCooldown = 4 * TICKS_PER_SECOND;
+							my->colliderSpellEventTrigger = 100 + 75 + local_rng.rand() % 21;
+							serverUpdateEntitySkill(my, 21);
+							if ( effectType == 3 || effectType == 4 || effectType == 7 )
+							{
+								rescan = true; // look for a random target
+							}
+						}
+
+						if ( (my->colliderSpellEventCooldown == 0 && (my->ticks % TICKS_PER_SECOND == 0 && my->colliderSpellEvent >= 1000) 
+							|| rescan) )
+						{
+							Entity* caster = (my->colliderCreatedParent != 0 ? uidToEntity(my->colliderCreatedParent) : nullptr);
+							bool targetNonPlayer = false;
+							if ( !caster && achievementObserver.checkUidIsFromPlayer(my->colliderCreatedParent) >= 0 )
+							{
+								targetNonPlayer = true;
+							}
+							int range = colliderGetSpellRange(my);
+							auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1 + (range / 16));
+							std::vector<Entity*> entitiesInRange;
+							for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !found; ++it )
+							{
+								list_t* currentList = *it;
+								node_t* node;
+								for ( node = currentList->first; node != nullptr; node = node->next )
+								{
+									Entity* entity = (Entity*)node->element;
+									if ( !entity || !(entity->behavior == &actPlayer || entity->behavior == &actMonster) ) { continue; }
+									if ( !entity->monsterIsTargetable() ) { continue; }
+									if ( caster )
+									{
+										if ( caster == entity 
+											|| (caster->checkFriend(entity) 
+												&& !(caster->behavior == &actMonster && 
+													(caster->monsterTarget == entity->getUID() // caster targeting this
+														|| (entity->behavior == &actMonster && entity->monsterTarget == caster->getUID())))) ) // entity targeting caster
+										{
+											continue;
+										}
+									}
+									else
+									{
+										if ( targetNonPlayer )
+										{
+											if ( entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() )
+											{
+												// allowed to target
+											}
+											else
+											{
+												continue;
+											}
+										}
+										else if ( !(entity->behavior == &actPlayer || (entity->behavior == &actMonster && entity->monsterAllyGetPlayerLeader())) )
+										{
+											continue;
+										}
+									}
+									real_t targetDist = entityDist(entity, my);
+									if ( targetDist >= (range + 4.0) )
+									{
+										continue;
+									}
+									real_t tangent = atan2(entity->y - my->y, entity->x - my->x);
+									real_t traceDist = range;
+									if ( Stat* entitystats = entity->getStats() )
+									{
+										int light = entity->entityLightAfterReductions(*entitystats, my);
+										if ( targetDist > light )
+										{
+											continue;
+										}
+									}
+									lineTraceTarget(my, my->x, my->y, tangent, traceDist, 0, false, entity);
+									if ( hit.entity == entity )
+									{
+										if ( effectType == 3 || effectType == 4 || effectType == 7 )
+										{
+											entitiesInRange.push_back(entity);
+										}
+										else
+										{
+											found = entity;
+											break;
+										}
+									}
+								}
+							}
+
+							if ( effectType == 3 || effectType == 4 || effectType == 7 )
+							{
+								if ( entitiesInRange.size() > 0 )
+								{
+									if ( caster && caster->behavior == &actMonster && caster->monsterTarget != 0 )
+									{
+										for ( auto ent : entitiesInRange )
+										{
+											if ( ent->getUID() == caster->monsterTarget )
+											{
+												found = ent;
+												break;
+											}
+										}
+									}
+									if ( !found )
+									{
+										if ( caster )
+										{
+											for ( auto ent : entitiesInRange )
+											{
+												if ( ent->behavior == &actMonster && ent->monsterTarget == caster->getUID() )
+												{
+													found = ent;
+													break;
+												}
+											}
+										}
+									}
+									if ( !found )
+									{
+										found = entitiesInRange[local_rng.rand() % entitiesInRange.size()];
+									}
+									my->colliderSpellTarget = found->getUID();
+								}
+							}
+						}
+						if ( found )
+						{
+							my->colliderSpellEventCooldown = 4 * TICKS_PER_SECOND;
+							my->colliderSpellEventTrigger = 1 + local_rng.rand() % 75;
+							serverUpdateEntitySkill(my, 21);
+						}
+					}
+				}
+				if ( my->colliderHideMonster >= 1000 ) // summon a monster when player is near
+				{
+					Entity* found = nullptr;
+					if ( ticks % TICKS_PER_SECOND == 0 )
+					{
+						auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 2);
+						for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !found; ++it )
+						{
+							list_t* currentList = *it;
+							node_t* node;
+							for ( node = currentList->first; node != nullptr; node = node->next )
+							{
+								Entity* entity = (Entity*)node->element;
+								if ( entity && (entity->behavior == &actPlayer || (entity->behavior == &actMonster && entity->monsterAllyGetPlayerLeader())) )
+								{
+									real_t tangent = atan2(entity->y - my->y, entity->x - my->x);
+									if ( entityDist(entity, my) < 40.0 )
+									{
+										lineTraceTarget(my, my->x, my->y, tangent, 32.0, 0, false, entity);
+										if ( hit.entity == entity )
+										{
+											found = entity;
+											break;
+										}
+									}
+								}
+							}
+						}
+					}
+
+					if ( found )
+					{
+						int type = my->colliderHideMonster % 1000;
+						my->colliderHideMonster = 0;
+						bool bOldFlag = my->flags[PASSABLE];
+						my->flags[PASSABLE] = true;
+
+						int numSpawns = type == BAT_SMALL ? 2 : 1;
+						int successes = 0;
+						for ( int i = 0; i < numSpawns; ++i )
+						{
+							auto monster = summonMonster((Monster)type, ((int)(my->x / 16)) * 16 + 8, ((int)(my->y / 16)) * 16 + 8);
+							if ( monster )
+							{
+								monster->yaw = my->yaw;
+								monster->lookAtEntity(*found);
+								if ( monster->checkEnemy(found) )
+								{
+									monster->monsterAcquireAttackTarget(*found, MONSTER_STATE_PATH);
+								}
+								my->colliderCurrentHP = 0;
+								my->colliderKillerUid = 0;
+
+								if ( Stat* stats = monster->getStats() )
+								{
+									stats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS] = 1;
+									if ( stats->type == GHOUL && currentlevel >= 15 )
+									{
+										strcpy(stats->name, "enslaved ghoul");
+										stats->setAttribute("special_npc", "enslaved ghoul");
+									}
+									stats->setAttribute("spawn_no_sleep", "1");
+									if ( stats->type == AUTOMATON && strcmp(map.filename, "automat.lmp") )
+									{
+										monster->monsterStoreType = 1; // damaged
+									}
+									++successes;
+								}
+							}
+						}
+
+						if ( found->behavior == &actPlayer )
+						{
+							if ( successes >= 1 )
+							{
+								Compendium_t::Events_t::eventUpdateWorld(found->skill[2], Compendium_t::CPDM_CONTAINER_MONSTERS, "containers", successes);
+							}
+							if ( successes == 1 )
+							{
+								if ( my->getColliderOnJumpLangEntry() == 6815 )
+								{
+									messagePlayer(found->skill[2], MESSAGE_INTERACTION, Language::get(my->getColliderOnJumpLangEntry()),
+										Language::get(my->getColliderLangName()));
+								}
+								else
+								{
+									messagePlayer(found->skill[2], MESSAGE_INTERACTION, Language::get(6234),
+										getMonsterLocalizedName((Monster)type).c_str(), Language::get(my->getColliderLangName()));
+								}
+							}
+							else if ( successes > 1 )
+							{
+								messagePlayer(found->skill[2], MESSAGE_INTERACTION, Language::get(6253),
+									getMonsterLocalizedPlural((Monster)type).c_str(), Language::get(my->getColliderLangName()));
+							}
+						}
+
+						my->flags[PASSABLE] = bOldFlag;
+					}
+				}
+			}
+			if ( my->colliderCurrentHP <= 0 )
+			{
+				int sprite = colliderData.gib;
+				if ( sprite > 0 )
+				{
+					createParticleRock(my, sprite);
+					if ( multiplayer == SERVER )
+					{
+						serverSpawnMiscParticles(my, PARTICLE_EFFECT_ABILITY_ROCK, sprite);
+					}
+				}
+				playSoundEntity(my, my->getColliderSfxOnBreak(), 128);
+				my->colliderOnDestroy();
+				list_RemoveNode(my->mynode);
+				return;
+			}
+		}
+	}
+}
+
+void Entity::colliderHandleDamageMagic(int damage, Entity &magicProjectile, Entity *caster, bool messages, bool doSound)
+{
+	updateEntityOldHPBeforeMagicHit(*this, magicProjectile);
+	auto oldHP = colliderCurrentHP;
+	colliderCurrentHP -= damage; //Decrease object health.
+	if ( caster )
+	{
+		if ( colliderCurrentHP <= 0 )
+		{
+			colliderKillerUid = caster->getUID();
+		}
+		if ( caster->behavior == &actPlayer )
+		{
+			if ( colliderCurrentHP <= 0 )
+			{
+				if ( oldHP > 0 )
+				{
+					if ( messages )
+					{
+						if ( magicProjectile.behavior == &actBomb )
+						{
+							messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(3617), items[magicProjectile.skill[21]].getIdentifiedName(), Language::get(getColliderLangName()));
+						}
+						else
+						{
+							messagePlayer(caster->skill[2], MESSAGE_COMBAT, Language::get(2508), Language::get(getColliderLangName()));
+						}
+					}
+					if ( isColliderWall() )
+					{
+						Compendium_t::Events_t::eventUpdateWorld(caster->skill[2], Compendium_t::CPDM_BARRIER_DESTROYED, "breakable barriers", 1);
+					}
+
+					players[caster->skill[2]]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, this);
+				}
+			}
+			else
+			{
+				if ( messages )
+				{
+					if ( magicProjectile.behavior == &actBomb )
+					{
+						messagePlayer(caster->skill[2], MESSAGE_COMBAT_BASIC, Language::get(3618), items[magicProjectile.skill[21]].getIdentifiedName(), Language::get(getColliderLangName()));
+					}
+					else
+					{
+						messagePlayer(caster->skill[2], MESSAGE_COMBAT_BASIC, Language::get(378), Language::get(getColliderLangName()));
+					}
+				}
+			}
+		}
+		updateEnemyBar(caster, this, Language::get(getColliderLangName()), colliderCurrentHP, colliderMaxHP,
+			false, DamageGib::DMG_DEFAULT);
+	}
+
+	int sound = 28; //damage.ogg
+	if ( getColliderSfxOnHit() > 0 )
+	{
+		sound = getColliderSfxOnHit();
+	}
+	if ( doSound )
+	{
+		playSoundEntity(this, sound, 64);
+	}
+}
+
 void actFloorDecoration(Entity* my)
 {
 	if ( !my )
@@ -632,6 +2433,68 @@ void actFloorDecoration(Entity* my)
 	if ( multiplayer == CLIENT )
 	{
 		return;
+	}
+
+	if ( my->floorDecorationDestroyIfNoWall >= 0 )
+	{
+		int x = static_cast<int>(my->x) >> 4;
+		int y = static_cast<int>(my->y) >> 4;
+		std::vector<std::pair<int, int>> coords;
+		switch ( my->floorDecorationDestroyIfNoWall )
+		{
+		case 0:
+			// east
+			coords.push_back(std::make_pair(x + 1, y));
+			break;
+		case 1:
+			// southeast
+			coords.push_back(std::make_pair(x + 1, y));
+			coords.push_back(std::make_pair(x, y + 1));
+			break;
+		case 2:
+			// south
+			coords.push_back(std::make_pair(x, y + 1));
+			break;
+		case 3:
+			// southwest
+			coords.push_back(std::make_pair(x, y + 1));
+			coords.push_back(std::make_pair(x - 1, y));
+			break;
+		case 4:
+			// west
+			coords.push_back(std::make_pair(x - 1, y));
+			break;
+		case 5:
+			// northwest
+			coords.push_back(std::make_pair(x, y - 1));
+			coords.push_back(std::make_pair(x - 1, y));
+			break;
+		case 6:
+			// north
+			coords.push_back(std::make_pair(x, y - 1));
+			break;
+		case 7:
+			// northeast
+			coords.push_back(std::make_pair(x, y - 1));
+			coords.push_back(std::make_pair(x + 1, y));
+			break;
+		default:
+			break;
+		}
+
+		for ( auto& pair : coords )
+		{
+			int x = pair.first;
+			int y = pair.second;
+			if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+			{
+				if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] )
+				{
+					list_RemoveNode(my->mynode);
+					return;
+				}
+			}
+		}
 	}
 
 	if ( my->floorDecorationInteractText1 == 0 )
@@ -683,26 +2546,71 @@ void actFloorDecoration(Entity* my)
 						if ( charIsWordSeparator(c) ) { break; }
 						key += c;
 					}
-					if ( ScriptTextParser.allEntries.find(key) != ScriptTextParser.allEntries.end() )
+					auto find = ScriptTextParser.allEntries.find(key);
+					if ( find != ScriptTextParser.allEntries.end() )
 					{
-						if ( players[i]->isLocalPlayer() )
+						if ( find->second.objectType == ScriptTextParser_t::OBJ_SIGN )
 						{
-							if ( players[i]->isLocalPlayerAlive() )
+							if ( players[i]->isLocalPlayer() )
 							{
-								players[i]->signGUI.openSign(key, my->getUID());
+								if ( players[i]->isLocalPlayerAlive() )
+								{
+									players[i]->signGUI.openSign(key, my->getUID());
+								}
 							}
+							else if ( multiplayer == SERVER && i > 0 && !client_disconnected[i] )
+							{
+								strcpy((char*)net_packet->data, "SIGN");
+								SDLNet_Write32(my->getUID(), &net_packet->data[4]);
+								strcpy((char*)(&net_packet->data[8]), key.c_str());
+								net_packet->address.host = net_clients[i - 1].host;
+								net_packet->address.port = net_clients[i - 1].port;
+								net_packet->len = 8 + strlen(key.c_str()) + 1;
+								sendPacketSafe(net_sock, -1, net_packet, i - 1);
+							}
+							return;
 						}
-						else if ( multiplayer == SERVER && i > 0 && !client_disconnected[i] )
+						else if ( find->second.objectType == ScriptTextParser_t::OBJ_MESSAGE )
 						{
-							strcpy((char*)net_packet->data, "SIGN");
-							SDLNet_Write32(my->getUID(), &net_packet->data[4]);
-							strcpy((char*)(&net_packet->data[8]), key.c_str());
-							net_packet->address.host = net_clients[i - 1].host;
-							net_packet->address.port = net_clients[i - 1].port;
-							net_packet->len = 8 + strlen(key.c_str()) + 1;
-							sendPacketSafe(net_sock, -1, net_packet, i - 1);
+							Uint8 r = 255;
+							Uint8 g = 255;
+							Uint8 b = 255;
+							for ( auto& var : find->second.variables )
+							{
+								if ( var.type == ScriptTextParser_t::VariableTypes::COLOR_R )
+								{
+									r = var.numericValue;
+								}
+								else if ( var.type == ScriptTextParser_t::VariableTypes::COLOR_G )
+								{
+									g = var.numericValue;
+								}
+								else if ( var.type == ScriptTextParser_t::VariableTypes::COLOR_B )
+								{
+									b = var.numericValue;
+								}
+							}
+							messagePlayerColor(i, MESSAGE_INSPECTION, makeColorRGB(r, g, b), find->second.formattedText.c_str());
+							return;
 						}
-						return;
+						else if ( find->second.objectType == ScriptTextParser_t::OBJ_BUBBLE_SIGN )
+						{
+							players[i]->worldUI.worldTooltipDialogue.createDialogueTooltip(my->getUID(),
+								Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_SIGNPOST, find->second.formattedText.c_str());
+							return;
+						}
+						else if ( find->second.objectType == ScriptTextParser_t::OBJ_BUBBLE_GRAVE )
+						{
+							players[i]->worldUI.worldTooltipDialogue.createDialogueTooltip(my->getUID(),
+								Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_GRAVE, find->second.formattedText.c_str());
+							return;
+						}
+						else if ( find->second.objectType == ScriptTextParser_t::OBJ_BUBBLE_DIALOGUE )
+						{
+							players[i]->worldUI.worldTooltipDialogue.createDialogueTooltip(my->getUID(),
+								Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_NPC, find->second.formattedText.c_str());
+							return;
+						}
 					}
 				}
 
@@ -870,6 +2778,18 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			x2 = std::min(std::max(x1, x2), (int)map.width - 1);
 			y2 = std::min(std::max(y1, y2), (int)map.height - 1);
 
+			if ( findTag.compare("@explode=") == 0 )
+			{
+				int explosionSprite = 0;
+				size_t foundSeperator = tagValue.find(";");
+				if ( foundSeperator != std::string::npos )
+				{
+					std::string first_str = tagValue.substr(foundSeperator + 1, tagValue.length() - foundSeperator);
+					explosionSprite = std::stoi(first_str);
+				}
+				return ((x1 & 0xFF) << 16) + ((y1 & 0xFF) << 24) + ((explosionSprite & 0xFFFF) << 0);
+			}
+
 			return (x1 & 0xFF) + ((x2 & 0xFF) << 8) + ((y1 & 0xFF) << 16) + ((y2 & 0xFF) << 24);
 		}
 		else
@@ -947,9 +2867,25 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			{
 				return TO_ITEMS;
 			}
+			else if ( !tagValue.compare("gold") )
+			{
+				return TO_GOLD;
+			}
+			else if ( !tagValue.compare("bell") )
+			{
+				return TO_BELL;
+			}
 			else if ( !tagValue.compare("players") )
 			{
 				return TO_PLAYERS;
+			}
+			else if ( !tagValue.compare("breakable") )
+			{
+				return TO_BREAKABLE;
+			}
+			else if ( !tagValue.compare("collider") )
+			{
+				return TO_COLLIDER;
 			}
 			else
 			{
@@ -981,6 +2917,10 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			{
 				return TRIGGER_ATTACHED_VISIBLE;
 			}
+			else if ( !tagValue.compare("attached#interacted") )
+			{
+				return TRIGGER_ATTACHED_INTERACTED;
+			}
 			else if ( !tagValue.compare("always") )
 			{
 				return TRIGGER_ATTACHED_ALWAYS;
@@ -989,6 +2929,17 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			{
 				return k_ScriptError;
 			}
+		}
+		else if ( findTag.compare("@breakablespawn=") == 0 || findTag.compare("@breakablejumpspawn=") == 0 )
+		{
+			for ( int i = 0; i < NUMMONSTERS; ++i )
+			{
+				if ( !tagValue.compare(monstertypename[i]) )
+				{
+					return TO_NOTHING + i;
+				}
+			}
+			return k_ScriptError;
 		}
 
 		return std::stoi(tagValue);
@@ -1085,8 +3036,12 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 					if ( (entity->behavior == &actMonster && attachTo == TO_MONSTERS)
 						|| (entity->behavior == &actPlayer && attachTo == TO_PLAYERS)
 						|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
+						|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
+						|| (entity->behavior == &actBell && attachTo == TO_BELL)
+						|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
+						|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)
 						|| (entity->behavior == &actMonster
-							&& attachTo >= TO_NOTHING && attachTo <= TO_DUMMYBOT
+							&& attachTo >= TO_NOTHING && attachTo < TO_MONSTER_MAX
 							&& entity->getRace() == (attachTo - TO_NOTHING)) )
 					{
 						// found our entity.
@@ -1168,6 +3123,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				{
 					result = CLASS_BARBARIAN;
 				}
+				if ( !enabledDLCPack3 && result >= CLASS_BARD && result <= CLASS_PALADIN )
+				{
+					result = CLASS_BARBARIAN;
+				}
 
 				std::vector<Entity*> applyToEntities;
 				if ( processOnAttachedEntity )
@@ -1199,15 +3158,21 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 					intro = true;
 					initClass(player);
 					intro = oldIntro;
-				}
 
-				if ( !applyToEntities.empty() )
-				{
-					for ( int c = 1; c < MAXPLAYERS; ++c )
+					if (multiplayer == SERVER)
 					{
-						if ( !players[c]->isLocalPlayer() )
+						for (int c = 1; c < MAXPLAYERS; ++c)
 						{
-							updateClientInformation(c, false, false, TextSourceScript::CLIENT_UPDATE_CLASS);
+							if (!client_disconnected[c] &&!players[c]->isLocalPlayer())
+							{
+								strcpy((char*)net_packet->data, "SCRC");
+								net_packet->data[4] = (Uint8)player;
+								net_packet->data[5] = (Uint8)client_classes[player];
+								net_packet->address.host = net_clients[c - 1].host;
+								net_packet->address.port = net_clients[c - 1].port;
+								net_packet->len = 6;
+								sendPacketSafe(net_sock, -1, net_packet, c - 1);
+							}
 						}
 					}
 				}
@@ -1325,6 +3290,8 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 			if ( result != k_ScriptError )
 			{
 				loadnextlevel = true;
+				Compendium_t::Events_t::previousCurrentLevel = currentlevel;
+				Compendium_t::Events_t::previousSecretlevel = secretlevel;
 				skipLevelsOnLoad = result;
 			}
 		}
@@ -1594,6 +3561,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						}
 						if ( multiplayer == SERVER )
 						{
+							if ( entity->behavior == &actPlayer && entity->skill[2] > 0 )
+							{
+								serverUpdateEffects(entity->skill[2]);
+							}
 							entity->serverUpdateEffectsForEntity(true);
 						}
 					}
@@ -1621,6 +3592,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						}
 						if ( multiplayer == SERVER )
 						{
+							if ( entity->behavior == &actPlayer && entity->skill[2] > 0 )
+							{
+								serverUpdateEffects(entity->skill[2]);
+							}
 							entity->serverUpdateEffectsForEntity(true);
 						}
 					}
@@ -1769,6 +3744,75 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 								entity->setHP(0);
 							}
 						}
+					}
+				}
+			}
+		}
+		else if ( (*it).find("@damage=") != std::string::npos )
+		{
+			int result = textSourceProcessScriptTag(input, "@damage=", src);
+			if ( result != k_ScriptError )
+			{
+				int damage = result;
+				if ( processOnAttachedEntity )
+				{
+					for ( auto entity : attachedEntities )
+					{
+						if ( entity->behavior == &actChest )
+						{
+							entity->chestHealth -= damage;
+						}
+						else if ( entity->behavior == &actMonster )
+						{
+							entity->modHP(-damage);
+						}
+						else if ( entity->behavior == &actDoor )
+						{
+							entity->doorHealth -= damage;
+						}
+						else if ( entity->behavior == &actFurniture )
+						{
+							entity->furnitureHealth -= damage;
+						}
+						else if ( entity->isDamageableCollider() )
+						{
+							entity->colliderCurrentHP -= damage;
+						}
+					}
+				}
+			}
+		}
+		else if ( (*it).find("@explode=") != std::string::npos )
+		{
+			int result = textSourceProcessScriptTag(input, "@explode=", src);
+			if ( result != k_ScriptError )
+			{
+				int explosionSprite = (result >> 0) & 0xFFFF;
+				int x1 = (result >> 16) & 0xFF;
+				int y1 = (result >> 24) & 0xFF;
+				if ( processOnAttachedEntity )
+				{
+					for ( auto entity : attachedEntities )
+					{
+						if ( explosionSprite > 0 )
+						{
+							spawnExplosionFromSprite(explosionSprite, entity->x, entity->y, -4 + local_rng.rand() % 8);
+						}
+						else
+						{
+							spawnExplosion(entity->x, entity->y, -4 + local_rng.rand() % 8);
+						}
+					}
+				}
+				else
+				{
+					if ( explosionSprite > 0 )
+					{
+						spawnExplosionFromSprite(explosionSprite, x1 * 16.0 + 8.0, y1 * 16.0 + 8.0, -4 + local_rng.rand() % 8);
+					}
+					else
+					{
+						spawnExplosion(x1 * 16.0 + 8.0, y1 * 16.0 + 8.0, -4 + local_rng.rand() % 8);
 					}
 				}
 			}
@@ -2351,6 +4395,149 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				}
 			}
 		}
+		else if ( (*it).find("@addtobreakable=") != std::string::npos )
+		{
+			int result = textSourceProcessScriptTag(input, "@addtobreakable=", src);
+			if ( result != k_ScriptError )
+			{
+				int x1 = result & 0xFF;
+				int x2 = (result >> 8) & 0xFF;
+				int y1 = (result >> 16) & 0xFF;
+				int y2 = (result >> 24) & 0xFF;
+				std::vector<Entity*> applyToEntities;
+				if ( processOnAttachedEntity 
+					&& (textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_ITEMS
+						|| textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_GOLD) )
+				{
+					for ( auto entity : attachedEntities )
+					{
+						if ( textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_ITEMS )
+						{
+							if ( entity->behavior == &actItem )
+							{
+								applyToEntities.push_back(entity);
+							}
+						}
+						else if ( textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_GOLD )
+						{
+							if ( entity->behavior == &actGoldBag )
+							{
+								applyToEntities.push_back(entity);
+							}
+						}
+					}
+					Entity* breakable = nullptr;
+					for ( node_t* node = map.entities->first; node; node = node->next )
+					{
+						Entity* entity = (Entity*)node->element;
+						if ( entity && entity->isColliderBreakableContainer() )
+						{
+							int findx = static_cast<int>(entity->x) >> 4;
+							int findy = static_cast<int>(entity->y) >> 4;
+							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
+							{
+								breakable = entity;
+							}
+						}
+					}
+					if ( breakable )
+					{
+						for ( auto entity : applyToEntities )
+						{
+							if ( entity->behavior == &actItem )
+							{
+								if ( breakable->colliderContainedEntity != 0 )
+								{
+									break; // only 1 item
+								}
+								entity->itemContainer = breakable->getUID();
+							}
+							else
+							{
+								entity->goldInContainer = breakable->getUID();
+							}
+							entity->flags[INVISIBLE] = true;
+							serverUpdateEntityFlag(entity, INVISIBLE);
+							breakable->colliderContainedEntity = entity->getUID();
+						}
+					}
+				}
+				else
+				{
+					// not implemented, needs to be attached to items.
+				}
+			}
+		}
+		else if ( (*it).find("@breakablespawn=") != std::string::npos )
+		{
+			int result = textSourceProcessScriptTag(input, "@breakablespawn=", src);
+			if ( result != k_ScriptError )
+			{
+				std::vector<Entity*> applyToEntities;
+				if ( processOnAttachedEntity && textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_BREAKABLE )
+				{
+					for ( auto entity : attachedEntities )
+					{
+						if ( entity->isColliderBreakableContainer() )
+						{
+							applyToEntities.push_back(entity);
+						}
+					}
+
+					if ( result >= TO_NOTHING && result < TO_MONSTER_MAX )
+					{
+						int monsterType = NOTHING + (result - TO_NOTHING);
+						for ( auto entity : applyToEntities )
+						{
+							if ( entity->colliderHideMonster != 0 )
+							{
+								continue;
+							}
+							entity->colliderHideMonster = monsterType;
+						}
+					}
+				}
+				else
+				{
+					// not implemented, needs to be attached to breakables.
+				}
+			}
+		}
+		else if ( (*it).find("@breakablejumpspawn=") != std::string::npos )
+		{
+			int result = textSourceProcessScriptTag(input, "@breakablejumpspawn=", src);
+			if ( result != k_ScriptError )
+			{
+				std::vector<Entity*> applyToEntities;
+				if ( processOnAttachedEntity && textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_BREAKABLE )
+				{
+					for ( auto entity : attachedEntities )
+					{
+						if ( entity->isColliderBreakableContainer() )
+						{
+							applyToEntities.push_back(entity);
+						}
+					}
+
+					if ( result >= TO_NOTHING && result < TO_MONSTER_MAX )
+					{
+						int monsterType = NOTHING + (result - TO_NOTHING);
+						for ( auto entity : applyToEntities )
+						{
+							if ( entity->colliderHideMonster != 0 )
+							{
+								continue;
+							}
+							entity->colliderHideMonster = 1000 + monsterType;
+						}
+					}
+				}
+				else
+				{
+					// not implemented, needs to be attached to breakables.
+				}
+			}
+		}
 		else
 		{
 			for ( int i = 0; i < NUMSTATS; ++i )
@@ -2439,7 +4626,6 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 								}
 							}
 						}
-						statOnlyUpdateNeeded = true;
 					}
 				}
 			}
@@ -2572,9 +4758,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							Stat* stats = entity->getStats();
 							if ( stats )
 							{
-								stats->PROFICIENCIES[i] = result;
-								stats->PROFICIENCIES[i] = std::min(stats->PROFICIENCIES[i], 100);
-								stats->PROFICIENCIES[i] = std::max(stats->PROFICIENCIES[i], 0);
+								stats->setProficiency(i, result);
 							}
 						}
 					}
@@ -2619,9 +4803,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							Stat* stats = entity->getStats();
 							if ( stats )
 							{
-								stats->PROFICIENCIES[i] += result;
-								stats->PROFICIENCIES[i] = std::min(stats->PROFICIENCIES[i], 100);
-								stats->PROFICIENCIES[i] = std::max(stats->PROFICIENCIES[i], 0);
+								stats->setProficiency(i, result);
 							}
 						}
 					}
@@ -2699,6 +4881,35 @@ void Entity::actTextSource()
 		}
 		else
 		{
+			if ( textSourceScript.getTriggerType(textSourceIsScript) == textSourceScript.TRIGGER_ATTACHED_INTERACTED )
+			{
+				if ( textSourceScript.getAttachedToEntityType(textSourceIsScript) == textSourceScript.TO_BELL )
+				{
+					bool doEffect = false;
+					for ( node_t* node = children.first; node; node = node->next )
+					{
+						Uint32 entityUid = *((Uint32*)node->element);
+						Entity* child = uidToEntity(entityUid);
+						if ( child )
+						{
+							if ( child->behavior == &actBell )
+							{
+								if ( (child->skill[0] & 0xFF) // BELL_ACTIVE_TIMER countdown
+									|| child->skill[10] > 0 )  // BELL_BULB_BROKEN
+								{
+									doEffect = true;
+								}
+							}
+						}
+					}
+					if ( doEffect )
+					{
+						textSourceScript.setScriptType(textSourceIsScript, textSourceScript.SCRIPT_ATTACHED_FIRED);
+						powered = true;
+					}
+				}
+			}
+
 			if ( textSourceScript.getTriggerType(textSourceIsScript) == textSourceScript.TRIGGER_ATTACHED_EXISTS )
 			{
 				textSourceScript.setScriptType(textSourceIsScript, textSourceScript.SCRIPT_ATTACHED_FIRED);
@@ -2877,8 +5088,8 @@ void TextSourceScript::updateClientInformation(int player, bool clearInventory, 
 		net_packet->data[8] = (Sint8)stats[player]->INT;
 		net_packet->data[9] = (Sint8)stats[player]->PER;
 		net_packet->data[10] = (Sint8)stats[player]->CHR;
-		net_packet->data[11] = (Sint8)stats[player]->EXP;
-		net_packet->data[12] = (Sint8)stats[player]->LVL;
+		net_packet->data[11] = (Uint8)stats[player]->EXP;
+		net_packet->data[12] = (Uint8)stats[player]->LVL;
 		SDLNet_Write16((Sint16)stats[player]->HP, &net_packet->data[13]);
 		SDLNet_Write16((Sint16)stats[player]->MAXHP, &net_packet->data[15]);
 		SDLNet_Write16((Sint16)stats[player]->MP, &net_packet->data[17]);
@@ -2903,7 +5114,7 @@ void TextSourceScript::updateClientInformation(int player, bool clearInventory, 
 
 		for ( int i = 0; i < NUMPROFICIENCIES; ++i )
 		{
-			net_packet->data[27 + i] = (Uint8)stats[player]->PROFICIENCIES[i];
+			net_packet->data[27 + i] = (Uint8)stats[player]->getProficiency(i);
 		}
 		net_packet->address.host = net_clients[player - 1].host;
 		net_packet->address.port = net_clients[player - 1].port;
@@ -2914,7 +5125,8 @@ void TextSourceScript::updateClientInformation(int player, bool clearInventory, 
 	}
 	else if ( updateType == CLIENT_UPDATE_CLASS )
 	{
-		strcpy((char*)net_packet->data, "SCRC");
+		// unused
+		/*strcpy((char*)net_packet->data, "SCRC");
 		for ( int i = 0; i < MAXPLAYERS; ++i )
 		{
 			net_packet->data[4 + i] = client_classes[i];
@@ -2922,7 +5134,7 @@ void TextSourceScript::updateClientInformation(int player, bool clearInventory, 
 		net_packet->address.host = net_clients[player - 1].host;
 		net_packet->address.port = net_clients[player - 1].port;
 		net_packet->len = 5 + MAXPLAYERS;
-		sendPacketSafe(net_sock, -1, net_packet, player - 1);
+		sendPacketSafe(net_sock, -1, net_packet, player - 1);*/
 	}
 	else if ( updateType == CLIENT_UPDATE_HUNGER )
 	{
@@ -2942,6 +5154,7 @@ void TextSourceScript::playerClearInventory(bool clearStats)
 	spellcastingAnimationManager_deactivate(&cast_animation[clientnum]);
 	stats[clientnum]->freePlayerEquipment();
 	list_FreeAll(&stats[clientnum]->inventory);
+	list_FreeAll(&stats[clientnum]->void_chest_inventory);
 	players[clientnum]->shootmode = true;
 	players[clientnum]->inventoryUI.appraisal.timer = 0;
 	players[clientnum]->inventoryUI.appraisal.current_item = 0;
@@ -2996,6 +5209,52 @@ std::string TextSourceScript::getScriptFromEntity(Entity& src)
 		}
 	}
 	return buf;
+}
+
+Entity* TextSourceScript::createScriptEntityInMapGen(int x, int y, const char* text)
+{
+	Entity* scriptEntity = newEntity(132, 1, map.entities, nullptr); // text script
+	setSpriteAttributes(scriptEntity, nullptr, nullptr);
+	scriptEntity->x = x * 16.0;
+	scriptEntity->y = y * 16.0;
+	scriptEntity->textSourceDelay = 1;
+
+	if ( text )
+	{
+		addScriptToTextSource(*scriptEntity, text);
+	}
+
+	return scriptEntity;
+}
+
+void TextSourceScript::addScriptToTextSource(Entity& src, const char* text)
+{
+	if ( !text ) { return; }
+
+	for ( int skill = 4; skill < 60; ++skill )
+	{
+		if ( skill == 28 ) { continue; }
+		src.skill[skill] = 0;
+	}
+
+	int skillnum = 4;
+	int len = strlen(text);
+	int encodeIndex = 0;
+	for ( int s = 0; s < len; ++s )
+	{
+		src.skill[skillnum] |= ((text[s]) << (encodeIndex * 8));
+		++encodeIndex;
+		if ( encodeIndex == 4 )
+		{
+			encodeIndex = 0;
+			++skillnum;
+			if ( skillnum == 28 ) { ++skillnum; }
+		}
+		if ( skillnum >= 60 )
+		{
+			break;
+		}
+	}
 }
 
 void TextSourceScript::parseScriptInMapGeneration(Entity& src)
@@ -3068,8 +5327,12 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 				if ( (entity->behavior == &actMonster && attachTo == TO_MONSTERS)
 					|| (entity->behavior == &actPlayer && attachTo == TO_PLAYERS)
 					|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
+					|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
+					|| (entity->behavior == &actBell && attachTo == TO_BELL)
+					|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
+					|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)
 					|| (entity->behavior == &actMonster 
-						&& attachTo >= TO_NOTHING && attachTo <= TO_DUMMYBOT 
+						&& attachTo >= TO_NOTHING && attachTo < TO_MONSTER_MAX
 						&& entity->getRace() == (attachTo - TO_NOTHING)) )
 				{
 					// found our entity.
@@ -3088,6 +5351,1421 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 					node->element = entityUid;
 					node->size = sizeof(Uint32);
 					*entityUid = entity->getUID();
+				}
+			}
+		}
+	}
+}
+
+void bellAttractMonsters(Entity* my)
+{
+	if ( !my ) { return; }
+
+	auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, decoyBoxRange);
+
+	for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+	{
+		list_t* currentList = *it;
+		node_t* node;
+		for ( node = currentList->first; node != nullptr; node = node->next )
+		{
+			Entity* entity = (Entity*)node->element;
+			if ( entity->behavior == &actMonster && entity->monsterAllyGetPlayerLeader() == nullptr )
+			{
+				if ( (entity->monsterState == MONSTER_STATE_WAIT || entity->monsterTarget == 0) )
+				{
+					Stat* myStats = entity->getStats();
+					if ( !entity->isBossMonster() && !entity->monsterIsTinkeringCreation()
+						&& entity->isMobile()
+						&& myStats
+						&& entityDist(my, entity) > TOUCHRANGE )
+					{
+						if ( !myStats->getEffectActive(EFF_DISTRACTED_COOLDOWN)
+							&& entity->monsterSetPathToLocation(my->x / 16, my->y / 16, 1,
+								GeneratePathTypes::GENERATE_PATH_DEFAULT, true) && entity->children.first )
+						{
+							entity->monsterTarget = my->getUID();
+							entity->monsterState = MONSTER_STATE_HUNT; // hunt state
+							serverUpdateEntitySkill(entity, 0);
+							if ( entity->setEffect(EFF_DISTRACTED_COOLDOWN, true, TICKS_PER_SECOND * 5, false) )
+							{
+								spawnFloatingSpriteMisc(134, entity->x + (-4 + local_rng.rand() % 9) + cos(entity->yaw) * 2,
+									entity->y + (-4 + local_rng.rand() % 9) + sin(entity->yaw) * 2, entity->z + local_rng.rand() % 4);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+#define BELL_ACTIVE_TIMER my->skill[0]
+#define BELL_HAS_ITEM my->skill[1]
+#define BELL_AMBIENCE my->skill[3]
+#define BELL_USES my->skill[4]
+#define BELL_CURRENT_EVENT my->skill[5]
+#define BELL_LAST_TOUCHED_PLAYER my->skill[6]
+#define BELL_USE_DELAY my->skill[7]
+#define BELL_INIT my->skill[8]
+#define BELL_CLAPPER_BROKEN my->skill[9]
+#define BELL_BULB_BROKEN my->skill[10]
+#define BELL_BUFF_TYPE my->skill[11]
+#define BELL_BURNING_TIMER my->skill[12]
+#define BELL_PULLED_TO_BREAK my->skill[13]
+
+int getBellDmgOnEntity(Entity* entity)
+{
+	if ( !entity ) { return 0; }
+
+	Stat* stats = entity->getStats();
+	if ( !stats )
+	{
+		return 0;
+	}
+
+	int damage = 80;
+	int trapResist = entity->getEntityBonusTrapResist();
+	if ( trapResist != 0 )
+	{
+		real_t mult = std::max(0.0, 1.0 - (trapResist / 100.0));
+		damage *= mult;
+	}
+
+	if ( entity->onEntityTrapHitSacredPath(nullptr) )
+	{
+		if ( entity->behavior == &actPlayer )
+		{
+			messagePlayerColor(entity->skill[2], MESSAGE_COMBAT, makeColorRGB(0, 255, 0),
+				Language::get(6491));
+		}
+		playSoundEntity(entity, 166, 128);
+	}
+	else if ( stats->helmet )
+	{
+		bool shapeshifted = (entity->behavior == &actPlayer && entity->effectShapeshift != NOTHING);
+
+		if ( !shapeshifted
+			&& (stats->helmet->type == HELM_MINING || stats->helmet->type == HAT_TOPHAT) )
+		{
+			if ( stats->helmet->type == HAT_TOPHAT )
+			{
+				bool cursedItemIsBuff = shouldInvertEquipmentBeatitude(stats);
+				if ( stats->helmet->beatitude >= 0 || cursedItemIsBuff )
+				{
+					if ( stats->HP <= damage )
+					{
+						// saved us
+						//steamAchievementEntity(entity, "BARONY_ACH_CRUMPLE_ZONES");
+					}
+					damage = 0;
+				}
+				if ( !entity->spellEffectPreserveItem(stats->helmet) )
+				{
+					stats->helmet->status = BROKEN;
+				}
+			}
+			else if ( stats->helmet->type == HELM_MINING )
+			{
+				real_t mult = 0.5;
+				bool cursedItemIsBuff = shouldInvertEquipmentBeatitude(stats);
+				if ( stats->helmet->beatitude >= 0 || cursedItemIsBuff )
+				{
+					mult -= 0.25 * abs(stats->helmet->beatitude);
+					mult = std::max(0.0, mult);
+				}
+				else
+				{
+					mult = 1.0;
+					mult += 0.25 * abs(stats->helmet->beatitude);
+				}
+
+				if ( stats->HP <= damage )
+				{
+					// saved us
+					if ( stats->HP > (damage * mult) )
+					{
+						//steamAchievementEntity(entity, "BARONY_ACH_CRUMPLE_ZONES");
+					}
+				}
+				damage *= mult;
+				if ( !entity->spellEffectPreserveItem(stats->helmet) )
+				{
+					if ( stats->helmet->status > BROKEN )
+					{
+						stats->helmet->status = (Status)((int)stats->helmet->status - 1);
+					}
+				}
+			}
+
+			playSoundEntity(entity, 76, 64);
+
+			if ( entity->behavior == &actPlayer )
+			{
+				int player = entity->skill[2];
+				if ( stats->helmet->status > BROKEN )
+				{
+					messagePlayer(player, MESSAGE_EQUIPMENT, Language::get(681), stats->helmet->getName());
+				}
+				else
+				{
+					messagePlayer(player, MESSAGE_EQUIPMENT, Language::get(682), stats->helmet->getName());
+				}
+
+				if ( multiplayer == SERVER && player > 0 && !players[player]->isLocalPlayer() )
+				{
+					strcpy((char*)net_packet->data, "ARMR");
+					net_packet->data[4] = 0;
+					net_packet->data[5] = stats->helmet->status;
+					SDLNet_Write16((int)stats->helmet->type, &net_packet->data[6]);
+					net_packet->address.host = net_clients[player - 1].host;
+					net_packet->address.port = net_clients[player - 1].port;
+					net_packet->len = 8;
+					sendPacketSafe(net_sock, -1, net_packet, player - 1);
+				}
+			}
+		}
+	}
+
+	return damage;
+}
+
+void spawnMagicEffectParticlesBell(Entity* my, Uint32 sprite)
+{
+	if ( !my ) { return; }
+	int baseX = my->x / 16;
+	int baseY = my->y / 16;
+
+	real_t posx = baseX * 16.0 + 8;
+	real_t posy = baseY * 16.0 + 8;
+	real_t z = 8.0;
+	const int numParticles = 64;
+	for ( int c = 0; c < numParticles; c++ )
+	{
+		Entity* entity = newEntity(1479, 1, map.entities, nullptr); //Particle entity.
+		entity->x = posx + 24.0 * cos(2 * PI * (c / (real_t)numParticles));
+		entity->y = posy + 24.0 * sin(2 * PI * (c / (real_t)numParticles));
+		entity->z = z;
+		entity->scalex = 0.7;
+		entity->scaley = 0.7;
+		entity->scalez = 0.7;
+		entity->sizex = 1;
+		entity->sizey = 1;
+		entity->yaw = (local_rng.rand() % 360) * PI / 180.f;
+		entity->pitch = (local_rng.rand() % 360) * PI / 180.f;
+		entity->flags[PASSABLE] = true;
+		entity->flags[NOUPDATE] = true;
+		entity->flags[UNCLICKABLE] = true;
+		entity->flags[INVISIBLE] = true;
+		entity->flags[INVISIBLE_DITHER] = true;
+		entity->lightBonus = vec4(0.25f, 0.25f,
+			0.25f, 0.f);
+		entity->behavior = &actMagicParticle;
+		entity->vel_z = -0.5;
+		if ( multiplayer != CLIENT )
+		{
+			entity_uids--;
+		}
+		entity->setUID(-3);
+	}
+
+	if ( multiplayer == SERVER )
+	{
+		for ( int c = 1; c < MAXPLAYERS; c++ )
+		{
+			if ( client_disconnected[c] || players[c]->isLocalPlayer() )
+			{
+				continue;
+			}
+			strcpy((char*)net_packet->data, "MAGB");
+			SDLNet_Write32(my->getUID(), &net_packet->data[4]);
+			SDLNet_Write32(sprite, &net_packet->data[8]);
+			net_packet->address.host = net_clients[c - 1].host;
+			net_packet->address.port = net_clients[c - 1].port;
+			net_packet->len = 12;
+			sendPacketSafe(net_sock, -1, net_packet, c - 1);
+		}
+	}
+}
+
+void bellBreakBulb(Entity* my, bool minotaurBreak)
+{
+	if ( !my ) { return; }
+	if ( BELL_BULB_BROKEN == 1 )
+	{
+		return;
+	}
+	BELL_BULB_BROKEN = 1;
+	if ( minotaurBreak )
+	{
+		BELL_LAST_TOUCHED_PLAYER = -1;
+	}
+
+	Entity* bell = nullptr;
+	for ( node_t* node = my->children.first; node; node = node->next )
+	{
+		if ( node->element != nullptr )
+		{
+			Entity* child = (Entity*)node->element;
+			if ( child )
+			{
+				if ( child->sprite == 1475 && !child->flags[INVISIBLE] ) // bell
+				{
+					bell = child;
+				}
+			}
+		}
+	}
+
+	if ( bell )
+	{
+		bellAttractMonsters(my);
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+		int dir = rng.rand() % 9;
+		if ( dir == 8 )
+		{
+			bell->vel_x = 0.0;
+			bell->vel_y = 0.0;
+		}
+		else
+		{
+			bell->vel_x = 0.25 * cos(my->yaw + dir * PI / 4);
+			bell->vel_y = 0.25 * sin(my->yaw + dir * PI / 4);
+		}
+	}
+
+	serverUpdateEntitySkill(my, 10);
+	playSoundEntity(my, 76, 64);
+
+	if ( minotaurBreak )
+	{
+		playSoundEntity(my, 689, 128);
+		playSoundPlayer(clientnum, 689, 32);
+		if ( multiplayer == SERVER )
+		{
+			for ( int i = 1; i < MAXPLAYERS; ++i )
+			{
+				playSoundPlayer(i, 689, 32);
+			}
+		}
+	}
+
+	if ( BELL_CLAPPER_BROKEN == 0 )
+	{
+		BELL_CLAPPER_BROKEN = 1;
+		serverUpdateEntitySkill(my, 9);
+	}
+}
+
+void actBell(Entity* my)
+{
+	if ( !my )
+	{
+		return;
+	}
+
+	enum BellSpriteNotes : int
+	{
+		NOTE_DOUBLE_EIGHTH = 192,
+		NOTE_EIGHTH = 198,
+		NOTE_REST = 199,
+		NOTE_CRASH = 200
+	};
+
+	enum BellEvents : int
+	{
+		BELL_RING_BUFF = 1,
+		BELL_MONSTER,
+		BELL_ITEM,
+		BELL_CLAPPER_BREAK,
+		BELL_CRASH,
+		BELL_NOTHING,
+		BELL_ENUM_END
+	};
+
+	enum BellBuffs
+	{
+		BUFF_STR,
+		BUFF_CON,
+		BUFF_PWR,
+		BUFF_DEX,
+		BUFF_HEAL,
+		BUFF_ENUM_END,
+	};
+
+	auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+	if ( !BELL_INIT )
+	{
+		BELL_INIT = 1;
+
+		{
+			Entity* childEntity = newEntity(1476, 1, map.entities, nullptr); // clapper
+			childEntity->parent = my->getUID();
+			childEntity->x = my->x;
+			childEntity->y = my->y;
+			childEntity->sizex = 2;
+			childEntity->sizey = 2;
+			childEntity->flags[PASSABLE] = true;
+			childEntity->flags[UNCLICKABLE] = false;
+			childEntity->flags[NOUPDATE] = true;
+			childEntity->z = my->z;
+			if ( multiplayer != CLIENT )
+			{
+				entity_uids--;
+			}
+			childEntity->setUID(-3);
+			node_t* tempNode = list_AddNodeLast(&my->children);
+			tempNode->element = childEntity; // add the node to the children list.
+			tempNode->deconstructor = &emptyDeconstructor;
+			tempNode->size = sizeof(Entity*);
+		}
+		{
+			Entity* childEntity = newEntity(1477, 1, map.entities, nullptr); // headstock
+			childEntity->parent = my->getUID();
+			childEntity->x = my->x;
+			childEntity->y = my->y;
+			childEntity->sizex = 4;
+			childEntity->sizey = 4;
+			childEntity->flags[PASSABLE] = true;
+			childEntity->flags[UNCLICKABLE] = false;
+			childEntity->flags[NOUPDATE] = true;
+			childEntity->z = my->z;
+			if ( multiplayer != CLIENT )
+			{
+				entity_uids--;
+			}
+			childEntity->setUID(-3);
+			node_t* tempNode = list_AddNodeLast(&my->children);
+			tempNode->element = childEntity; // add the node to the children list.
+			tempNode->deconstructor = &emptyDeconstructor;
+			tempNode->size = sizeof(Entity*);
+		}
+	}
+
+	if ( my->ticks == 1 )
+	{
+		my->createWorldUITooltip();
+		BELL_LAST_TOUCHED_PLAYER = -1;
+	}
+
+	my->z = 0;
+	static ConsoleVariable<bool> cvar_bell_crash("/bell_crash", false);
+#ifndef NDEBUG
+	if ( keystatus[SDLK_KP_5] && enableDebugKeys )
+	{
+		keystatus[SDLK_KP_5];
+		bellBreakBulb(my, true);
+		//my->yaw += 0.01;
+	}
+#endif // !NDEBUG
+	my->focalx = 4;
+	my->focaly = -6;
+	my->focalz = -10.75;
+
+#ifdef USE_FMOD
+	if ( BELL_AMBIENCE == 0 )
+	{
+		BELL_AMBIENCE--;
+		my->stopEntitySound();
+		my->entity_sound = playSoundEntityLocal(my, 149, 16);
+	}
+	if ( my->entity_sound )
+	{
+		bool playing = false;
+		my->entity_sound->isPlaying(&playing);
+		if ( !playing )
+		{
+			my->entity_sound = nullptr;
+		}
+	}
+#else
+	BELL_AMBIENCE--;
+	if ( BELL_AMBIENCE <= 0 )
+	{
+		BELL_AMBIENCE = TICKS_PER_SECOND * 30;
+		playSoundEntityLocal(my, 149, 16);
+	}
+#endif
+
+	const int pullTimerStart = 100;
+#ifndef NDEBUG
+	if ( keystatus[SDLK_KP_3] && enableDebugKeys )
+	{
+		keystatus[SDLK_KP_3] = 0;
+		BELL_ACTIVE_TIMER = pullTimerStart; // active pull timer
+	}
+
+	if ( keystatus[SDLK_g] && enableDebugKeys && *cvar_bell_crash )
+	{
+		keystatus[SDLK_g] = 0;
+		BELL_CURRENT_EVENT = (BellEvents)(BELL_CURRENT_EVENT + 1);
+		if ( BELL_CURRENT_EVENT >= BELL_ENUM_END )
+		{
+			BELL_CURRENT_EVENT = BELL_RING_BUFF;
+		}
+		messagePlayer(0, MESSAGE_DEBUG, "Bell event: %d", BELL_CURRENT_EVENT);
+	}
+#endif
+
+	if ( multiplayer == CLIENT )
+	{
+		// server encoded current bell event into the timer, separate it out
+		Sint32 upperbits = (BELL_ACTIVE_TIMER >> 8) & 0xFF;
+		if ( upperbits > 0 )
+		{
+			BELL_CURRENT_EVENT = upperbits;
+		}
+		BELL_ACTIVE_TIMER = (BELL_ACTIVE_TIMER & 0xFF);
+	}
+
+	Entity* touched = nullptr;
+	if ( multiplayer != CLIENT && !my->flags[BURNING] && !my->flags[INVISIBLE] ) // interaction
+	{
+		if ( my->isInteractWithMonster() )
+		{
+			Entity* monsterInteracting = uidToEntity(my->interactedByMonster);
+			if ( monsterInteracting )
+			{
+				my->clearMonsterInteract();
+				if ( BELL_USE_DELAY <= 0 )
+				{
+					touched = monsterInteracting;
+					if ( auto leader = monsterInteracting->monsterAllyGetPlayerLeader() )
+					{
+						BELL_LAST_TOUCHED_PLAYER = leader->skill[2];
+					}
+					else
+					{
+						BELL_LAST_TOUCHED_PLAYER = -1;
+					}
+				}
+			}
+			my->clearMonsterInteract();
+		}
+
+		for ( int i = 0; i < MAXPLAYERS; i++ )
+		{
+			if ( selectedEntity[i] == my || client_selected[i] == my )
+			{
+				if ( inrange[i] && Player::getPlayerInteractEntity(i) )
+				{
+					if ( BELL_USE_DELAY <= 0 )
+					{
+						touched = Player::getPlayerInteractEntity(i);
+						BELL_LAST_TOUCHED_PLAYER = i;
+						Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_BELL_RUNG_TIMES, "bell", 1);
+						break;
+					}
+				}
+			}
+		}
+		if ( touched )
+		{
+			if ( BELL_CURRENT_EVENT == BELL_CRASH 
+				|| BELL_CURRENT_EVENT == BELL_CLAPPER_BREAK
+				|| BELL_CURRENT_EVENT == BELL_NOTHING )
+			{
+				BELL_CURRENT_EVENT = BELL_NOTHING;
+			}
+			else
+			{
+				if ( BELL_CURRENT_EVENT == 0 )
+				{
+					BELL_USES = 3 + rng.rand() % 2;
+					if ( BELL_HAS_ITEM != 0 )
+					{
+						BELL_CURRENT_EVENT = BELL_ITEM;
+						BELL_USES = 2 + rng.rand() % 3;
+					}
+					else
+					{
+						if ( rng.rand() % 4 == 0 )
+						{
+							// bats
+							BELL_CURRENT_EVENT = BELL_MONSTER;
+							BELL_USES = 2 + rng.rand() % 3;
+						}
+						else
+						{
+							BELL_CURRENT_EVENT = BELL_RING_BUFF;
+						}
+					}
+				}
+				else
+				{
+					BELL_CURRENT_EVENT = BELL_RING_BUFF;
+					--BELL_USES;
+
+					if ( *cvar_bell_crash && (svFlags & SV_FLAG_CHEATS) )
+					{
+						BELL_USES = 0;
+						BELL_CURRENT_EVENT = BELL_CRASH;
+					}
+					else if ( BELL_USES <= 0 )
+					{
+						if ( rng.rand() % 5 == 0 )
+						{
+							BELL_CURRENT_EVENT = BELL_CRASH;
+						}
+						else
+						{
+							BELL_CURRENT_EVENT = BELL_CLAPPER_BREAK;
+						}
+					}
+
+					if ( BELL_CURRENT_EVENT == BELL_CRASH )
+					{
+						BELL_PULLED_TO_BREAK = touched->getUID();
+					}
+				}
+			}
+
+			BELL_ACTIVE_TIMER = pullTimerStart;
+			BELL_ACTIVE_TIMER |= (BELL_CURRENT_EVENT << 8);
+			serverUpdateEntitySkill(my, 0);
+			BELL_ACTIVE_TIMER = pullTimerStart;
+			if ( BELL_LAST_TOUCHED_PLAYER >= 0 )
+			{
+				messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6268));
+			}
+
+			if ( BELL_CURRENT_EVENT == BELL_RING_BUFF )
+			{
+				BELL_USE_DELAY = TICKS_PER_SECOND * 9;
+			}
+			else if ( BELL_CURRENT_EVENT == BELL_NOTHING )
+			{
+				BELL_USE_DELAY = TICKS_PER_SECOND * 3;
+			}
+			else
+			{
+				BELL_USE_DELAY = TICKS_PER_SECOND * 5;
+			}
+			serverUpdateEntitySkill(my, 7); // use delay
+		}
+	}
+	else if ( multiplayer != CLIENT && my->flags[BURNING] )
+	{
+		if ( BELL_BURNING_TIMER == 0 )
+		{
+			BELL_BURNING_TIMER = (1 + local_rng.rand() % 3) * TICKS_PER_SECOND;
+			playSoundEntity(my, 512, 64);
+		}
+		else if ( BELL_BURNING_TIMER > 0 )
+		{
+			BELL_BURNING_TIMER--;
+			if ( BELL_BURNING_TIMER <= 0 )
+			{
+				BELL_BURNING_TIMER = -1;
+				bellBreakBulb(my, true);
+				my->flags[BURNING] = false;
+				my->flags[INVISIBLE] = true;
+				serverUpdateEntityFlag(my, INVISIBLE);
+				serverUpdateEntityFlag(my, BURNING);
+
+				if ( BELL_PULLED_TO_BREAK != 0 )
+				{
+					if ( Entity* puller = uidToEntity(BELL_PULLED_TO_BREAK) )
+					{
+						if ( puller->behavior == &actPlayer )
+						{
+							Compendium_t::Events_t::eventUpdateWorld(puller->skill[2], Compendium_t::CPDM_BELL_BROKEN, "bell", 1);
+							steamStatisticUpdateClient(puller->skill[2], STEAM_STAT_RUNG_OUT, STEAM_STAT_INT, 1);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if ( my->flags[INVISIBLE] && my->flags[BURNING] )
+	{
+		my->flags[BURNING] = false;
+		my->flags[BURNABLE] = false;
+		if ( multiplayer != CLIENT )
+		{
+			serverUpdateEntityFlag(my, BURNING);
+			serverUpdateEntityFlag(my, BURNABLE);
+		}
+	}
+
+	if ( BELL_USE_DELAY > 0 )
+	{
+		--BELL_USE_DELAY;
+	}
+	if ( BELL_ACTIVE_TIMER == pullTimerStart )
+	{
+		playSoundEntityLocal(my, 688, 64);
+	}
+
+	if ( BELL_ACTIVE_TIMER > 0 )
+	{
+		--BELL_ACTIVE_TIMER;
+	}
+	else
+	{
+		BELL_ACTIVE_TIMER = 0;
+	}
+
+	bool bellEventTriggered = false;
+	bool shortRing = (BELL_CURRENT_EVENT != BELL_RING_BUFF);
+	bool startBellAnim = false;
+	static ConsoleVariable<float> cvar_bell_max_spd("/bell_max_spd", 4.0);
+	static ConsoleVariable<int> cvar_bell_clap_rot("/bell_clap_rot", 245);
+	static ConsoleVariable<int> cvar_bell_anim_tick("/bell_anim_tick", 90);
+	static ConsoleVariable<int> cvar_bell_pull_tick("/bell_pull_tick", 30);
+	static ConsoleVariable<int> cvar_bell_dong1("/bell_dong1", 100);
+	static ConsoleVariable<int> cvar_bell_dong2("/bell_dong2", 140);
+	static ConsoleVariable<int> cvar_bell_dong3("/bell_dong3", 190);
+	if ( my->skill[0] == *cvar_bell_anim_tick )
+	{
+		startBellAnim = true;
+	}
+	const int pullTimerFirstAnim = *cvar_bell_pull_tick;
+	if ( my->skill[0] > pullTimerFirstAnim )
+	{
+		//const int interval = pullTimerStart - pullTimerFirstAnim;
+		//my->focalz += -2 + (interval - (my->skill[0] - pullTimerFirstAnim)) * 2.0 / (interval / 2.0);
+
+		const int interval = pullTimerStart - pullTimerFirstAnim;
+		my->focalz += 2.0 * cos(PI * (interval - (my->skill[0] - pullTimerFirstAnim) / (real_t)interval));
+	}
+	else
+	{
+		//my->focalz += 2.0 * cos((-my->skill[0] + pullTimerFirstAnim) * PI / (real_t)pullTimerFirstAnim);
+		
+		const int interval = pullTimerFirstAnim;
+		my->focalz += -2.0 + 4.0 * cos(1.5 * PI * (interval - my->skill[0]) / (real_t)interval);
+	}
+
+	const real_t baseZ = 0.0;
+
+	Entity* bell = nullptr;
+	Entity* clapper = nullptr;
+	node_t* nextnode = nullptr;
+	static ConsoleVariable<int> cvar_bell_crash_sfx("/bell_crash_sfx", 691);
+	for ( node_t* node = my->children.first; node; node = nextnode )
+	{
+		nextnode = node->next;
+		if ( node->element != nullptr )
+		{
+			Entity* child = (Entity*)node->element;
+			if ( child )
+			{
+				if ( child->sprite == 1475 ) // bell
+				{
+					if ( child->flags[INVISIBLE] )
+					{
+						bell = nullptr;
+						continue;
+					}
+					bell = child;
+					if ( BELL_BULB_BROKEN )
+					{
+						child->vel_z += 0.04;
+						child->z += child->vel_z;
+						child->yaw += 0.15;
+						real_t dist = clipMove(&child->x, &child->y, child->vel_x, child->vel_y, child);
+
+						Entity* collided = nullptr;
+						if ( multiplayer != CLIENT )
+						{
+							Entity* puller = uidToEntity(BELL_PULLED_TO_BREAK);
+							auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(child, 2);
+							for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !collided; ++it )
+							{
+								list_t* currentList = *it;
+								node_t* node;
+								for ( node = currentList->first; node != nullptr && !collided; node = node->next )
+								{
+									Entity* entity = (Entity*)node->element;
+									if ( !entity ) { continue; }
+
+									if ( (entity->behavior == &actMonster && !(entity->getRace() == MIMIC)) 
+										|| entity->behavior == &actPlayer )
+									{
+										Stat* stats = entity->getStats();
+										if ( stats && entityInsideEntity(entity, child) )
+										{
+											if ( !(stats->type == MINOTAUR || child->z >= -16.0) )
+											{
+												continue;
+											}
+
+											if ( child->collisionIgnoreTargets.find(entity->getUID()) != child->collisionIgnoreTargets.end() )
+											{
+												continue;
+											}
+											child->collisionIgnoreTargets.insert(entity->getUID());
+
+											if ( entity->behavior == &actPlayer )
+											{
+												const Uint32 color = makeColorRGB(255, 0, 0);
+												messagePlayerColor(entity->skill[2], MESSAGE_STATUS, color, Language::get(6276));
+												if ( players[entity->skill[2]]->isLocalPlayer() )
+												{
+													cameravars[entity->skill[2]].shakex += .1;
+													cameravars[entity->skill[2]].shakey += 10;
+												}
+												else
+												{
+													if ( entity->skill[2] > 0 )
+													{
+														strcpy((char*)net_packet->data, "SHAK");
+														net_packet->data[4] = 10; // turns into .1
+														net_packet->data[5] = 10;
+														net_packet->address.host = net_clients[entity->skill[2] - 1].host;
+														net_packet->address.port = net_clients[entity->skill[2] - 1].port;
+														net_packet->len = 6;
+														sendPacketSafe(net_sock, -1, net_packet, entity->skill[2] - 1);
+													}
+												}
+											}
+
+											playSoundEntity(entity, 28, 64);
+											Entity* gib = spawnGib(entity);
+											int dmg = getBellDmgOnEntity(entity);
+											Sint32 oldHP = stats->HP;
+											entity->modHP(-dmg);
+											if ( entity->behavior == &actPlayer )
+											{
+												if ( stats->HP < oldHP )
+												{
+													Compendium_t::Events_t::eventUpdateWorld(entity->skill[2], Compendium_t::CPDM_TRAP_DAMAGE, "bell", oldHP - stats->HP);
+												}
+
+												if ( !puller )
+												{
+													int playertarget = entity->skill[2];
+													if ( playertarget >= 0 && players[playertarget]->isLocalPlayer() )
+													{
+														DamageIndicatorHandler.insert(playertarget, child->x, child->y, stats->HP < oldHP);
+													}
+													else if ( playertarget > 0 && multiplayer == SERVER && !players[playertarget]->isLocalPlayer() )
+													{
+														strcpy((char*)net_packet->data, "DAMI");
+														SDLNet_Write32(child->x, &net_packet->data[4]);
+														SDLNet_Write32(child->y, &net_packet->data[8]);
+														net_packet->data[12] = (stats->HP < oldHP) ? 1 : 0;
+														net_packet->address.host = net_clients[playertarget - 1].host;
+														net_packet->address.port = net_clients[playertarget - 1].port;
+														net_packet->len = 13;
+														sendPacketSafe(net_sock, -1, net_packet, playertarget - 1);
+													}
+												}
+											}
+											entity->setObituary(Language::get(6277));
+											stats->killer = KilledBy::BELL;
+
+											
+											if ( !strcmp(stats->name, "") )
+											{
+												updateEnemyBar(puller, entity, getMonsterLocalizedName(stats->type).c_str(), stats->HP, stats->MAXHP,
+													false, DamageGib::DMG_STRONGEST);
+											}
+											else
+											{
+												updateEnemyBar(puller, entity, stats->name, stats->HP, stats->MAXHP,
+													false, DamageGib::DMG_STRONGEST);
+											}
+
+											if ( stats->HP <= 0 && oldHP > 0 )
+											{
+												if ( entity->behavior == &actPlayer )
+												{
+													Compendium_t::Events_t::eventUpdateWorld(entity->skill[2], Compendium_t::CPDM_TRAP_KILLED_BY, "bell", 1);
+												}
+												if ( puller && puller != entity )
+												{
+													puller->awardXP(entity, true, true);
+													if ( puller->behavior == &actPlayer )
+													{
+														messagePlayerMonsterEvent(puller->skill[2], makeColorRGB(0, 255, 0), *stats, Language::get(692), Language::get(697), MSG_COMBAT);
+														if ( stats->type == GNOME )
+														{
+															steamAchievementClient(puller->skill[2], "BARONY_ACH_JUBBAITED");
+														}
+													}
+												}
+											}
+
+											if ( stats->type == MINOTAUR )
+											{
+												collided = entity; // break this thing over its head
+											}
+											break;
+										}
+									}
+								}
+							}
+						}
+						if ( child->z >= -3.5 || collided )
+						{
+							if ( multiplayer != CLIENT )
+							{
+								for ( int i = 0; i < 6; ++i )
+								{
+									Entity* dropped = dropItemMonster(newItem(TOOL_METAL_SCRAP, DECREPIT, 0, 2 + rng.rand() % 3, 0, true, nullptr), child, nullptr, 1);
+									if ( dropped )
+									{
+										dropped->z = child->z + child->focalz;
+									}
+								}
+								playSoundEntity(my, *cvar_bell_crash_sfx, 128);
+								playSoundPlayer(clientnum, *cvar_bell_crash_sfx, 32);
+								if ( multiplayer == SERVER )
+								{
+									for ( int i = 1; i < MAXPLAYERS; ++i )
+									{
+										playSoundPlayer(i, *cvar_bell_crash_sfx, 32);
+									}
+								}
+
+								spawnDamageGib(child, NOTE_CRASH, DamageGib::DMG_STRONGEST, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+							}
+							child->flags[INVISIBLE] = true;
+							if ( multiplayer == SERVER )
+							{
+								serverUpdateEntityFlag(child, INVISIBLE);
+							}
+							bell = nullptr;
+						}
+						continue;
+					}
+
+					child->yaw = my->yaw;
+					child->z = baseZ - 22.25;
+					child->focalz = 6;
+					child->x = my->x - 2 * cos(child->yaw);
+					child->y = my->y - 2 * sin(child->yaw);
+
+					Sint32& dongs = child->skill[1];
+					real_t& rotation = child->fskill[1];
+					Sint32& endDamp = child->skill[5];
+
+					Entity* clapper = nullptr;
+					if ( nextnode )
+					{
+						clapper = (Entity*)nextnode->element;
+					}
+					if ( startBellAnim )
+					{
+						// target pitch
+						child->fskill[0] = PI / 8;
+						child->pitch = 0.0;
+						dongs = 0;
+						rotation = 0.0;
+						child->skill[3] = ticks;
+						endDamp = 0;
+
+						if ( clapper && BELL_CLAPPER_BROKEN == 0 )
+						{
+							clapper->pitch = 0.0;
+							clapper->skill[1] = 0; // dongs
+							clapper->skill[4] = 0; // rotation
+							clapper->skill[5] = 0; // end damp
+							clapper->fskill[0] = 0.0;
+						}
+						if ( clapper )
+						{
+							clapper->skill[6] = 0; // clapper active
+						}
+					}
+
+					if ( abs(child->fskill[0]) > 0.0001 )
+					{
+						real_t oldPitch = child->pitch;
+						child->fskill[0] = (1 / (real_t)((1 + std::max(0, (dongs - 1))))) * PI / 8;
+						if ( dongs >= 3 || (shortRing && dongs >= 1) )
+						{
+							endDamp = std::min(endDamp + 1, 100);
+							child->fskill[0] *= (float)(100 - endDamp) / 100.f;
+						}
+
+						if ( (int)(*cvar_bell_max_spd * rotation) >= *cvar_bell_clap_rot )
+						{
+							if ( clapper && clapper->skill[6] == 0 )
+							{
+								if ( BELL_CLAPPER_BROKEN == 0 )
+								{
+									if ( shortRing )
+									{
+										playSoundEntityLocal(my, 689, 128);
+										playSoundPlayer(clientnum, 689, 32);
+									}
+								}
+								bellEventTriggered = true;
+								clapper->skill[6] = 1;
+							}
+						}
+
+						real_t speed = *cvar_bell_max_spd * rotation;
+						child->pitch = child->fskill[0] * sin((speed) * PI / 180.f);
+						if ( child->pitch < -0.0 && oldPitch >= 0.0 )
+						{
+							++dongs;
+						}
+						if ( rotation < 15.0 )
+						{
+							rotation += 0.25;
+						}
+						else
+						{
+							rotation += 1.0;
+						}
+
+						if ( shortRing )
+						{
+							if ( clapper && BELL_CLAPPER_BROKEN == 0 )
+							{
+								if ( (ticks - child->skill[3] == *cvar_bell_dong1) )
+								{
+									spawnDamageGib(child, NOTE_REST, DamageGib::DMG_STRONGEST, DamageGibDisplayType::DMG_GIB_SPRITE);
+								}
+							}
+						}
+						else if ( ((ticks - child->skill[3]) == *cvar_bell_dong1) 
+							|| ((ticks - child->skill[3]) == *cvar_bell_dong2)
+							|| ((ticks - child->skill[3]) == *cvar_bell_dong3) )
+						{
+							if ( clapper && BELL_CLAPPER_BROKEN == 0 )
+							{
+								int vol = 128;
+								if ( (ticks - child->skill[3]) == *cvar_bell_dong2 )
+								{
+									vol = 92;
+								}
+								else if ( ((ticks - child->skill[3]) == *cvar_bell_dong3) )
+								{
+									vol = 64;
+								}
+								playSoundEntity(my, 690, vol);
+								playSoundPlayer(clientnum, 690, vol / 4);
+								spawnDamageGib(child, NOTE_EIGHTH, DamageGib::DMG_STRONGEST, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+						}
+					}
+					else
+					{
+						child->pitch = 0.0;
+						child->fskill[0] = 0.0;
+						dongs = 0;
+						rotation = 0.0;
+						endDamp = 0;
+					}
+					while ( child->pitch >= PI )
+					{
+						child->pitch -= PI;
+					}
+					while ( child->pitch < -PI )
+					{
+						child->pitch += PI;
+					}
+				}
+				else if ( child->sprite == 1476 ) // clapper
+				{
+					if ( child->flags[INVISIBLE] )
+					{
+						clapper = nullptr;
+						continue;
+					}
+					child->yaw = my->yaw;
+					clapper = child;
+					if ( BELL_CLAPPER_BROKEN == 1 ) // broken
+					{
+						if ( child->focalz > 5 )
+						{
+							child->z = baseZ - 10;
+						}
+						child->focalz = 0;
+						bool onground = false;
+						real_t groundheight = 7.5;
+						const real_t yawSpeed = 0.2;
+						const real_t pitchSpeed = 0.1;
+						if ( child->z < groundheight )
+						{
+							child->vel_z += 0.04;
+							child->z += child->vel_z;
+							child->pitch += pitchSpeed;
+							child->yaw += yawSpeed;
+						}
+						else
+						{
+							if ( child->x >= 0 && child->y >= 0 && child->x < map.width << 4 && child->y < map.height << 4 )
+							{
+								const int tile = map.tiles[(int)(child->y / 16) * MAPLAYERS + (int)(child->x / 16) * MAPLAYERS * map.height];
+								if ( tile )
+								{
+									onground = true;
+
+									child->vel_z *= -.35; // bounce
+									if ( child->vel_z > -.35 )
+									{
+										child->z = groundheight;
+										child->vel_z = 0.0;
+										child->pitch = -PI / 2;
+									}
+									else
+									{
+										// just bounce off the ground.
+										child->z = groundheight - .0001;
+									}
+								}
+								else
+								{
+									// fall (no ground here)
+									child->vel_z += 0.04;
+									child->z += child->vel_z;
+									child->pitch += pitchSpeed;
+									child->yaw += yawSpeed;
+								}
+							}
+							else
+							{
+								// fall (out of bounds)
+								child->vel_z += 0.04;
+								child->z += child->vel_z;
+								child->pitch += pitchSpeed;
+								child->yaw += yawSpeed;
+							}
+						}
+
+						// falling out of the map
+						if ( child->z > 128 )
+						{
+							child->flags[INVISIBLE] = true;
+							clapper = nullptr;
+						}
+						continue;
+					}
+
+					child->z = baseZ - 20;
+					child->x = my->x - 2 * cos(child->yaw);
+					child->y = my->y - 2 * sin(child->yaw);
+					child->focalz = 10;
+					auto& dongs = child->skill[1];
+					Sint32& rotation = child->skill[4];
+					Sint32& endDamp = child->skill[5];
+					if ( child->skill[6] == 1 )
+					{
+						child->skill[6] = 2;
+						child->fskill[0] = PI / 8;
+					}
+
+					if ( abs(child->fskill[0]) > 0.0001 )
+					{
+						real_t oldPitch = child->pitch;
+						child->fskill[0] = -(1 / (real_t)((1 + std::max(0, (dongs - 1))))) * PI / 8;
+						if ( dongs >= 3 || (shortRing && dongs >= 1) )
+						{
+							endDamp = std::min(endDamp + 1, 100);
+							child->fskill[0] *= (float)(100 - endDamp) / 100.f;
+						}
+						child->pitch = child->fskill[0] * sin((*cvar_bell_max_spd * rotation) * PI / 180.f);
+						if ( child->pitch < -0.0 && oldPitch >= 0.0 )
+						{
+							++dongs;
+						}
+						++rotation;
+					}
+					else
+					{
+						child->pitch = 0.0;
+						child->fskill[0] = 0.0;
+						dongs = 0;
+						rotation = 0;
+						endDamp = 0;
+					}
+
+					while ( child->pitch >= PI )
+					{
+						child->pitch -= PI;
+					}
+					while ( child->pitch < -PI )
+					{
+						child->pitch += PI;
+					}
+				}
+				else if ( child->sprite == 1477 ) // headstock
+				{
+					child->yaw = my->yaw;
+					child->z = baseZ - 21.75;
+				}
+			}
+		}
+	}
+
+	if ( multiplayer == CLIENT )
+	{
+		return;
+	}
+
+	if ( BELL_ACTIVE_TIMER == 1 && BELL_BULB_BROKEN )
+	{
+		messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6274));
+		return;
+	}
+
+	if ( bellEventTriggered )
+	{
+		if ( BELL_BULB_BROKEN )
+		{
+			messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6274));
+			return;
+		}
+		else if ( BELL_CLAPPER_BROKEN )
+		{
+			messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6273));
+			return;
+		}
+
+		if ( BELL_CURRENT_EVENT == BELL_RING_BUFF )
+		{
+			bellAttractMonsters(my);
+			spawnMagicEffectParticlesBell(my, 1479);
+
+			auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 2);
+			for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+			{
+				list_t* currentList = *it;
+				node_t* node;
+				for ( node = currentList->first; node != nullptr; node = node->next )
+				{
+					Entity* entity = (Entity*)node->element;
+					if ( (entity->behavior == &actMonster && !(entity->getRace() == MIMIC))
+						|| entity->behavior == &actPlayer )
+					{
+						if ( entityDist(my, entity) <= 26.0 )
+						{
+							const char* lang = nullptr;
+							int statusEffect = 0;
+							Compendium_t::EventTags tag = Compendium_t::EventTags::CPDM_EVENT_TAGS_MAX;
+							switch ( BELL_BUFF_TYPE % BellBuffs::BUFF_ENUM_END )
+							{
+							case BUFF_STR:
+								lang = Language::get(6281);
+								statusEffect = EFF_POTION_STR;
+								tag = Compendium_t::EventTags::CPDM_BELL_BUFFS_STRENGTH;
+								break;
+							case BUFF_CON:
+								lang = Language::get(6282);
+								statusEffect = EFF_CON_BONUS;
+								tag = Compendium_t::EventTags::CPDM_BELL_BUFFS_STAMINA;
+								break;
+							case BUFF_DEX:
+								lang = Language::get(6283);
+								statusEffect = EFF_AGILITY;
+								tag = Compendium_t::EventTags::CPDM_BELL_BUFFS_AGILITY;
+								break;
+							case BUFF_PWR:
+								lang = Language::get(6284);
+								statusEffect = EFF_PWR;
+								tag = Compendium_t::EventTags::CPDM_BELL_BUFFS_MENTALITY;
+								break;
+							case BUFF_HEAL:
+								statusEffect = SPELL_HEALING;
+								tag = Compendium_t::EventTags::CPDM_BELL_BUFFS_HEALS;
+								break;
+							default:
+								break;
+							}
+							int duration = TICKS_PER_SECOND * 60;
+							if ( statusEffect > 0 )
+							{
+								if ( Stat* stats = entity->getStats() )
+								{
+									if ( statusEffect == SPELL_HEALING )
+									{
+										int amount = 15;
+										entity->modHP(amount);
+										int mpAmount = entity->modMP(amount);
+										entity->playerInsectoidIncrementHungerToMP(mpAmount);
+
+										playSoundEntity(entity, 168, 128);
+										spawnDamageGib(entity, NOTE_DOUBLE_EIGHTH, DamageGib::DMG_STRONGEST, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+										spawnMagicEffectParticles(entity->x, entity->y, entity->z, 169);
+										if ( entity->behavior == &actPlayer )
+										{
+											messagePlayerColor(entity->skill[2], MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6298));
+											Compendium_t::Events_t::eventUpdateWorld(entity->skill[2], tag, "bell", 1);
+										}
+									}
+									else if ( entity->setEffect(statusEffect, true, std::max(stats->EFFECTS_TIMERS[statusEffect], duration), false) )
+									{
+										playSoundEntity(entity, 166, 128);
+										spawnDamageGib(entity, NOTE_DOUBLE_EIGHTH, DamageGib::DMG_STRONGEST, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+										if ( entity->behavior == &actPlayer )
+										{
+											messagePlayerColor(entity->skill[2], MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6280), lang);
+											Compendium_t::Events_t::eventUpdateWorld(entity->skill[2], tag, "bell", 1);
+										}
+									}
+								}
+							}
+						}
+
+					}
+				}
+			}
+		}
+		else if ( BELL_CURRENT_EVENT == BELL_CRASH )
+		{
+			if ( bell && BELL_BULB_BROKEN == 0 )
+			{
+				messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6275));
+				Compendium_t::Events_t::eventUpdateWorld(BELL_LAST_TOUCHED_PLAYER, Compendium_t::CPDM_BELL_BROKEN, "bell", 1);
+				bellBreakBulb(my, false);
+				steamStatisticUpdateClient(BELL_LAST_TOUCHED_PLAYER, STEAM_STAT_RUNG_OUT, STEAM_STAT_INT, 1);
+			}
+		}
+		else if ( BELL_CURRENT_EVENT == BELL_CLAPPER_BREAK )
+		{
+			if ( clapper && BELL_CLAPPER_BROKEN == 0 )
+			{
+				BELL_CLAPPER_BROKEN = 1;
+				serverUpdateEntitySkill(my, 9);
+				playSoundEntity(my, 76, 64);
+				messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6279));
+				bellAttractMonsters(my);
+				Compendium_t::Events_t::eventUpdateWorld(BELL_LAST_TOUCHED_PLAYER, Compendium_t::CPDM_BELL_CLAPPER_BROKEN, "bell", 1);
+				steamStatisticUpdateClient(BELL_LAST_TOUCHED_PLAYER, STEAM_STAT_RUNG_OUT, STEAM_STAT_INT, 1);
+			}
+		}
+		else if ( BELL_CURRENT_EVENT == BELL_MONSTER )
+		{
+			int successes = 0;
+			Monster type = BAT_SMALL;
+			std::vector<Entity*> enemies;
+			for ( int i = 0; i < 4; ++i )
+			{
+				if ( Entity* monster = summonMonster(type, ((int)(my->x / 16)) * 16 + 8, ((int)(my->y / 16)) * 16 + 8) )
+				{
+					++successes;
+					if ( BELL_LAST_TOUCHED_PLAYER >= 0 )
+					{
+						if ( players[BELL_LAST_TOUCHED_PLAYER]->entity )
+						{
+							monster->monsterAcquireAttackTarget(*players[BELL_LAST_TOUCHED_PLAYER]->entity, MONSTER_STATE_PATH);
+						}
+					}
+				}
+			}
+
+			if ( BELL_LAST_TOUCHED_PLAYER >= 0 )
+			{
+				if ( successes > 0 )
+				{
+					Compendium_t::Events_t::eventUpdateWorld(BELL_LAST_TOUCHED_PLAYER, Compendium_t::CPDM_BELL_LOOT_BATS, "bell", successes);
+				}
+				if ( successes == 1 )
+				{
+					messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6234),
+						getMonsterLocalizedName((Monster)type).c_str(), Language::get(6269));
+				}
+				else if ( successes > 1 )
+				{
+					messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6253),
+						getMonsterLocalizedPlural((Monster)type).c_str(), Language::get(6269));
+				}
+			}
+
+			if ( rng.rand() % 8 == 0 )
+			{
+				// sometimes it just falls straight after
+				if ( BELL_LAST_TOUCHED_PLAYER >= 0 )
+				{
+					messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6275));
+					Compendium_t::Events_t::eventUpdateWorld(BELL_LAST_TOUCHED_PLAYER, Compendium_t::CPDM_BELL_BROKEN, "bell", 1);
+					steamStatisticUpdateClient(BELL_LAST_TOUCHED_PLAYER, STEAM_STAT_RUNG_OUT, STEAM_STAT_INT, 1);
+				}
+				bellBreakBulb(my, false);
+			}
+		}
+		else if ( BELL_CURRENT_EVENT == BELL_ITEM )
+		{
+			if ( BELL_HAS_ITEM != 0 )
+			{
+				if ( Entity* entity = uidToEntity(BELL_HAS_ITEM) )
+				{
+					BELL_HAS_ITEM = 0;
+					if ( entity->behavior == &actItem )
+					{
+						playSoundEntityLocal(entity, 47 + local_rng.rand() % 3, 64);
+						entity->vel_x = 0.0; //(0.25 + .025 * (local_rng.rand() % 11)) * cos(entity->yaw);
+						entity->vel_y = 0.0; //(0.25 + .025 * (local_rng.rand() % 11)) * sin(entity->yaw);
+						entity->vel_z = (-2 - local_rng.rand() % 5) * .01;
+						entity->itemContainer = 0;
+						entity->z = -16;
+						entity->itemNotMoving = 0;
+						entity->itemNotMovingClient = 0;
+						entity->flags[USERFLAG1] = false; // enable collision
+
+						if ( multiplayer == SERVER )
+						{
+							for ( int i = 1; i < MAXPLAYERS; ++i )
+							{
+								if ( !client_disconnected[i] )
+								{
+									strcpy((char*)net_packet->data, "BELI");
+									SDLNet_Write32(static_cast<Uint32>(entity->getUID()), &net_packet->data[4]);
+									net_packet->address.host = net_clients[i - 1].host;
+									net_packet->address.port = net_clients[i - 1].port;
+									net_packet->len = 8;
+									sendPacketSafe(net_sock, -1, net_packet, i - 1);
+								}
+							}
+						}
+
+						if ( BELL_LAST_TOUCHED_PLAYER >= 0 )
+						{
+							messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6272));
+							Compendium_t::Events_t::eventUpdateWorld(BELL_LAST_TOUCHED_PLAYER, Compendium_t::CPDM_BELL_LOOT_ITEMS, "bell", 1);
+						}
+					}
+					else if ( entity->behavior == &actGoldBag )
+					{
+						playSoundEntityLocal(entity, 242 + local_rng.rand() % 4, 64);
+						entity->vel_x = 0.0;
+						entity->vel_y = 0.0;
+						entity->vel_z = (-2 - local_rng.rand() % 5) * .01;
+						entity->goldBouncing = 0;
+						entity->z = -16;
+						entity->flags[INVISIBLE] = false;
+
+						if ( multiplayer == SERVER )
+						{
+							for ( int i = 1; i < MAXPLAYERS; ++i )
+							{
+								if ( !client_disconnected[i] )
+								{
+									strcpy((char*)net_packet->data, "BELI");
+									SDLNet_Write32(static_cast<Uint32>(entity->getUID()), &net_packet->data[4]);
+									net_packet->address.host = net_clients[i - 1].host;
+									net_packet->address.port = net_clients[i - 1].port;
+									net_packet->len = 8;
+									sendPacketSafe(net_sock, -1, net_packet, i - 1);
+								}
+							}
+						}
+
+						if ( BELL_LAST_TOUCHED_PLAYER >= 0 )
+						{
+							messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6272));
+							Compendium_t::Events_t::eventUpdateWorld(BELL_LAST_TOUCHED_PLAYER, Compendium_t::CPDM_BELL_LOOT_GOLD, "bell", entity->goldAmount);
+						}
+					}
+
+					if ( rng.rand() % 16 == 0 )
+					{
+						// sometimes it just falls straight after
+						if ( BELL_LAST_TOUCHED_PLAYER >= 0 )
+						{
+							messagePlayer(BELL_LAST_TOUCHED_PLAYER, MESSAGE_INTERACTION, Language::get(6275));
+							Compendium_t::Events_t::eventUpdateWorld(BELL_LAST_TOUCHED_PLAYER, Compendium_t::CPDM_BELL_BROKEN, "bell", 1);
+							steamStatisticUpdateClient(BELL_LAST_TOUCHED_PLAYER, STEAM_STAT_RUNG_OUT, STEAM_STAT_INT, 1);
+						}
+						bellBreakBulb(my, false);
+					}
 				}
 			}
 		}

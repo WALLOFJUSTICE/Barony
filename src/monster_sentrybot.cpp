@@ -23,6 +23,7 @@
 #include "magic/magic.hpp"
 #include "interface/interface.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 std::unordered_map<Uint32, int> gyroBotDetectedUids;
 
@@ -43,6 +44,8 @@ void initSentryBot(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -51,16 +54,16 @@ void initSentryBot(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -283,6 +286,8 @@ void initGyroBot(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -291,19 +296,19 @@ void initGyroBot(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
-			myStats->EFFECTS[EFF_LEVITATING] = true;
+			myStats->setEffectActive(EFF_LEVITATING, 1);
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -394,7 +399,7 @@ void sentryBotDie(Entity* my)
 	{
 		// don't make noises etc.
 		Stat* myStats = my->getStats();
-		if ( myStats && !strncmp(myStats->obituary, language[3631], strlen(language[3631])) )
+		if ( myStats && !strncmp(myStats->obituary, Language::get(3631), strlen(Language::get(3631))) )
 		{
 			// returning to land, don't explode into gibs.
 			gibs = false;
@@ -518,7 +523,7 @@ void sentryBotAnimate(Entity* my, Stat* myStats, double dist)
 				Item* item = newItem(type, static_cast<Status>(myStats->monsterTinkeringStatus), 0, 1, appearance, true, &myStats->inventory);
 				myStats->HP = 0;
 				myStats->killer = KilledBy::NO_FUEL;
-				my->setObituary(language[3631]);
+				my->setObituary(Language::get(3631));
 				return;
 			}
 		}
@@ -537,6 +542,7 @@ void sentryBotAnimate(Entity* my, Stat* myStats, double dist)
 	if ( multiplayer != CLIENT )
 	{
 		my->z = limbs[race][11][2];
+		my->creatureHandleLiftZ();
 	}
 
 	if ( ticks % (3 * TICKS_PER_SECOND) == 0 && local_rng.rand() % 5 > 0 )
@@ -1036,7 +1042,7 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 				if ( leader >= 0 )
 				{
 					Uint32 color = makeColorRGB(0, 255, 0);
-					messagePlayerColor(leader, MESSAGE_HINT, color, language[3651]);
+					messagePlayerColor(leader, MESSAGE_HINT, color, Language::get(3651));
 				}
 			}
 		}
@@ -1067,7 +1073,8 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 			{
 				if ( my->monsterAllyPickupItems == ALLY_GYRO_DETECT_MONSTERS )
 				{
-					if ( ent->behavior == &actMonster && ent->monsterAllyIndex < 0 )
+					if ( (ent->behavior == &actMonster && ent->monsterAllyIndex < 0)
+						|| (ent->isDamageableCollider() && ent->colliderHideMonster != 0) )
 					{
 						if ( entityDist(my, ent) < TOUCHRANGE * 5 )
 						{
@@ -1075,9 +1082,11 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 							{
 								++foundBadSound;
 							}
-							if ( ent->entityShowOnMap < detectDuration )
+							if ( ent->getEntityShowOnMapDuration() == 0
+								|| (ent->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+								&& ent->getEntityShowOnMapDuration() < detectDuration) )
 							{
-								ent->entityShowOnMap = detectDuration;
+								ent->setEntityShowOnMap(Entity::SHOW_MAP_GYRO, detectDuration);
 							}
 						}
 					}
@@ -1096,9 +1105,11 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 							{
 								foundBadSound = 3;
 							}
-							if ( ent->entityShowOnMap < detectDuration )
+							if ( ent->getEntityShowOnMapDuration() == 0
+								|| (ent->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+									&& ent->getEntityShowOnMapDuration() < detectDuration) )
 							{
-								ent->entityShowOnMap = detectDuration;
+								ent->setEntityShowOnMap(Entity::SHOW_MAP_GYRO, detectDuration);
 							}
 						}
 					}
@@ -1113,9 +1124,11 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 							{
 								foundGoodSound = 5;
 							}
-							if ( ent->entityShowOnMap < detectDuration )
+							if ( ent->getEntityShowOnMapDuration() == 0
+								|| (ent->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+									&& ent->getEntityShowOnMapDuration() < detectDuration) )
 							{
-								ent->entityShowOnMap = detectDuration;
+								ent->setEntityShowOnMap(Entity::SHOW_MAP_GYRO, detectDuration);
 							}
 						}
 					}
@@ -1141,9 +1154,11 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 									{
 										++foundGoodSound;
 									}
-									if ( ent->entityShowOnMap < detectDuration )
+									if ( ent->getEntityShowOnMapDuration() == 0
+										|| (ent->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+											&& ent->getEntityShowOnMapDuration() < detectDuration) )
 									{
-										ent->entityShowOnMap = detectDuration;
+										ent->setEntityShowOnMap(Entity::SHOW_MAP_GYRO, detectDuration);
 									}
 								}
 								else if ( my->monsterAllyPickupItems == ALLY_GYRO_DETECT_ITEMS_MAGIC
@@ -1153,21 +1168,26 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 									{
 										++foundGoodSound;
 									}
-									if ( ent->entityShowOnMap < detectDuration )
+									if ( ent->getEntityShowOnMapDuration() == 0
+										|| (ent->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+											&& ent->getEntityShowOnMapDuration() < detectDuration) )
 									{
-										ent->entityShowOnMap = detectDuration;
+										ent->setEntityShowOnMap(Entity::SHOW_MAP_GYRO, detectDuration);
 									}
 								}
 								else if ( my->monsterAllyPickupItems == ALLY_GYRO_DETECT_ITEMS_VALUABLE
-									&& items[itemOnGround->type].value >= 400 )
+									&& (itemOnGround->getGoldValue() >= 400
+										|| (itemOnGround->type >= KEY_STONE && itemOnGround->type <= KEY_MACHINE)) )
 								{
 									if ( gyroBotFoundNewEntity(*ent) )
 									{
 										foundGoodSound = 5;
 									}
-									if ( ent->entityShowOnMap < detectDuration )
+									if ( ent->getEntityShowOnMapDuration() == 0
+										|| (ent->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+											&& ent->getEntityShowOnMapDuration() < detectDuration) )
 									{
-										ent->entityShowOnMap = detectDuration;
+										ent->setEntityShowOnMap(Entity::SHOW_MAP_GYRO, detectDuration);
 									}
 								}
 								free(itemOnGround);
@@ -1176,7 +1196,8 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 					}
 				}
 			}
-			if ( ent->entityShowOnMap > 0 )
+			if ( ent->getEntityShowOnMapSource() == Entity::SHOW_MAP_GYRO
+				&& ent->getEntityShowOnMapDuration() > 0 )
 			{
 				doPing = true;
 			}
@@ -1205,10 +1226,10 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 		switch ( my->monsterAllyClass )
 		{
 			case ALLY_GYRO_LIGHT_FAINT:
-				my->light = lightSphereShadow(my->x / 16, my->y / 16, 3, 128);
+				my->light = addLight(my->x / 16, my->y / 16, "gyrobot_faint");
 				break;
 			case ALLY_GYRO_LIGHT_BRIGHT:
-				my->light = lightSphereShadow(my->x / 16, my->y / 16, 8, 128);
+				my->light = addLight(my->x / 16, my->y / 16, "gyrobot_bright");
 				break;
 			default:
 				break;
@@ -1225,9 +1246,38 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 			&& my->monsterSpecialTimer == 0
 			&& my->monsterSpecialState == 0 )
 		{
-			// doACoolFlip = true!
-			my->attack(MONSTER_POSE_RANGED_WINDUP1, 0, nullptr);
-			my->monsterSpecialTimer = TICKS_PER_SECOND * 8;
+			bool doACoolFlip = true;
+
+			for ( bodypart = 0, node = my->children.first; node != nullptr; node = node->next, ++bodypart )
+			{
+				if ( bodypart == GYRO_BOMB )
+				{
+					entity = (Entity*)node->element;
+					if ( entity )
+					{
+						if ( entity->sprite == items[TOOL_SENTRYBOT].index )
+						{
+							doACoolFlip = false;
+						}
+						else if ( entity->sprite == items[TOOL_SPELLBOT].index )
+						{
+							doACoolFlip = false;
+						}
+					}
+					break;
+				}
+			}
+
+			if ( doACoolFlip )
+			{
+				my->attack(MONSTER_POSE_RANGED_WINDUP1, 0, nullptr);
+				my->monsterSpecialTimer = TICKS_PER_SECOND * 8;
+
+				if ( auto leader = my->monsterAllyGetPlayerLeader() )
+				{
+					Compendium_t::Events_t::eventUpdateMonster(leader->skill[2], Compendium_t::CPDM_GYROBOT_FLIPS, my, 1);
+				}
+			}
 		}
 
 		if ( my->monsterSpecialState == GYRO_RETURN_LANDING )
@@ -1238,7 +1288,7 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 				Item* item = newItem(TOOL_GYROBOT, static_cast<Status>(myStats->monsterTinkeringStatus), 0, 1, appearance, true, &myStats->inventory);
 				myStats->HP = 0;
 				myStats->killer = KilledBy::NO_FUEL;
-				my->setObituary(language[3631]);
+				my->setObituary(Language::get(3631));
 				return;
 			}
 		}
@@ -1291,9 +1341,9 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 				}
 			}
 		}
-		if ( !myStats->EFFECTS[EFF_LEVITATING] )
+		if ( !myStats->getEffectActive(EFF_LEVITATING) )
 		{
-			myStats->EFFECTS[EFF_LEVITATING] = true;
+			myStats->setEffectActive(EFF_LEVITATING, 1);
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 		}
 	}
@@ -1420,7 +1470,7 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 					for ( node_t* inv = myStats->inventory.first; inv; inv = inv->next )
 					{
 						Item* holding = (Item*)inv->element;
-						if ( holding && holding->type >= TOOL_BOMB && holding->type <= TOOL_TELEPORT_BOMB )
+						if ( holding && itemIsThrowableTinkerTool(holding) )
 						{
 							entity->sprite = items[holding->type].index;
 						}
@@ -1435,17 +1485,50 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 					}
 				}
 
+				if ( entity->sprite == items[TOOL_SENTRYBOT].index )
+				{
+					entity->focalx = limbs[GYROBOT][8][0];
+					entity->focaly = limbs[GYROBOT][8][1];
+					entity->focalz = limbs[GYROBOT][8][2];
+				}
+				else if ( entity->sprite == items[TOOL_SPELLBOT].index )
+				{
+					entity->focalx = limbs[GYROBOT][9][0];
+					entity->focaly = limbs[GYROBOT][9][1];
+					entity->focalz = limbs[GYROBOT][9][2];
+				}
+				else if ( entity->sprite == items[TOOL_GYROBOT].index )
+				{
+					entity->focalx = limbs[GYROBOT][10][0];
+					entity->focaly = limbs[GYROBOT][10][1];
+					entity->focalz = limbs[GYROBOT][10][2];
+				}
+				else if ( entity->sprite == items[TOOL_DUMMYBOT].index || entity->sprite == items[TOOL_DECOY].index )
+				{
+					entity->focalx = limbs[GYROBOT][11][0];
+					entity->focaly = limbs[GYROBOT][11][1];
+					entity->focalz = limbs[GYROBOT][11][2];
+				}
+
 				if ( multiplayer == SERVER )
 				{
 					// update sprites for clients
-					if ( entity->skill[10] != entity->sprite )
+					if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 					{
-						entity->skill[10] = entity->sprite;
-						serverUpdateEntityBodypart(my, bodypart);
-					}
-					if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-					{
-						serverUpdateEntityBodypart(my, bodypart);
+						bool updateBodypart = false;
+						if ( entity->skill[10] != entity->sprite )
+						{
+							entity->skill[10] = entity->sprite;
+							updateBodypart = true;
+						}
+						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+						{
+							updateBodypart = true;
+						}
+						if ( updateBodypart )
+						{
+							serverUpdateEntityBodypart(my, bodypart);
+						}
 					}
 				}
 				break;
@@ -1467,7 +1550,7 @@ void gyroBotDie(Entity* my)
 	{
 		// don't make noises etc.
 		Stat* myStats = my->getStats();
-		if ( myStats && !strncmp(myStats->obituary, language[3631], strlen(language[3631])) )
+		if ( myStats && !strncmp(myStats->obituary, Language::get(3631), strlen(Language::get(3631))) )
 		{
 			// returning to land, don't explode into gibs.
 			gibs = false;
@@ -1527,6 +1610,8 @@ void initDummyBot(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 			if ( !myStats->leader_uid )
@@ -1535,16 +1620,16 @@ void initDummyBot(Entity* my, Stat* myStats)
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -1701,7 +1786,7 @@ void dummyBotDie(Entity* my)
 	{
 		// don't make noises etc.
 		Stat* myStats = my->getStats();
-		if ( myStats && !strncmp(myStats->obituary, language[3643], strlen(language[3643])) )
+		if ( myStats && !strncmp(myStats->obituary, Language::get(3643), strlen(Language::get(3643))) )
 		{
 			// returning to box, don't explode into gibs.
 			gibs = false;
@@ -1805,6 +1890,7 @@ void dummyBotAnimate(Entity* my, Stat* myStats, double dist)
 	if ( multiplayer != CLIENT )
 	{
 		my->z = 0;
+		my->creatureHandleLiftZ();
 	}
 
 	//Move bodyparts
@@ -1823,12 +1909,22 @@ void dummyBotAnimate(Entity* my, Stat* myStats, double dist)
 			head = entity;
 			if ( multiplayer != CLIENT && entity->skill[0] == 2 )
 			{
-				if ( entity->skill[3] > 0 && myStats->HP < entity->skill[3] )
+				if ( myStats )
 				{
-					// on hit, bounce a bit.
-					my->attack(MONSTER_POSE_RANGED_WINDUP1, 0, nullptr);
+					if ( entity->skill[3] > 0 && myStats->HP < entity->skill[3] )
+					{
+						// on hit, bounce a bit.
+						my->attack(MONSTER_POSE_RANGED_WINDUP1, 0, nullptr);
+						if ( Entity* leader = my->monsterAllyGetPlayerLeader() )
+						{
+							Compendium_t::Events_t::eventUpdate(leader->skill[2],
+								Compendium_t::CPDM_DUMMY_HITS_TAKEN, TOOL_DUMMYBOT, 1);
+							Compendium_t::Events_t::eventUpdate(leader->skill[2],
+								Compendium_t::CPDM_DUMMY_DMG_TAKEN, TOOL_DUMMYBOT, std::max(0, entity->skill[3] - myStats->HP));
+						}
+					}
+					entity->skill[3] = myStats->HP;
 				}
-				entity->skill[3] = myStats->HP;
 			}
 
 			if ( my->monsterSpecialState == DUMMYBOT_RETURN_FORM )
@@ -1871,7 +1967,7 @@ void dummyBotAnimate(Entity* my, Stat* myStats, double dist)
 						Item* item = newItem(TOOL_DUMMYBOT, static_cast<Status>(myStats->monsterTinkeringStatus), 0, 1, appearance, true, &myStats->inventory);
 						myStats->HP = 0;
 						myStats->killer = KilledBy::NO_FUEL;
-						my->setObituary(language[3643]);
+						my->setObituary(Language::get(3643));
 						return;
 					}
 				}
@@ -2070,7 +2166,7 @@ void dummyBotAnimate(Entity* my, Stat* myStats, double dist)
 			case DUMMY_BOX:
 				entity->x += limbs[DUMMYBOT][9][0] * cos(entity->yaw);
 				entity->y += limbs[DUMMYBOT][9][1] * sin(entity->yaw);
-				entity->z = limbs[DUMMYBOT][9][2];
+				entity->z = my->z + limbs[DUMMYBOT][9][2];
 				entity->focalx = limbs[DUMMYBOT][4][0];
 				entity->focaly = limbs[DUMMYBOT][4][1];
 				entity->focalz = limbs[DUMMYBOT][4][2];
@@ -2078,7 +2174,7 @@ void dummyBotAnimate(Entity* my, Stat* myStats, double dist)
 			case DUMMY_LID:
 				entity->x += limbs[DUMMYBOT][10][0] * cos(entity->yaw);
 				entity->y += limbs[DUMMYBOT][10][1] * sin(entity->yaw);
-				entity->z = limbs[DUMMYBOT][10][2];
+				entity->z = my->z + limbs[DUMMYBOT][10][2];
 				entity->focalx = limbs[DUMMYBOT][5][0];
 				entity->focaly = limbs[DUMMYBOT][5][1];
 				entity->focalz = limbs[DUMMYBOT][5][2];
@@ -2086,7 +2182,7 @@ void dummyBotAnimate(Entity* my, Stat* myStats, double dist)
 			case DUMMY_CRANK:
 				entity->x += limbs[DUMMYBOT][12][0] * cos(entity->yaw) + limbs[DUMMYBOT][12][1] * cos(entity->yaw + PI / 2);
 				entity->y += limbs[DUMMYBOT][12][0] * sin(entity->yaw) + limbs[DUMMYBOT][12][1] * sin(entity->yaw + PI / 2);
-				entity->z = limbs[DUMMYBOT][12][2];
+				entity->z = my->z + limbs[DUMMYBOT][12][2];
 				entity->focalx = limbs[DUMMYBOT][11][0];
 				entity->focaly = limbs[DUMMYBOT][11][1];
 				entity->focalz = limbs[DUMMYBOT][11][2];

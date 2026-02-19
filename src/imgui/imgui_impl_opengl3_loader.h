@@ -651,29 +651,14 @@ static GL3WglProc get_proc(const char *proc)
     return res;
 }
 #else
-#include <dlfcn.h>
+static int open_libgl(void) { return GL3W_OK; }
 
-static void *libgl;
-static GL3WglProc (*glx_get_proc_address)(const GLubyte *);
+static void close_libgl(void) {}
 
-static int open_libgl(void)
-{
-    libgl = dlopen("libGL.so.1", RTLD_LAZY | RTLD_LOCAL);
-    if (!libgl)
-        return GL3W_ERROR_LIBRARY_OPEN;
-    *(void **)(&glx_get_proc_address) = dlsym(libgl, "glXGetProcAddressARB");
-    return GL3W_OK;
-}
-
-static void close_libgl(void) { dlclose(libgl); }
-
+#include <SDL.h>
 static GL3WglProc get_proc(const char *proc)
 {
-    GL3WglProc res;
-    res = glx_get_proc_address((const GLubyte *)proc);
-    if (!res)
-        *(void **)(&res) = dlsym(libgl, proc);
-    return res;
+    return (GL3WglProc)SDL_GL_GetProcAddress(proc);
 }
 #endif
 

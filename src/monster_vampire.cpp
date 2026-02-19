@@ -22,6 +22,7 @@ See LICENSE for details.
 #include "player.hpp"
 #include "magic/magic.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 void initVampire(Entity* my, Stat* myStats)
 {
@@ -41,6 +42,8 @@ void initVampire(Entity* my, Stat* myStats)
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
+		auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
+
 		if ( myStats != nullptr )
 		{
 		    if (myStats->sex == FEMALE)
@@ -80,21 +83,26 @@ void initVampire(Entity* my, Stat* myStats)
 				myStats->RANDOM_CHR = 0;
 				myStats->EXP = 0;
 				myStats->LVL = 18;
-				myStats->GOLD = 50 + local_rng.rand() % 50;
+				myStats->GOLD = 50 + rng.rand() % 50;
 				myStats->RANDOM_GOLD = 0;
-				for ( c = 0; c < 4; ++c )
+				if ( !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS] )
 				{
-					if ( local_rng.rand() % 2 == 0 )
+					for ( c = 0; c < 4; ++c )
 					{
-						Entity* entity = summonMonster(GHOUL, my->x, my->y);
-						if ( entity )
+						if ( rng.rand() % 2 == 0 )
 						{
-							entity->parent = my->getUID();
-							Stat* followerStats = entity->getStats();
-							if ( followerStats )
+							Entity* entity = summonMonster(GHOUL, my->x, my->y);
+							if ( entity )
 							{
-								strcpy(followerStats->name, "enslaved ghoul");
-								followerStats->leader_uid = entity->parent;
+								entity->parent = my->getUID();
+								Stat* followerStats = entity->getStats();
+								if ( followerStats )
+								{
+									strcpy(followerStats->name, "enslaved ghoul");
+									followerStats->setAttribute("special_npc", "enslaved ghoul");
+									followerStats->leader_uid = entity->parent;
+								}
+								entity->seedEntityRNG(rng.getU32());
 							}
 						}
 					}
@@ -106,22 +114,22 @@ void initVampire(Entity* my, Stat* myStats)
 				strcpy(myStats->name, MonsterData_t::getSpecialNPCName(*myStats).c_str());
 				my->sprite = MonsterData_t::getSpecialNPCBaseModel(*myStats);
 			    myStats->sex = MALE;
-				myStats->EFFECTS[EFF_VAMPIRICAURA] = true;
+				myStats->setEffectActive(EFF_VAMPIRICAURA, 1);
 				myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
 				my->setEffect(EFF_MAGICRESIST, true, -1, true); //-1 duration, never expires.
 			}
 
 			// apply random stat increases if set in stat_shared.cpp or editor
-			setRandomMonsterStats(myStats);
+			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
 			// generates equipment and weapons if available from editor
-			createMonsterEquipment(myStats);
+			createMonsterEquipment(myStats, rng);
 
 			// create any custom inventory items from editor if available
-			createCustomInventory(myStats, customItemsToGenerate);
+			createCustomInventory(myStats, customItemsToGenerate, rng);
 
 			// count if any custom inventory items from editor
 			int customItems = countCustomItems(myStats); //max limit of 6 custom items per entity.
@@ -142,14 +150,14 @@ void initVampire(Entity* my, Stat* myStats)
 				case 4:
 				case 3:
 				case 2:
-					if ( local_rng.rand() % 4 == 0 ) // 1 in 4
+					if ( rng.rand() % 4 == 0 ) // 1 in 4
 					{
-						newItem(MAGICSTAFF_BLEED, static_cast<Status>(DECREPIT + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, &myStats->inventory);
+						newItem(MAGICSTAFF_BLEED, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
 					}
 				case 1:
-					if ( local_rng.rand() % 10 == 0 ) // 1 in 10
+					if ( rng.rand() % 10 == 0 ) // 1 in 10
 					{
-						newItem(VAMPIRE_DOUBLET, static_cast<Status>(WORN + local_rng.rand() % 2), -1 + local_rng.rand() % 3, 1, local_rng.rand(), false, &myStats->inventory);
+						newItem(VAMPIRE_DOUBLET, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
 					}
 					break;
 				default:
@@ -159,23 +167,23 @@ void initVampire(Entity* my, Stat* myStats)
 			//give weapon
 			if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 			{
-				switch ( local_rng.rand() % 10 )
+				switch ( rng.rand() % 10 )
 				{
 					case 0:
 					case 1:
 					case 2:
 					case 3:
-						//myStats->weapon = newItem(SHORTBOW, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+						//myStats->weapon = newItem(SHORTBOW, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 						break;
 					case 4:
 					case 5:
 					case 6:
 					case 7:
-						//myStats->weapon = newItem(CROSSBOW, WORN, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+						//myStats->weapon = newItem(CROSSBOW, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 						break;
 					case 8:
 					case 9:
-						//myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+						//myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 						break;
 				}
 			}
@@ -183,7 +191,7 @@ void initVampire(Entity* my, Stat* myStats)
 			//give helmet
 			if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
 			{
-				switch ( local_rng.rand() % 10 )
+				switch ( rng.rand() % 10 )
 				{
 					case 0:
 					case 1:
@@ -192,13 +200,13 @@ void initVampire(Entity* my, Stat* myStats)
 					case 4:
 						break;
 					case 5:
-						//myStats->helmet = newItem(LEATHER_HELM, DECREPIT, -1 + local_rng.rand() % 2, 1, 0, false, nullptr);
+						//myStats->helmet = newItem(LEATHER_HELM, DECREPIT, -1 + rng.rand() % 2, 1, 0, false, nullptr);
 						break;
 					case 6:
 					case 7:
 					case 8:
 					case 9:
-						//myStats->helmet = newItem(IRON_HELM, DECREPIT, -1 + local_rng.rand() % 2, 1, 0, false, nullptr);
+						//myStats->helmet = newItem(IRON_HELM, DECREPIT, -1 + rng.rand() % 2, 1, 0, false, nullptr);
 						break;
 				}
 			}
@@ -206,7 +214,7 @@ void initVampire(Entity* my, Stat* myStats)
 			//give shield
 			if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
 			{
-				switch ( local_rng.rand() % 10 )
+				switch ( rng.rand() % 10 )
 				{
 					case 0:
 					case 1:
@@ -217,13 +225,13 @@ void initVampire(Entity* my, Stat* myStats)
 						break;
 					case 6:
 					case 7:
-						//myStats->shield = newItem(WOODEN_SHIELD, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+						//myStats->shield = newItem(WOODEN_SHIELD, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 						break;
 					case 8:
-						//myStats->shield = newItem(BRONZE_SHIELD, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+						//myStats->shield = newItem(BRONZE_SHIELD, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 						break;
 					case 9:
-						//myStats->shield = newItem(IRON_SHIELD, DECREPIT, -1 + local_rng.rand() % 2, 1, local_rng.rand(), false, nullptr);
+						//myStats->shield = newItem(IRON_SHIELD, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 						break;
 				}
 			}
@@ -333,6 +341,7 @@ void initVampire(Entity* my, Stat* myStats)
 	entity->flags[PASSABLE] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[VAMPIRE][6][0]; // 1.5
 	entity->focaly = limbs[VAMPIRE][6][1]; // 0
 	entity->focalz = limbs[VAMPIRE][6][2]; // -.5
@@ -353,6 +362,7 @@ void initVampire(Entity* my, Stat* myStats)
 	entity->flags[PASSABLE] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[VAMPIRE][7][0]; // 2
 	entity->focaly = limbs[VAMPIRE][7][1]; // 0
 	entity->focalz = limbs[VAMPIRE][7][2]; // 0
@@ -375,6 +385,7 @@ void initVampire(Entity* my, Stat* myStats)
 	entity->flags[PASSABLE] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[VAMPIRE][8][0]; // 0
 	entity->focaly = limbs[VAMPIRE][8][1]; // 0
 	entity->focalz = limbs[VAMPIRE][8][2]; // 4
@@ -397,6 +408,7 @@ void initVampire(Entity* my, Stat* myStats)
 	entity->flags[PASSABLE] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[VAMPIRE][9][0]; // 0
 	entity->focaly = limbs[VAMPIRE][9][1]; // 0
 	entity->focalz = limbs[VAMPIRE][9][2]; // -1.75
@@ -419,6 +431,7 @@ void initVampire(Entity* my, Stat* myStats)
 	entity->flags[PASSABLE] = true;
 	entity->flags[NOUPDATE] = true;
 	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
 	entity->focalx = limbs[VAMPIRE][10][0]; // 0
 	entity->focaly = limbs[VAMPIRE][10][1]; // 0
 	entity->focalz = limbs[VAMPIRE][10][2]; // .5
@@ -486,7 +499,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				wearingring = true;
 			}
 		}
-		if ( myStats->EFFECTS[EFF_INVISIBLE] == true || wearingring == true )
+		if ( myStats->getEffectActive(EFF_INVISIBLE) || wearingring == true )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[BLOCKSIGHT] = false;
@@ -539,7 +552,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		}
 
 		// sleeping
-		if ( myStats->EFFECTS[EFF_ASLEEP] )
+		if ( myStats->getEffectActive(EFF_ASLEEP) )
 		{
 			my->z = 1.5;
 			my->pitch = PI / 4;
@@ -559,6 +572,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			my->z -= 1; // floating
 		}
+		my->creatureHandleLiftZ();
 	}
 
 	Entity* shieldarm = nullptr;
@@ -716,7 +730,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							playSoundEntityLocal(my, MONSTER_SPOTSND, 128);
 							if ( multiplayer != CLIENT )
 							{
-								myStats->EFFECTS[EFF_PARALYZED] = true;
+								myStats->setEffectActive(EFF_PARALYZED, 1);
 								myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 50;
 							}
 						}
@@ -775,27 +789,41 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			// torso
 			case LIMB_HUMANOID_TORSO:
+				entity->scalex = 1.0;
+				entity->scaley = 1.0;
+				entity->scalez = 1.0;
+				entity->focalx = limbs[VAMPIRE][1][0];
+				entity->focaly = limbs[VAMPIRE][1][1];
+				entity->focalz = limbs[VAMPIRE][1][2];
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->breastplate == nullptr )
+					if ( myStats->breastplate == nullptr || !itemModel(myStats->breastplate, false, my) )
 					{
 						entity->sprite = 438;
 					}
 					else
 					{
-						entity->sprite = itemModel(myStats->breastplate);
+						entity->sprite = itemModel(myStats->breastplate, false, my);
 					}
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -816,14 +844,22 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -844,14 +880,22 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -876,14 +920,22 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -941,14 +993,22 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1002,7 +1062,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			case LIMB_HUMANOID_WEAPON:
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->weapon == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->weapon == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1021,19 +1081,27 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1067,26 +1135,34 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							entity->handleQuiverThirdPersonModel(*myStats);
 						}
 					}
-					if ( myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1103,7 +1179,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			case LIMB_HUMANOID_CLOAK:
 				if ( multiplayer != CLIENT )
 				{
-					if ( myStats->cloak == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->cloak == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1115,19 +1191,27 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1153,7 +1237,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				if ( multiplayer != CLIENT )
 				{
 					entity->sprite = itemModel(myStats->helmet);
-					if ( myStats->helmet == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring ) //TODO: isInvisible()?
+					if ( myStats->helmet == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1164,19 +1248,27 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1198,17 +1290,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				entity->roll = PI / 2;
 				if ( multiplayer != CLIENT )
 				{
-					bool hasSteelHelm = false;
-					if ( myStats->helmet )
-					{
-						if ( myStats->helmet->type == STEEL_HELM
-							|| myStats->helmet->type == CRYSTAL_HELM
-							|| myStats->helmet->type == ARTIFACT_HELM )
-						{
-							hasSteelHelm = true;
-						}
-					}
-					if ( myStats->mask == nullptr || myStats->EFFECTS[EFF_INVISIBLE] || wearingring || hasSteelHelm ) //TODO: isInvisible()?
+					if ( myStats->mask == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
 					{
 						entity->flags[INVISIBLE] = true;
 					}
@@ -1222,6 +1304,10 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						{
 							entity->sprite = 165; // GlassesWorn.vox
 						}
+						else if ( myStats->mask->type == MONOCLE )
+						{
+							entity->sprite = 1196; // monocleWorn.vox
+						}
 						else
 						{
 							entity->sprite = itemModel(myStats->mask);
@@ -1230,19 +1316,27 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
-						if ( entity->skill[10] != entity->sprite )
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
 						{
-							entity->skill[10] = entity->sprite;
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->skill[11] != entity->flags[INVISIBLE] )
-						{
-							entity->skill[11] = entity->flags[INVISIBLE];
-							serverUpdateEntityBodypart(my, bodypart);
-						}
-						if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
-						{
-							serverUpdateEntityBodypart(my, bodypart);
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
 						}
 					}
 				}
@@ -1254,11 +1348,16 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					}
 				}
 
-				if ( entity->sprite != 165 )
+				if ( entity->sprite != 165 && entity->sprite != 1196 )
 				{
 					if ( entity->sprite == items[MASK_SHAMAN].index )
 					{
 						entity->roll = 0;
+						my->setHelmetLimbOffset(entity);
+						my->setHelmetLimbOffsetWithMask(helmet, entity);
+					}
+					else if ( EquipmentModelOffsets.modelOffsetExists(VAMPIRE, entity->sprite, my->sprite) )
+					{
 						my->setHelmetLimbOffset(entity);
 						my->setHelmetLimbOffsetWithMask(helmet, entity);
 					}
@@ -1352,7 +1451,7 @@ void Entity::vampireChooseWeapon(const Entity* target, double dist)
 		{
 			node_t* node = nullptr;
 			bool chooseAura = false;
-			if ( !myStats->EFFECTS[EFF_VAMPIRICAURA] )
+			if ( !myStats->getEffectActive(EFF_VAMPIRICAURA) )
 			{
 				if ( myStats->HP <= myStats->MAXHP * 0.4)
 				{

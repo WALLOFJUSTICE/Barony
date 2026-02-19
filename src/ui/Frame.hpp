@@ -63,6 +63,7 @@ public:
 		bool disabled = false;
 		bool ontop = false;
 		bool outline = false;
+		bool noBlitParent = false;
 	};
 
 	struct entry_t;
@@ -94,6 +95,11 @@ public:
         bool clickable = true;
 		bool pressed = false;
 		bool highlighted = false;
+		bool leftright_control = true;
+		bool leftright_allow_nonclickable = true;
+		bool updown_allow_nonclickable = true;
+		bool movement_nonclickable = false;
+		bool navigable = true;
 		Uint32 highlightTime = 0;
 		bool suicide = false;
 
@@ -200,14 +206,11 @@ public:
 
 	//! remove all list entries from the frame
 	void clearEntries();
-
-	//! removes the frame itself, as well as all contained objects
-	void removeSelf();
-
-	//! remove an object from the frame
-	//! @param name the name of the object to remove
-	//! @return true if the object was successfully removed, false otherwise
-	bool remove(const char* name);
+    
+    //! remove an object from the frame
+    //! @name the name of the object to remove
+    //! @return true if an object was removed, or false if it was not found
+    virtual bool remove(const char* name) override;
 
 	//! remove an entry from the frame list
 	//! @param name the name of the object to remove
@@ -309,6 +312,9 @@ public:
 	//! puts this frame on top of all others
 	void bringToTop();
 
+	//! scroll the parent frame (if any) to be within our bounds
+	virtual void scrollParent();
+
 	virtual type_t					getType() const override { return WIDGET_FRAME; }
 	const char*						getFont() const { return font.c_str(); }
 	const int						getBorder() const { return border; }
@@ -335,6 +341,15 @@ public:
 	const bool						isClickable() const { return clickable; }
 	const bool                      isDontTickChildren() const { return dontTickChildren; }
 	int                             getEntrySize() const { return entrySize; }
+	Frame*							findParentToBlitTo();
+	SDL_Surface*					getBlitSurface() const { return blitSurface; }
+	TempTexture*					getBlitTexture() const { return blitTexture; }
+	void							setBlitChildren(bool _doBlit);
+	void							setBlitDirty(bool _bBlitDity) { bBlitDirty = _bBlitDity; }
+	void							setBlitToParent(bool _bBlitParent) { bBlitToParent = _bBlitParent; }
+	const bool						bIsDirtyBlit() const { return bBlitDirty; }
+	const bool						isBlitToParent() const { return bBlitToParent; }
+	const Uint32					getTicks() const { return ticks; }
 
 	void	setFont(const char* _font) { font = _font; }
 	void	setBorder(const int _border) { border = _border; }
@@ -361,6 +376,11 @@ public:
 	void    setEntrySize(int _size) { entrySize = _size; }
 	void    setActivation(entry_t* entry) { activation = entry; }
 	void    setScrollWithLeftControls(const bool b) { scrollWithLeftControls = b; }
+    void    setAccelerationX(const float x) { scrollAccelerationX = x; }
+    void    setAccelerationY(const float y) { scrollAccelerationY = y; }
+	void	setListMenuCancelOverride(const bool b) { bListMenuListCancelOverride = b; }
+	void	setAllowScrollParent(const bool b) { allowScrollParent = b; }
+	void	setScrollParentOffset(const SDL_Rect& offset) { scrollParentOffset = offset; }
 
 	void setActualSize(SDL_Rect _actualSize) {
 		allowScrolling = true;
@@ -415,6 +435,13 @@ private:
 	bool dontTickChildren = false;                      //!< enable to prevent children from running their tick functions
 	int entrySize = 0;                                  //!< the height of every entry in the list (if 0, derived from font instead)
 	bool scrollWithLeftControls = true;                 //!< if true, left stick and left d-pad can scroll the frame if no items can be selected
+	bool bBlitChildrenToTexture = false;				//!< if true, subframes will blit onto blitSurface and draw from this cached surface
+	bool bBlitDirty = false;							//!< if true, re-blit all subframes next draw()
+	bool bBlitToParent = false;							//!< if true, find a frame with findParentToBlitTo() and blit onto it's surface
+	bool bListMenuListCancelOverride = false;			//!< if true, MenuListCancel will activate a widget rather than deactivating the list (i.e back_button)
+	SDL_Rect scrollParentOffset{ 0,0,0,0 };				//!< scrollParent() increase/decrease amount of scrolling for parent
+	bool allowScrollParent = false;						//!< if true, scrolls parent when widget movement called
+
 
 	std::vector<Frame*> frames;
 	std::vector<Button*> buttons;
@@ -424,6 +451,9 @@ private:
 	std::vector<entry_t*> list;
 
 	std::vector<std::string> syncScrollTargets;
+
+	SDL_Surface* blitSurface = nullptr;					//!< cached surface to blit to if bBlitChildrenToTexture
+	TempTexture* blitTexture = nullptr;					//!< cached texture to draw to if bBlitChildrenToTexture
 
 	//! activate the given list entry
 	//! @param entry the entry to activate
@@ -446,10 +476,9 @@ private:
 	//! handle clicks and other events
 	//! @param _size real position of the frame onscreen
 	//! @param _actualSize offset into the frame space (scroll)
-	//! @param selectedWidgets the currently selected widgets, if any
 	//! @param usable true if another object doesn't have the mouse's attention, false otherwise
 	//! @return compiled results of frame processing
-	result_t process(SDL_Rect _size, SDL_Rect actualSize, const std::vector<Widget*>& selectedWidgets, const bool usable);
+	result_t process(SDL_Rect _size, SDL_Rect actualSize, const bool usable);
 
 	bool capturesMouseImpl(SDL_Rect& _size, SDL_Rect& _actualSize, bool realtime) const;
 
@@ -462,4 +491,11 @@ private:
 
 // root frame object
 extern Frame* gui;
+extern bool drawingGui;
 void createTestUI();
+extern float uiScale;
+
+#ifndef EDITOR
+#include "../interface/consolecommand.hpp"
+extern ConsoleVariable<bool> ui_filter;
+#endif

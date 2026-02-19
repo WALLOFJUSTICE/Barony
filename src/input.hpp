@@ -53,7 +53,7 @@ public:
 		bindtype_t type = INVALID;
 
 		//! keyboard binding info
-		SDL_Scancode scancode = SDL_Scancode::SDL_SCANCODE_UNKNOWN;
+		SDL_Keycode keycode = SDLK_UNKNOWN;
 
 		//! gamepad binding info
 		int padIndex = -1;
@@ -164,10 +164,22 @@ public:
 
 	//! return the binding_t struct for the input name
 	binding_t input(const char* binding) const;
-
-    static const char* getKeyboardGlyph();
-    static const char* getControllerGlyph();
-	static std::string getGlyphPathForInput(const char* input, bool pressed = false);
+    
+    enum class ControllerType {
+        PlayStation,
+        NintendoSwitch,
+        Xbox,
+        SteamDeck,
+    };
+    
+    static ControllerType getControllerType(int index);
+    static const char* getKeyboardGlyph(int index);
+    static const char* getControllerGlyph(int index);
+    ControllerType getControllerType() const;
+    const char* getKeyboardGlyph() const;
+    const char* getControllerGlyph() const;
+    
+	static std::string getGlyphPathForInput(const char* input, bool pressed = false, ControllerType type = ControllerType::Xbox);
 	static std::string getGlyphPathForBinding(const binding_t& binding, bool pressed = false);
 	std::string getGlyphPathForBinding(const char* binding, bool pressed = false) const;
 
@@ -179,7 +191,7 @@ public:
 	static int waitingToBindControllerForPlayer;
 	static std::unordered_map<int, SDL_GameController*> gameControllers;
 	static std::unordered_map<int, SDL_Joystick*> joysticks;
-	static bool keys[SDL_NUM_SCANCODES];
+    static std::unordered_map<SDL_Keycode, bool> keys;
 	static bool mouseButtons[18];
 	static const int MOUSE_WHEEL_UP;
 	static const int MOUSE_WHEEL_DOWN;
@@ -189,6 +201,13 @@ public:
 
 	//! consume bindings that all use the same input as given binding
 	void consumeBindingsSharedWithBinding(const char* binding);
+
+	//! return true if binding conflicts with system binding (i.e left/right click, scroll wheel)
+	bool bindingIsSharedWithKeyboardSystemBinding(const char* binding);
+ 
+    //! get list of bindings for given input
+    std::vector<std::string> getBindingsForInput(const char* input) const;
+    
 private:
 	std::unordered_map<std::string, binding_t> bindings;
 
@@ -225,8 +244,8 @@ private:
 	static const float analogToggleThreshold;
 
 	//! map of scancodes to input names
-	static std::unordered_map<std::string, SDL_Scancode> scancodeNames;
-	static SDL_Scancode getScancodeFromName(const char* name);
+	static std::unordered_map<std::string, SDL_Keycode> keycodeNames;
+	static SDL_Keycode getKeycodeFromName(const char* name);
 
 	//! number of game ticks to consider a button 'held' for long-press actions
 	static const Uint32 BUTTON_HELD_TICKS;

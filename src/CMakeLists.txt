@@ -64,6 +64,9 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_sentrybot.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_shadow.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/monster_vampire.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_mimic.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_bugbear.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_bat.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/shops.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mechanisms.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/actgate.cpp"
@@ -102,6 +105,14 @@ list(APPEND GAME_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/mod_tools.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/lobbies.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/shader.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/playfab.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_d.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_m.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_s.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_g.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_summons.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_moth.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/monster_duck.cpp"
 )
 
 list(APPEND EDITOR_SOURCES
@@ -125,7 +136,6 @@ list(APPEND EDITOR_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/items_editor.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/steam_shared.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/json.cpp"
-	#"${CMAKE_CURRENT_SOURCE_DIR}/eos.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/eos_editor.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mod_tools.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/prng.cpp"
