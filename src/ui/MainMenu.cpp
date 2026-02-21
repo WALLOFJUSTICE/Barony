@@ -59,6 +59,7 @@ namespace MainMenu {
     constexpr int MAX_FPS = 300;
     constexpr int AUTO_FPS = MAX_FPS + 1;
 	constexpr int MAX_LOBBY_FILTERS_SAVED = 32;
+	constexpr int MOUSE_EVENT_LIMIT_AUTO = 1000;
 
 	// ALL NEW menu options:
 	std::string current_audio_device;
@@ -144,6 +145,7 @@ namespace MainMenu {
 #endif
                 {"Interact Tooltip Prev", emptyBinding, emptyBinding, emptyBinding },
                 {"Expand Inventory Tooltip", "X", hiddenBinding, emptyBinding },
+				{"Alternate Use Modifier", "Left Alt", hiddenBinding, emptyBinding },
                 {"Quick Turn", emptyBinding, "ButtonRightBumper", emptyBinding },
                 {"Chat", "Return", hiddenBinding, emptyBinding},
 #ifndef NINTENDO
@@ -212,6 +214,7 @@ namespace MainMenu {
 #endif
                 {"Interact Tooltip Prev", emptyBinding, emptyBinding, emptyBinding },
                 {"Expand Inventory Tooltip", "X", hiddenBinding, emptyBinding },
+				{"Alternate Use Modifier", "Left Alt", hiddenBinding, emptyBinding },
                 {"Quick Turn", emptyBinding, "ButtonLeftStick", emptyBinding },
                 {"Chat", "Return", hiddenBinding, emptyBinding},
 #ifndef NINTENDO
@@ -272,6 +275,7 @@ namespace MainMenu {
                 {"Interact Tooltip Next", "R", "ButtonB", emptyBinding },
                 {"Interact Tooltip Prev", emptyBinding, emptyBinding, emptyBinding },
                 {"Expand Inventory Tooltip", "X", hiddenBinding, emptyBinding },
+				{"Alternate Use Modifier", "Left Alt", hiddenBinding, emptyBinding },
                 {"Quick Turn", emptyBinding, "ButtonRightBumper", emptyBinding },
                 {"Chat", "Return", hiddenBinding, emptyBinding},
 #ifndef NINTENDO
@@ -336,6 +340,7 @@ namespace MainMenu {
                 {"Interact Tooltip Next", "R", "ButtonB", emptyBinding },
                 {"Interact Tooltip Prev", emptyBinding, emptyBinding, emptyBinding },
                 {"Expand Inventory Tooltip", "X", hiddenBinding, emptyBinding },
+				{"Alternate Use Modifier", "Left Alt", hiddenBinding, emptyBinding },
                 {"Quick Turn", emptyBinding, emptyBinding, emptyBinding },
                 {"Chat", "Return", hiddenBinding, emptyBinding},
 #ifndef NINTENDO
@@ -572,6 +577,9 @@ namespace MainMenu {
 		float gamepad_deadzone_right = 25.f;
 		float quick_turn_speed_control = 1.f;
 		float quick_turn_speed_mkb_control = 1.f;
+		int mouse_event_limit_mkb_control = 1000;
+		bool spell_quickcast_mkb_enabled = false;
+		bool spell_quickcast_controller_enabled = false;
         inline void save(int index);
         static inline Controls load(int index);
         static inline Controls reset();
@@ -2814,6 +2822,9 @@ namespace MainMenu {
 		settings.rightStickDeadzone = (32000.f / 100.f) * std::min(50.f, std::max(5.f, gamepad_deadzone_right));
 		settings.quick_turn_speed = std::max(1.f, std::min(5.f, quick_turn_speed_control));
 		settings.quick_turn_speed_mkb = std::max(1.f, std::min(5.f, quick_turn_speed_mkb_control));
+		settings.mouse_event_limit_mkb = std::max(10, std::min(MOUSE_EVENT_LIMIT_AUTO, mouse_event_limit_mkb_control));
+		settings.spell_quickcast_mkb = spell_quickcast_mkb_enabled;
+		settings.spell_quickcast_controller = spell_quickcast_controller_enabled;
     }
 
     inline Controls Controls::load(int index) {
@@ -2835,6 +2846,9 @@ namespace MainMenu {
 		controls.gamepad_deadzone_right = 100.f * settings.rightStickDeadzone / 32000.f;
 		controls.quick_turn_speed_control = settings.quick_turn_speed;
 		controls.quick_turn_speed_mkb_control = settings.quick_turn_speed_mkb;
+		controls.mouse_event_limit_mkb_control = settings.mouse_event_limit_mkb;
+		controls.spell_quickcast_mkb_enabled = settings.spell_quickcast_mkb;
+		controls.spell_quickcast_controller_enabled = settings.spell_quickcast_controller;
         return controls;
     }
 
@@ -2843,7 +2857,7 @@ namespace MainMenu {
     }
 
     bool Controls::serialize(FileInterface* file) {
-        int version = 3;
+        int version = 5;
         file->property("version", version);
         file->property("mkb_world_tooltips_enabled", mkb_world_tooltips_enabled);
         file->property("gamepad_facehotbar", gamepad_facehotbar);
@@ -2860,6 +2874,9 @@ namespace MainMenu {
 		file->propertyVersion("gamepad_deadzone_right", version >= 2, gamepad_deadzone_right);
 		file->property("quick_turn_speed_control", quick_turn_speed_control);
 		file->property("quick_turn_speed_mkb_control", quick_turn_speed_mkb_control);
+		file->propertyVersion("spell_quickcast_mkb_enabled", version >= 4, spell_quickcast_mkb_enabled);
+		file->propertyVersion("spell_quickcast_controller_enabled", version >= 4, spell_quickcast_controller_enabled);
+		file->propertyVersion("mouse_event_limit_mkb_control", version >= 5, mouse_event_limit_mkb_control);
         return true;
     }
 
@@ -3117,7 +3134,7 @@ namespace MainMenu {
 	}
 
 	bool AllSettings::serialize(FileInterface* file) {
-	    int version = 23;
+	    int version = 25;
 	    file->property("version", version);
 	    file->property("mods", mods);
 		file->property("crossplay_enabled", crossplay_enabled);
@@ -3237,6 +3254,13 @@ namespace MainMenu {
             }
 			file->propertyVersion("quick_turn_speed_control", version >= 21, controls.quick_turn_speed_control);
 			file->propertyVersion("quick_turn_speed_mkb_control", version >= 21, controls.quick_turn_speed_mkb_control);
+			file->propertyVersion("spell_quickcast_mkb_enabled", version >= 24, controls.spell_quickcast_mkb_enabled);
+			file->propertyVersion("spell_quickcast_controller_enabled", version >= 24, controls.spell_quickcast_controller_enabled);
+			if ( version <= 24 )
+			{
+				controls.mouse_event_limit_mkb_control = MOUSE_EVENT_LIMIT_AUTO;
+			}
+			file->propertyVersion("mouse_event_limit_mkb_control", version >= 25, controls.mouse_event_limit_mkb_control);
             for (int c = 0; c < MAX_SPLITSCREEN; ++c) {
                 this->controls[c] = controls;
             }
@@ -4826,6 +4850,10 @@ namespace MainMenu {
 		{
 			return Language::get(6451);
 		}
+		else if ( !strcmp(binding, "Alternate Use Modifier") )
+		{
+			return Language::get(6993);
+		}
 
         for (auto& b : defaultBindings[0].bindings) {
             if (b.action == binding) {
@@ -4840,6 +4868,10 @@ namespace MainMenu {
 				continue; // don't increment c, not in the linear language entries
 			}
 			else if ( b.action == "Voice Chat" )
+			{
+				continue; // don't increment c, not in the linear language entries
+			}
+			else if ( b.action == "Alternate Use Modifier" )
 			{
 				continue; // don't increment c, not in the linear language entries
 			}
@@ -5206,7 +5238,7 @@ namespace MainMenu {
 			"*images/ui/Main Menus/Settings/Settings_Value_Backing00.png",
 			(fullname + "_box").c_str()
 		);
-		auto field = frame.addField((fullname + "_text").c_str(), 8);
+		auto field = frame.addField((fullname + "_text").c_str(), 16);
 		field->setSize(box->pos);
 		field->setJustify(Field::justify_t::CENTER);
 		field->setFont(smallfont_outline);
@@ -5220,7 +5252,7 @@ namespace MainMenu {
             if (fmt) {
                 field->setText(fmt(slider->getValue()));
             } else {
-                char buf[8];
+                char buf[16];
                 snprintf(buf, sizeof(buf), "%d", (int)slider->getValue());
                 field->setText(buf);
             }
@@ -7345,6 +7377,21 @@ bind_failed:
             y += settingsAddSlider(*settings_subwindow, y, "mouse_sensitivity", Language::get(5218), Language::get(5219),
                 allSettings.controls[bound_player].mouse_sensitivity, 0, 100, nullptr, [](Slider& slider)
                 {soundSliderSetting(slider, true); allSettings.controls[bound_player].mouse_sensitivity = slider.getValue();});
+
+			auto sliderMouseEventLimit = [](float v) -> const char* {
+				if ( (int)v == MOUSE_EVENT_LIMIT_AUTO ) {
+					return Language::get(6998);
+				}
+				else {
+					static char buf[16];
+					snprintf(buf, sizeof(buf), "%d", (int)v);
+					return buf;
+				}
+			};
+			y += settingsAddSlider(*settings_subwindow, y, "mouse_event_limit_mkb_control", Language::get(6996), Language::get(6997),
+				allSettings.controls[bound_player].mouse_event_limit_mkb_control, 10, MOUSE_EVENT_LIMIT_AUTO, sliderMouseEventLimit, [](Slider& slider)
+				{soundSliderSetting(slider, true); allSettings.controls[bound_player].mouse_event_limit_mkb_control = slider.getValue(); });
+
             y += settingsAddBooleanOption(*settings_subwindow, y, "reverse_mouse", Language::get(5222), Language::get(5223),
                 allSettings.controls[bound_player].reverse_mouse_enabled, [](Button& button)
                 {soundToggleSetting(button); allSettings.controls[bound_player].reverse_mouse_enabled = button.isPressed();});
@@ -7354,6 +7401,11 @@ bind_failed:
             y += settingsAddBooleanOption(*settings_subwindow, y, "mkb_world_tooltips", Language::get(5226), Language::get(5227),
                 allSettings.controls[bound_player].mkb_world_tooltips_enabled, [](Button& button)
                 {soundToggleSetting(button); allSettings.controls[bound_player].mkb_world_tooltips_enabled = button.isPressed();});
+
+			y += settingsAddBooleanOption(*settings_subwindow, y, "spell_quickcast_mkb_enabled", Language::get(6994), Language::get(6995),
+				allSettings.controls[bound_player].spell_quickcast_mkb_enabled, [](Button& button)
+				{soundToggleSetting(button); allSettings.controls[bound_player].spell_quickcast_mkb_enabled = button.isPressed(); });
+
             y += settingsAddBooleanOption(*settings_subwindow, y, "numkeys_in_inventory", Language::get(5220), Language::get(5221),
                 allSettings.controls[bound_player].numkeys_in_inventory_enabled, [](Button& button)
                 {soundToggleSetting(button); allSettings.controls[bound_player].numkeys_in_inventory_enabled = button.isPressed();});
@@ -7367,9 +7419,11 @@ bind_failed:
             hookSettings(*settings_subwindow,
                 {{Setting::Type::Customize, "bindings"},
                 {Setting::Type::Slider, "mouse_sensitivity"},
+				{Setting::Type::Slider, "mouse_event_limit_mkb_control"},
                 {Setting::Type::Boolean, "reverse_mouse"},
                 {Setting::Type::Boolean, "smooth_mouse"},
                 {Setting::Type::Boolean, "mkb_world_tooltips"},
+				{Setting::Type::Boolean, "spell_quickcast_mkb_enabled"},
                 {Setting::Type::Boolean, "numkeys_in_inventory"},
 				{Setting::Type::Boolean, "numkeys_change_slot"},
 				{Setting::Type::Slider, "quick_turn_speed_mkb_control"},
@@ -7403,6 +7457,10 @@ bind_failed:
                 allSettings.controls[bound_player].gamepad_camera_invert_y, [](Button& button)
                 {soundToggleSetting(button); allSettings.controls[bound_player].gamepad_camera_invert_y = button.isPressed();});
 
+			y += settingsAddBooleanOption(*settings_subwindow, y, "spell_quickcast_controller_enabled", Language::get(6994), Language::get(6995),
+				allSettings.controls[bound_player].spell_quickcast_controller_enabled, [](Button& button)
+				{soundToggleSetting(button); allSettings.controls[bound_player].spell_quickcast_controller_enabled = button.isPressed(); });
+
 			y += settingsAddSlider(*settings_subwindow, y, "quick_turn_speed_control", Language::get(6310), Language::get(6311),
 				allSettings.controls[bound_player].quick_turn_speed_control, 1.f, 5.f, sliderFloorInt, [](Slider& slider)
 				{soundSliderSetting(slider, true); allSettings.controls[bound_player].quick_turn_speed_control = slider.getValue(); });
@@ -7416,6 +7474,7 @@ bind_failed:
 				{Setting::Type::Slider, "gamepad_deadzone_right"},
                 {Setting::Type::Boolean, "gamepad_camera_invert_x"},
                 {Setting::Type::Boolean, "gamepad_camera_invert_y"},
+				{Setting::Type::Boolean, "spell_quickcast_controller_enabled"},
 				{Setting::Type::Slider, "quick_turn_speed_control"},
             });
         }
@@ -13838,19 +13897,19 @@ failed:
 			achName = Compendium_t::achievements["BARONY_ACH_BUGGAR_BARON"].name;
 			break;
 		case CLASS_BARD:
-			achName = Compendium_t::achievements["BARONY_ACH_XXX"].name;
+			achName = Compendium_t::achievements["BARONY_ACH_BITTY_BARON"].name;
 			break;
 		case CLASS_SAPPER:
-			achName = Compendium_t::achievements["BARONY_ACH_XXX"].name;
+			achName = Compendium_t::achievements["BARONY_ACH_BONKERS_BARON"].name;
 			break;
 		case CLASS_SCION:
-			achName = Compendium_t::achievements["BARONY_ACH_XXX"].name;
+			achName = Compendium_t::achievements["BARONY_ACH_BARKSKIN_BARON"].name;
 			break;
 		case CLASS_HERMIT:
-			achName = Compendium_t::achievements["BARONY_ACH_XXX"].name;
+			achName = Compendium_t::achievements["BARONY_ACH_BOLETE_BARON"].name;
 			break;
 		case CLASS_PALADIN:
-			achName = Compendium_t::achievements["BARONY_ACH_XXX"].name;
+			achName = Compendium_t::achievements["BARONY_ACH_BURNINATION_BARON"].name;
 			break;
 		default:
 			break;
@@ -36522,7 +36581,40 @@ failed:
 						char buf[128];
 						if ( items[id].level >= 0 )
 						{
-							snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), items[id].level);
+							if ( items[id].category == SPELLBOOK )
+							{
+								snprintf(buf, sizeof(buf), "\n%s ???", Language::get(6173));
+								int spellID = getSpellIDFromSpellbook(id);
+								if ( spellID > SPELL_NONE )
+								{
+									if ( auto spell = getSpellFromID(spellID) )
+									{
+										if ( spell->drop_table >= 0 )
+										{
+											if ( spell->difficulty <= 20 )
+											{
+												snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), 1);
+											}
+											else if ( spell->difficulty <= 40 )
+											{
+												snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), 6);
+											}
+											else if ( spell->difficulty <= 60 )
+											{
+												snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), 11);
+											}
+											else if ( spell->difficulty >= 80 )
+											{
+												snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), 16);
+											}
+										}
+									}
+								}
+							}
+							else
+							{
+								snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), items[id].level);
+							}
 						}
 						else
 						{
@@ -38828,11 +38920,11 @@ failed:
 				{
 					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_00.png",
 					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_DLCCompleted_00.png",
-					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_Legends_Badge_00.png",
+					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_Deserters_Badge_00.png",
 					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_Badge_00.png",
-					"*#images/ui/Main Menus/AdventureArchives/A_Icon_Legends_Colored_00.png",
-					"*#images/ui/Main Menus/AdventureArchives/A_Icon_Legends_Gold_00.png",
-					"*#images/ui/Main Menus/AdventureArchives/A_Icon_Legends_Grey_00.png"
+					"*#images/ui/Main Menus/AdventureArchives/A_Icon_Deserters_Colored_00.png",
+					"*#images/ui/Main Menus/AdventureArchives/A_Icon_Deserters_Gold_00.png",
+					"*#images/ui/Main Menus/AdventureArchives/A_Icon_Deserters_Grey_00.png"
 				}
 			},
 			{
@@ -38849,6 +38941,18 @@ failed:
 			},
 			{
 				Compendium_t::AchievementData_t::AchievementDLCType::ACH_TYPE_DLC1_DLC2,
+				{
+					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_00.png",
+					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_DLCCompleted_00.png",
+					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_Badge_00.png",
+					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_Badge_00.png",
+					"",
+					"",
+					""
+				}
+			},
+			{
+				Compendium_t::AchievementData_t::AchievementDLCType::ACH_TYPE_DLC1_DLC2_DLC3,
 				{
 					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_00.png",
 					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_DLCCompleted_00.png",
@@ -39090,6 +39194,11 @@ failed:
 				{
 					dlc_badge_2->disabled = true;
 				}
+				auto dlc_badge_3 = ach->findImage("dlc_badge_3");
+				if ( dlc_badge_3 )
+				{
+					dlc_badge_3->disabled = true;
+				}
 				auto dlc_badge_icon_1 = ach->findImage("dlc_badge_icon_1");
 				if ( dlc_badge_icon_1 )
 				{
@@ -39100,6 +39209,11 @@ failed:
 				{
 					dlc_badge_icon_2->disabled = true;
 				}
+				auto dlc_badge_icon_3 = ach->findImage("dlc_badge_icon_3");
+				if ( dlc_badge_icon_3 )
+				{
+					dlc_badge_icon_3->disabled = true;
+				}
 				if ( auto dlc_badge = ach->findImage("dlc_badge") )
 				{
 					dlc_badge->disabled = true;
@@ -39107,7 +39221,34 @@ failed:
 					{
 						if ( !hiddenGroup )
 						{
-							if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2 )
+							if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2_DLC3 )
+							{
+								if ( achData.unlocked )
+								{
+									dlc_badge_3->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC1)[2];
+									dlc_badge_2->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC3)[2];
+									dlc_badge_1->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC2)[2];
+								}
+								else
+								{
+									dlc_badge_3->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC1)[3];
+									dlc_badge_2->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC3)[3];
+									dlc_badge_1->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC2)[3];
+								}
+								if ( dlc_badge_1->path != "" )
+								{
+									dlc_badge_1->disabled = false;
+								}
+								if ( dlc_badge_2->path != "" )
+								{
+									dlc_badge_2->disabled = false;
+								}
+								if ( dlc_badge_3->path != "" )
+								{
+									dlc_badge_3->disabled = false;
+								}
+							}
+							else if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2 )
 							{
 								if ( achData.unlocked )
 								{
@@ -39153,7 +39294,34 @@ failed:
 					{
 						if ( !hiddenGroup )
 						{
-							if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2 )
+							if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2_DLC3 )
+							{
+								if ( achData.unlocked )
+								{
+									dlc_badge_icon_3->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC1)[4];
+									dlc_badge_icon_2->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC3)[4];
+									dlc_badge_icon_1->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC2)[4];
+								}
+								else
+								{
+									dlc_badge_icon_3->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC1)[6];
+									dlc_badge_icon_2->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC3)[6];
+									dlc_badge_icon_1->path = backingImgs.at(Compendium_t::AchievementData_t::ACH_TYPE_DLC2)[6];
+								}
+								if ( dlc_badge_icon_1->path != "" )
+								{
+									dlc_badge_icon_1->disabled = false;
+								}
+								if ( dlc_badge_icon_2->path != "" )
+								{
+									dlc_badge_icon_2->disabled = false;
+								}
+								if ( dlc_badge_icon_3->path != "" )
+								{
+									dlc_badge_icon_3->disabled = false;
+								}
+							}
+							else if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2 )
 							{
 								if ( achData.unlocked )
 								{
@@ -39478,6 +39646,14 @@ failed:
 			dlc_badge_icon->disabled = true;
 
 			{
+				auto dlc_badge_stack_3 = ach->addImage(SDL_Rect{ bg->pos.x - 16, bg->pos.y - 4, 38, 38 }, 0xFFFFFFFF,
+					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_Badge_00.png", "dlc_badge_3");
+				dlc_badge_stack_3->disabled = true;
+
+				auto dlc_badge_icon_3 = ach->addImage(SDL_Rect{ dlc_badge_stack_3->pos.x + 2, dlc_badge_stack_3->pos.y + 2, 34, 34 }, 0xFFFFFFFF,
+					"", "dlc_badge_icon_3");
+				dlc_badge_icon_3->disabled = true;
+
 				auto dlc_badge_stack_1 = ach->addImage(SDL_Rect{ bg->pos.x + 4, bg->pos.y - 4, 38, 38 }, 0xFFFFFFFF,
 					"*#images/ui/Main Menus/AdventureArchives/A_AchBox_Locked_Badge_00.png", "dlc_badge_1");
 				dlc_badge_stack_1->disabled = true;

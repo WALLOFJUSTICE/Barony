@@ -1094,8 +1094,18 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 		}
 		if ( projectile->actmagicSpray > 0 )
 		{
-			if ( spellID == SPELL_BREATHE_FIRE )
+			if ( spellID == SPELL_BREATHE_FIRE
+				|| spellID == SPELL_GREASE_SPRAY )
 			{
+				eventType |= spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE;
+			}
+			else if ( spellID == SPELL_FOCI_ARCS
+				|| spellID == SPELL_FOCI_NEEDLES
+				|| spellID == SPELL_FOCI_FIRE
+				|| spellID == SPELL_FOCI_SNOW
+				|| spellID == SPELL_FOCI_SANDBLAST )
+			{
+				magicstaff = true;
 			}
 			else
 			{
@@ -1118,6 +1128,9 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 		return false;
 	}
 	auto& spellDef = findSpellDef->second;
+	int& procsToLevel = players[player]->mechanics.baseSpellLevelUpProcs[spell->ID];
+	int highSkillProcsToLevel = std::max(0, stats[player]->getProficiency(spell->skillID) - spell->difficulty) / 5;
+
 	bool skillTooHigh = false;
 	if ( allowedLevelup )
 	{
@@ -1146,7 +1159,10 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 				{
 					if ( parent->isInvisible() )
 					{
-						players[player]->mechanics.updateSustainedSpellEvent(SPELL_INVISIBILITY, 10.0, 1.0, hitentity);
+						if ( spellID != SPELL_INVISIBILITY )
+						{
+							players[player]->mechanics.updateSustainedSpellEvent(SPELL_INVISIBILITY, 10.0, 1.0, hitentity);
+						}
 					}
 					if ( projectile && projectile->behavior == &actMagicMissile && projectile->actmagicOrbitCastFromSpell == 1 )
 					{
@@ -1161,32 +1177,28 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 
 		if ( magicstaff )
 		{
-			if ( stats[player]->getProficiency(spell->skillID) >= SKILL_LEVEL_BASIC )
+			if ( stats[player]->getProficiency(spell->skillID) >= std::min(SKILL_LEVEL_LEGENDARY, (spell->difficulty + 20)) )
 			{
-				if ( stats[player]->getProficiency(spell->skillID) >= std::min(SKILL_LEVEL_LEGENDARY, (spell->difficulty + 20)) )
+				//allowedLevelup = false;
+				skillTooHigh = true;
+			}
+			else
+			{
+				/*if ( procsToLevel < 2 + (spell->difficulty / 30) )
 				{
 					allowedLevelup = false;
-					skillTooHigh = true;
-				}
-				else
-				{
-					int& procsToLevel = players[player]->mechanics.baseSpellLevelUpProcs[spell->ID];
-					if ( procsToLevel < 2 + (spell->difficulty / 30) )
+					if ( local_rng.rand() % 4 == 0 )
 					{
-						allowedLevelup = false;
-						if ( local_rng.rand() % 4 == 0 )
-						{
-							++procsToLevel;
-						}
+						++procsToLevel;
 					}
-				}
+				}*/
 			}
 		}
 		else
 		{
 			if ( stats[player]->getProficiency(spell->skillID) >= std::min(SKILL_LEVEL_LEGENDARY, (spell->difficulty + 20)) )
 			{
-				allowedLevelup = false;
+				//allowedLevelup = false;
 				skillTooHigh = true;
 			}
 		}
@@ -1219,12 +1231,22 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 	{
 		if ( magicstaff )
 		{
-			if ( (local_rng.rand() % ((eventType & spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE) ? 12 : 8)) == 0 ) //16.67%
+			real_t percentChance = 100.0 / (real_t)((eventType & spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE) ? 12 : 8);
+			if ( players[player]->mechanics.rollRngProc(Player::PlayerMechanics_t::RngRollTypes::RNG_ROLL_SPELL_LEVELS, 
+				std::max(1, std::min(100, (int)percentChance)), spellID) ) //16.67%
 			{
 				if ( allowedLevelup )
 				{
-					parent->increaseSkill(spell->skillID);
-					skillIncreased = true;
+					if ( (procsToLevel < ((skillTooHigh ? highSkillProcsToLevel : 0) + 2 + (spell->difficulty / 30))) )
+					{
+						++procsToLevel;
+					}
+					else
+					{
+						parent->increaseSkill(spell->skillID);
+						skillIncreased = true;
+						procsToLevel = 0;
+					}
 				}
 				else
 				{
@@ -1251,14 +1273,25 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 				}
 				chance = std::max(2, chance - baseSpellChance);
 
-				if ( sustainedChance && (local_rng.rand() % chance == 0) )
+				real_t percentChance = 100.0 / chance;
+				if ( sustainedChance 
+					&& players[player]->mechanics.rollRngProc(Player::PlayerMechanics_t::RngRollTypes::RNG_ROLL_SPELL_LEVELS, 
+						std::max(1, std::min(100, (int)percentChance)), spellID) )
 				{
 					if ( allowedLevelup )
 					{
-						players[player]->mechanics.sustainedSpellClearMP(spell->skillID);
-						players[player]->mechanics.baseSpellClearMP(spell->skillID);
-						parent->increaseSkill(spell->skillID);
-						skillIncreased = true;
+						if ( skillTooHigh && (procsToLevel < highSkillProcsToLevel) )
+						{
+							++procsToLevel;
+						}
+						else
+						{
+							players[player]->mechanics.sustainedSpellClearMP(spell->skillID);
+							players[player]->mechanics.baseSpellClearMP(spell->skillID);
+							parent->increaseSkill(spell->skillID);
+							skillIncreased = true;
+							procsToLevel = 0;
+						}
 					}
 					else
 					{
@@ -1279,27 +1312,29 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 					chance = 1;
 				}
 
-				if ( local_rng.rand() % chance == 0 )
+				real_t percentChance = 100.0 / chance;
+				if ( players[player]->mechanics.rollRngProc(Player::PlayerMechanics_t::RngRollTypes::RNG_ROLL_SPELL_LEVELS, 
+					std::max(1, std::min(100, (int)percentChance)), spellID) )
 				{
 					if ( allowedLevelup )
 					{
-						int& procsToLevel = players[player]->mechanics.baseSpellLevelUpProcs[spell->ID];
 						int mpSpent = players[player]->mechanics.baseSpellMPSpent(spell->skillID);
 						int threshold = 5 + 5 * (stats[player]->getProficiency(spell->skillID) / 20);
-						if ( (/*procsToLevel == 0 &&*/ mpSpent >= threshold) || (eventType & spell_t::SPELL_LEVEL_EVENT_ALWAYS) )
+
+						if ( skillTooHigh && (procsToLevel < highSkillProcsToLevel) )
+						{
+							++procsToLevel;
+							players[player]->mechanics.baseSpellIncrementMP(5 + (spell->difficulty / 20), spell->skillID);
+						}
+						else if ( (mpSpent >= threshold) || (eventType & spell_t::SPELL_LEVEL_EVENT_ALWAYS) )
 						{
 							players[player]->mechanics.baseSpellClearMP(spell->skillID);
 							parent->increaseSkill(spell->skillID);
 							skillIncreased = true;
-							//++procsToLevel;
+							procsToLevel = 0;
 						}
 						else
 						{
-							/*++procsToLevel;
-							if ( procsToLevel >= (2 - (spell->difficulty / 20)) )
-							{
-								procsToLevel = 0;
-							}*/
 							players[player]->mechanics.baseSpellIncrementMP(5 + (spell->difficulty / 20), spell->skillID);
 						}
 					}
@@ -1352,6 +1387,14 @@ void magicOnEntityHit(Entity* parent, Entity* particle, Entity* hitentity, Stat*
 				hitentity->defyFleshProc(parent);
 			}
 			hitentity->pinpointDamageProc(parent, damageTaken);
+			if ( hitstats->getEffectActive(EFF_SPORES) )
+			{
+				if ( hitentity->behavior == &actPlayer 
+					&& hitstats->type == MYCONID && hitstats->getEffectActive(EFF_GROWTH) >= 4 )
+				{
+					floorMagicCreateSpores(hitentity, hitentity->x, hitentity->y, hitentity, 0, SPELL_SPORES);
+				}
+			}
 		}
 	}
 
@@ -1588,6 +1631,11 @@ void magicOnEntityHit(Entity* parent, Entity* particle, Entity* hitentity, Stat*
 				if ( damageTaken > 0 )
 				{
 					Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_SPELL_DMG, (ItemType)find->second.fociId, damageTaken);
+					magicOnSpellCastEvent(parent, particle, hitentity, spellID, 
+						additionalFlags 
+						| spell_t::SPELL_LEVEL_EVENT_DMG 
+						| spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE
+						| spell_t::SPELL_LEVEL_EVENT_MAGICSTAFF, 1);
 				}
 			}
 		}
@@ -2278,6 +2326,18 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							}
 
 							magicOnSpellCastEvent(hit.entity, hit.entity, parent, SPELL_MAGICIANS_ARMOR, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+							if ( hit.entity->behavior == &actPlayer )
+							{
+								steamStatisticUpdateClient(hit.entity->skill[2], STEAM_STAT_DOESNT_COUNT, STEAM_STAT_INT, 1);
+								if ( parent && parent->behavior == &actMonster )
+								{
+									int type = parent->getMonsterTypeFromSprite();
+									if ( type == LICH || type == LICH_FIRE || type == LICH_ICE )
+									{
+										serverUpdatePlayerGameplayStats(hit.entity->skill[2], STATISTICS_THATS_CHEATING, 1);
+									}
+								}
+							}
 
 							if ( (parent && parent->behavior == &actPlayer) || (parent && parent->behavior == &actMonster && parent->monsterAllyGetPlayerLeader())
 								|| hit.entity->behavior == &actPlayer || hit.entity->monsterAllyGetPlayerLeader() )
@@ -2724,7 +2784,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 
 					if ( spellIsReflectingMagic )
 					{
-						int spellCost = getCostOfSpell(spell);
+						int spellCost = getCostOfSpell(spell) + 5 + local_rng.rand() % 6;
 						bool unsustain = false;
 						if ( spellCost >= hit.entity->getMP() ) //Unsustain the spell if expended all mana.
 						{
@@ -3254,7 +3314,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 									if ( !hitstats->helmet && hitstats->getEffectActive(EFF_GROWTH) > 1 )
 									{
 										int bonus = std::min(3, hitstats->getEffectActive(EFF_GROWTH) - 1);
-										fireMultiplier += 0.05;
+										fireMultiplier += 0.05 * bonus;
 									}
 								}
 								if ( hitstats->type == SALAMANDER )
@@ -3416,7 +3476,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 
 							if (parent)
 							{
-								parent->killedByMonsterObituary(hit.entity);
+								parent->killedByMonsterObituary(hit.entity, true);
 							}
 
 
@@ -3870,7 +3930,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 								// write the obituary
 								if ( parent )
 								{
-									parent->killedByMonsterObituary(hit.entity);
+									parent->killedByMonsterObituary(hit.entity, true);
 								}
 
 								// update enemy bar for attacker
@@ -4063,7 +4123,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 
 						// Attempt to set the Entity on fire
 						int prevBurningCounter = hit.entity->flags[BURNING] ? hit.entity->char_fire : 0;
-						hit.entity->SetEntityOnFire((parent&& parent->getStats()) ? parent : nullptr);
+						hit.entity->SetEntityOnFire((parent && parent->getStats()) ? parent : nullptr);
 						if ( hit.entity->flags[BURNING] 
 							&& (prevBurningCounter == 0 || (spell->ID == SPELL_FOCI_FIRE || spell->ID == SPELL_BREATHE_FIRE)) )
 						{
@@ -4229,7 +4289,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 								}
 								else
 								{
-									parent->killedByMonsterObituary(hit.entity);
+									parent->killedByMonsterObituary(hit.entity, true);
 								}
 							}
 							if ( hitstats )
@@ -4267,6 +4327,28 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 									{
 										steamAchievementClient(parent->skill[2], "BARONY_ACH_TIME_TO_PLAN");
 									}
+
+									if ( spell->ID == SPELL_BREATHE_FIRE && hitstats )
+									{
+										if ( parent && parent->behavior == &actPlayer )
+										{
+											if ( (hitstats->type == SLIME && hitstats->getAttribute("slime_type") == "slime red")
+												|| hitstats->type == LICH_FIRE
+												|| hitstats->type == DEVIL
+												|| hitstats->type == DEMON
+												|| hitstats->type == CREATURE_IMP )
+											{
+												if ( Stat* parentStats = parent->getStats() )
+												{
+													if ( parentStats->playerRace == RACE_SALAMANDER && parentStats->stat_appearance == 0 )
+													{
+														steamAchievementClient(parent->skill[2], "BARONY_ACH_FIGHT_FIRE_WITH");
+													}
+												}
+											}
+										}
+									}
+
 									parent->awardXP( hit.entity, true, true );
 									spawnBloodVialOnMonsterDeath(hit.entity, hitstats, parent);
 								}
@@ -4536,7 +4618,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							// write the obituary
 							if ( parent )
 							{
-								parent->killedByMonsterObituary(hit.entity);
+								parent->killedByMonsterObituary(hit.entity, true);
 							}
 
 							// update enemy bar for attacker
@@ -4702,6 +4784,8 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 								fx->scalez = 0.0;
 								fx->actmagicSpellbookBonus = my->actmagicSpellbookBonus;
 								fx->actmagicFromSpellbook = my->actmagicFromSpellbook;
+
+								serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_PSYCHIC_SPEAR, 2362, 0, 5 * TICKS_PER_SECOND, fx->yaw * 256.0);
 							}
 						}
 					}
@@ -4822,7 +4906,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 								if ( hitstats && hitstats->getEffectActive(EFF_ASLEEP) )
 								{
 									// check to see if we're reapplying the sleep effect.
-									int preventSleepRoll = (local_rng.rand() % 4) - resistance;
+									int preventSleepRoll = (local_rng.rand() % 1) - resistance;
 									if ( hit.entity->behavior == &actPlayer || (preventSleepRoll <= 0) )
 									{
 										magicTrapReapplySleep = false;
@@ -4975,7 +5059,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							// write the obituary
 							if (parent)
 							{
-								parent->killedByMonsterObituary(hit.entity);
+								parent->killedByMonsterObituary(hit.entity, true);
 							}
 
 							if ( spell->ID == SPELL_LIGHTNING )
@@ -5511,7 +5595,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							// write the obituary
 							if ( parent )
 							{
-								parent->killedByMonsterObituary(hit.entity);
+								parent->killedByMonsterObituary(hit.entity, true);
 							}
 
 							if ( damage > 0 )
@@ -6461,7 +6545,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							// write the obituary
 							if ( parent )
 							{
-								parent->killedByMonsterObituary(hit.entity);
+								parent->killedByMonsterObituary(hit.entity, true);
 							}
 
 							int bleedDuration = element->duration;
@@ -6515,7 +6599,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							// write the obituary
 							if ( parent )
 							{
-								parent->killedByMonsterObituary(hit.entity);
+								parent->killedByMonsterObituary(hit.entity, true);
 							}
 
 							// update enemy bar for attacker
@@ -9065,20 +9149,23 @@ void actParticleAestheticOrbit(Entity* my)
 				{
 					playSoundEntityLocal(my, 821, 92);
 
-					Entity* caster = uidToEntity(my->skill[3]);
-					int damage = getSpellDamageFromID(SPELL_PSYCHIC_SPEAR, caster, caster ? caster->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.0);
-					if ( Stat* parentStats = parent->getStats() )
+					if ( multiplayer != CLIENT )
 					{
-						real_t hpThreshold = getSpellEffectDurationSecondaryFromID(SPELL_PSYCHIC_SPEAR, caster, caster ? caster->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.0) / 100.0;
-						real_t parentHPRatio = std::min(1.0, parentStats->HP / std::max(1.0, (real_t)parentStats->MAXHP));
-						if ( parentHPRatio >= hpThreshold )
+						Entity* caster = uidToEntity(my->skill[3]);
+						int damage = getSpellDamageFromID(SPELL_PSYCHIC_SPEAR, caster, caster ? caster->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.0);
+						if ( Stat* parentStats = parent->getStats() )
 						{
-							real_t scale = std::min(1.0, std::max(0.0, (parentHPRatio - hpThreshold) / (1.0 - hpThreshold)));
-							damage += scale * getSpellDamageSecondaryFromID(SPELL_PSYCHIC_SPEAR, caster, caster ? caster->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.0);
+							real_t hpThreshold = getSpellEffectDurationSecondaryFromID(SPELL_PSYCHIC_SPEAR, caster, caster ? caster->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.0) / 100.0;
+							real_t parentHPRatio = std::min(1.0, parentStats->HP / std::max(1.0, (real_t)parentStats->MAXHP));
+							if ( parentHPRatio >= hpThreshold )
+							{
+								real_t scale = std::min(1.0, std::max(0.0, (parentHPRatio - hpThreshold) / (1.0 - hpThreshold)));
+								damage += scale * getSpellDamageSecondaryFromID(SPELL_PSYCHIC_SPEAR, caster, caster ? caster->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.0);
+							}
 						}
-					}
 
-					applyGenericMagicDamage(caster, parent, *my, SPELL_PSYCHIC_SPEAR, damage, true);
+						applyGenericMagicDamage(caster, parent, *my, SPELL_PSYCHIC_SPEAR, damage, true);
+					}
 
 					if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, 0.0, TICKS_PER_SECOND, 16.0) )
 					{
@@ -10512,7 +10599,7 @@ Entity* floorMagicCreateRoots(real_t x, real_t y, Entity* caster, int damage, in
 	return spellTimer;
 }
 
-void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* caster, int damage, int spellID)
+void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* caster, int damage, int spellID, bool magicstaff)
 {
 	if ( multiplayer == CLIENT )
 	{
@@ -10587,8 +10674,32 @@ void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* c
 	spellTimer->y = y;
 	spellTimer->particleTimerVariable1 = damage;
 	spellTimer->particleTimerVariable2 = spellID;
+	spellTimer->particleTimerVariable4 = 0;
+	spellTimer->actmagicCastByMagicstaff = magicstaff ? 1 : 0;
 
 	auto& timerEffects = particleTimerEffects[spellTimer->getUID()];
+
+	if ( caster && caster->behavior == &actPlayer && spellID == SPELL_SPORES )
+	{
+		if ( Stat* casterStats = caster->getStats() )
+		{
+			if ( casterStats->getEffectActive(EFF_GROWTH) >= 2 && casterStats->type == MYCONID )
+			{
+				if ( casterStats->getEffectActive(EFF_GROWTH) == 2 )
+				{
+					spellTimer->particleTimerVariable4 = 1;
+				}
+				else if ( casterStats->getEffectActive(EFF_GROWTH) == 3 )
+				{
+					spellTimer->particleTimerVariable4 = 2;
+				}
+				else if ( casterStats->getEffectActive(EFF_GROWTH) == 4 )
+				{
+					spellTimer->particleTimerVariable4 = 3;
+				}
+			}
+		}
+	}
 
 	std::vector<std::pair<int, int>> coords;
 	std::map<int, std::vector<ParticleTimerEffect_t::EffectLocations_t>> effLocations;
@@ -10608,6 +10719,21 @@ void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* c
 			else
 			{
 				data.seconds = 1 / 4.0;
+				if ( spellID == SPELL_SPORES )
+				{
+					if ( spellTimer->particleTimerVariable4 == 1 )
+					{
+						data.seconds = 0.2;
+					}
+					else if ( spellTimer->particleTimerVariable4 == 2 )
+					{
+						data.seconds = 0.16;
+					}
+					else if ( spellTimer->particleTimerVariable4 == 3 )
+					{
+						data.seconds = 0.12;
+					}
+				}
 			}
 		}
 	}
@@ -12428,10 +12554,21 @@ void actParticleTimer(Entity* my)
 
 							{
 								int damage = std::max(10, statGetCON(parentStats, parent));
-								if ( entity->getStats() )
+								if ( Stat* entityStats = entity->getStats() )
 								{
+									Sint32 oldHP = entityStats->HP;
 									if ( applyGenericMagicDamage(parent, entity, *parent, SPELL_NONE, damage, true, true) )
 									{
+										if ( entityStats->HP == 0 && oldHP > entityStats->HP )
+										{
+											if ( Entity* leader = parent->monsterAllyGetPlayerLeader() )
+											{
+												if ( leader->checkEnemy(entity) )
+												{
+													steamAchievementClient(leader->skill[2], "BARONY_ACH_BOLDER_BOULDER");
+												}
+											}
+										}
 										++hitProps->hits;
 										hitProps->tick = ticks;
 									}
@@ -12471,7 +12608,15 @@ void actParticleTimer(Entity* my)
 							}
 							else if ( target->behavior == &::actChest || target->getMonsterTypeFromSprite() == MIMIC )
 							{
-								target->chestHandleDamageMagic(my->particleTimerVariable1, *my, caster);
+								if ( target->behavior == &actMonster && target->getStats() 
+									&& target->getStats()->getEffectActive(EFF_MAGIC_GREASE) )
+								{
+									target->chestHandleDamageMagic(my->particleTimerVariable1 * 2, *my, caster);
+								}
+								else
+								{
+									target->chestHandleDamageMagic(my->particleTimerVariable1, *my, caster);
+								}
 								magicOnSpellCastEvent(caster, caster, target, SPELL_BOOBY_TRAP, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
 							}
 							else if ( target->isDamageableCollider() )
@@ -12550,7 +12695,7 @@ void actParticleTimer(Entity* my)
 										{
 											damage *= 2;
 										}
-										applyGenericMagicDamage(caster, entity, *my, SPELL_NONE, damage, true);
+										applyGenericMagicDamage(caster, entity, *my, SPELL_BOOBY_TRAP, damage, true);
 										if ( entity->SetEntityOnFire(caster) )
 										{
 											if ( caster )
@@ -12570,7 +12715,7 @@ void actParticleTimer(Entity* my)
 								}
 								else
 								{
-									if ( applyGenericMagicDamage(caster, entity, *my, SPELL_NONE, damage, true) )
+									if ( applyGenericMagicDamage(caster, entity, *my, SPELL_BOOBY_TRAP, damage, true) )
 									{
 										entity->SetEntityOnFire(caster);
 									}
@@ -13579,6 +13724,7 @@ void actParticleTimer(Entity* my)
 								fx->sizex = 8;
 								fx->sizey = 8;
 								fx->parent = my->getUID();
+								fx->actmagicCastByMagicstaff = my->actmagicCastByMagicstaff;
 								floorMagicParticleSetUID(*fx, true);
 							}
 						}
@@ -17349,7 +17495,15 @@ void actParticleFloorMagic(Entity* my)
 							}
 							if ( particleEmitterHitPropsTimer->hits > 0 )
 							{
-								continue;
+								if ( parentTimer && parentTimer->particleTimerVariable4 > 0
+									&& particleEmitterHitPropsTimer->hits > 0 && (ticks - particleEmitterHitPropsTimer->tick) >= TICKS_PER_SECOND )
+								{
+									// allow re-apply
+								}
+								else
+								{
+									continue;
+								}
 							}
 
 							if ( caster && caster->behavior == &actMonster )
@@ -17388,7 +17542,7 @@ void actParticleFloorMagic(Entity* my)
 								bool isEnemy = false;
 								if ( targetNonPlayer )
 								{
-									isEnemy = entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader();
+									isEnemy = entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() && achievementObserver.checkUidIsFromPlayer(stats->leader_uid) < 0;
 								}
 								else
 								{
@@ -17407,6 +17561,10 @@ void actParticleFloorMagic(Entity* my)
 										{
 											effected = true;
 											stats->poisonKiller = caster ? caster->getUID() : 0;
+											if ( parentTimer && parentTimer->particleTimerVariable4 > 0 )
+											{
+												entity->char_poison = std::max(TICKS_PER_SECOND, entity->char_poison);
+											}
 											if ( !prevEff )
 											{
 												rollLevel = true;
@@ -17420,6 +17578,14 @@ void actParticleFloorMagic(Entity* my)
 											if ( !prevEff )
 											{
 												rollLevel = true;
+											}
+										}
+
+										if ( particleEmitterHitPropsTimer->hits > 0 )
+										{
+											if ( rollLevel )
+											{
+												rollLevel = false;
 											}
 										}
 
@@ -17467,19 +17633,23 @@ void actParticleFloorMagic(Entity* my)
 											alertTarget = false;
 										}
 
-										// alert the monster!
-										if ( entity->monsterState != MONSTER_STATE_ATTACK && (stats->type < LICH || stats->type >= SHOPKEEPER) )
+										if ( particleEmitterHitPropsTimer->hits == 0
+											|| particleEmitterHitPropsTimer->hits % 4 == 0 )
 										{
+											// alert the monster!
+											if ( entity->monsterState != MONSTER_STATE_ATTACK && (stats->type < LICH || stats->type >= SHOPKEEPER) )
+											{
+												if ( alertTarget )
+												{
+													entity->monsterAcquireAttackTarget(*caster, MONSTER_STATE_PATH, true);
+												}
+											}
+
+											// alert other monsters too
 											if ( alertTarget )
 											{
-												entity->monsterAcquireAttackTarget(*caster, MONSTER_STATE_PATH, true);
+												entity->alertAlliesOnBeingHit(caster);
 											}
-										}
-
-										// alert other monsters too
-										if ( alertTarget )
-										{
-											entity->alertAlliesOnBeingHit(caster);
 										}
 										entity->updateEntityOnHit(caster, alertTarget);
 									}
@@ -20438,6 +20608,30 @@ void actRadiusMagic(Entity* my)
 					{
 						magicOnSpellCastEvent(caster, caster, uidToEntity(ent->parent), my->actRadiusMagicID, 
 							spell_t::SPELL_LEVEL_EVENT_DEFAULT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE, 1);
+
+						if ( caster->behavior == &actPlayer )
+						{
+							if ( ent->behavior == &actMagicMissile )
+							{
+								if ( ent->children.first )
+								{
+									if ( spell_t* spell = (spell_t*)ent->children.first->element )
+									{
+										if ( Entity* spellCaster = uidToEntity(spell->caster) )
+										{
+											if ( spellCaster->behavior == &actMonster )
+											{
+												int type = spellCaster->getMonsterTypeFromSprite();
+												if ( type == LICH || type == LICH_FIRE || type == LICH_ICE )
+												{
+													serverUpdatePlayerGameplayStats(caster->skill[2], STATISTICS_THATS_CHEATING, 1);
+												}
+											}
+										}
+									}
+								}
+							}
+						}
 					}
 
 					ent->removeLightField();
@@ -21186,6 +21380,8 @@ void actParticleShatterEarth(Entity* my)
 									//Compendium_t::Events_t::eventUpdateMonster(caster->skill[2], Compendium_t::CPDM_RECRUITED, monster, 1);
 									monster->monsterAllyIndex = caster->skill[2];
 									monster->monsterAllySummonRank = 1;
+									monster->flags[USERFLAG2] = true;
+									serverUpdateEntityFlag(monster, USERFLAG2);
 									if ( Stat* monsterStats = monster->getStats() )
 									{
 										monsterStats->setAttribute("SUMMONED_CREATURE", "1");
@@ -21202,6 +21398,7 @@ void actParticleShatterEarth(Entity* my)
 									if ( multiplayer == SERVER )
 									{
 										serverUpdateEntitySkill(monster, 42); // update monsterAllyIndex for clients.
+										serverUpdateEntitySkill(monster, 50); // update monsterAllySummonRank
 									}
 								}
 							}

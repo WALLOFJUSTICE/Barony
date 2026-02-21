@@ -827,14 +827,21 @@ void actArrow(Entity* my)
 									}
 								}
 
-								if ( hit.entity->monsterState == MONSTER_STATE_WAIT
+								if ( (hit.entity->monsterState == MONSTER_STATE_WAIT
 									|| hit.entity->monsterState == MONSTER_STATE_PATH
-									|| (hit.entity->monsterState == MONSTER_STATE_HUNT && uidToEntity(hit.entity->monsterTarget) == nullptr) )
+									|| (hit.entity->monsterState == MONSTER_STATE_HUNT /*&& uidToEntity(hit.entity->monsterTarget) == nullptr*/))
+									&& !hitstats->getEffectActive(EFF_ROOTED) )
 								{
 									// unaware monster, get backstab damage.
 									int bonus = (parentStats->getModifiedProficiency(PRO_STEALTH) / 20 + 2) * (2 * stealthCapstoneBonus);
+									int chance = 4;
+									if ( hit.entity->monsterState == MONSTER_STATE_HUNT && uidToEntity(hit.entity->monsterTarget) != nullptr )
+									{
+										chance = 8;
+										bonus = (parentStats->getModifiedProficiency(PRO_STEALTH) / 20 + 1) * (stealthCapstoneBonus);
+									}
 									damage += ((bonus * equipmentModifier) * bonusModifier);
-									if ( local_rng.rand() % 4 == 0 
+									if ( local_rng.rand() % chance == 0
 										&& hit.entity->behavior != &actPlayer
 										&& !(parent->behavior == &actPlayer && hit.entity->monsterAllyGetPlayerLeader()) )
 									{
@@ -976,6 +983,14 @@ void actArrow(Entity* my)
 								hit.entity->defyFleshProc(parent);
 							}
 							hit.entity->pinpointDamageProc(parent, damageTaken);
+						}
+						if ( hitstats->getEffectActive(EFF_SPORES) )
+						{
+							if ( hit.entity->behavior == &actPlayer 
+								&& hitstats->type == MYCONID && hitstats->getEffectActive(EFF_GROWTH) >= 4 )
+							{
+								floorMagicCreateSpores(hit.entity, hit.entity->x, hit.entity->y, hit.entity, 0, SPELL_SPORES);
+							}
 						}
 					}
 
@@ -1210,8 +1225,8 @@ void actArrow(Entity* my)
 									envenomWeapon = true;
 									hitstats->setEffectActive(EFF_POISONED, 1);
 
-									int duration = 160 * envenomDamage;
-									hitstats->EFFECTS_TIMERS[EFF_POISONED] = std::max(200, duration - hit.entity->getCON() * 20);
+									int duration = TICKS_PER_SECOND * envenomDamage + 10;
+									hitstats->EFFECTS_TIMERS[EFF_POISONED] = std::max(160, duration - hit.entity->getCON() * 20);
 									hitstats->poisonKiller = parent->getUID();
 									if ( hit.entity->isEntityPlayer() )
 									{
@@ -1352,7 +1367,7 @@ void actArrow(Entity* my)
 
 					if ( my->sprite == PROJECTILE_SEED_POISON_SPRITE )
 					{
-						floorMagicCreateSpores(nullptr, hit.entity->x, hit.entity->y, parent, 15, SPELL_SPORES);
+						floorMagicCreateSpores(nullptr, hit.entity->x, hit.entity->y, parent, 15, SPELL_SPORES, true);
 					}
 					else if ( my->sprite == PROJECTILE_SEED_ROOT_SPRITE )
 					{
@@ -1913,7 +1928,7 @@ void actArrow(Entity* my)
 					{
 						if ( !hitstats || hit.entity->isInertMimic() )
 						{
-							floorMagicCreateSpores(nullptr, hit.entity->x, hit.entity->y, parent, 15, SPELL_SPORES);
+							floorMagicCreateSpores(nullptr, hit.entity->x, hit.entity->y, parent, 15, SPELL_SPORES, true);
 						}
 					}
 					else if ( my->sprite == PROJECTILE_SEED_ROOT_SPRITE )
@@ -1935,7 +1950,7 @@ void actArrow(Entity* my)
 			}
 			else if ( my->sprite == PROJECTILE_SEED_POISON_SPRITE )
 			{
-				floorMagicCreateSpores(nullptr, my->x, my->y, uidToEntity(my->parent), 15, SPELL_SPORES);
+				floorMagicCreateSpores(nullptr, my->x, my->y, uidToEntity(my->parent), 15, SPELL_SPORES, true);
 				my->removeLightField();
 				list_RemoveNode(my->mynode); // rocks don't stick to walls...
 			}

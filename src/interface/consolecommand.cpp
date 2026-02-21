@@ -5188,6 +5188,26 @@ namespace ConsoleCommands {
 #endif
 	});
 
+	static ConsoleCommand ccmd_map_debug_stations("/map_debug_stations", "", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+	for ( int j = 0; j < 2; ++j )
+	{
+		auto& floors_stations = (j == 0) ? treasure_room_generator.station_floors : treasure_room_generator.station_secret_floors;
+		for ( int i = 0; i <= 35; ++i )
+		{
+			if ( floors_stations.find(i) != floors_stations.end() )
+			{
+				messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: [%d]: %s", i, floors_stations[i].c_str());
+			}
+		}
+	}
+	});
+
 	static ConsoleCommand ccmd_map_debug_door("/map_debug_door", "", []CCMD{
 #ifndef NINTENDO
 		if ( !(svFlags & SV_FLAG_CHEATS) )
@@ -5213,7 +5233,13 @@ namespace ConsoleCommands {
 					{
 						if ( entity->sprite == 217 || entity->sprite == 218 )
 						{
-							printlog("Iron door: Lockpick state: %d, opening: %d", entity->doorDisableLockpicks, entity->doorDisableOpening);
+							printlog("Map: %s Iron door: Lockpick state: %d, opening: %d", f.c_str(), entity->doorDisableLockpicks, entity->doorDisableOpening);
+						}
+						else if ( entity->sprite == 208 || entity->sprite == 209
+							|| entity->sprite == 210 || entity->sprite == 211 )
+						{
+							printlog("Map: %s Wall lock: Material: %s, pickable: %d, skeleton key: %d, auto gen key: %d", f.c_str(), Language::get(6383 + entity->wallLockMaterial), entity->wallLockPickable,
+								entity->wallLockPickableSkeletonKey, entity->wallLockAutoGenKey);
 						}
 					}
 				}
@@ -5313,7 +5339,11 @@ namespace ConsoleCommands {
 						coord += (std::to_string(y));
 						coord += ("], ");
 
-						if ( entity->sprite == 9 )
+						if ( entity->sprite == 21 )
+						{
+							printlog("Map: %s Chest: Locked: %d Mimic: %d", f.c_str(), entity->chestLocked, entity->chestMimicChance);
+						}
+						else if ( entity->sprite == 9 )
 						{
 							loot.push_back(coord + "gold");
 						}

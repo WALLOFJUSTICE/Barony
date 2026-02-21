@@ -848,6 +848,12 @@ void createHPMPBars(const int player)
 		auto div75Percent = foregroundFrame->addImage(SDL_Rect{ 0, 8, 2, 18 }, 0xFFFFFFFF,
 			"*#images/ui/HUD/hpmpbars/HUD_Bars_Divider_01.png", "mp img div 75pc");
 		div75Percent->disabled = true;
+		auto div40Percent = foregroundFrame->addImage(SDL_Rect{ 0, 8, 2, 18 }, makeColorRGB(80, 214, 253),
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_Divider_01_White.png", "mp img div 40pc");
+		div40Percent->disabled = true;
+		auto div60Percent = foregroundFrame->addImage(SDL_Rect{ 0, 8, 2, 18 }, makeColorRGB(253, 220, 118),
+			"*#images/ui/HUD/hpmpbars/HUD_Bars_Divider_01_White.png", "mp img div 60pc");
+		div60Percent->disabled = true;
 
 		auto font = "fonts/pixel_maz.ttf#32#2";
 		auto mptext = foregroundFrame->addField("mp text", 16);
@@ -7837,6 +7843,73 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 				{
 					variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
 				}
+				else if ( effectID == EFF_GROWTH )
+				{
+					variation = std::min(2, std::max(0, (int)entry.customVariable - 2));
+
+					int tier = variation + 1;
+
+					std::string newHeader = definition.getName(variation).c_str();
+					uppercaseString(newHeader);
+					tooltipHeader->setText(newHeader.c_str());
+
+					std::string newDesc = "";
+					if ( stats[player]->type == DRYAD )
+					{
+						newDesc = definition.getDesc(1).c_str();
+
+						char buf[128] = "";
+						snprintf(buf, sizeof(buf), definition.getDesc(6).c_str(), 10 * tier); // +PWR
+						newDesc += '\n';
+						newDesc += buf;
+
+						snprintf(buf, sizeof(buf), definition.getDesc(7).c_str(), 10 * tier); // +MP RGN
+						newDesc += '\n';
+						newDesc += buf;
+
+						snprintf(buf, sizeof(buf), definition.getDesc(8).c_str(), -5 * tier); // +Movespeed
+						newDesc += '\n';
+						newDesc += buf;
+
+						snprintf(buf, sizeof(buf), definition.getDesc(11).c_str(), 5 * tier); // +Fire dmg
+						newDesc += '\n';
+						newDesc += buf;
+					}
+					else if ( stats[player]->type == MYCONID )
+					{
+						newDesc = definition.getDesc(0).c_str();
+						newDesc += '\n';
+						newDesc += definition.getDesc(2).c_str();
+						if ( variation == 2 )
+						{
+							newDesc += '\n';
+							newDesc += definition.getDesc(3).c_str();
+						}
+						char buf[128] = "";
+						snprintf(buf, sizeof(buf), definition.getDesc(4).c_str(), tier); // +AC
+						newDesc += '\n';
+						newDesc += buf;
+
+						snprintf(buf, sizeof(buf), definition.getDesc(5).c_str(), tier * 5); // +RES
+						newDesc += '\n';
+						newDesc += buf;
+
+						snprintf(buf, sizeof(buf), definition.getDesc(9).c_str(), 20 + 15 * (tier - 1)); // +Poison dmg
+						newDesc += '\n';
+						newDesc += buf;
+
+						snprintf(buf, sizeof(buf), definition.getDesc(10).c_str(), 100 * tier); // +Germinate dmg
+						newDesc += '\n';
+						newDesc += buf;
+
+						snprintf(buf, sizeof(buf), definition.getDesc(8).c_str(), -10 * tier); // +Movespeed
+						newDesc += '\n';
+						newDesc += buf;
+					}
+
+					tooltipDesc->setText(newDesc.c_str());
+					tooltipInnerWidth = definition.tooltipWidth;
+				}
 				else if ( effectID == EFF_ENSEMBLE_DRUM
 					|| effectID == EFF_ENSEMBLE_FLUTE
 					|| effectID == EFF_ENSEMBLE_LUTE
@@ -7846,15 +7919,15 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 					int variation = 0;
 					if ( Uint8 effectStrength = stats[player]->getEffectActive(effectID) )
 					{
-						if ( effectStrength >= 40 )
+						if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
 						{
 							variation = 3;
 						}
-						else if ( effectStrength >= 20 )
+						else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
 						{
 							variation = 2;
 						}
-						else if ( effectStrength >= 5 )
+						else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
 						{
 							variation = 1;
 						}
@@ -7863,43 +7936,57 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 					std::string newHeader = definition.getName(variation).c_str();
 					uppercaseString(newHeader);
 					tooltipHeader->setText(newHeader.c_str());
-					std::string newDesc = definition.getDesc(variation).c_str();
-					newDesc += '\n';
-					newDesc += "Scaled Stat: ";
+					std::string newDesc = "";// definition.getDesc(variation).c_str();
+					char buf[128] = "";
 					if ( effectID == EFF_ENSEMBLE_DRUM )
 					{
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_DRUM_EFF_1));
+						snprintf(buf, sizeof(buf), definition.getDesc(0).c_str(), 
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_DRUM_EFF_1));
+						newDesc = buf;
 						newDesc += '\n';
-						newDesc += "Tier Stat: ";
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_DRUM_TIER));
+						snprintf(buf, sizeof(buf), definition.getDesc(1).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_DRUM_TIER));
+						newDesc += buf;
 					}
 					else if ( effectID == EFF_ENSEMBLE_FLUTE )
 					{
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_FLUTE_EFF_1));
+						snprintf(buf, sizeof(buf), definition.getDesc(0).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_FLUTE_EFF_1));
+						newDesc = buf;
 						newDesc += '\n';
-						newDesc += "Tier Stat: ";
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_FLUTE_TIER));
+						snprintf(buf, sizeof(buf), definition.getDesc(1).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_FLUTE_TIER));
+						newDesc += buf;
 					}
 					else if ( effectID == EFF_ENSEMBLE_LUTE )
 					{
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_EFF_1));
+						snprintf(buf, sizeof(buf), definition.getDesc(0).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_EFF_1));
+						newDesc = buf;
 						newDesc += '\n';
-						newDesc += "Tier Stat: ";
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_TIER));
+						snprintf(buf, sizeof(buf), definition.getDesc(1).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_TIER));
+						newDesc += buf;
 					}
 					else if ( effectID == EFF_ENSEMBLE_HORN )
 					{
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_HORN_EFF_1));
+						snprintf(buf, sizeof(buf), definition.getDesc(0).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_HORN_EFF_1));
+						newDesc = buf;
 						newDesc += '\n';
-						newDesc += "Tier Stat: ";
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_HORN_TIER));
+						snprintf(buf, sizeof(buf), definition.getDesc(1).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_HORN_TIER));
+						newDesc += buf;
 					}
 					else if ( effectID == EFF_ENSEMBLE_LYRE )
 					{
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LYRE_EFF_1));
+						snprintf(buf, sizeof(buf), definition.getDesc(0).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LYRE_EFF_1));
+						newDesc = buf;
 						newDesc += '\n';
-						newDesc += "Tier Stat: ";
-						newDesc += std::to_string(stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LYRE_TIER));
+						snprintf(buf, sizeof(buf), definition.getDesc(1).c_str(),
+							(int)stats[player]->getEnsembleEffectBonus(Stat::ENSEMBLE_LYRE_TIER));
+						newDesc += buf;
 					}
 					tooltipDesc->setText(newDesc.c_str());
 					tooltipInnerWidth = definition.tooltipWidth;
@@ -8142,7 +8229,8 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 						|| effectID == EFF_ENSEMBLE_FLUTE
 						|| effectID == EFF_ENSEMBLE_LUTE
 						|| effectID == EFF_ENSEMBLE_HORN
-						|| effectID == EFF_ENSEMBLE_LYRE) )
+						|| effectID == EFF_ENSEMBLE_LYRE
+						|| effectID == EFF_GROWTH) )
 				{
 					std::string newHeader = definition.getName(variation).c_str();
 					uppercaseString(newHeader);
@@ -9244,6 +9332,10 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 						else if ( effectID == StatusEffectQueue_t::kEffectVandal )
 						{
 							variation = 0;
+						}
+						else if ( effectID == EFF_GROWTH )
+						{
+							variation = std::min(2, std::max(0, (int)notif.customVariable - 2));
 						}
 						else if ( effectID == StatusEffectQueue_t::kEffectWealth )
 						{
@@ -22458,9 +22550,19 @@ void drawUnidentifiedItemEffectHotbarCallback(const Widget& widget, SDL_Rect rec
 			opacity *= parent->getOpacity() / 100.0;
 		}
         const auto& appraisal = players[player]->inventoryUI.appraisal;
-        drawClockwiseSquareMesh("images/ui/HUD/hotbar/Appraisal_Icon_OutlineHotbar.png",
-            (appraisal.timermax - appraisal.timer) / (float)appraisal.timermax,
-            drawRect, makeColor(255, 255, 255, opacity));
+
+		if ( appraisal.current_item == appraisal.manual_appraised_item )
+		{
+			drawClockwiseSquareMesh("images/ui/HUD/hotbar/Appraisal_Icon_OutlineHotbar_Manual.png",
+			    (appraisal.timermax - appraisal.timer) / (float)appraisal.timermax,
+			    drawRect, makeColor(255, 255, 255, opacity));
+		}
+		else
+		{
+			drawClockwiseSquareMesh("images/ui/HUD/hotbar/Appraisal_Icon_OutlineHotbar.png",
+				(appraisal.timermax - appraisal.timer) / (float)appraisal.timermax,
+				drawRect, makeColor(255, 255, 255, opacity));
+		}
 	}
 
 	auto drawMesh = [](real_t x, real_t y, real_t size, SDL_Rect rect, Uint32 color) {
@@ -22515,9 +22617,19 @@ void drawUnidentifiedItemEffectCallback(const Widget& widget, SDL_Rect rect)
 		{
 			opacity *= parent->getOpacity() / 100.0;
 		}
-		drawClockwiseSquareMesh("images/ui/Inventory/Appraisal_Icon_Outline.png",
-            (appraisal.timermax - appraisal.timer) / (float)appraisal.timermax,
-            drawRect, makeColor(255, 255, 255, opacity));
+
+		if ( appraisal.current_item == appraisal.manual_appraised_item )
+		{
+			drawClockwiseSquareMesh("images/ui/Inventory/Appraisal_Icon_Outline_Manual.png",
+				(appraisal.timermax - appraisal.timer) / (float)appraisal.timermax,
+				drawRect, makeColor(255, 255, 255, opacity));
+		}
+		else
+		{
+			drawClockwiseSquareMesh("images/ui/Inventory/Appraisal_Icon_Outline.png",
+			    (appraisal.timermax - appraisal.timer) / (float)appraisal.timermax,
+			    drawRect, makeColor(255, 255, 255, opacity));
+		}
 	}
     
     auto drawMesh = [](real_t x, real_t y, real_t size, SDL_Rect rect, Uint32 color) {
@@ -29164,7 +29276,19 @@ void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextM
 	}
 	if ( prompt == PROMPT_APPRAISE )
 	{
+		int prevAppraisedManual = players[player]->inventoryUI.appraisal.manual_appraised_item;
 		players[player]->inventoryUI.appraisal.appraiseItem(item);
+		if ( players[player]->inventoryUI.appraisal.current_item == item->uid )
+		{
+			if ( prevAppraisedManual == item->uid )
+			{
+				players[player]->inventoryUI.appraisal.manual_appraised_item = 0;
+			}
+			else
+			{
+				players[player]->inventoryUI.appraisal.manual_appraised_item = item->uid;
+			}
+		}
 		return;
 	}
 	else if ( prompt == PROMPT_DROP )
@@ -29988,6 +30112,14 @@ void Player::Inventory_t::ItemTooltipDisplay_t::updateItem(const int player, Ite
 			playerPER = statGetPER(stats[player], players[player]->entity);
 			playerCHR = statGetCHR(stats[player], players[player]->entity);
 		}
+		spellCost = 0;
+		if ( newItem->type == SPELL_ITEM )
+		{
+			if ( auto spell = getSpellFromItem(player, newItem, false) )
+			{
+				spellCost = getCostOfSpell(spell, players[player]->entity);
+			}
+		}
 	}
 }
 
@@ -30001,6 +30133,15 @@ bool Player::Inventory_t::ItemTooltipDisplay_t::isItemSameAsCurrent(const int pl
 			appraisingThisItem = true;
 		}
 
+		int newSpellCost = 0;
+		if ( newItem->type == SPELL_ITEM )
+		{
+			if ( auto spell = getSpellFromItem(player, newItem, false) )
+			{
+				newSpellCost = getCostOfSpell(spell, players[player]->entity);
+			}
+		}
+
 		if ( newItem->uid == uid
 			&& newItem->type == type
 			&& newItem->status == status
@@ -30010,6 +30151,7 @@ bool Player::Inventory_t::ItemTooltipDisplay_t::isItemSameAsCurrent(const int pl
 			&& newItem->identified == identified
 			&& (wasAppraisalTarget == appraisingThisItem)
 			&& playernum == player
+			&& spellCost == newSpellCost
 			&& playerLVL == stats[player]->LVL
 			&& playerEXP == stats[player]->EXP
 			&& playerSTR == statGetSTR(stats[player], players[player]->entity)
@@ -33917,12 +34059,52 @@ void Player::HUD_t::updateMPBar()
 		div75Percent->disabled = false;
 		div75Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .75 - 2;
 
+		auto div40Percent = mpForegroundFrame->findImage("mp img div 40pc");
+		div40Percent->disabled = true;
+		auto div60Percent = mpForegroundFrame->findImage("mp img div 60pc");
+		div60Percent->disabled = true;
+		/*if ( stats[player.playernum]->type == SALAMANDER || (stats[player.playernum]->playerRace == RACE_SALAMANDER && stats[player.playernum]->stat_appearance == 0) )
+		{
+			if ( stats[player.playernum]->getEffectActive(EFF_SALAMANDER_HEART) >= 1 && stats[player.playernum]->getEffectActive(EFF_SALAMANDER_HEART) <= 2 )
+			{
+				div60Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .6 - 2;
+				Uint8 r, g, b, a;
+				getColor(div60Percent->color, &r, &g, &b, nullptr);
+				real_t opacity = 0.5 + .4 * (1.0 * cos(((ticks % (2 * TICKS_PER_SECOND)) / (real_t)(2 * TICKS_PER_SECOND)) * 2 * PI) + 1.0);
+				div60Percent->color = makeColor(r, g, b, std::min(1.0, opacity) * 255);
+				div60Percent->disabled = false;
+				div75Percent->disabled = true;
+				div50Percent->disabled = true;
+				div25Percent->disabled = true;
+			}
+			if ( stats[player.playernum]->getEffectActive(EFF_SALAMANDER_HEART) >= 3 && stats[player.playernum]->getEffectActive(EFF_SALAMANDER_HEART) <= 4 )
+			{
+				div40Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .4 - 2;
+				div40Percent->disabled = false;
+				div75Percent->disabled = true;
+				div50Percent->disabled = true;
+				div25Percent->disabled = true;
+			}
+		}*/
+
 		if ( div50Percent->pos.x - div25Percent->pos.x < HPMPdividerThresholdInterval )
 		{
 			div75Percent->disabled = true;
 			// 2 dividers 33%/66%
 			div25Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .33 - 2;
 			div50Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .66 - 2;
+
+			/*if ( stats[player.playernum]->type == SALAMANDER || (stats[player.playernum]->playerRace == RACE_SALAMANDER && stats[player.playernum]->stat_appearance == 0) )
+			{
+				div25Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .25 - 2;
+				div50Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .75 - 2;
+				if ( stats[player.playernum]->getEffectActive(EFF_SALAMANDER_HEART) >= 1 )
+				{
+					div25Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .4 - 2;
+					div50Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .6 - 2;
+				}
+			}*/
+
 			if ( div50Percent->pos.x - div25Percent->pos.x < HPMPdividerThresholdInterval )
 			{
 				// 1 divider 50%
@@ -33930,6 +34112,7 @@ void Player::HUD_t::updateMPBar()
 				div50Percent->pos.x = mpProgressBot->pos.x + fullBarWidth * .5 - 2;
 			}
 		}
+
 	}
 
 	mpProgress->path = MPBarPaths_t::get(player.playernum, "mp img progress");
@@ -36362,11 +36545,11 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 		}
 		else if ( tag == "APPRAISE_MAX_GOLD_VALUE" )
 		{
-			if ( skillCapstoneUnlocked(playernum, proficiency) )
-			{
-				snprintf(buf, sizeof(buf), "%s", Language::get(6965)); // "any"
-			}
-			else
+			//if ( skillCapstoneUnlocked(playernum, proficiency) )
+			//{
+			//	snprintf(buf, sizeof(buf), "%s", Language::get(6965)); // "any"
+			//}
+			//else
 			{
 				int skillLVL = (stats[playernum]->getModifiedProficiency(proficiency) + (statGetPER(stats[playernum], player) * Player::Inventory_t::Appraisal_t::perStatMult)); // max gold value can appraise
 				if ( skillLVL < 0 )
@@ -36396,11 +36579,11 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 		}
 		else if ( tag == "APPRAISE_GOLD_FAST" )
 		{
-			if ( skillCapstoneUnlocked(playernum, proficiency) )
-			{
-				snprintf(buf, sizeof(buf), "%s", Language::get(4065)); // "any"
-			}
-			else
+			//if ( skillCapstoneUnlocked(playernum, proficiency) )
+			//{
+			//	snprintf(buf, sizeof(buf), "%s", Language::get(4065)); // "any"
+			//}
+			//else
 			{
 				int skillLVL = (stats[playernum]->getModifiedProficiency(proficiency) + (statGetPER(stats[playernum], player) * Player::Inventory_t::Appraisal_t::perStatMult)); // max gold value can appraise
 				if ( skillLVL < 0 )
@@ -36424,14 +36607,17 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 		else if ( tag == "APPRAISE_SPEEDUP" )
 		{
 			int skillLVL = (stats[playernum]->getModifiedProficiency(proficiency) + (statGetPER(stats[playernum], player) * Player::Inventory_t::Appraisal_t::perStatMult));
-			if ( skillCapstoneUnlocked(playernum, proficiency) )
+			/*if ( skillCapstoneUnlocked(playernum, proficiency) )
 			{
 				val = 100.0;
 			}
-			else if ( skillLVL >= 50 )
+			else */
+			if ( skillLVL >= 50 )
 			{
-				real_t ratio = (1.0 - std::max(0.2, 0.5 + (100 - skillLVL) / 100.0)) * 100.0;
+				real_t capstone = skillCapstoneUnlocked(playernum, proficiency) ? 0.75 : 1.0;
+				real_t ratio = (1.0 - capstone * std::max(0.2, 0.5 + (100 - skillLVL) / 100.0)) * 100.0;
 				val = ratio;
+				val = std::min(100.0, val);
 			}
 			else
 			{
@@ -36442,14 +36628,17 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 		else if ( tag == "APPRAISE_SPEEDUP_CONSUMABLES" )
 		{
 			int skillLVL = (stats[playernum]->getModifiedProficiency(proficiency) + (statGetPER(stats[playernum], player) * Player::Inventory_t::Appraisal_t::perStatMult));
-			if ( skillCapstoneUnlocked(playernum, proficiency) )
+			/*if ( skillCapstoneUnlocked(playernum, proficiency) )
 			{
 				val = 100.0;
 			}
-			else if ( skillLVL >= 0 )
+			else */
+			if ( skillLVL >= 0 )
 			{
-				real_t ratio = (1.0 - std::max(0.2, 1.0 + (-skillLVL) / 100.0)) * 100.0;
+				real_t capstone = skillCapstoneUnlocked(playernum, proficiency) ? 0.75 : 1.0;
+				real_t ratio = (1.0 - capstone * std::max(0.2, 1.0 + (-skillLVL) / 100.0)) * 100.0;
 				val = ratio;
+				val = std::min(100.0, val);
 			}
 			else
 			{
@@ -36460,11 +36649,12 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 		else if ( tag == "APPRAISE_FLOOR_BONUS" )
 		{
 			int skillLVL = std::min(100, std::max(0, (stats[playernum]->getModifiedProficiency(proficiency) + (statGetPER(stats[playernum], player) * Player::Inventory_t::Appraisal_t::perStatMult))));
-			if ( skillCapstoneUnlocked(playernum, proficiency) )
+			/*if ( skillCapstoneUnlocked(playernum, proficiency) )
 			{
 				val = 100.0;
 			}
-			else if ( skillLVL >= 0 )
+			else */
+			if ( skillLVL >= 0 )
 			{
 				real_t appraisalTimerReduce = (1.0 - (0.75 - (0.25 * skillLVL) / 100.0)) * 100.0;
 				val = appraisalTimerReduce;
@@ -36793,7 +36983,15 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 							|| spell->ID == SPELL_SLIME_METAL
 							|| spell->hide_from_ui == true )
 						{
-							continue;
+							if ( spellIsNaturallyLearnedByRaceOrClass(players[playernum]->entity, 
+								*stats[playernum], spell->ID, playernum) )
+							{
+								// show these spells
+							}
+							else
+							{
+								continue;
+							}
 						}
 						if ( skillLVL < std::min(SKILL_LEVEL_LEGENDARY, (spell->difficulty + 20)) )
 						{
@@ -36859,8 +37057,7 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 					{
 						continue;
 					}
-					if ( spellEntry->ID == SPELL_WEAKNESS 
-						|| spellEntry->ID == SPELL_GHOST_BOLT
+					if ( spellEntry->ID == SPELL_GHOST_BOLT
 						|| spellEntry->ID == SPELL_SLIME_ACID 
 						|| spellEntry->ID == SPELL_SLIME_FIRE 
 						|| spellEntry->ID == SPELL_SLIME_WATER 
@@ -36868,7 +37065,15 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 						|| spellEntry->ID == SPELL_SLIME_METAL
 						|| spellEntry->hide_from_ui == true )
 					{
-						continue;
+						if ( spellIsNaturallyLearnedByRaceOrClass(players[playernum]->entity,
+							*stats[playernum], spellEntry->ID, playernum) )
+						{
+							// show these spells
+						}
+						else
+						{
+							continue;
+						}
 					}
 					if ( spellEntry && spellEntry->difficulty == (skillLVL * 20) )
 					{
@@ -40956,7 +41161,8 @@ bool Player::WorldUI_t::WorldTooltipItem_t::isItemSameAsCurrent(Item* item)
 		&& item->beatitude == beatitude
 		&& item->count == count
 		&& item->appearance == appearance
-		&& item->identified == identified )
+		&& item->identified == identifiedItem
+		&& hasAppraiseCapstone == stats[player.playernum]->getModifiedProficiency(PRO_APPRAISAL) >= SKILL_LEVEL_LEGENDARY )
 	{
 		return true;
 	}
@@ -40981,7 +41187,8 @@ SDL_Surface* Player::WorldUI_t::WorldTooltipItem_t::blitItemWorldTooltip(Item* i
 	beatitude = item->beatitude;
 	count = item->count;
 	appearance = item->appearance;
-	identified = item->identified;
+	identifiedItem = item->identified;
+	hasAppraiseCapstone = stats[player.playernum]->getModifiedProficiency(PRO_APPRAISAL) >= SKILL_LEVEL_LEGENDARY;
 
 	SDL_Rect tooltip;
 	char buf[1024] = "";
@@ -41377,7 +41584,7 @@ SDL_Surface* Player::WorldUI_t::WorldTooltipItem_t::blitItemWorldTooltip(Item* i
 			SDL_BlitScaled(srcSurf, nullptr, itemWorldTooltipSurface, &goldPos);
 
 			char goldBuf[32];
-			if ( !item->identified )
+			if ( !item->identified && stats[player.playernum]->getModifiedProficiency(PRO_APPRAISAL) < SKILL_LEVEL_LEGENDARY )
 			{
 				if ( itemCategory(item) == GEM && item->type != GEM_ROCK )
 				{

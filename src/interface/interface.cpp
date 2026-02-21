@@ -6584,6 +6584,8 @@ bool GenericGUIMenu::ItemEffectGUI_t::consumeResourcesForTransmute()
 					{
 						Compendium_t::Events_t::eventUpdateCodex(parentGUI.gui_player, Compendium_t::CPDM_GOLD_CASTED, "gold", costEffectGoldAmount);
 						Compendium_t::Events_t::eventUpdateCodex(parentGUI.gui_player, Compendium_t::CPDM_GOLD_CASTED_RUN, "gold", costEffectGoldAmount);
+
+						steamStatisticUpdate(STEAM_STAT_PAY_TO_WIN, STEAM_STAT_INT, costEffectGoldAmount);
 					}
 				}
 			}
@@ -7827,6 +7829,56 @@ void GenericGUIMenu::openGUI(int type, Item* itemOpenedWith)
 	rebuildGUIInventory();
 }
 
+void stationOpenSound(int player, int type)
+{
+	int sfx = -1;
+	int vol = 0;
+	if ( type == GUI_TYPE_ALCHEMY )
+	{
+		vol = 64;
+		sfx = 774 + local_rng.rand() % 2;
+		//sfx = 401;
+	}
+	else if ( type == GUI_TYPE_TINKERING )
+	{
+		vol = 64;
+		sfx = 421 + (local_rng.rand() % 2) * 3;
+	}
+
+	if ( sfx > 0 )
+	{
+		playSoundEntityLocal(players[player]->entity, sfx, vol);
+		if ( multiplayer == CLIENT )
+		{
+			strcpy((char*)net_packet->data, "EMOT");
+			net_packet->data[4] = player;
+			SDLNet_Write16(sfx, &net_packet->data[5]);
+			net_packet->data[7] = vol;
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 8;
+			sendPacketSafe(net_sock, -1, net_packet, 0);
+		}
+		else if ( multiplayer != CLIENT )
+		{
+			for ( int c = 1; c < MAXPLAYERS; ++c )
+			{
+				if ( !client_disconnected[c] && !players[c]->isLocalPlayer() )
+				{
+					strcpy((char*)net_packet->data, "SNEL");
+					SDLNet_Write16(sfx, &net_packet->data[4]);
+					SDLNet_Write32((Uint32)players[player]->entity->getUID(), &net_packet->data[6]);
+					SDLNet_Write16(vol, &net_packet->data[10]);
+					net_packet->address.host = net_clients[c - 1].host;
+					net_packet->address.port = net_clients[c - 1].port;
+					net_packet->len = 12;
+					sendPacketSafe(net_sock, -1, net_packet, c - 1);
+				}
+			}
+		}
+	}
+}
+
 void GenericGUIMenu::openGUI(int type, Entity* shrine)
 {
 	// close existing guis
@@ -7895,6 +7947,7 @@ void GenericGUIMenu::openGUI(int type, Entity* shrine)
 		{
 			alembicEntityUid = shrine->getUID();
 			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_CAULDRON_INTERACTS, "cauldron", 1);
+			stationOpenSound(gui_player, GUI_TYPE_ALCHEMY);
 		}
 	}
 	else if ( guiType == GUI_TYPE_MAILBOX )
@@ -7918,6 +7971,7 @@ void GenericGUIMenu::openGUI(int type, Entity* shrine)
 		{
 			workstationEntityUid = shrine->getUID();
 			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_INTERACTS, "workbench", 1);
+			stationOpenSound(gui_player, GUI_TYPE_TINKERING);
 		}
 	}
 
@@ -8053,7 +8107,7 @@ void GenericGUIMenu::rechargeScepterUsingItem(Item* item)
 			messagePlayer(gui_player, MESSAGE_INTERACTION, Language::get(6836), spell->getSpellName());
 			messagePlayerColor(gui_player, MESSAGE_INTERACTION, makeColorRGB(0, 255, 0), Language::get(3730), items[itemEffectScrollItem->type].getIdentifiedName());
 			playSound(167, 64);
-			int difficulty = 10 + spell->difficulty;
+			int difficulty = 10 + spell->difficulty / 4;
 			node_t* nextnode = nullptr;
 			for ( node_t* node = players[gui_player]->magic.spellList.first; node; node = nextnode )
 			{
@@ -8072,6 +8126,14 @@ void GenericGUIMenu::rechargeScepterUsingItem(Item* item)
 							if ( players[gui_player]->magic.selected_spell_alternate[i] == spell )
 							{
 								players[gui_player]->magic.selected_spell_alternate[i] = nullptr;
+							}
+						}
+						if ( client_classes[gui_player] == CLASS_SCION )
+						{
+							players[gui_player]->mechanics.favoriteBooksAchievement[spell->ID]++;
+							if ( players[gui_player]->mechanics.favoriteBooksAchievement[spell->ID] >= 5 )
+							{
+								steamAchievement("BARONY_ACH_FAVORITE_BOOK");
 							}
 						}
 						Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_ARCHON_SPELLS_FORGOTTEN, MAGICSTAFF_SCEPTER, 1);
@@ -9099,6 +9161,38 @@ void GenericGUIMenu::alchemyCookCombination()
 
 	int appearance = 0;
 	int blessing = 0;
+	if ( isItemRation(result) )
+	{
+		if ( basePotion->beatitude > 0 && secondaryPotion->beatitude > 0 )
+		{
+			blessing = std::min(basePotion->beatitude, secondaryPotion->beatitude); // take least blessed
+		}
+		else if ( basePotion->beatitude < 0 && secondaryPotion->beatitude < 0 )
+		{
+			blessing = std::min(basePotion->beatitude, secondaryPotion->beatitude); // take most cursed
+		}
+		else if ( (basePotion->beatitude < 0 && secondaryPotion->beatitude > 0)
+			|| (secondaryPotion->beatitude < 0 && basePotion->beatitude > 0) )
+		{
+			blessing = 0;
+		}
+		else if ( basePotion->beatitude < 0 && secondaryPotion->beatitude == 0 )
+		{
+			blessing = basePotion->beatitude; // curse the result
+		}
+		else if ( basePotion->beatitude == 0 && secondaryPotion->beatitude < 0 )
+		{
+			blessing = secondaryPotion->beatitude; // curse the result
+		}
+		else if ( basePotion->beatitude > 0 && secondaryPotion->beatitude == 0 )
+		{
+			blessing = 0; // negate the blessing
+		}
+		else if ( basePotion->beatitude == 0 && secondaryPotion->beatitude > 0 )
+		{
+			blessing = 0; // negate the blessing
+		}
+	}
 
 	bool emptyBottle = false;
 	{
@@ -9136,7 +9230,7 @@ void GenericGUIMenu::alchemyCookCombination()
 		if ( alchemyGUI.torchCount.count >= 0 )
 		{
 			std::vector<Item*> torches;
-			Item* torchesEquipped;
+			Item* torchesEquipped{};
 			for ( node_t* invnode = stats[gui_player]->inventory.first; invnode != NULL; invnode = invnode->next )
 			{
 				Item* item = (Item*)invnode->element;
@@ -9310,6 +9404,7 @@ void GenericGUIMenu::alchemyCookCombination()
 		if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
 		{
 			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_SLOP_BALLS, "cauldron", createCount);
+			steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
 		}
 		if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
 		{
@@ -9321,6 +9416,7 @@ void GenericGUIMenu::alchemyCookCombination()
 		if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
 		{
 			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_GREASE_BALLS, "cauldron", createCount);
+			steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
 		}
 		if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
 		{
@@ -9335,6 +9431,7 @@ void GenericGUIMenu::alchemyCookCombination()
 			if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
 			{
 				Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_MEALS, "cauldron", createCount);
+				steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
 			}
 			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_MEALS, result, createCount);
 			if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
@@ -9347,6 +9444,7 @@ void GenericGUIMenu::alchemyCookCombination()
 			if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
 			{
 				Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_COOK_FLAVORED_MEALS, "cauldron", createCount);
+				steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
 			}
 			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_MEALS, result, createCount);
 			if ( alembicItem && alembicItem->type == TOOL_FRYING_PAN )
@@ -9354,6 +9452,12 @@ void GenericGUIMenu::alchemyCookCombination()
 				Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_COOK_FLAVORED_MEALS, TOOL_FRYING_PAN, createCount);
 			}
 		}
+		if ( stats[gui_player]->type == VAMPIRE || stats[gui_player]->type == AUTOMATON
+			|| stats[gui_player]->type == SKELETON )
+		{
+			steamAchievement("BARONY_ACH_CULINARY_AMBASSADOR");
+		}
+		steamStatisticUpdate(STEAM_STAT_LET_HIM_COOK, STEAM_STAT_INT, createCount);
 
 		bool raiseSkill = false;
 		if ( result == FOOD_RATION && local_rng.rand() % 10 == 0 && stats[gui_player] 
@@ -10128,6 +10232,7 @@ void GenericGUIMenu::alchemyCombinePotions()
 					if ( alembicEntityUid != 0 && uidToEntity(alembicEntityUid) )
 					{
 						Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_ALEMBIC_BREWED, "cauldron", 1);
+						steamStatisticUpdate(STEAM_STAT_WITCHES_BREW, STEAM_STAT_INT, 1);
 					}
 					else
 					{
@@ -10614,6 +10719,7 @@ bool GenericGUIMenu::tinkeringCraftItem(Item* item)
 		if ( workstationEntityUid != 0 && uidToEntity(workstationEntityUid) )
 		{
 			Compendium_t::Events_t::eventUpdateWorld(gui_player, Compendium_t::CPDM_WORKBENCH_CRAFTS, "workbench", 1);
+			steamStatisticUpdate(STEAM_STAT_HOBBYIST, STEAM_STAT_INT, 1);
 		}
 		else
 		{
@@ -12187,7 +12293,7 @@ bool GenericGUIMenu::tinkeringIsItemUpgradeable(const Item* item)
 	return false;
 }
 
-const int TINKER_MIN_ITEM_SKILL_REQ = 10;
+const int TINKER_MIN_ITEM_SKILL_REQ = 0;
 
 int GenericGUIMenu::tinkeringPlayerHasSkillLVLToCraft(const Item* item)
 {
@@ -17839,7 +17945,39 @@ void GenericGUIMenu::AlchemyGUI_t::updateAlchemyMenu()
 			alchemyResultPotion.identified = true;
 			int appearance = 0;
 			int blessing = 0;
-			alchemyResultPotion.beatitude = 0;
+			if ( isItemRation(res) )
+			{
+				if ( potion1Item->beatitude > 0 && potion2Item->beatitude > 0 )
+				{
+					blessing = std::min(potion1Item->beatitude, potion2Item->beatitude); // take least blessed
+				}
+				else if ( potion1Item->beatitude < 0 && potion2Item->beatitude < 0 )
+				{
+					blessing = std::min(potion1Item->beatitude, potion2Item->beatitude); // take most cursed
+				}
+				else if ( (potion1Item->beatitude < 0 && potion2Item->beatitude > 0)
+					|| (potion2Item->beatitude < 0 && potion1Item->beatitude > 0) )
+				{
+					blessing = 0;
+				}
+				else if ( potion1Item->beatitude < 0 && potion2Item->beatitude == 0 )
+				{
+					blessing = potion1Item->beatitude; // curse the result
+				}
+				else if ( potion1Item->beatitude == 0 && potion2Item->beatitude < 0 )
+				{
+					blessing = potion2Item->beatitude; // curse the result
+				}
+				else if ( potion1Item->beatitude > 0 && potion2Item->beatitude == 0 )
+				{
+					blessing = 0; // negate the blessing
+				}
+				else if ( potion1Item->beatitude == 0 && potion2Item->beatitude > 0 )
+				{
+					blessing = 0; // negate the blessing
+				}
+			}
+			alchemyResultPotion.beatitude = blessing;
 			alchemyResultPotion.appearance = 0;
 			alchemyResultPotion.appearance |= (missingPotion1Count & 0xFF) << 0;
 			alchemyResultPotion.appearance |= (missingPotion2Count & 0xFF) << 8;
@@ -32239,6 +32377,13 @@ void GenericGUIMenu::AssistShrineGUI_t::updateClassSlots()
 						if ( selected )
 						{
 							slotBg->path = (prefix + "ClassSelect_IconBGLegendsHigh_00.png");
+						}
+						break;
+					case MainMenu::DLC::DesertersAndDisciples:
+						slotBg->path = (prefix + "ClassSelect_IconBGDeserters_00.png");
+						if ( selected )
+						{
+							slotBg->path = (prefix + "ClassSelect_IconBGDesertersHigh_00.png");
 						}
 						break;
 					}

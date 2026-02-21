@@ -5998,6 +5998,31 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
                             continue; // don't insert this newline
                         }
                     }
+					else if ( tag == "spell_cast_time_newline" )
+					{
+						if ( detailsTextString.compare("") == 0 )
+						{
+							continue; // don't insert this newline
+						}
+					}
+					else if ( tag == "spell_distance_newline" )
+					{
+						if ( spell->rangefinder == SpellRangefinderType::RANGEFINDER_NONE )
+						{
+							continue;
+						}
+						if ( detailsTextString.compare("") == 0 )
+						{
+							continue; // don't insert this newline
+						}
+					}
+					else if ( tag == "spell_distance" )
+					{
+						if ( spell->rangefinder == SpellRangefinderType::RANGEFINDER_NONE )
+						{
+							continue;
+						}
+					}
 					else if ( tag.compare("spell_nogain_newline") == 0 )
 					{
 						if ( compendiumTooltip && intro )
@@ -6485,7 +6510,7 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
 				}
 				else
 				{
-					if ( !item->identified )
+					if ( !item->identified && stats[player]->getModifiedProficiency(PRO_APPRAISAL) < SKILL_LEVEL_LEGENDARY )
 					{
 						if ( itemCategory(item) == GEM && item->type != GEM_ROCK )
 						{
@@ -6937,6 +6962,17 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
         bool doAppraisalProgressPrompt = !item->identified && isItemFromInventory && appraisal.current_item == item->uid && !compendiumTooltip;
         if ( doAppraisalProgressPrompt )
         {
+			if ( expandBindingPressed )
+			{
+				if ( players[player]->inventoryUI.appraisal.manual_appraised_item == item->uid )
+				{
+					players[player]->inventoryUI.appraisal.manual_appraised_item = 0;
+				}
+				else
+				{
+					players[player]->inventoryUI.appraisal.manual_appraised_item = item->uid;
+				}
+			}
 			static ConsoleVariable<int> cvar_appraisal_display("/appraisal_display", 0);
 			if ( *cvar_appraisal_display == 0 )
 			{
@@ -10569,19 +10605,40 @@ void Player::Inventory_t::updateInventory()
 						if ( guiAllowDefaultRightClick() )
 						{
 							// auto-appraise the item
+							int prevAppraisedManual = players[player]->inventoryUI.appraisal.manual_appraised_item;
 							appraisal.appraiseItem(item);
+							if ( appraisal.current_item == item->uid )
+							{
+								if ( prevAppraisedManual == item->uid )
+								{
+									appraisal.manual_appraised_item = 0;
+								}
+								else
+								{
+									appraisal.manual_appraised_item = item->uid;
+								}
+							}
 							Input::inputs[player].consumeBinaryToggle("MenuRightClick");
 						}
 					}
 					else if ( !disableItemUsage
-						&& (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK || item->type == FOOD_CREAMPIE) &&
-						(keystatus[SDLK_LALT] || keystatus[SDLK_RALT]) )
+						&& (itemCategory(item) == POTION 
+							|| itemCategory(item) == SPELL_CAT
+							|| itemCategory(item) == SPELLBOOK || item->type == FOOD_CREAMPIE) &&
+						(/*keystatus[SDLK_LALT] || keystatus[SDLK_RALT]*/Input::inputs[player].binary("Alternate Use Modifier")) )
 					{
 						Input::inputs[player].consumeBinaryToggle("MenuRightClick");
 						if ( guiAllowDefaultRightClick() )
 						{
-							// force equip potion/spellbook
-							playerTryEquipItemAndUpdateServer(player, item, true);
+							if ( itemCategory(item) == SPELL_CAT )
+							{
+								players[player]->inventoryUI.activateItemContextMenuOption(item, ItemContextMenuPrompts::PROMPT_SPELL_QUICKCAST);
+							}
+							else
+							{
+								// force equip potion/spellbook
+								playerTryEquipItemAndUpdateServer(player, item, true);
+							}
 						}
 					}
 					else if ( !tinkeringSalvageOrRepairMenuActive && !alchemyOpen && !mailboxOpen && !featherInscribeOrRepairActive && !itemfxOpen )

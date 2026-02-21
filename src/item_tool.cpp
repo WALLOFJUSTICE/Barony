@@ -687,6 +687,8 @@ void Item::applyLockpick(int player, Entity& entity)
 						{
 							players[player]->entity->increaseSkill(PRO_LOCKPICKING);
 						}
+						Compendium_t::Events_t::eventUpdateWorld(player, Compendium_t::CPDM_KEYLOCK_PICKED, "wall locks", 1);
+						steamStatisticUpdateClient(player, STEAM_STAT_CALL_LOCKSMITH, STEAM_STAT_INT, 1);
 					}
 					entity.wallLockPreventLockpickExploit = 1;
 
@@ -722,7 +724,6 @@ void Item::applyLockpick(int player, Entity& entity)
 					entity.wallLockPower = 3; // turn on later in actWallLock
 					messagePlayer(player, MESSAGE_INTERACTION, Language::get(6426), items[TOOL_LOCKPICK].getIdentifiedName(),
 						Language::get(6383 + entity.wallLockMaterial));
-					Compendium_t::Events_t::eventUpdateWorld(player, Compendium_t::CPDM_KEYLOCK_PICKED, "wall locks", 1);
 				}
 				else
 				{
@@ -1228,17 +1229,17 @@ void Item::applyEmptyPotion(int player, Entity& entity)
 		{
 			auto generatedPotion = potionStandardAppearanceMap.at(
 				rng.discrete(potionChances.data(), potionChances.size()));
-			item = newItem(static_cast<ItemType>(generatedPotion.first), EXCELLENT, 0, 1, generatedPotion.second, false, NULL);
+			item = newItem(static_cast<ItemType>(generatedPotion.first), EXCELLENT, 0, 1, generatedPotion.second, true, NULL);
 		}
 		else
 		{
 			if ( entity.skill[3] == 1 ) // slime
 			{
-				item = newItem(POTION_ACID, EXCELLENT, 0, 1, 0, false, NULL);
+				item = newItem(POTION_ACID, EXCELLENT, 0, 1, 0, true, NULL);
 			}
 			else
 			{
-				item = newItem(POTION_WATER, EXCELLENT, 0, 1, 0, false, NULL);
+				item = newItem(POTION_WATER, EXCELLENT, 0, 1, 0, true, NULL);
 			}
 		}
 		if ( item )

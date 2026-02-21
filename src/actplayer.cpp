@@ -425,7 +425,8 @@ bool Player::Ghost_t::allowedInteractEntity(Entity& entity)
 		|| entity.behavior == &actPowerCrystalBase
 		|| entity.behavior == &actTeleportShrine
 		|| entity.behavior == &::actDaedalusShrine
-		|| entity.behavior == &actTeleporter )
+		|| entity.behavior == &actTeleporter
+		|| entity.behavior == &actWallButton )
 	{
 		return true;
 	}
@@ -2920,6 +2921,21 @@ void actDeathGhost(Entity* my)
 					bodypart->monsterSpecialState = my->monsterSpecialState;
 				}
 
+				if ( playernum == clientnum )
+				{
+					if ( player->ghost.isActive() )
+					{
+						if ( my->ticks % (5 * TICKS_PER_SECOND) == 0 )
+						{
+							gameStatistics[STATISTICS_QUACKERY] += 5;
+							if ( gameStatistics[STATISTICS_QUACKERY] >= 5 * 60 )
+							{
+								steamAchievement("BARONY_ACH_QUACKERY");
+							}
+						}
+					}
+				}
+
 				node_t* node = nullptr;
 				int bodypartIndex = 0;
 				for ( bodypartIndex = 0, node = bodypart->children.first; node != nullptr; node = node->next, ++bodypartIndex )
@@ -4787,6 +4803,13 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 
 	PLAYER_VELX *= pow(movementDrag, refreshRateDelta);
 	PLAYER_VELY *= pow(movementDrag, refreshRateDelta);
+	real_t magnitude = sqrt(pow(PLAYER_VELX, 2) + pow(PLAYER_VELY, 2));
+	const real_t magnitudeMax = 5.0;
+	if ( magnitude > magnitudeMax )
+	{
+		PLAYER_VELX *= (magnitudeMax / magnitude);
+		PLAYER_VELY *= (magnitudeMax / magnitude);
+	}
 
 	/*if ( keystatus[SDLK_g] )
 	{
@@ -4826,8 +4849,19 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 	bool swimming = isPlayerSwimming();
 	if ( swimming && !amuletwaterbreathing )
 	{
-		PLAYER_VELX *= (/*((stats[PLAYER_NUM]->getModifiedProficiency(PRO_LEGACY_SWIMMING) / 100.f) * 50.f) +*/ 50) / 100.f;
-		PLAYER_VELY *= (/*((stats[PLAYER_NUM]->getModifiedProficiency(PRO_LEGACY_SWIMMING) / 100.f) * 50.f) +*/ 50) / 100.f;
+		//PLAYER_VELX *= (/*((stats[PLAYER_NUM]->getModifiedProficiency(PRO_LEGACY_SWIMMING) / 100.f) * 50.f) +*/ 50) / 100.f;
+		//PLAYER_VELY *= (/*((stats[PLAYER_NUM]->getModifiedProficiency(PRO_LEGACY_SWIMMING) / 100.f) * 50.f) +*/ 50) / 100.f;
+		if ( stats[PLAYER_NUM]->type == HUMAN
+			|| stats[PLAYER_NUM]->type == RAT )
+		{
+			PLAYER_VELX *= (((50 / 100.f) * 50.f) + 50) / 100.f;
+			PLAYER_VELY *= (((50 / 100.f) * 50.f) + 50) / 100.f;
+		}
+		else
+		{
+			PLAYER_VELX *= (((25 / 100.f) * 50.f) + 50) / 100.f;
+			PLAYER_VELY *= (((25 / 100.f) * 50.f) + 50) / 100.f;
+		}
 
 		if ( stats[PLAYER_NUM]->type == SKELETON )
 		{
@@ -5881,7 +5915,7 @@ void playerDebugTests(Entity* my)
 	static ConsoleVariable<bool> cvar_test_frameskip("/test_frameskip", false);
 	if ( *cvar_test_frameskip && ticks % (5 * TICKS_PER_SECOND) == 0 )
 	{
-		SDL_Delay(50);
+		SDL_Delay(250);
 	}
 
 	static ConsoleVariable<int> cvar_test_xp("/test_xp", 0);
@@ -8391,12 +8425,14 @@ void actPlayer(Entity* my)
 	{
 		auto& appraisal = players[PLAYER_NUM]->inventoryUI.appraisal;
 		real_t appraisalTimerReduce = 0.75 - 0.25 * std::max(0, std::min(100, (stats[PLAYER_NUM]->getModifiedProficiency(PRO_APPRAISAL) + statGetPER(stats[PLAYER_NUM], my)))) / 100.0;
+		bool anyUnid = false;
 		for ( auto node = stats[PLAYER_NUM]->inventory.first; node; node = node->next )
 		{
 			if ( Item* item = (Item*)node->element )
 			{
 				if ( !item->identified )
 				{
+					anyUnid = true;
 					auto find = appraisal.appraisalProgressionItems.find(item->uid);
 					if ( find == appraisal.appraisalProgressionItems.end() )
 					{
@@ -8413,6 +8449,11 @@ void actPlayer(Entity* my)
 					}
 				}
 			}
+		}
+
+		if ( anyUnid )
+		{
+			messagePlayerColor(PLAYER_NUM, MESSAGE_INVENTORY | MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(6992));
 		}
 	}
 
@@ -9030,7 +9071,7 @@ void actPlayer(Entity* my)
 
 	if ( players[PLAYER_NUM]->isLocalPlayer() || multiplayer == SERVER )
 	{
-		switch ( stats[PLAYER_NUM]->type )
+		switch ( playerRace )
 		{
 			case RAT:
 				zOffset = 6;
@@ -9659,6 +9700,27 @@ void actPlayer(Entity* my)
 					&& !players[PLAYER_NUM]->shootmode )
 				{
 					skipUse = true;
+				}
+
+				if ( players[PLAYER_NUM]->shootmode 
+					&& stats[PLAYER_NUM]->defending
+					&& !gamePaused 
+					&& !movie
+					&& !fadeout
+					&& !players[PLAYER_NUM]->usingCommand() && players[PLAYER_NUM]->bControlEnabled
+					&& input.binaryToggle("Use")
+					&& input.binaryToggle("Defend") )
+				{
+					if ( stats[PLAYER_NUM]->shield && stats[PLAYER_NUM]->shield->type == TOOL_FRYING_PAN )
+					{
+						if ( !GenericGUI[PLAYER_NUM].isGUIOpen() )
+						{
+							input.consumeBinaryToggle("Use");
+							input.consumeBindingsSharedWithBinding("Use");
+							GenericGUI[PLAYER_NUM].openGUI(GUI_TYPE_ALCHEMY, true, stats[PLAYER_NUM]->shield);
+							skipUse = true;
+						}
+					}
 				}
 
 				if ( !skipUse )
@@ -10631,6 +10693,57 @@ void actPlayer(Entity* my)
         }
     }
 
+	if ( !intro && PLAYER_NUM == clientnum )
+	{
+		if ( stats[clientnum]->type == MYCONID && stats[clientnum]->playerRace == RACE_MYCONID && stats[clientnum]->stat_appearance == 0
+			&& stats[clientnum]->helmet )
+		{
+			gameStatistics[STATISTICS_NO_CAP] = std::max(0, gameStatistics[STATISTICS_NO_CAP]);
+		}
+		else
+		{
+			gameStatistics[STATISTICS_NO_CAP] = -1;
+		}
+		if ( stats[clientnum]->getEffectActive(EFF_GROWTH) >= 2
+			&& ((stats[clientnum]->type == MYCONID && stats[clientnum]->playerRace == RACE_MYCONID)
+				|| (stats[clientnum]->type == DRYAD && stats[clientnum]->playerRace == RACE_DRYAD)) && stats[clientnum]->stat_appearance == 0
+			&& !stats[clientnum]->helmet )
+		{
+			gameStatistics[STATISTICS_DONT_TOUCH_HAIR] = std::max(0, gameStatistics[STATISTICS_DONT_TOUCH_HAIR]);
+		}
+		else
+		{
+			gameStatistics[STATISTICS_DONT_TOUCH_HAIR] = -1;
+		}
+		if ( stats[clientnum]->type == SALAMANDER && stats[clientnum]->playerRace == RACE_SALAMANDER && stats[clientnum]->stat_appearance == 0
+			&& stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) >= 3 && stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) <= 4 )
+		{
+			gameStatistics[STATISTICS_GARGOYLES_QUEST] = std::max(0, gameStatistics[STATISTICS_GARGOYLES_QUEST]);
+		}
+		else
+		{
+			gameStatistics[STATISTICS_GARGOYLES_QUEST] = -1;
+		}
+		if ( stats[clientnum]->type == SALAMANDER && stats[clientnum]->playerRace == RACE_SALAMANDER && stats[clientnum]->stat_appearance == 0
+			&& stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) >= 1 && stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) <= 2 )
+		{
+			gameStatistics[STATISTICS_FIRE_FIGHTER] = std::max(0, gameStatistics[STATISTICS_FIRE_FIGHTER]);
+		}
+		else
+		{
+			gameStatistics[STATISTICS_FIRE_FIGHTER] = -1;
+		}
+		if ( stats[clientnum]->type == SALAMANDER && stats[clientnum]->playerRace == RACE_SALAMANDER && stats[clientnum]->stat_appearance == 0
+			&& !stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) )
+		{
+			gameStatistics[STATISTICS_DISCIPLINE] = std::max(0, gameStatistics[STATISTICS_DISCIPLINE]);
+		}
+		else
+		{
+			gameStatistics[STATISTICS_DISCIPLINE] = -1;
+		}
+	}
+
 	// server controls players primarily
 	if ( players[PLAYER_NUM]->isLocalPlayer() || multiplayer == SERVER || StatueManager.activeEditing )
 	{
@@ -11396,10 +11509,10 @@ void actPlayer(Entity* my)
 							|| lavatiles[map.tiles[index_y * MAPLAYERS + index_x * MAPLAYERS * map.height]] )
 						{
 							players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LEVITATION, dist, 0.5, nullptr);
-						}
-						if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) )
-						{
-							players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) )
+							{
+								players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+							}
 						}
 					}
 				}
@@ -11697,10 +11810,10 @@ void actPlayer(Entity* my)
 							|| lavatiles[map.tiles[index_y * MAPLAYERS + index_x * MAPLAYERS * map.height]] )
 						{
 							players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LEVITATION, dist, 0.5, nullptr);
-						}
-						if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) )
-						{
-							players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) )
+							{
+								players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+							}
 						}
 					}
 				}

@@ -3644,7 +3644,8 @@ struct Compendium_t
 			ACH_TYPE_DLC1,
 			ACH_TYPE_DLC2,
 			ACH_TYPE_DLC1_DLC2,
-			ACH_TYPE_DLC3
+			ACH_TYPE_DLC3,
+			ACH_TYPE_DLC1_DLC2_DLC3
 		};
 		std::string name;
 		std::string desc;
@@ -4074,7 +4075,7 @@ struct Compendium_t
 		CPDM_JEWEL_RECRUIT_EXCELLENT,
 		CPDM_FORGED,
 		CPDM_UPGRADED,
-		CPDM_XXX,
+		CPDM_SHILLELAGH_DEBUFFS_MAX,
 		CPDM_DUCK_DODGE,
 		CPDM_DUCK_CAUGHT,
 		CPDM_EVENT_TAGS_MAX
@@ -4200,6 +4201,7 @@ struct Compendium_t
 		static int numUnread;
 	};
 	std::map<std::string, CompendiumCodex_t::Codex_t> codex;
+	bool migrateOldSkillIndexes = false;
 	void readCodexFromFile(bool forceLoadBaseDirectory = false);
 	void readCodexTranslationsFromFile(bool forceLoadBaseDirectory = false);
 	static const char* compendiumCurrentLevelToWorldString(const int currentlevel, const bool secretlevel);
@@ -4414,7 +4416,10 @@ struct TreasureRoomGenerator
 	std::unordered_set<unsigned int> treasure_floors;
 	std::unordered_set<unsigned int> treasure_secret_floors;
 	std::map<unsigned int, std::string> orb_floors;
+	std::map<unsigned int, std::string> station_floors;
+	std::map<unsigned int, std::string> station_secret_floors;
 	void init();
 	bool bForceSpawnForCurrentFloor(int secretlevelexit, bool minotaur, BaronyRNG& mapRNG);
+	bool bForceStationSpawnForCurrentFloor(int secretlevelexit);
 };
 extern TreasureRoomGenerator treasure_room_generator;

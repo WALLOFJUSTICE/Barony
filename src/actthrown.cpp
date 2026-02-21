@@ -145,7 +145,7 @@ void actThrown(Entity* my)
 	Item* item = nullptr;
 	Category cat = GEM;
 	ItemType type = WOODEN_SHIELD;
-	char* itemname = nullptr;
+	std::string itemname = "";
 
 	item = newItemFromEntity(my, true);
 	if ( item )
@@ -1394,7 +1394,7 @@ void actThrown(Entity* my)
 				}
 
 				// set the obituary
-				snprintf(whatever, 255, Language::get(1508), itemname);
+				snprintf(whatever, 255, Language::get(1508), itemname.c_str());
 				hit.entity->setObituary(whatever);
 				if (hitstats) {
 				    hitstats->killer = KilledBy::ITEM;
@@ -1679,6 +1679,12 @@ void actThrown(Entity* my)
 								}
 								break;
 							case SLOP_BALL:
+							{
+								bool wasBlind = false;
+								if ( hitstats )
+								{
+									wasBlind = hitstats->getEffectActive(EFF_BLIND) > 0;
+								}
 								if ( hit.entity->setEffect(EFF_BLIND, true, 5 * TICKS_PER_SECOND, false) )
 								{
 									if ( hit.entity->behavior == &actPlayer )
@@ -1689,6 +1695,11 @@ void actThrown(Entity* my)
 									{
 										Uint32 color = makeColorRGB(0, 255, 0);
 										messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(3878), Language::get(3879), MSG_COMBAT);
+										if ( !wasBlind )
+										{
+											achievementObserver.addEntityAchievementTimer(parent, AchievementObserver::BARONY_ACH_FOOD_FIGHT, 5 * TICKS_PER_SECOND, false, 1);
+											achievementObserver.awardAchievementIfActive(parent->skill[2], parent, AchievementObserver::BARONY_ACH_FOOD_FIGHT);
+										}
 									}
 									if ( hit.entity->behavior == &actMonster )
 									{
@@ -1696,6 +1707,7 @@ void actThrown(Entity* my)
 									}
 								}
 								break;
+							}
 							case BOLAS:
 							{
 								int duration = 3 * TICKS_PER_SECOND;
@@ -1714,6 +1726,8 @@ void actThrown(Entity* my)
 								}
 								if ( hit.entity->setEffect(EFF_ROOTED, true, duration, false) )
 								{
+									achievementObserver.addEntityAchievementTimer(hit.entity, AchievementObserver::BARONY_ACH_THATS_A_WRAP, duration, true, 0);
+
 									if ( hit.entity->behavior == &actPlayer )
 									{
 										messagePlayerColor(hit.entity->skill[2], MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6763));
@@ -1832,7 +1846,7 @@ void actThrown(Entity* my)
 								else if ( hit.entity->behavior == &actPlayer )
 								{
 									Uint32 color = makeColorRGB(255, 0, 0);
-									messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(588), itemname); // hit by a flying
+									messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(588), itemname.c_str()); // hit by a flying
 								}
 								Entity* newTarget = item_PotionPolymorph(item, hit.entity, parent);
 								if ( newTarget )
@@ -2186,7 +2200,7 @@ void actThrown(Entity* my)
 				if ( hit.entity->behavior == &actPlayer && !skipMessage )
 				{
 					Uint32 color = makeColorRGB(255, 0, 0);
-					messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(588), itemname); // hit by a flying
+					messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(588), itemname.c_str()); // hit by a flying
 					if ( damage == 0 && !wasPotion )
 					{
 						messagePlayer(hit.entity->skill[2], MESSAGE_COMBAT, Language::get(452));

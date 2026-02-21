@@ -369,13 +369,14 @@ int initGame()
 		}
 		updateLoadingScreen(96);
 		
-		if ( !loadMusic() )
-		{
-			printlog("WARN: loadMusic() from initGame() failed!");
-		}
-
 		loadAllScores(SCORESFILE);
 		loadAllScores(SCORESFILE_MULTIPLAYER);
+
+#ifdef USE_FMOD
+#ifndef EDITOR
+		ensembleSounds.setup();
+#endif
+#endif
 
 		updateLoadingScreen(98);
 		loading_done = true;
@@ -1011,7 +1012,14 @@ void loadAchievementData(const char* path) {
 						}
 						else if ( !strcmp(it->GetString(), "deserters_disciples") )
 						{
-							achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC3;
+							if ( achData.dlcType == Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2 )
+							{
+								achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC1_DLC2_DLC3;
+							}
+							else
+							{
+								achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_DLC3;
+							}
 						}
 					}
 				}

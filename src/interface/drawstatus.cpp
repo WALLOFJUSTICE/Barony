@@ -2245,15 +2245,36 @@ void drawStatusNew(const int player)
 						if ( (keystatus[SDLK_LSHIFT] || keystatus[SDLK_RSHIFT]) ) //TODO: selected shop slot, identify, remove curse?
 						{
 							// auto-appraise the item
+							int prevAppraisedManual = players[player]->inventoryUI.appraisal.manual_appraised_item;
 							players[player]->inventoryUI.appraisal.appraiseItem(item);
+							if ( players[player]->inventoryUI.appraisal.current_item == item->uid )
+							{
+								if ( prevAppraisedManual == item->uid )
+								{
+									players[player]->inventoryUI.appraisal.manual_appraised_item = 0;
+								}
+								else
+								{
+									players[player]->inventoryUI.appraisal.manual_appraised_item = item->uid;
+								}
+							}
 							Input::inputs[player].consumeBinaryToggle("MenuRightClick");
 						}
-						else if ( !disableItemUsage && (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK || item->type == FOOD_CREAMPIE) &&
-							(keystatus[SDLK_LALT] || keystatus[SDLK_RALT]) )
+						else if ( !disableItemUsage && (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK 
+							|| itemCategory(item) == SPELL_CAT
+							|| item->type == FOOD_CREAMPIE) &&
+							(/*keystatus[SDLK_LALT] || keystatus[SDLK_RALT]*/Input::inputs[player].binary("Alternate Use Modifier") ))
 						{
 							Input::inputs[player].consumeBinaryToggle("MenuRightClick");
-							// force equip potion/spellbook
-							playerTryEquipItemAndUpdateServer(player, item, true);
+							if ( itemCategory(item) == SPELL_CAT )
+							{
+								players[player]->inventoryUI.activateItemContextMenuOption(item, ItemContextMenuPrompts::PROMPT_SPELL_QUICKCAST);
+							}
+							else
+							{
+								// force equip potion/spellbook
+								playerTryEquipItemAndUpdateServer(player, item, true);
+							}
 						}
 						else
 						{
@@ -2928,6 +2949,18 @@ void drawStatusNew(const int player)
 					{
 						hotbar_t.selectHotbarSlot(centerSlot);
 					}
+
+					/*if ( pressed != Player::Hotbar_t::GROUP_NONE )
+					{
+						// up arrow possibility to alt use
+						if ( Input::inputs[player].binaryToggle("Cycle NPCs") )
+						{
+							Input::inputs[player].consumeBinaryToggle("Cycle NPCs");
+							Input::inputs[player].consumeBinaryToggle(inputName.c_str());
+							Input::inputs[player].consumeBindingsSharedWithBinding("Cycle NPCs");
+							pressed = Player::Hotbar_t::GROUP_NONE;
+						}
+					}*/
 					break;
 				}
 			}
@@ -3234,12 +3267,39 @@ void drawStatusNew(const int player)
 				learnedSpell = (playerLearnedSpellbook(player, item) || itemIsEquipped(item, player));
 			}
 
-			if ( ((keystatus[SDLK_LALT] || keystatus[SDLK_RALT])
-				&& (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK)) 
-				|| item->type == FOOD_CREAMPIE )
+			bool quickcastSpell = false;
+			if ( inputs.hasController(player) )
+			{
+				quickcastSpell = playerSettings[multiplayer ? 0 : player].spell_quickcast_controller;
+			}
+			else if ( inputs.bPlayerUsingKeyboardControl(player) )
+			{
+				quickcastSpell = playerSettings[multiplayer ? 0 : player].spell_quickcast_mkb;
+			}
+			else
+			{
+				quickcastSpell = playerSettings[multiplayer ? 0 : player].spell_quickcast_controller;
+			}
+
+			bool altUse = false;
+			if ( itemCategory(item) == SPELL_CAT && quickcastSpell )
+			{
+				if ( input.binary("Alternate Use Modifier") )
+				{
+					// normal equip cycle
+				}
+				else
+				{
+					altUse = true;
+				}
+			}
+			else if ( (/*keystatus[SDLK_LALT] || keystatus[SDLK_RALT]*/ input.binary("Alternate Use Modifier"))
+				&& (itemCategory(item) == POTION || itemCategory(item) == SPELLBOOK || itemCategory(item) == SPELL_CAT
+				|| item->type == FOOD_CREAMPIE) )
 			{
 				badpotion = true;
 				learnedSpell = true;
+				altUse = true;
 			}
 
 			if ( !learnedSpell && item->identified
@@ -3302,7 +3362,11 @@ void drawStatusNew(const int player)
 
 			if ( !disableItemUsage )
 			{
-				if ( !badpotion && !learnedSpell )
+				if ( altUse && itemCategory(item) == SPELL_CAT )
+				{
+					players[player]->inventoryUI.activateItemContextMenuOption(item, ItemContextMenuPrompts::PROMPT_SPELL_QUICKCAST);
+				}
+				else if ( !badpotion && !learnedSpell )
 				{
 					if ( !(isItemEquippableInShieldSlot(item) && cast_animation[player].active_spellbook) )
 					{

@@ -177,6 +177,8 @@ bool spellEffectDominate(Entity& my, spellElement_t& element, Entity& caster, En
 
 	playSoundEntity(hit.entity, 174, 64); //TODO: Dominate spell sound effect.
 
+	bool previousLeaderMatching = hit.entity->monsterAllyGetPlayerLeader() == parent;
+
 	//Make the monster a follower.
 	bool dominated = forceFollower(caster, *hit.entity);
 
@@ -185,6 +187,11 @@ bool spellEffectDominate(Entity& my, spellElement_t& element, Entity& caster, En
 		Uint32 color = makeColorRGB(0, 255, 0);
 		if ( parent->behavior == &actPlayer )
 		{
+			if ( previousLeaderMatching )
+			{
+				steamAchievementClient(parent->skill[2], "BARONY_ACH_CONFESSOR");
+			}
+
 			messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(2428), Language::get(2427), MSG_COMBAT);
 			if ( hit.entity->monsterAllyIndex != parent->skill[2] )
 			{
@@ -336,7 +343,7 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int da
 			// write the obituary
 			if ( parent )
 			{
-				parent->killedByMonsterObituary(hit.entity);
+				parent->killedByMonsterObituary(hit.entity, true);
 			}
 
 			int previousDuration = hitstats->EFFECTS_TIMERS[EFF_POISONED];
@@ -536,7 +543,7 @@ void spellEffectPoison(Entity& my, spellElement_t& element, Entity* parent, int 
 			// write the obituary
 			if ( parent )
 			{
-				parent->killedByMonsterObituary(hit.entity);
+				parent->killedByMonsterObituary(hit.entity, true);
 			}
 
 			if ( !hasamulet )
@@ -1059,7 +1066,7 @@ void spellEffectDrainSoul(Entity& my, spellElement_t& element, Entity* parent, i
 			// write the obituary
 			if ( parent )
 			{
-				parent->killedByMonsterObituary(hit.entity);
+				parent->killedByMonsterObituary(hit.entity, true);
 			}
 
 			// update enemy bar for attacker
@@ -1346,6 +1353,7 @@ void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent
 			bool allowStealFollowers = false;
 			Stat* casterStats = nullptr;
 			int currentCharmedFollowerCount = 0;
+			int numFollowers = 0;
 			if ( parent )
 			{
 				casterStats = parent->getStats();
@@ -1380,6 +1388,27 @@ void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent
 						else if ( difficulty <= 2 )
 						{
 							chance = 60; // special base chance for monsters.
+						}
+
+						if ( Entity* leader = parent->monsterAllyGetPlayerLeader() )
+						{
+							if ( Stat* leaderStats = leader->getStats() )
+							{
+								// search followers for charmed.
+								for ( node_t* node = leaderStats->FOLLOWERS.first; node != NULL; node = node->next )
+								{
+									Uint32* c = (Uint32*)node->element;
+									Entity* follower = nullptr;
+									if ( c )
+									{
+										follower = uidToEntity(*c);
+									}
+									if ( follower )
+									{
+										++numFollowers;
+									}
+								}
+							}
 						}
 					}
 					else if ( parent->behavior == &actPlayer )
@@ -1511,6 +1540,11 @@ void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent
 								// i am their leader, ignore
 								doPacify = true;
 							}
+						}
+
+						if ( numFollowers >= 8 )
+						{
+							doPacify = true; // stop after a point
 						}
 					}
 				}
@@ -3419,6 +3453,10 @@ bool Entity::spellEffectPreserveItem(Item* item)
 				{
 					cost *= 10;
 				}
+				if ( item->type == AMULET_MAGICREFLECTION || item->type == CLOAK_MAGICREFLECTION )
+				{
+					cost *= 2;
+				}
 				if ( !safeConsumeMP(cost) )
 				{
 					if ( myStats->MP > 0 )
@@ -3888,7 +3926,7 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 				if ( !targetStats->helmet && targetStats->getEffectActive(EFF_GROWTH) > 1 )
 				{
 					int bonus = std::min(3, targetStats->getEffectActive(EFF_GROWTH) - 1);
-					fireMultiplier += 0.05;
+					fireMultiplier += 0.05 * bonus;
 				}
 			}
 			if ( targetStats->type == SALAMANDER )
@@ -3922,7 +3960,7 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 		// write the obituary
 		if ( caster )
 		{
-			caster->killedByMonsterObituary(hitentity);
+			caster->killedByMonsterObituary(hitentity, true);
 		}
 
 		// update enemy bar for attacker
@@ -3950,6 +3988,12 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 			{
 				caster->awardXP(hitentity, true, true);
 			}
+
+			if ( spellID == SPELL_BOOBY_TRAP && caster->behavior == &actPlayer )
+			{
+				steamStatisticUpdateClient(caster->skill[2], STEAM_STAT_BOOM_DYNAMITE, STEAM_STAT_INT, 1);
+			}
+
 			spawnBloodVialOnMonsterDeath(hitentity, targetStats, caster);
 		}
 
@@ -4298,6 +4342,13 @@ real_t getSpellPropertyFromID(spell_t::SpellBasePropertiesFloat prop, int spellI
 					equipmentModifier += 0.05 * players[parent->skill[2]]->mechanics.getBreakableCounterTier();
 				}
 				real_t bonus = (getBonusFromCasterOfSpellElement(parent, myStats, element, spellID, spell->skillID));
+				if ( spell->skillID == PRO_MYSTICISM || spell->skillID == PRO_SORCERY || spell->skillID == PRO_THAUMATURGY )
+				{
+					if ( myStats && myStats->getModifiedProficiency(spell->skillID) >= SKILL_LEVEL_LEGENDARY )
+					{
+						bonus += 1.0;
+					}
+				}
 				real_t modifier = (statGetDEX(myStats, parent) * (1.0 + std::max(0.0, bonus)) * spell->cast_time_mult) / 100.0;
 				result += -modifier;
 				if ( bonus < -0.05 )

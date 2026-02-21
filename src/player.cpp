@@ -3259,6 +3259,8 @@ void Player::init() // for use on new/restart game, UI related
 	mechanics.ensembleDataUpdate = 0;
 	mechanics.gremlinBreakableCounter = 0;
 	mechanics.escalatingRngRolls.clear();
+	mechanics.escalatingSpellRngRolls.clear();
+	mechanics.favoriteBooksAchievement.clear();
 
 	mechanics.fociDarkChargeTime = 0;
 	mechanics.fociHolyChargeTime = 0;
@@ -3268,6 +3270,7 @@ void Player::init() // for use on new/restart game, UI related
 	mechanics.donationClaimed = false;
 
 	inventoryUI.appraisal.appraisalProgressionItems.clear();
+	inventoryUI.appraisal.manual_appraised_item = 0;
 }
 
 void Player::cleanUpOnEntityRemoval()
@@ -3420,10 +3423,6 @@ bool monsterIsFriendlyForTooltip(const int player, Entity& entity)
 		return true;
 	}
 	else if ( targetEntityType == GOBLIN && (playerRace == GREMLIN) )
-	{
-		return true;
-	}
-	else if ( targetEntityType == GNOME && (playerRace == GNOME) )
 	{
 		return true;
 	}
@@ -7345,9 +7344,13 @@ void Player::PlayerMechanics_t::onItemDegrade(Item* item)
 	{
 		itemDegradeRng[item->type] = 0;
 	}
+	else if ( items[item->type].item_slot != ItemEquippableSlot::EQUIPPABLE_IN_SLOT_SHIELD )
+	{
+		itemDegradeRng[item->type] = 0;
+	}
 }
 
-bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int* checkInterval)
+bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* checkInterval)
 {
 	if ( !item )
 	{
@@ -7383,45 +7386,75 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int* checkInterval)
 	}
 	else
 	{
-		switch ( item->type )
+		if ( items[item->type].item_slot == ItemEquippableSlot::EQUIPPABLE_IN_SLOT_SHIELD )
 		{
-		case WOODEN_SHIELD:
-			interval = 10;
-			break;
-		case BRONZE_SHIELD:
-			interval = 20;
-			break;
-		case IRON_SHIELD:
-		case BONE_SHIELD:
-			interval = 20;
-			break;
-		case STEEL_SHIELD:
-			interval = 30;
-			break;
-		case STEEL_SHIELD_RESISTANCE:
-			interval = 30;
-			break;
-		case SILVER_SHIELD:
-		case BLACKIRON_SHIELD:
-		case SCUTUM:
-			interval = 30;
-			break;
-		case CRYSTAL_SHIELD:
-			interval = 20;
-			break;
-		default:
-			break;
+			switch ( item->type )
+			{
+			case WOODEN_SHIELD:
+				interval = 10;
+				break;
+			case BRONZE_SHIELD:
+				interval = 20;
+				break;
+			case IRON_SHIELD:
+			case BONE_SHIELD:
+				interval = 20;
+				break;
+			case STEEL_SHIELD:
+				interval = 30;
+				break;
+			case STEEL_SHIELD_RESISTANCE:
+				interval = 30;
+				break;
+			case SILVER_SHIELD:
+			case BLACKIRON_SHIELD:
+			case SCUTUM:
+				interval = 30;
+				break;
+			case CRYSTAL_SHIELD:
+				interval = 20;
+				break;
+			default:
+				break;
+			}
+			if ( item->beatitude < 0
+				&& !intro && !shouldInvertEquipmentBeatitude(stats[player.playernum]) )
+			{
+				interval = 0;
+			}
+			else if ( item->beatitude > 0
+				|| (item->beatitude < 0
+					&& !intro && shouldInvertEquipmentBeatitude(stats[player.playernum])) )
+			{
+				interval += std::min(abs(item->beatitude), 5);
+			}
 		}
-		if ( item->beatitude < 0
-			&& !intro && !shouldInvertEquipmentBeatitude(stats[player.playernum]) )
+		else
 		{
-			interval = 0;
-		}
-		else if ( item->beatitude > 0
-			|| (item->beatitude < 0
-				&& !intro && shouldInvertEquipmentBeatitude(stats[player.playernum])) )
-		{
-			interval += std::min(abs(item->beatitude), 5);
+			interval = 4 + item->status;
+			if ( item->beatitude < 0
+				&& !intro && !shouldInvertEquipmentBeatitude(stats[player.playernum]) )
+			{
+				interval = 0;
+			}
+			else
+			{
+				if ( item->beatitude > 0
+					|| (item->beatitude < 0
+						&& !intro && shouldInvertEquipmentBeatitude(stats[player.playernum])) )
+				{
+					interval += std::min(abs(item->beatitude), 1);
+				}
+				if ( skillID >= 0 )
+				{
+					if ( skillID == PRO_SWORD || skillID == PRO_RANGED || skillID == PRO_AXE
+						|| skillID == PRO_MACE || skillID == PRO_POLEARM || skillID == PRO_UNARMED )
+					{
+						int bonus = (stats[player.playernum]->getModifiedProficiency(skillID) / 20);
+						interval += bonus;
+					}
+				}
+			}
 		}
 	}
 
@@ -7436,6 +7469,10 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int* checkInterval)
 	if ( counter >= interval )
 	{
 		if ( itemCategory(item) == SPELLBOOK )
+		{
+			// dont decrement until degraded
+		}
+		else if ( items[item->type].item_slot != ItemEquippableSlot::EQUIPPABLE_IN_SLOT_SHIELD )
 		{
 			// dont decrement until degraded
 		}
@@ -7642,6 +7679,7 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			|| spellID == SPELL_DETECT_FOOD
 			|| spellID == SPELL_COMMAND
 			|| spellID == SPELL_FLUTTER
+			|| spellID == SPELL_OVERCHARGE
 			|| spellID == SPELL_DIG )
 		{
 			sustainedSpellIDCounter[spellID] += value * scaleValue;
@@ -7649,6 +7687,10 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			{
 				sustainedSpellIDCounter[spellID] = 0.0;
 				Uint32 flags = spell_t::SPELL_LEVEL_EVENT_DEFAULT;
+				if ( spellID == SPELL_FLUTTER )
+				{
+					flags = spell_t::SPELL_LEVEL_EVENT_EFFECT;
+				}
 				if ( magicOnSpellCastEvent(players[player.playernum]->entity, players[player.playernum]->entity,
 					nullptr, spellID, flags, 1) )
 				{
@@ -8502,6 +8544,10 @@ int Player::PlayerMechanics_t::getBreakableCounterTier()
 
 void Player::PlayerMechanics_t::incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent eventType, Entity* entity)
 {
+	if ( multiplayer == CLIENT )
+	{
+		return;
+	}
 	if ( stats[player.playernum]->type == GREMLIN )
 	{
 		int amount = 0;
@@ -8539,6 +8585,10 @@ void Player::PlayerMechanics_t::incrementBreakableCounter(Player::PlayerMechanic
 			amount += 5;
 		}
 		int prevTier = getBreakableCounterTier();
+		if ( !strncmp(map.name, "Boss", 4) || !strncmp(map.name, "Sanctum", 7) || !strncmp(map.name, "Hell Boss", 9) )
+		{
+			amount = std::max(10, amount);
+		}
 		gremlinBreakableCounter += amount;
 		gremlinBreakableCounter = std::min(50, gremlinBreakableCounter);
 		if ( getBreakableCounterTier() > prevTier )
@@ -8552,6 +8602,26 @@ void Player::PlayerMechanics_t::incrementBreakableCounter(Player::PlayerMechanic
 				playSoundEntity(player.entity, 168, 128);
 			}
 			updateBreakableCounterServer();
+		}
+	}
+}
+
+void Player::PlayerMechanics_t::updateBreakableCounterClient(Player::PlayerMechanics_t::BreakableEvent eventType)
+{
+	if ( multiplayer == CLIENT )
+	{
+		if ( stats[player.playernum]->type == GREMLIN )
+		{
+			if ( eventType == BreakableEvent::GBREAK_DEGRADE )
+			{
+				strcpy((char*)net_packet->data, "GBRK");
+				net_packet->data[4] = player.playernum;
+				net_packet->data[5] = (int)eventType;
+				net_packet->len = 6;
+				net_packet->address.host = net_server.host;
+				net_packet->address.port = net_server.port;
+				sendPacketSafe(net_sock, -1, net_packet, 0);
+			}
 		}
 	}
 }
@@ -8595,7 +8665,7 @@ std::map<int, real_t> prng_tables
 };
 
 // escalating rng
-bool Player::PlayerMechanics_t::rollRngProc(Player::PlayerMechanics_t::RngRollTypes rngType, int chance)
+bool Player::PlayerMechanics_t::rollRngProc(Player::PlayerMechanics_t::RngRollTypes rngType, int chance, int spellID)
 {
 	chance = std::min(95, chance);
 	if ( chance <= 0 )
@@ -8629,7 +8699,7 @@ bool Player::PlayerMechanics_t::rollRngProc(Player::PlayerMechanics_t::RngRollTy
 			pityCap = std::max(pityCap, oneInRoll);
 		}
 
-		auto& rng_counter = escalatingRngRolls[(int)rngType];
+		auto& rng_counter = rngType == RngRollTypes::RNG_ROLL_SPELL_LEVELS ? escalatingSpellRngRolls[spellID] : escalatingRngRolls[(int)rngType];
 
 		if ( c * rng_counter >= 1.0
 			|| (rng_counter >= pityCap) )
@@ -8660,19 +8730,19 @@ int Player::PlayerMechanics_t::getWealthTier()
 {
 	if ( stats[player.playernum]->type == GNOME )
 	{
-		if ( stats[player.playernum]->GOLD >= 100 && stats[player.playernum]->GOLD < 500 )
+		if ( stats[player.playernum]->GOLD >= 100 && stats[player.playernum]->GOLD < 1000 )
 		{
 			return 1;
 		}
-		else if ( stats[player.playernum]->GOLD >= 500 && stats[player.playernum]->GOLD < 1000 )
+		else if ( stats[player.playernum]->GOLD >= 1000 && stats[player.playernum]->GOLD < 5000 )
 		{
 			return 2;
 		}
-		else if ( stats[player.playernum]->GOLD >= 1000 && stats[player.playernum]->GOLD < 10000 )
+		else if ( stats[player.playernum]->GOLD >= 5000 && stats[player.playernum]->GOLD < 20000 )
 		{
 			return 3;
 		}
-		else if ( stats[player.playernum]->GOLD >= 10000 )
+		else if ( stats[player.playernum]->GOLD >= 20000 )
 		{
 			return 4;
 		}

@@ -27,8 +27,6 @@
 #include "../mod_tools.hpp"
 #include "../paths.hpp"
 
-bool spellIsNaturallyLearnedByRaceOrClass(Entity& caster, Stat& stat, int spellID);
-
 void castSpellInit(Uint32 caster_uid, spell_t* spell, bool usingSpellbook, bool usingTome)
 {
 	Entity* caster = uidToEntity(caster_uid);
@@ -286,6 +284,8 @@ void castSpellInit(Uint32 caster_uid, spell_t* spell, bool usingSpellbook, bool 
 				{
 					Compendium_t::Events_t::eventUpdateCodex(player, Compendium_t::CPDM_GOLD_CASTED, "gold", goldCost);
 					Compendium_t::Events_t::eventUpdateCodex(player, Compendium_t::CPDM_GOLD_CASTED_RUN, "gold", goldCost);
+
+					steamStatisticUpdate(STEAM_STAT_PAY_TO_WIN, STEAM_STAT_INT, goldCost);
 				}
 			}
 		}
@@ -864,7 +864,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 		// Check for natural monster spells - we won't fizzle those.
 		if ( caster->behavior == &actPlayer )
 		{
-			if ( spellIsNaturallyLearnedByRaceOrClass(*caster, *stat, spell->ID) )
+			if ( spellIsNaturallyLearnedByRaceOrClass(caster, *stat, spell->ID) )
 			{
 				fizzleSpell = false;
 			}
@@ -2382,7 +2382,17 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 								{
 									if ( entityDist(caster, entity) < 10000.0 )
 									{
-										breakables.push_back(entity);
+										int mapx = entity->x / 16;
+										int mapy = entity->y / 16;
+										if ( mapx > 0 && mapx < map.width
+											&& mapy > 0 && mapy < map.height )
+										{
+											int mapIndex = (mapy)*MAPLAYERS + (mapx)*MAPLAYERS * map.height;
+											if ( map.tiles[mapIndex] ) // don't spawn over pit because gravity
+											{
+												breakables.push_back(entity); 
+											}
+										}
 									}
 								}
 							}
@@ -4246,6 +4256,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 							if ( caster->behavior == &actPlayer )
 							{
+								steamStatisticUpdateClient(caster->skill[2], STEAM_STAT_COLONIST, STEAM_STAT_INT, 1);
 								if ( Stat* casterStats = caster->getStats() )
 								{
 									if ( Uint8 effectStrength = casterStats->getEffectActive(EFF_GROWTH) )
@@ -4312,6 +4323,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 							if ( caster->behavior == &actPlayer )
 							{
+								steamStatisticUpdateClient(caster->skill[2], STEAM_STAT_COLONIST, STEAM_STAT_INT, 1);
 								if ( Stat* casterStats = caster->getStats() )
 								{
 									if ( Uint8 effectStrength = casterStats->getEffectActive(EFF_GROWTH) )
@@ -4324,6 +4336,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 											caster->flags[BURNING] = false;
 											serverUpdateEntityFlag(caster, BURNING);
 											messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6883));
+											steamAchievementClient(caster->isEntityPlayer(), "BARONY_ACH_MAKE_SMOKEY_PROUD");
 										}
 									}
 								}
@@ -4978,26 +4991,166 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 								makeColorRGB(0, 255, 0),
 								Language::get(6688), Language::get(4354));
 
-							itemPool.reserve(4);
+							itemPool.reserve(8);
 							itemPool.emplace_back(
 								NOTHING, 
 								newItem(TOOL_METAL_SCRAP, DECREPIT, 0, 5 + rng.rand() % 11, 0, false, nullptr), 
-								10);
+								8);
 
 							itemPool.emplace_back(
 								NOTHING,
 								newItem(TOOL_MAGIC_SCRAP, DECREPIT, 0, 5 + rng.rand() % 11, 0, false, nullptr),
+								8);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(POTION_SICKNESS, DECREPIT, 0, 2 + rng.rand() % 4, rng.rand(), false, nullptr),
 								10);
 
 							itemPool.emplace_back(
 								NOTHING,
-								newItem(POTION_SICKNESS, DECREPIT, 0, 2 + rng.rand() % 4, 0, false, nullptr),
+								newItem(GREASE_BALL, WORN, 0, 4 + rng.rand() % 5, 0, false, nullptr),
 								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(SLOP_BALL, WORN, 0, 4 + rng.rand() % 5, 0, false, nullptr),
+								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(GEM_OBSIDIAN, DECREPIT, 0, 1, 0, false, nullptr),
+								2);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_MIRROR, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+								4);
 
 							itemPool.emplace_back(
 								SLIME, 
 								nullptr, 
 								10);
+
+							playSoundEntity(target, 67, 128);
+						}
+						else if ( target->behavior == &actMailbox )
+						{
+							found = true;
+							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT,
+								makeColorRGB(0, 255, 0),
+								Language::get(6688), Language::get(6986));
+
+							playSoundEntity(target, 67, 128);
+						}
+						else if ( target->behavior == &actCauldron )
+						{
+							found = true;
+							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT,
+								makeColorRGB(0, 255, 0),
+								Language::get(6688), Language::get(6974));
+
+							itemPool.reserve(8);
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(GREASE_BALL, WORN, 0, 4 + rng.rand() % 5, rng.rand(), false, nullptr),
+								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(SLOP_BALL, WORN, 0, 4 + rng.rand() % 5, rng.rand(), false, nullptr),
+								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(FOOD_RATION, DECREPIT, -1, 2 + rng.rand() % 5, 0, false, nullptr),
+								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_FRYING_PAN, DECREPIT, -1 + rng.rand() % 3, 2 + rng.rand() % 3, rng.rand(), false, nullptr),
+								1);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(GEM_LUCK, DECREPIT, 0, 1, rng.rand(), false, nullptr),
+								2);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_TORCH, WORN, 0, 2 + rng.rand() % 3, rng.rand(), false, nullptr),
+								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(WOODEN_SHIELD, WORN, 0, 1, rng.rand(), false, nullptr),
+								10);
+
+							ItemType potionType = static_cast<ItemType>(POTION_WATER + rng.rand() % 15);
+							int potionAppearance = 0;
+							for ( size_t p = 0; p < potionStandardAppearanceMap.size(); ++p )
+							{
+								if ( potionStandardAppearanceMap[p].first == potionType )
+								{
+									potionAppearance = potionStandardAppearanceMap[p].second;
+								}
+							}
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(static_cast<ItemType>(POTION_WATER + rng.rand() % 15), SERVICABLE,
+									-1 + rng.rand() % 3, 1 + rng.rand() % 4, potionAppearance, false, nullptr),
+								10);
+
+							playSoundEntity(target, 67, 128);
+						}
+						else if ( target->behavior == &actWorkbench )
+						{
+							found = true;
+							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT,
+								makeColorRGB(0, 255, 0),
+								Language::get(6688), Language::get(6981));
+
+							itemPool.reserve(8);
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_METAL_SCRAP, DECREPIT, 0, 10 + rng.rand() % 31, 0, false, nullptr),
+								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_MAGIC_SCRAP, DECREPIT, 0, 10 + rng.rand() % 21, 0, false, nullptr),
+								10);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_LOCKPICK, EXCELLENT, 0, 1 + rng.rand() % 3, 0, false, nullptr),
+								8);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_SKELETONKEY, DECREPIT, 0, 1, 0, false, nullptr),
+								2);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(TOOL_DECOY, SERVICABLE, 0, 1 + rng.rand() % 2, 0, false, nullptr),
+								4);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(QUIVER_KNOCKBACK, SERVICABLE, 0, 6 + rng.rand() % 7, 0, false, nullptr),
+								4);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(SCROLL_BLANK, SERVICABLE, 0, 1, 0, false, nullptr),
+								4);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(SCROLL_REPAIR, SERVICABLE, 0, 1, 0, false, nullptr),
+								1);
 
 							playSoundEntity(target, 67, 128);
 						}
@@ -5008,7 +5161,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 								makeColorRGB(0, 255, 0), 
 								Language::get(6688), Language::get(4357));
 
-							itemPool.reserve(5);
+							itemPool.reserve(17);
 							itemPool.emplace_back(
 								NOTHING,
 								newItem(GEM_ROCK, DECREPIT, -1, 2 + rng.rand() % 4, rng.rand(), false, nullptr),
@@ -5016,13 +5169,75 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 							itemPool.emplace_back(
 								NOTHING,
-								newItem(FOOD_MEAT, DECREPIT, -1, 1 + rng.rand() % 2, rng.rand(), false, nullptr),
-								10);
+								newItem(GEM_LUCK, DECREPIT, -1, 2 + rng.rand() % 4, rng.rand(), false, nullptr),
+								2);
 
 							itemPool.emplace_back(
 								NOTHING,
-								newItem(TUNIC, DECREPIT, -1, 1, rng.rand(), false, nullptr),
+								newItem(FOOD_MEAT, DECREPIT, -1, 1 + rng.rand() % 2, rng.rand(), false, nullptr),
 								10);
+
+							{
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(TUNIC, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(SUEDE_BOOTS, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(SUEDE_GLOVES, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(SHAWL, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(ROBE_CULTIST, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(ROBE_HEALER, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(ROBE_MONK, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+
+								itemPool.emplace_back(
+									NOTHING,
+									newItem(ROBE_WIZARD, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+									2);
+							}
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(RING_ADORNMENT, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+								4);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(MASK_SPOOKY, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+								4);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(SCROLL_REMOVECURSE, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+								4);
+
+							itemPool.emplace_back(
+								NOTHING,
+								newItem(SCROLL_TELEPORTATION, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
+								4);
 
 							itemPool.emplace_back(
 								SHADOW,
@@ -5067,36 +5282,65 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 								}
 								else if ( itemPool[pick].type != NOTHING )
 								{
-									if ( Entity* monster = summonMonster(itemPool[pick].type, target->x, target->y) )
+									Monster toSpawn = itemPool[pick].type;
+									int numSpawns = 1;
+									if ( toSpawn == GHOUL )
 									{
-										monster->seedEntityRNG(rng.rand());
-										monster->monsterAcquireAttackTarget(*caster, MONSTER_STATE_PATH, true);
-										if ( itemPool[pick].type == SLIME )
+										if ( rng.rand() % 2 == 0 )
 										{
-											slimeSetType(monster, monster->getStats(), true, &rng);
+											toSpawn = BAT_SMALL;
+											numSpawns = 2 + rng.rand() % 3;
 										}
-										messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT,
-											makeColorRGB(255, 0, 0),
-											Language::get(6689), getMonsterLocalizedName(itemPool[pick].type).c_str());
 									}
+
+									for ( int i = 0; i < numSpawns; ++i )
+									{
+										if ( Entity* monster = summonMonster(toSpawn, target->x, target->y) )
+										{
+											monster->seedEntityRNG(rng.rand());
+											monster->monsterAcquireAttackTarget(*caster, MONSTER_STATE_PATH, true);
+											if ( toSpawn == SHADOW )
+											{
+												if ( Stat* monsterStats = monster->getStats() )
+												{
+													if ( caster->behavior == &actPlayer )
+													{
+														monsterStats->setAttribute("deface_spawn", std::to_string(caster->skill[2]));
+													}
+												}
+											}
+											if ( toSpawn == SLIME )
+											{
+												slimeSetType(monster, monster->getStats(), true, &rng);
+											}
+										}
+									}
+
+									messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT,
+										makeColorRGB(255, 0, 0),
+										Language::get(6689), getMonsterLocalizedName(toSpawn).c_str());
 								}
 							}
 
 							magicOnSpellCastEvent(caster, caster, target, spell->ID, spellEventFlags | spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
 							spawnMagicEffectParticles(target->x, target->y, target->z, 171);
 							createParticleRock(target, 78);
-							playSoundEntity(target, 167, 128);
+							//playSoundEntity(target, 167, 128);
 
 							if ( caster->behavior == &actPlayer )
 							{
 								players[caster->skill[2]]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_DEFACE, target);
+								serverUpdatePlayerGameplayStats(caster->skill[2], STATISTICS_WRECKING_CREW, 1);
 							}
 
 							if ( multiplayer == SERVER )
 							{
 								serverSpawnMiscParticles(target, PARTICLE_EFFECT_ABILITY_ROCK, 78);
 							}
+							target->removeLightField();
 							list_RemoveNode(target->mynode);
+
+							generatePathMaps();
 						}
 						itemPool.clear();
 					}
@@ -6974,6 +7218,14 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						{
 							if ( stats[i]->getEffectActive(c) )
 							{
+								if ( c == EFF_BLIND && players[i]->entity->effectShapeshift == NOTHING 
+									&& stats[i]->mask
+									&& (stats[i]->mask->type == TOOL_BLINDFOLD
+										|| stats[i]->mask->type == TOOL_BLINDFOLD_TELEPATHY
+										|| stats[i]->mask->type == TOOL_BLINDFOLD_FOCUS) )
+								{
+									continue;
+								}
 								stats[i]->clearEffect(c);
 								if ( stats[i]->EFFECTS_TIMERS[c] > 0 )
 								{
@@ -7034,6 +7286,15 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 									{
 										if ( target_stat->getEffectActive(c) )
 										{
+											if ( c == EFF_BLIND && (entity->behavior == &actMonster
+													|| (entity->behavior == &actPlayer && entity->effectShapeshift == NOTHING))
+												&& target_stat->mask
+												&& (target_stat->mask->type == TOOL_BLINDFOLD
+													|| target_stat->mask->type == TOOL_BLINDFOLD_TELEPATHY
+													|| target_stat->mask->type == TOOL_BLINDFOLD_FOCUS) )
+											{
+												continue;
+											}
 											target_stat->clearEffect(c);
 											if ( target_stat->EFFECTS_TIMERS[c] > 0 )
 											{
@@ -8089,7 +8350,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							if ( elementNode = element->elements.first )
 							{
 								element = (spellElement_t*)elementNode->element;
-								element->setDamage(element->getDamage() / 2);
+								if ( element )
+								{
+									element->setDamage(element->getDamage() / 2);
+								}
 							}
 						}
 					}
@@ -8102,11 +8366,30 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						{
 							if ( elementNode = element->elements.first )
 							{
-								element = (spellElement_t*)elementNode->element;
-								element->setDamage(std::max(1, casterStats->INT));
+								if ( element = (spellElement_t*)elementNode->element )
+								{
+									element->setDamage(std::max(1, casterStats->INT));
+								}
 								if ( Entity* leader = caster->monsterAllyGetPlayerLeader() )
 								{
 									element->duration = getSpellEffectDurationFromID(SPELL_FIRE_SPRITE, leader, nullptr, nullptr);
+								}
+							}
+						}
+					}
+				}
+
+				if ( casterStats->type == SHOPKEEPER && spell->ID == SPELL_BLEED )
+				{
+					if ( node_t* elementNode = ((spell_t*)node->element)->elements.first )
+					{
+						if ( auto element = (spellElement_t*)elementNode->element )
+						{
+							if ( elementNode = element->elements.first )
+							{
+								if ( element = (spellElement_t*)elementNode->element )
+								{
+									element->setDamage(element->getDamage() * 2);
 								}
 							}
 						}
@@ -8122,9 +8405,11 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							if ( elementNode = element->elements.first )
 							{
 								element = (spellElement_t*)elementNode->element;
-
-								int ratioINT = getSpellDamageSecondaryFromID(SPELL_BLOOD_WAVES, caster, casterStats, missileEntity);
-								element->setDamage(element->getDamage() + std::max(1, ratioINT * statGetINT(casterStats, caster)));
+								if ( element )
+								{
+									int ratioINT = getSpellDamageSecondaryFromID(SPELL_BLOOD_WAVES, caster, casterStats, missileEntity);
+									element->setDamage(element->getDamage() + std::max(1, ratioINT * statGetINT(casterStats, caster)));
+								}
 							}
 						}
 					}
@@ -9050,7 +9335,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 		if ( !trap && !usingFoci && !using_magicstaff )
 		{
-			if ( caster && players[player]->entity == caster && stats[player]->type == SALAMANDER )
+			if ( caster && player >= 0 && players[player]->entity == caster && stats[player]->type == SALAMANDER )
 			{
 				Uint8 effectStrength = stats[player]->getEffectActive(EFF_SALAMANDER_HEART);
 				if ( effectStrength == 2 && stats[player]->EFFECTS_TIMERS[EFF_SALAMANDER_HEART] == -1 )
@@ -9069,6 +9354,17 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6918));
 							playSoundEntity(caster, 167, 128);
 						}
+					}
+				}
+			}
+
+			if ( caster && player >= 0 )
+			{
+				if ( allowedSkillup && !usingSpellbook && castSpellProps && castSpellProps->overcharge > 0 )
+				{
+					if ( spell && spell->ID != SPELL_OVERCHARGE )
+					{
+						players[player]->mechanics.updateSustainedSpellEvent(SPELL_OVERCHARGE, 30.0, 1.0, nullptr);
 					}
 				}
 			}
@@ -9131,9 +9427,9 @@ int spellGetCastSound(spell_t* spell)
 	return 0;
 }
 
-bool spellIsNaturallyLearnedByRaceOrClass(Entity& caster, Stat& stat, int spellID)
+bool spellIsNaturallyLearnedByRaceOrClass(Entity* caster, Stat& stat, int spellID, int player)
 {
-	if ( caster.behavior != &actPlayer )
+	if ( caster && caster->behavior != &actPlayer )
 	{
 		return false;
 	}
@@ -9181,7 +9477,8 @@ bool spellIsNaturallyLearnedByRaceOrClass(Entity& caster, Stat& stat, int spellI
 	}
 	
 	// class specific:
-	int playernum = caster.skill[2];
+	int playernum = caster ? caster->skill[2] : player;
+	if ( playernum < 0 ) { return false; }
 	if ( client_classes[playernum] == CLASS_PUNISHER && (spellID == SPELL_TELEPULL || spellID == SPELL_DEMON_ILLUSION) )
 	{
 		return true;

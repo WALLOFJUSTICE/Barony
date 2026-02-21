@@ -1608,10 +1608,27 @@ int Stat::numShillelaghDebuffsActive(Entity* my)
 		EFF_ROOTED,
 		EFF_STATIC,
 		EFF_DRUNK,
-		EFF_DUCKED
+		EFF_WEAKNESS,
+		EFF_INCOHERENCE,
+		EFF_MINIMISE,
+		EFF_DUCKED,
+		EFF_MAGIC_GREASE,
+		EFF_NUMBING_BOLT,
+		EFF_CURSE_FLESH,
+		EFF_TABOO,
+		EFF_COWARDICE,
+		EFF_DIZZY,
+		EFF_SPIN,
+		EFF_DUSTED,
+		EFF_DISRUPTED,
+		EFF_FROST,
+		EFF_HOLY_FIRE
 	};
-
 	int result = 0;
+	if ( my && my->flags[BURNING] )
+	{
+		++result;
+	}
 	for ( auto eff : effs )
 	{
 		if ( getEffectActive(eff) )
@@ -1644,6 +1661,18 @@ bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
 		case EFF_STATIC:
 		case EFF_WEAKNESS:
 		case EFF_INCOHERENCE:
+		case EFF_MINIMISE:
+		case EFF_NUMBING_BOLT:
+		case EFF_CURSE_FLESH:
+		case EFF_TABOO:
+		case EFF_COWARDICE:
+		case EFF_DIZZY:
+		case EFF_SPIN:
+		case EFF_DUSTED:
+		case EFF_STASIS:
+		case EFF_DISRUPTED:
+		case EFF_FROST:
+		case EFF_HOLY_FIRE:
 			return true;
 			break;
 		case EFF_DRUNK:
@@ -1791,10 +1820,15 @@ bool Stat::emptyLootingBag(const int player, Uint32 key)
 
 real_t Stat::getEnsembleEffectBonus(Stat::EnsembleEffectsBonusType bonusType, int checkEffectStrength)
 {
-	static const Sint32 kBreakPoint4 = 41;
+	static const Sint32 kBreakPoint4 = 40;
 	static const Sint32 kBreakPoint3 = 20;
-	static const Sint32 kBreakPoint2 = 6;
+	static const Sint32 kBreakPoint2 = 4;
 	static const Sint32 kBreakPoint1 = 1;
+
+	static const Sint32 kDivBreakPoint4 = 5;
+	static const Sint32 kDivBreakPoint3 = 5;
+	static const Sint32 kDivBreakPoint2 = 4;
+	static const Sint32 kDivBreakPoint1 = 1;
 
 	real_t result = 0.0;
 	Uint8 effectStrength = getEffectActive(EFF_ENSEMBLE_FLUTE);
@@ -1817,22 +1851,22 @@ real_t Stat::getEnsembleEffectBonus(Stat::EnsembleEffectsBonusType bonusType, in
 			static const Sint32 mult1 = 1;
 			if ( effectStrength >= kBreakPoint4 )
 			{
-				total += mult4 * (1 + (effectStrength - kBreakPoint4) / 4);
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
 				effectStrength -= (effectStrength - kBreakPoint4 + 1);
 			}
 			if ( effectStrength >= kBreakPoint3 )
 			{
-				total += mult3 * (1 + (effectStrength - kBreakPoint3) / 3);
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
 				effectStrength -= (effectStrength - kBreakPoint3 + 1);
 			}
 			if ( effectStrength >= kBreakPoint2 )
 			{
-				total += mult2 * (1 + (effectStrength - kBreakPoint2) / 2);
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
 				effectStrength -= (effectStrength - kBreakPoint2 + 1);
 			}
 			if ( effectStrength >= kBreakPoint1 )
 			{
-				total += mult1 * (1 + (effectStrength - kBreakPoint1) / 1);
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
 				effectStrength -= (effectStrength - kBreakPoint1 + 1);
 			}
 			result += total;
@@ -1881,22 +1915,22 @@ real_t Stat::getEnsembleEffectBonus(Stat::EnsembleEffectsBonusType bonusType, in
 			static const Sint32 mult1 = 3;
 			if ( effectStrength >= kBreakPoint4 )
 			{
-				total += mult4 * (1 + (effectStrength - kBreakPoint4) / 4);
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
 				effectStrength -= (effectStrength - kBreakPoint4 + 1);
 			}
 			if ( effectStrength >= kBreakPoint3 )
 			{
-				total += mult3 * (1 + (effectStrength - kBreakPoint3) / 3);
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
 				effectStrength -= (effectStrength - kBreakPoint3 + 1);
 			}
 			if ( effectStrength >= kBreakPoint2 )
 			{
-				total += mult2 * (1 + (effectStrength - kBreakPoint2) / 2);
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
 				effectStrength -= (effectStrength - kBreakPoint2 + 1);
 			}
 			if ( effectStrength >= kBreakPoint1 )
 			{
-				total += mult1 * (1 + (effectStrength - kBreakPoint1) / 1);
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
 				effectStrength -= (effectStrength - kBreakPoint1 + 1);
 			}
 			result += total;
@@ -1945,22 +1979,22 @@ real_t Stat::getEnsembleEffectBonus(Stat::EnsembleEffectsBonusType bonusType, in
 			static const Sint32 mult1 = 1;
 			if ( effectStrength >= kBreakPoint4 )
 			{
-				total += mult4 * (1 + (effectStrength - kBreakPoint4) / 4);
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
 				effectStrength -= (effectStrength - kBreakPoint4 + 1);
 			}
 			if ( effectStrength >= kBreakPoint3 )
 			{
-				total += mult3 * (1 + (effectStrength - kBreakPoint3) / 3);
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
 				effectStrength -= (effectStrength - kBreakPoint3 + 1);
 			}
 			if ( effectStrength >= kBreakPoint2 )
 			{
-				total += mult2 * (1 + (effectStrength - kBreakPoint2) / 2);
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
 				effectStrength -= (effectStrength - kBreakPoint2 + 1);
 			}
 			if ( effectStrength >= kBreakPoint1 )
 			{
-				total += mult1 * (1 + (effectStrength - kBreakPoint1) / 1);
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
 				effectStrength -= (effectStrength - kBreakPoint1 + 1);
 			}
 			result += total;
@@ -2009,22 +2043,22 @@ real_t Stat::getEnsembleEffectBonus(Stat::EnsembleEffectsBonusType bonusType, in
 			static const Sint32 mult1 = 1;
 			if ( effectStrength >= kBreakPoint4 )
 			{
-				total += mult4 * (1 + (effectStrength - kBreakPoint4) / 4);
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
 				effectStrength -= (effectStrength - kBreakPoint4 + 1);
 			}
 			if ( effectStrength >= kBreakPoint3 )
 			{
-				total += mult3 * (1 + (effectStrength - kBreakPoint3) / 3);
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
 				effectStrength -= (effectStrength - kBreakPoint3 + 1);
 			}
 			if ( effectStrength >= kBreakPoint2 )
 			{
-				total += mult2 * (1 + (effectStrength - kBreakPoint2) / 2);
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
 				effectStrength -= (effectStrength - kBreakPoint2 + 1);
 			}
 			if ( effectStrength >= kBreakPoint1 )
 			{
-				total += mult1 * (1 + (effectStrength - kBreakPoint1) / 1);
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
 				effectStrength -= (effectStrength - kBreakPoint1 + 1);
 			}
 			result += total;
@@ -2073,22 +2107,22 @@ real_t Stat::getEnsembleEffectBonus(Stat::EnsembleEffectsBonusType bonusType, in
 			static const Sint32 mult1 = 1;
 			if ( effectStrength >= kBreakPoint4 )
 			{
-				total += mult4 * (1 + (effectStrength - kBreakPoint4) / 4);
+				total += mult4 * (1 + (effectStrength - kBreakPoint4) / kDivBreakPoint4);
 				effectStrength -= (effectStrength - kBreakPoint4 + 1);
 			}
 			if ( effectStrength >= kBreakPoint3 )
 			{
-				total += mult3 * (1 + (effectStrength - kBreakPoint3) / 3);
+				total += mult3 * (1 + (effectStrength - kBreakPoint3) / kDivBreakPoint3);
 				effectStrength -= (effectStrength - kBreakPoint3 + 1);
 			}
 			if ( effectStrength >= kBreakPoint2 )
 			{
-				total += mult2 * (1 + (effectStrength - kBreakPoint2) / 2);
+				total += mult2 * (1 + (effectStrength - kBreakPoint2) / kDivBreakPoint2);
 				effectStrength -= (effectStrength - kBreakPoint2 + 1);
 			}
 			if ( effectStrength >= kBreakPoint1 )
 			{
-				total += mult1 * (1 + (effectStrength - kBreakPoint1) / 1);
+				total += mult1 * (1 + (effectStrength - kBreakPoint1) / kDivBreakPoint1);
 				effectStrength -= (effectStrength - kBreakPoint1 + 1);
 			}
 			result += total;

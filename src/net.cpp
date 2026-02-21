@@ -1214,6 +1214,35 @@ void serverUpdatePlayerGameplayStats(int player, int gameplayStat, int changeval
 				gameStatistics[gameplayStat] |= shifted;
 			}
 		}
+		else if ( gameplayStat == STATISTICS_FLAVORTOWN )
+		{
+			gameStatistics[gameplayStat] |= changeval;
+		}
+		else if ( gameplayStat == STATISTICS_BARDIC_INSPIRATION )
+		{
+			if ( changeval == 0 )
+			{
+				gameStatistics[gameplayStat] = 0;
+			}
+			else
+			{
+				gameStatistics[gameplayStat] += changeval;
+			}
+		}
+		else if ( gameplayStat == STATISTICS_PARRY_TANK )
+		{
+			if ( changeval == 0 )
+			{
+				if ( gameStatistics[gameplayStat] < 20 )
+				{
+					gameStatistics[gameplayStat] = 0;
+				}
+			}
+			else
+			{
+				gameStatistics[gameplayStat] += changeval;
+			}
+		}
 		else
 		{
 			gameStatistics[gameplayStat] += changeval;
@@ -1229,7 +1258,7 @@ void serverUpdatePlayerGameplayStats(int player, int gameplayStat, int changeval
 		net_packet->len = 12;
 		sendPacketSafe(net_sock, -1, net_packet, player - 1);
 	}
-	//messagePlayer(clientnum, "[DEBUG]: sent: %d, %d: val %d", gameplayStat, changeval, gameStatistics[gameplayStat]);
+	//messagePlayer(clientnum, MESSAGE_DEBUG, "[DEBUG]: sent: %d, %d: val %d", gameplayStat, changeval, gameStatistics[gameplayStat]);
 }
 
 void serverUpdatePlayerConduct(int player, int conduct, int value)
@@ -2530,6 +2559,60 @@ static void changeLevel() {
 		Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_hunger", ""));
 	}
 
+	if ( !died )
+	{
+		if ( stats[clientnum]->type == MYCONID && stats[clientnum]->playerRace == RACE_MYCONID && stats[clientnum]->stat_appearance == 0
+			&& stats[clientnum]->helmet && gameStatistics[STATISTICS_NO_CAP] >= 0 )
+		{
+			gameStatistics[STATISTICS_NO_CAP]++;
+			if ( gameStatistics[STATISTICS_NO_CAP] >= 5 )
+			{
+				steamAchievement("BARONY_ACH_NO_CAP");
+			}
+		}
+		if ( stats[clientnum]->getEffectActive(EFF_GROWTH) >= 2
+			&& ((stats[clientnum]->type == MYCONID && stats[clientnum]->playerRace == RACE_MYCONID)
+				|| (stats[clientnum]->type == DRYAD && stats[clientnum]->playerRace == RACE_DRYAD)) && stats[clientnum]->stat_appearance == 0
+			&& !stats[clientnum]->helmet && gameStatistics[STATISTICS_DONT_TOUCH_HAIR] >= 0 )
+		{
+			gameStatistics[STATISTICS_DONT_TOUCH_HAIR]++;
+			if ( gameStatistics[STATISTICS_DONT_TOUCH_HAIR] >= 25 )
+			{
+				steamAchievement("BARONY_ACH_DONT_TOUCH_HAIR");
+			}
+		}
+		if ( stats[clientnum]->type == SALAMANDER && stats[clientnum]->playerRace == RACE_SALAMANDER && stats[clientnum]->stat_appearance == 0
+			&& stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) >= 3 && stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) <= 4
+			&& gameStatistics[STATISTICS_GARGOYLES_QUEST] >= 0 )
+		{
+			gameStatistics[STATISTICS_GARGOYLES_QUEST]++;
+			if ( gameStatistics[STATISTICS_GARGOYLES_QUEST] >= 10 )
+			{
+				steamAchievement("BARONY_ACH_GARGOYLES_QUEST");
+			}
+		}
+		if ( stats[clientnum]->type == SALAMANDER && stats[clientnum]->playerRace == RACE_SALAMANDER && stats[clientnum]->stat_appearance == 0
+			&& stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) >= 1 && stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART) <= 2
+			&& gameStatistics[STATISTICS_FIRE_FIGHTER] >= 0 )
+		{
+			gameStatistics[STATISTICS_FIRE_FIGHTER]++;
+			if ( gameStatistics[STATISTICS_FIRE_FIGHTER] >= 5 )
+			{
+				steamAchievement("BARONY_ACH_FIRE_FIGHTER");
+			}
+		}
+		if ( stats[clientnum]->type == SALAMANDER && stats[clientnum]->playerRace == RACE_SALAMANDER && stats[clientnum]->stat_appearance == 0
+			&& !stats[clientnum]->getEffectActive(EFF_SALAMANDER_HEART)
+			&& gameStatistics[STATISTICS_DISCIPLINE] >= 0 )
+		{
+			gameStatistics[STATISTICS_DISCIPLINE]++;
+			if ( gameStatistics[STATISTICS_DISCIPLINE] >= 25 )
+			{
+				steamAchievement("BARONY_ACH_DISCIPLINE");
+			}
+		}
+	}
+
 	Compendium_t::Events_t::onLevelChangeEvent(clientnum, prevcurrentlevel, prevsecretfloor, prevmapname, died);
 	for ( int i = 0; i < MAXPLAYERS; ++i )
 	{
@@ -3313,6 +3396,26 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 						fx->x = entity->x - 8.0 * cos(fx->yaw);
 						fx->y = entity->y - 8.0 * sin(fx->yaw);
 						fx->z = entity->z;
+						fx->scalex = 0.0;
+						fx->scaley = 0.0;
+						fx->scalez = 0.0;
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_PSYCHIC_SPEAR:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					Sint32 dir = SDLNet_Read32(&net_packet->data[19]);
+					if ( Entity* fx = createParticleAestheticOrbit(entity, 2362, duration, PARTICLE_EFFECT_PSYCHIC_SPEAR) )
+					{
+						fx->yaw = dir / 256.0;
+						//fx->skill[3] = spell->caster;
+						fx->pitch = 0;// PI / 4;
+						fx->fskill[0] = fx->yaw + PI / 2 + (local_rng.rand() % 6) * PI / 3;
+						fx->fskill[1] = PI / 4 + PI / 8;// +(i + 1) * 2 * PI / 3;
+						fx->x = entity->x - 8.0 * cos(fx->yaw);
+						fx->y = entity->y - 8.0 * sin(fx->yaw);
+						fx->z = entity->z;// -8.0;
 						fx->scalex = 0.0;
 						fx->scaley = 0.0;
 						fx->scalez = 0.0;
@@ -4223,6 +4326,32 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			if ( item->status == BROKEN && net_packet->data[4] == 4 && itemCategory(item) == SPELLBOOK )
 			{
 				consumeItem(item, clientnum);
+			}
+			else if ( item )
+			{
+				if ( players[clientnum]->isLocalPlayer() )
+				{
+					std::unordered_set<Uint32> appearancesOfSimilarItems;
+					std::vector<Item*> itemsToReroll;
+					for ( node_t* node = stats[clientnum]->inventory.first; node != NULL; node = node->next )
+					{
+						Item* item2 = static_cast<Item*>(node->element);
+						if ( item2 && item2 != item && !itemCompare(item, item2, true) )
+						{
+							itemsToReroll.push_back(item2);
+
+							// items are the same (incl. appearance!)
+							// if they shouldn't stack, we need to change appearance of the new item.
+							appearancesOfSimilarItems.insert(item2->appearance);
+						}
+					}
+
+					for ( auto rerollItem : itemsToReroll )
+					{
+						Item::itemFindUniqueAppearance(rerollItem, appearancesOfSimilarItems);
+						appearancesOfSimilarItems.insert(rerollItem->appearance);
+					}
+				}
 			}
 		}
 	}},
@@ -5229,6 +5358,35 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				gameStatistics[gameplayStat] |= shifted;
 			}
 		}
+		else if ( gameplayStat == STATISTICS_FLAVORTOWN )
+		{
+			gameStatistics[gameplayStat] |= changeval;
+		}
+		else if ( gameplayStat == STATISTICS_BARDIC_INSPIRATION )
+		{
+			if ( changeval == 0 )
+			{
+				gameStatistics[gameplayStat] = 0;
+			}
+			else
+			{
+				gameStatistics[gameplayStat] += changeval;
+			}
+		}
+		else if ( gameplayStat == STATISTICS_PARRY_TANK )
+		{
+			if ( changeval == 0 )
+			{
+				if ( gameStatistics[gameplayStat] < 20 )
+				{
+					gameStatistics[gameplayStat] = 0;
+				}
+			}
+			else
+			{
+				gameStatistics[gameplayStat] += changeval;
+			}
+		}
 		else
 		{
 			gameStatistics[gameplayStat] += changeval;
@@ -5252,7 +5410,10 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			// the server's just doing a routine check
 			return;
 		}
-
+		if ( net_packet->data[13] == 0 )
+		{
+			return; // dont warp back to start level
+		}
 		changeLevel();
 	}},
 
@@ -5804,9 +5965,9 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		case RACE_TROLL: victoryType = 3; break;
 		case RACE_SPIDER: victoryType = 3; break;
 		case RACE_IMP: victoryType = 5; break;
-		case RACE_DRYAD: victoryType = 3; break;
-		case RACE_MYCONID: victoryType = 3; break;
-		case RACE_SALAMANDER: victoryType = 3; break;
+		case RACE_DRYAD: victoryType = 4; break;
+		case RACE_MYCONID: victoryType = 4; break;
+		case RACE_SALAMANDER: victoryType = 4; break;
 		case RACE_GREMLIN: victoryType = 5; break;
 		case RACE_GNOME: victoryType = 4; break;
 		}
@@ -5816,14 +5977,14 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 	        default:
 	        case RACE_HUMAN:
 			case RACE_GNOME:
+			case RACE_DRYAD:
+			case RACE_MYCONID:
+			case RACE_SALAMANDER:
 	            MainMenu::beginFade(MainMenu::FadeDestination::EndingHuman);
 	            break;
 	        case RACE_AUTOMATON:
 	            MainMenu::beginFade(MainMenu::FadeDestination::EndingAutomaton);
 	            break;
-			case RACE_DRYAD:
-			case RACE_MYCONID:
-			case RACE_SALAMANDER:
 	        case RACE_GOATMAN:
 	        case RACE_GOBLIN:
 	        case RACE_INSECTOID:
@@ -5844,6 +6005,9 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 	        default:
 	        case RACE_HUMAN:
 			case RACE_GNOME:
+			case RACE_DRYAD:
+			case RACE_MYCONID:
+			case RACE_SALAMANDER:
 	            MainMenu::beginFade(MainMenu::FadeDestination::ClassicEndingHuman);
 	            break;
 	        case RACE_AUTOMATON:
@@ -5852,9 +6016,6 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 	        case RACE_GOATMAN:
 	        case RACE_GOBLIN:
 	        case RACE_INSECTOID:
-			case RACE_DRYAD:
-			case RACE_MYCONID:
-			case RACE_SALAMANDER:
 	            MainMenu::beginFade(MainMenu::FadeDestination::ClassicEndingBeast);
 	            break;
 	        case RACE_SKELETON:
@@ -5872,6 +6033,9 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 	        default:
 	        case RACE_HUMAN:
 			case RACE_GNOME:
+			case RACE_DRYAD:
+			case RACE_MYCONID:
+			case RACE_SALAMANDER:
 	            MainMenu::beginFade(MainMenu::FadeDestination::ClassicBaphometEndingHuman);
 	            break;
 	        case RACE_AUTOMATON:
@@ -5880,9 +6044,6 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 	        case RACE_GOATMAN:
 	        case RACE_GOBLIN:
 	        case RACE_INSECTOID:
-			case RACE_DRYAD:
-			case RACE_MYCONID:
-			case RACE_SALAMANDER:
 	            MainMenu::beginFade(MainMenu::FadeDestination::ClassicBaphometEndingBeast);
 	            break;
 	        case RACE_SKELETON:
@@ -7359,14 +7520,17 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 					else if ( key == KEY_SILVER )
 					{
 						Compendium_t::Events_t::eventUpdateWorld(player, Compendium_t::CPDM_KEYLOCK_UNLOCKED_KEY_SILVER, "wall locks", 1);
+						steamStatisticUpdateClient(player, STEAM_STAT_PREMIUM_LOOTBOX, STEAM_STAT_INT, 1);
 					}
 					else if ( key == KEY_GOLD )
 					{
 						Compendium_t::Events_t::eventUpdateWorld(player, Compendium_t::CPDM_KEYLOCK_UNLOCKED_KEY_GOLD, "wall locks", 1);
+						steamStatisticUpdateClient(player, STEAM_STAT_PREMIUM_LOOTBOX, STEAM_STAT_INT, 1);
 					}
 					else if ( key == KEY_BRONZE )
 					{
 						Compendium_t::Events_t::eventUpdateWorld(player, Compendium_t::CPDM_KEYLOCK_UNLOCKED_KEY_BRONZE, "wall locks", 1);
+						steamStatisticUpdateClient(player, STEAM_STAT_PREMIUM_LOOTBOX, STEAM_STAT_INT, 1);
 					}
 				}
 
@@ -8009,7 +8173,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
-		useItem(item, client);
+		useItem(item, client, nullptr, false, true);
 	}},
 
 	// use loot bag
@@ -8030,7 +8194,22 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
-		equipItem(item, &stats[client]->weapon, client, false);
+		EquipItemResult res = equipItem(item, &stats[client]->weapon, client, false);
+		if ( res == EQUIP_ITEM_SUCCESS_UPDATE_QTY
+			|| res == EQUIP_ITEM_FAIL_CANT_UNEQUIP )
+		{
+			if ( item )
+			{
+				if ( item->node )
+				{
+					list_RemoveNode(item->node);
+				}
+				else
+				{
+					free(item);
+				}
+			}
+		}
 	}},
 
 	// equip item (as a shield)
@@ -8044,7 +8223,22 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[20]),
 		    net_packet->data[24],
 		    &stats[client]->inventory);
-		equipItem(item, &stats[client]->shield, client, false);
+		EquipItemResult res = equipItem(item, &stats[client]->shield, client, false);
+		if ( res == EQUIP_ITEM_SUCCESS_UPDATE_QTY
+			|| res == EQUIP_ITEM_FAIL_CANT_UNEQUIP )
+		{
+			if ( item )
+			{
+				if ( item->node )
+				{
+					list_RemoveNode(item->node);
+				}
+				else
+				{
+					free(item);
+				}
+			}
+		}
 	}},
 
 	// consume torch item shield slot
@@ -8103,40 +8297,57 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		    net_packet->data[24],
 		    &stats[client]->inventory);
 		
+		int res = -1;
 		switch ( net_packet->data[27] )
 		{
 			case EQUIP_ITEM_SLOT_WEAPON:
-				equipItem(item, &stats[client]->weapon, client, false);
+				res = equipItem(item, &stats[client]->weapon, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_SHIELD:
-				equipItem(item, &stats[client]->shield, client, false);
+				res = equipItem(item, &stats[client]->shield, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_MASK:
-				equipItem(item, &stats[client]->mask, client, false);
+				res = equipItem(item, &stats[client]->mask, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_HELM:
-				equipItem(item, &stats[client]->helmet, client, false);
+				res = equipItem(item, &stats[client]->helmet, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_GLOVES:
-				equipItem(item, &stats[client]->gloves, client, false);
+				res = equipItem(item, &stats[client]->gloves, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_BOOTS:
-				equipItem(item, &stats[client]->shoes, client, false);
+				res = equipItem(item, &stats[client]->shoes, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_BREASTPLATE:
-				equipItem(item, &stats[client]->breastplate, client, false);
+				res = equipItem(item, &stats[client]->breastplate, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_CLOAK:
-				equipItem(item, &stats[client]->cloak, client, false);
+				res = equipItem(item, &stats[client]->cloak, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_AMULET:
-				equipItem(item, &stats[client]->amulet, client, false);
+				res = equipItem(item, &stats[client]->amulet, client, false);
 				break;
 			case EQUIP_ITEM_SLOT_RING:
-				equipItem(item, &stats[client]->ring, client, false);
+				res = equipItem(item, &stats[client]->ring, client, false);
 				break;
 			default:
 				break;
+		}
+
+		if ( res == EQUIP_ITEM_SUCCESS_UPDATE_QTY
+			|| res == EQUIP_ITEM_FAIL_CANT_UNEQUIP )
+		{
+			if ( item )
+			{
+				if ( item->node )
+				{
+					list_RemoveNode(item->node);
+				}
+				else
+				{
+					free(item);
+				}
+			}
 		}
 	}},
 
@@ -9231,6 +9442,25 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 					else
 					{
 						magicOnSpellCastEvent(players[player]->entity, players[player]->entity, nullptr, spellID, eventType, eventValue);
+					}
+				}
+			}
+		}
+	} },
+
+	// update breakable counter
+	{ 'GBRK', []() {
+		int player = net_packet->data[4];
+		if ( player >= 0 && player < MAXPLAYERS )
+		{
+			if ( !players[player]->isLocalPlayer() )
+			{
+				if ( players[player]->entity )
+				{
+					int eventType = net_packet->data[5];
+					if ( eventType == (int)Player::PlayerMechanics_t::BreakableEvent::GBREAK_DEGRADE )
+					{
+						players[player]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_DEGRADE, nullptr);
 					}
 				}
 			}

@@ -838,7 +838,7 @@ void IRCHandler_t::handleMessage(std::string& msg)
 #endif // !NINTENDO
 
 Uint32 ItemTooltips_t::itemsJsonHashRead = 0;
-const Uint32 ItemTooltips_t::kItemsJsonHash = 1748555711;
+const Uint32 ItemTooltips_t::kItemsJsonHash = 2516917045;
 
 void ItemTooltips_t::setSpellValueIfKeyPresent(ItemTooltips_t::spellItem_t& t, rapidjson::Value::ConstMemberIterator item_itr, Uint32& hash, Uint32& hashShift, const char* key, int& toSet)
 {
@@ -846,7 +846,7 @@ void ItemTooltips_t::setSpellValueIfKeyPresent(ItemTooltips_t::spellItem_t& t, r
 	{
 		t.hasExpandedJSON = true;
 		toSet = item_itr->value[key].GetInt();
-		hash += (Uint32)((Uint32)toSet << (hashShift % 32)); ++hashShift;
+		//hash += (Uint32)((Uint32)toSet << (hashShift % 32)); ++hashShift;
 	}
 }
 void ItemTooltips_t::setSpellValueIfKeyPresent(ItemTooltips_t::spellItem_t& t, rapidjson::Value::ConstMemberIterator item_itr, Uint32& hash, Uint32& hashShift, const char* key, real_t& toSet)
@@ -855,7 +855,7 @@ void ItemTooltips_t::setSpellValueIfKeyPresent(ItemTooltips_t::spellItem_t& t, r
 	{
 		t.hasExpandedJSON = true;
 		toSet = item_itr->value[key].GetFloat();
-		hash += (Uint32)(static_cast<Uint32>(toSet * 100000) << (hashShift % 32)); ++hashShift;
+		//hash += (Uint32)(static_cast<Uint32>(toSet * 100000) << (hashShift % 32)); ++hashShift;
 	}
 }
 
@@ -872,6 +872,16 @@ void lowercaseString(std::string& str)
 	}
 }
 #endif
+
+void hashSpellProp(Uint32& hash, Uint32& hashShift, int& toSet)
+{
+	hash += (Uint32)((Uint32)abs(toSet) << (hashShift % 32)); ++hashShift;
+}
+
+void hashSpellProp(Uint32& hash, Uint32& hashShift, real_t& toSet)
+{
+	hash += (Uint32)(static_cast<Uint32>(abs(toSet) * 100000) << (hashShift % 32)); ++hashShift;
+}
 
 void ItemTooltips_t::readItemsFromFile()
 {
@@ -1145,12 +1155,12 @@ void ItemTooltips_t::readItemsFromFile()
 	{
 		spellItem_t t;
 		t.internalName = spell_itr->name.GetString();
-		hash += djb2Hash(const_cast<char*>(t.internalName.c_str()));
+		//hash += djb2Hash(const_cast<char*>(t.internalName.c_str()));
 		t.name = spell_itr->value["spell_name"].GetString();
 		t.name_lowercase = t.name;
 		lowercaseString(t.name_lowercase);
 		t.id = spell_itr->value["spell_id"].GetInt();
-		hash += (Uint32)((Uint32)t.id << (shift % 32)); ++shift;
+		//hash += (Uint32)((Uint32)t.id << (shift % 32)); ++shift;
 		t.spellTypeStr = spell_itr->value["spell_type"].GetString();
 		t.spellType = SPELL_TYPE_DEFAULT;
 		if ( t.spellTypeStr == "PROJECTILE" )
@@ -1198,7 +1208,7 @@ void ItemTooltips_t::readItemsFromFile()
 			t.spellType = SPELL_TYPE_DIVINE_TARGET;
 		}
 
-		hash += djb2Hash(const_cast<char*>(t.spellTypeStr.c_str()));
+		//hash += djb2Hash(const_cast<char*>(t.spellTypeStr.c_str()));
 
 		if ( spell_itr->value.HasMember("format_tags") )
 		{
@@ -1222,7 +1232,7 @@ void ItemTooltips_t::readItemsFromFile()
 			arr_itr != spell_itr->value["effect_tags"].End(); ++arr_itr )
 		{
 			t.spellTagsStr.push_back(arr_itr->GetString());
-			hash += djb2Hash(const_cast<char*>(t.spellTagsStr.back().c_str()));
+			//hash += djb2Hash(const_cast<char*>(t.spellTagsStr.back().c_str()));
 			if ( t.spellTagsStr[t.spellTagsStr.size() - 1] == "DAMAGE" )
 			{
 				t.spellTags.insert(SPELL_TAG_DAMAGE);
@@ -1326,9 +1336,9 @@ void ItemTooltips_t::readItemsFromFile()
 			}
 		}
 
-		hash += djb2Hash(const_cast<char*>(t.spellbookInternalName.c_str()));
-		hash += djb2Hash(const_cast<char*>(t.magicstaffInternalName.c_str()));
-		hash += djb2Hash(const_cast<char*>(t.fociInternalName.c_str()));
+		//hash += djb2Hash(const_cast<char*>(t.spellbookInternalName.c_str()));
+		//hash += djb2Hash(const_cast<char*>(t.magicstaffInternalName.c_str()));
+		//hash += djb2Hash(const_cast<char*>(t.fociInternalName.c_str()));
 		
 		t.hasExpandedJSON = false;
 
@@ -1365,22 +1375,22 @@ void ItemTooltips_t::readItemsFromFile()
 			if ( school == "sorcery" )
 			{
 				t.skillID = PRO_SORCERY;
-				hash += (Uint32)((Uint32)t.skillID << (shift % 32)); ++shift;
+				//hash += (Uint32)((Uint32)t.skillID << (shift % 32)); ++shift;
 			}
 			else if ( school == "mysticism" )
 			{
 				t.skillID = PRO_MYSTICISM;
-				hash += (Uint32)((Uint32)t.skillID << (shift % 32)); ++shift;
+				//hash += (Uint32)((Uint32)t.skillID << (shift % 32)); ++shift;
 			}
 			else if ( school == "thaumaturgy" )
 			{
 				t.skillID = PRO_THAUMATURGY;
-				hash += (Uint32)((Uint32)t.skillID << (shift % 32)); ++shift;
+				//hash += (Uint32)((Uint32)t.skillID << (shift % 32)); ++shift;
 			}
 			else
 			{
 				assert(false && "invalid school from items.json!");
-				hash += (Uint32)((Uint32)1 << (shift % 32)); ++shift;
+				//hash += (Uint32)((Uint32)1 << (shift % 32)); ++shift;
 			}
 		}
 
@@ -1390,6 +1400,59 @@ void ItemTooltips_t::readItemsFromFile()
 		++spellsRead;
 	}
 	printlog("[JSON]: Successfully read %d spells from '%s'", spellsRead, inputPath.c_str());
+
+	for ( int i = 0; i < NUM_SPELLS; ++i )
+	{
+		auto find = spellItems.find(i);
+		if ( find != spellItems.end() )
+		{
+			spellItem_t& t = find->second;
+			hash += djb2Hash(const_cast<char*>(t.internalName.c_str()));
+			hash += (Uint32)((Uint32)t.id << (shift % 32)); ++shift;
+			hash += djb2Hash(const_cast<char*>(t.spellTypeStr.c_str()));
+			for ( auto& tag : t.spellTagsStr )
+			{
+				hash += djb2Hash(const_cast<char*>(tag.c_str()));
+			}
+
+			hash += djb2Hash(const_cast<char*>(t.spellbookInternalName.c_str()));
+			hash += djb2Hash(const_cast<char*>(t.magicstaffInternalName.c_str()));
+			hash += djb2Hash(const_cast<char*>(t.fociInternalName.c_str()));
+
+			hashSpellProp(hash, shift, t.mana);
+			hashSpellProp(hash, shift, t.duration);
+			hashSpellProp(hash, shift, t.duration_mult);
+			hashSpellProp(hash, shift, t.duration2);
+			hashSpellProp(hash, shift, t.duration2_mult);
+			hashSpellProp(hash, shift, t.damage);
+			hashSpellProp(hash, shift, t.damage_mult);
+			hashSpellProp(hash, shift, t.damage2);
+			hashSpellProp(hash, shift, t.damage2_mult);
+			hashSpellProp(hash, shift, t.distance);
+			hashSpellProp(hash, shift, t.distance_mult);
+			hashSpellProp(hash, shift, t.life_time);
+			hashSpellProp(hash, shift, t.life_mult);
+			hashSpellProp(hash, shift, t.cast_time);
+			hashSpellProp(hash, shift, t.cast_time_mult);
+			hashSpellProp(hash, shift, t.radius);
+			hashSpellProp(hash, shift, t.radius_mult);
+			hashSpellProp(hash, shift, t.difficulty);
+			hashSpellProp(hash, shift, t.sustain_mana);
+
+			hashSpellProp(hash, shift, t.sustain_duration);
+			hashSpellProp(hash, shift, t.sustain_mult);
+			hashSpellProp(hash, shift, t.drop_table);
+
+			if ( t.skillID >= 0 )
+			{
+				hash += (Uint32)((Uint32)t.skillID << (shift % 32)); ++shift;
+			}
+			else
+			{
+				hash += (Uint32)((Uint32)1 << (shift % 32)); ++shift;
+			}
+		}
+	}
 
 	itemsJsonHashRead = hash;
 	if ( itemsJsonHashRead != kItemsJsonHash )
@@ -2363,6 +2426,21 @@ int ItemTooltips_t::getSpellDamageOrHealAmount(const int player, spell_t* spell,
 		{
 			damage = heal;
 		}
+		if ( spell->ID == SPELL_MUSHROOM )
+		{
+			if ( !excludePlayerStats )
+			{
+				if ( player >= 0 && players[player] )
+				{
+					int bonusEffect = 0;
+					if ( stats[player]->type == MYCONID && stats[player]->getEffectActive(EFF_GROWTH) >= 2 )
+					{
+						bonusEffect = std::max(bonusEffect, stats[player]->getEffectActive(EFF_GROWTH) - 1);
+					}
+					damage += damage * (bonusEffect * 1.0);
+				}
+			}
+		}
 	}
 	return damage;
 #endif
@@ -2757,7 +2835,7 @@ std::string ItemTooltips_t::getSpellIconText(const int player, Item& item, const
 		snprintf(buf, sizeof(buf), str.c_str(), numSummons);
 		str = buf;
 	}
-	else if ( spell->ID == SPELL_BREATHE_FIRE )
+	else if ( spell->ID == SPELL_BREATHE_FIRE || spell->ID == SPELL_BLOOD_WAVES )
 	{
 		std::string result = getSpellIconFormatText(player, item, str, spell, 0, compendiumTooltipIntro);
 		if ( result != "" )
@@ -3293,6 +3371,10 @@ Sint32 getStatAttributeBonusFromItem(const int player, Item& item, std::string& 
 	Sint32 stat = 0;
 	bool cursedItemIsBuff = shouldInvertEquipmentBeatitude(stats[player]);
 	if ( item.beatitude >= 0 || cursedItemIsBuff )
+	{
+		stat += items[item.type].attributes[attribute];
+	}
+	else if ( items[item.type].attributes[attribute] < 0 )
 	{
 		stat += items[item.type].attributes[attribute];
 	}
@@ -4154,18 +4236,33 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 					|| ((skill == PRO_MYSTICISM || skill == PRO_SORCERY || skill == PRO_THAUMATURGY)
 						&& itemTypeIsFoci(item.type)) )
 				{
-					int bonus = 10;
-					if ( skill == PRO_MYSTICISM || skill == PRO_SORCERY || skill == PRO_THAUMATURGY )
+					if ( itemTypeIsFoci(item.type) )
 					{
-						bonus = 5;
-					}
-					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
-					{
-						equipmentBonus += std::min(Stat::maxEquipmentBonusToSkill, (1 + abs(item.beatitude)) * bonus);
+						if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+						{
+							equipmentBonus = 10;
+							equipmentBonus += 5 * std::min(10, abs(item.beatitude));
+						}
+						else
+						{
+							equipmentBonus = 10;
+						}
 					}
 					else
 					{
-						equipmentBonus += bonus;
+						int bonus = 10;
+						if ( skill == PRO_MYSTICISM || skill == PRO_SORCERY || skill == PRO_THAUMATURGY )
+						{
+							bonus = 5;
+						}
+						if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+						{
+							equipmentBonus += std::min(Stat::maxEquipmentBonusToSkill, (1 + abs(item.beatitude)) * bonus);
+						}
+						else
+						{
+							equipmentBonus += bonus;
+						}
 					}
 				}
 
@@ -4412,20 +4509,20 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 				int tier = 1;
 				std::string tierString = "I";
 				int nextCHR = Stat::kEnsembleBreakPointTier2;
-				if ( effectStrength >= Stat::kEnsembleBreakPointTier4 )
+				if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
 				{
 					nextCHR = 0;
 					tierString = "IV";
 					tier = 4;
 				}
-				else if ( effectStrength >= Stat::kEnsembleBreakPointTier3 )
+				else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
 				{
 					nextCHR = Stat::kEnsembleBreakPointTier4;
 					tierString = "III";
 					tier = 3;
 
 				}
-				else if ( effectStrength >= Stat::kEnsembleBreakPointTier2 )
+				else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
 				{
 					nextCHR = Stat::kEnsembleBreakPointTier3;
 					tierString = "II";
@@ -5193,18 +5290,18 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 			int tier = 1;
 			std::string tierString = "I";
 			int nextCHR = Stat::kEnsembleBreakPointTier2;
-			if ( effectStrength >= Stat::kEnsembleBreakPointTier4 )
+			if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier4 )
 			{
 				nextCHR = 0;
 				tier = 4;
 			}
-			else if ( effectStrength >= Stat::kEnsembleBreakPointTier3 )
+			else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier3 )
 			{
 				nextCHR = Stat::kEnsembleBreakPointTier4;
 				tier = 3;
 
 			}
-			else if ( effectStrength >= Stat::kEnsembleBreakPointTier2 )
+			else if ( effectStrength - 1 >= Stat::kEnsembleBreakPointTier2 )
 			{
 				nextCHR = Stat::kEnsembleBreakPointTier3;
 				tier = 2;
@@ -5268,7 +5365,7 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 				}
 				if ( eff1_test > eff1 )
 				{
-					nextCHRStat = i;
+					nextCHRStat = std::max(1, i - 1);
 					break;
 				}
 			}
@@ -6151,7 +6248,44 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 	}
 	else if ( tooltipType.compare("tooltip_spell_item") == 0 )
 	{
-		if ( detailTag.compare("spell_damage_bonus") == 0 )
+		if ( detailTag == "spell_cast_time" )
+		{
+			spell_t* spell = getSpellFromItem(player, &item, false);
+			if ( !spell ) { return; }
+
+			Entity* caster = compendiumTooltipIntro ? nullptr : players[player]->entity;
+			Stat* casterStats = compendiumTooltipIntro ? nullptr : stats[player];
+			real_t baseCastTime = spell->cast_time * 20;
+			real_t modifiedCastTime = getSpellPropertyFromID(spell_t::SPELLPROP_MODIFIED_SPELL_CAST_TIME, spell->ID, caster, casterStats, nullptr) * 20;
+			real_t diff = -(baseCastTime - modifiedCastTime);
+			if ( abs(diff) < 0.001 )
+			{
+				diff = 0.0;
+			}
+			snprintf(buf, sizeof(buf), str.c_str(), baseCastTime / (real_t)TICKS_PER_SECOND, (diff) / (real_t)TICKS_PER_SECOND);
+		}
+		else if ( detailTag == "spell_distance" )
+		{
+			spell_t* spell = getSpellFromItem(player, &item, false);
+			if ( !spell ) { return; }
+
+			real_t dist = 0.0;
+			real_t diff = 0.0;
+			if ( spell->rangefinder != SpellRangefinderType::RANGEFINDER_NONE )
+			{
+				Entity* caster = compendiumTooltipIntro ? nullptr : players[player]->entity;
+				Stat* casterStats = compendiumTooltipIntro ? nullptr : stats[player];
+				dist = spell->distance;
+				real_t modifiedDistance = getSpellPropertyFromID(spell_t::SPELLPROP_MODIFIED_DISTANCE, spell->ID, caster, casterStats, nullptr);
+				diff = (modifiedDistance - dist);
+				if ( abs(diff) < 0.001 )
+				{
+					diff = 0.0;
+				}
+			}
+			snprintf(buf, sizeof(buf), str.c_str(), dist / 16.0, (diff) / 16.0);
+		}
+		else if ( detailTag.compare("spell_damage_bonus") == 0 )
 		{
 			spell_t* spell = getSpellFromItem(player, &item, false);
 			if ( !spell ) { return; }
@@ -11543,6 +11677,9 @@ void Mods::unloadMods(bool force)
 	static int modelsIndexUpdateStart = 1;
 	static int modelsIndexUpdateEnd = nummodels;
 
+	static std::vector<polymodel_t> polymodelsToUpdate;
+	polymodelsToUpdate.reserve(nummodels);
+
 	// begin async load process
 	std::atomic_bool loading_done{ false };
 	auto loading_task = std::async(std::launch::async, [&loading_done]() {
@@ -11566,6 +11703,13 @@ void Mods::unloadMods(bool force)
 					free(polymodels[c].faces);
 					polymodels[c].faces = nullptr;
 				}
+
+				polymodelsToUpdate.emplace_back(polymodel_t());
+				polymodelsToUpdate.back().faces = nullptr;
+				polymodelsToUpdate.back().vao = polymodels[c].vao;
+				polymodelsToUpdate.back().positions = polymodels[c].positions;
+				polymodelsToUpdate.back().colors = polymodels[c].colors;
+				polymodelsToUpdate.back().normals = polymodels[c].normals;
 			}
 			free(polymodels);
 			polymodels = nullptr;
@@ -11619,6 +11763,22 @@ void Mods::unloadMods(bool force)
 			GL_CHECK_ERR(glDeleteBuffers(1, &polymodels[c].normals));
 		}
 	}
+	for ( auto& polymodel : polymodelsToUpdate )
+	{
+		if ( polymodel.vao ) {
+			GL_CHECK_ERR(glDeleteVertexArrays(1, &polymodel.vao));
+		}
+		if ( polymodel.positions ) {
+			GL_CHECK_ERR(glDeleteBuffers(1, &polymodel.positions));
+		}
+		if ( polymodel.colors ) {
+			GL_CHECK_ERR(glDeleteBuffers(1, &polymodel.colors));
+		}
+		if ( polymodel.normals ) {
+			GL_CHECK_ERR(glDeleteBuffers(1, &polymodel.normals));
+		}
+	}
+	polymodelsToUpdate.clear();
 	generateVBOs(0, nummodels);
 
 	// reload books
@@ -16350,6 +16510,12 @@ void Compendium_t::Events_t::loadItemsSaveData()
 		return;
 	}
 
+	int version = 0;
+	if ( d.HasMember("version") )
+	{
+		version = d["version"].GetInt();
+	}
+
 	playerEvents.clear();
 	for ( auto itr = d["items"].MemberBegin(); itr != d["items"].MemberEnd(); ++itr )
 	{
@@ -16392,6 +16558,35 @@ void Compendium_t::Events_t::loadItemsSaveData()
 			}
 		}
 	}
+
+	CompendiumEntries.migrateOldSkillIndexes = false;
+	if ( version == 1 )
+	{
+		CompendiumEntries.migrateOldSkillIndexes = true;
+	}
+	if ( CompendiumEntries.migrateOldSkillIndexes )
+	{
+		int oldClass = client_classes[0];
+		std::vector<int> skillIndexes = { PRO_MYSTICISM, PRO_SORCERY, PRO_THAUMATURGY };
+		for ( int i = 0; i < NUMCLASSES; ++i )
+		{
+			client_classes[0] = i;
+			for ( auto skillID : skillIndexes )
+			{
+				const char* skillstr = Compendium_t::getSkillStringForCompendium(skillID);
+				if ( strcmp(skillstr, "") )
+				{
+					Compendium_t::Events_t::eventUpdateCodex(0, Compendium_t::CPDM_CLASS_SKILL_LEGENDS, skillstr, 0, true);
+					Compendium_t::Events_t::eventUpdateCodex(0, Compendium_t::CPDM_CLASS_SKILL_NOVICES, skillstr, 0, true);
+					Compendium_t::Events_t::eventUpdateCodex(0, Compendium_t::CPDM_CLASS_SKILL_UPS, skillstr, 0, true);
+					Compendium_t::Events_t::eventUpdateCodex(0, Compendium_t::CPDM_CLASS_SKILL_UPS_RUN_MAX, skillstr, 0, true);
+					Compendium_t::Events_t::eventUpdateCodex(0, Compendium_t::CPDM_CLASS_SKILL_MAX, skillstr, 0, true);
+				}
+			}
+		}
+		client_classes[0] = oldClass;
+	}
+	CompendiumEntries.migrateOldSkillIndexes = false;
 }
 
 static ConsoleVariable<bool> cvar_compendiumClientSave("/compendium_client_save", false);
@@ -16773,7 +16968,7 @@ void Compendium_t::Events_t::writeItemsSaveData()
 	rapidjson::Document exportDocument;
 	exportDocument.SetObject();
 
-	const int VERSION = 1;
+	const int VERSION = 2;
 
 	CustomHelpers::addMemberToRoot(exportDocument, "version", rapidjson::Value(VERSION));
 	rapidjson::Value itemsObj(rapidjson::kObjectType);
