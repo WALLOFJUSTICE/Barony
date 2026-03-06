@@ -3650,6 +3650,8 @@ struct Compendium_t
 		std::string name;
 		std::string desc;
 		std::string desc_formatted;
+		std::string customIconLocked = "";
+		std::string customIconUnlocked = "";
 		bool hidden = false;
 		AchievementDLCType dlcType = ACH_TYPE_NORMAL;
 		std::string category = "";

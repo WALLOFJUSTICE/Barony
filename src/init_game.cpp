@@ -964,6 +964,21 @@ void loadAchievementData(const char* path) {
 			achData.lorePoints = ach["lore_points"].GetInt();
 		}
 
+#ifdef NINTENDO
+		if ( ach.HasMember("nx_name") )
+		{
+			achData.name = ach["nx_name"].GetString();
+		}
+		if ( ach.HasMember("nx_icon_locked") )
+		{
+			achData.customIconLocked = ach["nx_icon_locked"].GetString();
+		}
+		if ( ach.HasMember("nx_icon_unlocked") )
+		{
+			achData.customIconUnlocked = ach["nx_icon_unlocked"].GetString();
+		}
+#endif
+
 		achData.dlcType = Compendium_t::AchievementData_t::ACH_TYPE_NORMAL;
 		if ( ach.HasMember("dlc") )
 		{

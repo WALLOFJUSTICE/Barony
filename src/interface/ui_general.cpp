@@ -355,6 +355,16 @@ void UIToastNotification::drawMainCard()
 					{
 						this->setHeaderText("Achievement Unlocked!");
 						notificationImage = std::string("*#images/achievements/") + this->achievementID + std::string(".png");
+#ifdef NINTENDO
+						auto it = Compendium_t::achievements.find(this->achievementID);
+						if ( it != Compendium_t::achievements.end() )
+						{
+							if ( it->second.customIconUnlocked != "" )
+							{
+								notificationImage = std::string("*#images/achievements/") + it->second.customIconUnlocked;
+							}
+						}
+#endif
 					}
 				}
 				pendingStatisticUpdateCurrent = -1;
@@ -902,15 +912,22 @@ void UIToastNotificationManager_t::createAchievementNotification(const char* nam
 	}
 
 	const char* achievementName = "Unknown Achievement";
+
+	std::string imgName = std::string("*#images/achievements/") + name + std::string(".png");
 	{
 		auto it = Compendium_t::achievements.find(name);
 		if (it != Compendium_t::achievements.end())
 		{
 			achievementName = it->second.name.c_str();
+#ifdef NINTENDO
+			if ( it->second.customIconUnlocked != "" )
+			{
+				imgName = std::string("*#images/achievements/") + it->second.customIconUnlocked;
+			}
+#endif
 		}
 	}
 
-	const std::string imgName = std::string("*#images/achievements/") + name + std::string(".png");
 	n = UIToastNotificationManager.addNotification(imgName.c_str());
 	n->setHeaderText("Achievement Unlocked!");
 
@@ -972,9 +989,23 @@ void UIToastNotificationManager_t::createStatisticUpdateNotification(const char*
 		{
 			achievementName = it->second.name.c_str();
 		}
-		const std::string imgName = unlocked ?
+		std::string imgName = unlocked ?
 			std::string("*#images/achievements/") + name + std::string(".png"):
 			std::string("*#images/achievements/") + name + std::string("_l.png");
+#ifdef NINTENDO
+		if ( it != Compendium_t::achievements.end() )
+		{
+			if ( !unlocked && it->second.customIconLocked != "" )
+			{
+				imgName = std::string("*#images/achievements/") + it->second.customIconLocked;
+			}
+			else if ( unlocked && it->second.customIconUnlocked != "" )
+			{
+				imgName = std::string("*#images/achievements/") + it->second.customIconUnlocked;
+			}
+		}
+#endif
+
 		n = UIToastNotificationManager.addNotification(imgName.c_str());
 		n->setHeaderText(unlocked ? "Achievement Unlocked!" : "Achievement Updated!");
 	}

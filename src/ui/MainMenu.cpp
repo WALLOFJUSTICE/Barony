@@ -39174,14 +39174,32 @@ failed:
 				if ( auto img = ach->findImage("ach_img") )
 				{
 					if ( !achData.unlocked ) {
-						img->path = std::string("*#images/achievements/") + achName + std::string("_l.png");
+#ifdef NINTENDO
+						if ( achData.customIconLocked != "" )
+						{
+							img->path = std::string("*#images/achievements/") + achData.customIconLocked;
+						}
+						else
+#endif
+						{
+							img->path = std::string("*#images/achievements/") + achName + std::string("_l.png");
+						}
 						if ( hiddenGroup )
 						{
 							img->path = "*#images/achievements/LOCKED_ACHIEVEMENT.png";
 						}
 					}
 					else {
-						img->path = std::string("*#images/achievements/") + achName + std::string(".png");
+#ifdef NINTENDO
+						if ( achData.customIconUnlocked != "" )
+						{
+							img->path = std::string("*#images/achievements/") + achData.customIconUnlocked;
+						}
+						else
+#endif
+						{
+							img->path = std::string("*#images/achievements/") + achName + std::string(".png");
+						}
 					}
 				}
 				auto dlc_badge_1 = ach->findImage("dlc_badge_1");
