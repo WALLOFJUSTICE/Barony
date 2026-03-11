@@ -5130,6 +5130,7 @@ void Player::HUD_t::updateUINavigation()
 				&& !GenericGUI[player.playernum].featherGUI.bOpen
 				&& !GenericGUI[player.playernum].assistShrineGUI.bOpen
 				&& !GenericGUI[player.playernum].mailboxGUI.bOpen
+				&& !GenericGUI[player.playernum].eternalShrineGUI.bOpen
 				&& !GenericGUI[player.playernum].itemfxGUI.bOpen )
 			{
 				justify = PANEL_JUSTIFY_LEFT;
@@ -5186,6 +5187,7 @@ void Player::HUD_t::updateUINavigation()
 				&& !GenericGUI[player.playernum].tinkerGUI.bOpen && !GenericGUI[player.playernum].alchemyGUI.bOpen
 				&& !GenericGUI[player.playernum].featherGUI.bOpen
 				&& !GenericGUI[player.playernum].mailboxGUI.bOpen
+				&& !GenericGUI[player.playernum].eternalShrineGUI.bOpen
 				&& !GenericGUI[player.playernum].assistShrineGUI.bOpen
 				&& !GenericGUI[player.playernum].itemfxGUI.bOpen )
 			{
@@ -28659,6 +28661,13 @@ void createPlayerInventory(const int player)
 		GenericGUI[player].mailboxGUI.mailFrame->setInheritParentFrameOpacity(false);
 		GenericGUI[player].mailboxGUI.mailFrame->setDisabled(true);
 
+		GenericGUI[player].eternalShrineGUI.eternalShrineFrame = frame->addFrame("eternalshrine");
+		GenericGUI[player].eternalShrineGUI.eternalShrineFrame->setHollow(true);
+		GenericGUI[player].eternalShrineGUI.eternalShrineFrame->setBorder(0);
+		GenericGUI[player].eternalShrineGUI.eternalShrineFrame->setOwner(player);
+		GenericGUI[player].eternalShrineGUI.eternalShrineFrame->setInheritParentFrameOpacity(false);
+		GenericGUI[player].eternalShrineGUI.eternalShrineFrame->setDisabled(true);
+
 		auto oldCursorFrame = frame->addFrame("inventory old item cursor");
 		oldCursorFrame->setSize(SDL_Rect{ 0, 0, inventorySlotSize + 16, inventorySlotSize + 16 });
 		oldCursorFrame->setDisabled(true);
@@ -30366,6 +30375,21 @@ void Player::Inventory_t::updateCursor()
 				cursor.queuedModule = Player::GUI_t::MODULE_NONE;
 			}
 			else if ( mailboxGUI.isInteractable )
+			{
+				moveMouse = true;
+				cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+			}
+		}
+		else if ( cursor.queuedModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+		{
+			auto& eternalShrineGUI = GenericGUI[player.playernum].eternalShrineGUI;
+			if ( !eternalShrineGUI.eternalShrineGUIHasBeenCreated()
+				|| eternalShrineGUI.eternalShrineFrame->isDisabled() )
+			{
+				// cancel
+				cursor.queuedModule = Player::GUI_t::MODULE_NONE;
+			}
+			else if ( eternalShrineGUI.isInteractable )
 			{
 				moveMouse = true;
 				cursor.queuedModule = Player::GUI_t::MODULE_NONE;

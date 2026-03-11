@@ -1200,6 +1200,7 @@ bool Player::GUI_t::bModuleAccessibleWithMouse(GUIModules moduleToAccess)
 		|| moduleToAccess == MODULE_FEATHER
 		|| moduleToAccess == MODULE_ALCHEMY
 		|| moduleToAccess == MODULE_MAILBOX
+		|| moduleToAccess == MODULE_ETERNALSHRINE
 		|| moduleToAccess == MODULE_ASSISTSHRINE
 		|| moduleToAccess == MODULE_ITEMEFFECTGUI )
 	{
@@ -1361,6 +1362,10 @@ Player::GUI_t::GUIModules Player::GUI_t::handleModuleNavigation(bool checkDestin
 			{
 				return MODULE_NONE;
 			}
+			else if ( GenericGUI[player.playernum].eternalShrineGUI.bOpen )
+			{
+				return MODULE_NONE;
+			}
 			else if ( GenericGUI[player.playernum].alchemyGUI.bOpen )
 			{
 				if ( inputs.getUIInteraction(player.playernum)->selectedItem )
@@ -1484,6 +1489,10 @@ Player::GUI_t::GUIModules Player::GUI_t::handleModuleNavigation(bool checkDestin
 			return MODULE_NONE;
 		}
 		else if ( activeModule == MODULE_MAILBOX )
+		{
+			return MODULE_NONE;
+		}
+		else if ( activeModule == MODULE_ETERNALSHRINE )
 		{
 			return MODULE_NONE;
 		}
@@ -1746,6 +1755,10 @@ Player::GUI_t::GUIModules Player::GUI_t::handleModuleNavigation(bool checkDestin
 			{
 				return MODULE_NONE;
 			}
+			else if ( GenericGUI[player.playernum].eternalShrineGUI.bOpen )
+			{
+				return MODULE_NONE;
+			}
 			else if ( player.ghost.isActive() )
 			{
 				if ( bCompactView )
@@ -1869,6 +1882,10 @@ Player::GUI_t::GUIModules Player::GUI_t::handleModuleNavigation(bool checkDestin
 			return MODULE_NONE;
 		}
 		else if ( activeModule == MODULE_MAILBOX )
+		{
+			return MODULE_NONE;
+		}
+		else if ( activeModule == MODULE_ETERNALSHRINE )
 		{
 			return MODULE_NONE;
 		}
@@ -2208,6 +2225,13 @@ bool Player::GUI_t::handleInventoryMovement()
 				GenericGUI[player].mailboxGUI.getSelectedMailSlotY(),
 				-1, 0);
 		}
+		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+		{
+			select_eternalshrine_slot(player,
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineX(),
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineY(),
+				-1, 0);
+		}
 		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
 		{
 			select_assistshrine_slot(player,
@@ -2320,6 +2344,13 @@ bool Player::GUI_t::handleInventoryMovement()
 			select_mail_slot(player,
 				GenericGUI[player].mailboxGUI.getSelectedMailSlotX(),
 				GenericGUI[player].mailboxGUI.getSelectedMailSlotY(),
+				1, 0);
+		}
+		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+		{
+			select_eternalshrine_slot(player,
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineX(),
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineY(),
 				1, 0);
 		}
 		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
@@ -2488,6 +2519,13 @@ bool Player::GUI_t::handleInventoryMovement()
 				GenericGUI[player].mailboxGUI.getSelectedMailSlotY(),
 				0, -1);
 		}
+		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+		{
+			select_eternalshrine_slot(player,
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineX(),
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineY(),
+				0, -1);
+		}
 		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
 		{
 			select_assistshrine_slot(player,
@@ -2652,6 +2690,13 @@ bool Player::GUI_t::handleInventoryMovement()
 			select_mail_slot(player,
 				GenericGUI[player].mailboxGUI.getSelectedMailSlotX(),
 				GenericGUI[player].mailboxGUI.getSelectedMailSlotY(),
+				0, 1);
+		}
+		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+		{
+			select_eternalshrine_slot(player,
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineX(),
+				GenericGUI[player].eternalShrineGUI.getSelectedEternalShrineY(),
 				0, 1);
 		}
 		else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ASSISTSHRINE )
@@ -7220,6 +7265,9 @@ void Player::clearGUIPointers()
 	genericGUI.mailboxGUI.mailFrame = nullptr;
 	genericGUI.mailboxGUI.mailSlotFrames.clear();
 	genericGUI.mailboxGUI.itemRequiresTitleReflow = true;
+	genericGUI.eternalShrineGUI.eternalShrineFrame = nullptr;
+	genericGUI.eternalShrineGUI.eternalShrineSlotFrames.clear();
+	genericGUI.eternalShrineGUI.itemRequiresTitleReflow = true;
 	genericGUI.assistShrineGUI.assistShrineFrame = nullptr;
 	genericGUI.assistShrineGUI.assistShrineSlotFrames.clear();
 	genericGUI.featherGUI.featherFrame = nullptr;

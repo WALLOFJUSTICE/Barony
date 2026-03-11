@@ -1273,6 +1273,7 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     <ClCompile Include="..\..\src\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\..\src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\..\src\input.cpp" />
+    <ClCompile Include="..\..\src\interface\shrine.cpp" />
     <ClCompile Include="..\..\src\interface\ui_general.cpp" />
     <ClCompile Include="..\..\src\lobbies.cpp" />
     <ClCompile Include="..\..\src\mod_tools.cpp" />

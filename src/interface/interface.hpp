@@ -227,6 +227,7 @@ void select_alchemy_slot(int player, int currentx, int currenty, int diffx, int 
 void select_feather_slot(int player, int currentx, int currenty, int diffx, int diffy);
 void select_assistshrine_slot(int player, int currentx, int currenty, int diffx, int diffy);
 void select_mail_slot(int player, int currentx, int currenty, int diffx, int diffy);
+void select_eternalshrine_slot(int player, int currentx, int currenty, int diffx, int diffy);
 
 extern Entity* openedChest[MAXPLAYERS]; //One for each client. //TODO: Clientside, [0] will always point to something other than NULL when a chest is open and it will be NULL when a chest is closed.
 extern list_t chestInv[MAXPLAYERS]; //This is just for the client, so that it can populate the chest inventory on its end.
@@ -326,7 +327,11 @@ enum GUICurrentType
 	GUI_TYPE_SCRIBING,
 	GUI_TYPE_ITEMFX,
 	GUI_TYPE_ASSIST,
-	GUI_TYPE_MAILBOX
+	GUI_TYPE_MAILBOX,
+	GUI_TYPE_ETERNALSHRINE_ANVIL,
+	GUI_TYPE_ETERNALSHRINE_MUSIC,
+	GUI_TYPE_ETERNALSHRINE_SUPPLICATION,
+	GUI_TYPE_ETERNALSHRINE_ASCENSION
 };
 
 // Generic GUI Stuff (repair/alchemy)
@@ -337,6 +342,7 @@ class GenericGUIMenu
 public:
 	static const int kNumShownItems = 4;
 	bool guiActive;
+	GUICurrentType getGuiType() { return guiType; }
 
 	// Alchemy
 	Item* basePotion;
@@ -349,6 +355,9 @@ public:
 	Uint32 mailboxEntityUid = 0;
 	void mailboxClaimItem();
 	bool mailboxSendItem();
+
+	Uint32 eternalShrineEntityUid = 0;
+	bool isItemEternalShrineUsable(const Item* item);
 
 	// Misc item/spell effects
 	Item* itemEffectScrollItem;
@@ -421,7 +430,8 @@ public:
 		featherGUI(*this),
 		itemfxGUI(*this),
 		assistShrineGUI(*this),
-		mailboxGUI(*this)
+		mailboxGUI(*this),
+		eternalShrineGUI(*this)
 	{
 		tinkeringTotalItems.first = nullptr;
 		tinkeringTotalItems.last = nullptr;
@@ -971,6 +981,150 @@ public:
 		void clearItemDisplayed();
 	};
 	AssistShrineGUI_t assistShrineGUI;
+
+	struct EternalShrineGUI_t
+	{
+		GenericGUIMenu& parentGUI;
+		EternalShrineGUI_t(GenericGUIMenu & g) :
+			parentGUI(g)
+		{
+		}
+
+		enum EternalShrineView_t : int
+		{
+			ASSIST_SHRINE_VIEW_OFFERING,
+			ASSIST_SHRINE_VIEW_ACTION
+		};
+
+		static const int ETERNALSHRINE_SLOT_SEND = -1;
+
+		EternalShrineView_t currentView = ASSIST_SHRINE_VIEW_OFFERING;
+		void changeCurrentView(EternalShrineView_t view);
+		real_t animx = 0.0;
+		real_t animFilter = 0.0;
+		real_t animSubmit = 0.0;
+		real_t animAction = 0.0;
+		Uint32 submitTick = 0;
+
+		int pipsTarget = 0;
+		Uint32 pipsTick = 0;
+		Uint32 pipsFlashTick = 0;
+		Uint32 pipsAnimThisTick = 0;
+		int pipsQueued = 0;
+		Uint32 pipsAddSpeed = 0;
+		int pipsAdd = 0;
+		int pipsTotal = 0;
+
+		enum EternalShrineAscensionType : int
+		{
+			ASCENSION_SPELL,
+			SORCERY_SPELL,
+			MYSTICISM_SPELL,
+			THAUMATURGY_SPELL
+		};
+		EternalShrineAscensionType ascensionType = ASCENSION_SPELL;
+
+		enum EternalShrineSubmitStatus
+		{
+			SUBMIT_NONE,
+			SUBMIT_WAITING,
+			SUBMIT_CONFIRMED,
+			SUBMIT_DONE
+		};
+		EternalShrineSubmitStatus submittedItem = SUBMIT_NONE;
+		real_t animPrompt = 0.0;
+		real_t animTooltip = 0.0;
+		Uint32 animPromptTicks = 0;
+		Uint32 animTooltipTicks = 0;
+		bool isInteractable = true;
+		bool bOpen = false;
+		bool bFirstTimeSnapCursor = false;
+		bool bSendItemAllowed = true;
+		Frame* eternalShrineFrame = nullptr;
+		Uint32 eternalShrineUID = 0;
+
+		real_t animSendItem1 = 0.0;
+		int animSendItem1StartX = 0;
+		int animSendItem1StartY = 0;
+		int animSendItem1DestX = 0;
+		int animSendItem1DestY = 0;
+		Uint32 sendItem1Uid = 0;
+
+		void openEternalShrine(/*Entity * shrine*/);
+		void closeEternalShrine();
+		void updateEternalShrine();
+		void createEternalShrine();
+		bool eternalShrineGUIHasBeenCreated() const;
+		std::unordered_map<int, Frame*> eternalShrineSlotFrames;
+		void selectEternalShrineSlot(const int x, const int y);
+
+		int selectedEternalShrineSlotX = -1;
+		int selectedEternalShrineSlotY = -1;
+		static const int MAX_ETERNALSHRINE_X;
+		static const int MAX_ETERNALSHRINE_Y;
+		const int getSelectedEternalShrineX() const { return selectedEternalShrineSlotX; }
+		const int getSelectedEternalShrineY() const { return selectedEternalShrineSlotY; }
+		Frame* getEternalShrineSlotFrame(int x, int y) const;
+		bool inventoryItemAllowedInGUI(Item* item);
+		//void setItemDisplayNameAndPrice(Item* item, bool isTooltipForResultPotion, bool isTooltipForRecipe);
+		bool warpMouseToSelectedEternalShrineItem(Item * snapToItem, Uint32 flags);
+		bool itemIsFromGUI(Item * item);
+		bool isSlotVisible(int x, int y) const;
+		void scrollToSlot(int x, int y, bool instantly);
+		static int heightOffsetWhenNotCompact;
+
+		/*struct AssistNotification_t
+		{
+			std::string img = "";
+			std::string title = "";
+			std::string body = "";
+			enum NotificationTypes
+			{
+				NOTIF_DEFAULT,
+				NOTIF_SEND_REQ,
+				NOTIF_CHARACTER_CHANGE_OK,
+				NOTIF_CLASS_RESET
+			};
+			Uint32 lifetime = 3 * TICKS_PER_SECOND;
+			NotificationTypes notificationType = NOTIF_DEFAULT;
+			real_t animx = 0.0;
+			int state = 0;
+			AssistNotification_t(std::string _title, std::string _body, std::string _img, NotificationTypes _notifType)
+			{
+				title = _title;
+				img = _img;
+				body = _body;
+				notificationType = _notifType;
+			}
+		};
+		std::vector<std::pair<Uint32, AssistNotification_t>> notifications;
+		AssistNotification_t* addNotification(std::string _title, std::string _body, std::string _img, AssistNotification_t::NotificationTypes _notifType);*/
+
+		enum EternalItemActions_t
+		{
+			ETERNAL_ITEM_NONE,
+			ETERNAL_ITEM_OK,
+			ETERNAL_ITEM_UNIDENTIFIED,
+			ETERNAL_ITEM_INVALID,
+			ETERNAL_ITEM_NOTHING_TO_CLAIM,
+			ETERNAL_ITEM_FLAG_DISABLED,
+		};
+		EternalItemActions_t itemActionType = ETERNAL_ITEM_NONE;
+		real_t animInvalidAction = 0.0;
+		Uint32 animInvalidActionTicks = 0;
+		enum InvalidActionFeedback_t : int
+		{
+			INVALID_ACTION_NONE,
+			INVALID_ACTION_SHAKE_PROMPT
+		};
+		InvalidActionFeedback_t invalidActionType = INVALID_ACTION_NONE;
+		int itemType = -1;
+		std::string itemDesc = "";
+		bool itemRequiresTitleReflow = true;
+		EternalItemActions_t setItemDisplayNameAndPrice(Item * item, bool checkResultOnly = false);
+		void clearItemDisplayed();
+	};
+	EternalShrineGUI_t eternalShrineGUI;
 
 	struct MailboxGui_t
 	{

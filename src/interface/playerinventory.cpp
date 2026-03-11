@@ -892,6 +892,7 @@ bool moveInPaperDoll(int player, Player::PaperDoll_t::PaperDollSlotType paperDol
 		if ( GenericGUI[player].tinkerGUI.bOpen || GenericGUI[player].alchemyGUI.bOpen 
 			|| GenericGUI[player].featherGUI.bOpen
 			|| GenericGUI[player].mailboxGUI.bOpen
+			|| GenericGUI[player].eternalShrineGUI.bOpen
 			|| GenericGUI[player].assistShrineGUI.bOpen )
 		{
 			return false;
@@ -1523,6 +1524,62 @@ void select_mail_slot(int player, int currentx, int currenty, int diffx, int dif
 	mailboxGUI.selectMailSlot(x, y);
 }
 
+void select_eternalshrine_slot(int player, int currentx, int currenty, int diffx, int diffy)
+{
+	int x = currentx + diffx;
+	int y = currenty + diffy;
+
+	auto& eternalShrineGUI = GenericGUI[player].eternalShrineGUI;
+	//int lowestItemY = 0;
+
+	//if ( currentx < 0 )
+	//{
+	//	if ( diffy != 0 )
+	//	{
+	//		// main mail frame
+	//		if ( currentx == mailboxGUI.MAIL_SLOT_SEND )
+	//		{
+	//			x = mailboxGUI.MAIL_SLOT_RECV;
+	//		}
+	//		else if ( currentx == mailboxGUI.MAIL_SLOT_RECV )
+	//		{
+	//			x = mailboxGUI.MAIL_SLOT_SEND;
+	//		}
+	//		y = 0;
+	//	}
+	//	else if ( diffx != 0 )
+	//	{
+	//		if ( diffx > 0 )
+	//		{
+	//			if ( currentx == mailboxGUI.MAIL_SLOT_SEND )
+	//			{
+	//				players[player]->inventoryUI.selectSlot(0, 0);
+	//			}
+	//			else
+	//			{
+	//				players[player]->inventoryUI.selectSlot(0, 5);
+	//			}
+	//			players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+	//			return;
+	//		}
+	//		else
+	//		{
+	//			if ( currentx == mailboxGUI.MAIL_SLOT_SEND )
+	//			{
+	//				players[player]->inventoryUI.selectSlot(players[player]->inventoryUI.getSizeX() - 1, 0);
+	//			}
+	//			else
+	//			{
+	//				players[player]->inventoryUI.selectSlot(players[player]->inventoryUI.getSizeX() - 1, 5);
+	//			}
+	//			players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+	//			return;
+	//		}
+	//	}
+	//}
+	eternalShrineGUI.selectEternalShrineSlot(x, y);
+}
+
 // only called by handleInventoryMovement in player.cpp
 void select_alchemy_slot(int player, int currentx, int currenty, int diffx, int diffy)
 {
@@ -1924,6 +1981,7 @@ void select_inventory_slot(int player, int currentx, int currenty, int diffx, in
 						if ( GenericGUI[player].tinkerGUI.bOpen 
 							|| GenericGUI[player].alchemyGUI.bOpen 
 							|| GenericGUI[player].mailboxGUI.bOpen
+							|| GenericGUI[player].eternalShrineGUI.bOpen
 							|| GenericGUI[player].assistShrineGUI.bOpen
 							|| GenericGUI[player].featherGUI.bOpen )
 						{
@@ -2099,6 +2157,19 @@ void select_inventory_slot(int player, int currentx, int currenty, int diffx, in
 			players[player]->GUI.activateModule(Player::GUI_t::MODULE_MAILBOX);
 			return;
 		}
+		else if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen )
+		{
+			/*if ( y >= 4 )
+			{
+				select_mail_slot(player, GenericGUI[player].mailboxGUI.MAIL_SLOT_RECV, 0, 0, 0);
+			}
+			else*/
+			{
+				select_eternalshrine_slot(player, 0, 0, 0, 0);
+			}
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ETERNALSHRINE);
+			return;
+		}
 		else if ( !selectedItem && players[player]->gui_mode == GUI_MODE_SHOP && players[player]->shopGUI.bOpen )
 		{
 			if ( y >= players[player]->shopGUI.MAX_SHOP_Y )
@@ -2176,6 +2247,19 @@ void select_inventory_slot(int player, int currentx, int currenty, int diffx, in
 				select_mail_slot(player, GenericGUI[player].mailboxGUI.MAIL_SLOT_SEND, 0, 0, 0);
 			}
 			players[player]->GUI.activateModule(Player::GUI_t::MODULE_MAILBOX);
+			return;
+		}
+		else if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen )
+		{
+			/*if ( y >= 4 )
+			{
+				select_mail_slot(player, GenericGUI[player].mailboxGUI.MAIL_SLOT_RECV, 0, 0, 0);
+			}
+			else*/
+			{
+				select_eternalshrine_slot(player, 0, 0, 0, 0);
+			}
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ETERNALSHRINE);
 			return;
 		}
 		else if ( !selectedItem && GenericGUI[player].assistShrineGUI.bOpen )
@@ -3442,6 +3526,20 @@ void releaseItem(const int player)
 						&& !GenericGUI[player].mailboxGUI.mailFrame->isDisabled() )
 					{
 						if ( auto baseFrame = GenericGUI[player].mailboxGUI.mailFrame->findFrame("mail base") )
+						{
+							if ( !baseFrame->isDisabled() && baseFrame->capturesMouse() )
+							{
+								allowDropItems = false;
+							}
+						}
+					}
+				}
+				else if ( GenericGUI[player].eternalShrineGUI.bOpen )
+				{
+					if ( GenericGUI[player].eternalShrineGUI.eternalShrineFrame
+						&& !GenericGUI[player].eternalShrineGUI.eternalShrineFrame->isDisabled() )
+					{
+						if ( auto baseFrame = GenericGUI[player].eternalShrineGUI.eternalShrineFrame->findFrame("eternal base") )
 						{
 							if ( !baseFrame->isDisabled() && baseFrame->capturesMouse() )
 							{
@@ -8143,6 +8241,7 @@ void Player::Inventory_t::updateInventory()
 	auto& tinkerGUI = GenericGUI[player].tinkerGUI;
 	auto& alchemyGUI = GenericGUI[player].alchemyGUI;
 	auto& mailboxGUI = GenericGUI[player].mailboxGUI;
+	auto& eternalShrineGUI = GenericGUI[player].eternalShrineGUI;
 	auto& featherGUI = GenericGUI[player].featherGUI;
 	auto& itemfxGUI = GenericGUI[player].itemfxGUI;
 	auto& assistShrineGUI = GenericGUI[player].assistShrineGUI;
@@ -8338,6 +8437,10 @@ void Player::Inventory_t::updateInventory()
 			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_MAILBOX )
 			{
 				mailboxGUI.warpMouseToSelectedMailItem(nullptr, (Inputs::SET_CONTROLLER));
+			}
+			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+			{
+				eternalShrineGUI.warpMouseToSelectedEternalShrineItem(nullptr, (Inputs::SET_CONTROLLER));
 			}
 			else if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_FEATHER )
 			{
@@ -8781,6 +8884,60 @@ void Player::Inventory_t::updateInventory()
 			}
 		}
 
+		if ( eternalShrineGUI.bOpen 
+			/*&& players[player]->inventory_mode == INVENTORY_MODE_ITEM*/
+			&& players[player]->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_ETERNALSHRINE) )
+		{
+			for ( int x = eternalShrineGUI.ETERNALSHRINE_SLOT_SEND; x <= eternalShrineGUI.ETERNALSHRINE_SLOT_SEND; ++x )
+			{
+				int y = 0;
+				bool slotVisible = false;
+				if ( x < 0 )
+				{
+					if ( eternalShrineGUI.animSendItem1 < 0.001 )
+					{
+						slotVisible = true;
+					}
+					if ( !eternalShrineGUI.bSendItemAllowed )
+					{
+						slotVisible = false;
+					}
+				}
+
+				if ( auto slotFrame = eternalShrineGUI.getEternalShrineSlotFrame(x, y) )
+				{
+					if ( !players[player]->GUI.isDropdownActive() ) // don't update selected slot while item menu open
+					{
+						if ( slotVisible && eternalShrineGUI.isInteractable && slotFrame->capturesMouseInRealtimeCoords() )
+						{
+							eternalShrineGUI.selectEternalShrineSlot(x, y);
+							if ( inputs.getVirtualMouse(player)->draw_cursor )
+							{
+								// mouse movement captures the inventory
+								players[player]->GUI.activateModule(Player::GUI_t::MODULE_ETERNALSHRINE);
+							}
+						}
+					}
+
+					bool hideCursor = false;
+					if ( x == eternalShrineGUI.getSelectedEternalShrineX()
+						&& y == eternalShrineGUI.getSelectedEternalShrineY()
+						&& !hideCursor
+						&& players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE
+						&& eternalShrineGUI.isInteractable
+						/*&& !(x == eternalShrineGUI.MAIL_SLOT_RECV && eternalShrineGUI.animRecvItem > 0.001)*/
+						&& slotVisible )
+					{
+						slotFrameToHighlight = slotFrame;
+						startx = slotFrame->getAbsoluteSize().x;
+						starty = slotFrame->getAbsoluteSize().y;
+						startx -= players[player]->camera_virtualx1(); // offset any splitscreen camera positioning.
+						starty -= players[player]->camera_virtualy1();
+					}
+				}
+			}
+		}
+
 		if ( assistShrineGUI.bOpen && players[player]->inventory_mode == INVENTORY_MODE_ITEM
 			&& players[player]->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_ASSISTSHRINE) )
 		{
@@ -8900,6 +9057,7 @@ void Player::Inventory_t::updateInventory()
 			&& !featherDrawerOpen
 			&& !(alchemyGUI.bOpen && !alchemyGUI.isInteractable)
 			&& !(mailboxGUI.bOpen && !mailboxGUI.isInteractable)
+			&& !(eternalShrineGUI.bOpen && !eternalShrineGUI.isInteractable)
 			&& players[player]->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_INVENTORY) )
 		{
 			for ( int x = 0; x < getSizeX(); ++x )
@@ -9555,6 +9713,23 @@ void Player::Inventory_t::updateInventory()
 						updateSlotFrameFromItem(slotFrame, item, !item->identified);
 					}
 				}
+				else if ( eternalShrineGUI.bOpen )
+				{
+					if ( !(eternalShrineGUI.inventoryItemAllowedInGUI(item)
+						&& item->identified && !itemIsEquipped(item, player)) )
+					{
+						updateSlotFrameFromItem(slotFrame, item, true);
+					}
+					else if ( (eternalShrineGUI.sendItem1Uid == item->uid) )
+					{
+						slotFrame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_ITEM);
+						updateSlotFrameFromItem(slotFrame, item);
+					}
+					else
+					{
+						updateSlotFrameFromItem(slotFrame, item, !item->identified);
+					}
+				}
 				else
 				{
 					updateSlotFrameFromItem(slotFrame, item);
@@ -9613,6 +9788,7 @@ void Player::Inventory_t::updateInventory()
 	tinkerGUI.clearItemDisplayed();
 	alchemyGUI.clearItemDisplayed();
 	mailboxGUI.clearItemDisplayed();
+	eternalShrineGUI.clearItemDisplayed();
 	if ( !transmuteItemOpen )
 	{
 		itemfxGUI.clearItemDisplayed();
@@ -10190,6 +10366,12 @@ void Player::Inventory_t::updateInventory()
 				// don't do anything while in motion
 				break;
 			}
+			if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE
+				&& !eternalShrineGUI.isInteractable )
+			{
+				// don't do anything while in motion
+				break;
+			}
 			if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_TINKERING
 				&& !tinkerGUI.isInteractable )
 			{
@@ -10275,6 +10457,17 @@ void Player::Inventory_t::updateInventory()
 							tooltipCoordX -= mailboxGUI.mailFrame->getSize().w;
 						}
 					}
+					if ( eternalShrineGUI.eternalShrineFrame && eternalShrineGUI.bOpen && eternalShrineGUI.isInteractable )
+					{
+						if ( justify == PANEL_JUSTIFY_LEFT )
+						{
+							tooltipCoordX += 206;
+						}
+						else
+						{
+							tooltipCoordX -= 206;
+						}
+					}
 				}
 				else
 				{
@@ -10331,6 +10524,7 @@ void Player::Inventory_t::updateInventory()
 				bool tinkerOpen = false;
 				bool alchemyOpen = false;
 				bool mailboxOpen = false;
+				bool eternalShrineOpen = false;
 				bool featherOpen = false;
 				bool itemfxOpen = false;
 				if ( featherInscribeOrRepairActive )
@@ -10381,6 +10575,20 @@ void Player::Inventory_t::updateInventory()
 						mailboxGUI.setItemDisplayNameAndPrice(item, false);
 					}
 				}
+				else if ( eternalShrineGUI.bOpen )
+				{
+					eternalShrineOpen = true;
+					if ( eternalShrineGUI.inventoryItemAllowedInGUI(item) )
+					{
+						eternalShrineGUI.setItemDisplayNameAndPrice(item, false);
+					}
+
+					if ( inventoryControlActive && !bIsTooltipDelayed() && eternalShrineGUI.isInteractable )
+					{
+						tooltipOpen = true;
+						players[player]->hud.updateFrameTooltip(item, tooltipCoordX, tooltipCoordY, justify);
+					}
+				}
 				else
 				{
 					if ( inventoryControlActive && !bIsTooltipDelayed() )
@@ -10407,6 +10615,7 @@ void Player::Inventory_t::updateInventory()
 					|| featherOpen
 					|| itemfxOpen
 					|| mailboxOpen
+					|| eternalShrineOpen
 					|| alchemyOpen)
 					&& inventoryControlActive
 					&& !selectedItem )
@@ -10641,7 +10850,12 @@ void Player::Inventory_t::updateInventory()
 							}
 						}
 					}
-					else if ( !tinkeringSalvageOrRepairMenuActive && !alchemyOpen && !mailboxOpen && !featherInscribeOrRepairActive && !itemfxOpen )
+					else if ( !tinkeringSalvageOrRepairMenuActive 
+						&& !alchemyOpen 
+						&& !mailboxOpen 
+						&& !eternalShrineOpen
+						&& !featherInscribeOrRepairActive 
+						&& !itemfxOpen )
 					{
 						// open a drop-down menu of options for "using" the item
 						itemMenuOpen = true;
@@ -11079,6 +11293,23 @@ void Player::Inventory_t::updateInventory()
 								updateSlotFrameFromItem(slotFrame, item, true);
 							}
 							else if ( (mailboxGUI.sendItem1Uid == item->uid) )
+							{
+								slotFrame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_ITEM);
+								updateSlotFrameFromItem(slotFrame, item);
+							}
+							else
+							{
+								updateSlotFrameFromItem(slotFrame, item, !item->identified);
+							}
+						}
+						else if ( eternalShrineGUI.bOpen )
+						{
+							if ( !(eternalShrineGUI.inventoryItemAllowedInGUI(item)
+								&& item->identified && !itemIsEquipped(item, player)) )
+							{
+								updateSlotFrameFromItem(slotFrame, item, true);
+							}
+							else if ( (eternalShrineGUI.sendItem1Uid == item->uid) )
 							{
 								slotFrame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_ITEM);
 								updateSlotFrameFromItem(slotFrame, item);
@@ -11667,6 +11898,7 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 	bool featherOpen = false;
 	bool itemfxOpen = false;
 	bool mailboxOpen = false;
+	bool eternalShrineOpen = false;
 	if ( players[player]->gui_mode == GUI_MODE_SHOP && itemCategory(item) != SPELL_CAT )
 	{
 		if ( playerOwnedItem )
@@ -11686,6 +11918,10 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 	{
 		mailboxOpen = true;
 	}
+	else if ( GenericGUI[player].eternalShrineGUI.bOpen )
+	{
+		eternalShrineOpen = true;
+	}
 	else if ( GenericGUI[player].featherGUI.bOpen )
 	{
 		featherOpen = true;
@@ -11697,7 +11933,7 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 
 	for ( auto it = options.begin(); it != options.end(); )
 	{
-		if ( sellingToShop || tinkerOpen || alembicOpen || featherOpen || itemfxOpen || mailboxOpen )
+		if ( sellingToShop || tinkerOpen || alembicOpen || featherOpen || itemfxOpen || mailboxOpen || eternalShrineOpen )
 		{
 			if ( getContextMenuOptionBindingName(player, *it) == "MenuConfirm"
 				|| getContextMenuOptionBindingName(player, *it) == "MenuCancel" )

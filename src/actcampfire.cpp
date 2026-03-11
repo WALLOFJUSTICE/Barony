@@ -648,7 +648,8 @@ void actMailbox(Entity* my)
 					}
 					if ( players[i]->isLocalPlayer() )
 					{
-						GenericGUI[i].openGUI(GUI_TYPE_MAILBOX, my);
+						//GenericGUI[i].openGUI(GUI_TYPE_MAILBOX, my);
+						GenericGUI[i].openGUI(GUI_TYPE_ETERNALSHRINE_ANVIL + local_rng.rand() % 4, my);
 					}
 					else if ( multiplayer == SERVER && i > 0 )
 					{

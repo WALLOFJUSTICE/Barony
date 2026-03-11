@@ -1048,6 +1048,7 @@ bool Player::GUI_t::bActiveModuleUsesInventory()
 		case MODULE_ALCHEMY:
 		case MODULE_ASSISTSHRINE:
 		case MODULE_MAILBOX:
+		case MODULE_ETERNALSHRINE:
 			return true;
 		default:
 			break;
@@ -1193,6 +1194,24 @@ bool Player::GUI_t::warpControllerToModule(bool moveCursorInstantly)
 		}
 		return true;
 	}
+	else if ( activeModule == MODULE_ETERNALSHRINE )
+	{
+		auto& eternalShrineGUI = GenericGUI[player.playernum].eternalShrineGUI;
+		auto& inventoryUI = player.inventoryUI;
+		if ( eternalShrineGUI.warpMouseToSelectedEternalShrineItem(nullptr, (Inputs::SET_CONTROLLER))
+			&& inventoryUI.cursor.queuedModule == Player::GUI_t::MODULE_NONE )
+		{
+			if ( auto slot = eternalShrineGUI.getEternalShrineSlotFrame(eternalShrineGUI.getSelectedEternalShrineX(), eternalShrineGUI.getSelectedEternalShrineY()) )
+			{
+				SDL_Rect pos = slot->getAbsoluteSize();
+				pos.x -= player.camera_virtualx1();
+				pos.y -= player.camera_virtualy1();
+				inventoryUI.updateSelectedSlotAnimation(pos.x, pos.y,
+					inventoryUI.getSlotSize(), inventoryUI.getSlotSize(), moveCursorInstantly);
+			}
+		}
+		return true;
+	}
 	else if ( activeModule == MODULE_ASSISTSHRINE )
 	{
 		auto& assistShrineGUI = GenericGUI[player.playernum].assistShrineGUI;
@@ -1299,6 +1318,7 @@ void Player::GUI_t::activateModule(Player::GUI_t::GUIModules module)
 					|| oldModule == MODULE_SHOP
 					|| oldModule == MODULE_ALCHEMY
 					|| oldModule == MODULE_MAILBOX
+					|| oldModule == MODULE_ETERNALSHRINE
 					|| oldModule == MODULE_TINKERING
 					|| oldModule == MODULE_FEATHER
 					|| oldModule == MODULE_ASSISTSHRINE)
@@ -1309,6 +1329,7 @@ void Player::GUI_t::activateModule(Player::GUI_t::GUIModules module)
 					|| activeModule == MODULE_SHOP
 					|| activeModule == MODULE_ALCHEMY
 					|| activeModule == MODULE_MAILBOX
+					|| activeModule == MODULE_ETERNALSHRINE
 					|| activeModule == MODULE_TINKERING
 					|| activeModule == MODULE_FEATHER
 					|| activeModule == MODULE_ASSISTSHRINE)
@@ -1332,6 +1353,7 @@ void Player::GUI_t::activateModule(Player::GUI_t::GUIModules module)
 				|| activeModule == MODULE_SHOP
 				|| activeModule == MODULE_ALCHEMY
 				|| activeModule == MODULE_MAILBOX
+				|| activeModule == MODULE_ETERNALSHRINE
 				|| activeModule == MODULE_TINKERING
 				|| activeModule == MODULE_FEATHER
 				|| activeModule == MODULE_ASSISTSHRINE)
@@ -1342,6 +1364,7 @@ void Player::GUI_t::activateModule(Player::GUI_t::GUIModules module)
 					|| oldModule == MODULE_SHOP
 					|| oldModule == MODULE_ALCHEMY
 					|| oldModule == MODULE_MAILBOX
+					|| oldModule == MODULE_ETERNALSHRINE
 					|| oldModule == MODULE_TINKERING
 					|| oldModule == MODULE_FEATHER
 					|| oldModule == MODULE_ASSISTSHRINE))
@@ -5899,6 +5922,17 @@ void GenericGUIMenu::updateGUI()
 				return;
 			}
 		}
+		else if ( guiType == GUI_TYPE_ETERNALSHRINE_ANVIL
+			|| guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION
+			|| guiType == GUI_TYPE_ETERNALSHRINE_MUSIC
+			|| guiType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+		{
+			if ( eternalShrineEntityUid == 0 || (eternalShrineEntityUid != 0 && !uidToEntity(eternalShrineEntityUid)) )
+			{
+				closeGUI();
+				return;
+			}
+		}
 		else if ( guiType == GUI_TYPE_TINKERING )
 		{
 			if ( (workstationEntityUid == 0 && !tinkeringKitItem) || (workstationEntityUid != 0 && !uidToEntity(workstationEntityUid)) )
@@ -6397,6 +6431,13 @@ bool GenericGUIMenu::shouldDisplayItemInGUI(Item* item)
 	else if ( guiType == GUI_TYPE_MAILBOX )
 	{
 		return isItemMailable(item);
+	}
+	else if ( guiType == GUI_TYPE_ETERNALSHRINE_ANVIL
+		|| guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION
+		|| guiType == GUI_TYPE_ETERNALSHRINE_MUSIC
+		|| guiType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+	{
+		return isItemEternalShrineUsable(item);
 	}
 	else if ( guiType == GUI_TYPE_TINKERING )
 	{
@@ -7408,6 +7449,10 @@ void GenericGUIMenu::closeGUI()
 	{
 		mailboxGUI.closeMailMenu();
 	}
+	if ( eternalShrineGUI.bOpen )
+	{
+		eternalShrineGUI.closeEternalShrine();
+	}
 	if ( featherGUI.bOpen )
 	{
 		featherGUI.closeFeatherMenu();
@@ -7427,6 +7472,7 @@ void GenericGUIMenu::closeGUI()
 	alembicEntityUid = 0;
 	workstationEntityUid = 0;
 	mailboxEntityUid = 0;
+	eternalShrineEntityUid = 0;
 }
 
 //inline Item* GenericGUIMenu::getItemInfo(int slot)
@@ -7910,6 +7956,16 @@ void GenericGUIMenu::openGUI(int type, Entity* shrine)
 		this->closeGUI();
 		mailboxEntityUid = oldUID;
 	}
+	else if ( guiType == GUI_TYPE_ETERNALSHRINE_ANVIL
+		|| guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION
+		|| guiType == GUI_TYPE_ETERNALSHRINE_MUSIC
+		|| guiType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+	{
+		Uint32 oldUID = eternalShrineEntityUid;
+		eternalShrineEntityUid = 0;
+		this->closeGUI();
+		eternalShrineEntityUid = oldUID;
+	}
 
 	if ( players[gui_player] && players[gui_player]->entity )
 	{
@@ -7956,6 +8012,17 @@ void GenericGUIMenu::openGUI(int type, Entity* shrine)
 		if ( shrine )
 		{
 			mailboxEntityUid = shrine->getUID();
+		}
+	}
+	else if ( guiType == GUI_TYPE_ETERNALSHRINE_ANVIL
+		|| guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION
+		|| guiType == GUI_TYPE_ETERNALSHRINE_MUSIC
+		|| guiType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+	{
+		eternalShrineGUI.openEternalShrine();
+		if ( shrine )
+		{
+			eternalShrineEntityUid = shrine->getUID();
 		}
 	}
 	else if ( guiType == GUI_TYPE_TINKERING )
