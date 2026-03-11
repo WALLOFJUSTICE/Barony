@@ -426,10 +426,23 @@ void Entity::actIronDoor()
 		{
 			doorLocked = 0; // force unlocked.
 		}
-		else if ( doorForceLockedUnlocked <= 1 )
+		else if ( doorForceLockedUnlocked == 1 )
 		{
 			doorLocked = 1;
 			doorPreventLockpickExploit = 0;
+		}
+		else if ( doorForceLockedUnlocked <= 0 )
+		{
+			if ( rng.rand() % 20 == 0 )
+			{
+				// locked
+				doorLocked = 1;
+				doorPreventLockpickExploit = 0;
+			}
+			else
+			{
+				doorLocked = 0; // force unlocked.
+			}
 		}
 		doorOldStatus = doorStatus;
 		scalex = 1.01;
