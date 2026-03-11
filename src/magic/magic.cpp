@@ -1522,6 +1522,11 @@ void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent
 				if ( parent->behavior == &actMonster && parent->monsterAllyGetPlayerLeader() )
 				{
 					whoToFollow = parent->monsterAllyGetPlayerLeader();
+
+					if ( numFollowers >= 8 )
+					{
+						doPacify = true; // stop after a point
+					}
 				}
 				else if ( parent->behavior == &actMonster )
 				{
