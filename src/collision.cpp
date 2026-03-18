@@ -1247,7 +1247,9 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				}
 			}
 			if ( entity->behavior == &actMonster && 
-				(entity->getMonsterTypeFromSprite() == REVENANT_SKULL || entity->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON
+				(entity->getMonsterTypeFromSprite() == REVENANT_SKULL 
+				|| entity->getMonsterTypeFromSprite() == BAT_SMALL
+				|| entity->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON
 				|| entity->getMonsterTypeFromSprite() == FLAME_ELEMENTAL || entity->getMonsterTypeFromSprite() == MOTH_SMALL) )
 			{
 				if ( my->behavior == &actBoulder )
