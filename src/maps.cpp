@@ -3284,8 +3284,14 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		}
 	}
 
+	bool boulderArrowTraps = true;
+	if ( !strncmp(map.filename, "fortress", 8) )
+	{
+		boulderArrowTraps = false;
+	}
+
 	// boulder and arrow traps
-	if ( (svFlags & SV_FLAG_TRAPS) && map.flags[MAP_FLAG_DISABLETRAPS] == 0
+	if ( boulderArrowTraps && (svFlags & SV_FLAG_TRAPS) && map.flags[MAP_FLAG_DISABLETRAPS] == 0
 		&& (!customTrapsForMapInUse || (customTrapsForMapInUse && (customTraps.boulders || customTraps.arrows)) )
 		)
 	{

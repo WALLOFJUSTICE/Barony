@@ -2734,6 +2734,9 @@
 		},
 		"spell_holy_beam": {
 			"name": "Holy Beam"
+		},
+		"spell_foci_windblast": {
+			"name": "Focus of Windblast"
 		}
     }
 }

@@ -6845,8 +6845,8 @@ Host to enable the game setting.
 6583 moth#
 6584 earth sprite#
 6585 duck#
-6586 monster_unused_6#
-6587 monster_unused_7#
+6586 water elemental#
+6587 gryphon#
 6588 monster_unused_8#
 6589 adorcised possessions#
 6590 flame elementals#
@@ -6854,8 +6854,8 @@ Host to enable the game setting.
 6592 moths#
 6593 earth sprites#
 6594 ducks#
-6595 monster_unused_6s#
-6596 monster_unused_7s#
+6595 water elementals#
+6596 gryphons#
 6597 monster_unused_8s#
 6598 hits#
 6599 hits#
@@ -7270,5 +7270,8 @@ has been unlocked!#
 6996 Mouse Events Limit#
 6997 Limits the amount of mouse movement events processed per frame to prevent large camera swings.#
 6998 Unlimited#
+6999 Select an offering...#
+7000 Sacrifice#
+7001 Smith#
 
 7999 END#
