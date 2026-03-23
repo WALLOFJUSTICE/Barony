@@ -383,7 +383,18 @@ int pathCheckObstacle(int x, int y, Entity* my, Entity* target)
 		{
 			if ( (int)floor(entity->x / 16) == u && (int)floor(entity->y / 16) == v )
 			{
-				return 1;
+				if ( (entity->sprite == 217	// iron door
+					|| entity->sprite == 218) )
+				{
+					if ( strncmp(map.filename, "keep", 4) )
+					{
+						return 1;
+					}
+				}
+				else
+				{
+					return 1;
+				}
 			}
 		}
 	}
