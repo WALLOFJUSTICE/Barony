@@ -122,8 +122,8 @@ void actSummonTrap(Entity* my)
 						HOLOGRAM,
 						EARTH_ELEMENTAL,
 						DUCK_SMALL,
-						MONSTER_UNUSED_6,
-						MONSTER_UNUSED_7,
+						WATER_ELEMENTAL,
+						GRYPHON,
 						MONSTER_UNUSED_8,
 						MOTH_SMALL
 	                };

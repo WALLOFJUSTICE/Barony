@@ -1545,6 +1545,22 @@ void setupSpells()   ///TODO: Verify this function.
 	);
 	spell->hide_from_ui = true;
 
+	spellElementConstructor(SPELL_FOCI_WINDBLAST,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		0,		// damage
+		100,	// duration
+		"spell_element_foci_windblast");
+	spell = spellConstructor(
+		SPELL_FOCI_WINDBLAST,										// ID
+		100,														// difficulty
+		"spell_foci_windblast",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_FOCI_SPRAY, SPELL_FOCI_WINDBLAST }
+	);
+	spell->hide_from_ui = true;
+
 	spellElementConstructor(SPELL_ELEMENT_METEOR_FLAMES,
 		5,		// mana
 		5,		// base mana

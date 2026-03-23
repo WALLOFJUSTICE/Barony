@@ -264,7 +264,8 @@ const char* magicLightColorForSprite(Entity* my, int sprite, bool darker) {
         case 172:
 		case 1801:
 		case 1818: return "magic_blue_flicker";
-        case 625:
+		case 2446: return "magic_foci_blue_flicker";
+		case 625:
 		case 2191:
 		case 2357:
         case 173: return "magic_purple_flicker";
@@ -308,6 +309,7 @@ const char* magicLightColorForSprite(Entity* my, int sprite, bool darker) {
         case 172:
 		case 1801:
 		case 1818: return "magic_blue";
+		case 2446: return "magic_foci_blue";
         case 625:
 		case 2191:
 		case 2357:
@@ -1103,7 +1105,8 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 				|| spellID == SPELL_FOCI_NEEDLES
 				|| spellID == SPELL_FOCI_FIRE
 				|| spellID == SPELL_FOCI_SNOW
-				|| spellID == SPELL_FOCI_SANDBLAST )
+				|| spellID == SPELL_FOCI_SANDBLAST
+				|| spellID == SPELL_FOCI_WINDBLAST )
 			{
 				magicstaff = true;
 			}
@@ -3340,11 +3343,19 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 						magicDmg = std::max(2, magicDmg);
 					}
 					else if ( spell->ID == SPELL_FOCI_FIRE || spell->ID == SPELL_FOCI_ARCS || spell->ID == SPELL_FOCI_SNOW
-						|| spell->ID == SPELL_FOCI_NEEDLES || spell->ID == SPELL_FOCI_SANDBLAST
+						|| spell->ID == SPELL_FOCI_NEEDLES || spell->ID == SPELL_FOCI_SANDBLAST || spell->ID == SPELL_FOCI_WINDBLAST
 						|| spell->ID == SPELL_BREATHE_FIRE )
 					{
-						preResistanceDamage = std::max(1, preResistanceDamage);
-						magicDmg = std::max(1, magicDmg);
+						if ( spell->ID == SPELL_FOCI_WINDBLAST )
+						{
+							preResistanceDamage = std::max(5, preResistanceDamage);
+							magicDmg = std::max(5, magicDmg);
+						}
+						else
+						{
+							preResistanceDamage = std::max(1, preResistanceDamage);
+							magicDmg = std::max(1, magicDmg);
+						}
 					}
 					else if ( !strcmp(element->element_internal_name, "spell_element_flames") )
 					{
@@ -3402,6 +3413,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 					|| !strcmp(element->element_internal_name, spellElementMap[SPELL_MYCELIUM_BOMB].element_internal_name)
 					|| spell->ID == SPELL_FOCI_ARCS
 					|| spell->ID == SPELL_FOCI_SANDBLAST
+					|| spell->ID == SPELL_FOCI_WINDBLAST
 					|| spell->ID == SPELL_FOCI_NEEDLES
 					|| spell->ID == SPELL_FOCI_SNOW )
 				{
@@ -3411,6 +3423,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 						int customSoundVolume = 0;
 						if ( spell->ID == SPELL_FOCI_ARCS
 							|| spell->ID == SPELL_FOCI_SANDBLAST
+							|| spell->ID == SPELL_FOCI_WINDBLAST
 							|| spell->ID == SPELL_FOCI_NEEDLES
 							|| spell->ID == SPELL_FOCI_SNOW )
 						{
@@ -3480,7 +3493,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							}
 
 
-							if ( spell->ID == SPELL_FOCI_SANDBLAST )
+							if ( spell->ID == SPELL_FOCI_SANDBLAST || spell->ID == SPELL_FOCI_WINDBLAST )
 							{
 								if ( !hitstats->getEffectActive(EFF_KNOCKBACK) && hit.entity->setEffect(EFF_KNOCKBACK, true, element->duration, false) )
 								{
@@ -7317,7 +7330,7 @@ void actMagicParticle(Entity* my)
 		my->scalez -= 0.025;
 		my->pitch += 0.1;
 	}
-	else if ( my->sprite >= 2152 && my->sprite <= 2157 )
+	else if ( my->sprite >= 2152 && my->sprite <= 2157 || my->sprite == 2447 )
 	{
 		my->scalex -= std::max(0.01, my->fskill[1]);
 		my->scaley -= std::max(0.01, my->fskill[1]);
@@ -11908,6 +11921,95 @@ void actParticleTimer(Entity* my)
 				{
 					PARTICLE_LIFE = 0;
 				}
+			}
+			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_VORTEX_AESTHETIC )
+			{
+				my->removeLightField();
+				if ( my->particleTimerVariable1 == 0 )
+				{
+					//Entity* fx = createParticleCastingIndicator(my, my->x, my->y, my->z, PARTICLE_LIFE, 0);
+					//fx->skill[11] = my->getUID();
+
+					for ( int i = 0; i < 3 && false; ++i )
+					{
+						Entity* fx = createParticleAestheticOrbit(my, 1719, TICKS_PER_SECOND, PARTICLE_EFFECT_VORTEX_ORBIT);
+						fx->scalex = 0.5;
+						fx->scaley = 0.5;
+						fx->scalez = 0.5;
+						fx->yaw += i * 2 * PI / 3;
+						fx->z = 7.5;
+						fx->actmagicOrbitDist = 4;
+					}
+
+					auto poof = spawnPoof(my->x, my->y, 6, 0.5);
+					my->particleTimerVariable1 = 1;
+					//my->entity_sound = playSoundEntity(my, 757, 128);
+				}
+
+#ifdef USE_FMOD
+				bool isPlaying = false;
+				if ( my->entity_sound )
+				{
+					my->entity_sound->isPlaying(&isPlaying);
+					if ( isPlaying )
+					{
+						FMOD_VECTOR position;
+						position.x = (float)(my->x / (real_t)16.0);
+						position.y = (float)(0.0);
+						position.z = (float)(my->y / (real_t)16.0);
+						my->entity_sound->set3DAttributes(&position, nullptr);
+					}
+				}
+#endif
+				Entity* parent = nullptr;
+				if ( multiplayer != CLIENT )
+				{
+					parent = uidToEntity(my->parent);
+					/*if ( PARTICLE_LIFE == 1 )
+					{
+						auto poof = spawnPoof(my->x, my->y, 6, 0.5, true);
+						playSoundEntity(my, 512, 128);
+					}*/
+				}
+
+				if ( my->particleTimerVariable1 == 1 /*|| my->particleTimerVariable1 % 30 == 0*/ )
+				{
+					real_t offset = PI * (local_rng.rand() % 360) / 180.0;// -((my->ticks % 50) / 50.0) * 2 * PI;
+					int lifetime = PARTICLE_LIFE / 10;
+
+					constexpr auto color = makeColor(255, 255, 255, 255);
+					for ( int i = 0; i < 24; ++i )
+					{
+						if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, -7.5, TICKS_PER_SECOND * 5, 16 + (i / 2) * 2) )
+						{
+							fx->yaw = my->yaw + PI / 2 - (i / 2) * PI / 3;
+							fx->pitch += PI / 32;
+							if ( i % 2 == 1 )
+							{
+								fx->pitch += PI;
+							}
+							fx->z = 8.0;
+							fx->z -= (i / 2) * 0.5;
+							fx->vel_z -= 0.25;
+							fx->fskill[0] = 0.15; // rotate
+							fx->scalex = 1.0;
+							fx->scaley = 1.0;
+							fx->flags[ENTITY_SKIP_CULLING] = false;
+							if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+							{
+								indicator->expireAlphaRate = 0.9;
+								indicator->cacheType = AOEIndicators_t::CACHE_VORTEX_AESTHETIC;
+								indicator->arc = PI / 4;
+								indicator->indicatorColor = color;
+								indicator->loop = false;
+								indicator->framesPerTick = 1;
+								indicator->ticksPerUpdate = 1;
+								indicator->delayTicks = 0;
+							}
+						}
+					}
+				}
+				++my->particleTimerVariable1;
 			}
 			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_VORTEX )
 			{

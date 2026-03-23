@@ -269,8 +269,8 @@ void Entity::initMonster(int mySprite)
 		case MOTH_SMALL:
 		case EARTH_ELEMENTAL:
 		case DUCK_SMALL:
-		case MONSTER_UNUSED_6:
-		case MONSTER_UNUSED_7:
+		case WATER_ELEMENTAL:
+		case GRYPHON:
 		case MONSTER_UNUSED_8:
 			// unused
 			break;

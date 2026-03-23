@@ -773,6 +773,96 @@ void actFociGib(Entity* my)
 				fx->y -= 2.0 * sin(dir);
 			}
 		}
+		else if ( my->sprite == 2446 )
+		{
+			my->roll = fmod(my->roll + 0.1, 2 * PI);
+			//if ( Entity* fx = spawnMagicParticleCustom(my, my->actGibMagicParticle, 1.0, 1.0) )
+			//{
+			//	fx->flags[SPRITE] = false;
+			//	fx->ditheringDisabled = true;
+			//	fx->ditheringOverride = 4;
+			//	fx->fskill[1] = 0.05; // decay size
+			//	fx->focalx = my->focalx;
+			//	fx->focaly = my->focaly;
+			//	fx->focalz = my->focalz;
+
+			//	//real_t dir = atan2(my->vel_y, my->vel_x);
+			//	//fx->x -= 2.0 * cos(dir);
+			//	//fx->y -= 2.0 * sin(dir);
+			//}
+
+			if ( my->ticks % 4 == 1 )
+			{
+				for ( int i = 0; i < 4; ++i )
+				{
+					if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, my->z, TICKS_PER_SECOND * 1, 16 + (i / 2) * 2) )
+					{
+						fx->yaw = my->yaw + PI / 2 - (i / 2) * PI + ((my->ticks % 16) / 4) * PI / 3;
+						fx->pitch += PI / 16;
+						if ( i % 2 == 1 )
+						{
+							fx->pitch += PI;
+						}
+						fx->z = my->z;
+						fx->z -= (i / 2) * 0.25;
+						fx->vel_z -= 0.05;
+						fx->fskill[0] = 0.3; // rotate
+						fx->scalex = 0.25;
+						fx->scaley = 0.25;
+						fx->actSpriteFollowUID = 0;
+						fx->actSpriteCheckParentExists = 0;
+						fx->flags[ENTITY_SKIP_CULLING] = false;
+						if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+						{
+							indicator->expireAlphaRate = 0.8;
+							indicator->cacheType = AOEIndicators_t::CACHE_VORTEX_AESTHETIC2;
+							indicator->arc = PI / 4;
+							indicator->indicatorColor = makeColorRGB(128, 200, 200);
+							indicator->loop = false;
+							indicator->framesPerTick = 1;
+							indicator->ticksPerUpdate = 1;
+							indicator->delayTicks = 0;
+						}
+					}
+				}
+			}
+
+			if ( my->ticks == 1 )
+			{
+				for ( int i = 0; i < 16; ++i )
+				{
+					if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, my->z, TICKS_PER_SECOND * 2, 16 + (i / 2) * 2) )
+					{
+						fx->yaw = my->yaw + PI / 2 - (i / 2) * PI / 2;
+						fx->pitch += PI / 16;
+						if ( i % 2 == 1 )
+						{
+							fx->pitch += PI;
+						}
+						fx->z = my->z;
+						fx->z -= (i / 2) * 0.25;
+						fx->vel_z -= 0.05;
+						fx->fskill[0] = 0.15; // rotate
+						fx->scalex = 0.5;
+						fx->scaley = 0.5;
+						fx->actSpriteCheckParentExists = 0;
+						fx->flags[ENTITY_SKIP_CULLING] = false;
+						if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+						{
+							indicator->expireAlphaRate = 0.9;
+							indicator->cacheType = AOEIndicators_t::CACHE_VORTEX_AESTHETIC2;
+							indicator->arc = PI / 4;
+							indicator->indicatorColor = makeColorRGB(128, 200, 200);
+							indicator->loop = false;
+							indicator->framesPerTick = 1;
+							indicator->ticksPerUpdate = 1;
+							indicator->delayTicks = 0;
+						}
+					}
+				}
+			}
+
+		}
 		else if ( my->sprite >= 233 && my->sprite <= 244 )
 		{
 			if ( my->ticks % 2 == 0 )
@@ -1269,6 +1359,30 @@ Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBo
 		foci_invertz = false;
 		foci_gravity = -0.2;
 		foci_velz = -0.25;
+	}
+	else if ( sprite == 2446 )
+	{
+		foci_vel = 1.5;
+		foci_vel_decay = 0.99;
+		foci_life = 1.0;
+		foci_spread = 0.5;
+		foci_delay = 0;
+
+		sfx = 815;
+		vol = 128;
+
+		foci_model = true;
+		foci_scale = 1.0;
+		foci_shrink = 0.1;
+		foci_osc_h = 0.0;
+		foci_swirl = 0.0;
+
+		foci_particle = 2447;
+		foci_invertz = false;
+		foci_gravity = -0.2;
+		foci_velz = -0.25;
+
+		my->flags[INVISIBLE] = true;
 	}
 
 	my->parent = parentUid;

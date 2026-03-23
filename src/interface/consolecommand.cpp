@@ -6809,5 +6809,40 @@ namespace ConsoleCommands {
 	static ConsoleCommand ccmd_reloadappraisal("/reloadappraisal", "reloads appraisal entries", []CCMD{
 		Player::Inventory_t::Appraisal_t::readFromFile();
 	});
+
+	static ConsoleCommand ccmd_debug_water("/debug_water", "debug water tiles", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+		if ( multiplayer != SINGLE )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, "Can only be done in singleplayer.");
+			return;
+		}
+
+		int swimtiles = 0;
+		int walktiles = 0;
+		for ( int x = 1; x < map.width - 1; ++x )
+		{
+			for ( int y = 1; y < map.height - 1; ++y )
+			{
+				int tile = y * MAPLAYERS + x * MAPLAYERS * map.height;
+				if ( !map.tiles[OBSTACLELAYER + tile] && map.tiles[tile] )
+				{
+					if ( swimmingtiles[map.tiles[tile]] || lavatiles[map.tiles[tile]] )
+					{
+						++swimtiles;
+					}
+					else
+					{
+						++walktiles;
+					}
+				}
+			}
+		}
+		messagePlayer(clientnum, MESSAGE_DEBUG, "Walk tiles: %d, Swim tiles: %d (%.2f)", walktiles, swimtiles, (float)swimtiles / walktiles);
+	});
 }
 

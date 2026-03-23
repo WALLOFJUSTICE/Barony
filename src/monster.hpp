@@ -71,8 +71,8 @@ enum Monster : int
 	MOTH_SMALL,
 	EARTH_ELEMENTAL,
 	DUCK_SMALL,
-	MONSTER_UNUSED_6,
-	MONSTER_UNUSED_7,
+	WATER_ELEMENTAL,
+	GRYPHON,
 	MONSTER_UNUSED_8,
 	MAX_MONSTER
 };
@@ -361,11 +361,13 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 	{
 		2225, 2226, 2231, 2232, 2237, 2238, 2307, 2308
 	},
-	//MONSTER_UNUSED_6
+	//WATER_ELEMENTAL
 	{
+		2411
 	},
-	//MONSTER_UNUSED_7
+	//GRYPHON
 	{
+		2414, 2430
 	},
 	//MONSTER_UNUSED_8
 };
@@ -422,8 +424,8 @@ static char monstertypename[][32] =
 	"moth",
 	"earth_elemental",
 	"duck_small",
-	"monster_unused_6",
-	"monster_unused_7",
+	"water_elemental",
+	"gryphon",
 	"monster_unused_8"
 };
 
@@ -486,8 +488,8 @@ static char gibtype[NUMMONSTERS] =
 	2,  //MOTH_SMALL
 	0,  //EARTH_ELEMENTAL
 	0,  //DUCK_SMALL
-	1,  //MONSTER_UNUSED_6
-	1,  //MONSTER_UNUSED_7
+	0,  //WATER_ELEMENTAL
+	1,  //GRYPHON
 	1   //MONSTER_UNUSED_8
 };
 
@@ -546,8 +548,8 @@ static double damagetables[NUMMONSTERS][7] =
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // moth_small
 	{ 0.7, 1.5, 1.f, 1.f, 0.7, 1.5, 0.7 }, // earth_elemental
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // duck_small
-	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_6
-	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_7
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // water_elemental
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // gryphon
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }  // monster_unused_8
 };
 
@@ -805,7 +807,9 @@ void initFlameElemental(Entity* my, Stat* myStats);
 void initHologram(Entity* my, Stat* myStats);
 void initMoth(Entity* my, Stat* myStats);
 void initEarthElemental(Entity* my, Stat* myStats);
+void initWaterElemental(Entity* my, Stat* myStats);
 void initDuck(Entity* my, Stat* myStats);
+void initGryphon(Entity* my, Stat* myStats);
 
 //--act*Limb functions--
 void actHumanLimb(Entity* my);
@@ -852,7 +856,9 @@ void actFlameElementalLimb(Entity* my);
 void actHologramLimb(Entity* my);
 void actMothLimb(Entity* my);
 void actEarthElementalLimb(Entity* my);
+void actWaterElementalLimb(Entity* my);
 void actDuckLimb(Entity* my);
+void actGryphonLimb(Entity* my);
 
 //--*Die functions--
 void humanDie(Entity* my);
@@ -901,7 +907,9 @@ void flameElementalDie(Entity* my);
 void hologramDie(Entity* my);
 void mothDie(Entity* my);
 void earthElementalDie(Entity* my);
+void waterElementalDie(Entity* my);
 void duckDie(Entity* my);
+void gryphonDie(Entity* my);
 
 void monsterAnimate(Entity* my, Stat* myStats, double dist);
 //--*MoveBodyparts functions--
@@ -951,9 +959,11 @@ void hologramAnimate(Entity* my, Stat* myStats, double dist);
 int mothGetAttackPose(Entity* my, int basePose);
 void mothAnimate(Entity* my, Stat* myStats, double dist);
 void earthElementalAnimate(Entity* my, Stat* myStats, double dist);
+void waterElementalAnimate(Entity* my, Stat* myStats, double dist);
 void duckAnimate(Entity* my, Stat* myStats, double dist);
 void duckSpawnFeather(int sprite, real_t x, real_t y, real_t z, Entity* my);
 bool duckAreaQuck(Entity* my);
+void gryphonAnimate(Entity* my, Stat* myStats, double dist);
 
 //--misc functions--
 void actMinotaurTrap(Entity* my);
@@ -1269,6 +1279,12 @@ static const int MONSTER_G_SPECIAL_CAST1 = 2;
 static const int DUCK_DIVE = 1;
 static const int DUCK_INERT = 2;
 static const int DUCK_RETURN = 3;
+
+//-Gryphon
+static const int GRYPHON_SKYBOX = 0;
+static const int GRYPHON_FLY = 1;
+static const int GRYPHON_WALK = 2;
+static const int GRYPHON_STATE3 = 3;
 
 struct MonsterData_t
 {

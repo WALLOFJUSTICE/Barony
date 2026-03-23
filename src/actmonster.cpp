@@ -88,8 +88,8 @@ bool swornenemies[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MOTH_SMALL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // EARTH_ELEMENTAL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // DUCK_SMALL
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_6
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_7
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // WATER_ELEMENTAL
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // GRYPHON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }  // MONSTER_UNUSED_8
 //    N  H  R  G  S  T  B  S  G  S  S  I  C  G  D  S  M  L  M  D  S  K  S  G  I  V  S  C  I  G  A  L  L  S  S  G  D  B  D  M  S  G  R  M  A  F  H  M  E  D  U  U  U
 //    O  U  A  O  L  R  A  P  H  K  C  M  R  N  E  U  I  I  I  E  H  O  C  O  N  A  H  O  N  O  U  I  I  N  P  Y  U  U  D  M  S  G  E  I  D  L  O  T  R  U  N  N  N
@@ -152,8 +152,8 @@ bool monsterally[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0 }, // MOTH_SMALL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 }, // EARTH_ELEMENTAL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // DUCK_SMALL
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_6
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_7
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // WATER_ELEMENTAL
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // GRYPHON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }  // MONSTER_UNUSED_8
 //    N  H  R  G  S  T  B  S  G  S  S  I  C  G  D  S  M  L  M  D  S  K  S  G  I  V  S  C  I  G  A  L  L  S  S  G  D  B  D  M  S  G  R  M  A  F  H  M  E  D  U  U  U
 //    O  U  A  O  L  R  A  P  H  K  C  M  R  N  E  U  I  I  I  E  H  O  C  O  N  A  H  O  N  O  U  I  I  N  P  Y  U  U  D  M  S  G  E  I  D  L  O  T  R  U  N  N  N
@@ -213,8 +213,8 @@ double sightranges[NUMMONSTERS] =
 	128, // MOTH_SMALL
 	128, // EARTH_ELEMENTAL
 	256, // DUCK_SMALL
-	256, // MONSTER_UNUSED_6
-	256, // MONSTER_UNUSED_7
+	256, // WATER_ELEMENTAL
+	256, // GRYPHON
 	256  // MONSTER_UNUSED_8
 };
 
@@ -2641,8 +2641,8 @@ void monsterAnimate(Entity* my, Stat* myStats, double dist)
 	case MOTH_SMALL: mothAnimate(my, myStats, dist); break;
 	case EARTH_ELEMENTAL: earthElementalAnimate(my, myStats, dist); break;
 	case DUCK_SMALL: duckAnimate(my, myStats, dist); break;
-	case MONSTER_UNUSED_6: break;
-	case MONSTER_UNUSED_7: break;
+	case WATER_ELEMENTAL: waterElementalAnimate(my, myStats, dist); break;
+	case GRYPHON: gryphonAnimate(my, myStats, dist); break;
 	case MONSTER_UNUSED_8: break;
 	default:
 		break;
@@ -2751,8 +2751,8 @@ void actMonster(Entity* my)
 			case MOTH_SMALL: initMoth(my, nullptr); break;
 			case EARTH_ELEMENTAL: initEarthElemental(my, nullptr); break;
 			case DUCK_SMALL: initDuck(my, nullptr); break;
-			case MONSTER_UNUSED_6: break;
-			case MONSTER_UNUSED_7: break;
+			case WATER_ELEMENTAL: initWaterElemental(my, nullptr); break;
+			case GRYPHON: initGryphon(my, nullptr); break;
 			case MONSTER_UNUSED_8: break;
 			default: printlog("Unknown monster, can't init!"); break;
 			}
@@ -2860,8 +2860,8 @@ void actMonster(Entity* my)
 				case MOTH_SMALL: initMoth(my, myStats); break;
 				case EARTH_ELEMENTAL: initEarthElemental(my, myStats); break;
 				case DUCK_SMALL: initDuck(my, myStats); break;
-				case MONSTER_UNUSED_6: break;
-				case MONSTER_UNUSED_7: break;
+				case WATER_ELEMENTAL: initWaterElemental(my, myStats); break;
+				case GRYPHON: initGryphon(my, myStats); break;
 				case MONSTER_UNUSED_8: break;
 				case MINIMIMIC: initMiniMimic(my, myStats); break;
 				default: break; //This should never be reached.
@@ -4145,9 +4145,11 @@ void actMonster(Entity* my)
 			case DUCK_SMALL:
 				duckDie(my);
 				break;
-			case MONSTER_UNUSED_6:
+			case WATER_ELEMENTAL:
+				waterElementalDie(my);
 				break;
-			case MONSTER_UNUSED_7:
+			case GRYPHON:
+				gryphonDie(my);
 				break;
 			case MONSTER_UNUSED_8:
 				break;
@@ -4421,8 +4423,8 @@ void actMonster(Entity* my)
 		case MOTH_SMALL:
 		case EARTH_ELEMENTAL:
 		case DUCK_SMALL:
-		case MONSTER_UNUSED_6:
-		case MONSTER_UNUSED_7:
+		case WATER_ELEMENTAL:
+		case GRYPHON:
 		case MONSTER_UNUSED_8:
 			handleinvisible = false;
 			break;
@@ -6355,6 +6357,10 @@ timeToGoAgain:
 
 							int chaseRange = 16;
 							if ( myStats->type == BUGBEAR )
+							{
+								chaseRange = 20;
+							}
+							if ( myStats->type == GRYPHON )
 							{
 								chaseRange = 20;
 							}
@@ -10368,6 +10374,13 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			lichRangeCheckOverride = true;
 		}
 	}
+	else if ( myStats->type == GRYPHON )
+	{
+		if ( (monsterSpecialState == GRYPHON_FLY) )
+		{
+			lichRangeCheckOverride = true;
+		}
+	}
 	else if ( myStats->type == MYCONID )
 	{
 		if ( (monsterSpecialState >= MONSTER_M_SPECIAL_CAST1
@@ -10445,6 +10458,10 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 	{
 		meleeDist = TOUCHRANGE - 1;
 	}
+	if ( myStats->type == GRYPHON )
+	{
+		meleeDist = TOUCHRANGE - 1;
+	}
 	if ( myStats->weapon && myStats->weapon->type == TOOL_WHIP )
 	{
 		meleeDist = std::max(meleeDist, (int)(STRIKERANGE * 1.5));
@@ -10502,6 +10519,10 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			}
 		}
 		if ( myStats->type == BAT_SMALL )
+		{
+			bow = 1.5;
+		}
+		else if ( myStats->type == GRYPHON && monsterSpecialState == GRYPHON_FLY )
 		{
 			bow = 1.5;
 		}
@@ -14675,6 +14696,14 @@ int Entity::getMonsterEffectiveDistanceOfRangedWeapon(Item* weapon)
 				{
 					distance = STRIKERANGE;
 				}
+				return distance;
+			}
+		}
+		if ( myStats->type == GRYPHON )
+		{
+			if ( monsterSpecialState == GRYPHON_FLY )
+			{
+				distance = 64;
 				return distance;
 			}
 		}

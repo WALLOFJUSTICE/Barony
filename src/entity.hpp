@@ -1195,6 +1195,9 @@ public:
 			case GREMLIN:
 				monsterGChooseWeapon(target, dist);
 				break;
+			case GRYPHON:
+				gryphonChooseWeapon(target, dist);
+				break;
 			case SHOPKEEPER:
 				if ( target )
 				{
@@ -1224,6 +1227,7 @@ public:
 	void monsterDChooseWeapon(const Entity* target, double dist);
 	void monsterMChooseWeapon(const Entity* target, double dist);
 	void monsterGChooseWeapon(const Entity* target, double dist);
+	void gryphonChooseWeapon(const Entity* target, double dist);
 	void skeletonSummonSetEquipment(Stat* myStats, int rank);
 	static void tinkerBotSetStats(Stat* myStats, int rank);
 	static void mimicSetStats(Stat* myStats);
@@ -1637,8 +1641,8 @@ public:
 		TO_MOTH_SMALL,
 		TO_EARTH_ELEMENTAL,
 		TO_DUCK_SMALL,
-		TO_MONSTER_UNUSED_6,
-		TO_MONSTER_UNUSED_7,
+		TO_WATER_ELEMENTAL,
+		TO_GRYPHON,
 		TO_MONSTER_UNUSED_8,
 		TO_MONSTER_MAX,
 		TO_BREAKABLE,

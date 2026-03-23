@@ -1271,6 +1271,7 @@ int getCharmMonsterDifficulty(Entity& my, Stat& myStats)
 	case MONSTER_ADORCISED_WEAPON:
 	case FLAME_ELEMENTAL:
 	case EARTH_ELEMENTAL:
+	case WATER_ELEMENTAL:
 	case MOTH_SMALL:
 	case DRYAD:
 	case MYCONID:
@@ -1293,8 +1294,7 @@ int getCharmMonsterDifficulty(Entity& my, Stat& myStats)
 	case MINIMIMIC:
 	case HOLOGRAM:
 	case DUCK_SMALL:
-	case MONSTER_UNUSED_6:
-	case MONSTER_UNUSED_7:
+	case GRYPHON:
 	case MONSTER_UNUSED_8:
 		difficulty = 666;
 		break;
@@ -1790,8 +1790,8 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 				DRYAD,
 				GREMLIN,
 				SALAMANDER,
-				MONSTER_UNUSED_6,
-				MONSTER_UNUSED_7,
+				WATER_ELEMENTAL,
+				GRYPHON,
 				MONSTER_UNUSED_8,
 				MOTH_SMALL
 	        };

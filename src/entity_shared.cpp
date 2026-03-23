@@ -2084,8 +2084,8 @@ char monsterEditorNameStrings[NUMMONSTERS][32] =
 	"moth",
 	"earth_elemental",
 	"duck_small",
-	"monster_unused_6",
-	"monster_unused_7",
+	"water_elemental",
+	"gryphon",
 	"monster_unused_8"
 };
 

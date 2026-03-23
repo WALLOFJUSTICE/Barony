@@ -244,7 +244,8 @@ static const int SPELL_HOLY_FIRE = 221;
 static const int SPELL_SIGIL = 222;
 static const int SPELL_SANCTUARY = 223;
 static const int SPELL_HOLY_BEAM = 224;
-static const int NUM_SPELLS = 225;
+static const int SPELL_FOCI_WINDBLAST = 225;
+static const int NUM_SPELLS = 226;
 
 #define SPELLELEMENT_CONFUSE_BASE_DURATION 2//In seconds.
 #define SPELLELEMENT_BLEED_BASE_DURATION 10//In seconds.
@@ -427,6 +428,7 @@ static const int PARTICLE_TIMER_ACTION_TRAP_SABOTAGED = 33;
 static const int PARTICLE_TIMER_ACTION_SPLINTER_GEAR = 34;
 static const int PARTICLE_TIMER_ACTION_SPIRIT_WEAPON_ATTACK = 35;
 static const int PARTICLE_TIMER_ACTION_SWEEP_ATTACK = 36;
+static const int PARTICLE_TIMER_ACTION_VORTEX_AESTHETIC = 37;
 
 struct ParticleEmitterHit_t
 {
@@ -1231,7 +1233,9 @@ struct AOEIndicators_t
 		CACHE_MAGICIANS_ARMOR,
 		CACHE_THAUM_ARMOR,
 		CACHE_PSYCHIC_SPEAR,
-		CACHE_RADIUS_MAGIC_GENERIC
+		CACHE_RADIUS_MAGIC_GENERIC,
+		CACHE_VORTEX_AESTHETIC,
+		CACHE_VORTEX_AESTHETIC2
 	};
 	struct Indicator_t
 	{

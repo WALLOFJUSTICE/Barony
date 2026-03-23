@@ -19060,6 +19060,14 @@ bool Entity::checkEnemy(Entity* your)
 			{
 				result = true;
 			}
+			else if ( myStats->type == GRYPHON && your->behavior == &actPlayer )
+			{
+				result = true;
+			}
+			else if ( yourStats->type == GRYPHON && behavior == &actPlayer )
+			{
+				result = true;
+			}
 			else if ( behavior == &actPlayer && myStats->type != HUMAN )
 			{
 				result = swornenemies[HUMAN][yourStats->type];
@@ -21493,6 +21501,7 @@ int Entity::getAttackPose() const
 			type == SALAMANDER || type == GREMLIN ||
 			type == REVENANT_SKULL || type == MONSTER_ADORCISED_WEAPON ||
 			type == FLAME_ELEMENTAL ||
+			type == GRYPHON ||
 			type == SLIME || (type == SCARAB && sprite != 1078 && sprite != 1079))
 		{
 			pose = MONSTER_POSE_MELEE_WINDUP1;
@@ -21528,6 +21537,10 @@ int Entity::getAttackPose() const
 			pose = MONSTER_POSE_MELEE_WINDUP1;
 		}
 		else if ( myStats->type == BUGBEAR )
+		{
+			pose = MONSTER_POSE_MELEE_WINDUP1;
+		}
+		else if ( myStats->type == GRYPHON )
 		{
 			pose = MONSTER_POSE_MELEE_WINDUP1;
 		}
@@ -21587,6 +21600,10 @@ bool Entity::hasRangedWeapon(bool ignoreMonsterNPCType) const
 	if ( !ignoreMonsterNPCType )
 	{
 		if ( myStats && myStats->type == DRYAD && myStats->getAttribute("monster_d_type") == "watcher" )
+		{
+			return true;
+		}
+		if ( myStats && myStats->type == GRYPHON && monsterSpecialState == GRYPHON_FLY )
 		{
 			return true;
 		}
@@ -24101,7 +24118,8 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 				break;
 			case EFF_LIFT:
 				if ( myStats->type == LICH || myStats->type == DEVIL
-					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE )
+					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
+					|| myStats->type == GRYPHON )
 				{
 					return false;
 				}
@@ -26081,6 +26099,14 @@ bool Entity::backupWithRangedWeapon(Stat& myStats, int dist, int hasrangedweapon
 	if ( hasrangedweapon )
 	{
 		if ( myStats.weapon || (myStats.type == DRYAD && myStats.getAttribute("monster_d_type") == "watcher") )
+		{
+			if ( distanceLimit >= getMonsterEffectiveDistanceOfRangedWeapon(myStats.weapon) )
+			{
+				distanceLimit = getMonsterEffectiveDistanceOfRangedWeapon(myStats.weapon) - 20;
+			}
+		}
+
+		if ( myStats.type == GRYPHON && monsterSpecialState == GRYPHON_FLY )
 		{
 			if ( distanceLimit >= getMonsterEffectiveDistanceOfRangedWeapon(myStats.weapon) )
 			{
@@ -32407,8 +32433,12 @@ void Entity::creatureHandleLiftZ()
 			break;
 		case DUCK_SMALL: 
 			break;
-		case MONSTER_UNUSED_6: 
-		case MONSTER_UNUSED_7: 
+		case WATER_ELEMENTAL:
+			z -= shift / 2;
+			break;
+		case GRYPHON:
+			z -= shift / 2;
+			break;
 		case MONSTER_UNUSED_8: 
 		default:
 			break;

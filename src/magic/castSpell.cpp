@@ -7620,7 +7620,9 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 		}
 		else if ( !strcmp(element->element_internal_name, spellElementMap[SPELL_ELEMENT_PROPULSION_FOCI_SPRAY].element_internal_name)
 			&& (spell->ID == SPELL_FOCI_ARCS || spell->ID == SPELL_FOCI_FIRE || spell->ID == SPELL_FOCI_SNOW
-			|| spell->ID == SPELL_FOCI_NEEDLES || spell->ID == SPELL_FOCI_SANDBLAST || spell->ID == SPELL_BREATHE_FIRE) )
+			|| spell->ID == SPELL_FOCI_NEEDLES || spell->ID == SPELL_FOCI_SANDBLAST 
+			|| spell->ID == SPELL_FOCI_WINDBLAST
+			|| spell->ID == SPELL_BREATHE_FIRE) )
 		{
 			static ConsoleVariable<int> cvar_foci_sprite("/foci_sprite", 13);
 			int particle = -1;
@@ -7645,6 +7647,9 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				break;
 			case SPELL_FOCI_SANDBLAST:
 				particle = 2156;
+				break;
+			case SPELL_FOCI_WINDBLAST:
+				particle = 2446;
 				break;
 			default:
 				break;
