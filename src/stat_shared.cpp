@@ -1400,6 +1400,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 
 			stats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] = 1;
 			break;
 		case 205:
 		case (1000 + MYCONID):

@@ -28,7 +28,7 @@ void initGryphon(Entity* my, Stat* myStats)
 
 	my->flags[BURNABLE] = true;
 	my->flags[INVISIBLE] = true;
-	my->initMonster(2414);
+	my->initMonster(2430);
 	my->z = 0.0;
 
 	if ( multiplayer != CLIENT )
@@ -258,16 +258,49 @@ void actGryphonLimb(Entity* my)
 
 void gryphonDie(Entity* my)
 {
-	//int c;
-	//for ( c = 0; c < 12; c++ )
-	//{
-	//	Entity* gib = spawnGib(my);
-	//    if (c < 8) {
-	//        gib->sprite = 413 + c;
-	//        gib->skill[5] = 1; // poof
-	//    }
-	//	serverSpawnGibForClient(gib);
-	//}
+	int c;
+	for ( c = 0; c < 12; c++ )
+	{
+		Entity* gib = spawnGib(my);
+	    if (c < 8) {
+			switch ( c )
+			{
+			case 0:
+				gib->sprite = my->sprite + 1;
+				break;
+			case 1:
+				gib->sprite = my->sprite + 2;
+				break;
+			case 2:
+				gib->sprite = my->sprite + 3;
+				break;
+			case 3:
+				gib->sprite = my->sprite + 5;
+				break;
+			case 4:
+				gib->sprite = my->sprite + 7;
+				break;
+			case 5:
+				gib->sprite = my->sprite + 9;
+				break;
+			case 6:
+				gib->sprite = my->sprite + 12;
+				break;
+			case 7:
+				gib->sprite = my->sprite + 14;
+				break;
+			default:
+				break;
+			}
+
+	        gib->skill[5] = 1; // poof
+	    }
+		if ( my->bodyparts.size() )
+		{
+			gib->z = my->bodyparts[0]->z - 4;
+		}
+		serverSpawnGibForClient(gib);
+	}
 
 	my->spawnBlood();
 
@@ -320,9 +353,9 @@ void gryphonCeilingBust(Entity* my)
 		{
 			nextnode = node->next;
 			Entity* ent = (Entity*)node->element;
-			if ( ent->behavior == &actCeilingTile )
+			if ( entityInsideEntity(my, ent) )
 			{
-				if ( entityInsideEntity(my, ent) )
+				if ( ent->behavior == &actCeilingTile )
 				{
 					for ( int i = 0; i < 3; ++i )
 					{
@@ -362,6 +395,19 @@ void gryphonCeilingBust(Entity* my)
 						}
 					}
 					list_RemoveNode(ent->mynode);
+				}
+				else if ( ent->behavior == &actDoor )
+				{
+					ent->doorHealth = 0; // destroy the door
+				}
+				else if ( ent->isDamageableCollider() )
+				{
+					ent->colliderCurrentHP = 0;
+					ent->colliderKillerUid = 0;
+				}
+				else if ( ent->behavior == &actFurniture )
+				{
+					ent->furnitureHealth = 0;
 				}
 			}
 		}
@@ -423,6 +469,12 @@ void Entity::gryphonChooseWeapon(const Entity* target, double dist)
 			timer = std::stoi(myStats->getAttribute("gryphon_state_delay"));
 		}
 
+		int idle_timer = 0;
+		if ( myStats->getAttribute("gryphon_idle_delay") != "" )
+		{
+			idle_timer = std::stoi(myStats->getAttribute("gryphon_idle_delay"));
+		}
+
 		int mapx = (static_cast<int>(this->x) >> 4);
 		int mapy = (static_cast<int>(this->y) >> 4);
 		int index = (mapy)*MAPLAYERS + (mapx)*MAPLAYERS * map.height;
@@ -453,7 +505,7 @@ void Entity::gryphonChooseWeapon(const Entity* target, double dist)
 			}
 			else
 			{
-				if ( mapTileValid && !map.tiles[(MAPLAYERS - 1) + index] )
+				if ( idle_timer == 0 && mapTileValid && !map.tiles[(MAPLAYERS - 1) + index] )
 				{
 					monsterSpecialState = GRYPHON_SKYBOX;
 					myStats->setAttribute("gryphon_state_delay", std::to_string(5 * TICKS_PER_SECOND));
@@ -505,15 +557,35 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 		}
 
 		Entity* target = uidToEntity(my->monsterTarget);
+		if ( target )
+		{
+			myStats->setAttribute("gryphon_idle_delay", std::to_string(5 * TICKS_PER_SECOND));
+		}
+		if ( myStats->getAttribute("gryphon_idle_delay") != "" )
+		{
+			int timer = std::stoi(myStats->getAttribute("gryphon_idle_delay"));
+			--timer;
+			timer = std::max(0, timer);
+			myStats->setAttribute("gryphon_idle_delay", std::to_string(timer));
+		}
+
 		my->gryphonChooseWeapon(target, target ? entityDist(target, my) : 256.0);
 		if ( target )
 		{
-			if ( !myStats->getEffectActive(EFF_FAST) && (my->monsterSpecialState == GRYPHON_WALK) )
+			if ( !myStats->getEffectActive(EFF_FAST) 
+				&& (my->monsterSpecialState == GRYPHON_WALK || my->monsterSpecialState == GRYPHON_SKYBOX || my->monsterSpecialState == GRYPHON_FLY) )
 			{
 				if ( charge == 0 )
 				{
 					my->setEffect(EFF_FAST, true, 3 * TICKS_PER_SECOND, false);
-					charge = 5 * TICKS_PER_SECOND;
+					if ( my->monsterSpecialState == GRYPHON_WALK )
+					{
+						charge = 5 * TICKS_PER_SECOND;
+					}
+					else
+					{
+						charge = 3 * TICKS_PER_SECOND;
+					}
 					myStats->setAttribute("gryphon_charge", std::to_string(charge));
 				}
 			}
@@ -565,7 +637,7 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 	static ConsoleVariable<int> cvar_gryphon_limb_rotate("/gryphon_limb_rotate", 0);
 	static ConsoleVariable<int> cvar_gryphon_leg("/gryphon_leg", 0);
 	static ConsoleVariable<int> cvar_gryphon_alt("/gryphon_alt", 0);
-	if ( *cvar_gryphon_alt )
+	if ( !*cvar_gryphon_alt )
 	{
 		my->sprite = 2430;
 	}

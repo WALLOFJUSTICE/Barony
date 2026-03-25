@@ -1344,6 +1344,7 @@ public:
 	bool disturbBat(Entity* touched, bool takenDamage, bool doMessage);
 	bool isInertMimic() const;
 	bool isUntargetableBat(real_t* outDist = nullptr) const;
+	bool isUntargetableGryphon(real_t* outDist = nullptr) const;
 	bool entityCanVomit() const;
 	bool doSilkenBowOnAttack(Entity* attacker);
 	void setBugbearStrafeDir(bool forceDirection);

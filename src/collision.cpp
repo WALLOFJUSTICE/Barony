@@ -397,7 +397,8 @@ bool entityInsideTile(Entity* entity, int x, int y, int z, bool checkSafeTiles)
 										|| entity->getStats()->type == MOTH_SMALL
 										|| entity->getStats()->type == FLAME_ELEMENTAL
 										|| entity->getStats()->type == EARTH_ELEMENTAL
-										|| entity->getStats()->type == DUCK_SMALL)) )
+										|| entity->getStats()->type == DUCK_SMALL
+										|| (entity->getStats()->type == GRYPHON && entity->isUntargetableGryphon()))) )
 							{
 								return true;
 							}
@@ -511,7 +512,8 @@ bool entityInsideSomething(Entity* entity)
 					|| type == MOTH_SMALL
 					|| type == HOLOGRAM
 					|| type == FLAME_ELEMENTAL
-					|| type == EARTH_ELEMENTAL)) )
+					|| type == EARTH_ELEMENTAL
+					|| (type == GRYPHON && entity->isUntargetableGryphon()))) )
 			{
 				if ( testEntity->behavior == &actMonster || testEntity->behavior == &actPlayer 
 					|| (testEntity->isDamageableCollider() && (testEntity->colliderHasCollision & EditorEntityData_t::COLLIDER_COLLISION_FLAG_NPC)) )
@@ -1205,6 +1207,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 						|| type == MOTH_SMALL
 						|| type == HOLOGRAM
 						|| type == FLAME_ELEMENTAL
+						|| (type == GRYPHON && entity->isUntargetableGryphon())
 						|| entity->isColliderPathableMonster(type)
 						)) || my->behavior == &actDeathGhost) )
 			{
@@ -1219,7 +1222,8 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 					|| type == REVENANT_SKULL 
 					|| type == MONSTER_ADORCISED_WEAPON 
 					|| type == MOTH_SMALL
-					|| type == FLAME_ELEMENTAL) )
+					|| type == FLAME_ELEMENTAL
+					|| (type == GRYPHON && entity->isUntargetableGryphon())) )
 			{
 				continue;
 			}
@@ -1228,6 +1232,10 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				if ( my->behavior == &actBoulder )
 				{
 					if ( entity->isUntargetableBat() && my->z > -2.0 )
+					{
+						continue;
+					}
+					else if ( entity->isUntargetableGryphon() )
 					{
 						continue;
 					}
@@ -1935,6 +1943,7 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 			|| myStats->type == MONSTER_ADORCISED_WEAPON
 			|| myStats->type == MOTH_SMALL
 			|| myStats->type == FLAME_ELEMENTAL
+			|| (myStats->type == GRYPHON && my->isUntargetableGryphon())
 			);
 
 	for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
@@ -1965,14 +1974,16 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 									&& entity->sprite != 2231
 									&& entity->sprite != 2232
 									&& entity->sprite != 2237
-									&& entity->sprite != 2238) )
+									&& entity->sprite != 2238
+									&& entity->sprite != 2414
+									&& entity->sprite != 2430) )
 						)
 					) 
 				)
 			{
 				// if entities & LINETRACE_IGNORE_ENTITIES, then ignore entities that block sight.
 				// 16/11/19 - added exception to monsters. if monster, use the INVISIBLE flag to skip checking.
-				// 889/1247/1408 is dummybot/mimic/bat/revenant_skull/adorcised weapon/elemental/moth/duck "invisible" AI entity. so it's invisible, need to make it shown here.
+				// 889/1247/1408 is dummybot/mimic/bat/revenant_skull/adorcised weapon/elemental/moth/duck/gryphon "invisible" AI entity. so it's invisible, need to make it shown here.
 				if ( entity->behavior == &actMonster && entity->sprite == 1408 )
 				{
 					if ( (entity != target && target != nullptr) || entity == my || entity->flags[PASSABLE] )
@@ -1980,6 +1991,17 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 						continue;
 					}
 					else if ( entity->isUntargetableBat() )
+					{
+						continue;
+					}
+				}
+				else if ( entity->behavior == &actMonster && (entity->sprite == 2414 || entity->sprite == 2430) )
+				{
+					if ( (entity != target && target != nullptr) || entity == my || entity->flags[PASSABLE] )
+					{
+						continue;
+					}
+					else if ( entity->isUntargetableGryphon() )
 					{
 						continue;
 					}
@@ -2044,6 +2066,14 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 							sizey /= *cvar_linetrace_smallcollision;
 						}
 					}
+				}
+			}
+
+			if ( entities & LINETRACE_GRYPHON_SKY )
+			{
+				if ( !(entity->behavior == &actMonster || entity->behavior == &actPlayer) )
+				{
+					continue;
 				}
 			}
 
@@ -2313,7 +2343,8 @@ real_t lineTrace( Entity* my, real_t x1, real_t y1, real_t angle, real_t range, 
 					|| stats->type == MONSTER_ADORCISED_WEAPON
 					|| stats->type == MOTH_SMALL
 					|| stats->type == FLAME_ELEMENTAL
-					|| stats->type == EARTH_ELEMENTAL )
+					|| stats->type == EARTH_ELEMENTAL
+					|| stats->type == GRYPHON )
 				{
 					ground = false;
 				}
@@ -2348,6 +2379,25 @@ real_t lineTrace( Entity* my, real_t x1, real_t y1, real_t angle, real_t range, 
 		}
 	}
 
+	bool useSkyHeight = false;
+	bool lastGoodSkyHeight = false;
+	real_t skyHeight = 0.0;
+	real_t sky_ix, sky_iy;
+	int sky_inx, sky_iny;
+	real_t z_ang = 0.0;
+	if ( entities & LINETRACE_GRYPHON_SKY && my && my->bodyparts.size() )
+	{
+		if ( my && my->behavior == &actPlayer )
+		{
+			skyHeight = my->bodyparts[7]->z - 4.0;
+		}
+		else
+		{
+			skyHeight = my->bodyparts[0]->z - 4.0;
+		}
+		useSkyHeight = true;
+	}
+
 	// trace the line
 	while ( d < range )
 	{
@@ -2375,14 +2425,116 @@ real_t lineTrace( Entity* my, real_t x1, real_t y1, real_t angle, real_t range, 
 
 		// check against the map
 		int index = (iny >> 4) * MAPLAYERS + (inx >> 4) * MAPLAYERS * map.height;
-		if ( map.tiles[OBSTACLELAYER + index] )
+		if ( useSkyHeight )
 		{
-			hit.x = ix;
-			hit.y = iy;
-			hit.mapx = inx >> 4;
-			hit.mapy = iny >> 4;
-			hit.entity = NULL;
-			return d;
+			if ( skyHeight < 7.5 )
+			{
+				if ( my && my->behavior == &actPlayer )
+				{
+					skyHeight = my->bodyparts[7]->z - 4.0;
+				}
+				else
+				{
+					skyHeight = my->bodyparts[0]->z - 4.0;
+				}
+				z_ang = d * cos(PI / 3);
+				skyHeight += z_ang;
+
+				if ( map.tiles[(MAPLAYERS - 1) + index] )
+				{
+					if ( skyHeight > -20.0 )
+					{
+						if ( lastGoodSkyHeight )
+						{
+							hit.x = sky_ix;
+							hit.y = sky_iy;
+							hit.mapx = sky_inx >> 4;
+							hit.mapy = sky_iny >> 4;
+						}
+						else
+						{
+							hit.x = ix;
+							hit.y = iy;
+							hit.mapx = inx >> 4;
+							hit.mapy = iny >> 4;
+						}
+						hit.entity = NULL;
+						return d;
+					}
+				}
+				if ( map.tiles[OBSTACLELAYER + index] )
+				{
+					if ( skyHeight > -8.0 )
+					{
+						if ( lastGoodSkyHeight )
+						{
+							hit.x = sky_ix;
+							hit.y = sky_iy;
+							hit.mapx = sky_inx >> 4;
+							hit.mapy = sky_iny >> 4;
+						}
+						else
+						{
+							hit.x = ix;
+							hit.y = iy;
+							hit.mapx = inx >> 4;
+							hit.mapy = iny >> 4;
+						}
+						hit.entity = NULL;
+						return d;
+					}
+				}
+				else if ( !map.tiles[(MAPLAYERS - 1) + index] )
+				{
+					lastGoodSkyHeight = true;
+					sky_ix = ix;
+					sky_iy = iy;
+					sky_inx = inx;
+					sky_iny = iny;
+					/*Entity* particle = spawnMagicParticle(my);
+					particle->sprite = 576;
+					particle->x = ix;
+					particle->y = iy;
+					particle->z = skyHeight;
+
+					particle = spawnMagicParticle(my);
+					particle->sprite = 942;
+					particle->x = ix;
+					particle->y = iy;
+					particle->z = 7.5;*/
+				}
+			}
+			else
+			{
+				if ( lastGoodSkyHeight )
+				{
+					hit.x = sky_ix;
+					hit.y = sky_iy;
+					hit.mapx = sky_inx >> 4;
+					hit.mapy = sky_iny >> 4;
+				}
+				else
+				{
+					hit.x = ix;
+					hit.y = iy;
+					hit.mapx = inx >> 4;
+					hit.mapy = iny >> 4;
+				}
+				hit.entity = NULL;
+				return d;
+			}
+		}
+		else
+		{
+			if ( map.tiles[OBSTACLELAYER + index] )
+			{
+				hit.x = ix;
+				hit.y = iy;
+				hit.mapx = inx >> 4;
+				hit.mapy = iny >> 4;
+				hit.entity = NULL;
+				return d;
+			}
 		}
 		if ( ground )
 		{
@@ -2789,7 +2941,8 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 								|| entity->getMonsterTypeFromSprite() == HOLOGRAM
 								|| entity->getMonsterTypeFromSprite() == MOTH_SMALL
 								|| entity->getMonsterTypeFromSprite() == FLAME_ELEMENTAL
-								|| entity->getMonsterTypeFromSprite() == EARTH_ELEMENTAL) )
+								|| entity->getMonsterTypeFromSprite() == EARTH_ELEMENTAL
+								|| (entity->getMonsterTypeFromSprite() == GRYPHON && entity->isUntargetableGryphon())) )
 						{
 							continue;
 						}

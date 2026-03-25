@@ -5232,6 +5232,10 @@ void actMonster(Entity* my)
 		//}
 
 		int linetraceTargetEnemyFlags = LINETRACE_ATK_CHECK_FRIENDLYFIRE;
+		if ( myStats->type == GRYPHON && my->monsterState == GRYPHON_SKYBOX )
+		{
+			linetraceTargetEnemyFlags |= LINETRACE_GRYPHON_SKY;
+		}
 
 		//Begin state machine
 		if ( my->monsterState == MONSTER_STATE_WAIT ) //Begin wait state
@@ -5405,6 +5409,13 @@ void actMonster(Entity* my)
 							}
 							else if ( hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM || myStats->type == SENTRYBOT || myStats->type == SPELLBOT
 								|| (ringConflictHolder && ringConflictHolder == entity) )
+							{
+								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
+								{
+									visiontest = true;
+								}
+							}
+							else if ( myStats->type == GRYPHON && my->monsterSpecialState == GRYPHON_SKYBOX )
 							{
 								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
 								{
@@ -6523,7 +6534,7 @@ timeToGoAgain:
 											}
 										}
 									}
-									else if ( hit.entity->behavior == &actFurniture && myStats->type == MINOTAUR )
+									else if ( hit.entity->behavior == &actFurniture && (myStats->type == MINOTAUR || myStats->type == GRYPHON) )
 									{
 										hit.entity->furnitureHealth = 0;
 										playSoundEntity(hit.entity, 28, 64);
@@ -6533,7 +6544,7 @@ timeToGoAgain:
 										hit.entity->skill[3] = 0; // chestHealth
 										playSoundEntity(hit.entity, 28, 64);
 									}
-									else if ( hit.entity->isDamageableCollider() && myStats->type == MINOTAUR )
+									else if ( hit.entity->isDamageableCollider() && (myStats->type == MINOTAUR || myStats->type == GRYPHON) )
 									{
 										hit.entity->colliderCurrentHP = 0;
 										hit.entity->colliderKillerUid = 0;
@@ -7247,6 +7258,13 @@ timeToGoAgain:
 									visiontest = true;
 								}
 							}
+							else if ( myStats->type == GRYPHON && my->monsterSpecialState == GRYPHON_SKYBOX )
+							{
+								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
+								{
+									visiontest = true;
+								}
+							}
 							else if ( myStats->type != SPIDER )
 							{
 								if ( my->monsterAllyGetPlayerLeader() || achievementObserver.checkUidIsFromPlayer(myStats->leader_uid) >= 0 )
@@ -7782,7 +7800,7 @@ timeToGoAgain:
 												hit.entity->doorHealth -= static_cast<int>(std::max((myStats->STR - 20), 0) / 3); // decrease door health
 												hit.entity->doorHealth = std::max(hit.entity->doorHealth, 0);
 											}
-											if ( myStats->type == MINOTAUR )
+											if ( myStats->type == MINOTAUR || myStats->type == GRYPHON )
 											{
 												hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
 											}
@@ -7820,12 +7838,17 @@ timeToGoAgain:
 											hit.entity->furnitureHealth -= static_cast<int>(std::max((myStats->STR - 20), 0) / 3); // decrease door health
 											hit.entity->furnitureHealth = std::max(hit.entity->furnitureHealth, 0);
 										}
-										if ( myStats->type == MINOTAUR )
+										if ( myStats->type == MINOTAUR || myStats->type == GRYPHON )
 										{
 											hit.entity->furnitureHealth = 0;    // minotaurs smash furniture instantly
 										}
 										playSoundEntity(hit.entity, 28, 64);
 									}
+								}
+								else if ( hit.entity->isDamageableCollider() && (myStats->type == MINOTAUR || myStats->type == GRYPHON) )
+								{
+									hit.entity->colliderCurrentHP = 0;
+									hit.entity->colliderKillerUid = 0;
 								}
 								else if ( hit.entity->isDamageableCollider() && myStats->type != GYROBOT && myStats->type != BAT_SMALL )
 								{
@@ -7891,11 +7914,6 @@ timeToGoAgain:
 										//messagePlayer(0, MESSAGE_DEBUG, "remaking path!");
 										my->monsterMoveBackwardsAndPath(true);
 									}
-								}
-								else if ( hit.entity->isDamageableCollider() && myStats->type == MINOTAUR )
-								{
-									hit.entity->colliderCurrentHP = 0;
-									hit.entity->colliderKillerUid = 0;
 								}
 								else if ( (hit.entity->behavior == &actBoulder || hit.entity->behavior == &::actDaedalusShrine) && !hit.entity->flags[PASSABLE] && myStats->type == MINOTAUR )
 								{
@@ -11337,6 +11355,12 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 		{
 			// monster should attack after this function is called.
 			return true;
+		}
+
+		if ( myStats->type == GRYPHON 
+			&& (this->monsterSpecialState == GRYPHON_SKYBOX || (this->isUntargetableGryphon())) )
+		{
+			return false;
 		}
 
 		if ( this->monsterSpecialTimer == 0 && !forceDeinit )
@@ -14793,6 +14817,26 @@ bool Entity::isUntargetableBat(real_t* outDist) const
 	return false;
 }
 
+bool Entity::isUntargetableGryphon(real_t* outDist) const
+{
+	if ( behavior == &actMonster && getMonsterTypeFromSprite() == GRYPHON )
+	{
+		if ( bodyparts.size() >= 1 )
+		{
+			auto& body = bodyparts[0];
+			if ( body->fskill[10] > 0.5 ) // GRYPHON_DIVE_ANIM
+			{
+				if ( outDist )
+				{
+					*outDist = body->z;
+				}
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool Entity::monsterIsTargetable(bool targetInertMimics) const
 {
 	if ( flags[PASSABLE] )
@@ -14811,6 +14855,10 @@ bool Entity::monsterIsTargetable(bool targetInertMimics) const
 			return false;
 		}
 		else if ( type == BAT_SMALL && isUntargetableBat() )
+		{
+			return false;
+		}
+		else if ( type == GRYPHON && isUntargetableGryphon() )
 		{
 			return false;
 		}

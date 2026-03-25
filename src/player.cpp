@@ -3736,6 +3736,10 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 			{
 				return 0.0;
 			}
+			if ( parent->getMonsterTypeFromSprite() == GRYPHON && parent->isUntargetableGryphon() && !selectInteract )
+			{
+				return 0.0;
+			}
 			if ( parent->getMonsterTypeFromSprite() == HOLOGRAM && !selectInteract )
 			{
 				return 0.0;
@@ -3896,7 +3900,7 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 					particle->y = previousy;
 					particle->z = 7.5;*/
 				}
-				else if ( parent && (parent->behavior == &actBoulderTrapHole || parent->isUntargetableBat()) )
+				else if ( parent && (parent->behavior == &actBoulderTrapHole || parent->isUntargetableBat() || parent->isUntargetableGryphon() ) )
 				{
 					// more accurate line of sight, look up
 					real_t startx = cameras[player.playernum].x * 16.0;
@@ -3920,6 +3924,14 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 						onCeilingLayer = false;
 					}
 					real_t endz = onCeilingLayer ? -8.0 : -8.0 - 16.0;
+					if ( parent->isUntargetableGryphon() )
+					{
+						if ( parent->bodyparts.size() )
+						{
+							int height = (4 + parent->bodyparts[0]->z) / 8; // truncate so minor movements don't offset
+							endz = height * 8;
+						}
+					}
 					for ( ; startz > endz; startz -= abs((0.1) * tan(pitch)) )
 					{
 						startx += 0.1 * cos(yaw);
@@ -4910,7 +4922,8 @@ void Player::WorldUI_t::handleTooltips()
 							|| parent->getMonsterTypeFromSprite() == EARTH_ELEMENTAL
 							|| parent->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON
 							|| parent->getMonsterTypeFromSprite() == MOTH_SMALL
-							|| parent->getMonsterTypeFromSprite() == BAT_SMALL)) )
+							|| parent->getMonsterTypeFromSprite() == BAT_SMALL
+							|| parent->getMonsterTypeFromSprite() == GRYPHON)) )
 				{
 					continue;
 				}

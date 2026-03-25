@@ -25992,6 +25992,10 @@ bool Entity::shouldRetreat(Stat& myStats)
 	{
 		return false;
 	}
+	else if ( myStats.type == GRYPHON )
+	{
+		return false;
+	}
 	else if ( myStats.type == MONSTER_ADORCISED_WEAPON 
 		|| myStats.type == REVENANT_SKULL 
 		|| myStats.type == FLAME_ELEMENTAL
@@ -26008,6 +26012,13 @@ bool Entity::shouldRetreat(Stat& myStats)
 			{
 				return false;
 			}
+		}
+	}
+	else if ( myStats.type == GREMLIN )
+	{
+		if ( myStats.getAttribute("monster_g_type") == "berserker" || myStats.getAttribute("monster_g_type") == "sapper" )
+		{
+			return false;
 		}
 	}
 	else if ( myStats.type == LICH_FIRE )
