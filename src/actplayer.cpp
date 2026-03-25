@@ -6210,7 +6210,7 @@ void actPlayer(Entity* my)
 	if ( keystatus[SDLK_x] && enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 	{
 		//spawnPlayerXP(my->x + 16.0, my->y, 0, 10);
-		Entity* fx = spawnFlameSprites(my, 288);
+		//Entity* fx = spawnFlameSprites(my, 288);
 		/*for ( int i = 0; i < 3; ++i )
 		{
 			Entity* fx1 = createParticleAestheticOrbit(my, 2401, 5 * TICKS_PER_SECOND, PARTICLE_EFFECT_SMITE_PINPOINT);
@@ -6323,6 +6323,10 @@ void actPlayer(Entity* my)
 		}
 		else if ( *cvar_pbaoe == 15 )
 		{
+			//lineTrace(my, my->x, my->y, my->yaw, 256.0, LINETRACE_GRYPHON_SKY, false);
+			//spawnExplosion(hit.x, hit.y, 0);
+			//castSpell(my->getUID(), getSpellFromID(SPELL_FOCI_WINDBLAST), true, false, false, nullptr);
+
 			/*Entity* spellTimer = createParticleTimer(my, TICKS_PER_SECOND, -1);
 			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_BASTION_MUSHROOM;
 			spellTimer->particleTimerCountdownSprite = -1;
@@ -6624,8 +6628,8 @@ void actPlayer(Entity* my)
 					static ConsoleVariable<float> cvar_pbaoe5_yaw("/pbaoe5_yaw", 0.3);
 					fx->vel_z -= *cvar_pbaoe5_velz;
 					fx->fskill[0] = *cvar_pbaoe5_yaw; // rotate
-					fx->scalex = 0.5;// + (i / 2) * 0.25 / 12;
-					fx->scaley = 0.5;// + (i / 2) * 0.25 / 12;
+					fx->scalex = 1.0;// + (i / 2) * 0.25 / 12;
+					fx->scaley = 1.0;// + (i / 2) * 0.25 / 12;
 					if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
 					{
 						if ( *cvar_pbaoe == 16 )
