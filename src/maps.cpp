@@ -5473,7 +5473,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	if ( findBreakables != EditorEntityData_t::colliderRandomGenPool.end()
 		&& findBreakables->first == "The Fortress" )
 	{
-		numOpenAreaBreakables = 10;
+		numOpenAreaBreakables = 5;
 
 		int numLeaves = 10;
 		int numShrubs = 10;
