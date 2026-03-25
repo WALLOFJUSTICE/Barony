@@ -493,6 +493,10 @@ bool CastSpellProps_t::setToMonsterCast(Entity* monster, int spellID)
 		spellDist = std::max(spellDist, spell->distance);
 	}
 	spellDist += 16.0;
+	if ( spellID == SPELL_DISRUPT_EARTH )
+	{
+		spellDist += 32.0;
+	}
 
 	if ( Entity* target = uidToEntity(monster->monsterTarget) )
 	{

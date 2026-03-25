@@ -13751,6 +13751,13 @@ void EnemyHPDamageBarHandler::EnemyHPDetails::updateWorldCoordinates()
 					worldZ += entity->bodyparts[0]->lerpRenderState.z.position;
 				}
 			}
+			else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == GRYPHON )
+			{
+				if ( entity->bodyparts.size() > 0 )
+				{
+					worldZ += entity->bodyparts[0]->lerpRenderState.z.position;
+				}
+			}
 		}
 		else
 		{
@@ -13758,6 +13765,13 @@ void EnemyHPDamageBarHandler::EnemyHPDetails::updateWorldCoordinates()
 			worldY = entity->y;
 			worldZ = entity->z + enemyBarSettings.getHeightOffset(entity);
 			if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == BAT_SMALL )
+			{
+				if ( entity->bodyparts.size() > 0 )
+				{
+					worldZ += entity->bodyparts[0]->z;
+				}
+			}
+			else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == GRYPHON )
 			{
 				if ( entity->bodyparts.size() > 0 )
 				{
@@ -30082,6 +30096,13 @@ void CalloutRadialMenu::update()
 						callout.z += entity->bodyparts[0]->lerpRenderState.z.position;
 					}
 				}
+				else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == GRYPHON )
+				{
+					if ( entity->bodyparts.size() > 0 )
+					{
+						callout.z += entity->bodyparts[0]->lerpRenderState.z.position;
+					}
+				}
 			}
 			else
 			{
@@ -30090,6 +30111,13 @@ void CalloutRadialMenu::update()
 				callout.z = entity->z + enemyBarSettings.getHeightOffset(entity);
 				callout.z -= 4;
 				if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == BAT_SMALL )
+				{
+					if ( entity->bodyparts.size() > 0 )
+					{
+						callout.z += entity->bodyparts[0]->z;
+					}
+				}
+				else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == GRYPHON )
 				{
 					if ( entity->bodyparts.size() > 0 )
 					{

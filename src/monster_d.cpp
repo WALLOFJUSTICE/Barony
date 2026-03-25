@@ -42,8 +42,7 @@ void initMonsterD(Entity* my, Stat* myStats)
 	bool spawnedBoss = false;
 
 	my->flags[BURNABLE] = true;
-	//my->initMonster(1485);
-	my->initMonster(1514);
+	my->initMonster(1515);
 	my->z = getNormalHeightMonsterD(*my);
 
 	if ( multiplayer != CLIENT )
@@ -353,6 +352,7 @@ void initMonsterD(Entity* my, Stat* myStats)
 					case 8:
 					case 9:
 						myStats->weapon = newItem(BRANCH_BOW_INFECTED, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon->isDroppable = rng.rand() % 20 == 0;
 						break;
 					default:
 						break;
@@ -395,6 +395,21 @@ void initMonsterD(Entity* my, Stat* myStats)
 					}*/
 				}
 			}
+
+			// give cloak
+			if ( myStats->cloak == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] == 1 )
+			{
+				switch ( rng.rand() % 3 )
+				{
+				case 0:
+				case 1:
+					break;
+				default:
+					myStats->cloak = newItem(CLOAK_DENDRITE, WORN, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					break;
+				}
+			}
+
 			//	}
 			//}
 			//else
@@ -422,19 +437,6 @@ void initMonsterD(Entity* my, Stat* myStats)
 			//	//		break;
 			//	//	}
 			//	//}
-			//	// give cloak
-			//	/*if ( myStats->cloak == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] == 1 )
-			//	{
-			//		switch ( rng.rand() % 10 )
-			//		{
-			//		case 0:
-			//		case 1:
-			//			break;
-			//		default:
-			//			myStats->cloak = newItem(CLOAK, WORN, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		}
-			//	}*/
 			//	//// give helmet
 			//	//if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
 			//	//{
@@ -812,6 +814,30 @@ void monsterDDie(Entity* my)
 	for ( int c = 0; c < 8; c++ )
 	{
 		Entity* gib = spawnGib(my);
+
+		if ( c < 3 )
+		{
+			if ( c == 0 )
+			{
+				gib->sprite = (my->sprite == 1485 || my->sprite == 1514) ? 1501 : 1502;
+				gib->skill[5] = 1; // poof
+			}
+			else if ( c == 1 )
+			{
+				gib->sprite = (my->sprite == 1485 || my->sprite == 1514) ? 1503 : 1504;
+				gib->skill[5] = 1; // poof
+			}
+			else if ( c == 2 )
+			{
+				if ( my->bodyparts.size() >= 13 && !my->bodyparts[12]->flags[INVISIBLE]
+					&& my->bodyparts[12]->sprite > 0 )
+				{
+					gib->sprite = my->bodyparts[12]->sprite;
+					gib->skill[5] = 1; // poof
+				}
+			}
+		}
+
 		serverSpawnGibForClient(gib);
 	}
 
@@ -1044,7 +1070,7 @@ void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						limbAnimateToLimit(weaponarm, ANIMATE_PITCH, -0.25, 7 * PI / 4, true, 0.0);
 						//limbAnimateToLimit(weaponarm, ANIMATE_ROLL, -0.25, 7 * PI / 4, false, 0.0);
 
-						if ( my->monsterAttackTime >= 8 * ANIMATE_DURATION_WINDUP / (monsterGlobalAnimationMultiplier / 10.0) )
+						if ( my->monsterAttackTime >= 5 * ANIMATE_DURATION_WINDUP / (monsterGlobalAnimationMultiplier / 10.0) )
 						{
 							if ( multiplayer != CLIENT )
 							{
@@ -2030,15 +2056,21 @@ void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				if ( multiplayer != CLIENT )
 				{
 					int stage = 0;
-					/*if ( keystatus[SDLK_g] )
+
+					if ( myStats->getAttribute("monster_d_type") == "nymph" )
 					{
-						keystatus[SDLK_g] = 0;
-						stage += 1;
-						if ( stage > 2 )
-						{
-							stage = 0;
-						}
-					}*/
+						stage = 0;
+					}
+					else
+					{
+						stage = 1;
+					}
+
+					if ( my->sprite == 1485 || my->sprite == 1486 ) // tall
+					{
+						++stage;
+					}
+
 					if ( stage == 0 )
 					{
 						entity->sprite = (my->sprite == 1485 || my->sprite == 1514) ? 1495 : 1496;

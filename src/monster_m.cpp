@@ -173,14 +173,14 @@ void initMonsterM(Entity* my, Stat* myStats)
 					case 2:
 					case 3:
 					case 4:
-						myStats->weapon = newItem(IRON_AXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_AXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					case 5:
 					case 6:
 					case 7:
 					case 8:
 					case 9:
-						myStats->weapon = newItem(IRON_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					default:
 						break;
@@ -198,14 +198,14 @@ void initMonsterM(Entity* my, Stat* myStats)
 					case 2:
 					case 3:
 					case 4:
-						myStats->weapon = newItem(QUARTERSTAFF, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_SPEAR, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					case 5:
 					case 6:
 					case 7:
 					case 8:
 					case 9:
-						myStats->weapon = newItem(QUARTERSTAFF, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_SPEAR, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					default:
 						break;
@@ -842,6 +842,28 @@ void monsterMDie(Entity* my)
 	for ( int c = 0; c < 8; c++ )
 	{
 		Entity* gib = spawnGib(my);
+		if ( c < 3 )
+		{
+			if ( c == 0 )
+			{
+				gib->sprite = 1528;
+				gib->skill[5] = 1; // poof
+			}
+			else if ( c == 1 )
+			{
+				gib->sprite = 1529;
+				gib->skill[5] = 1; // poof
+			}
+			else if ( c == 2 )
+			{
+				if ( my->bodyparts.size() >= 13 && !my->bodyparts[12]->flags[INVISIBLE]
+					&& my->bodyparts[12]->sprite > 0 )
+				{
+					gib->sprite = my->bodyparts[12]->sprite;
+					gib->skill[5] = 1; // poof
+				}
+			}
+		}
 		serverSpawnGibForClient(gib);
 	}
 
@@ -2310,7 +2332,7 @@ void Entity::monsterMChooseWeapon(const Entity* target, double dist)
 		node_t *weaponNode = nullptr;
 		if ( monsterSpecialTimer == 0 && (ticks % 10 == 0) && monsterAttack == 0
 			&& (dist > STRIKERANGE)
-			&& local_rng.rand() % 3 == 0 )
+			&& local_rng.rand() % 2 == 0 )
 		{
 			weaponNode = itemNodeInInventory(myStats, -1, THROWN);
 			if ( weaponNode )

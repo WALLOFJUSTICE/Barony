@@ -17847,6 +17847,19 @@ void actParticleFloorMagic(Entity* my)
 								{
 									if ( !entity->monsterIsTargetable(true) ) { continue; }
 									if ( isLevitating(stats) ) { continue; }
+
+									if ( caster && caster->behavior == &actMonster )
+									{
+										if ( stats )
+										{
+											if ( caster == entity || caster->checkFriend(entity) )
+											{
+												++particleEmitterHitPropsTimer->hits;
+												continue;
+											}
+										}
+									}
+
 									if ( my->ticks >= 10 )
 									{
 										if ( caster && caster->behavior == &actPlayer )
@@ -17887,18 +17900,8 @@ void actParticleFloorMagic(Entity* my)
 								{
 									continue;
 								}
-								if ( caster && caster->behavior == &actMonster )
-								{
-									if ( stats )
-									{
-										if ( caster == entity || caster->checkFriend(entity) )
-										{
-											++particleEmitterHitPropsTimer->hits;
-											continue;
-										}
-									}
-								}
-								else if ( caster && caster->behavior == &actPlayer )
+								
+								if ( caster && caster->behavior == &actPlayer )
 								{
 									if ( stats )
 									{

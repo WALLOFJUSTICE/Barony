@@ -105,43 +105,100 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 				case 0:
 					myStats->setAttribute("monster_g_type", "sapper");
-					variant = SAPPER;
-					if ( defaultItems >= 1 )
+
+					if ( myStats->leader_uid == 0 && !my->flags[USERFLAG2] && rng.rand() % 2 == 0 && my->parent == 0 )
 					{
-						item = newItem(GREASE_BALL, SERVICABLE, 0, rng.rand() % 2 + 2, rng.rand(), false, &myStats->inventory);
-						item->isDroppable = rng.rand() % 5 == 0;
-					}
-					if ( defaultItems >= 2 )
-					{
-						if ( rng.rand() % 4 == 0 )
+						Entity* entity = summonMonster(GREMLIN, my->x, my->y);
+						if ( entity )
 						{
-							item = newItem(POTION_FIRESTORM, SERVICABLE, 0, rng.rand() % 2 + 1, rng.rand(), false, &myStats->inventory);
-							item->isDroppable = rng.rand() % 5 == 0;
+							entity->parent = my->getUID();
+							if ( Stat* followerStats = entity->getStats() )
+							{
+								followerStats->leader_uid = entity->parent;
+								followerStats->setAttribute("monster_g_type", (rng.rand() % 2) ? "skirmisher" : "berserker");
+							}
+							entity->seedEntityRNG(rng.getU32());
 						}
-						item = newItem(POTION_SICKNESS, SERVICABLE, -2, rng.rand() % 2 + 1, rng.rand(), false, &myStats->inventory);
-						item->isDroppable = rng.rand() % 5 == 0;
+						if ( rng.rand() % 5 == 0 )
+						{
+							// summon second ally randomly.
+							entity = summonMonster(GREMLIN, my->x, my->y);
+							if ( entity )
+							{
+								entity->parent = my->getUID();
+								if ( Stat* followerStats = entity->getStats() )
+								{
+									followerStats->leader_uid = entity->parent;
+									followerStats->setAttribute("monster_g_type", (rng.rand() % 2) ? "skirmisher" : "berserker");
+								}
+								entity->seedEntityRNG(rng.getU32());
+							}
+						}
 					}
 					break;
 				case 1:
 					myStats->setAttribute("monster_g_type", "skirmisher");
-					variant = SKIRMISHER;
-					if ( defaultItems >= 1 )
+					break;
+				case 2:
+					myStats->setAttribute("monster_g_type", "berserker");
+					break;
+				default:
+					break;
+				}
+			}
+
+			if ( myStats->getAttribute("monster_g_type") == "berserker" )
+			{
+				variant = BERSERKER;
+			}
+			else if ( myStats->getAttribute("monster_g_type") == "sapper" )
+			{
+				variant = SAPPER;
+				if ( defaultItems >= 1 )
+				{
+					item = newItem(GREASE_BALL, SERVICABLE, 0, rng.rand() % 2 + 2, rng.rand(), false, &myStats->inventory);
+					item->isDroppable = rng.rand() % 5 == 0;
+				}
+				if ( defaultItems >= 2 )
+				{
+					if ( rng.rand() % 2 == 0 )
+					{
+						item = newItem(POTION_FIRESTORM, SERVICABLE, 0, rng.rand() % 2 + 1, rng.rand(), false, &myStats->inventory);
+						item->isDroppable = rng.rand() % 5 == 0;
+					}
+					item = newItem(POTION_SICKNESS, SERVICABLE, -2, rng.rand() % 2 + 1, rng.rand(), false, &myStats->inventory);
+					item->isDroppable = rng.rand() % 5 == 0;
+				}
+			}
+			else if ( myStats->getAttribute("monster_g_type") == "skirmisher" )
+			{
+				variant = SKIRMISHER;
+				if ( defaultItems >= 1 )
+				{
+					if ( rng.rand() % 3 == 0 )
+					{
+						item = newItem(BLACKIRON_DART, SERVICABLE, 0, rng.rand() % 2 + 2, rng.rand(), false, &myStats->inventory);
+						item->isDroppable = rng.rand() % 5 == 0;
+					}
+					else
 					{
 						item = newItem(BOLAS, SERVICABLE, 0, rng.rand() % 2 + 2, rng.rand(), false, &myStats->inventory);
 						item->isDroppable = rng.rand() % 5 == 0;
 					}
-					if ( defaultItems >= 2 )
-					{
-						item = newItem(GREASE_BALL, SERVICABLE, 0, rng.rand() % 2 + 2, rng.rand(), false, &myStats->inventory);
-						item->isDroppable = rng.rand() % 5 == 0;
-					}
-					break;
-				case 2:
-					myStats->setAttribute("monster_g_type", "berserker");
-					variant = BERSERKER;
-					break;
-				default:
-					break;
+				}
+				if ( defaultItems >= 2 )
+				{
+					item = newItem(GREASE_BALL, SERVICABLE, 0, rng.rand() % 2 + 2, rng.rand(), false, &myStats->inventory);
+					item->isDroppable = rng.rand() % 5 == 0;
+				}
+			}
+
+			if ( defaultItems >= 3 )
+			{
+				if ( rng.rand() % 5 == 0 )
+				{
+					item = newItem(static_cast<ItemType>(FOOD_RATION + rng.rand() % 7),
+						SERVICABLE, 0, rng.rand() % 2 + 1, rng.rand(), false, &myStats->inventory);
 				}
 			}
 
@@ -151,11 +208,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->weapon = newItem(STEEL_SWORD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_SWORD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					}
 					else
 					{
-						myStats->weapon = newItem(STEEL_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					}
 				}
 				else if ( variant == SAPPER )
@@ -166,7 +223,7 @@ void initMonsterG(Entity* my, Stat* myStats)
 					}
 					else
 					{
-						myStats->weapon = newItem(STEEL_MACE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_MACE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					}
 					
 				}
@@ -174,7 +231,7 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->weapon = newItem(STEEL_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(BONE_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					}
 				}
 			}
@@ -188,13 +245,13 @@ void initMonsterG(Entity* my, Stat* myStats)
 					}
 					else
 					{
-						if ( rng.rand() % 2 )
+						if ( rng.rand() % 4 )
 						{
-							myStats->shield = newItem(IRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->shield = newItem(BONE_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						}
 						else
 						{
-							myStats->shield = newItem(WOODEN_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->shield = newItem(BLACKIRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						}
 					}
 				}
@@ -206,6 +263,13 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					myStats->helmet = newItem(HAT_HOOD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 				}
+				else if ( variant == BERSERKER )
+				{
+					if ( rng.rand() % 3 == 0 )
+					{
+						myStats->helmet = newItem(CHAIN_COIF, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					}
+				}
 			}
 
 			if ( myStats->shoes == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] == 1 )
@@ -214,14 +278,35 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->shoes = newItem(LEATHER_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 2 )
+						{
+							myStats->shoes = newItem(LEATHER_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->shoes = newItem(BONE_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 				else if ( variant == SAPPER )
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->shoes = newItem(LEATHER_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 2 )
+						{
+							if ( rng.rand() % 3 )
+							{
+								myStats->shoes = newItem(BLACKIRON_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
+							else
+							{
+								myStats->shoes = newItem(BONE_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
+						}
+						else
+						{
+							myStats->shoes = newItem(LEATHER_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 			}
@@ -232,14 +317,28 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->gloves = newItem(GLOVES, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 2 )
+						{
+							myStats->gloves = newItem(GLOVES, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->gloves = newItem(BONE_BRACERS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 				else if ( variant == SAPPER )
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->gloves = newItem(GLOVES, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 2 )
+						{
+							myStats->gloves = newItem(BONE_BRACERS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->gloves = newItem(BLACKIRON_GAUNTLETS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 				else if ( variant == BERSERKER )
@@ -279,7 +378,14 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->breastplate = newItem(TUNIC, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 3 )
+						{
+							myStats->breastplate = newItem(TUNIC, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->breastplate = newItem(CHAIN_HAUBERK, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 			}
@@ -528,8 +634,30 @@ void monsterGDie(Entity* my)
 		if ( entity )
 		{
 		    if (c < 6) {
-		        entity->sprite = 295 + c;
-		        entity->skill[5] = 1; // poof
+				switch ( c )
+				{
+				case 0:
+					entity->sprite = my->sprite;
+					break;
+				case 1:
+					entity->sprite = my->sprite == 1569 ? 1571 : 1575;
+					break;
+				case 2:
+					entity->sprite = my->sprite == 1569 ? 1573 : 1577;
+					break;
+				case 3:
+					entity->sprite = my->sprite == 1569 ? 1579 : 1581;
+					break;
+				case 4:
+					entity->sprite = my->sprite == 1569 ? 1580 : 1582;
+					break;
+				case 5:
+					entity->sprite = my->sprite == 1569 ? 1583 : 1584;
+					break;
+				default:
+					break;
+				}
+				entity->skill[5] = 1; // poof
 		    }
 			serverSpawnGibForClient(entity);
 		}
