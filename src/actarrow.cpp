@@ -1228,7 +1228,7 @@ void actArrow(Entity* my)
 									int duration = TICKS_PER_SECOND * envenomDamage + 10;
 									hitstats->EFFECTS_TIMERS[EFF_POISONED] = std::max(160, duration - hit.entity->getCON() * 20);
 									hitstats->poisonKiller = parent->getUID();
-									if ( hit.entity->isEntityPlayer() )
+									if ( hit.entity->isEntityPlayer() >= 0 )
 									{
 										messagePlayerMonsterEvent(hit.entity->isEntityPlayer(), makeColorRGB(255, 0, 0), *parentStats, Language::get(6531), Language::get(6532), MSG_COMBAT);
 										serverUpdateEffects(hit.entity->isEntityPlayer());
@@ -1556,15 +1556,25 @@ void actArrow(Entity* my)
 							{
 								hitstats->poisonKiller = my->parent;
 								hitstats->setEffectActive(EFF_POISONED, 1);
-								hitstats->setEffectActive(EFF_SLOW, 1);
 								if ( my->arrowPoisonTime > 0 )
 								{
 									hitstats->EFFECTS_TIMERS[EFF_POISONED] = my->arrowPoisonTime;
-									hitstats->EFFECTS_TIMERS[EFF_SLOW] = my->arrowPoisonTime;
 								}
 								else
 								{
 									hitstats->EFFECTS_TIMERS[EFF_POISONED] = 160;
+								}
+								statusEffectApplied = true;
+							}
+							if ( !hitstats->getEffectActive(EFF_SLOW) )
+							{
+								hitstats->setEffectActive(EFF_SLOW, 1);
+								if ( my->arrowPoisonTime > 0 )
+								{
+									hitstats->EFFECTS_TIMERS[EFF_SLOW] = my->arrowPoisonTime;
+								}
+								else
+								{
 									hitstats->EFFECTS_TIMERS[EFF_SLOW] = 160;
 								}
 								statusEffectApplied = true;

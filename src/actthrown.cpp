@@ -1328,7 +1328,7 @@ void actThrown(Entity* my)
 								int duration = 160 * envenomDamage;
 								hitstats->EFFECTS_TIMERS[EFF_POISONED] = std::max(200, duration - hit.entity->getCON() * 20);
 								hitstats->poisonKiller = parent->getUID();
-								if ( hit.entity->isEntityPlayer() )
+								if ( hit.entity->isEntityPlayer() >= 0 )
 								{
 									messagePlayerMonsterEvent(hit.entity->isEntityPlayer(), makeColorRGB(255, 0, 0), *parentStats, Language::get(6531), Language::get(6532), MSG_COMBAT);
 									serverUpdateEffects(hit.entity->isEntityPlayer());
