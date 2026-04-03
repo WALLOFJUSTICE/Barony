@@ -25,9 +25,9 @@
 
 // REMEMBER TO CHANGE THIS WITH EVERY NEW OFFICIAL VERSION!!!
 #ifdef NINTENDO
-static const char VERSION[] = "v5.0.2";
+static const char VERSION[] = "v5.1.0";
 #else
-static const char VERSION[] = "v5.0.2";
+static const char VERSION[] = "v5.1.0";
 #endif
 #define GAME_CODE
 
