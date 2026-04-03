@@ -40600,13 +40600,13 @@ void Player::HUD_t::updateMinotaurWarning()
 		++m.animTicks;
 	}
 
-	bool newLevel = m.levelProcessed != currentlevel || m.secretlevelProcessed != secretlevel;
+	bool newLevel = m.levelProcessed != currentlevel || m.secretlevelProcessed != secretleveltype;
 	if ( !minotaurlevel || (newLevel && m.started) )
 	{
 		m.deinit();
 	}
 	m.levelProcessed = currentlevel;
-	m.secretlevelProcessed = secretlevel;
+	m.secretlevelProcessed = secretleveltype;
 
 	if ( !m.started )
 	{

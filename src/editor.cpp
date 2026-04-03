@@ -242,6 +242,11 @@ char windPropertyNames[1][19] =
 	"Direction (-1 - 7)"
 };
 
+char portalSecretLadderPropertyNames[1][22] =
+{
+	"Level Track (-1 - 15)"
+};
+
 char floorDecorationPropertyNames[10][59] =
 {
 	"Model texture to use (0-9999)",
@@ -314,7 +319,7 @@ char customPortalPropertyNames[7][54] =
 	"Animation frames (0-9)",
 	"Model Height Offset (Qtrs of a voxel, +ive is higher)",
 	"Levels to advance (-99 - 99)",
-	"Level name to jump to (Can be used with above option)",
+	"Levels.json ID or filename, e.g @hamlet or hamlet.lmp",
 	"Requires power to be visible (0-1)",
 	"Exit toggle between secret levels file (0-1)"
 };
@@ -7265,7 +7270,11 @@ int main(int argc, char** argv)
 									}
 									else
 									{
-										if ( spriteProperties[4][0] != 0 && propertyInt != 0 )
+										if ( spriteProperties[4][0] == '@' )
+										{
+											printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+										}
+										else if ( spriteProperties[4][0] != 0 && propertyInt != 0 )
 										{
 											char shortName[16] = "";
 											strncpy(shortName, spriteProperties[4], 11);
@@ -7323,7 +7332,11 @@ int main(int argc, char** argv)
 									{
 										if ( propertyInt == 0 )
 										{
-											if ( spriteProperties[4][0] != 0 )
+											if ( spriteProperties[4][0] == '@' )
+											{
+												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+											}
+											else if ( spriteProperties[4][0] != 0 )
 											{
 												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, "searching for map in normal levels");
 											}
@@ -7334,7 +7347,11 @@ int main(int argc, char** argv)
 										}
 										else if ( propertyInt == 1 )
 										{
-											if ( spriteProperties[4][0] != 0 )
+											if ( spriteProperties[4][0] == '@' )
+											{
+												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+											}
+											else if ( spriteProperties[4][0] != 0 )
 											{
 												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, "searching for map in secret levels");
 											}
@@ -9247,6 +9264,93 @@ int main(int argc, char** argv)
 						}
 					}
 				}
+				else if ( newwindow == 38 )
+				{
+					if ( selectedEntity[0] != nullptr )
+					{
+						int numProperties = sizeof(portalSecretLadderPropertyNames) / sizeof(portalSecretLadderPropertyNames[0]); //find number of entries in property list
+						const int lenProperties = sizeof(portalSecretLadderPropertyNames[0]) / sizeof(char); //find length of entry in property list
+						int spacing = 36; // 36 px between each item in the list.
+						int inputFieldHeader_y = suby1 + 28; // 28 px spacing from subwindow start.
+						int inputField_x = subx1 + 8; // 8px spacing from subwindow start.
+						int inputField_y = inputFieldHeader_y + 16;
+						int inputFieldWidth = 64; // width of the text field
+						int inputFieldFeedback_x = inputField_x + inputFieldWidth + 8;
+						char tmpPropertyName[lenProperties] = "";
+						Uint32 color = makeColorRGB(0, 255, 0);
+						Uint32 colorRandom = makeColorRGB(0, 168, 255);
+						Uint32 colorError = makeColorRGB(255, 0, 0);
+
+						for ( int i = 0; i < numProperties; i++ )
+						{
+							int propertyInt = atoi(spriteProperties[i]);
+
+							strcpy(tmpPropertyName, portalSecretLadderPropertyNames[i]);
+							inputFieldHeader_y = suby1 + 28 + i * spacing;
+							inputField_y = inputFieldHeader_y + 16;
+							// box outlines then text
+							drawDepressed(inputField_x - 4, inputField_y - 4, inputField_x - 4 + inputFieldWidth, inputField_y + 16 - 4);
+							// print values on top of boxes
+							printText(font8x8_bmp, inputField_x, suby1 + 44 + i * spacing, spriteProperties[i]);
+							printText(font8x8_bmp, inputField_x, inputFieldHeader_y, tmpPropertyName);
+
+							if ( errorArr[i] != 1 )
+							{
+								if ( i == 0 )
+								{
+									if ( propertyInt > 15 || propertyInt < -1 )
+									{
+										propertyPageError(i, -1); // reset to default -1.
+									}
+									else
+									{
+										char tmpStr[64] = "";
+										if ( propertyInt == -1 )
+										{
+											snprintf(tmpStr, sizeof(tmpStr), "Toggle normal/secret default");
+										}
+										else if ( propertyInt == 0 )
+										{
+											snprintf(tmpStr, sizeof(tmpStr), "Go to normal level track");
+										}
+										else
+										{
+											snprintf(tmpStr, sizeof(tmpStr), "Go to secret level track %d", propertyInt);
+										}
+										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
+									}
+								}
+								else
+								{
+									// enter other row entries here
+								}
+							}
+
+							if ( errorMessage )
+							{
+								if ( errorArr[i] == 1 )
+								{
+									printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, colorError, "Invalid ID!");
+								}
+							}
+						}
+
+						propertyPageTextAndInput(numProperties, inputFieldWidth);
+
+						if ( editproperty < numProperties )   // edit
+						{
+							if ( !SDL_IsTextInputActive() )
+							{
+								SDL_StartTextInput();
+								inputstr = spriteProperties[0];
+							}
+
+							// set the maximum length allowed for user input
+							inputlen = 2;
+							propertyPageCursorFlash(spacing);
+						}
+					}
+				}
 				else if ( newwindow == 16 || newwindow == 17 )
 				{
 					int textColumnLeft = subx1 + 16;
@@ -10401,7 +10505,7 @@ void reselectEntityGroup()
 	}
 }
 
-int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> mapParameters)
+int generateDungeon(char* levelset, Uint32 seed)
 {
 	return 0; // dummy function
 }

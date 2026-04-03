@@ -775,7 +775,7 @@ namespace ConsoleCommands {
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(285));
 			loadnextlevel = true;
 			Compendium_t::Events_t::previousCurrentLevel = currentlevel;
-			Compendium_t::Events_t::previousSecretlevel = secretlevel;
+			Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
 		}
 		});
 
@@ -2875,8 +2875,29 @@ namespace ConsoleCommands {
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(299));
 			return;
 		}
-		Compendium_t::Events_t::previousSecretlevel = secretlevel;
-		secretlevel = (secretlevel == false);
+
+		int toggle = -1;
+		if ( argc >= 2 )
+		{
+			toggle = atoi(argv[1]);
+		}
+
+		Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
+		if ( toggle < 0 )
+		{
+			if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE )
+			{
+				secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
+			}
+			else
+			{
+				secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
+			}
+		}
+		else
+		{
+			secretleveltype = (SecretLevelType)(std::min((int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX - 1, toggle));
+		}
 		});
 
 	static ConsoleCommand ccmd_setlvl("/setlvl", "set character lvl", []CCMD{
@@ -5197,7 +5218,7 @@ namespace ConsoleCommands {
 
 	for ( int j = 0; j < 2; ++j )
 	{
-		auto& floors_stations = (j == 0) ? treasure_room_generator.station_floors : treasure_room_generator.station_secret_floors;
+		auto& floors_stations = treasure_room_generator.station_floors[j];
 		for ( int i = 0; i <= 35; ++i )
 		{
 			if ( floors_stations.find(i) != floors_stations.end() )
@@ -6843,6 +6864,17 @@ namespace ConsoleCommands {
 			}
 		}
 		messagePlayer(clientnum, MESSAGE_DEBUG, "Walk tiles: %d, Swim tiles: %d (%.2f)", walktiles, swimtiles, (float)swimtiles / walktiles);
+	});
+
+	static ConsoleCommand ccmd_reloadlevels("/reloadlevels", "", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+		gameLevels.readFromFile();
+		messagePlayer(clientnum, MESSAGE_MISC, "Reloaded levels.json");
 	});
 }
 

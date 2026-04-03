@@ -1182,14 +1182,13 @@ static ConsoleVariable<bool> cvar_mimic_test2("/mimic_test2", false);
 void MimicGenerator::init()
 {
 	mimic_floors.clear();
-	mimic_secret_floors.clear();
 	mimic_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
 
 	for ( int i = 0; i <= 35; i += 5 )
 	{
-		for ( int j = 0; j < 2; ++j )
+		for ( int j = 0; j < (int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX; ++j )
 		{
-			auto& floors = (j == 0) ? mimic_floors : mimic_secret_floors;
+			auto& floors = mimic_floors[j];
 			std::vector<unsigned int> chances = { 0, 10, 7, 7, 10 };
 			if ( i == 0 && j == 0 )
 			{
@@ -1217,14 +1216,7 @@ void MimicGenerator::init()
 
 bool MimicGenerator::bForceSpawnForCurrentFloor()
 {
-	if ( secretlevel )
-	{
-		return mimic_secret_floors.find(currentlevel) != mimic_secret_floors.end();
-	}
-	else
-	{
-		return mimic_floors.find(currentlevel) != mimic_floors.end();
-	}
+	return mimic_floors[(int)secretleveltype].find(currentlevel) != mimic_floors[(int)secretleveltype].end();
 }
 
 void mimicSpecialEat(Entity* my, Stat* myStats)

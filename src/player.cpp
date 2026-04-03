@@ -4350,11 +4350,11 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 		}
 		else if ( parent->behavior == &actLadder )
 		{
-			if ( secretlevel && parent->skill[3] == 1 ) // secret ladder
+			if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE && parent->skill[3] == 1 ) // secret ladder
 			{
 				interactText += Language::get(4028); // "Exit secret level" 
 			}
-			else if ( !secretlevel && parent->skill[3] == 1 ) // secret ladder
+			else if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE && parent->skill[3] == 1 ) // secret ladder
 			{
 				interactText += Language::get(4029); // "Enter secret level" 
 			}
@@ -4367,7 +4367,7 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 		{
 			if ( parent->skill[3] == 0 ) // secret entrance portal
 			{
-				if ( secretlevel )
+				if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE )
 				{
 					interactText += Language::get(4028); // "Exit secret level" 
 				}

@@ -1452,8 +1452,7 @@ extern MonsterAllyFormation_t monsterAllyFormations;
 struct MimicGenerator
 {
 	BaronyRNG mimic_rng;
-	std::unordered_set<unsigned int> mimic_floors;
-	std::unordered_set<unsigned int> mimic_secret_floors;
+	std::map<int, std::unordered_set<unsigned int>> mimic_floors;
 	void init();
 	bool bForceSpawnForCurrentFloor();
 };

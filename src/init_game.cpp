@@ -70,7 +70,7 @@ void initGameDatafiles(bool moddedReload)
 		players[i]->worldUI.worldTooltipItem.type = WOODEN_SHIELD;
 		players[i]->worldUI.worldTooltipItem.count = 99;
 	}
-
+	gameLevels.readFromFile();
 	loadHUDSettingsJSON();
 	Player::SkillSheet_t::loadSkillSheetJSON();
 	Player::CharacterSheet_t::loadCharacterSheetJSON();

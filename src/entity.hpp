@@ -442,6 +442,7 @@ public:
 	Sint32& portalCustomLevelText6; //skill[16]
 	Sint32& portalCustomLevelText7; //skill[17]
 	Sint32& portalCustomLevelText8; //skill[18]
+	Sint32& portalLevelTrack = skill[19];
 
 	//--PUBLIC TELEPORTER SKILLS--
 	Sint32& teleporterX; //skill[0]

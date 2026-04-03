@@ -3291,7 +3291,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 			{
 				loadnextlevel = true;
 				Compendium_t::Events_t::previousCurrentLevel = currentlevel;
-				Compendium_t::Events_t::previousSecretlevel = secretlevel;
+				Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
 				skipLevelsOnLoad = result;
 			}
 		}

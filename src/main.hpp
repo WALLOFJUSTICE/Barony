@@ -892,7 +892,7 @@ string_t* newString(list_t* list, Uint32 color, Uint32 time, int player, char co
 SDL_Cursor* newCursor(char const * const image[]);
 
 // function prototypes for maps.c:
-int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> mapParameters = std::make_tuple(-1, -1, -1, 0)); // secretLevelChance of -1 is default Barony generation.
+int generateDungeon(char* levelset, Uint32 seed);
 void assignActions(map_t* map);
 
 // Cursor bitmap definitions

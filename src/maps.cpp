@@ -38,9 +38,7 @@ TreasureRoomGenerator treasure_room_generator;
 void TreasureRoomGenerator::init()
 {
 	treasure_floors.clear();
-	treasure_secret_floors.clear();
 	station_floors.clear();
-	station_secret_floors.clear();
 	Uint32 seed = uniqueGameKey;
 	if ( seed < (0xFFFFFFFF - 64) )
 	{
@@ -52,20 +50,24 @@ void TreasureRoomGenerator::init()
 	}
 	treasure_rng.seedBytes(&seed, sizeof(seed));
 
-	std::string previous_station[2] = { "", "" };
+	std::string previous_station[(int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX];
+	for ( int j = 0; j < (int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX; ++j )
+	{
+		previous_station[j] = "";
+	}
 	for ( int i = 0; i <= 35; i += 5 )
 	{
-		for ( int j = 0; j < 2; ++j )
+		for ( int j = 0; j < (int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX; ++j )
 		{
 			{
-				auto& floors = (j == 0) ? treasure_floors : treasure_secret_floors;
+				auto& floors = treasure_floors[j];
 				std::vector<unsigned int> chances = { 0, 10, 7, 7, 10 };
 				if ( i == 0 && j == 0 )
 				{
 					chances[0] = 0;
 					chances[1] = 0;
 				}
-				if ( j == 1 && i == 1 )
+				if ( j == 1 && i == 5 )
 				{
 					chances = { 0, 10, 7, 0, 0 }; // underworld
 				}
@@ -89,7 +91,7 @@ void TreasureRoomGenerator::init()
 			}
 
 			{
-				auto& floors_stations = (j == 0) ? station_floors : station_secret_floors;
+				auto& floors_stations = station_floors[j];
 				std::vector<unsigned int> chances = { 0, 7, 10, 10, 10 };
 				if ( i == 0 && j == 0 )
 				{
@@ -179,15 +181,14 @@ void TreasureRoomGenerator::init()
 	}
 
 	orb_floors.clear();
-	orb_floors[8] = "orb_green";
-	orb_floors[13] = "orb_red";
-	orb_floors[18] = "orb_blue";
+	orb_floors[(int)SecretLevelType::SECRET_LEVEL_NONE][8] = "orb_green";
+	orb_floors[(int)SecretLevelType::SECRET_LEVEL_NONE][13] = "orb_red";
+	orb_floors[(int)SecretLevelType::SECRET_LEVEL_NONE][18] = "orb_blue";
 }
 
 bool TreasureRoomGenerator::bForceStationSpawnForCurrentFloor(int secretlevelexit)
 {
-	auto& floor = secretlevel ? station_secret_floors : station_floors;
-
+	auto& floor = station_floors[(int)secretleveltype];
 	return floor.find(currentlevel) != floor.end();
 }
 
@@ -199,16 +200,19 @@ bool TreasureRoomGenerator::bForceSpawnForCurrentFloor(int secretlevelexit, bool
 		return true;
 	}
 
-	auto& floor = secretlevel ? treasure_secret_floors : treasure_floors;
+	auto& floor = treasure_floors[(int)secretleveltype];
 	bool pushBackSpawn = false;
 
-	if ( secretlevelexit && mapRNG.rand() % 100 < 50 )
+	bool secretexit_roll = mapRNG.rand() % 100 < 50;
+	bool minotaur_roll = mapRNG.rand() % 100 < 75;
+
+	if ( secretlevelexit && secretexit_roll )
 	{
 		pushBackSpawn = true;
 	}
 	else if ( minotaur )
 	{
-		pushBackSpawn = mapRNG.rand() % 100 < 75;
+		pushBackSpawn = minotaur_roll;
 	}
 	else
 	{
@@ -290,6 +294,8 @@ Sint32 doorFrameSprite() {
 static ConsoleVariable<std::string> cvar_monster_curve("/monster_curve", "nothing");
 int monsterCurve(int level)
 {
+	const auto levelData = gameLevels.getCurrentMap(level, secretleveltype);
+
 	if ( svFlags & SV_FLAG_CHEATS )
 	{
 		for ( int i = 0; i < NUMMONSTERS; ++i )
@@ -327,7 +333,7 @@ int monsterCurve(int level)
 					return SKELETON;
 				}
 			case 9:
-				if ( level >= 2 )
+				if ( levelData.id != "mine1" )
 				{
 					return TROLL;
 				}
@@ -479,7 +485,7 @@ int monsterCurve(int level)
 	}
 	else if ( !strncmp(map.name, "Caves", 5) )
 	{
-		if ( currentlevel <= 26 )
+		if ( levelData.id == "caves1" )
 		{
 			switch ( map_rng.rand() % 15 )
 			{
@@ -1201,12 +1207,12 @@ bool loadSubRoomData(std::string fullMapPath, list_t* mapList)
 
 -------------------------------------------------------------------------------*/
 
-int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> mapParameters)
+int generateDungeon(char* levelset, Uint32 seed)
 {
 	char sublevelnum[3];
 	list_t mapList, subRoomMapList;
 	node_t* node, *node2, *node3, *nextnode;
-	Sint32 c, i, j;
+	Sint32 i, j;
 	Sint32 numlevels = 0;
 	//Sint32 x, y, z;
 	door_t* door, *newDoor;
@@ -1219,7 +1225,8 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	bool shoplevel = false;
 	map_t shopmap;
 	map_t secretlevelmap;
-	int secretlevelexit = 0;
+
+	const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
 
 	if ( map.trapexcludelocations )
 	{
@@ -1237,43 +1244,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		map.lootexcludelocations = nullptr;
 	}
 
-	if ( std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) == -1
-		&& std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) == -1
-		&& std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) == -1
-		&& std::get<LEVELPARAM_DISABLE_NORMAL_EXIT>(mapParameters) == 0 )
-	{
-		printlog("generating a dungeon from level set '%s' (seed %lu)...\n", levelset, seed);
-	}
-	else
-	{
-		char generationLog[256] = "generating a dungeon from level set '%s'";
-		char tmpBuffer[32];
-		if ( std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) != -1 )
-		{
-			snprintf(tmpBuffer, 31, ", secret chance %d%%%%", std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters));
-			strcat(generationLog, tmpBuffer);
-		}
-		if ( std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) != -1 )
-		{
-			snprintf(tmpBuffer, 31, ", darkmap chance %d%%%%", std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters));
-			strcat(generationLog, tmpBuffer);
-		}
-		if ( std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) != -1 )
-		{
-			snprintf(tmpBuffer, 31, ", minotaur chance %d%%%%", std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters));
-			strcat(generationLog, tmpBuffer);
-		}
-		if ( std::get<LEVELPARAM_DISABLE_NORMAL_EXIT>(mapParameters) != 0 )
-		{
-			snprintf(tmpBuffer, 31, ", disabled normal exit %d%%%%", std::get<LEVELPARAM_DISABLE_NORMAL_EXIT>(mapParameters));
-			strcat(generationLog, tmpBuffer);
-		}
-		strcat(generationLog, ", (seed %lu)...\n");
-		printlog(generationLog, levelset, seed);
-
-		conductGameChallenges[CONDUCT_MODDED] = 1;
-		Mods::disableSteamAchievements = true;
-	}
+	printlog("generating a dungeon from level set '%s' (seed %lu)...\n", levelset, seed);
 
 	int checkMapHash = -1;
 	{
@@ -1301,7 +1272,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	monsterCurveCustomManager.readFromFile(mapseed);
 
 	// determine whether shop level or not
-	if ( gameplayCustomManager.processedShopFloor(currentlevel, secretlevel, map.name, shoplevel) )
+	if ( gameplayCustomManager.processedShopFloor(currentlevel, secretleveltype, map.name, shoplevel) )
 	{
 		// function sets shop level for us.
 	}
@@ -1313,33 +1284,20 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	}
 
 	// determine whether minotaur level or not
-	if ( (svFlags & SV_FLAG_MINOTAURS) && gameplayCustomManager.processedMinotaurSpawn(currentlevel, secretlevel, map.name) )
+	if ( (svFlags & SV_FLAG_MINOTAURS) && gameplayCustomManager.processedMinotaurSpawn(currentlevel, secretleveltype, map.name) )
 	{
 		// function sets mino level for us.
 	}
-	else if ( std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) != -1 )
+	else if ( map_rng.rand() % 100 < levelData.node.spawn_minotaurs_chance )
 	{
-		if ( map_rng.rand() % 100 < std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) && (svFlags & SV_FLAG_MINOTAURS) )
+		if ( (svFlags & SV_FLAG_MINOTAURS) )
 		{
 			minotaurlevel = 1;
 		}
-	}
-	else if ( (currentlevel < 25 && (currentlevel % LENGTH_OF_LEVEL_REGION == 2 || currentlevel % LENGTH_OF_LEVEL_REGION == 3))
-		|| (currentlevel > 25 && (currentlevel % LENGTH_OF_LEVEL_REGION == 2 || currentlevel % LENGTH_OF_LEVEL_REGION == 4)) )
-	{
-		if ( map_rng.rand() % 2 && (svFlags & SV_FLAG_MINOTAURS) )
-		{
-			minotaurlevel = 1;
-		}
-	}
-
-	if ( !strncmp(map.filename, "fortress", 8) )
-	{
-		minotaurlevel = false;
 	}
 
 	// dark level
-	if ( gameplayCustomManager.processedDarkFloor(currentlevel, secretlevel, map.name) )
+	if ( gameplayCustomManager.processedDarkFloor(currentlevel, secretleveltype, map.name) )
 	{
 		// function sets dark level for us.
 		if ( darkmap )
@@ -1354,91 +1312,28 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			}
 		}
 	}
-	else if ( !secretlevel )
+	else
 	{
-		if ( std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) != -1 )
-		{
-			if ( map_rng.rand() % 100 < std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) )
-			{
-				darkmap = true;
-				if ( !strncmp(map.filename, "fortress", 8) )
-				{
-					messageLocalPlayers(MESSAGE_HINT, Language::get(6755));
-				}
-				else
-				{
-					messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
-				}
-			}
-			else
-			{
-				darkmap = false;
-			}
-		}
-		else if ( currentlevel % LENGTH_OF_LEVEL_REGION >= 2 )
+		if ( map_rng.rand() % 100 < levelData.node.darkmap_chance )
 		{
 			if ( !strncmp(map.filename, "fortress", 8) )
 			{
-				if ( map_rng.rand() % 4 == 0 )
-				{
-					darkmap = true;
-					messageLocalPlayers(MESSAGE_HINT, Language::get(6755));
-				}
+				messageLocalPlayers(MESSAGE_HINT, Language::get(6755));
 			}
 			else
 			{
-				if ( map_rng.rand() % 4 == 0 )
-				{
-					darkmap = true;
-					messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
-				}
+				messageLocalPlayers(MESSAGE_HINT, Language::get(1108));
 			}
+			darkmap = true;
 		}
 	}
 
+	int secretlevelexit = 0;
+
 	// secret stuff
-	if ( !secretlevel )
+	if ( map_rng.rand() % 100 < levelData.node.secret_exit.chance )
 	{
-		if ( std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) != -1 )
-		{
-			if ( map_rng.rand() % 100 < std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) )
-			{
-				secretlevelexit = 7;
-			}
-			else
-			{
-				secretlevelexit = 0;
-			}
-		}
-		else if ( (currentlevel == 3 && map_rng.rand() % 2) || currentlevel == 2 )
-		{
-			secretlevelexit = 1;
-		}
-		else if ( currentlevel == 7 || currentlevel == 8 )
-		{
-			secretlevelexit = 2;
-		}
-		else if ( currentlevel == 11 || currentlevel == 13 )
-		{
-			secretlevelexit = 3;
-		}
-		else if ( currentlevel == 16 || currentlevel == 18 )
-		{
-			secretlevelexit = 4;
-		}
-		else if ( currentlevel == 28 )
-		{
-			secretlevelexit = 5;
-		}
-		else if ( currentlevel == 33 )
-		{
-			secretlevelexit = 6;
-		}
-		else if ( currentlevel == 23 )
-		{
-			secretlevelexit = 8;
-			minotaurlevel = false;
-		}
+		secretlevelexit = (1 + currentlevel);
 	}
 
 	mapList.first = nullptr;
@@ -1551,11 +1446,11 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		loadSubRoomData(fullMapPath, &mapList);
 	}
 
-	if ( !secretlevel )
+	if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 	{
-		if ( treasure_room_generator.orb_floors.find(currentlevel) != treasure_room_generator.orb_floors.end() )
+		if ( treasure_room_generator.orb_floors[(int)secretleveltype].find(currentlevel) != treasure_room_generator.orb_floors[(int)secretleveltype].end() )
 		{
-			std::string specialMapName = treasure_room_generator.orb_floors[currentlevel];
+			std::string specialMapName = treasure_room_generator.orb_floors[(int)secretleveltype][currentlevel];
 			std::string fullMapPath = physfsFormatMapName(specialMapName.c_str());
 			if ( !fullMapPath.empty() )
 			{
@@ -1869,12 +1764,12 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		firstroomtile = (bool*) malloc(sizeof(bool) * map.width * map.height);
 		secretlevelexittile = (bool*)malloc(sizeof(bool) * map.width * map.height);
 		bool* possiblerooms = (bool*) malloc(sizeof(bool) * numlevels);
-		for ( c = 0; c < numlevels; c++ )
+		for ( int c = 0; c < numlevels; c++ )
 		{
 			possiblerooms[c] = true;
 		}
 		levellimit = (map.width * map.height);
-		for ( c = 0; c < levellimit; c++ )
+		for ( int c = 0; c < levellimit; c++ )
 		{
 			// reset array of possible locations for the current room
 			for ( int y = 0; y < map.height; y++ )
@@ -1913,38 +1808,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				secretlevelmap.creatures->first = nullptr;
 				secretlevelmap.creatures->last = nullptr;
 				secretlevelmap.worldUI = nullptr;
-				char secretmapname[128];
-				switch ( secretlevelexit )
-				{
-					case 1:
-						strcpy(secretmapname, "minesecret");
-						break;
-					case 2:
-						strcpy(secretmapname, "swampsecret");
-						break;
-					case 3:
-						strcpy(secretmapname, "labyrinthsecret");
-						break;
-					case 4:
-						strcpy(secretmapname, "ruinssecret");
-						break;
-					case 5:
-						strcpy(secretmapname, "cavessecret");
-						break;
-					case 6:
-						strcpy(secretmapname, "citadelsecret");
-						break;
-					case 7:
-						strcpy(secretmapname, levelset);
-						strcat(secretmapname, "secret");
-						break;
-					case 8:
-						strcpy(secretmapname, "baphoexit");
-						break;
-					default:
-						break;
-				}
-				std::string fullMapPath = physfsFormatMapName(secretmapname);
+				std::string fullMapPath = physfsFormatMapName(levelData.node.secret_exit.filename.c_str());
 				if ( fullMapPath.empty() || loadMap(fullMapPath.c_str(), &secretlevelmap, secretlevelmap.entities, secretlevelmap.creatures, &checkMapHash) == -1 )
 				{
 					list_FreeAll(secretlevelmap.entities);
@@ -2234,7 +2098,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				{
 					if ( c == 0 )
 					{
-						if ( secretlevelexit == 8 )
+						if ( secretlevelexit )
 						{
 							x = getMapPossibleLocationX1() + 7;
 							y = getMapPossibleLocationY1() + 7;
@@ -2246,7 +2110,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							y = getMapPossibleLocationY1() + (1 + map_rng.rand() % 4) * 7;
 						}
 					}
-					else if ( secretlevelexit == 8 && c == 1 )
+					else if ( secretlevelexit && c == 1 )
 					{
 						x = getMapPossibleLocationX1() + (3) * 7;
 						y = getMapPossibleLocationY1() + (3) * 7;
@@ -2562,7 +2426,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 								firstroomtile[y0 + x0 * map.height] = true;
 								startRoomInfo.addCoord(x0, y0);
 							}
-							else if ( c == 1 && secretlevelexit == 8 && !strncmp(map.name, "Hell", 4) )
+							else if ( c == 1 && secretlevelexit && !strncmp(map.name, "Hell", 4) )
 							{
 								firstroomtile[y0 + x0 * map.height] = true;
 							}
@@ -3290,13 +3154,17 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		boulderArrowTraps = false;
 	}
 
+	Uint32 trapRngSeed = map_rng.getU32();
 	// boulder and arrow traps
 	if ( boulderArrowTraps && (svFlags & SV_FLAG_TRAPS) && map.flags[MAP_FLAG_DISABLETRAPS] == 0
 		&& (!customTrapsForMapInUse || (customTrapsForMapInUse && (customTraps.boulders || customTraps.arrows)) )
 		)
 	{
+		BaronyRNG trapRng;
+		trapRng.seedBytes(&trapRngSeed, sizeof(trapRngSeed));
+
 		numpossiblelocations = 0;
-		for ( c = 0; c < map.width * map.height; ++c )
+		for ( int c = 0; c < map.width * map.height; ++c )
 		{
 			possiblelocations[c] = false;
 		}
@@ -3452,7 +3320,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			}
 		}
 
-		int whatever = map_rng.rand() % 5;
+		int whatever = trapRng.rand() % 5;
 		if ( strncmp(map.name, "Hell", 4) )
 			j = std::min(
 			        std::min(
@@ -3468,10 +3336,10 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		}
 		//printlog("j: %d\n",j);
 		//printlog("numpossiblelocations: %d\n",numpossiblelocations);
-		for ( c = 0; c < j; ++c )
+		for ( int c = 0; c < j; ++c )
 		{
 			// choose a random location from those available
-			pickedlocation = map_rng.rand() % numpossiblelocations;
+			pickedlocation = trapRng.rand() % numpossiblelocations;
 			i = -1;
 			//printlog("pickedlocation: %d\n",pickedlocation);
 			//printlog("numpossiblelocations: %d\n",numpossiblelocations);
@@ -3564,7 +3432,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				{
 					arrowtrapspawn = true; // no boulders in underworld
 				}
-				else if ( map_rng.rand() % 2 && (arrowtrappotential) )
+				else if ( trapRng.rand() % 2 && (arrowtrappotential) )
 				{
 					arrowtrapspawn = true;
 				}
@@ -3573,7 +3441,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			if ( customTrapsForMapInUse )
 			{
 				arrowtrapspawn = customTraps.arrows;
-				if ( customTraps.boulders && map_rng.rand() % 2 )
+				if ( customTraps.boulders && trapRng.rand() % 2 )
 				{
 					arrowtrapspawn = false;
 				}
@@ -3920,7 +3788,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	int secretExitLadderTries = 200;
 	//printlog("j: %d\n",j);
 	//printlog("numpossiblelocations: %d\n",numpossiblelocations);
-	for ( c = 0; c < std::min(j, numpossiblelocations); ++c )
+	for ( int c = 0; c < std::min(j, numpossiblelocations); ++c )
 	{
 		// choose a random location from those available
 		pickedlocation = map_rng.rand() % numpossiblelocations;
@@ -3954,16 +3822,15 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 
 		// create entity
 		entity = nullptr;
-		if ( (c == 0 || (minotaurlevel && c < 2)) && (!secretlevel || currentlevel != 7) && (!secretlevel || currentlevel != 20)
-			&& std::get<LEVELPARAM_DISABLE_NORMAL_EXIT>(mapParameters) == 0 )
+		if ( (c == 0 || (minotaurlevel && c < 2)) && !levelData.node.disable_gen_exits )
 		{
-			if ( !strcmp(map.name, "Hell") && secretlevelexit == 8 )
-			{
-				continue; // no generate exit
-			}
+			//if ( !strcmp(map.name, "Hell") && secretlevelexit == 8 )
+			//{
+			//	continue; // no generate exit
+			//}
 
 			// daedalus shrine
-			if ( c == 1 && minotaurlevel && !(secretlevel && (currentlevel == 7 || currentlevel == 20)) )
+			if ( c == 1 && minotaurlevel && !levelData.node.disable_gen_exits )
 			{
 				int numShrines = 1;
 				/*if ( !strncmp(map.name, "The Labyrinth", 13) )
@@ -4313,7 +4180,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				}
 			}
 		}
-		else if ( c == 1 && secretlevel && currentlevel == 7 && !strncmp(map.name, "Underworld", 10) )
+		else if ( c == 1 && levelData.id == "underworld1_2" )
 		{
 			entity = newEntity(89, 1, map.entities, nullptr);
 			entity->monsterStoreType = 1;
@@ -4321,192 +4188,192 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			++nummonsters;
 			//entity = newEntity(68, 1, map.entities, nullptr); // magic (artifact) bow
 		}
-		else if ( *cvar_underworldshrinetest && !strncmp(map.name, "Underworld", 10) 
-			&& ((c == 1 && !(secretlevel && currentlevel == 7)) || (c == 2 && secretlevel && currentlevel == 7)) )
-		{
-			std::set<int> walkableTiles;
-			for ( int isley = 1; isley < map.height - 1; ++isley )
-			{
-				for ( int islex = 1; islex < map.width - 1; ++islex )
-				{
-					if ( !map.tiles[OBSTACLELAYER + isley * MAPLAYERS + (islex) * MAPLAYERS * map.height]
-						&& map.tiles[isley * MAPLAYERS + (islex) * MAPLAYERS * map.height]
-						&& !swimmingtiles[map.tiles[isley * MAPLAYERS + islex * MAPLAYERS * map.height]]
-						&& !lavatiles[map.tiles[isley * MAPLAYERS + islex * MAPLAYERS * map.height]] )
-					{
-						walkableTiles.insert(islex + isley * 1000);
-					}
-				}
-			}
+		//else if ( *cvar_underworldshrinetest && !strncmp(map.name, "Underworld", 10) 
+		//	&& ((c == 1 && !(secretleveltype == SecretLevelType::SECRET_LEVEL_DEPTH1 && currentlevel == 7)) || (c == 2 && secretleveltype == SecretLevelType::SECRET_LEVEL_DEPTH1 && currentlevel == 7)) )
+		//{
+		//	std::set<int> walkableTiles;
+		//	for ( int isley = 1; isley < map.height - 1; ++isley )
+		//	{
+		//		for ( int islex = 1; islex < map.width - 1; ++islex )
+		//		{
+		//			if ( !map.tiles[OBSTACLELAYER + isley * MAPLAYERS + (islex) * MAPLAYERS * map.height]
+		//				&& map.tiles[isley * MAPLAYERS + (islex) * MAPLAYERS * map.height]
+		//				&& !swimmingtiles[map.tiles[isley * MAPLAYERS + islex * MAPLAYERS * map.height]]
+		//				&& !lavatiles[map.tiles[isley * MAPLAYERS + islex * MAPLAYERS * map.height]] )
+		//			{
+		//				walkableTiles.insert(islex + isley * 1000);
+		//			}
+		//		}
+		//	}
 
-			int numIslands = 0;
-			std::set<int> reachedTiles;
-			struct IslandNode_t
-			{
-				int neighbours = 0;
-			};
-			std::map<int, std::map<int, IslandNode_t>> islands;
-			for ( auto it = walkableTiles.begin(); it != walkableTiles.end(); ++it )
-			{
-				if ( reachedTiles.find(*it) == reachedTiles.end() )
-				{
-					// new island
-					std::queue<int> frontier;
-					frontier.push(*it);
-					reachedTiles.insert(*it);
-					while ( !frontier.empty() )
-					{
-						auto currentKey = frontier.front();
-						frontier.pop();
+		//	int numIslands = 0;
+		//	std::set<int> reachedTiles;
+		//	struct IslandNode_t
+		//	{
+		//		int neighbours = 0;
+		//	};
+		//	std::map<int, std::map<int, IslandNode_t>> islands;
+		//	for ( auto it = walkableTiles.begin(); it != walkableTiles.end(); ++it )
+		//	{
+		//		if ( reachedTiles.find(*it) == reachedTiles.end() )
+		//		{
+		//			// new island
+		//			std::queue<int> frontier;
+		//			frontier.push(*it);
+		//			reachedTiles.insert(*it);
+		//			while ( !frontier.empty() )
+		//			{
+		//				auto currentKey = frontier.front();
+		//				frontier.pop();
 
-						const int ix = (currentKey) % 1000;
-						const int iy = (currentKey) / 1000;
+		//				const int ix = (currentKey) % 1000;
+		//				const int iy = (currentKey) / 1000;
 
-						islands[numIslands][currentKey] = IslandNode_t();
+		//				islands[numIslands][currentKey] = IslandNode_t();
 
-						int checkKey = (ix + 1) + ((iy) * 1000);
-						if ( walkableTiles.find(checkKey) != walkableTiles.end()
-							&& reachedTiles.find(checkKey) == reachedTiles.end() )
-						{
-							frontier.push(checkKey);
-							reachedTiles.insert(checkKey);
-						}
-						checkKey = (ix - 1) + ((iy) * 1000);
-						if ( walkableTiles.find(checkKey) != walkableTiles.end()
-							&& reachedTiles.find(checkKey) == reachedTiles.end() )
-						{
-							frontier.push(checkKey);
-							reachedTiles.insert(checkKey);
-						}
-						checkKey = (ix) + ((iy + 1) * 1000);
-						if ( walkableTiles.find(checkKey) != walkableTiles.end() 
-							&& reachedTiles.find(checkKey) == reachedTiles.end() )
-						{
-							frontier.push(checkKey);
-							reachedTiles.insert(checkKey);
-						}
-						checkKey = (ix) + ((iy - 1) * 1000);
-						if ( walkableTiles.find(checkKey) != walkableTiles.end()
-							&& reachedTiles.find(checkKey) == reachedTiles.end() )
-						{
-							frontier.push(checkKey);
-							reachedTiles.insert(checkKey);
-						}
-					}
-					if ( !islands[numIslands].empty() )
-					{
-						++numIslands;
-					}
-				}
-			}
+		//				int checkKey = (ix + 1) + ((iy) * 1000);
+		//				if ( walkableTiles.find(checkKey) != walkableTiles.end()
+		//					&& reachedTiles.find(checkKey) == reachedTiles.end() )
+		//				{
+		//					frontier.push(checkKey);
+		//					reachedTiles.insert(checkKey);
+		//				}
+		//				checkKey = (ix - 1) + ((iy) * 1000);
+		//				if ( walkableTiles.find(checkKey) != walkableTiles.end()
+		//					&& reachedTiles.find(checkKey) == reachedTiles.end() )
+		//				{
+		//					frontier.push(checkKey);
+		//					reachedTiles.insert(checkKey);
+		//				}
+		//				checkKey = (ix) + ((iy + 1) * 1000);
+		//				if ( walkableTiles.find(checkKey) != walkableTiles.end() 
+		//					&& reachedTiles.find(checkKey) == reachedTiles.end() )
+		//				{
+		//					frontier.push(checkKey);
+		//					reachedTiles.insert(checkKey);
+		//				}
+		//				checkKey = (ix) + ((iy - 1) * 1000);
+		//				if ( walkableTiles.find(checkKey) != walkableTiles.end()
+		//					&& reachedTiles.find(checkKey) == reachedTiles.end() )
+		//				{
+		//					frontier.push(checkKey);
+		//					reachedTiles.insert(checkKey);
+		//				}
+		//			}
+		//			if ( !islands[numIslands].empty() )
+		//			{
+		//				++numIslands;
+		//			}
+		//		}
+		//	}
 
-			for ( int isleIndex = 0; isleIndex < numIslands; ++isleIndex )
-			{
-				int min_x = 1000;
-				int max_x = 0;
-				int min_y = 1000;
-				int max_y = 0;
+		//	for ( int isleIndex = 0; isleIndex < numIslands; ++isleIndex )
+		//	{
+		//		int min_x = 1000;
+		//		int max_x = 0;
+		//		int min_y = 1000;
+		//		int max_y = 0;
 
-				std::vector<int> locations3x3;
-				for ( auto& isle : islands[isleIndex] )
-				{
-					const int ix = (isle.first) % 1000;
-					const int iy = (isle.first) / 1000;
+		//		std::vector<int> locations3x3;
+		//		for ( auto& isle : islands[isleIndex] )
+		//		{
+		//			const int ix = (isle.first) % 1000;
+		//			const int iy = (isle.first) / 1000;
 
-					max_x = std::max(max_x, ix);
-					min_x = std::min(min_x, ix);
+		//			max_x = std::max(max_x, ix);
+		//			min_x = std::min(min_x, ix);
 
-					max_y = std::max(max_y, iy);
-					min_y = std::min(min_y, iy);
+		//			max_y = std::max(max_y, iy);
+		//			min_y = std::min(min_y, iy);
 
-					int checkKey = (ix + 1) + ((iy) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
-					checkKey = (ix - 1) + ((iy) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
-					checkKey = (ix) + ((iy - 1) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
-					checkKey = (ix) + ((iy + 1) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
+		//			int checkKey = (ix + 1) + ((iy) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
+		//			checkKey = (ix - 1) + ((iy) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
+		//			checkKey = (ix) + ((iy - 1) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
+		//			checkKey = (ix) + ((iy + 1) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
 
-					checkKey = (ix + 1) + ((iy + 1) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
-					checkKey = (ix - 1) + ((iy + 1) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
-					checkKey = (ix + 1) + ((iy - 1) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
-					checkKey = (ix - 1) + ((iy - 1) * 1000);
-					if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
-					{
-						++isle.second.neighbours;
-					}
+		//			checkKey = (ix + 1) + ((iy + 1) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
+		//			checkKey = (ix - 1) + ((iy + 1) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
+		//			checkKey = (ix + 1) + ((iy - 1) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
+		//			checkKey = (ix - 1) + ((iy - 1) * 1000);
+		//			if ( islands[isleIndex].find(checkKey) != islands[isleIndex].end() )
+		//			{
+		//				++isle.second.neighbours;
+		//			}
 
-					if ( isle.second.neighbours == 8 )
-					{
-						locations3x3.push_back(isle.first);
-					}
-				}
-				printlog("Isle: %d [%d %d] to [%d %d]", isleIndex, min_x, min_y, max_x, max_y);
+		//			if ( isle.second.neighbours == 8 )
+		//			{
+		//				locations3x3.push_back(isle.first);
+		//			}
+		//		}
+		//		printlog("Isle: %d [%d %d] to [%d %d]", isleIndex, min_x, min_y, max_x, max_y);
 
-				if ( !locations3x3.empty() )
-				{
-					int chosenKey = locations3x3.at(map_rng.rand() % locations3x3.size());
-					int dir = map_rng.rand() % 4;
-					entity = newEntity(177, 1, map.entities, nullptr);
-					setSpriteAttributes(entity, nullptr, nullptr);
-					int ix = (chosenKey) % 1000;
-					int iy = (chosenKey) / 1000;
-					entity->shrineDir = dir;
-					if ( dir == 0 )
-					{
-						ix = ix - 1;
-						iy = iy - 1 + map_rng.rand() % 3;
-					}
-					else if ( dir == 2 )
-					{
-						ix = ix + 1;
-						iy = iy - 1 + map_rng.rand() % 3;
-					}
-					else if ( dir == 1 )
-					{
-						ix = ix - 1 + map_rng.rand() % 3;
-						iy = iy - 1;
-					}
-					else if ( dir == 3 )
-					{
-						ix = ix - 1 + map_rng.rand() % 3;
-						iy = iy + 1;
-					}
-					x = ix;
-					y = iy;
-					entity->x = x * 16.0;
-					entity->y = y * 16.0;
-					skipPossibleLocationsDecrement = true;
-					possiblelocations[iy + ix * map.height] = false;
-					--numpossiblelocations;
-				}
-			}
-		}
+		//		if ( !locations3x3.empty() )
+		//		{
+		//			int chosenKey = locations3x3.at(map_rng.rand() % locations3x3.size());
+		//			int dir = map_rng.rand() % 4;
+		//			entity = newEntity(177, 1, map.entities, nullptr);
+		//			setSpriteAttributes(entity, nullptr, nullptr);
+		//			int ix = (chosenKey) % 1000;
+		//			int iy = (chosenKey) / 1000;
+		//			entity->shrineDir = dir;
+		//			if ( dir == 0 )
+		//			{
+		//				ix = ix - 1;
+		//				iy = iy - 1 + map_rng.rand() % 3;
+		//			}
+		//			else if ( dir == 2 )
+		//			{
+		//				ix = ix + 1;
+		//				iy = iy - 1 + map_rng.rand() % 3;
+		//			}
+		//			else if ( dir == 1 )
+		//			{
+		//				ix = ix - 1 + map_rng.rand() % 3;
+		//				iy = iy - 1;
+		//			}
+		//			else if ( dir == 3 )
+		//			{
+		//				ix = ix - 1 + map_rng.rand() % 3;
+		//				iy = iy + 1;
+		//			}
+		//			x = ix;
+		//			y = iy;
+		//			entity->x = x * 16.0;
+		//			entity->y = y * 16.0;
+		//			skipPossibleLocationsDecrement = true;
+		//			possiblelocations[iy + ix * map.height] = false;
+		//			--numpossiblelocations;
+		//		}
+		//	}
+		//}
 		else
 		{
 			int x2, y2;
@@ -4547,13 +4414,18 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 					if ( map.monsterexcludelocations[x + y * map.width] == false )
 					{
 						bool doNPC = false;
-						if ( gameplayCustomManager.processedPropertyForFloor(currentlevel, secretlevel, map.name, GameplayCustomManager::PROPERTY_NPC, doNPC) )
+						if ( gameplayCustomManager.processedPropertyForFloor(currentlevel, secretleveltype, map.name, GameplayCustomManager::PROPERTY_NPC, doNPC) )
 						{
 							// doNPC processed by function
 						}
 						else if ( map_rng.rand() % 10 == 0 && currentlevel > 1 )
 						{
 							doNPC = true;
+						}
+
+						if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "keep", 4) )
+						{
+							doNPC = false;
 						}
 
 						if ( doNPC )
@@ -4607,9 +4479,12 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				{
 					--forcedDecorationSpawns;
 					// decorations
-					if ( (map_rng.rand() % 4 == 0 || (currentlevel <= 10 && !customTrapsForMapInUse)) && strcmp(map.name, "Hell") )
+					if ( (map_rng.rand() % 4 == 0 
+						|| (currentlevel <= 10 && !customTrapsForMapInUse)
+						|| !strncmp(map.filename, "fortress", 8) 
+						|| !strncmp(map.filename, "keep", 4)) && strcmp(map.name, "Hell") )
 					{
-						if ( !strncmp(map.filename, "fortress", 8) )
+						if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "keep", 4) )
 						{
 							switch ( map_rng.rand() % 4 )
 							{
@@ -4766,13 +4641,19 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 							if ( map.monsterexcludelocations[x + y * map.width] == false )
 							{
 								bool doNPC = false;
-								if ( gameplayCustomManager.processedPropertyForFloor(currentlevel, secretlevel, map.name, GameplayCustomManager::PROPERTY_NPC, doNPC) )
+								if ( gameplayCustomManager.processedPropertyForFloor(currentlevel, secretleveltype, map.name, GameplayCustomManager::PROPERTY_NPC, doNPC) )
 								{
 									// doNPC processed by function
 								}
 								else if ( map_rng.rand() % 10 == 0 && currentlevel > 1 )
 								{
 									doNPC = true;
+								}
+
+								if ( !strncmp(map.filename, "fortress", 8)
+									|| !strncmp(map.filename, "keep", 4) )
+								{
+									doNPC = false;
 								}
 
 								if ( doNPC )
@@ -4807,9 +4688,13 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 				else
 				{
 					// decorations
-					if ( (map_rng.rand() % 4 == 0 || (currentlevel <= 10 && !customTrapsForMapInUse)) && strcmp(map.name, "Hell") )
+					if ( (map_rng.rand() % 4 == 0 
+						|| (currentlevel <= 10 && !customTrapsForMapInUse)
+						|| !strncmp(map.filename, "fortress", 8)
+						|| !strncmp(map.filename, "keep", 4)) && strcmp(map.name, "Hell") )
 					{
-						if ( !strncmp(map.filename, "fortress", 8) )
+						if ( !strncmp(map.filename, "fortress", 8)
+							|| !strncmp(map.filename, "keep", 4) )
 						{
 							switch ( map_rng.rand() % 4 )
 							{
@@ -4921,23 +4806,27 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 		}
 	}
 
+	Uint32 slimeTrapSeed = map_rng.getU32();
 	if ( svFlags & SV_FLAG_TRAPS )
 	{
+		BaronyRNG tmpRng;
+		tmpRng.seedBytes(&slimeTrapSeed, sizeof(slimeTrapSeed));
+
 		int numSlimebushes = 0;
 		if ( currentlevel > 5 && currentlevel < 10 )
 		{
-			numSlimebushes += 2 + map_rng.rand() % 3;
+			numSlimebushes += 2 + tmpRng.rand() % 3;
 		}
 		else if ( currentlevel >= 10 )
 		{
-			numSlimebushes += 4 + map_rng.rand() % 3;
+			numSlimebushes += 4 + tmpRng.rand() % 3;
 		}
 
 		std::set<int> visited;
 		while ( numSlimebushes > 0 && (waterEmptyTiles.size() > 0 || lavaEmptyTiles.size() > 0) )
 		{
 			size_t totalSize = waterEmptyTiles.size() + lavaEmptyTiles.size();
-			int pick = map_rng.rand() % totalSize;
+			int pick = tmpRng.rand() % totalSize;
 
 			int x = 0;
 			int y = 0;
@@ -5410,7 +5299,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 			int x = top.x;
 			int y = top.y;
 
-			auto& station = secretlevel ? treasure_room_generator.station_secret_floors : treasure_room_generator.station_floors;
+			auto& station = treasure_room_generator.station_floors[(int)secretleveltype];
 			if ( station[currentlevel] == "cauldron" )
 			{
 				Entity* stationEntity = newEntity(300, 1, map.entities, nullptr); // cauldron
@@ -5726,7 +5615,7 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 	bool* possibleLocationsBreakables = (bool*)malloc(sizeof(bool) * map.width * map.height);
 	memcpy(possibleLocationsBreakables, possiblelocations, map.width * map.height * sizeof(bool));
 	int numpossibleBreakableLocations = numpossiblelocations;
-	for ( c = 0; c < std::min(numBreakables, numpossibleBreakableLocations); ++c )
+	for ( int c = 0; c < std::min(numBreakables, numpossibleBreakableLocations); ++c )
 	{
 		// choose a random location from those available
 		pickedlocation = map_rng.rand() % numpossibleBreakableLocations;
@@ -6172,9 +6061,10 @@ int generateDungeon(char* levelset, Uint32 seed, std::tuple<int, int, int, int> 
 						}
 					}
 
+					bool hideMonster = map_rng.rand() % 2 == 0;
 					if ( (svFlags & SV_FLAG_TRAPS) )
 					{
-						if ( map_rng.rand() % 2 == 0 )
+						if ( hideMonster )
 						{
 							breakable->colliderHideMonster = monsterEvent;
 						}
@@ -7014,6 +6904,7 @@ void assignActions(map_t* map)
 	// update arachnophobia filter
 	arachnophobia_filter = GameplayPreferences_t::getGameConfigValue(GameplayPreferences_t::GOPT_ARACHNOPHOBIA);
 	colorblind_lobby = GameplayPreferences_t::getGameConfigValue(GameplayPreferences_t::GOPT_COLORBLIND);
+	const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
 
 	// add lava lights
 	for ( int y = 0; y < map->height; ++y )
@@ -8594,14 +8485,6 @@ void assignActions(map_t* map)
 				entity->sizey = 4;
 				entity->yaw = PI / 2;
 				entity->behavior = &actPortal;
-				if ( !strcmp(map->name, "Mages Guild") )
-				{
-					entity->skill[3] = 1; // not secret portal, just aesthetic.
-				}
-				else if ( !strcmp(map->name, "Hell") && currentlevel == 23 )
-				{
-					entity->portalNotSecret = 1; // not secret portal, just aesthetic.
-				}
 				entity->flags[PASSABLE] = true;
 				break;
 			// secret ladder:
@@ -11283,7 +11166,7 @@ bool map_t::tileHasAttribute(int x, int y, int layer, Uint32 attribute)
 
 void map_t::setMapHDRSettings()
 {
-	if ( !strncmp(map.filename, "fortress", 8) )
+	if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "bastille", 8) )
 	{
 		*cvar_hdrBrightness = defaultBrightness;
 		if ( !*MainMenu::cvar_hdrEnabled )

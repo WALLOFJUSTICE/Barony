@@ -1693,8 +1693,8 @@ bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
 Uint32 Stat::getLootingBagKey(const int player)
 {
 	Uint32 lootingBagKey = player & 0xF;
-	Uint16 levelKey = currentlevel & 0xFFF;
-	levelKey |= ((secretlevel ? 1 : 0) << 11);
+	Uint16 levelKey = currentlevel & 0xFF;
+	levelKey |= ((int)secretleveltype & 0xF) << 8;
 	lootingBagKey |= (levelKey << 4);
 
 	return lootingBagKey;

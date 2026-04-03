@@ -8692,13 +8692,13 @@ void doNewGame(bool makeHighscore) {
 	monsterTrapIgnoreEntities.clear();
 	minimapHighlights.clear();
 
-	bool bOldSecretLevel = secretlevel;
+	SecretLevelType bOldSecretLevel = secretleveltype;
 	int oldCurrentLevel = currentlevel;
 	Compendium_t::Events_t::previousCurrentLevel = 0;
-	Compendium_t::Events_t::previousSecretlevel = false;
+	Compendium_t::Events_t::previousSecretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 
 	currentlevel = startfloor;
-	secretlevel = false;
+	secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 	victory = 0;
 	completionTime = 0;
 
@@ -8715,7 +8715,7 @@ void doNewGame(bool makeHighscore) {
 		if ( currentlevel == 0 && !loadingsavegame )
 		{
 			challengeRunCustomStartLevel = "minetown";
-			secretlevel = true;
+			secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
 		}
 	}
 
@@ -8960,7 +8960,7 @@ void doNewGame(bool makeHighscore) {
 				if ( currentlevel == 0 )
 				{
 					challengeRunCustomStartLevel = "minetown";
-					secretlevel = true;
+					secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
 				}
 			}
 			for ( int c = 0; c < MAXPLAYERS; ++c ) {
@@ -9362,7 +9362,7 @@ void doNewGame(bool makeHighscore) {
 				if ( currentlevel == 0 )
 				{
 					challengeRunCustomStartLevel = "minetown";
-					secretlevel = true;
+					secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
 				}
 			}
 			for ( int c = 0; c < MAXPLAYERS; ++c ) {
@@ -9638,7 +9638,7 @@ void doNewGame(bool makeHighscore) {
 		}
 		else
 		{
-			if ( currentlevel == 0 && !secretlevel )
+			if ( currentlevel == 0 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 			{
 				Compendium_t::Events_t::eventUpdateWorld(clientnum, Compendium_t::CPDM_MINEHEAD_ENTER, "minehead", 1);
 				Compendium_t::Events_t::eventUpdateCodex(clientnum, Compendium_t::CPDM_CLASS_GAMES_STARTED, "class", 1);
@@ -9787,6 +9787,8 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 		gameModeManager.setMode(GameModeManager_t::GAME_MODE_DEFAULT);
 	}
 
+	const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+
 	// in greater numbers achievement
 	if ( victory && victory <= 5 )
 	{
@@ -9803,9 +9805,9 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 			steamAchievement("BARONY_ACH_IN_GREATER_NUMBERS");
 		}
 
-		if ( (victory == 1 && currentlevel >= 20)
-			|| (victory == 2 && currentlevel >= 24)
-			|| ((victory == 3 || victory == 4 || victory == 5) && currentlevel >= 35) )
+		if ( (victory == 1 && levelData.id == "boss")
+			|| (victory == 2 && levelData.id == "hellboss")
+			|| ((victory == 3 || victory == 4 || victory == 5) && levelData.id == "sanctum") )
 		{
 			if ( client_classes[clientnum] == CLASS_ACCURSED )
 			{
@@ -9979,9 +9981,9 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 			gameModeManager.setMode(GameModeManager_t::GAME_MODE_CUSTOM_RUN); // for the achievement checks
 		}
 		// conduct achievements
-		if ( (victory == 1 && currentlevel >= 20)
-			|| (victory == 2 && currentlevel >= 24)
-			|| ((victory == 3 || victory == 4 || victory == 5) && currentlevel >= 35) )
+		if ( (victory == 1 && levelData.id == "boss")
+			|| (victory == 2 && levelData.id == "hellboss")
+			|| ((victory == 3 || victory == 4 || victory == 5) && levelData.id == "sanctum") )
 		{
 			if ( conductPenniless )
 			{
@@ -10013,7 +10015,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 
 		if ( victory == 1 )
 		{
-			if ( currentlevel >= 20 )
+			if ( levelData.id == "boss" )
 			{
 				if ( conductGameChallenges[CONDUCT_HARDCORE] )
 				{
@@ -10023,7 +10025,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 		}
 		else if ( victory == 2 )
 		{
-			if ( currentlevel >= 24 )
+			if ( levelData.id == "hellboss" )
 			{
 				if ( conductGameChallenges[CONDUCT_HARDCORE] )
 				{
@@ -10033,7 +10035,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 		}
 		else if ( victory == 3 || victory == 4 || victory == 5 )
 		{
-			if ( currentlevel >= 35 )
+			if ( levelData.id == "sanctum" )
 			{
 				if ( conductGameChallenges[CONDUCT_BRAWLER] )
 				{
@@ -10195,7 +10197,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 	darkmap = false;
 	multiplayer = SINGLE;
 	currentlevel = 0;
-	secretlevel = false;
+	secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 	clientnum = 0;
 	if ( !onServerDisconnect )
 	{
@@ -10382,263 +10384,6 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 #ifdef LOCAL_ACHIEVEMENTS
 	LocalAchievements_t::writeToFile();
 #endif
-}
-
-void doIntro() {
-	fadefinished = false;
-	fadeout = false;
-	intromoviestage++;
-	if ( intromoviestage >= 9 )
-	{
-		introstage = 1;
-		intromovietime = 0;
-		intromoviestage = 0;
-		int c;
-		for ( c = 0; c < 30; c++ )
-		{
-			intromoviealpha[c] = 0;
-		}
-	}
-	else
-	{
-		intromovietime = 0;
-	}
-
-}
-
-void doEndgameHerx() {
-#ifdef MUSIC
-	if ( firstendmoviestage == 0 )
-	{
-		playMusic(endgamemusic, true, true, false);
-	}
-#endif
-	firstendmoviestage++;
-	if ( firstendmoviestage >= 5 )
-	{
-		introstage = 4;
-		firstendmovietime = 0;
-		firstendmoviestage = 0;
-		int c;
-		for ( c = 0; c < 30; c++ )
-		{
-			firstendmoviealpha[c] = 0;
-		}
-		fadeout = true;
-	}
-	else
-	{
-		fadefinished = false;
-		fadeout = false;
-		firstendmovietime = 0;
-	}
-}
-
-void doEndgameDevil() {
-#ifdef MUSIC
-	if ( secondendmoviestage == 0 )
-	{
-		playMusic(endgamemusic, true, true, false);
-	}
-#endif
-	secondendmoviestage++;
-	if ( secondendmoviestage >= 5 )
-	{
-		introstage = 4;
-		secondendmovietime = 0;
-		secondendmoviestage = 0;
-		int c;
-		for ( c = 0; c < 30; c++ )
-		{
-			secondendmoviealpha[c] = 0;
-		}
-		fadeout = true;
-	}
-	else
-	{
-		fadefinished = false;
-		fadeout = false;
-		secondendmovietime = 0;
-	}
-}
-
-void doMidgame() {
-#ifdef MUSIC
-	if ( thirdendmoviestage == 0 )
-	{
-		playMusic(endgamemusic, true, true, false);
-	}
-#endif
-	thirdendmoviestage++;
-	if ( thirdendmoviestage >= thirdEndNumLines )
-	{
-		int c;
-		for ( c = 0; c < 30; c++ )
-		{
-			thirdendmoviealpha[c] = 0;
-		}
-		fadefinished = false;
-		fadeout = false;
-		if ( multiplayer != CLIENT )
-		{
-			thirdendmoviestage = 0;
-			thirdendmovietime = 0;
-			introstage = 1; // return to normal game functionality
-			skipLevelsOnLoad = 5;
-			loadnextlevel = true; // load the next level.
-			pauseGame(1, false); // unpause game
-		}
-	}
-	else
-	{
-		fadefinished = false;
-		fadeout = false;
-		thirdendmovietime = 0;
-	}
-}
-
-void doEndgameCitadel() {
-#ifdef MUSIC
-	if ( fourthendmoviestage == 0 )
-	{
-		playMusic(endgamemusic, true, true, false);
-	}
-#endif
-	fourthendmoviestage++;
-	if ( fourthendmoviestage >= fourthEndNumLines )
-	{
-		int c;
-		for ( c = 0; c < 30; c++ )
-		{
-			fourthendmoviealpha[c] = 0;
-		}
-		introstage = 4;
-		fourthendmovietime = 0;
-		fourthendmoviestage = 0;
-		fadeout = true;
-	}
-	else
-	{
-		fadefinished = false;
-		fadeout = false;
-		fourthendmovietime = 0;
-	}
-}
-
-void doEndgameClassicAndExtraMidGame() {
-	int movieType = introstage - 11;
-	for ( int i = 0; i < 8; ++i )
-	{
-		if ( i != movieType )
-		{
-			// clean the other end stage credits.
-			DLCendmovieStageAndTime[i][MOVIE_STAGE] = 0;
-			DLCendmovieStageAndTime[i][MOVIE_TIME] = 0;
-		}
-	}
-#ifdef MUSIC
-	if ( DLCendmovieStageAndTime[movieType][MOVIE_STAGE] == 0 )
-	{
-		playMusic(endgamemusic, true, true, false);
-	}
-#endif
-	DLCendmovieStageAndTime[movieType][MOVIE_STAGE]++;
-	if ( movieType == MOVIE_CLASSIC_WIN_BAPHOMET_MONSTERS || movieType == MOVIE_CLASSIC_WIN_MONSTERS )
-	{
-		// win crawls.
-		if ( DLCendmovieStageAndTime[movieType][MOVIE_STAGE] >= DLCendmovieNumLines[movieType] )
-		{
-			introstage = 4;
-			DLCendmovieStageAndTime[movieType][MOVIE_TIME] = 0;
-			DLCendmovieStageAndTime[movieType][MOVIE_STAGE] = 0;
-			int c;
-			for ( c = 0; c < 30; c++ )
-			{
-				DLCendmoviealpha[movieType][c] = 0;
-			}
-			fadeout = true;
-		}
-		else
-		{
-			fadefinished = false;
-			fadeout = false;
-			DLCendmovieStageAndTime[movieType][MOVIE_TIME] = 0;
-		}
-	}
-	else
-	{
-		// mid-game sequences
-		if ( DLCendmovieStageAndTime[movieType][MOVIE_STAGE] >= DLCendmovieNumLines[movieType] )
-		{
-			int c;
-			for ( c = 0; c < 30; c++ )
-			{
-				DLCendmoviealpha[movieType][c] = 0;
-			}
-			fadefinished = false;
-			fadeout = false;
-			if ( multiplayer != CLIENT )
-			{
-				DLCendmovieStageAndTime[movieType][MOVIE_STAGE] = 0;
-				DLCendmovieStageAndTime[movieType][MOVIE_TIME] = 0;
-				introstage = 1; // return to normal game functionality
-				if ( movieType == MOVIE_MIDGAME_HERX_MONSTERS )
-				{
-					skipLevelsOnLoad = 5;
-				}
-				else
-				{
-					skipLevelsOnLoad = 0;
-				}
-				loadnextlevel = true; // load the next level.
-				pauseGame(1, false); // unpause game
-			}
-		}
-		else
-		{
-			fadefinished = false;
-			fadeout = false;
-			DLCendmovieStageAndTime[movieType][MOVIE_TIME] = 0;
-		}
-	}
-}
-
-void doEndgameExpansion() {
-	int movieType = introstage - 11;
-	for ( int i = 0; i < 8; ++i )
-	{
-		if ( i != movieType )
-		{
-			// clean the other end stage credits.
-			DLCendmovieStageAndTime[i][MOVIE_STAGE] = 0;
-			DLCendmovieStageAndTime[i][MOVIE_TIME] = 0;
-		}
-	}
-#ifdef MUSIC
-	if ( DLCendmovieStageAndTime[movieType][MOVIE_STAGE] == 0 )
-	{
-		playMusic(endgamemusic, true, true, false);
-	}
-#endif
-	DLCendmovieStageAndTime[movieType][MOVIE_STAGE]++;
-	if ( DLCendmovieStageAndTime[movieType][MOVIE_STAGE] >= DLCendmovieNumLines[movieType] )
-	{
-		int c;
-		for ( c = 0; c < 30; c++ )
-		{
-			DLCendmoviealpha[movieType][c] = 0;
-		}
-		introstage = 4;
-		DLCendmovieStageAndTime[movieType][MOVIE_TIME] = 0;
-		DLCendmovieStageAndTime[movieType][MOVIE_STAGE] = 0;
-		fadeout = true;
-	}
-	else
-	{
-		fadefinished = false;
-		fadeout = false;
-		DLCendmovieStageAndTime[movieType][MOVIE_TIME] = 0;
-	}
 }
 
 /*-------------------------------------------------------------------------------

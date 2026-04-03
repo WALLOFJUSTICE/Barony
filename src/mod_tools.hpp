@@ -49,9 +49,9 @@ public:
 		rapidjson::Value val(value, d.GetAllocator());        // some value
 		d[subkey.c_str()].PushBack(val, d.GetAllocator());
 	}
-	static bool isLevelPartOfSet(int level, bool secret, std::pair<std::unordered_set<int>, std::unordered_set<int>>& pairOfSets)
+	static bool isLevelPartOfSet(int level, SecretLevelType secret, std::pair<std::unordered_set<int>, std::unordered_set<int>>& pairOfSets)
 	{
-		if ( !secret )
+		if ( secret == SecretLevelType::SECRET_LEVEL_NONE )
 		{
 			if ( pairOfSets.first.find(level) == pairOfSets.first.end() )
 			{
@@ -2272,7 +2272,7 @@ public:
 		return false;
 	}
 
-	bool processedMinotaurSpawn(int level, bool secret, std::string mapName)
+	bool processedMinotaurSpawn(int level, SecretLevelType secret, std::string mapName)
 	{
 		if ( !inUse() )
 		{
@@ -2319,7 +2319,7 @@ public:
 		return false;
 	}
 
-	bool processedDarkFloor(int level, bool secret, std::string mapName)
+	bool processedDarkFloor(int level, SecretLevelType secret, std::string mapName)
 	{
 		if ( !inUse() )
 		{
@@ -2355,7 +2355,7 @@ public:
 		return false;
 	}
 
-	bool processedShopFloor(int level, bool secret, std::string mapName, bool& shoplevel)
+	bool processedShopFloor(int level, SecretLevelType secret, std::string mapName, bool& shoplevel)
 	{
 		if ( !inUse() )
 		{
@@ -2396,7 +2396,7 @@ public:
 		PROPERTY_NPC
 	};
 
-	bool processedPropertyForFloor(int level, bool secret, std::string mapName, PropertyTypes propertyType, bool& bOut)
+	bool processedPropertyForFloor(int level, SecretLevelType secret, std::string mapName, PropertyTypes propertyType, bool& bOut)
 	{
 		if ( !inUse() )
 		{
@@ -4206,7 +4206,7 @@ struct Compendium_t
 	bool migrateOldSkillIndexes = false;
 	void readCodexFromFile(bool forceLoadBaseDirectory = false);
 	void readCodexTranslationsFromFile(bool forceLoadBaseDirectory = false);
-	static const char* compendiumCurrentLevelToWorldString(const int currentlevel, const bool secretlevel);
+	static const char* compendiumCurrentLevelToWorldString(const int currentlevel, const SecretLevelType secretleveltype);
 
 	struct CompendiumItems_t
 	{
@@ -4392,7 +4392,7 @@ struct Compendium_t
 		static void eventUpdateCodex(int playernum, const EventTags tag, const char* category, Sint32 value, const bool loadingValue = false, const int entryID = -1, const bool floorEvent = false);
 		static std::map<EventTags, std::map<int, EventVal_t>> playerEvents;
 		static std::map<EventTags, std::map<int, EventVal_t>> serverPlayerEvents[MAXPLAYERS];
-		static void onLevelChangeEvent(const int playernum, const int prevlevel, const bool prevsecretfloor, const std::string prevmapname, const bool died);
+		static void onLevelChangeEvent(const int playernum, const int prevlevel, const SecretLevelType prevsecretfloortype, const std::string prevmapname, const bool died);
 		static void onEndgameEvent(const int playernum, const bool tutorialend, const bool saveHighscore, const bool died);
 		static void sendClientDataOverNet(const int playernum);
 		static void updateEventsInMainLoop(const int playernum);
@@ -4406,7 +4406,7 @@ struct Compendium_t
 		static const int kEventCodexClassOffset = 3500;
 		static const int kEventCodexOffsetMax = 9999;
 		static int previousCurrentLevel;
-		static bool previousSecretlevel;
+		static SecretLevelType previousSecretleveltype;
 	};
 };
 
@@ -4415,13 +4415,48 @@ extern Compendium_t CompendiumEntries;
 struct TreasureRoomGenerator
 {
 	BaronyRNG treasure_rng;
-	std::unordered_set<unsigned int> treasure_floors;
-	std::unordered_set<unsigned int> treasure_secret_floors;
-	std::map<unsigned int, std::string> orb_floors;
-	std::map<unsigned int, std::string> station_floors;
-	std::map<unsigned int, std::string> station_secret_floors;
+	std::map<int, std::unordered_set<unsigned int>> treasure_floors;
+	std::map<int, std::map<unsigned int, std::string>> orb_floors;
+	std::map<int, std::map<unsigned int, std::string>> station_floors;
 	void init();
 	bool bForceSpawnForCurrentFloor(int secretlevelexit, bool minotaur, BaronyRNG& mapRNG);
 	bool bForceStationSpawnForCurrentFloor(int secretlevelexit);
 };
 extern TreasureRoomGenerator treasure_room_generator;
+
+struct GameLevels_t
+{
+	void readFromFile();
+
+	std::map<int, std::map<int, std::string>> allLevels;
+	struct LevelNode_t
+	{
+		std::map<int, std::string> exits;
+		int spawn_minotaurs_chance = 0;
+		int darkmap_chance = 0;
+		struct SecretExit_t
+		{
+			int chance = 0;
+			int exit_index = 0;
+			std::string filename = "";
+		};
+		SecretExit_t secret_exit;
+		bool disable_gen_exits = false;
+	};
+	struct LevelData_t
+	{
+		std::string id = "";
+		std::string mapString = "";
+		int depth = -1;
+		int level_track = 0;
+		LevelNode_t node;
+	};
+	std::map<std::string, LevelData_t> levelData;
+	bool enable_lich_messages = true;
+	static Uint32 hash;
+	bool verifyHash();
+	std::string getIDFromStage(const int current_level, const SecretLevelType secret_level) const;
+	LevelData_t getCurrentMap(const int current_level, const SecretLevelType current_secret_level) const;
+	LevelData_t getNextMap(const int current_level, const SecretLevelType current_secret_level, const SecretLevelType target_secret_level) const;
+};
+extern GameLevels_t gameLevels;

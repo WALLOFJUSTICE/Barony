@@ -124,33 +124,38 @@ void actLadder(Entity* my)
 					}
 					loadnextlevel = true;
 					Compendium_t::Events_t::previousCurrentLevel = currentlevel;
-					Compendium_t::Events_t::previousSecretlevel = secretlevel;
-					if (secretlevel)
+					Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
+					if (secretleveltype == SecretLevelType::SECRET_LEVEL_DEPTH1)
 					{
-						switch (currentlevel)
-						{
-							case 3:
-								for (c = 0; c < MAXPLAYERS; c++)
-								{
-									steamAchievementClient(c, "BARONY_ACH_THUNDERGNOME");
-								}
-								break;
-						}
-						if ( LADDER_SECRET_ENTRANCE )
-						{
-							skipLevelsOnLoad = -1; // don't skip a regular level anymore. still skip if in underworld.
-						}
 						if ( currentlevel == 0 )
 						{
 							if ( gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_SHOPPING_SPREE) )
 							{
-								skipLevelsOnLoad = 0;
+								skipLevelsOnLoad = 1;
 							}
 						}
 					}
 					if ( LADDER_SECRET_ENTRANCE )
 					{
-						secretlevel = (secretlevel == false);    // toggle level lists
+						if ( my->portalLevelTrack <= -1 )
+						{
+							// toggle level lists
+							if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
+							{
+								secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
+							}
+							else
+							{
+								secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
+							}
+						}
+						else
+						{
+							if ( my->portalLevelTrack < (int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX )
+							{
+								secretleveltype = (SecretLevelType)my->portalLevelTrack;
+							}
+						}
 					}
 					return;
 				}
@@ -353,71 +358,29 @@ void actPortal(Entity* my)
 				}
 				loadnextlevel = true;
 				Compendium_t::Events_t::previousCurrentLevel = currentlevel;
-				Compendium_t::Events_t::previousSecretlevel = secretlevel;
-				if ( secretlevel )
+				Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
+
+				if ( !my->portalNotSecret )
 				{
-					switch ( currentlevel )
+					if ( my->portalLevelTrack <= -1 )
 					{
-						case 9:
+						// toggle level lists
+						if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 						{
-							; //lol
-							bool visiblegrave = false;
-							node_t* node;
-							for ( node = map.entities->first; node != nullptr; node = node->next )
-							{
-								Entity* entity = (Entity*)node->element;
-								if ( entity->sprite == 224 && !entity->flags[INVISIBLE] )
-								{
-									visiblegrave = true;
-									break;
-								}
-							}
-							if ( visiblegrave )
-							{
-								for ( c = 0; c < MAXPLAYERS; ++c )
-								{
-									steamAchievementClient(c, "BARONY_ACH_ROBBING_THE_CRADLE");
-								}
-							}
-							break;
+							secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
 						}
-						case 14:
-							for ( c = 0; c < MAXPLAYERS; ++c )
-							{
-								steamAchievementClient(c, "BARONY_ACH_THESEUS_LEGACY");
-							}
-							break;
-						case 29:
-							for ( c = 0; c < MAXPLAYERS; c++ )
-							{
-								steamAchievementClient(c, "BARONY_ACH_CULT_FOLLOWING");
-							}
-							break;
-						case 34:
-							for ( c = 0; c < MAXPLAYERS; c++ )
-							{
-								steamAchievementClient(c, "BARONY_ACH_DESPAIR_CALMS");
-							}
-							break;
-						default:
-							break;
-					}
-					if ( strncmp(map.name, "Underworld", 10) )
-					{
-						skipLevelsOnLoad = -1; // don't skip a regular level anymore. still skip if in underworld.
+						else
+						{
+							secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
+						}
 					}
 					else
 					{
-						// underworld - don't skip on the early sections.
-						if ( currentlevel == 6 || currentlevel == 7 )
+						if ( my->portalLevelTrack < (int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX )
 						{
-							skipLevelsOnLoad = -1;
+							secretleveltype = (SecretLevelType)my->portalLevelTrack;
 						}
 					}
-				}
-				if ( !my->portalNotSecret )
-				{
-					secretlevel = (secretlevel == false);  // toggle level lists
 				}
 				return;
 			}
@@ -1135,6 +1098,31 @@ int customPortalLookForMapWithName(char* mapToSearch, bool isSecretLevel, int le
 	{
 		return -1000;
 	}
+	if ( mapToSearch[0] == '@' )
+	{
+		std::string map_id = mapToSearch;
+		map_id = map_id.substr(1);
+		auto find1 = gameLevels.levelData.find(map_id);
+		if ( find1 != gameLevels.levelData.end() )
+		{
+			int next = find1->second.depth;
+			secretleveltype = (SecretLevelType)find1->second.level_track;
+			if ( find1->second.depth - currentlevel > 0 )
+			{
+				skipLevelsOnLoad = find1->second.depth - currentlevel;
+			}
+			else
+			{
+				skipLevelsOnLoad = find1->second.depth - currentlevel - 1;
+			}
+			if ( skipLevelsOnLoad == -1 )
+			{
+				loadingSameLevelAsCurrent = true;
+			}
+			return -997;
+		}
+	}
+
 	std::string mapsDirectory; // store the full file path here.
 	if ( !isSecretLevel )
 	{
@@ -1461,7 +1449,7 @@ void actCustomPortal(Entity* my)
 				}
 				loadnextlevel = true;
 				Compendium_t::Events_t::previousCurrentLevel = currentlevel;
-				Compendium_t::Events_t::previousSecretlevel = secretlevel;
+				Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
 				skipLevelsOnLoad = 0;
 
 				if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_TUTORIAL )
@@ -1560,11 +1548,11 @@ void actCustomPortal(Entity* my)
 						}
 						if ( my->portalNotSecret )
 						{
-							secretlevel = false;
+							secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 						}
 						else
 						{
-							secretlevel = true;
+							secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
 						}
 						return;
 					}
@@ -1576,8 +1564,14 @@ void actCustomPortal(Entity* my)
 						messagePlayer(i, MESSAGE_MISC, "Error: Map %s was not found in the maps folder!", mapName);
 						return;
 					}
+					else if ( levelToJumpTo == -997 )
+					{
+						// jumping directly to a map id from levels.json, skip has been calculated
+						return;
+					}
 					int levelDifference = currentlevel - levelToJumpTo;
-					if ( levelDifference == 0 && ((my->portalNotSecret && !secretlevel) || (!my->portalNotSecret && secretlevel)) )
+					if ( levelDifference == 0 && ((my->portalNotSecret && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE) 
+						|| (!my->portalNotSecret && secretleveltype == SecretLevelType::SECRET_LEVEL_DEPTH1)) )
 					{
 						//// error, we're reloading the same position, will glitch out clients.
 						//loadnextlevel = false;
@@ -1597,18 +1591,26 @@ void actCustomPortal(Entity* my)
 					}
 					if ( my->portalNotSecret )
 					{
-						secretlevel = false;
+						secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 					}
 					else
 					{
-						secretlevel = true;
+						secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
 					}
 				}
 				else
 				{
 					if ( !my->portalNotSecret )
 					{
-						secretlevel = (secretlevel == false);    // toggle level lists
+						// toggle level lists
+						if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
+						{
+							secretleveltype = SecretLevelType::SECRET_LEVEL_DEPTH1;
+						}
+						else
+						{
+							secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
+						}
 						skipLevelsOnLoad = -1; // don't skip levels when toggling.
 					}
 					skipLevelsOnLoad += my->portalCustomLevelsToJump;

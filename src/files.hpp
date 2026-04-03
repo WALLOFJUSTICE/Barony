@@ -327,11 +327,3 @@ void physfsReloadMonsterLimbFiles();
 void physfsReloadSystemImages();
 bool physfsSearchSystemImagesToUpdate();
 void gamemodsUnloadCustomThemeMusic();
-
-enum MapParameterIndices : int
-{
-	LEVELPARAM_CHANCE_SECRET,
-	LEVELPARAM_CHANCE_DARKNESS,
-	LEVELPARAM_CHANCE_MINOTAUR,
-	LEVELPARAM_DISABLE_NORMAL_EXIT
-};

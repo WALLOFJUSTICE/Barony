@@ -1998,7 +1998,7 @@ void raycast(const view_t& camera, Sint8 (*minimap)[MINIMAP_MAX_DIMENSION], bool
 	raycastMaxDist = 16.0;
 	if ( player >= 0 )
 	{
-		if ( !strncmp(map.filename, "fortress", 8) )
+		if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "bastille", 8) )
 		{
 			raycastMaxDist = 6.0;
 		}

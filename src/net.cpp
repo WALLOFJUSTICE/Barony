@@ -2326,11 +2326,11 @@ static void changeLevel() {
 	}
 
 	int prevcurrentlevel = currentlevel;
-	int prevsecretfloor = secretlevel;
+	SecretLevelType prevsecretfloor = secretleveltype;
 	std::string prevmapname = map.name;
 
 	// unlock some steam achievements
-	if ( !secretlevel )
+	if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 	{
 		switch ( currentlevel )
 		{
@@ -2347,33 +2347,38 @@ static void changeLevel() {
 
 	// setup level change
 	const int newlevel = static_cast<Sint8>(net_packet->data[13]);
+	secretleveltype = static_cast<SecretLevelType>(net_packet->data[4]);
 	printlog("Received order to change level to %d (from %d).\n", newlevel, currentlevel);
 	currentlevel = newlevel;
 
-	if ( !secretlevel )
+	const auto levelData = gameLevels.getCurrentMap(prevcurrentlevel, prevsecretfloor);
+	if ( levelData.id == "mine4" )
 	{
-		switch ( currentlevel )
+		steamAchievement("BARONY_ACH_TWISTY_PASSAGES");
+	}
+	else if ( levelData.id == "swamp4" )
+	{
+		steamAchievement("BARONY_ACH_JUNGLE_FEVER");
+	}
+	else if ( levelData.id == "labyrinth4" )
+	{
+		steamAchievement("BARONY_ACH_SANDMAN");
+	}
+	else if ( levelData.id == "caves4" )
+	{
+		steamAchievement("BARONY_ACH_SPELUNKY");
+	}
+	else if ( levelData.id == "temple" )
+	{
+		steamAchievement("BARONY_ACH_TRICKS_AND_TRAPS");
+	}
+
+	auto nextLevelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+	if ( nextLevelData.id == "sanctum" )
+	{
+		if ( ((completionTime / TICKS_PER_SECOND) / 60) <= 45 )
 		{
-			case 5:
-				steamAchievement("BARONY_ACH_TWISTY_PASSAGES");
-				break;
-			case 10:
-				steamAchievement("BARONY_ACH_JUNGLE_FEVER");
-				break;
-			case 15:
-				steamAchievement("BARONY_ACH_SANDMAN");
-				break;
-			case 30:
-				steamAchievement("BARONY_ACH_SPELUNKY");
-				break;
-			case 35:
-				if ( ((completionTime / TICKS_PER_SECOND) / 60) <= 45 )
-				{
-					conductGameChallenges[CONDUCT_BLESSED_BOOTS_SPEED] = 1;
-				}
-				break;
-			default:
-				break;
+			conductGameChallenges[CONDUCT_BLESSED_BOOTS_SPEED] = 1;
 		}
 	}
 
@@ -2391,7 +2396,7 @@ static void changeLevel() {
 
 	// load next level
 	darkmap = false;
-	secretlevel = net_packet->data[4];
+
 	mapseed = SDLNet_Read32(&net_packet->data[5]);
 	numplayers = 0;
 	entity_uids = (Uint32)SDLNet_Read32(&net_packet->data[9]);
@@ -2476,15 +2481,9 @@ static void changeLevel() {
     clearChunks();
     createChunks();
 
-	// (special) unlock temple achievement
-	if ( secretlevel && currentlevel == 8 )
-	{
-		steamAchievement("BARONY_ACH_TRICKS_AND_TRAPS");
-	}
-
 	Player::Minimap_t::mapDetails.clear();
 
-	if ( !secretlevel )
+	if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 	{
 		messagePlayer(clientnum, MESSAGE_PROGRESSION, Language::get(710), currentlevel);
 	}
@@ -2492,46 +2491,54 @@ static void changeLevel() {
 	{
 		messagePlayer(clientnum, MESSAGE_PROGRESSION, Language::get(711), map.name);
 	}
-	if ( !secretlevel && result )
+
+	if ( result > 0 ) // secret exit spawn index
 	{
-		switch ( currentlevel )
+		for ( auto& pair : nextLevelData.node.exits )
 		{
-			case 2:
+			if ( pair.second == "gnomishmines" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(712));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(712)));
-				break;
-			case 3:
+			}
+			else if ( pair.second == "minetown" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(713));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(713)));
-				break;
-			case 7:
+			}
+			else if ( pair.second == "temple" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(714));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(714)));
-				break;
-			case 8:
+			}
+			else if ( pair.second == "greatcastle" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(715));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(715)));
-				break;
-			case 11:
+			}
+			else if ( pair.second == "sokoban" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(716));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(716)));
-				break;
-			case 13:
+			}
+			else if ( pair.second == "minotaur" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(717));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(717)));
-				break;
-			case 16:
+			}
+			else if ( pair.second == "mysticlibrary" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(718));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(718)));
-				break;
-			case 18:
+			}
+			else if ( pair.second == "underworld2_1" )
+			{
 				messagePlayer(clientnum, MESSAGE_HINT, Language::get(719));
 				Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(719)));
-				break;
-			default:
-				break;
+			}
 		}
 	}
+
 	if ( MFLAG_DISABLETELEPORT )
 	{
 		Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_teleport", Language::get(2382)));
@@ -5405,7 +5412,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 
 	// level change
 	{'LVLC', [](){
-		if ( currentlevel == net_packet->data[13] && secretlevel == net_packet->data[4] )
+		if ( currentlevel == net_packet->data[13] && (int)secretleveltype == net_packet->data[4] )
 		{
 			// the server's just doing a routine check
 			return;
@@ -7084,7 +7091,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		}
 
 		// check if the info is outdated
-		if ( net_packet->data[5] != currentlevel || net_packet->data[18] != secretlevel )
+		if ( net_packet->data[5] != currentlevel || net_packet->data[18] != (int)secretleveltype )
 		{
 			return;
 		}
@@ -7183,7 +7190,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		}
 
 		// check if the info is outdated
-		if ( net_packet->data[5] != currentlevel || net_packet->data[18] != secretlevel )
+		if ( net_packet->data[5] != currentlevel || net_packet->data[18] != (int)secretleveltype )
 		{
 			return;
 		}
@@ -7287,7 +7294,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 
 	{'REZZ', []() {
 		// check if the info is outdated
-		if ( net_packet->data[5] != currentlevel || net_packet->data[10] != secretlevel )
+		if ( net_packet->data[5] != currentlevel || net_packet->data[10] != (int)secretleveltype )
 		{
 			return;
 		}
@@ -7340,7 +7347,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 	// player created ghost
 	{'GHOS', []() {
 		// check if the info is outdated
-		if ( net_packet->data[5] != currentlevel || net_packet->data[10] != secretlevel )
+		if ( net_packet->data[5] != currentlevel || net_packet->data[10] != (int)secretleveltype )
 		{
 			return;
 		}

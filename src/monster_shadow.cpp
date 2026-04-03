@@ -24,6 +24,7 @@ See LICENSE for details.
 #include "prng.hpp"
 #include "interface/consolecommand.hpp"
 #include "scores.hpp"
+#include "mod_tools.hpp"
 
 static ConsoleVariable<bool> cvar_spawnArtemisia("/spawn_artemisia", false);
 
@@ -53,7 +54,10 @@ void initShadow(Entity* my, Stat* myStats)
 
 		if ( myStats != nullptr )
 		{
-			if ( !strncmp(map.name, "Underworld", 10) && currentlevel <= 7 && my->monsterStoreType == 0 )
+			const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+			if ( !strncmp(map.name, "Underworld", 10) 
+				&& (levelData.id == "underworld1_1" || levelData.id == "underworld1_2")
+				&& my->monsterStoreType == 0 )
 			{
 				my->monsterStoreType = 2;
 			}

@@ -382,7 +382,7 @@ std::string loadCustomNextMap = "";
 Uint32 forceMapSeed = 0;
 bool loading = false;
 int currentlevel = 0, minotaurlevel = 0;
-bool secretlevel = false;
+SecretLevelType secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 bool darkmap = false;
 bool skipintro = true;
 bool broadcast = false;

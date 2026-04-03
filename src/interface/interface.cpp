@@ -29347,11 +29347,11 @@ CalloutRadialMenu::CalloutType CalloutRadialMenu::getCalloutTypeForEntity(const 
 	}
 	else if ( parent->behavior == &actLadder )
 	{
-		if ( secretlevel && parent->skill[3] == 1 ) // secret ladder
+		if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE && parent->skill[3] == 1 ) // secret ladder
 		{
 			type = CALLOUT_TYPE_SECRET_EXIT;
 		}
-		else if ( !secretlevel && parent->skill[3] == 1 ) // secret ladder
+		else if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE && parent->skill[3] == 1 ) // secret ladder
 		{
 			type = CALLOUT_TYPE_SECRET_ENTRANCE;
 		}
@@ -29364,7 +29364,7 @@ CalloutRadialMenu::CalloutType CalloutRadialMenu::getCalloutTypeForEntity(const 
 	{
 		if ( parent->skill[3] == 0 ) // secret entrance portal
 		{
-			if ( secretlevel )
+			if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE )
 			{
 				type = CALLOUT_TYPE_SECRET_EXIT;
 			}
@@ -31710,11 +31710,11 @@ bool CalloutRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool updat
 	{
 		if ( updateInteractText )
 		{
-			if ( secretlevel && selectedEntity.skill[3] == 1 ) // secret ladder
+			if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE && selectedEntity.skill[3] == 1 ) // secret ladder
 			{
 				strcat(interactText, Language::get(4360)); // "secret exit"
 			}
-			else if ( !secretlevel && selectedEntity.skill[3] == 1 ) // secret ladder
+			else if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE && selectedEntity.skill[3] == 1 ) // secret ladder
 			{
 				strcat(interactText, Language::get(4359)); // "secret entrance" 
 			}
@@ -31730,7 +31730,7 @@ bool CalloutRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool updat
 		{
 			if ( selectedEntity.skill[3] == 0 ) // secret entrance portal
 			{
-				if ( secretlevel )
+				if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE )
 				{
 					strcat(interactText, Language::get(4360)); // "secret exit" 
 				}

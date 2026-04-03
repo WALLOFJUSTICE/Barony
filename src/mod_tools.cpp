@@ -17257,110 +17257,127 @@ void Compendium_t::Events_t::updateEventsInMainLoop(const int playernum)
 	}
 }
 
-const char* Compendium_t::compendiumCurrentLevelToWorldString(const int currentlevel, const bool secretlevel)
+const char* Compendium_t::compendiumCurrentLevelToWorldString(const int currentlevel, const SecretLevelType secretleveltype)
 {
-	if ( !secretlevel )
+	const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+
+	if ( levelData.id == "start" )
 	{
-		if ( currentlevel == 0 )
-		{
-			return "minehead";
-		}
-		else if ( currentlevel == 5 || currentlevel == 10 || currentlevel == 15
-			|| currentlevel == 30 )
-		{
-			return "transition floor";
-		}
-		else if ( currentlevel >= 1 && currentlevel <= 4 )
-		{
-			return "mines";
-		}
-		else if ( currentlevel >= 6 && currentlevel <= 9 )
-		{
-			return "swamps";
-		}
-		else if ( currentlevel >= 11 && currentlevel <= 14 )
-		{
-			return "labyrinth";
-		}
-		else if ( currentlevel >= 16 && currentlevel <= 19 )
-		{
-			return "ruins";
-		}
-		else if ( currentlevel == 20 )
-		{
-			return "herx lair";
-		}
-		else if ( currentlevel >= 21 && currentlevel <= 23 )
-		{
-			return "hell";
-		}
-		else if ( currentlevel == 24 )
-		{
-			return "molten throne";
-		}
-		else if ( currentlevel == 25 )
-		{
-			return "hamlet";
-		}
-		else if ( currentlevel >= 26 && currentlevel <= 29 )
-		{
-			return "crystal caves";
-		}
-		else if ( currentlevel >= 31 && currentlevel <= 34 )
-		{
-			return "arcane citadel";
-		}
-		else if ( currentlevel == 35 )
-		{
-			return "citadel sanctum";
-		}
+		return "minehead";
 	}
-	else
+	else if ( levelData.id == "minetoswamp"
+		|| levelData.id == "swamptolabyrinth"
+		|| levelData.id == "labyrinthtoruins" 
+		|| levelData.id == "cavestocitadel" )
 	{
-		if ( currentlevel == 3 )
-		{
-			return "gnomish mines";
-		}
-		else if ( currentlevel == 4 )
-		{
-			return "minetown";
-		}
-		else if ( currentlevel == 8 )
-		{
-			return "temple";
-		}
-		else if ( currentlevel == 9 )
-		{
-			return "haunted castle";
-		}
-		else if ( currentlevel == 12 )
-		{
-			return "sokoban";
-		}
-		else if ( currentlevel == 14 )
-		{
-			return "minotaur maze";
-		}
-		else if ( currentlevel == 17 )
-		{
-			return "mystic library";
-		}
-		else if ( currentlevel == 19 || currentlevel == 20 )
-		{
-			return "underworld";
-		}
-		else if ( currentlevel == 6 || currentlevel == 7 )
-		{
-			return "underworld";
-		}
-		else if ( currentlevel == 29 )
-		{
-			return "cockatrice lair";
-		}
-		else if ( currentlevel == 34 )
-		{
-			return "brams castle";
-		}
+		return "transition floor";
+	}
+	else if ( levelData.id == "mine1"
+		|| levelData.id == "mine2"
+		|| levelData.id == "mine3"
+		|| levelData.id == "mine4" )
+	{
+		return "mines";
+	}
+	else if ( levelData.id == "swamp1"
+		|| levelData.id == "swamp2"
+		|| levelData.id == "swamp3"
+		|| levelData.id == "swamp4" )
+	{
+		return "swamps";
+	}
+	else if ( levelData.id == "labyrinth1"
+		|| levelData.id == "labyrinth2"
+		|| levelData.id == "labyrinth3"
+		|| levelData.id == "labyrinth4" )
+	{
+		return "labyrinth";
+	}
+	else if ( levelData.id == "ruins1"
+		|| levelData.id == "ruins2"
+		|| levelData.id == "ruins3"
+		|| levelData.id == "ruins4" )
+	{
+		return "ruins";
+	}
+	else if ( levelData.id == "boss" )
+	{
+		return "herx lair";
+	}
+	else if ( levelData.id == "hell1"
+		|| levelData.id == "hell2"
+		|| levelData.id == "hell3" )
+	{
+		return "hell";
+	}
+	else if ( levelData.id == "hellboss" )
+	{
+		return "molten throne";
+	}
+	else if ( levelData.id == "hamlet" )
+	{
+		return "hamlet";
+	}
+	else if ( levelData.id == "caves1"
+		|| levelData.id == "caves2"
+		|| levelData.id == "caves3"
+		|| levelData.id == "caves4" )
+	{
+		return "crystal caves";
+	}
+	else if ( levelData.id == "citadel1"
+		|| levelData.id == "citadel2"
+		|| levelData.id == "citadel3"
+		|| levelData.id == "citadel4" )
+	{
+		return "arcane citadel";
+	}
+	else if ( levelData.id == "sanctum" )
+	{
+		return "citadel sanctum";
+	}
+	else if ( levelData.id == "gnomishmines" )
+	{
+		return "gnomish mines";
+	}
+	else if ( levelData.id == "minetown" )
+	{
+		return "minetown";
+	}
+	else if ( levelData.id == "temple" )
+	{
+		return "temple";
+	}
+	else if ( levelData.id == "greatcastle" )
+	{
+		return "haunted castle";
+	}
+	else if ( levelData.id == "sokoban" )
+	{
+		return "sokoban";
+	}
+	else if ( levelData.id == "minotaur" )
+	{
+		return "minotaur maze";
+	}
+	else if ( levelData.id == "mysticlibrary" )
+	{
+		return "mystic library";
+	}
+	else if ( levelData.id == "underworld1_1" 
+		|| levelData.id == "underworld1_2"
+		|| levelData.id == "underworld2_1" 
+		|| levelData.id == "underworld2_2" )
+	{
+		return "underworld";
+	}
+	else if ( levelData.id == "caveslair" )
+	{
+		return "cockatrice lair";
+	}
+	else if ( levelData.id == "bramscastle" )
+	{
+		return "brams castle";
 	}
 	return "";
 }
@@ -17369,6 +17386,8 @@ void Compendium_t::Events_t::onEndgameEvent(const int playernum, const bool tuto
 {
 	if ( players[playernum]->isLocalPlayer() )
 	{
+		const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+
 		if ( tutorialend )
 		{
 			if ( stats[playernum]->HP <= 0 )
@@ -17384,7 +17403,7 @@ void Compendium_t::Events_t::onEndgameEvent(const int playernum, const bool tuto
 			players[playernum]->compendiumProgress.updateFloorEvents();
 			if ( victory )
 			{
-				if ( currentlevel == 35 )
+				if ( levelData.id == "sanctum" )
 				{
 					onCompendiumLevelExit(playernum, "citadel sanctum", false, died);
 					eventUpdateCodex(playernum, Compendium_t::CPDM_CLASS_GAMES_WON, "class", 1);
@@ -17392,7 +17411,7 @@ void Compendium_t::Events_t::onEndgameEvent(const int playernum, const bool tuto
 					eventUpdateCodex(playernum, Compendium_t::CPDM_CLASS_LVL_WON_MIN, "leveling up", stats[playernum]->LVL);
 					eventUpdateCodex(playernum, Compendium_t::CPDM_RACE_GAMES_WON, "races", 1);
 				}
-				else if ( currentlevel == 24 )
+				else if ( levelData.id == "hellboss" )
 				{
 					onCompendiumLevelExit(playernum, "molten throne", false, died);
 					eventUpdateCodex(playernum, Compendium_t::CPDM_CLASS_GAMES_WON_HELL, "class", 1);
@@ -17400,7 +17419,7 @@ void Compendium_t::Events_t::onEndgameEvent(const int playernum, const bool tuto
 					eventUpdateCodex(playernum, Compendium_t::CPDM_CLASS_LVL_WON_HELL_MIN, "leveling up", stats[playernum]->LVL);
 					eventUpdateCodex(playernum, Compendium_t::CPDM_RACE_GAMES_WON_HELL, "races", 1);
 				}
-				else if ( currentlevel == 20 )
+				else if ( levelData.id == "boss" )
 				{
 					onCompendiumLevelExit(playernum, "herx lair", false, died);
 					eventUpdateCodex(playernum, Compendium_t::CPDM_CLASS_GAMES_WON_CLASSIC, "class", 1);
@@ -17411,7 +17430,7 @@ void Compendium_t::Events_t::onEndgameEvent(const int playernum, const bool tuto
 			}
 			else
 			{
-				const char* currentWorldString = compendiumCurrentLevelToWorldString(currentlevel, secretlevel);
+				const char* currentWorldString = compendiumCurrentLevelToWorldString(currentlevel, secretleveltype);
 				if ( strcmp(currentWorldString, "") )
 				{
 					if ( stats[playernum]->HP <= 0 || died )
@@ -17463,7 +17482,7 @@ void Player::CompendiumProgress_t::updateFloorEvents()
 	floorEvents.clear();
 }
 
-void Compendium_t::Events_t::onLevelChangeEvent(const int playernum, const int prevlevel, const bool prevsecretfloor, const std::string prevmapname, const bool died)
+void Compendium_t::Events_t::onLevelChangeEvent(const int playernum, const int prevlevel, const SecretLevelType prevsecretfloortype, const std::string prevmapname, const bool died)
 {
 	if ( intro ) { return; }
 	if ( playernum < 0 || playernum >= MAXPLAYERS )
@@ -17496,7 +17515,7 @@ void Compendium_t::Events_t::onLevelChangeEvent(const int playernum, const int p
 		}
 		else
 		{
-			const char* currentWorldString = compendiumCurrentLevelToWorldString(currentlevel, secretlevel);
+			const char* currentWorldString = compendiumCurrentLevelToWorldString(currentlevel, secretleveltype);
 			if ( strcmp(currentWorldString, "") )
 			{
 				onCompendiumLevelExit(playernum, currentWorldString, true, died);
@@ -17523,8 +17542,8 @@ void Compendium_t::Events_t::onLevelChangeEvent(const int playernum, const int p
 				}
 			}
 
-			const char* prevWorldString = compendiumCurrentLevelToWorldString(prevlevel, prevsecretfloor);
-			if ( !prevsecretfloor )
+			const char* prevWorldString = compendiumCurrentLevelToWorldString(prevlevel, prevsecretfloortype);
+			if ( prevsecretfloortype == SecretLevelType::SECRET_LEVEL_NONE )
 			{
 				if ( prevlevel == 0 )
 				{
@@ -18644,7 +18663,7 @@ void Compendium_t::Events_t::eventUpdateCodex(int playernum, const EventTags tag
 
 Uint8 Compendium_t::Events_t::clientSequence = 0;
 int Compendium_t::Events_t::previousCurrentLevel = 0;
-bool Compendium_t::Events_t::previousSecretlevel = false;
+SecretLevelType Compendium_t::Events_t::previousSecretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 std::map<int, std::string> Compendium_t::Events_t::clientDataStrings[MAXPLAYERS];
 std::map<int, std::map<int, std::string>> Compendium_t::Events_t::clientReceiveData;
 void Compendium_t::Events_t::sendClientDataOverNet(const int playernum)
@@ -19813,3 +19832,204 @@ bool Compendium_t::AchievementData_t::sortAlphabetical = false;
 std::string Compendium_t::compendium_sorting = "default";
 bool Compendium_t::compendium_sorting_hide_undiscovered = false;
 bool Compendium_t::compendium_sorting_hide_ach_unlocked = false;
+
+GameLevels_t gameLevels;
+void GameLevels_t::readFromFile()
+{
+	const std::string filename = "maps/levels.json";
+	if ( !PHYSFS_getRealDir(filename.c_str()) )
+	{
+		printlog("[JSON]: Error: Could not locate json file %s", filename.c_str());
+		return;
+	}
+
+	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
+	inputPath.append(PHYSFS_getDirSeparator());
+	inputPath.append(filename.c_str());
+
+	File* fp = FileIO::open(inputPath.c_str(), "rb");
+	if ( !fp )
+	{
+		printlog("[JSON]: Error: Could not locate json file %s", inputPath.c_str());
+		return;
+	}
+
+	char buf[65536];
+	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
+	buf[count] = '\0';
+	rapidjson::StringStream is(buf);
+	FileIO::close(fp);
+
+	rapidjson::Document d;
+	d.ParseStream(is);
+	if ( !d.HasMember("version") || !d.HasMember("level_tracks") )
+	{
+		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
+		return;
+	}
+
+	allLevels.clear();
+	levelData.clear();
+	enable_lich_messages = true;
+	for ( int i = 0; i < 16; ++i )
+	{
+		LevelData_t data;
+		data.mapString = "map: warpzone";
+		std::string defaultMap = "default" + std::to_string(i);
+		data.id = defaultMap;
+		data.level_track = i;
+		levelData[defaultMap] = data;
+		allLevels[i][-1] = defaultMap;
+	}
+
+	if ( d.HasMember("enable_lich_messages") )
+	{
+		if ( d["enable_lich_messages"].IsBool() )
+		{
+			enable_lich_messages = d["enable_lich_messages"].GetBool();
+		}
+	}
+
+	for ( auto it = d["level_tracks"].MemberBegin(); it != d["level_tracks"].MemberEnd(); ++it )
+	{
+		if ( !it->value.IsArray() )
+		{
+			continue;
+		}
+		for ( auto arr_it = it->value.Begin(); arr_it != it->value.End(); ++arr_it )
+		{
+			if ( !arr_it->IsObject() )
+			{
+				continue;
+			}
+			LevelData_t data;
+			data.level_track = std::stoi(it->name.GetString());
+			if ( arr_it->HasMember("depth") && (*arr_it)["depth"].IsInt() )
+			{
+				data.depth = (*arr_it)["depth"].GetInt();
+			}
+			if ( arr_it->HasMember("id") && (*arr_it)["id"].IsString() )
+			{
+				data.id = (*arr_it)["id"].GetString();
+			}
+			if ( arr_it->HasMember("type") && (*arr_it)["type"].IsString() )
+			{
+				data.mapString = (*arr_it)["type"].GetString();
+			}
+			if ( arr_it->HasMember("exits") && (*arr_it)["exits"].IsArray() )
+			{
+				int index = -1;
+				for ( auto arr2 = (*arr_it)["exits"].Begin(); arr2 != (*arr_it)["exits"].End(); ++arr2 )
+				{
+					++index;
+					if ( arr2->IsString() )
+					{
+						data.node.exits[index] = arr2->GetString();
+					}
+				}
+			}
+			if ( arr_it->HasMember("minotaur_chance") && (*arr_it)["minotaur_chance"].IsInt() )
+			{
+				data.node.spawn_minotaurs_chance = (*arr_it)["minotaur_chance"].IsInt();
+			}
+			if ( arr_it->HasMember("darkmap_chance") && (*arr_it)["darkmap_chance"].IsInt() )
+			{
+				data.node.darkmap_chance = (*arr_it)["darkmap_chance"].IsInt();
+			}
+			if ( arr_it->HasMember("disable_gen_exits") && (*arr_it)["disable_gen_exits"].IsBool() )
+			{
+				data.node.disable_gen_exits = (*arr_it)["disable_gen_exits"].GetBool();
+			}
+			if ( arr_it->HasMember("secret_exit") && (*arr_it)["secret_exit"].IsObject() )
+			{
+				if ( (*arr_it)["secret_exit"].HasMember("chance") && (*arr_it)["secret_exit"]["chance"].IsInt()
+					/*&& (*arr_it)["secret_exit"].HasMember("exit_index") && (*arr_it)["secret_exit"]["exit_index"].IsInt()*/
+					&& (*arr_it)["secret_exit"].HasMember("filename") && (*arr_it)["secret_exit"]["filename"].IsString() )
+				{
+					data.node.secret_exit.chance = (*arr_it)["secret_exit"]["chance"].GetInt();
+					//data.node.secret_exit.exit_index = (*arr_it)["secret_exit"]["exit_index"].GetInt();
+					data.node.secret_exit.filename = (*arr_it)["secret_exit"]["filename"].GetString();
+				}
+			}
+			levelData[data.id] = data;
+			allLevels[data.level_track][data.depth] = data.id;
+		}
+	}
+}
+
+std::string GameLevels_t::getIDFromStage(const int current_level, const SecretLevelType secret_level) const
+{
+	auto find1 = allLevels.find((int)secret_level);
+	if ( find1 != allLevels.end() )
+	{
+		auto find2 = find1->second.find(current_level);
+		if ( find2 != find1->second.end() )
+		{
+			return find2->second;
+		}
+	}
+
+	return std::string("default" + std::to_string((int)secret_level));
+}
+
+GameLevels_t::LevelData_t GameLevels_t::getCurrentMap(const int current_level, const SecretLevelType current_secret_level) const
+{
+	std::string currentStage = getIDFromStage(current_level, current_secret_level);
+	auto find1 = levelData.find(currentStage);
+
+	LevelData_t data;
+	const  std::string defaultString = std::string("default" + std::to_string((int)current_secret_level));
+	if ( levelData.find(defaultString) != levelData.end() )
+	{
+		data = levelData.at(defaultString);
+	}
+
+	if ( find1 != levelData.end() )
+	{
+		data = find1->second;
+	}
+
+	if ( data.depth == -1 )
+	{
+		data.depth = current_level;
+	}
+	return data;
+}
+
+Uint32 GameLevels_t::hash = 0;
+bool GameLevels_t::verifyHash()
+{
+	return false;
+}
+
+GameLevels_t::LevelData_t GameLevels_t::getNextMap(const int current_level, const SecretLevelType current_secret_level, const SecretLevelType target_secret_level) const
+{
+	std::string currentStage = getIDFromStage(current_level, current_secret_level);
+	auto find1 = levelData.find(currentStage);
+
+	LevelData_t data;
+	const std::string defaultString = std::string("default" + std::to_string((int)target_secret_level));
+	if ( levelData.find(defaultString) != levelData.end() )
+	{
+		data = levelData.at(defaultString);
+	}
+
+	if ( find1 != levelData.end() )
+	{
+		auto find2 = find1->second.node.exits.find((int)target_secret_level);
+		if ( find2 != find1->second.node.exits.end() )
+		{
+			auto find3 = levelData.find(find2->second);
+			if ( find3 != levelData.end() )
+			{
+				data = find3->second;
+			}
+		}
+	}
+
+	if ( data.depth == -1 )
+	{
+		data.depth = current_level + 1;
+	}
+	return data;
+}

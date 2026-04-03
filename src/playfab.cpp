@@ -63,7 +63,7 @@ void PlayfabUser_t::gameEnd()
     eventContent.Payload["multiplayer"] = multiplayer;
     eventContent.Payload["victory"] = victory;
     eventContent.Payload["level"] = currentlevel;
-    eventContent.Payload["secret"] = secretlevel;
+    eventContent.Payload["secret"] = (int)secretleveltype;
     int players = 1;
     if ( multiplayer == SERVER || (multiplayer == SINGLE && splitscreen) )
     {
@@ -118,7 +118,7 @@ void PlayfabUser_t::biomeLeave()
         }
     }
     eventContent.Payload["level"] = currentlevel;
-    eventContent.Payload["secret"] = secretlevel;
+    eventContent.Payload["secret"] = (int)secretleveltype;
     eventContent.Payload["numplayers"] = players;
     eventContent.Payload["version"] = VERSION;
     eventContent.Payload["splitscreen"] = (multiplayer == SINGLE && splitscreen) ? 1 : 0;
@@ -194,7 +194,7 @@ void PlayfabUser_t::globalStat(int index, int player)
     eventContent.Name = "statglobal";
     eventContent.Payload["stat"] = SteamGlobalStatStr[index].c_str();
     eventContent.Payload["level"] = currentlevel;
-    eventContent.Payload["secret"] = secretlevel;
+    eventContent.Payload["secret"] = (int)secretleveltype;
     eventContent.Payload["multiplayer"] = multiplayer;
     eventContent.Payload["version"] = VERSION;
     int players = 1;

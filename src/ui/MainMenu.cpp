@@ -26117,8 +26117,8 @@ failed:
 					{
 						loadnextlevel = true; 
 						Compendium_t::Events_t::previousCurrentLevel = currentlevel;
-						Compendium_t::Events_t::previousSecretlevel = secretlevel;
-						skipLevelsOnLoad = 0; 
+						Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
+						//skipLevelsOnLoad = 0; 
 						pauseGame(1, false);
 					}
 				};
@@ -26127,21 +26127,21 @@ failed:
 					{
 						loadnextlevel = true; 
 						Compendium_t::Events_t::previousCurrentLevel = currentlevel;
-						Compendium_t::Events_t::previousSecretlevel = secretlevel;
-						skipLevelsOnLoad = 5; 
+						Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
+						secretleveltype = SecretLevelType::SECRET_LEVEL_NONE;
 						pauseGame(1, false);
 					}
 				};
 				Scene scenes[] = {
-				    {"data/story/HerxMidpointHuman.json", skipHellLevels},
-				    {"data/story/HerxMidpointAutomaton.json", skipHellLevels},
-				    {"data/story/HerxMidpointBeast.json", skipHellLevels},
-				    {"data/story/HerxMidpointEvil.json", skipHellLevels},
+				    {"data/story/HerxMidpointHuman.json", loadNextLevel},
+				    {"data/story/HerxMidpointAutomaton.json", loadNextLevel},
+				    {"data/story/HerxMidpointBeast.json", loadNextLevel},
+				    {"data/story/HerxMidpointEvil.json", loadNextLevel},
 
-				    {"data/story/BaphometMidpointHuman.json", loadNextLevel},
-				    {"data/story/BaphometMidpointAutomaton.json", loadNextLevel},
-				    {"data/story/BaphometMidpointBeast.json", loadNextLevel},
-				    {"data/story/BaphometMidpointEvil.json", loadNextLevel},
+				    {"data/story/BaphometMidpointHuman.json", skipHellLevels},
+				    {"data/story/BaphometMidpointAutomaton.json", skipHellLevels},
+				    {"data/story/BaphometMidpointBeast.json", skipHellLevels},
+				    {"data/story/BaphometMidpointEvil.json", skipHellLevels},
 
 				    {"data/story/EndingHuman.json", fullEnding},
 				    {"data/story/EndingAutomaton.json", fullEnding},

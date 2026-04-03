@@ -21,6 +21,7 @@
 #include "player.hpp"
 #include "scores.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 void initLich(Entity* my, Stat* myStats)
 {
@@ -248,7 +249,7 @@ void lichDie(Entity* my)
 		playSoundPlayer(c, 153, 128);
 		steamAchievementClient(c, "BARONY_ACH_LICH_HUNTER");
 		if ( completionTime < 20 * 60 * TICKS_PER_SECOND
-			&& currentlevel >= 20 )
+			&& gameLevels.getCurrentMap(currentlevel, secretleveltype).id == "boss" )
 		{
 			//messagePlayer(c, "completion time: %d", completionTime);
 			steamAchievementClient(c, "BARONY_ACH_BOOTS_OF_SPEED");

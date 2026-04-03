@@ -1668,7 +1668,7 @@ Entity* Player::Ghost_t::respawn()
 		int y = (spawnY);
 		SDLNet_Write16((Sint16)(x), &net_packet->data[6]);
 		SDLNet_Write16((Sint16)(y), &net_packet->data[8]);
-		net_packet->data[10] = secretlevel;
+		net_packet->data[10] = (int)secretleveltype;
 		net_packet->address.host = net_server.host;
 		net_packet->address.port = net_server.port;
 		net_packet->len = 11;
@@ -1896,7 +1896,7 @@ Entity* Player::Ghost_t::spawnGhost()
 		int y = (spawnY);
 		SDLNet_Write16((Sint16)(x), &net_packet->data[6]);
 		SDLNet_Write16((Sint16)(y), &net_packet->data[8]);
-		net_packet->data[10] = secretlevel;
+		net_packet->data[10] = (int)secretleveltype;
 		net_packet->address.host = net_server.host;
 		net_packet->address.port = net_server.port;
 		net_packet->len = 11;
@@ -2626,7 +2626,7 @@ void actDeathGhost(Entity* my)
 			SDLNet_Write16((Sint16)(my->vel_y * 128), &net_packet->data[12]);
 			SDLNet_Write16((Sint16)(my->yaw * 128), &net_packet->data[14]);
 			SDLNet_Write16((Sint16)(my->pitch * 128), &net_packet->data[16]);
-			net_packet->data[18] = secretlevel;
+			net_packet->data[18] = (int)secretleveltype;
 			// continued after clipmove...
 		}
 
@@ -6060,9 +6060,9 @@ void playerDebugTests(Entity* my)
 				}
 			}
 		}
-		if ( killingDone && killingDoneLookup.find(currentlevel + (secretlevel ? 100 : 0)) == killingDoneLookup.end() )
+		if ( killingDone && killingDoneLookup.find(currentlevel + (secretleveltype != SecretLevelType::SECRET_LEVEL_NONE ? 100 : 0)) == killingDoneLookup.end() )
 		{
-			killingDoneLookup[currentlevel + (secretlevel ? 100 : 0)] = true;
+			killingDoneLookup[currentlevel + (secretleveltype != SecretLevelType::SECRET_LEVEL_NONE ? 100 : 0)] = true;
 
 			messagePlayer(0, MESSAGE_DEBUG, "Killing done");
 			if ( currentlevel == 35 )
@@ -6114,7 +6114,7 @@ void playerDebugTests(Entity* my)
 				{
 					if ( *cvar_test_xp == 4 || *cvar_test_xp == 5 )
 					{
-						if ( secretlevel )
+						if ( secretleveltype != SecretLevelType::SECRET_LEVEL_NONE )
 						{
 							consoleCommand("/togglesecretlevel");
 							consoleCommand("/jumplevel -1");
@@ -7947,47 +7947,47 @@ void actPlayer(Entity* my)
 			}
 			else
 			{
-				if ( PLAYER_ALIVETIME == 300 && !MFLAG_DISABLEMESSAGES )
+				if ( PLAYER_ALIVETIME == 300 && !MFLAG_DISABLEMESSAGES && gameLevels.enable_lich_messages )
 				{
 					// five seconds in, herx chimes in (maybe)
 					// replicate the messagePlayer to all splitscreen clients so it's not randomly different between screens
 					my->playerLevelEntrySpeech = 0;
-					if ( currentlevel == 0 && !secretlevel )
+					if ( currentlevel == 0 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = local_rng.rand() % 3;
 						playSound(126 + speech, 128);
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(537));
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(77 + speech));
 					}
-					else if ( currentlevel == 1 && !secretlevel )
+					else if ( currentlevel == 1 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = local_rng.rand() % 3;
 						playSound(117 + speech, 128);
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(537));
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(70 + speech));
 					}
-					else if ( currentlevel == 5 && !secretlevel )
+					else if ( currentlevel == 5 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = local_rng.rand() % 2;
 						playSound(156 + speech, 128);
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(537));
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(83 + speech));
 					}
-					else if ( currentlevel == 10 && !secretlevel )
+					else if ( currentlevel == 10 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = local_rng.rand() % 2;
 						playSound(158 + speech, 128);
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(537));
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(85 + speech));
 					}
-					else if ( currentlevel == 15 && !secretlevel )
+					else if ( currentlevel == 15 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = local_rng.rand() % 2;
 						playSound(160 + speech, 128);
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(537));
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(87 + speech));
 					}
-					else if ( currentlevel == 26 && !secretlevel )
+					else if ( currentlevel == 26 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = 1 + local_rng.rand() % 3;
 						switch ( speech )
@@ -8010,7 +8010,7 @@ void actPlayer(Entity* my)
 						}
 						my->playerLevelEntrySpeech = speech;
 					}
-					else if ( currentlevel == 28 && !secretlevel )
+					else if ( currentlevel == 28 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = 1 + local_rng.rand() % 3;
 						switch ( speech )
@@ -8033,7 +8033,7 @@ void actPlayer(Entity* my)
 						}
 						my->playerLevelEntrySpeech = speech;
 					}
-					else if ( currentlevel == 30 && !secretlevel )
+					else if ( currentlevel == 30 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = 1;
 						switch ( speech )
@@ -8046,7 +8046,7 @@ void actPlayer(Entity* my)
 						}
 						my->playerLevelEntrySpeech = speech;
 					}
-					else if ( currentlevel == 31 && !secretlevel )
+					else if ( currentlevel == 31 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = 1;
 						switch ( speech )
@@ -8059,7 +8059,7 @@ void actPlayer(Entity* my)
 						}
 						my->playerLevelEntrySpeech = speech;
 					}
-					else if ( currentlevel == 33 && !secretlevel )
+					else if ( currentlevel == 33 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = 1 + local_rng.rand() % 2;
 						switch ( speech )
@@ -8077,7 +8077,7 @@ void actPlayer(Entity* my)
 						}
 						my->playerLevelEntrySpeech = speech;
 					}
-					else if ( currentlevel == 35 && !secretlevel )
+					else if ( currentlevel == 35 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						int speech = 1;
 						switch ( speech )
@@ -8124,10 +8124,10 @@ void actPlayer(Entity* my)
 						}
 					}
 				}
-				else if ( PLAYER_ALIVETIME == 480 && !MFLAG_DISABLEMESSAGES )
+				else if ( PLAYER_ALIVETIME == 480 && !MFLAG_DISABLEMESSAGES && gameLevels.enable_lich_messages )
 				{
 					// 8 seconds in, herx chimes in again (maybe)
-					if ( currentlevel == 1 && !secretlevel )
+					if ( currentlevel == 1 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						playSound(120 + local_rng.rand() % 3, 128);
 						messageLocalPlayersColor(color, MESSAGE_WORLD, Language::get(73));
@@ -11475,7 +11475,7 @@ void actPlayer(Entity* my)
 			SDLNet_Write16((Sint16)(PLAYER_VELY * 128), &net_packet->data[12]);
 			SDLNet_Write16((Sint16)(my->yaw * 128), &net_packet->data[14]);
 			SDLNet_Write16((Sint16)(my->pitch * 128), &net_packet->data[16]);
-			net_packet->data[18] = secretlevel;
+			net_packet->data[18] = (int)secretleveltype;
 			net_packet->address.host = net_server.host;
 			net_packet->address.port = net_server.port;
 			net_packet->len = 19;
@@ -14918,7 +14918,7 @@ void Entity::playerLevelEntrySpeechSecond()
 	int timeDiff = playerAliveTime - 300;
 	int orangeSpeechVolume = 128;
 	int blueSpeechVolume = 112;
-	if ( timeDiff > 0 && playerLevelEntrySpeech > 0 && !secretlevel )
+	if ( timeDiff > 0 && playerLevelEntrySpeech > 0 && secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 	{
 		switch ( currentlevel )
 		{
@@ -15116,7 +15116,6 @@ void Entity::playerLevelEntrySpeechSecond()
 			default:
 				break;
 		}
-
 	}
 }
 

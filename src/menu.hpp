@@ -298,13 +298,6 @@ void doNewGame(bool makeHighscore);
 void doCredits();
 void doEndgame(bool saveHighscore, bool onServerDisconnect);
 void doEndgameOnDisconnect();
-void doIntro();
-void doEndgameHerx();
-void doEndgameDevil();
-void doMidgame();
-void doEndgameCitadel();
-void doEndgameClassicAndExtraMidGame();
-void doEndgameExpansion();
 
 enum CharacterDLCValidation : int
 {

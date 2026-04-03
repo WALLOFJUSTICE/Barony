@@ -108,7 +108,27 @@ extern bool loadingSameLevelAsCurrent;
 extern std::string loadCustomNextMap;
 extern Uint32 forceMapSeed;
 extern int currentlevel;
-extern bool secretlevel;
+enum class SecretLevelType
+{
+	SECRET_LEVEL_NONE,
+	SECRET_LEVEL_DEPTH1,
+	SECRET_LEVEL_DEPTH2,
+	SECRET_LEVEL_DEPTH3,
+	SECRET_LEVEL_DEPTH4,
+	SECRET_LEVEL_DEPTH5,
+	SECRET_LEVEL_DEPTH6,
+	SECRET_LEVEL_DEPTH7,
+	SECRET_LEVEL_DEPTH8,
+	SECRET_LEVEL_DEPTH9,
+	SECRET_LEVEL_DEPTH10,
+	SECRET_LEVEL_DEPTH11,
+	SECRET_LEVEL_DEPTH12,
+	SECRET_LEVEL_DEPTH13,
+	SECRET_LEVEL_DEPTH14,
+	SECRET_LEVEL_DEPTH15,
+	SECRET_LEVEL_DEPTH_MAX
+};
+extern SecretLevelType secretleveltype;
 extern bool darkmap;
 extern int shaking, bobbing;
 

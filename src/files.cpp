@@ -2330,7 +2330,14 @@ bool verifyMapHash(const char* filename, int hash, bool *fileExistsInTable) {
 	if (!result) {
 		printlog("map '%s' failed hash check (%d should be %d)", filename, hash, canonical);
 	}
-	return result;
+
+	const bool gameLevelsHash = gameLevels.verifyHash();
+	if ( !gameLevelsHash )
+	{
+		printlog("levels.json failed hash check");
+	}
+
+	return result && gameLevelsHash;
 }
 
 int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* creatureList, int *checkMapHash)
@@ -2394,7 +2401,12 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 
 	// read map version number
 	fp->read(valid_data, sizeof(char), strlen("BARONY LMPV2.0"));
-	if ( strncmp(valid_data, "BARONY LMPV3.2", strlen("BARONY LMPV2.0")) == 0 )
+	if ( strncmp(valid_data, "BARONY LMPV3.3", strlen("BARONY LMPV2.0")) == 0 )
+	{
+		// portal/ladder updates
+		editorVersion = 33;
+	}
+	else if ( strncmp(valid_data, "BARONY LMPV3.2", strlen("BARONY LMPV2.0")) == 0 )
 	{
 		// floor deco walls
 		editorVersion = 32;
@@ -3064,6 +3076,21 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 				case 33:
 					fp->read(&entity->skill[0], sizeof(Sint32), 1);
 					break;
+				case 34:
+					if ( editorVersion < 33 )
+					{
+						setSpriteAttributes(entity, nullptr, nullptr);
+					}
+					else
+					{
+						fp->read(&entity->portalLevelTrack, sizeof(Sint32), 1);
+						Sint32 dummy = 0; // some extra future data
+						fp->read(&dummy, sizeof(Sint32), 1);
+						fp->read(&dummy, sizeof(Sint32), 1);
+						fp->read(&dummy, sizeof(Sint32), 1);
+						fp->read(&dummy, sizeof(Sint32), 1);
+					}
+					break;
 				default:
 					break;
 			}
@@ -3312,7 +3339,7 @@ int saveMap(const char* filename2)
 			return 1;
 		}
 
-		fp->write("BARONY LMPV3.2", sizeof(char), strlen("BARONY LMPV2.0")); // magic code
+		fp->write("BARONY LMPV3.3", sizeof(char), strlen("BARONY LMPV2.0")); // magic code
 		fp->write(map.name, sizeof(char), 32); // map filename
 		fp->write(map.author, sizeof(char), 32); // map author
 		fp->write(&map.width, sizeof(Uint32), 1); // map width
@@ -3580,6 +3607,16 @@ int saveMap(const char* filename2)
 				case 33:
 					fp->write(&entity->skill[0], sizeof(Sint32), 1);
 					break;
+				case 34:
+				{
+					fp->write(&entity->portalLevelTrack, sizeof(Sint32), 1);
+					Sint32 dummy = 0;
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					break;
+				}
 				default:
 					break;
 			}
@@ -3750,33 +3787,34 @@ int physfsLoadMapFile(int levelToLoad, Uint32 seed, bool useRandSeed, int* check
 	}
 	else
 	{
-		if ( !secretlevel )
-		{
-			mapsDirectory = PHYSFS_getRealDir(LEVELSFILE);
-			mapsDirectory.append(PHYSFS_getDirSeparator()).append(LEVELSFILE);
-		}
-		else
-		{
-			mapsDirectory = PHYSFS_getRealDir(SECRETLEVELSFILE);
-			mapsDirectory.append(PHYSFS_getDirSeparator()).append(SECRETLEVELSFILE);
-		}
-		printlog("Maps directory: %s", mapsDirectory.c_str());
-		std::vector<std::string> levelsList = getLinesFromDataFile(mapsDirectory);
-		line = levelsList.front();
-		int levelsCounted = 0;
-		if ( levelToLoad > 0 ) // if level == 0, then load up the first map.
-		{
-			for ( std::vector<std::string>::const_iterator i = levelsList.begin(); i != levelsList.end() && levelsCounted <= levelToLoad; ++i )
-			{
-				// process i, iterate through all the map levels until currentlevel.
-				line = *i;
-				if ( line[0] == '\n' )
-				{
-					continue;
-				}
-				++levelsCounted;
-			}
-		}
+		line = gameLevels.getCurrentMap(levelToLoad, secretleveltype).mapString;
+		//if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
+		//{
+		//	mapsDirectory = PHYSFS_getRealDir(LEVELSFILE);
+		//	mapsDirectory.append(PHYSFS_getDirSeparator()).append(LEVELSFILE);
+		//}
+		//else if ( secretleveltype == SecretLevelType::SECRET_LEVEL_DEPTH1 )
+		//{
+		//	mapsDirectory = PHYSFS_getRealDir(SECRETLEVELSFILE);
+		//	mapsDirectory.append(PHYSFS_getDirSeparator()).append(SECRETLEVELSFILE);
+		//}
+		//printlog("Maps directory: %s", mapsDirectory.c_str());
+		//std::vector<std::string> levelsList = getLinesFromDataFile(mapsDirectory);
+		//line = levelsList.front();
+		//int levelsCounted = 0;
+		//if ( levelToLoad > 0 ) // if level == 0, then load up the first map.
+		//{
+		//	for ( std::vector<std::string>::const_iterator i = levelsList.begin(); i != levelsList.end() && levelsCounted <= levelToLoad; ++i )
+		//	{
+		//		// process i, iterate through all the map levels until currentlevel.
+		//		line = *i;
+		//		if ( line[0] == '\n' )
+		//		{
+		//			continue;
+		//		}
+		//		++levelsCounted;
+		//	}
+		//}
 	}
 	std::size_t found = line.find(' ');
 	char tempstr[1024];
@@ -3808,7 +3846,7 @@ int physfsLoadMapFile(int levelToLoad, Uint32 seed, bool useRandSeed, int* check
 				}
 				else
 				{
-					int rng_cycles = std::max(0, currentlevel + (secretlevel ? 100 : 0));
+					int rng_cycles = std::max(0, currentlevel + ((int)secretleveltype * 100));
 					while ( rng_cycles > 0 )
 					{
 						map_sequence_rng.rand(); // dummy advance
@@ -3817,64 +3855,74 @@ int physfsLoadMapFile(int levelToLoad, Uint32 seed, bool useRandSeed, int* check
 					mapseed = map_sequence_rng.rand();
 				}
 			}
-			return loadMap(mapName.c_str(), &map, map.entities, map.creatures, checkMapHash);
+			int result = loadMap(mapName.c_str(), &map, map.entities, map.creatures, checkMapHash);
+			/*if ( !strncmp(map.filename, "backrooms", 9) )
+			{
+				bool flipHorizontal = (mapseed % 4) == 1 || (mapseed % 4) == 2;
+				bool flipVertical = (mapseed % 4) == 1 || (mapseed % 4) == 3;
+				if ( flipHorizontal || flipVertical )
+				{
+					for ( int x = 0; x <= (map.width - 1) / 2; ++x )
+					{
+						for ( int y = 0; y <= (map.height - 1) / 2; ++y )
+						{
+							for ( int z = 0; z < MAPLAYERS; ++z )
+							{
+								int index = z + y * MAPLAYERS + x * MAPLAYERS * map.height;
+								int index2 = z + (flipVertical ? (map.height - 1 - y) : y) * MAPLAYERS + (flipHorizontal ? (map.width - 1 - x) : x) * MAPLAYERS * map.height;
+								int tmp = map.tiles[index];
+								map.tiles[index] = map.tiles[index2];
+								map.tiles[index2] = tmp;
+
+								int index3 = z + (flipHorizontal ? (map.height - 1 - y) : y) * MAPLAYERS + (flipHorizontal ? x : (map.width - 1 - x)) * MAPLAYERS * map.height;
+								int index4 = z + ((flipHorizontal && flipVertical) ? y : (map.height - 1 - y)) * MAPLAYERS + (map.width - 1 - x) * MAPLAYERS * map.height;
+								if ( (index3 == index && index2 == index4) || (index3 == index2 && index == index4) )
+								{
+									continue;
+								}
+								tmp = map.tiles[index3];
+								map.tiles[index3] = map.tiles[index4];
+								map.tiles[index4] = tmp;
+							}
+						}
+					}
+
+					for ( auto node = map.entities->first; node; node = node->next )
+					{
+						Entity* entity = (Entity*)node->element;
+						if ( entity && entity->sprite == 1 )
+						{
+							if ( flipHorizontal )
+							{
+								int x = entity->x / 16;
+								x = map.width - 1 - x;
+								entity->x = x * 16;
+							}
+							if ( flipVertical )
+							{
+								int y = entity->y / 16;
+								y = map.width - 1 - y;
+								entity->y = y * 16;
+							}
+						}
+					}
+				}
+			}*/
+			return result;
 		}
 		else if ( mapType.compare("gen:") == 0 )
 		{
-			std::size_t secretChanceFound = mapName.find(" secret%: ");
-			std::size_t darkmapChanceFound = mapName.find(" darkmap%: ");
-			std::size_t minotaurChanceFound = mapName.find(" minotaur%: ");
-			std::size_t disableNormalExitFound = mapName.find(" noexit");
-			std::string parameterStr = "";
-			std::tuple<int, int, int, int> mapParameters = std::make_tuple(-1, -1, -1, 0);
-			if ( secretChanceFound != std::string::npos )
-			{
-				// found a percentage for secret levels to spawn.
-				parameterStr = mapName.substr(secretChanceFound + strlen(" secret%: "));
-				parameterStr = parameterStr.substr(0, parameterStr.find_first_of(" \0"));
-				std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) = std::stoi(parameterStr);
-				if ( std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) < 0 || std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) > 100 )
-				{
-					std::get<LEVELPARAM_CHANCE_SECRET>(mapParameters) = -1;
-				}
-			}
-			if ( darkmapChanceFound != std::string::npos )
-			{
-				// found a percentage for secret levels to spawn.
-				parameterStr = mapName.substr(darkmapChanceFound + strlen(" darkmap%: "));
-				parameterStr = parameterStr.substr(0, parameterStr.find_first_of(" \0"));
-				std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) = std::stoi(parameterStr);
-				if ( std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) < 0 || std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) > 100 )
-				{
-					std::get<LEVELPARAM_CHANCE_DARKNESS>(mapParameters) = -1;
-				}
-			}
-			if ( minotaurChanceFound != std::string::npos )
-			{
-				// found a percentage for secret levels to spawn.
-				parameterStr = mapName.substr(minotaurChanceFound + strlen(" minotaur%: "));
-				parameterStr = parameterStr.substr(0, parameterStr.find_first_of(" \0"));
-				std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) = std::stoi(parameterStr);
-				if ( std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) < 0 || std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) > 100 )
-				{
-					std::get<LEVELPARAM_CHANCE_MINOTAUR>(mapParameters) = -1;
-				}
-			}
-			if ( disableNormalExitFound != std::string::npos )
-			{
-				std::get<LEVELPARAM_DISABLE_NORMAL_EXIT>(mapParameters) = 1;
-			}
 			mapName = mapName.substr(0, mapName.find_first_of(" \0"));
 
 			strncpy(tempstr, mapName.c_str(), mapName.length());
 			tempstr[mapName.length()] = '\0';
 			if ( useRandSeed )
 			{
-				return generateDungeon(tempstr, local_rng.rand(), mapParameters);
+				return generateDungeon(tempstr, local_rng.rand());
 			}
 			else
 			{
-				return generateDungeon(tempstr, seed, mapParameters);
+				return generateDungeon(tempstr, seed);
 			}
 		}
 		//printlog("%s", mapName.c_str());

@@ -752,6 +752,9 @@ int checkSpriteType(Sint32 sprite)
 	case 220:
 		// wind
 		return 33;
+	case 45: // portal
+	case 46: // secret ladder
+		return 34;
 	default:
 		return 0;
 		break;
@@ -3174,6 +3177,19 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 		{
 			// set default new entity attributes.
 			entityNew->skill[0] = 0;
+		}
+	}
+	else if ( spriteType == 34 ) // portal/secret ladder
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->portalLevelTrack = entityToCopy->portalLevelTrack;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->portalLevelTrack = -1;
 		}
 	}
 

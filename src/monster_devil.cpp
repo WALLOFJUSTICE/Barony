@@ -22,6 +22,7 @@
 #include "scores.hpp"
 #include "magic/magic.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 void initDevil(Entity* my, Stat* myStats)
 {
@@ -222,7 +223,7 @@ void devilDie(Entity* my)
 	{
 		steamAchievementClient(c, "BARONY_ACH_EVIL_INCARNATE");
 		if ( completionTime < 20 * 60 * TICKS_PER_SECOND
-			&& currentlevel >= 24 )
+			&& gameLevels.getCurrentMap(currentlevel, secretleveltype).id == "hellboss" )
 		{
 			//messagePlayer(c, "completion time: %d", completionTime);
 			steamAchievementClient(c, "BARONY_ACH_BOOTS_OF_SPEED");

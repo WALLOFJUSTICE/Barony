@@ -2056,7 +2056,7 @@ void gameLogic(void)
 					}
 
 					// unlock some steam achievements
-					if ( !secretlevel )
+					if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						switch ( currentlevel )
 						{
@@ -2070,22 +2070,27 @@ void gameLogic(void)
 
 					std::string prevmapname = map.name;
 
-					bool loadingTheSameFloorAsCurrent = false;
 					if ( skipLevelsOnLoad > 0 )
 					{
 						currentlevel += skipLevelsOnLoad;
 					}
+					else if ( skipLevelsOnLoad < 0 )
+					{
+						currentlevel += skipLevelsOnLoad;
+						++currentlevel;
+					}
 					else
 					{
-						if ( skipLevelsOnLoad < 0 )
+						auto nextMap = gameLevels.getNextMap(Compendium_t::Events_t::previousCurrentLevel, Compendium_t::Events_t::previousSecretleveltype, secretleveltype);
+						currentlevel = nextMap.depth;
+#ifndef NDEBUG
+						assert(nextMap.level_track == (int)secretleveltype);
+#endif
+
+						if ( Compendium_t::Events_t::previousCurrentLevel == currentlevel )
 						{
-							currentlevel += skipLevelsOnLoad;
-							if ( skipLevelsOnLoad == -1 )
-							{
-								loadingTheSameFloorAsCurrent = true;
-							}
+							loadingSameLevelAsCurrent = true;
 						}
-						++currentlevel;
 					}
 					skipLevelsOnLoad = 0;
 
@@ -2097,7 +2102,7 @@ void gameLogic(void)
 					else
 					{
 						map_sequence_rng.seedBytes(&uniqueGameKey, sizeof(uniqueGameKey));
-						int rng_cycles = std::max(0, currentlevel + (secretlevel ? 100 : 0));
+						int rng_cycles = std::max(0, currentlevel + ((int)secretleveltype * 100));
 						while ( rng_cycles > 0 )
 						{
 							map_sequence_rng.rand(); // dummy advance
@@ -2112,33 +2117,86 @@ void gameLogic(void)
 						forceMapSeed = 0;
 					}
 
-					if ( !secretlevel )
+					auto levelData = gameLevels.getCurrentMap(Compendium_t::Events_t::previousCurrentLevel, Compendium_t::Events_t::previousSecretleveltype);
+					if ( levelData.id == "mine4" )
 					{
-						switch ( currentlevel )
+						steamAchievement("BARONY_ACH_TWISTY_PASSAGES");
+						// the observer will send out to clients.
+						achievementObserver.updatePlayerAchievement(clientnum,
+							AchievementObserver::Achievement::BARONY_ACH_COOP_ESCAPE_MINES, AchievementObserver::ACH_EVENT_NONE);
+					}
+					else if ( levelData.id == "swamp4" )
+					{
+						steamAchievement("BARONY_ACH_JUNGLE_FEVER");
+					}
+					else if ( levelData.id == "labyrinth4" )
+					{
+						steamAchievement("BARONY_ACH_SANDMAN");
+					}
+					else if ( levelData.id == "caves4" )
+					{
+						steamAchievement("BARONY_ACH_SPELUNKY");
+					}
+					else if ( levelData.id == "temple" )
+					{
+						steamAchievement("BARONY_ACH_TRICKS_AND_TRAPS");
+					}
+					else if ( levelData.id == "gnomishmines" )
+					{
+						for ( int c = 0; c < MAXPLAYERS; c++ )
 						{
-							case 5:
-								steamAchievement("BARONY_ACH_TWISTY_PASSAGES");
-								// the observer will send out to clients.
-								achievementObserver.updatePlayerAchievement(clientnum,
-									AchievementObserver::Achievement::BARONY_ACH_COOP_ESCAPE_MINES, AchievementObserver::ACH_EVENT_NONE);
+							steamAchievementClient(c, "BARONY_ACH_THUNDERGNOME");
+						}
+					}
+					else if ( levelData.id == "greatcastle" )
+					{
+						bool visiblegrave = false;
+						node_t* node;
+						for ( node = map.entities->first; node != nullptr; node = node->next )
+						{
+							Entity* entity = (Entity*)node->element;
+							if ( entity->sprite == 224 && !entity->flags[INVISIBLE] )
+							{
+								visiblegrave = true;
 								break;
-							case 10:
-								steamAchievement("BARONY_ACH_JUNGLE_FEVER");
-								break;
-							case 15:
-								steamAchievement("BARONY_ACH_SANDMAN");
-								break;
-							case 30:
-								steamAchievement("BARONY_ACH_SPELUNKY");
-								break;
-							case 35:
-								if ( ((completionTime / TICKS_PER_SECOND) / 60) <= 45 )
-								{
-									conductGameChallenges[CONDUCT_BLESSED_BOOTS_SPEED] = 1;
-								}
-								break;
-							default:
-								break;
+							}
+						}
+						if ( visiblegrave )
+						{
+							for ( int c = 0; c < MAXPLAYERS; ++c )
+							{
+								steamAchievementClient(c, "BARONY_ACH_ROBBING_THE_CRADLE");
+							}
+						}
+					}
+					else if ( levelData.id == "minotaur" )
+					{
+						for ( int c = 0; c < MAXPLAYERS; ++c )
+						{
+							steamAchievementClient(c, "BARONY_ACH_THESEUS_LEGACY");
+						}
+					}
+					else if ( levelData.id == "caveslair" )
+					{
+						for ( int c = 0; c < MAXPLAYERS; c++ )
+						{
+							steamAchievementClient(c, "BARONY_ACH_CULT_FOLLOWING");
+						}
+					}
+					else if ( levelData.id == "bramscastle" )
+					{
+						for ( int c = 0; c < MAXPLAYERS; c++ )
+						{
+							steamAchievementClient(c, "BARONY_ACH_DESPAIR_CALMS");
+						}
+					}
+
+					auto nextLevelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+					if ( nextLevelData.id == "sanctum" )
+					{
+						if ( ((completionTime / TICKS_PER_SECOND) / 60) <= 45 )
+						{
+							conductGameChallenges[CONDUCT_BLESSED_BOOTS_SPEED] = 1;
 						}
 					}
 
@@ -2158,7 +2216,7 @@ void gameLogic(void)
 							{
 								strcpy((char*)net_packet->data, "LVLC");
 							}
-							net_packet->data[4] = secretlevel;
+							net_packet->data[4] = (int)secretleveltype;
 							SDLNet_Write32(mapseed, &net_packet->data[5]);
 							SDLNet_Write32(lastEntityUIDs, &net_packet->data[9]);
 							net_packet->data[13] = currentlevel;
@@ -2294,11 +2352,6 @@ void gameLogic(void)
 						}
 					}
 
-					// (special) unlock temple achievement
-					if ( secretlevel && currentlevel == 8 )
-					{
-						steamAchievement("BARONY_ACH_TRICKS_AND_TRAPS");
-					}
 					// flag setting we've reached the lich
 					if ( !strncmp(map.name, "Boss", 4) || !strncmp(map.name, "Sanctum", 7) )
 					{
@@ -2317,7 +2370,7 @@ void gameLogic(void)
 							gameModeManager.Tutorial.createFirstTutorialCompletedPrompt();
 						}
 					}
-					else if ( !secretlevel )
+					else if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
 					{
 						messageLocalPlayers(MESSAGE_PROGRESSION, Language::get(710), currentlevel);
 					}
@@ -2328,46 +2381,53 @@ void gameLogic(void)
 
 					gameModeManager.Tutorial.showFirstTutorialCompletedPrompt = false;
 
-					if ( !secretlevel && result )
+					if ( result > 0 ) // secret exit spawn index
 					{
-						switch ( currentlevel )
+						for ( auto& pair : nextLevelData.node.exits )
 						{
-							case 2:
+							if ( pair.second == "gnomishmines" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(712));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(712)));
-								break;
-							case 3:
+							}
+							else if ( pair.second == "minetown" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(713));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(713)));
-								break;
-							case 7:
+							}
+							else if ( pair.second == "temple" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(714));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(714)));
-								break;
-							case 8:
+							}
+							else if ( pair.second == "greatcastle" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(715));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(715)));
-								break;
-							case 11:
+							}
+							else if ( pair.second == "sokoban" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(716));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(716)));
-								break;
-							case 13:
+							}
+							else if ( pair.second == "minotaur" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(717));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(717)));
-								break;
-							case 16:
+							}
+							else if ( pair.second == "mysticlibrary" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(718));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(718)));
-								break;
-							case 18:
+							}
+							else if ( pair.second == "underworld2_1" )
+							{
 								messageLocalPlayers(MESSAGE_HINT, Language::get(719));
 								Player::Minimap_t::mapDetails.push_back(std::make_pair("secret_exit_description", Language::get(719)));
-								break;
-							default:
-								break;
+							}
 						}
 					}
+
 					if ( MFLAG_DISABLETELEPORT )
 					{
 						Player::Minimap_t::mapDetails.push_back(std::make_pair("map_flag_disable_teleport", Language::get(2382)));
@@ -2503,7 +2563,7 @@ void gameLogic(void)
 									newNode->element = myuid;
 									*myuid = monster->getUID();
 
-									if ( monsterStats->type == HUMAN && currentlevel == 25 && !strncmp(map.name, "Mages Guild", 11) )
+									if ( monsterStats->type == HUMAN && levelData.id == "hamlet" && !strncmp(map.name, "Mages Guild", 11) )
 									{
 										steamAchievementClient(c, "BARONY_ACH_ESCORT");
 										Compendium_t::Events_t::eventUpdateWorld(c, Compendium_t::CPDM_HUMANS_SAVED, "the church", 1);
@@ -2601,7 +2661,7 @@ void gameLogic(void)
 
 					for ( c = 0; c < MAXPLAYERS; c++ )
 					{
-						Compendium_t::Events_t::onLevelChangeEvent(c, Compendium_t::Events_t::previousCurrentLevel, Compendium_t::Events_t::previousSecretlevel, prevmapname, playerDied[c]);
+						Compendium_t::Events_t::onLevelChangeEvent(c, Compendium_t::Events_t::previousCurrentLevel, Compendium_t::Events_t::previousSecretleveltype, prevmapname, playerDied[c]);
 						players[c]->compendiumProgress.playerAliveTimeTotal = 0;
 						players[c]->compendiumProgress.playerGameTimeTotal = 0;
 
@@ -2736,7 +2796,7 @@ void gameLogic(void)
 						}
 						if (net_packet && net_packet->data) {
 							strcpy((char*)net_packet->data, "LVLC");
-							net_packet->data[4] = secretlevel;
+							net_packet->data[4] = (int)secretleveltype;
 							SDLNet_Write32(mapseed, &net_packet->data[5]);
 							SDLNet_Write32(lastEntityUIDs, &net_packet->data[9]);
 							net_packet->data[13] = currentlevel;

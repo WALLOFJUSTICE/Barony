@@ -106,7 +106,7 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 	}
 	if ( gameplayCustomManager.inUse() ) {
 		if ( CustomHelpers::isLevelPartOfSet(
-			currentlevel, secretlevel, gameplayCustomManager.minimapDisableFloors) ) {
+			currentlevel, secretleveltype, gameplayCustomManager.minimapDisableFloors) ) {
 			return;
 		}
 	}
