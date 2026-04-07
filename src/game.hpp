@@ -42,7 +42,6 @@ extern Uint32 impulses[NUMIMPULSES];
 extern Uint32 joyimpulses[NUM_JOY_IMPULSES]; //Joystick/gamepad only impulses.
 
 bool handleEvents(void);
-void startMessages();
 
 // net packet send
 typedef struct packetsend_t

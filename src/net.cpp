@@ -1248,7 +1248,7 @@ void serverUpdatePlayerGameplayStats(int player, int gameplayStat, int changeval
 			gameStatistics[gameplayStat] += changeval;
 		}
 	}
-	else if ( !players[player]->isLocalPlayer() )
+	else if ( !players[player]->isLocalPlayer() && net_packet )
 	{
 		strcpy((char*)net_packet->data, "GPST");
 		SDLNet_Write32(gameplayStat, &net_packet->data[4]);
