@@ -686,12 +686,14 @@ public:
 	void AddConnectAuthExpirationNotification()
 	{
 		EOS_HConnect ConnectHandle = EOS_Platform_GetConnectInterface(PlatformHandle);
-		if ( NotificationIds.ConnectAuthExpirationId == EOS_INVALID_NOTIFICATIONID )
+		if ( NotificationIds.ConnectAuthExpirationId != EOS_INVALID_NOTIFICATIONID )
 		{
-			EOS_Connect_AddNotifyAuthExpirationOptions Options;
-			Options.ApiVersion = EOS_CONNECT_ADDNOTIFYAUTHEXPIRATION_API_LATEST;
-			NotificationIds.ConnectAuthExpirationId = EOS_Connect_AddNotifyAuthExpiration(ConnectHandle, &Options, NULL, ConnectAuthExpirationCallback);
+			EOS_Connect_RemoveNotifyAuthExpiration(ConnectHandle, NotificationIds.ConnectAuthExpirationId);
+			NotificationIds.ConnectAuthExpirationId = EOS_INVALID_NOTIFICATIONID;
 		}
+		EOS_Connect_AddNotifyAuthExpirationOptions Options;
+		Options.ApiVersion = EOS_CONNECT_ADDNOTIFYAUTHEXPIRATION_API_LATEST;
+		NotificationIds.ConnectAuthExpirationId = EOS_Connect_AddNotifyAuthExpiration(ConnectHandle, &Options, NULL, ConnectAuthExpirationCallback);
 	}
 
 	class Helpers_t
