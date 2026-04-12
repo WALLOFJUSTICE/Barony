@@ -28604,6 +28604,7 @@ bool monsterNameIsGeneric(Stat& monsterStats)
 		|| !strcmp(monsterStats.name, Language::get(6302)) // gnome thief
 		|| !strcmp(monsterStats.name, Language::get(6303)) // gnome thief leader
 		|| !strcmp(monsterStats.name, Language::get(7002)) // adorcised instrument
+		|| !strcmp(monsterStats.name, Language::get(7003)) // forsaken skeleton
 		|| MonsterData_t::nameMatchesSpecialNPCName(monsterStats, "fire sprite")
 		|| strstr(monsterStats.name, getMonsterLocalizedName(SLIME).c_str()) )
 	{
