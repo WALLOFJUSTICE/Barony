@@ -3864,6 +3864,13 @@ FMOD_RESULT F_CALLBACK ensembleCombatCallback(FMOD_CHANNELCONTROL* channelcontro
 						delayLength = offset2 - soundPos;
 					}
 
+					int sampleRate = 1;
+					fmod_system->getSoftwareFormat(&sampleRate, nullptr, nullptr);
+					float channelFrequency = 0.f;
+					chan->getFrequency(&channelFrequency);
+					float delayMult = sampleRate / channelFrequency;
+					delayLength *= delayMult;
+
 					ensembleSounds.songTransitionState = EnsembleSounds_t::TRANSITION_COMBAT_ENDED;
 
 					//chan->addFadePoint(clock_now + (unsigned long long)(rate * 2.0), 0.f);
@@ -3888,9 +3895,7 @@ FMOD_RESULT F_CALLBACK ensembleCombatCallback(FMOD_CHANNELCONTROL* channelcontro
 
 					unsigned int buffersize = 0;
 					fmod_system->getDSPBufferSize(&buffersize, nullptr);
-					int sampleRate = 1;
-					fmod_system->getSoftwareFormat(&sampleRate, nullptr, nullptr);
-					float buffer_ms = (buffersize * 1000.f / (float)sampleRate);
+					float buffer_ms = (buffersize * 1000.f / (float)sampleRate) * delayMult;
 
 					for ( int i = 0; i < NUMENSEMBLEMUSIC; ++i )
 					{
@@ -3946,6 +3951,8 @@ FMOD_RESULT F_CALLBACK ensembleCombatCallback(FMOD_CHANNELCONTROL* channelcontro
 								transitionLength -= offset4;
 							}
 
+							transitionLength *= delayMult;
+
 							result = ensembleSounds.combatTransChannel[combatTransition][i]->setDelay(clock_now + (unsigned long long)(delayLength),
 								clock_now + (unsigned long long)(delayLength) + transitionLength, true);
 							{
@@ -3960,6 +3967,8 @@ FMOD_RESULT F_CALLBACK ensembleCombatCallback(FMOD_CHANNELCONTROL* channelcontro
 
 							result = ensembleSounds.combatTransChannel[combatTransition][i]->setPaused(false);
 						}
+
+						offset3 *= delayMult;
 
 						result = ensembleSounds.exploreChannel[i]->setPaused(true);
 						result = ensembleSounds.exploreChannel[i]->setPosition(0, FMOD_TIMEUNIT_PCM);
@@ -4099,6 +4108,13 @@ FMOD_RESULT F_CALLBACK ensembleExplorationCallback(FMOD_CHANNELCONTROL* channelc
 						delayLength = offset2 - currentPos;
 					}
 
+					int sampleRate = 1;
+					fmod_system->getSoftwareFormat(&sampleRate, nullptr, nullptr);
+					float channelFrequency = 0.f;
+					chan->getFrequency(&channelFrequency);
+					float delayMult = sampleRate / channelFrequency;
+					delayLength *= delayMult;
+
 					ensembleSounds.songTransitionState = EnsembleSounds_t::TRANSITION_COMBAT;
 
 					//chan->addFadePoint(clock_now + (unsigned long long)(rate * 2.0), 0.f);
@@ -4124,6 +4140,7 @@ FMOD_RESULT F_CALLBACK ensembleExplorationCallback(FMOD_CHANNELCONTROL* channelc
 						//noTransition = true;
 						delayLength = ensembleSounds.exploreSoundSyncPointInterval / 4;
 					}
+
 					auto mainChannelDelay = delayLength * 2;
 					if ( ensembleSounds.songTransitionMode != EnsembleSounds_t::TRANSITION_MODE_DEFAULT )
 					{
@@ -4132,9 +4149,7 @@ FMOD_RESULT F_CALLBACK ensembleExplorationCallback(FMOD_CHANNELCONTROL* channelc
 
 					unsigned int buffersize = 0;
 					fmod_system->getDSPBufferSize(&buffersize, nullptr);
-					int sampleRate = 1;
-					fmod_system->getSoftwareFormat(&sampleRate, nullptr, nullptr);
-					float buffer_ms = (buffersize * 1000.f / (float)sampleRate);
+					float buffer_ms = (buffersize * 1000.f / (float)sampleRate) * delayMult;
 
 					for ( int i = 0; i < NUMENSEMBLEMUSIC; ++i )
 					{
@@ -4188,6 +4203,8 @@ FMOD_RESULT F_CALLBACK ensembleExplorationCallback(FMOD_CHANNELCONTROL* channelc
 								transitionLength -= offset4;
 							}
 
+							transitionLength *= delayMult;
+
 							result = ensembleSounds.exploreTransChannel[explorationTransition][i]->setDelay(clock_now + (unsigned long long)(delayLength),
 								clock_now + (unsigned long long)(delayLength) + transitionLength, true);
 
@@ -4202,6 +4219,8 @@ FMOD_RESULT F_CALLBACK ensembleExplorationCallback(FMOD_CHANNELCONTROL* channelc
 
 							result = ensembleSounds.exploreTransChannel[explorationTransition][i]->setPaused(false);
 						}
+
+						offset3 *= delayMult;
 
 						result = ensembleSounds.combatChannel[i]->setPaused(true);
 
