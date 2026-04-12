@@ -826,6 +826,36 @@ void actColliderMushroomCap(Entity* my)
 							missile->vel_z = -1.2;
 							missile->vel_x = vel * cos(tangent);
 							missile->vel_y = vel * sin(tangent);
+
+							if ( (effectType == 3 || effectType == 4) && (!caster || (caster && caster->behavior != &actPlayer)) ) // breakable casted
+							{
+								// reduce damage
+								auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+								if ( levelData.id == "fortress1_1"
+									|| levelData.id == "fortress1_2"
+									|| levelData.id == "fortress1_3"
+									|| levelData.id == "fortress1_4" )
+								{
+									node_t* node = missile->children.first;
+									if ( node && node->element )
+									{
+										if ( node_t* elementNode = ((spell_t*)node->element)->elements.first )
+										{
+											if ( auto element = (spellElement_t*)elementNode->element )
+											{
+												if ( elementNode = element->elements.first )
+												{
+													element = (spellElement_t*)elementNode->element;
+													if ( element )
+													{
+														element->setDamage(element->getDamage() / 2);
+													}
+												}
+											}
+										}
+									}
+								}
+							}
 						}
 					}
 				}
