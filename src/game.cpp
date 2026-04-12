@@ -8299,6 +8299,7 @@ int main(int argc, char** argv)
 					}
 				}
 			}
+			EnemyHPDamageBarHandler::cullCache();
 			Text::dumpCacheInMainLoop();
 			achievementObserver.getCurrentPlayerUids();
 			DebugStats.t11End = std::chrono::high_resolution_clock::now();

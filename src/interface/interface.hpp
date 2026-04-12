@@ -193,6 +193,7 @@ public:
 	EnemyHPDetails* addEnemyToList(Sint32 HP, Sint32 maxHP, Sint32 oldHP, Uint32 uid, const char* name, bool isLowPriority, DamageGib gibDmgType);
 	void displayCurrentHPBar(const int player);
 	void cullExpiredHPBars();
+	static void cullCache();
 	EnemyHPDetails* getMostRecentHPBar(int index = 0);
 	Uint32 lastEnemyUid = 0;
 };

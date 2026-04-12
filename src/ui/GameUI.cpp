@@ -31752,15 +31752,14 @@ void Player::HUD_t::updateXPBar()
 
 bool EnemyHPDamageBarHandler::bEnemyBarSimpleBlit = false;
 static ConsoleVariable<bool> cvar_enemybar_simple_blit("/enemybar_simple_blit", true);
-
 // to nest deep maps and suppress visual studio warnings
 struct enemybarMapLowDurationTick_k {
-	std::map<bool, SDL_Surface*> m;
+	std::map<bool, SDL_Surface*> m_elow_ticks;
 	~enemybarMapLowDurationTick_k()
 	{
 		if ( EnemyHPDamageBarHandler::bEnemyBarSimpleBlit )
 		{
-			for ( auto& entry : m )
+			for ( auto& entry : m_elow_ticks )
 			{
 				if ( entry.second )
 				{
@@ -31772,73 +31771,73 @@ struct enemybarMapLowDurationTick_k {
 	};
 };
 struct enemybarEffectMapFx5_lowDuration_k {
-	std::map<Uint32, enemybarMapLowDurationTick_k> m;
+	std::map<Uint32, enemybarMapLowDurationTick_k> m_efx5_low;
 };
 struct enemybarEffectMapFx4_lowDuration_k {
-	std::map<Uint32, enemybarEffectMapFx5_lowDuration_k> m;
+	std::map<Uint32, enemybarEffectMapFx5_lowDuration_k> m_efx4_low;
 };
 struct enemybarEffectMapFx3_lowDuration_k {
-	std::map<Uint32, enemybarEffectMapFx4_lowDuration_k> m;
+	std::map<Uint32, enemybarEffectMapFx4_lowDuration_k> m_efx3_low;
 };
 struct enemybarEffectMapFx2_lowDuration_k {
-	std::map<Uint32, enemybarEffectMapFx3_lowDuration_k> m;
+	std::map<Uint32, enemybarEffectMapFx3_lowDuration_k> m_efx2_low;
 };
 struct enemybarEffectMapFx1_lowDuration_k {
-	std::map<Uint32, enemybarEffectMapFx2_lowDuration_k> m;
+	std::map<Uint32, enemybarEffectMapFx2_lowDuration_k> m_efx1_low;
 };
 struct enemybarEffectMapFx5_k {
-	std::map<Uint32, enemybarEffectMapFx1_lowDuration_k> m;
+	std::map<Uint32, enemybarEffectMapFx1_lowDuration_k> m_efx5;
 };
 struct enemybarEffectMapFx4_k {
-	std::map<Uint32, enemybarEffectMapFx5_k> m;
+	std::map<Uint32, enemybarEffectMapFx5_k> m_efx4;
 };
 struct enemybarEffectMapFx3_k {
-	std::map<Uint32, enemybarEffectMapFx4_k> m;
+	std::map<Uint32, enemybarEffectMapFx4_k> m_efx3;
 };
 struct enemybarEffectMapFx2_k {
-	std::map<Uint32, enemybarEffectMapFx3_k> m;
+	std::map<Uint32, enemybarEffectMapFx3_k> m_efx2;
 };
 struct enemybarEffectMapFx1_k {
-	std::map<Uint32, enemybarEffectMapFx2_k> m;
+	std::map<Uint32, enemybarEffectMapFx2_k> m_efx1;
 };
 enemybarEffectMapFx1_k enemyBarEffectMap;
 SDL_Surface* enemyBarEffectMapExists(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5,
 	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5,
 	bool lowDurationTicks)
 {
-	if ( enemyBarEffectMap.m.find(fx1) != enemyBarEffectMap.m.end() )
+	if ( enemyBarEffectMap.m_efx1.find(fx1) != enemyBarEffectMap.m_efx1.end() )
 	{
-		auto& m1 = enemyBarEffectMap.m[fx1];
-		if ( m1.m.find(fx2) != m1.m.end() )
+		auto& m1 = enemyBarEffectMap.m_efx1[fx1];
+		if ( m1.m_efx2.find(fx2) != m1.m_efx2.end() )
 		{
-			auto& m2 = m1.m[fx2];
-			if ( m2.m.find(fx3) != m2.m.end() )
+			auto& m2 = m1.m_efx2[fx2];
+			if ( m2.m_efx3.find(fx3) != m2.m_efx3.end() )
 			{
-				auto& m3 = m2.m[fx3];
-				if ( m3.m.find(fx4) != m3.m.end() )
+				auto& m3 = m2.m_efx3[fx3];
+				if ( m3.m_efx4.find(fx4) != m3.m_efx4.end() )
 				{
-					auto& m4 = m3.m[fx4];
-					if ( m4.m.find(fx5) != m4.m.end() )
+					auto& m4 = m3.m_efx4[fx4];
+					if ( m4.m_efx5.find(fx5) != m4.m_efx5.end() )
 					{
-						auto& m5 = m4.m[fx5];
-						if ( m5.m.find(fx_lowDuration1) != m5.m.end() )
+						auto& m5 = m4.m_efx5[fx5];
+						if ( m5.m_efx1_low.find(fx_lowDuration1) != m5.m_efx1_low.end() )
 						{
-							auto& m6 = m5.m[fx_lowDuration1];
-							if ( m6.m.find(fx_lowDuration2) != m6.m.end() )
+							auto& m6 = m5.m_efx1_low[fx_lowDuration1];
+							if ( m6.m_efx2_low.find(fx_lowDuration2) != m6.m_efx2_low.end() )
 							{
-								auto& m7 = m6.m[fx_lowDuration2];
-								if ( m7.m.find(fx_lowDuration3) != m7.m.end() )
+								auto& m7 = m6.m_efx2_low[fx_lowDuration2];
+								if ( m7.m_efx3_low.find(fx_lowDuration3) != m7.m_efx3_low.end() )
 								{
-									auto& m8 = m7.m[fx_lowDuration3];
-									if ( m8.m.find(fx_lowDuration4) != m8.m.end() )
+									auto& m8 = m7.m_efx3_low[fx_lowDuration3];
+									if ( m8.m_efx4_low.find(fx_lowDuration4) != m8.m_efx4_low.end() )
 									{
-										auto& m9 = m8.m[fx_lowDuration4];
-										if ( m9.m.find(fx_lowDuration5) != m9.m.end() )
+										auto& m9 = m8.m_efx4_low[fx_lowDuration4];
+										if ( m9.m_efx5_low.find(fx_lowDuration5) != m9.m_efx5_low.end() )
 										{
-											auto& m10 = m9.m[fx_lowDuration5];
-											if ( m10.m.find(lowDurationTicks) != m10.m.end() )
+											auto& m10 = m9.m_efx5_low[fx_lowDuration5];
+											if ( m10.m_elow_ticks.find(lowDurationTicks) != m10.m_elow_ticks.end() )
 											{
-												return m10.m[lowDurationTicks];
+												return m10.m_elow_ticks[lowDurationTicks];
 											}
 										}
 									}
@@ -31857,19 +31856,19 @@ void enemyBarEffectMapInsert(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uin
 	bool lowDurationTicks,
 	SDL_Surface* surf)
 {
-	enemyBarEffectMap.m[fx1].m[fx2].m[fx3].m[fx4].m[fx5].m[fx_lowDuration1]
-		.m[fx_lowDuration2].m[fx_lowDuration3].m[fx_lowDuration4].m[fx_lowDuration5]
-			.m[lowDurationTicks] = surf;
+	enemyBarEffectMap.m_efx1[fx1].m_efx2[fx2].m_efx3[fx3].m_efx4[fx4].m_efx5[fx5].m_efx1_low[fx_lowDuration1]
+		.m_efx2_low[fx_lowDuration2].m_efx3_low[fx_lowDuration3].m_efx4_low[fx_lowDuration4].m_efx5_low[fx_lowDuration5]
+			.m_elow_ticks[lowDurationTicks] = surf;
 }
 
 // to nest deep maps and suppress visual studio warnings
 struct enemybarMapFx5_lowDuration_k {
-	std::map<Uint32, SDL_Surface*> m;
+	std::map<Uint32, SDL_Surface*> m_fx5low;
 	~enemybarMapFx5_lowDuration_k()
 	{
 		if ( EnemyHPDamageBarHandler::bEnemyBarSimpleBlit )
 		{
-			for ( auto& entry : m )
+			for ( auto& entry : m_fx5low )
 			{
 				if ( entry.second )
 				{
@@ -31881,40 +31880,41 @@ struct enemybarMapFx5_lowDuration_k {
 	};
 };
 struct enemybarMapFx4_lowDuration_k {
-	std::map<Uint32, enemybarMapFx5_lowDuration_k> m;
+	std::map<Uint32, enemybarMapFx5_lowDuration_k> m_fx4low;
 };
 struct enemybarMapFx3_lowDuration_k {
-	std::map<Uint32, enemybarMapFx4_lowDuration_k> m;
+	std::map<Uint32, enemybarMapFx4_lowDuration_k> m_fx3low;
 };
 struct enemybarMapFx2_lowDuration_k {
-	std::map<Uint32, enemybarMapFx3_lowDuration_k> m;
+	std::map<Uint32, enemybarMapFx3_lowDuration_k> m_fx2low;
 };
 struct enemybarMapFx1_lowDuration_k {
-	std::map<Uint32, enemybarMapFx2_lowDuration_k> m;
+	std::map<Uint32, enemybarMapFx2_lowDuration_k> m_fx1low;
 };
 struct enemybarMapFx5_k {
-	std::map<Uint32, enemybarMapFx1_lowDuration_k> m;
+	std::map<Uint32, enemybarMapFx1_lowDuration_k> m_fx5;
 };
 struct enemybarMapFx4_k {
-	std::map<Uint32, enemybarMapFx5_k> m;
+	std::map<Uint32, enemybarMapFx5_k> m_fx4;
 };
 struct enemybarMapFx3_k {
-	std::map<Uint32, enemybarMapFx4_k> m;
+	std::map<Uint32, enemybarMapFx4_k> m_fx3;
 };
 struct enemybarMapFx2_k {
-	std::map<Uint32, enemybarMapFx3_k> m;
+	std::map<Uint32, enemybarMapFx3_k> m_fx2;
 };
 struct enemybarMapFx1_k {
-	std::map<Uint32, enemybarMapFx2_k> m;
+	std::map<Uint32, enemybarMapFx2_k> m_fx1;
 };
 struct enemybarMapProgress_k {
-	std::map<Uint32, enemybarMapFx1_k> m;
+	std::map<Uint32, enemybarMapFx1_k> m_progress;
+	Uint32 lastTouched = 0;
 };
 struct enemybarMapTotalSize_k {
-	std::map<Uint32, enemybarMapProgress_k> m;
+	std::map<Uint32, enemybarMapProgress_k> m_totalsize;
 };
 struct enemybarMapName_k {
-	std::map<std::string, enemybarMapTotalSize_k> m;
+	std::map<std::string, enemybarMapTotalSize_k> m_name;
 };
 enemybarMapName_k enemyBarMap;
 SDL_Surface* enemyBarMapExists(std::string name, int baseWidth, int baseHeight,
@@ -31922,50 +31922,51 @@ SDL_Surface* enemyBarMapExists(std::string name, int baseWidth, int baseHeight,
 	Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5,
 	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5)
 {
-	if ( enemyBarMap.m.find(name) != enemyBarMap.m.end() )
+	if ( enemyBarMap.m_name.find(name) != enemyBarMap.m_name.end() )
 	{
-		auto& m1 = enemyBarMap.m[name];
+		auto& m1 = enemyBarMap.m_name[name];
 		Uint32 totalSizeKey = baseWidth & 0xFFFF;
 		totalSizeKey |= (baseHeight << 16) & 0xFF0000;
-		totalSizeKey |= (((ticks % 25) >= 12) << 24) & 0xFF000000;
-		if ( m1.m.find(totalSizeKey) != m1.m.end() )
+		totalSizeKey |= (((ticks % 25) >= 12 ? 1 : 0) << 24) & 0xFF000000;
+		if ( m1.m_totalsize.find(totalSizeKey) != m1.m_totalsize.end() )
 		{
-			auto& m2 = m1.m[totalSizeKey];
+			auto& m2 = m1.m_totalsize[totalSizeKey];
 			Uint32 progressDamageKey = progressWidth & 0xFFFF;
 			progressDamageKey |= (damageWidth << 16) & 0xFFFF0000;
-			if ( m2.m.find(progressDamageKey) != m2.m.end() )
+			m2.lastTouched = ticks;
+			if ( m2.m_progress.find(progressDamageKey) != m2.m_progress.end() )
 			{
-				auto& m3 = m2.m[progressDamageKey];
-				if ( m3.m.find(fx1) != m3.m.end() )
+				auto& m3 = m2.m_progress[progressDamageKey];
+				if ( m3.m_fx1.find(fx1) != m3.m_fx1.end() )
 				{
-					auto& m4 = m3.m[fx1];
-					if ( m4.m.find(fx2) != m4.m.end() )
+					auto& m4 = m3.m_fx1[fx1];
+					if ( m4.m_fx2.find(fx2) != m4.m_fx2.end() )
 					{
-						auto& m5 = m4.m[fx2];
-						if ( m5.m.find(fx3) != m5.m.end() )
+						auto& m5 = m4.m_fx2[fx2];
+						if ( m5.m_fx3.find(fx3) != m5.m_fx3.end() )
 						{
-							auto& m6 = m5.m[fx3];
-							if ( m6.m.find(fx4) != m6.m.end() )
+							auto& m6 = m5.m_fx3[fx3];
+							if ( m6.m_fx4.find(fx4) != m6.m_fx4.end() )
 							{
-								auto& m7 = m6.m[fx4];
-								if ( m7.m.find(fx5) != m7.m.end() )
+								auto& m7 = m6.m_fx4[fx4];
+								if ( m7.m_fx5.find(fx5) != m7.m_fx5.end() )
 								{
-									auto& m8 = m7.m[fx5];
-									if ( m8.m.find(fx_lowDuration1) != m8.m.end() )
+									auto& m8 = m7.m_fx5[fx5];
+									if ( m8.m_fx1low.find(fx_lowDuration1) != m8.m_fx1low.end() )
 									{
-										auto& m9 = m8.m[fx_lowDuration1];
-										if ( m9.m.find(fx_lowDuration2) != m9.m.end() )
+										auto& m9 = m8.m_fx1low[fx_lowDuration1];
+										if ( m9.m_fx2low.find(fx_lowDuration2) != m9.m_fx2low.end() )
 										{
-											auto& m10 = m9.m[fx_lowDuration2];
-											if ( m10.m.find(fx_lowDuration3) != m10.m.end() )
+											auto& m10 = m9.m_fx2low[fx_lowDuration2];
+											if ( m10.m_fx3low.find(fx_lowDuration3) != m10.m_fx3low.end() )
 											{
-												auto& m11 = m10.m[fx_lowDuration3];
-												if ( m11.m.find(fx_lowDuration4) != m11.m.end() )
+												auto& m11 = m10.m_fx3low[fx_lowDuration3];
+												if ( m11.m_fx4low.find(fx_lowDuration4) != m11.m_fx4low.end() )
 												{
-													auto& m12 = m11.m[fx_lowDuration4];
-													if ( m12.m.find(fx_lowDuration5) != m12.m.end() )
+													auto& m12 = m11.m_fx4low[fx_lowDuration4];
+													if ( m12.m_fx5low.find(fx_lowDuration5) != m12.m_fx5low.end() )
 													{
-														return m12.m[fx_lowDuration5];
+														return m12.m_fx5low[fx_lowDuration5];
 													}
 												}
 											}
@@ -31981,6 +31982,39 @@ SDL_Surface* enemyBarMapExists(std::string name, int baseWidth, int baseHeight,
 	}
 	return nullptr;
 }
+
+void EnemyHPDamageBarHandler::cullCache()
+{
+	static Uint32 processedTick = 0;
+	if ( processedTick != ticks )
+	{
+		processedTick = ticks;
+		if ( ticks % TICKS_PER_SECOND == 0 )
+		{
+			if ( EnemyHPDamageBarHandler::bEnemyBarSimpleBlit && !(gamePaused && multiplayer == SINGLE) && !intro )
+			{
+				std::queue<Uint32> queueToDelete;
+				for ( auto& m_names : enemyBarMap.m_name )
+				{
+					for ( auto& m_totalsizes : m_names.second.m_totalsize )
+					{
+						if ( ticks - m_totalsizes.second.lastTouched >= 5 * TICKS_PER_SECOND )
+						{
+							queueToDelete.push(m_totalsizes.first);
+						}
+					}
+					while ( !queueToDelete.empty() )
+					{
+						Uint32 key = queueToDelete.front();
+						m_names.second.m_totalsize.erase(key);
+						queueToDelete.pop();
+					}
+				}
+			}
+		}
+	}
+}
+
 static void  enemyBarMapInsert(std::string name, int baseWidth, int baseHeight, int progressWidth, int damageWidth,
 	Uint32 statusfx1, Uint32 statusfx2, Uint32 statusfx3, Uint32 statusfx4, Uint32 statusfx5,
 	Uint32 statusfx_lowDuration1, Uint32 statusfx_lowDuration2, Uint32 statusfx_lowDuration3, Uint32 statusfx_lowDuration4, Uint32 statusfx_lowDuration5,
@@ -31988,12 +32022,15 @@ static void  enemyBarMapInsert(std::string name, int baseWidth, int baseHeight, 
 {
 	Uint32 totalSizeKey = baseWidth & 0xFFFF;
 	totalSizeKey |= (baseHeight << 16) & 0xFF0000;
-	totalSizeKey |= (((ticks % 25) >= 12) << 24) & 0xFF000000;
+	totalSizeKey |= (((ticks % 25) >= 12 ? 1 : 0) << 24) & 0xFF000000;
 	Uint32 progressDamageKey = progressWidth & 0xFFFF;
 	progressDamageKey |= ((damageWidth & 0xFFFF) << 16);
-	enemyBarMap.m[name].m[totalSizeKey].m[progressDamageKey]
-		.m[statusfx1].m[statusfx2].m[statusfx3].m[statusfx4].m[statusfx5]
-			.m[statusfx_lowDuration1].m[statusfx_lowDuration2].m[statusfx_lowDuration3].m[statusfx_lowDuration4].m[statusfx_lowDuration5] = surf;
+
+	auto& m = enemyBarMap.m_name[name].m_totalsize[totalSizeKey];
+	m.lastTouched = ticks;
+	m.m_progress[progressDamageKey]
+		.m_fx1[statusfx1].m_fx2[statusfx2].m_fx3[statusfx3].m_fx4[statusfx4].m_fx5[statusfx5]
+			.m_fx1low[statusfx_lowDuration1].m_fx2low[statusfx_lowDuration2].m_fx3low[statusfx_lowDuration3].m_fx4low[statusfx_lowDuration4].m_fx5low[statusfx_lowDuration5] = surf;
 }
 
 SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBar(const int player, SDL_Surface* statusEffectSprite)
@@ -33033,10 +33070,10 @@ void Player::HUD_t::updateEnemyBar2(Frame* whichFrame, void* enemyHPDetails)
 	//auto blit = std::chrono::high_resolution_clock::now();
 	if ( !EnemyHPDamageBarHandler::bEnemyBarSimpleBlit )
 	{
-		if ( !enemyBarMap.m.empty() )
+		if ( !enemyBarMap.m_name.empty() )
 		{
-			enemyBarEffectMap.m.clear();
-			enemyBarMap.m.clear();
+			enemyBarEffectMap.m_efx1.clear();
+			enemyBarMap.m_name.clear();
 			enemyDetails->worldSurfaceSprite = nullptr;
 			enemyDetails->worldSurfaceSpriteStatusEffects = nullptr;
 		}
@@ -33126,8 +33163,8 @@ static ConsoleCommand ccmd_enemybar_dump_cache("/enemybar_dump_cache", "Dumps ca
 
 void EnemyHPDamageBarHandler::dumpCache()
 {
-	enemyBarEffectMap.m.clear();
-	enemyBarMap.m.clear();
+	enemyBarEffectMap.m_efx1.clear();
+	enemyBarMap.m_name.clear();
 	for ( int i = 0; i < MAXPLAYERS; ++i )
 	{
 		enemyHPDamageBarHandler[i].HPBars.clear();

@@ -28442,7 +28442,7 @@ failed:
 		// generate a name like:
 		// Filthy Rat #5743
 		std::string monster = getMonsterLocalizedName(
-			(Monster)RNG.uniform(Monster::HUMAN, Monster::MAX_MONSTER));
+			(Monster)RNG.uniform(Monster::HUMAN, Monster::GREMLIN));
 		monster[0] = toupper(monster[0]);
 		char buf[32];
 		snprintf(buf, sizeof(buf), "%s %s #%04d",
