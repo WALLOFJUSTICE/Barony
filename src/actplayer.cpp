@@ -6234,10 +6234,11 @@ void actPlayer(Entity* my)
 		}
 		else if ( *cvar_pbaoe == 1 )
 		{
-			Entity* spellTimer = createParticleTimer(my, 1.25 * TICKS_PER_SECOND, -1);
-			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SHATTER;
+			/*Entity* spellTimer = createParticleTimer(my, 1.25 * TICKS_PER_SECOND, -1);
+			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_REVENANT_PUSH;
 			spellTimer->particleTimerCountdownSprite = -1;
-			color = makeColor(255, 0, 255, 255);
+			color = makeColor(255, 0, 255, 255);*/
+			createParticleRevenantPush(my);
 		}
 
 		if ( *cvar_pbaoe == 20 )
@@ -9072,7 +9073,32 @@ void actPlayer(Entity* my)
 	bool& insectoidLevitating = players[PLAYER_NUM]->movement.insectoidLevitating;
 	insectoidLevitating = false;
 	bool shortModel = false;
-
+	if ( StatueManager.activeEditing )
+	{
+		switch ( playerRace )
+		{
+		case DRYAD:
+			if ( my->sprite == 1992 || my->sprite == 1993 )
+			{
+				shortModel = true;
+			}
+			break;
+		case MYCONID:
+			if ( my->sprite == 1998 )
+			{
+				shortModel = true;
+			}
+			break;
+		case GREMLIN:
+			shortModel = true;
+			break;
+		case GNOME:
+			shortModel = true;
+			break;
+		default:
+			break;
+		}
+	}
 	if ( players[PLAYER_NUM]->isLocalPlayer() || multiplayer == SERVER )
 	{
 		switch ( playerRace )
