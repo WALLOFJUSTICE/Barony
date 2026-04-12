@@ -2281,7 +2281,7 @@ void Stat::MonsterRangedAccuracy::modifyProjectile(Entity& my, Entity& projectil
 					factor = (local_rng.rand() % (accuracy + 1)); // full range
 				}
 				projectileYaw -= yawChange * factor / 100.0;
-				if ( projectile.behavior == &actArrow || projectile.behavior == &actMagicMissile )
+				if ( projectile.behavior == &actArrow || projectile.behavior == &actMagicMissile || projectile.behavior == &actFociGib )
 				{
 					projectile.yaw = projectileYaw;
 				}

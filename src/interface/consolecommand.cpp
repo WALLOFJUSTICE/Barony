@@ -6561,6 +6561,7 @@ namespace ConsoleCommands {
 						case 207: monsterType = GREMLIN; break;
 						case 246: monsterType = REVENANT_SKULL; break;
 						case 247: monsterType = MONSTER_ADORCISED_WEAPON; break;
+						case 304: monsterType = GRYPHON; break;
 						default:
 							break;
 						}

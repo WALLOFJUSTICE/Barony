@@ -3438,6 +3438,16 @@ void setupSpells()   ///TODO: Verify this function.
 		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_HOLY_BEAM }
 	);
 
+	spell = createSimpleSpell(
+		SPELL_REVENANT_PUSH,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_revenant_push");
+
 	//static const int SPELL_LIGHTNING_NEXUS = 182;
 	//static const int SPELL_LIFT = 184;
 	//static const int SPELL_IGNITE = 186;

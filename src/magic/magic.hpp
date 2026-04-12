@@ -245,7 +245,8 @@ static const int SPELL_SIGIL = 222;
 static const int SPELL_SANCTUARY = 223;
 static const int SPELL_HOLY_BEAM = 224;
 static const int SPELL_FOCI_WINDBLAST = 225;
-static const int NUM_SPELLS = 226;
+static const int SPELL_REVENANT_PUSH = 226;
+static const int NUM_SPELLS = 227;
 
 #define SPELLELEMENT_CONFUSE_BASE_DURATION 2//In seconds.
 #define SPELLELEMENT_BLEED_BASE_DURATION 10//In seconds.
@@ -385,6 +386,7 @@ static const int PARTICLE_EFFECT_BLOOD_WARD_ORBIT = 92;
 static const int PARTICLE_EFFECT_SMITE_PINPOINT = 93;
 static const int PARTICLE_EFFECT_HOLY_FIRE = 94;
 static const int PARTICLE_EFFECT_HOLY_BEAM_ORBIT = 95;
+static const int PARTICLE_EFFECT_REVENANT_PUSH = 96;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -429,6 +431,7 @@ static const int PARTICLE_TIMER_ACTION_SPLINTER_GEAR = 34;
 static const int PARTICLE_TIMER_ACTION_SPIRIT_WEAPON_ATTACK = 35;
 static const int PARTICLE_TIMER_ACTION_SWEEP_ATTACK = 36;
 static const int PARTICLE_TIMER_ACTION_VORTEX_AESTHETIC = 37;
+static const int PARTICLE_TIMER_ACTION_REVENANT_PUSH = 38;
 
 struct ParticleEmitterHit_t
 {
@@ -1032,6 +1035,7 @@ void createParticleErupt(Entity* parent, int sprite);
 void createParticleErupt(real_t x, real_t y, int sprite);
 Entity* createParticleBoobyTrapExplode(Entity* caster, real_t x, real_t y);
 Entity* createParticleShatterObjects(Entity* caster);
+Entity* createParticleRevenantPush(Entity* caster);
 Entity* createParticleIgnite(Entity* caster);
 Entity* createParticleSapCenter(Entity* parent, Entity* target, int spell, int sprite, int endSprite);
 Entity* createParticleTimer(Entity* parent, int duration, int sprite);
@@ -1235,7 +1239,9 @@ struct AOEIndicators_t
 		CACHE_PSYCHIC_SPEAR,
 		CACHE_RADIUS_MAGIC_GENERIC,
 		CACHE_VORTEX_AESTHETIC,
-		CACHE_VORTEX_AESTHETIC2
+		CACHE_VORTEX_AESTHETIC2,
+		CACHE_REVENANT_PUSH,
+		CACHE_REVENANT_PUSH2
 	};
 	struct Indicator_t
 	{

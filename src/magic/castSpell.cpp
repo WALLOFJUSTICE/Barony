@@ -2158,7 +2158,9 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					{
 						if ( ent->behavior == &actBoulderTrapHole || ent->behavior == &actArrowTrap
 							|| ent->behavior == &actMagicTrap || ent->behavior == &actMagicTrapCeiling
-							|| ent->behavior == &actSummonTrap || ent->behavior == &actSpearTrap )
+							|| ent->behavior == &actSummonTrap || ent->behavior == &actSpearTrap
+							|| (ent->behavior == &actColliderDecoration && ent->colliderSpellEvent > 0 && ent->colliderCreatedParent == 0)
+							|| ent->behavior == &actLeafPile )
 						{
 							if ( entityDist(caster, ent) >= TOUCHRANGE * 8 )
 							{
@@ -4085,8 +4087,8 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					{
 						spellTimer->x = castSpellProps->caster_x + 8.0 * cos(tangent);
 						spellTimer->y = castSpellProps->caster_y + 8.0 * sin(tangent);
-						spellTimer->vel_x = 3.0 * cos(spellTimer->yaw);
-						spellTimer->vel_y = 3.0 * sin(spellTimer->yaw);
+						spellTimer->vel_x = 4.0 * cos(spellTimer->yaw);
+						spellTimer->vel_y = 4.0 * sin(spellTimer->yaw);
 					}
 					spellTimer->particleTimerDuration = std::min(spellTimer->particleTimerDuration, 0xFFF);
 					Sint32 val = (1 << 31);
@@ -8009,6 +8011,24 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
 				playSoundEntity(caster, 167, 128);
+			}
+		}
+		else if ( spell->ID == SPELL_REVENANT_PUSH )
+		{
+			if ( caster )
+			{
+				if ( Entity* spellTimer = createParticleRevenantPush(caster) )
+				{
+					if ( spellBookBonusPercent > 0 )
+					{
+						spellTimer->actmagicSpellbookBonus = spellBookBonusPercent;
+					}
+					spellTimer->actmagicFromSpellbook = usingSpellbook ? 1 : 0;
+					serverSpawnMiscParticles(caster, PARTICLE_EFFECT_REVENANT_PUSH, 0);
+				}
+
+				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 172);
+				playSoundEntity(caster, 172, 128);
 			}
 		}
 		else if ( spell->ID == SPELL_PROJECT_SPIRIT )
