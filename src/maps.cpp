@@ -586,16 +586,63 @@ int monsterCurve(int level)
 	}
 	else if ( !strncmp(map.filename, "fortress", 8) )
 	{
-		switch ( map_rng.rand() % 4 )
+		if ( levelData.id.find("fortress1_") != std::string::npos )
 		{
+			switch ( map_rng.rand() % 10 )
+			{
+				case 0:
+				case 1:
+				case 2:
+					return DRYAD;
+				case 3:
+				case 4:
+				case 5:
+					return MYCONID;
+				case 6:
+				case 7:
+				case 8:
+					return GREMLIN;
+				case 9:
+					if ( map_rng.rand() % 2 )
+					{
+						return MOTH_SMALL;
+					}
+					else
+					{
+						return GREMLIN;
+					}
+				default:
+					break;
+			}
+		}
+		else
+		{
+			switch ( map_rng.rand() % 10 )
+			{
 			case 0:
-				return DRYAD;
 			case 1:
-				return MYCONID;
 			case 2:
-				return GREMLIN;
 			case 3:
-				return MOTH_SMALL;
+				return DRYAD;
+			case 4:
+			case 5:
+			case 6:
+				return MYCONID;
+			case 7:
+			case 8:
+				return EARTH_ELEMENTAL;
+			case 9:
+				if ( map_rng.rand() % 2 )
+				{
+					return MOTH_SMALL;
+				}
+				else
+				{
+					return EARTH_ELEMENTAL;
+				}
+			default:
+				break;
+			}
 		}
 	}
 	return SKELETON; // basic monster
@@ -5456,13 +5503,30 @@ int generateDungeon(char* levelset, Uint32 seed)
 				{
 					// add some mushrooms
 					int id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_common"];
-					if ( map_rng.rand() % 5 == 0 )
+					if ( levelData.id == "fortress1_1"
+						|| levelData.id == "fortress1_2"
+						|| levelData.id == "fortress1_3"
+						|| levelData.id == "fortress1_4" )
 					{
-						id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_fragile"];
+						if ( map_rng.rand() % 2 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_nospell"];
+						}
+						else if ( map_rng.rand() % 5 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_fragile"];
+						}
 					}
-					else if ( map_rng.rand() % 5 == 0 )
+					else
 					{
-						id = EditorEntityData_t::colliderNameIndexes["mushroom_nospell"];
+						if ( map_rng.rand() % 5 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_fragile"];
+						}
+						else if ( map_rng.rand() % 5 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_nospell"];
+						}
 					}
 
 					breakableLocations.push_back(BreakableNode_t(1, x, y, map_rng.rand() % 4,
@@ -5503,13 +5567,30 @@ int generateDungeon(char* levelset, Uint32 seed)
 				else if ( mushroomsNearby > 0 )
 				{
 					int id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_common"];
-					if ( map_rng.rand() % 5 == 0 )
+					if ( levelData.id == "fortress1_1"
+						|| levelData.id == "fortress1_2"
+						|| levelData.id == "fortress1_3"
+						|| levelData.id == "fortress1_4" )
 					{
-						id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_fragile"];
+						if ( map_rng.rand() % 2 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_nospell"];
+						}
+						else if ( map_rng.rand() % 5 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_fragile"];
+						}
 					}
-					else if ( map_rng.rand() % 5 == 0 )
+					else
 					{
-						id = EditorEntityData_t::colliderNameIndexes["mushroom_nospell"];
+						if ( map_rng.rand() % 5 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_spell_fragile"];
+						}
+						else if ( map_rng.rand() % 5 == 0 )
+						{
+							id = EditorEntityData_t::colliderNameIndexes["mushroom_nospell"];
+						}
 					}
 					breakableLocations.push_back(BreakableNode_t(1, x, y, map_rng.rand() % 4,
 						id));
@@ -5882,6 +5963,11 @@ int generateDungeon(char* levelset, Uint32 seed)
 	int breakableMonsterLimit = 2 + (currentlevel / LENGTH_OF_LEVEL_REGION) * (1 + map_rng.rand() % 2);
 	static ConsoleVariable<int> cvar_breakableMonsterLimit("/breakable_monster_limit", 0);
 	std::set<Uint32> generatedBreakables;
+	int breakableMonsterChance = 10;
+	if ( !strncmp(map.filename, "fortress", 8) )
+	{
+		breakableMonsterChance = 2;
+	}
 	if ( svFlags & SV_FLAG_CHEATS )
 	{
 		breakableMonsterLimit = std::max(*cvar_breakableMonsterLimit, breakableMonsterLimit);
@@ -5896,6 +5982,30 @@ int generateDungeon(char* levelset, Uint32 seed)
 			ids.push_back(pair.first);
 			chances.push_back(pair.second);
 		}
+
+		if ( !strncmp(map.filename, "fortress", 8) )
+		{
+			if ( levelData.id == "fortress1_1"
+				|| levelData.id == "fortress1_2"
+				|| levelData.id == "fortress1_3"
+				|| levelData.id == "fortress1_4" )
+			{
+				int index = -1;
+				for ( auto id : ids )
+				{
+					++index;
+					auto findData = EditorEntityData_t::colliderData.find(id);
+					if ( findData != EditorEntityData_t::colliderData.end() )
+					{
+						if ( findData->second.name.find("mushroom_spell") != std::string::npos )
+						{
+							chances[index] = std::max((int)chances[index] - 2, 1);
+						}
+					}
+				}
+			}
+		}
+
 		Monster lastMonsterEvent = NOTHING;
 		int lastSpellEvent = 0;
 		while ( !breakableLocations.empty() )
@@ -6022,7 +6132,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					// nothing over pits 50%
 				}
 				else if ( (breakableMonsters < breakableMonsterLimit && monsterEventExists 
-					&& map_rng.rand() % ((svFlags & SV_FLAG_CHEATS) ? std::min(10, *cvar_breakableMonsterChance) : 10) == 0)
+					&& map_rng.rand() % ((svFlags & SV_FLAG_CHEATS) ? std::min(10, *cvar_breakableMonsterChance) : breakableMonsterChance) == 0)
 					&& map.monsterexcludelocations[x + y * map.width] == false ) // 10% monster inside
 				{
 					Monster monsterEvent = NOTHING;
@@ -7735,6 +7845,7 @@ void assignActions(map_t* map)
 			case 207:
 			case 246:
 			case 247:
+			case 304:
 			{
 				entity->sizex = 4;
 				entity->sizey = 4;
@@ -11166,7 +11277,21 @@ bool map_t::tileHasAttribute(int x, int y, int layer, Uint32 attribute)
 
 void map_t::setMapHDRSettings()
 {
-	if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "bastille", 8) )
+	if ( !strncmp(map.filename, "bastille", 8) )
+	{
+		*cvar_hdrBrightness = defaultBrightness;
+		if ( !*MainMenu::cvar_hdrEnabled )
+		{
+			*cvar_fogColor = { 0.4f, 0.4f, 0.5f, 0.5f };
+		}
+		else
+		{
+			*cvar_fogColor = { 0.25f, 0.25f, 0.3f, 0.8f };
+		}
+		*cvar_fogDistance = 384.f;
+		*cvar_hdrLimitLow = 1.2f;
+	}
+	else if ( !strncmp(map.filename, "fortress", 8) )
 	{
 		*cvar_hdrBrightness = defaultBrightness;
 		if ( !*MainMenu::cvar_hdrEnabled )
