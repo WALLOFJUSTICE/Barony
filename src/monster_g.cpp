@@ -150,10 +150,12 @@ void initMonsterG(Entity* my, Stat* myStats)
 			if ( myStats->getAttribute("monster_g_type") == "berserker" )
 			{
 				variant = BERSERKER;
+				myStats->sex = MALE;
 			}
 			else if ( myStats->getAttribute("monster_g_type") == "sapper" )
 			{
 				variant = SAPPER;
+				myStats->sex = FEMALE;
 				if ( defaultItems >= 1 )
 				{
 					item = newItem(GREASE_BALL, SERVICABLE, 0, rng.rand() % 2 + 2, rng.rand(), false, &myStats->inventory);
@@ -378,14 +380,34 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					if ( rng.rand() % 2 )
 					{
-						if ( rng.rand() % 3 )
+						switch ( rng.rand() % 5 )
 						{
+						case 0:
+						case 1:
+							myStats->breastplate = newItem(BLACKIRON_BREASTPIECE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							break;
+						case 2:
+						case 3:
+						case 4:
 							myStats->breastplate = newItem(TUNIC, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							break;
+						default:
+							break;
 						}
-						else
-						{
-							myStats->breastplate = newItem(CHAIN_HAUBERK, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-						}
+					}
+				}
+				else if ( variant == SAPPER )
+				{
+					if ( rng.rand() % 2 )
+					{
+						myStats->breastplate = newItem(SHAWL, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					}
+				}
+				else if ( variant == SKIRMISHER )
+				{
+					if ( rng.rand() % 2 )
+					{
+						myStats->breastplate = newItem(BONE_BREASTPIECE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					}
 				}
 			}

@@ -565,6 +565,7 @@ Monster editorSpriteTypeToMonster(Sint32 sprite)
 	case 207: monsterType = GREMLIN; break;
 	case 246: monsterType = REVENANT_SKULL; break;
 	case 247: monsterType = MONSTER_ADORCISED_WEAPON; break;
+	case 304: monsterType = GRYPHON; break;
 	default:
 		break;
 	}
@@ -624,6 +625,7 @@ int checkSpriteType(Sint32 sprite)
 	case 207:
 	case 246:
 	case 247:
+	case 304:
 		//monsters
 		return 1;
 		break;
@@ -2032,7 +2034,64 @@ std::vector<const char*> spriteEditorNameStrings =
 	"NOT USED",
 	"NOT USED",
 	"REVENANT_SKULL",
-	"ADORCISED_WEAPON"
+	"ADORCISED_WEAPON",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"LEAF",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"NOT USED",
+	"CAULDRON",
+	"WORKBENCH",
+	"MAILBOX",
+	"MAILBOX",
+	"GRYPHON"
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][32] =

@@ -1212,6 +1212,9 @@ public:
 					}
 				}
 				break;
+			case MONSTER_ADORCISED_WEAPON:
+				adorcisedWeaponChooseWeapon(target, dist);
+				break;
 			default:
 				break;
 		}
@@ -1229,6 +1232,7 @@ public:
 	void monsterMChooseWeapon(const Entity* target, double dist);
 	void monsterGChooseWeapon(const Entity* target, double dist);
 	void gryphonChooseWeapon(const Entity* target, double dist);
+	void adorcisedWeaponChooseWeapon(const Entity* target, double dist);
 	void skeletonSummonSetEquipment(Stat* myStats, int rank);
 	static void tinkerBotSetStats(Stat* myStats, int rank);
 	static void mimicSetStats(Stat* myStats);

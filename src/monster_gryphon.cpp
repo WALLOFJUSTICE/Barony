@@ -592,46 +592,49 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 		}
 	}
 
-	if ( keystatus[SDLK_KP_7] )
+	if ( enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 	{
-		if ( keystatus[SDLK_LSHIFT] )
+		if ( keystatus[SDLK_KP_7] )
 		{
-			my->pitch -= 0.05;
+			if ( keystatus[SDLK_LSHIFT] )
+			{
+				my->pitch -= 0.05;
+			}
+			else
+			{
+				my->pitch += 0.05;
+			}
 		}
-		else
+		if ( keystatus[SDLK_KP_5] )
 		{
-			my->pitch += 0.05;
+			keystatus[SDLK_KP_5] = 0;
+			if ( myStats->getEffectActive(EFF_STUNNED) )
+			{
+				myStats->clearEffect(EFF_STUNNED);
+			}
+			else
+			{
+				myStats->setEffectActive(EFF_STUNNED, true);
+			}
 		}
-	}
-	if ( keystatus[SDLK_KP_5] )
-	{
-		keystatus[SDLK_KP_5] = 0;
-		if ( myStats->getEffectActive(EFF_STUNNED) )
+		if ( keystatus[SDLK_KP_4] )
 		{
-			myStats->clearEffect(EFF_STUNNED);
+			keystatus[SDLK_KP_4] = 0;
+			my->yaw = 0.0;
+			my->monsterLookDir = my->yaw;
+			my->pitch = 0.0;
 		}
-		else
+		if ( keystatus[SDLK_KP_6] )
 		{
-			myStats->setEffectActive(EFF_STUNNED, true);
+			my->yaw += 0.25;
+			my->monsterLookDir = my->yaw;
 		}
-	}
-	if ( keystatus[SDLK_KP_4] )
-	{
-		keystatus[SDLK_KP_4] = 0;
-		my->yaw = 0.0;
-		my->monsterLookDir = my->yaw;
-		my->pitch = 0.0;
-	}
-	if ( keystatus[SDLK_KP_6] )
-	{
-		my->yaw += 0.25;
-		my->monsterLookDir = my->yaw;
-	}
-	if ( keystatus[SDLK_g] )
-	{
-		keystatus[SDLK_g] = 0;
-		my->monsterAttack = MONSTER_POSE_MELEE_WINDUP1;
-		my->monsterAttackTime = 0;
+		if ( keystatus[SDLK_g] )
+		{
+			keystatus[SDLK_g] = 0;
+			my->monsterAttack = MONSTER_POSE_MELEE_WINDUP1;
+			my->monsterAttackTime = 0;
+		}
 	}
 
 	static ConsoleVariable<int> cvar_gryphon_limb_rotate("/gryphon_limb_rotate", 0);
@@ -682,26 +685,29 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 			}
 		}
 
-		if ( *cvar_gryphon_limb_rotate == bodypart || *cvar_gryphon_limb_rotate + 1 == bodypart )
+		if ( enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 		{
-			entity->pitch = GRYPHON_LIMB_PITCH;
-			if ( keystatus[SDLK_KP_1] )
+			if ( *cvar_gryphon_limb_rotate == bodypart || *cvar_gryphon_limb_rotate + 1 == bodypart )
 			{
-				GRYPHON_LIMB_PITCH = 0.0;
+				entity->pitch = GRYPHON_LIMB_PITCH;
+				if ( keystatus[SDLK_KP_1] )
+				{
+					GRYPHON_LIMB_PITCH = 0.0;
+				}
+				GRYPHON_LIMB_PITCH += 0.1;
+				//GRYPHON_LIMB_ROLL += 0.1;
+				//entity->roll = 0.25 * sin(GRYPHON_LIMB_ROLL);
+				//
+				//if ( keystatus[SDLK_KP_1] )
+				//{
+				//	GRYPHON_LIMB_PITCH = std::min(GRYPHON_LIMB_PITCH + 0.1, PI / 4);
+				//}
+				//if ( keystatus[SDLK_KP_3] )
+				//{
+				//	GRYPHON_LIMB_PITCH = std::max(GRYPHON_LIMB_PITCH - 0.1, -PI / 4);
+				//}
+				//entity->pitch = GRYPHON_LIMB_PITCH;
 			}
-			GRYPHON_LIMB_PITCH += 0.1;
-			//GRYPHON_LIMB_ROLL += 0.1;
-			//entity->roll = 0.25 * sin(GRYPHON_LIMB_ROLL);
-			//
-			//if ( keystatus[SDLK_KP_1] )
-			//{
-			//	GRYPHON_LIMB_PITCH = std::min(GRYPHON_LIMB_PITCH + 0.1, PI / 4);
-			//}
-			//if ( keystatus[SDLK_KP_3] )
-			//{
-			//	GRYPHON_LIMB_PITCH = std::max(GRYPHON_LIMB_PITCH - 0.1, -PI / 4);
-			//}
-			//entity->pitch = GRYPHON_LIMB_PITCH;
 		}
 
 		if ( bodypart == GRYPHON_BODY )
@@ -779,41 +785,47 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 				}
 			}
 
-			if ( keystatus[SDLK_KP_2] )
+			if ( enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 			{
-				keystatus[SDLK_KP_2] = 0;
-				if ( GRYPHON_STATE == 1 )
+				if ( keystatus[SDLK_KP_2] )
 				{
-					GRYPHON_STATE = 3;
-				}
-				else if ( GRYPHON_STATE == 3 )
-				{
-					GRYPHON_STATE = 0;
-				}
-				else if ( GRYPHON_STATE == 0 )
-				{
-					GRYPHON_STATE = 2;
-				}
-				else
-				{
-					GRYPHON_STATE = 1;
+					keystatus[SDLK_KP_2] = 0;
+					if ( GRYPHON_STATE == 1 )
+					{
+						GRYPHON_STATE = 3;
+					}
+					else if ( GRYPHON_STATE == 3 )
+					{
+						GRYPHON_STATE = 0;
+					}
+					else if ( GRYPHON_STATE == 0 )
+					{
+						GRYPHON_STATE = 2;
+					}
+					else
+					{
+						GRYPHON_STATE = 1;
+					}
 				}
 			}
 			*cvar_gryphon_leg = (GRYPHON_STATE == 1 || GRYPHON_STATE == 3) ? 1 : 0;
-			if ( keystatus[SDLK_KP_8] )
+			if ( enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 			{
-				if ( keystatus[SDLK_LSHIFT] )
+				if ( keystatus[SDLK_KP_8] )
 				{
-					GRYPHON_WALK_MULT -= 0.05;
-					GRYPHON_WALK_MULT = std::max(0.0, GRYPHON_WALK_MULT);
+					if ( keystatus[SDLK_LSHIFT] )
+					{
+						GRYPHON_WALK_MULT -= 0.05;
+						GRYPHON_WALK_MULT = std::max(0.0, GRYPHON_WALK_MULT);
+					}
+					else
+					{
+						GRYPHON_WALK_MULT += 0.05;
+						GRYPHON_WALK_MULT = std::min(1.0, GRYPHON_WALK_MULT);
+					}
 				}
-				else
-				{
-					GRYPHON_WALK_MULT += 0.05;
-					GRYPHON_WALK_MULT = std::min(1.0, GRYPHON_WALK_MULT);
-				}
-			}
 
+			}
 			if ( GRYPHON_STATE == 1 || GRYPHON_STATE == 3 )
 			{
 				if ( GRYPHON_STATE == 3 )
@@ -907,7 +919,7 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 			}
 			else if ( my->monsterAttack == 1 )
 			{
-				if ( my->monsterSpecialState == GRYPHON_FLY )
+				if ( my->monsterSpecialState == GRYPHON_FLY && multiplayer != CLIENT )
 				{
 					if ( my->monsterAttackTime == 1 )
 					{
@@ -932,7 +944,19 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 					}
 				}
 
+				auto prevAnim = GRYPHON_ATK_ANIM;
 				GRYPHON_ATK_ANIM += 0.1;
+
+				if ( my->monsterSpecialState == GRYPHON_WALK && prevAnim < 2.0 && GRYPHON_ATK_ANIM >= 2.0 )
+				{
+					if ( multiplayer != CLIENT )
+					{
+						Sint32 tmp = my->monsterAttackTime;
+						my->attack(1, 0, nullptr);
+						my->monsterAttackTime = tmp;
+					}
+				}
+
 				GRYPHON_ATK_ANIM = std::min(GRYPHON_ATK_ANIM, 4.0);
 
 				GRYPHON_ATK_X = -2.0 - (1.0 - GRYPHON_ATK_ANIM) * 2.0 / 3;

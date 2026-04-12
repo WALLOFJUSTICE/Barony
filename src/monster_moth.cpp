@@ -55,6 +55,27 @@ void initMoth(Entity* my, Stat* myStats)
 				myStats->leader_uid = 0;
 			}
 
+			bool lesserMonster = false;
+			const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+			if ( levelData.id.find("fortress1_") != std::string::npos || levelData.depth < 25 )
+			{
+				lesserMonster = true;
+			}
+
+			if ( lesserMonster )
+			{
+				myStats->HP = 90;
+				myStats->MAXHP = myStats->HP;
+				myStats->RANDOM_MAXHP = 0;
+				myStats->RANDOM_HP = myStats->RANDOM_MAXHP;
+				myStats->OLDHP = myStats->HP;
+				myStats->STR = 7;
+				myStats->DEX = 8;
+				myStats->CON = 3;
+				myStats->EXP = 0;
+				myStats->LVL = 10;
+			}
+
 			// apply random stat increases if set in stat_shared.cpp or editor
 			setRandomMonsterStats(myStats, rng);
 
@@ -1219,7 +1240,7 @@ void Entity::mothChooseWeapon(const Entity* target, double dist)
 		// try to charm enemy.
 		int specialRoll = -1;
 		int bonusFromHP = 0;
-		specialRoll = local_rng.rand() % 40;
+		specialRoll = local_rng.rand() % 10;
 		if ( myStats && myStats->getAttribute("fire_sprite") != "" )
 		{
 			specialRoll = 0;

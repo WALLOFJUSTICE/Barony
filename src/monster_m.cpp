@@ -59,6 +59,15 @@ void initMonsterM(Entity* my, Stat* myStats)
 
 		if ( myStats != nullptr )
 		{
+			bool lesserMonster = false;
+			const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+			myStats->sex = MALE;
+			if ( levelData.id.find("fortress1_") != std::string::npos || levelData.depth < 25 )
+			{
+				strcpy(myStats->name, "lesser myconid");
+				lesserMonster = true;
+				myStats->sex = FEMALE;
+			}
 			if ( myStats->sex == FEMALE )
 			{
 				my->sprite = 1520;
@@ -68,67 +77,25 @@ void initMonsterM(Entity* my, Stat* myStats)
 				myStats->leader_uid = 0;
 			}
 
+			if ( !strncmp(myStats->name, "lesser myconid", strlen("lesser myconid")) )
+			{
+				myStats->HP = 120;
+				myStats->MAXHP = myStats->HP;
+				myStats->RANDOM_MAXHP = 0;
+				myStats->RANDOM_HP = myStats->RANDOM_MAXHP;
+				myStats->OLDHP = myStats->HP;
+				myStats->STR = 10;
+				myStats->DEX = 3;
+				myStats->CON = 7;
+				myStats->EXP = 0;
+				myStats->LVL = 14;
+			}
+
 			// apply random stat increases if set in stat_shared.cpp or editor
 			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
-
-
-			// boss variants
-			//const bool boss =
-			//    rng.rand() % 50 == 0 &&
-			//    !my->flags[USERFLAG2] &&
-			//    !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS];
-			//if ( (boss || (*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED])) && myStats->leader_uid == 0 )
-			//{
-			//	myStats->setAttribute("special_npc", "gharbad");
-			//	strcpy(myStats->name, MonsterMata_t::getSpecialNPCName(*myStats).c_str());
-			//	my->sprite = MonsterMata_t::getSpecialNPCBaseModel(*myStats);
-			//	myStats->sex = MALE;
-			//	myStats->STR += 10;
-			//	myStats->DEX += 2;
-			//	myStats->MAXHP += 75;
-			//	myStats->HP = myStats->MAXHP;
-			//	myStats->OLDHP = myStats->MAXHP;
-			//	myStats->CHR = -1;
-			//	spawnedBoss = true;
-			//	//TODO: Boss stats
-
-			//	//Spawn in potions.
-			//	int end = rng.rand()%NUM_GOATMAN_BOSS_GHARBAD_POTIONS + 5;
-			//	for ( int i = 0; i < end; ++i )
-			//	{
-			//		switch ( rng.rand()%10 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//			case 2:
-			//			case 3:
-			//			case 4:
-			//			case 5:
-			//			case 6:
-			//			case 7:
-			//			case 8:
-			//				newItem(POTION_BOOZE, EXCELLENT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
-			//				break;
-			//			case 9:
-			//				newItem(POTION_HEALING, EXCELLENT, 0, 1, rng.rand(), false, &myStats->inventory);
-			//				break;
-			//			default:
-			//				printlog("Tried to spawn goatman boss \"Gharbad\" invalid potion.");
-			//				break;
-			//		}
-			//	}
-
-			//	newItem(CRYSTAL_SHURIKEN, EXCELLENT, 1 + rng.rand()%1, rng.rand()%NUM_GOATMAN_BOSS_GHARBAD_THROWN_WEAPONS + 2, rng.rand(), true, &myStats->inventory);
-			//}
-
-			// random effects
-			/*if ( rng.rand() % 8 == 0 )
-			{
-				my->setEffect(EFF_ASLEEP, true, 1800 + rng.rand() % 1800, false);
-			}*/
 
 			// generates equipment and weapons if available from editor
 			createMonsterEquipment(myStats, rng);
@@ -154,6 +121,23 @@ void initMonsterM(Entity* my, Stat* myStats)
 				{
 					myStats->setAttribute("monster_m_type", "discanter");
 				}
+			}
+
+			switch ( defaultItems )
+			{
+			case 6:
+			case 5:
+			case 4:
+			case 3:
+			case 2:
+			case 1:
+				if ( rng.rand() % 3 == 0 )
+				{
+					newItem(FOOD_SHROOM, SERVICABLE, 0, 2 + rng.rand() % 3, rng.rand(), false, &myStats->inventory);
+				}
+				break;
+			default:
+				break;
 			}
 
 			if ( myStats->getAttribute("monster_m_type") == "duster" )

@@ -133,6 +133,27 @@ void initAdorcisedWeapon(Entity* my, Stat* myStats)
 				myStats->leader_uid = 0;
 			}
 
+			bool lesserMonster = false;
+			const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+			if ( levelData.depth < 25 )
+			{
+				lesserMonster = true;
+			}
+
+			if ( lesserMonster && myStats->getAttribute("spirit_weapon") == "" && myStats->getAttribute("adorcised_weapon") == "" )
+			{
+				myStats->HP = 80;
+				myStats->MAXHP = myStats->HP;
+				myStats->RANDOM_MAXHP = 0;
+				myStats->RANDOM_HP = myStats->RANDOM_MAXHP;
+				myStats->OLDHP = myStats->HP;
+				myStats->STR = 10;
+				myStats->DEX = 5;
+				myStats->CON = 5;
+				myStats->EXP = 0;
+				myStats->LVL = 9;
+			}
+
 			// apply random stat increases if set in stat_shared.cpp or editor
 			setRandomMonsterStats(myStats, rng);
 
@@ -155,28 +176,28 @@ void initAdorcisedWeapon(Entity* my, Stat* myStats)
 
 			if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 			{
-				int pick = rng.rand() % 8;
+				int pick = rng.rand() % 10;
 				switch ( pick )
 				{
 				case 0:
 				case 1:
-					myStats->weapon = newItem(IRON_SWORD, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					myStats->weapon = newItem(STEEL_SWORD, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					break;
 				case 2:
 				case 3:
-					myStats->weapon = newItem(IRON_SPEAR, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					break;
 				case 4:
 				case 5:
-					myStats->weapon = newItem(IRON_MACE, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					myStats->weapon = newItem(STEEL_MACE, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					break;
 				case 6:
 				case 7:
-					myStats->weapon = newItem(IRON_AXE, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					myStats->weapon = newItem(STEEL_AXE, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					break;
 				case 8:
 				case 9:
-					myStats->weapon = newItem(MAGICSTAFF_FIRE, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					myStats->weapon = newItem(CROSSBOW, static_cast<Status>(DECREPIT + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					break;
 				}
 			}
@@ -422,6 +443,57 @@ void flameElementalDie(Entity* my)
 #define SKULL_CIRCLES_DECREMENT_MODE body->skill[5]
 #define SKULL_NEXTBOB body->skill[6]
 #define SKULL_IDLE_TIMER body->skill[7]
+
+void Entity::adorcisedWeaponChooseWeapon(const Entity* target, double dist)
+{
+	if ( monsterSpecialTimer != 0 )
+	{
+		return;
+	}
+
+	Stat* myStats = getStats();
+	if ( !myStats || myStats->getAttribute("spirit_weapon") != "" )
+	{
+		return;
+	}
+
+	if ( monsterSpecialTimer == 0
+		&& (ticks % 10 == 0) )
+	{
+		if ( monsterSpecialState == 0 )
+		{
+			if ( hasRangedWeapon() )
+			{
+				if ( dist < getMonsterEffectiveDistanceOfRangedWeapon(myStats->weapon) )
+				{
+					monsterSpecialTimer = 75;
+					monsterSpecialState = ADORCISED_WEAPON_SPECIAL_CHARGE;
+				}
+			}
+			else
+			{
+				monsterSpecialTimer = 75;
+				monsterSpecialState = ADORCISED_WEAPON_SPECIAL_CHARGE;
+			}
+		}
+		else /*if ( monsterSpecialState == ADORCISED_WEAPON_SPECIAL_CHARGE )*/
+		{
+			monsterSpecialState = 0;
+			if ( !hasRangedWeapon() )
+			{
+				monsterSpecialTimer = 50;
+			}
+			else if ( dist < 32 )
+			{
+				monsterSpecialTimer = 100;
+			}
+			else
+			{
+				monsterSpecialTimer = 150;
+			}
+		}
+	}
+}
 
 void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 {
@@ -678,7 +750,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 
 							if ( pick == MONSTER_POSE_RANGED_WINDUP2 )
 							{
-								if ( adorcisedWeapon && myStats->getAttribute("spirit_weapon") != "" )
+								if ( adorcisedWeapon /*&& myStats->getAttribute("spirit_weapon") != ""*/ )
 								{
 									pick = MONSTER_POSE_RANGED_WINDUP3;
 								}
@@ -812,13 +884,25 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 								my->attack(MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP1 ? MONSTER_POSE_MAGIC_CAST1 : 1, 0, nullptr); // slop
 								MONSTER_ATTACKTIME = temp;
 
-								if ( adorcisedWeapon && myStats->getAttribute("spirit_weapon") != "" )
+								if ( adorcisedWeapon && (myStats->getAttribute("spirit_weapon") != "" || my->monsterSpecialState == ADORCISED_WEAPON_SPECIAL_CHARGE) )
 								{
 									// knockback to lunge forward
 									if ( my->setEffect(EFF_KNOCKBACK, true, 25, false) )
 									{
-										real_t pushbackMultiplier = 1.5;
 										real_t tangent = my->yaw;
+										if ( myStats->getAttribute("spirit_weapon") == "" )
+										{
+											my->setEffect(EFF_ROOTED, true, TICKS_PER_SECOND, false);
+											if ( my->hasRangedWeapon() )
+											{
+												tangent += ((local_rng.rand() % 2) ? 1 : -1) * PI / 4;
+											}
+											else
+											{
+												tangent += (-1 + local_rng.rand() % 3) * PI / 8;
+											}
+										}
+										real_t pushbackMultiplier = 1.5;
 										my->vel_x = cos(tangent) * pushbackMultiplier;
 										my->vel_y = sin(tangent) * pushbackMultiplier;
 										my->monsterKnockbackVelocity = 0.025;
@@ -827,10 +911,12 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 
 										if ( multiplayer != CLIENT )
 										{
-											Entity* spellTimer = createParticleTimer(my, 25, -1);
-											spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SPIRIT_WEAPON_ATTACK;
-
-											playSoundEntity(my, 23 + local_rng.rand() % 5, 128); // whoosh noise
+											if ( !my->hasRangedWeapon() )
+											{
+												Entity* spellTimer = createParticleTimer(my, 25, -1);
+												spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SPIRIT_WEAPON_ATTACK;
+												playSoundEntity(my, 23 + local_rng.rand() % 5, 128); // whoosh noise
+											}
 										}
 									}
 								}
@@ -1556,7 +1642,7 @@ void initEarthElemental(Entity* my, Stat* myStats)
 	int sprite = 1871; // default sprite, summon anim
 	if ( multiplayer != CLIENT )
 	{
-		if ( MONSTER_INIT )
+		if ( MONSTER_INIT || (myStats && myStats->getAttribute("SUMMONED_CREATURE") == "") )
 		{
 			sprite = 1876; // no summon anim
 		}

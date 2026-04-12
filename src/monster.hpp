@@ -1088,8 +1088,8 @@ static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_D_PUSH = 75;
 static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_M_THROW = 200;
 static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_M_CAST_SHORT = 150;
 static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_M_CAST_LONG = 250;
-static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_G_THROW = 500;
-static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_G_CAST = 550;
+static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_G_THROW = 200;
+static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_G_CAST = 500;
 
 //--monster target search types
 static const int MONSTER_TARGET_ENEMY = 0;
@@ -1285,6 +1285,10 @@ static const int GRYPHON_SKYBOX = 0;
 static const int GRYPHON_FLY = 1;
 static const int GRYPHON_WALK = 2;
 static const int GRYPHON_STATE3 = 3;
+
+//-Adorcised weapon
+static const int ADORCISED_WEAPON_SPECIAL_CHARGE = 1;
+static const int ADORCISED_WEAPON_SPECIAL_COOLDOWN = 2;
 
 struct MonsterData_t
 {

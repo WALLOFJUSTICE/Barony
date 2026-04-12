@@ -59,76 +59,43 @@ void initMonsterD(Entity* my, Stat* myStats)
 
 		if ( myStats != nullptr )
 		{
-		    if (myStats->sex == FEMALE)
-		    {
-		        my->sprite = 1486;
-		    }
+			bool lesserMonster = false;
+			const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+			myStats->sex = FEMALE;
+			if ( levelData.id.find("fortress1_") != std::string::npos || levelData.depth < 25 )
+			{
+				strcpy(myStats->name, "lesser dryad");
+				lesserMonster = true;
+				myStats->sex = MALE;
+			}
+			if ( myStats->sex == FEMALE )
+			{
+				my->sprite = 1486;
+			}
 			if ( !myStats->leader_uid )
 			{
 				myStats->leader_uid = 0;
 			}
 
+			if ( !strncmp(myStats->name, "lesser dryad", strlen("lesser dryad")) )
+			{
+				myStats->HP = 100;
+				myStats->MAXHP = myStats->HP;
+				myStats->RANDOM_MAXHP = 0;
+				myStats->RANDOM_HP = myStats->RANDOM_MAXHP;
+				myStats->OLDHP = myStats->HP;
+				myStats->STR = 8;
+				myStats->DEX = 5;
+				myStats->CON = 3;
+				myStats->EXP = 0;
+				myStats->LVL = 14;
+			}
+		    
 			// apply random stat increases if set in stat_shared.cpp or editor
 			setRandomMonsterStats(myStats, rng);
 
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
-
-
-			// boss variants
-			//const bool boss =
-			//    rng.rand() % 50 == 0 &&
-			//    !my->flags[USERFLAG2] &&
-			//    !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS];
-			//if ( (boss || (*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED])) && myStats->leader_uid == 0 )
-			//{
-			//	myStats->setAttribute("special_npc", "gharbad");
-			//	strcpy(myStats->name, MonsterData_t::getSpecialNPCName(*myStats).c_str());
-			//	my->sprite = MonsterData_t::getSpecialNPCBaseModel(*myStats);
-			//	myStats->sex = MALE;
-			//	myStats->STR += 10;
-			//	myStats->DEX += 2;
-			//	myStats->MAXHP += 75;
-			//	myStats->HP = myStats->MAXHP;
-			//	myStats->OLDHP = myStats->MAXHP;
-			//	myStats->CHR = -1;
-			//	spawnedBoss = true;
-			//	//TODO: Boss stats
-
-			//	//Spawn in potions.
-			//	int end = rng.rand()%NUM_GOATMAN_BOSS_GHARBAD_POTIONS + 5;
-			//	for ( int i = 0; i < end; ++i )
-			//	{
-			//		switch ( rng.rand()%10 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//			case 2:
-			//			case 3:
-			//			case 4:
-			//			case 5:
-			//			case 6:
-			//			case 7:
-			//			case 8:
-			//				newItem(POTION_BOOZE, EXCELLENT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
-			//				break;
-			//			case 9:
-			//				newItem(POTION_HEALING, EXCELLENT, 0, 1, rng.rand(), false, &myStats->inventory);
-			//				break;
-			//			default:
-			//				printlog("Tried to spawn goatman boss \"Gharbad\" invalid potion.");
-			//				break;
-			//		}
-			//	}
-
-			//	newItem(CRYSTAL_SHURIKEN, EXCELLENT, 1 + rng.rand()%1, rng.rand()%NUM_GOATMAN_BOSS_GHARBAD_THROWN_WEAPONS + 2, rng.rand(), true, &myStats->inventory);
-			//}
-
-			// random effects
-			/*if ( rng.rand() % 8 == 0 )
-			{
-				my->setEffect(EFF_ASLEEP, true, 1800 + rng.rand() % 1800, false);
-			}*/
 
 			// generates equipment and weapons if available from editor
 			createMonsterEquipment(myStats, rng);
@@ -144,13 +111,27 @@ void initMonsterD(Entity* my, Stat* myStats)
 
 			my->setHardcoreStats(*myStats);
 
-			if ( rng.rand() % 2 == 0 )
+			if ( lesserMonster )
 			{
-				myStats->setAttribute("monster_d_type", "watcher");
+				if ( rng.rand() % 5 > 0 )
+				{
+					myStats->setAttribute("monster_d_type", "watcher");
+				}
+				else
+				{
+					myStats->setAttribute("monster_d_type", "nymph");
+				}
 			}
 			else
 			{
-				myStats->setAttribute("monster_d_type", "nymph");
+				if ( rng.rand() % 2 == 0 )
+				{
+					myStats->setAttribute("monster_d_type", "watcher");
+				}
+				else
+				{
+					myStats->setAttribute("monster_d_type", "nymph");
+				}
 			}
 
 			//bool isShaman = false;
@@ -191,36 +172,22 @@ void initMonsterD(Entity* my, Stat* myStats)
 			//}
 			
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
-			//switch ( defaultItems )
-			//{
-			//	case 6:
-			//	case 5:
-			//	case 4:
-			//	case 3:
-			//	case 2:
-			//	case 1:
-			//		if ( isShaman && rng.rand() % 10 == 0 )
-			//		{
-			//			switch ( rng.rand() % 4 )
-			//			{
-			//				case 0:
-			//					newItem(SPELLBOOK_SLOW, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//				case 1:
-			//					newItem(SPELLBOOK_FIREBALL, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//				case 2:
-			//					newItem(SPELLBOOK_COLD, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//				case 3:
-			//					newItem(SPELLBOOK_FORCEBOLT, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//			}
-			//		}
-			//		break;
-			//	default:
-			//		break;
-			//}
+			switch ( defaultItems )
+			{
+			case 6:
+			case 5:
+			case 4:
+			case 3:
+			case 2:
+			case 1:
+				if ( rng.rand() % 3 == 0 )
+				{
+					newItem(FOOD_NUT, SERVICABLE, 0, 2 + rng.rand() % 3, rng.rand(), false, &myStats->inventory);
+				}
+				break;
+			default:
+				break;
+			}
 
 
 			////Give weapons.
@@ -1070,7 +1037,7 @@ void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						limbAnimateToLimit(weaponarm, ANIMATE_PITCH, -0.25, 7 * PI / 4, true, 0.0);
 						//limbAnimateToLimit(weaponarm, ANIMATE_ROLL, -0.25, 7 * PI / 4, false, 0.0);
 
-						if ( my->monsterAttackTime >= 5 * ANIMATE_DURATION_WINDUP / (monsterGlobalAnimationMultiplier / 10.0) )
+						if ( my->monsterAttackTime >= 3 * ANIMATE_DURATION_WINDUP / (monsterGlobalAnimationMultiplier / 10.0) )
 						{
 							if ( multiplayer != CLIENT )
 							{
@@ -1122,7 +1089,9 @@ void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist)
 									CastSpellProps_t props;
 									if ( my->monsterSpecialState == MONSTER_D_SPECIAL_CAST2 )
 									{
-										spellID = SPELL_KINETIC_PUSH;
+										//spellID = SPELL_KINETIC_PUSH;
+										//setProps = props.setToMonsterCast(my, spellID);
+										spellID = SPELL_FOCI_WINDBLAST;
 										setProps = props.setToMonsterCast(my, spellID);
 									}
 									if ( !setProps )

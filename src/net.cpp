@@ -3502,6 +3502,9 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				case PARTICLE_EFFECT_SHATTER_OBJECTS:
 					createParticleShatterObjects(entity);
 					break;
+				case PARTICLE_EFFECT_REVENANT_PUSH:
+					createParticleRevenantPush(entity);
+					break;
 				case PARTICLE_EFFECT_LIGHTNING_SEQ:
 					floorMagicCreateLightningSequence(entity, entity->ticks + 1);
 					break;

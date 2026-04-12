@@ -3276,6 +3276,56 @@ void Entity::modHP(int amount)
 			amount = 0;
 		}
 	}
+	if ( entitystats && entitystats->type == MOTH_SMALL && entitystats->getAttribute("fire_sprite") == ""
+		&& entitystats->getAttribute("moth_state") != ""
+		&& amount < 0 && entitystats->MAXHP > 10 )
+	{
+		if ( entitystats->getAttribute("moth_state") == "0" )
+		{
+			Sint32 hpLimit = (0.8 * entitystats->MAXHP) - 1;
+			if ( entitystats->HP + amount < hpLimit )
+			{
+				Sint32 reduce = hpLimit - (entitystats->HP + amount);
+				amount += reduce;
+			}
+		}
+		else if ( entitystats->getAttribute("moth_state") == "1" )
+		{
+			Sint32 hpLimit = (0.6 * entitystats->MAXHP) - 1;
+			if ( entitystats->HP + amount < hpLimit )
+			{
+				Sint32 reduce = hpLimit - (entitystats->HP + amount);
+				amount += reduce;
+			}
+		}
+		else if ( entitystats->getAttribute("moth_state") == "2" )
+		{
+			Sint32 hpLimit = (0.4 * entitystats->MAXHP) - 1;
+			if ( entitystats->HP + amount < hpLimit )
+			{
+				Sint32 reduce = hpLimit - (entitystats->HP + amount);
+				amount += reduce;
+			}
+		}
+		else if ( entitystats->getAttribute("moth_state") == "3" )
+		{
+			Sint32 hpLimit = (0.2 * entitystats->MAXHP) - 1;
+			if ( entitystats->HP + amount < hpLimit )
+			{
+				Sint32 reduce = hpLimit - (entitystats->HP + amount);
+				amount += reduce;
+			}
+		}
+		else if ( entitystats->getAttribute("moth_state") == "4" )
+		{
+			Sint32 hpLimit = (0.1 * entitystats->MAXHP) - 1;
+			if ( entitystats->HP + amount < hpLimit )
+			{
+				Sint32 reduce = hpLimit - (entitystats->HP + amount);
+				amount += reduce;
+			}
+		}
+	}
 
 	if ( entitystats && entitystats->type == DUCK_SMALL && amount < 0 )
 	{
@@ -10363,6 +10413,14 @@ void Entity::attack(int pose, int charge, Entity* target)
 			{
 				// don't update aoe hits
 			}
+			else if ( myStats->type == GRYPHON )
+			{
+				if ( pose != 1 )
+				{
+					serverUpdateEntitySkill(this, 8); // don't update basic hits
+					serverUpdateEntitySkill(this, 9);
+				}
+			}
 			else if ( player >= 0 && player < MAXPLAYERS )
 			{
 				serverUpdateEntitySkill(players[player]->entity, 9);
@@ -10451,7 +10509,14 @@ void Entity::attack(int pose, int charge, Entity* target)
 
 		if ( myStats->type == REVENANT_SKULL && pose == MONSTER_POSE_MAGIC_CAST1 )
 		{
-			castSpell(uid, &spell_ghost_bolt, true, false);
+			if ( myStats->getAttribute("revenant_skull") == "" )
+			{
+				castSpell(uid, getSpellFromID(SPELL_REVENANT_PUSH), true, false);
+			}
+			else
+			{
+				castSpell(uid, &spell_ghost_bolt, true, false);
+			}
 			return;
 		}
 		if ( myStats->type == FLAME_ELEMENTAL && pose == MONSTER_POSE_MAGIC_CAST1 )
@@ -10459,10 +10524,13 @@ void Entity::attack(int pose, int charge, Entity* target)
 			castSpell(uid, &spell_fireball, true, false);
 			return;
 		}
-		if ( myStats->type == MONSTER_ADORCISED_WEAPON && myStats->getAttribute("spirit_weapon") != "" 
+		if ( myStats->type == MONSTER_ADORCISED_WEAPON && (myStats->getAttribute("spirit_weapon") != "" || monsterSpecialState == ADORCISED_WEAPON_SPECIAL_CHARGE)
 			&& target == nullptr )
 		{
-			return; // don't hit basic hits, only slide through targeted hits
+			if ( !hasRangedWeapon() )
+			{
+				return; // don't hit basic hits, only slide through targeted hits
+			}
 		}
 
 		Entity* sweepAttackTimer = nullptr;
@@ -12022,6 +12090,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 					{
 						axe += 1 * players[this->skill[2]]->mechanics.getBreakableCounterTier();
 					}
+					else
+					{
+						axe += 2;
+					}
 				}
 				if ( myStats->type == GNOME )
 				{
@@ -12836,6 +12908,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 						if ( this->behavior == &actPlayer )
 						{
 							damage += 1 * players[this->skill[2]]->mechanics.getBreakableCounterTier();
+						}
+						else
+						{
+							damage += 2;
 						}
 					}
 
@@ -15199,7 +15275,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 							}
 						}
 						else if ( whip && (hitstats->getEffectActive(EFF_DISORIENTED) 
-							|| !hit.entity->isMobile()
+							|| (!hit.entity->isMobile() || hitstats->getEffectActive(EFF_ROOTED))
 							|| (hitstats->getEffectActive(EFF_DRUNK) && local_rng.rand() % 3 == 0)
 							|| (hitstats->getEffectActive(EFF_CONFUSED) && local_rng.rand() % 3 == 0))
 							)
@@ -24268,6 +24344,10 @@ void Entity::monsterAcquireAttackTarget(const Entity& target, Sint32 state, bool
 				}
 				return;
 			}
+			if ( checkFriend(const_cast<Entity*>(&target)) )
+			{
+				return;
+			}
 		}
 	}
 
@@ -24423,9 +24503,13 @@ void Entity::monsterAcquireAttackTarget(const Entity& target, Sint32 state, bool
 		{
 			// check to see if holding ranged weapon, set hittime to be ready to attack.
 			// set melee hittime close to max in hardcore mode...
-			if ( myStats->type == MONSTER_ADORCISED_WEAPON && myStats->getAttribute("spirit_weapon") != "" )
+			if ( myStats->type == MONSTER_ADORCISED_WEAPON /*&& myStats->getAttribute("spirit_weapon") != ""*/ )
 			{
 				monsterHitTime = HITRATE * 1.5 - 10;
+			}
+			else if ( myStats->type == REVENANT_SKULL )
+			{
+				monsterHitTime = std::max(monsterHitTime, (Sint32)(HITRATE * 1.5 - 10));
 			}
 			else if ( ((svFlags & SV_FLAG_HARDCORE) || hasRangedWeapon()) && monsterSpecialTimer <= 0 )
 			{
@@ -28519,6 +28603,7 @@ bool monsterNameIsGeneric(Stat& monsterStats)
 		|| !strcmp(monsterStats.name, Language::get(6807)) // revenant skeleton
 		|| !strcmp(monsterStats.name, Language::get(6302)) // gnome thief
 		|| !strcmp(monsterStats.name, Language::get(6303)) // gnome thief leader
+		|| !strcmp(monsterStats.name, Language::get(7002)) // adorcised instrument
 		|| MonsterData_t::nameMatchesSpecialNPCName(monsterStats, "fire sprite")
 		|| strstr(monsterStats.name, getMonsterLocalizedName(SLIME).c_str()) )
 	{
