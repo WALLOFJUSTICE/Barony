@@ -6839,7 +6839,7 @@ Host to enable the game setting.
 6577 You summon a spirited %s!#
 6578 There is no room here to summon!#
 6579 spirit weapon#
-6580 adorcised possession#
+6580 adorcised weapon#
 6581 flame elemental#
 6582 hologram#
 6583 moth#
@@ -6848,7 +6848,7 @@ Host to enable the game setting.
 6586 water elemental#
 6587 gryphon#
 6588 monster_unused_8#
-6589 adorcised possessions#
+6589 adorcised weapons#
 6590 flame elementals#
 6591 holograms#
 6592 moths#
@@ -7273,5 +7273,6 @@ has been unlocked!#
 6999 Select an offering...#
 7000 Sacrifice#
 7001 Smith#
+7002 adorcised instrument#
 
 7999 END#

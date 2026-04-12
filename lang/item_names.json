@@ -2737,6 +2737,9 @@
 		},
 		"spell_foci_windblast": {
 			"name": "Focus of Windblast"
+		},
+		"spell_revenant_push": {
+			"name": "Revenant Chill"
 		}
     }
 }
