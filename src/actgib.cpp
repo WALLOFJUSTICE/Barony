@@ -1407,6 +1407,25 @@ Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBo
 	my->vel_x = vel * cos(my->yaw);
 	my->vel_y = vel * sin(my->yaw);
 
+	if ( multiplayer != CLIENT )
+	{
+		if ( Entity* caster = uidToEntity(parentUid) )
+		{
+			if ( caster->behavior == &actMonster && uidToEntity(caster->monsterTarget) )
+			{
+				if ( Stat* casterStats = caster->getStats() )
+				{
+					int accuracy = casterStats->monsterRangedAccuracy.getAccuracy(caster->monsterTarget);
+					if ( accuracy > 0 )
+					{
+						casterStats->monsterRangedAccuracy.modifyProjectile(*caster, *my);
+					}
+					casterStats->monsterRangedAccuracy.incrementAccuracy();
+				}
+			}
+		}
+	}
+
 	/*real_t movementDir = atan2(parent->vel_y, parent->vel_x);
 	real_t particleDir = fmod(my->yaw, 2 * PI);
 	real_t yawDiff = movementDir - particleDir;
