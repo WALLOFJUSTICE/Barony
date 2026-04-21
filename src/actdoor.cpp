@@ -721,3 +721,139 @@ void Entity::actIronDoor()
 		}
 	}
 }
+
+void actForcefield(Entity* my)
+{
+	/*if ( PARTICLE_LIFE < 0 )
+	{
+		createParticleDemesneDoor(my->x, my->y, my->yaw);
+		serverSpawnMiscParticlesAtLocation(my->x, my->y, my->yaw * 256.0, PARTICLE_EFFECT_DEMESNE_DOOR, 0);
+		my->removeLightField();
+		list_RemoveNode(my->mynode);
+		if ( Entity* caster = uidToEntity(my->parent) )
+		{
+			messagePlayer(caster->isEntityPlayer(), MESSAGE_WORLD, Language::get(6691));
+		}
+		return;
+	}*/
+
+	if ( !my->light )
+	{
+		my->light = addLight(my->x / 16, my->y / 16, "demesne_door");
+	}
+
+	if ( my->skill[1] == 0 )
+	{
+		my->skill[1] = 1;
+		createParticleDemesneDoor(my->x, my->y, my->yaw);
+	}
+
+	my->ditheringOverride = 4;
+
+	/*if ( multiplayer != CLIENT )
+	{
+		--PARTICLE_LIFE;
+
+		int mapx = my->x / 16;
+		int mapy = my->y / 16;
+		bool interrupted = false;
+		auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
+		for ( auto it : entLists )
+		{
+			node_t* node;
+			for ( node = it->first; node != nullptr; node = node->next )
+			{
+				if ( Entity* entity = (Entity*)node->element )
+				{
+					if ( static_cast<int>(entity->x / 16) == mapx && static_cast<int>(entity->y / 16) == mapy )
+					{
+						if ( entity == my ) { continue; }
+						if ( entity->behavior == &actDoor )
+						{
+							entity->doorHealth = 0;
+						}
+						if ( entity->behavior == &actGate && entity->gateStatus == 0 )
+						{
+							interrupted = true;
+						}
+						if ( entity->behavior == &actIronDoor && entity->doorStatus == 0 )
+						{
+							interrupted = true;
+						}
+						if ( entity->behavior == &actParticleDemesneDoor )
+						{
+							interrupted = true;
+						}
+						if ( entity->behavior == &actPlayer || entity->behavior == &actMonster )
+						{
+							if ( Stat* stats = entity->getStats() )
+							{
+								if ( stats->type != VAMPIRE )
+								{
+									if ( entityInsideEntity(my, entity) )
+									{
+										if ( auto hitProps = getParticleEmitterHitProps(my->getUID(), entity) )
+										{
+											if ( hitProps->hits == 0 )
+											{
+												hitProps->hits++;
+												hitProps->tick = ticks;
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+			for ( auto& hitProp : particleTimerEmitterHitEntities[my->getUID()] )
+			{
+				if ( hitProp.second.hits == 1 )
+				{
+					if ( Entity* entity = uidToEntity(hitProp.first) )
+					{
+						if ( Stat* stats = entity->getStats() )
+						{
+							if ( stats->type != VAMPIRE )
+							{
+								if ( !entityInsideEntity(my, entity) )
+								{
+									hitProp.second.hits++;
+									hitProp.second.tick = ticks;
+									Entity* caster = uidToEntity(my->parent);
+									if ( caster && (caster == entity || caster->checkFriend(entity)) )
+									{
+										int effectStrength = std::min(255,
+											std::min(getSpellDamageSecondaryFromID(SPELL_DEMESNE_DOOR, caster, nullptr, my),
+												std::max(1, getSpellDamageFromID(SPELL_DEMESNE_DOOR, caster, nullptr, my))));
+										if ( entity->setEffect(EFF_DEMESNE_DOOR, (Uint8)effectStrength,
+											getSpellEffectDurationSecondaryFromID(SPELL_DEMESNE_DOOR, caster, nullptr, my), false) )
+										{
+											magicOnSpellCastEvent(caster, caster, nullptr, SPELL_DEMESNE_DOOR, spell_t::SPELL_LEVEL_EVENT_EFFECT, 1);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if ( interrupted )
+		{
+			if ( Entity* caster = uidToEntity(my->parent) )
+			{
+				messagePlayer(caster->isEntityPlayer(), MESSAGE_WORLD, Language::get(6690));
+			}
+
+			createParticleDemesneDoor(my->x, my->y, my->yaw);
+			serverSpawnMiscParticlesAtLocation(my->x, my->y, my->yaw * 256.0, PARTICLE_EFFECT_DEMESNE_DOOR, 0);
+			my->removeLightField();
+			list_RemoveNode(my->mynode);
+			return;
+		}
+	}*/
+}

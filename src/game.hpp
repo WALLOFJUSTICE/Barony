@@ -299,6 +299,7 @@ void actCampfire(Entity* my);
 void actCauldron(Entity* my);
 void actWorkbench(Entity* my);
 void actMailbox(Entity* my);
+void actForcefield(Entity* my);
 Entity* spawnFlame(Entity* parentent, Sint32 sprite);
 Entity* spawnFlameSprites(Entity* parentent, Sint32 sprite);
 Entity* castMagic(Entity* parentent);

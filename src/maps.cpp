@@ -3736,6 +3736,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 	std::vector<std::pair<ItemType, int>> generateKeyItems;
 	bool ceilingTilesAllowed = !strncmp(map.filename, "fortress", 8);
+	bool wallDecorationTilesAllowed = !strncmp(map.filename, "keep", 4);
 	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
@@ -3750,6 +3751,10 @@ int generateDungeon(char* levelset, Uint32 seed)
 			}
 		}
 		if ( entity->sprite == 119 && ceilingTilesAllowed ) // ceiling tile no block stuff
+		{
+			continue;
+		}
+		if ( entity->sprite == 127 && entity->floorDecorationDestroyIfNoWall >= 0 && wallDecorationTilesAllowed )
 		{
 			continue;
 		}
@@ -5003,6 +5008,253 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 					possiblelocations[y + x * map.height] = false;
 					numpossiblelocations--;
+				}
+				else
+				{
+					--c;
+					continue;
+				}
+			}
+		}
+	}
+
+	{
+		static ConsoleVariable<int> cvar_keep_forcefield("/map_keep_forcefield", 0);
+		static ConsoleVariable<int> cvar_keep_forcefield_min("/map_keep_forcefield_min", 3);
+		if ( !strncmp(map.filename, "keep", 4) && *cvar_keep_forcefield > 0 )
+		{
+			std::vector<int> goodSpots;
+			for ( int x = 0; x < map.width; ++x )
+			{
+				for ( int y = 0; y < map.height; ++y )
+				{
+					if ( possiblelocations[y + x * map.height] == true )
+					{
+						goodSpots.push_back(x + 10000 * y);
+					}
+				}
+			}
+
+			enum CorridorDir
+			{
+				CORRIDOR_VERTICAL,
+				CORRIDOR_HORIZONTAL
+			};
+
+			for ( int c = 0; c < (int)goodSpots.size(); ++c )
+			{
+				// choose a random location from those available
+				int pick = map_rng.rand() % goodSpots.size();
+				int key = goodSpots[pick];
+				int x = key % 10000;
+				int y = key / 10000;
+
+				goodSpots.erase(goodSpots.begin() + pick);
+				if ( !possiblelocations[y + x * map.height] )
+				{
+					continue;
+				}
+
+				std::vector<std::pair<int, int>> fieldSpots;
+				for ( int i = CorridorDir::CORRIDOR_VERTICAL; i <= CorridorDir::CORRIDOR_HORIZONTAL; ++i )
+				{
+					if ( i == CorridorDir::CORRIDOR_VERTICAL )
+					{
+						int checkx = x;
+						int checky = y;
+						if ( checkx > 0 && checkx < map.width - 1 )
+						{
+							if ( checky > 0 && checky < map.height - 1 )
+							{
+								bool left = map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx - 1) * MAPLAYERS * map.height];
+								bool right = map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx + 1) * MAPLAYERS * map.height];
+								if ( left && right )
+								{
+									//fieldSpots.push_back(checkx + 10000 * checky);
+								}
+								else if ( left || right )
+								{
+									bool left2 = false;
+									int currentWidth = 1;
+									int foundWidth = 0;
+									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									{
+										checkx = x - w;
+										if ( checkx > 0 && checkx < map.width - 1 )
+										{
+											if ( map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx)*MAPLAYERS * map.height] )
+											{
+												if ( currentWidth >= *cvar_keep_forcefield_min )
+												{
+													left2 = true;
+													foundWidth = currentWidth;
+												}
+												break;
+											}
+											if ( possiblelocations[checky + checkx * map.height]
+												&& !checkObstacle((checkx) * 16, (checky) * 16, NULL, NULL, false, false) )
+											{
+												++currentWidth;
+											}
+											else
+											{
+												break;
+											}
+										}
+									}
+
+									bool right2 = false;
+									currentWidth = 1;
+									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									{
+										checkx = x + w;
+										if ( map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx) * MAPLAYERS * map.height] )
+										{
+											if ( currentWidth >= *cvar_keep_forcefield_min )
+											{
+												right2 = true;
+												foundWidth = currentWidth;
+											}
+											break;
+										}
+										if ( checkx > 0 && checkx < map.width - 1 )
+										{
+											if ( possiblelocations[checky + checkx * map.height]
+												&& !checkObstacle((checkx) * 16, (checky) * 16, NULL, NULL, false, false) )
+											{
+												++currentWidth;
+											}
+											else
+											{
+												break;
+											}
+										}
+									}
+
+									while ( foundWidth > 0 )
+									{
+										--foundWidth;
+										if ( left && right2 )
+										{
+											fieldSpots.push_back(std::make_pair(i, (x + (foundWidth)) + 10000 * y));
+										}
+										else if ( right && left2 )
+										{
+											fieldSpots.push_back(std::make_pair(i, (x - (foundWidth)) + 10000 * y));
+										}
+									}
+								}
+							}
+						}
+					}
+					else if ( i == CorridorDir::CORRIDOR_HORIZONTAL && fieldSpots.size() == 0 )
+					{
+						int checkx = x;
+						int checky = y;
+						if ( checkx > 0 && checkx < map.width - 1 )
+						{
+							if ( checky > 0 && checky < map.height - 1 )
+							{
+								bool up = map.tiles[OBSTACLELAYER + (checky - 1) * MAPLAYERS + (checkx) * MAPLAYERS * map.height];
+								bool down = map.tiles[OBSTACLELAYER + (checky + 1) * MAPLAYERS + (checkx) * MAPLAYERS * map.height];
+								if ( up && down )
+								{
+									//fieldSpots.push_back(checkx + 10000 * checky);
+								}
+								else if ( up || down )
+								{
+									bool up2 = false;
+									int currentWidth = 1;
+									int foundWidth = 0;
+									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									{
+										checky = y - w;
+										if ( checkx > 0 && checkx < map.width - 1 )
+										{
+											if ( map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx)*MAPLAYERS * map.height] )
+											{
+												if ( currentWidth >= *cvar_keep_forcefield_min )
+												{
+													up2 = true;
+													foundWidth = currentWidth;
+												}
+												break;
+											}
+											if ( possiblelocations[checky + checkx * map.height]
+												&& !checkObstacle((checkx) * 16, (checky) * 16, NULL, NULL, false, false) )
+											{
+												++currentWidth;
+											}
+											else
+											{
+												break;
+											}
+										}
+									}
+
+									bool down2 = false;
+									currentWidth = 1;
+									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									{
+										checky = y + w;
+										if ( map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx)*MAPLAYERS * map.height] )
+										{
+											if ( currentWidth >= *cvar_keep_forcefield_min )
+											{
+												down2 = true;
+												foundWidth = currentWidth;
+											}
+											break;
+										}
+										if ( checkx > 0 && checkx < map.width - 1 )
+										{
+											if ( possiblelocations[checky + checkx * map.height]
+												&& !checkObstacle((checkx) * 16, (checky) * 16, NULL, NULL, false, false) )
+											{
+												++currentWidth;
+											}
+											else
+											{
+												break;
+											}
+										}
+									}
+
+									while ( foundWidth > 0 )
+									{
+										--foundWidth;
+										if ( up && down2 )
+										{
+											fieldSpots.push_back(std::make_pair(i, x + 10000 * (y + foundWidth)));
+										}
+										else if ( down && up2 )
+										{
+											fieldSpots.push_back(std::make_pair(i, x + 10000 * (y - foundWidth)));
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+
+				if ( fieldSpots.size() )
+				{
+					while ( fieldSpots.size() )
+					{
+						int x = fieldSpots[0].second % 10000;
+						int y = fieldSpots[0].second / 10000;
+						Entity* field = newEntity(305, 1, map.entities, nullptr);
+						field->x = x * 16.0;
+						field->y = y * 16.0;
+						field->flags[PASSABLE] = true;
+						field->yaw = fieldSpots[0].first == CORRIDOR_VERTICAL ? 1.0 : 0.0;
+
+						possiblelocations[y + x * map.height] = false;
+						numpossiblelocations--;
+
+						fieldSpots.erase(fieldSpots.begin());
+					}
 				}
 				else
 				{
@@ -10650,6 +10902,32 @@ void assignActions(map_t* map)
 				entity->sprite = 1620;
 				entity->seedEntityRNG(map_rng.getU32());
 				break;
+			case 305: // forcefield
+				entity->sizex = 4;
+				entity->sizey = 4;
+				entity->x += 8;
+				entity->y += 8;
+				entity->z = 0;
+				entity->flags[UNCLICKABLE] = true;
+				entity->flags[BLOCKSIGHT] = false;
+				entity->flags[PASSABLE] = false;
+				entity->behavior = &actForcefield;
+				entity->ditheringOverride = 4;
+				entity->yaw = entity->yaw * (PI / 2); // rotate as set in editor
+				if ( ((entity->yaw > -PI / 4 && entity->yaw < 1 * PI / 4) || entity->yaw >= 7 * PI / 4)
+					|| (entity->yaw >= 3 * PI / 4 && entity->yaw < 5 * PI / 4) )
+				{
+					entity->sizex = 1;
+					entity->sizey = 8;
+				}
+				else
+				{
+					entity->sizex = 8;
+					entity->sizey = 1;
+				}
+				entity->sprite = 2448;
+				entity->seedEntityRNG(map_rng.getU32());
+				break;
             default:
                 break;
 		}
@@ -11189,7 +11467,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 	{
 	case 1:
 		fullMapName = physfsFormatMapName("mainmenu1");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 8;
 		menucam.y = 4.5;
 		menucam.z = 0;
@@ -11197,7 +11475,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 2:
 		fullMapName = physfsFormatMapName("mainmenu2");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 7;
 		menucam.y = 4;
 		menucam.z = -4;
@@ -11205,7 +11483,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 3:
 		fullMapName = physfsFormatMapName("mainmenu3");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 5;
 		menucam.y = 3;
 		menucam.z = 0;
@@ -11213,7 +11491,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 4:
 		fullMapName = physfsFormatMapName("mainmenu4");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 6;
 		menucam.y = 14.5;
 		menucam.z = -24;
@@ -11221,7 +11499,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 5:
 		fullMapName = physfsFormatMapName("mainmenu5");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 12.1;
 		menucam.y = 5.8;
 		menucam.z = 0;
@@ -11229,7 +11507,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 6:
 		fullMapName = physfsFormatMapName("mainmenu6");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 11;
 		menucam.y = 4;
 		menucam.z = 0;
@@ -11237,7 +11515,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 7:
 		fullMapName = physfsFormatMapName("mainmenu7");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 8.7;
 		menucam.y = 9.3;
 		menucam.z = 0;
@@ -11245,7 +11523,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 8:
 		fullMapName = physfsFormatMapName("mainmenu8");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 3.31;
 		menucam.y = 5.34;
 		menucam.z = 0;
@@ -11253,7 +11531,7 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 		return 0;
 	case 9:
 		fullMapName = physfsFormatMapName("mainmenu9");
-		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures);
+		loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr);
 		menucam.x = 34.3;
 		menucam.y = 15;
 		menucam.z = -20;

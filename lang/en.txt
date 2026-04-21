@@ -7274,5 +7274,6 @@ has been unlocked!#
 7000 Sacrifice#
 7001 Smith#
 7002 adorcised instrument#
+7003 forsaken skeleton#
 
 7999 END#

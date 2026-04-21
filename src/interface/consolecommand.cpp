@@ -5270,6 +5270,108 @@ namespace ConsoleCommands {
 #endif
 		});
 
+	static ConsoleCommand ccmd_map_debug_walldeco("/map_debug_walldeco", "", []CCMD{
+#ifndef NINTENDO
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+		for ( auto f : directoryContents(".\\maps\\", false, true) )
+		{
+			std::string mapPath = "maps/";
+			mapPath += f;
+			bool foundNumber = std::find_if(f.begin(), f.end(), ::isdigit) != f.end();
+			if ( foundNumber && PHYSFS_getRealDir(mapPath.c_str()) )
+			{
+				int maphash = 0;
+				std::string fullMapPath = PHYSFS_getRealDir(mapPath.c_str());
+				fullMapPath += PHYSFS_getDirSeparator();
+				fullMapPath += mapPath;
+				loadMap(fullMapPath.c_str(), &map, map.entities, map.creatures, nullptr);
+
+				for ( node_t* node = map.entities->first; node; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( entity->sprite == 127 && (entity->floorDecorationDestroyIfNoWall >= 0 || (entity->floorDecorationModel >= 1834 && entity->floorDecorationModel <= 1837)) )
+						{
+							std::vector<std::pair<int, int>> coords;
+							int x = static_cast<int>(entity->x) >> 4;
+							int y = static_cast<int>(entity->y) >> 4;
+							switch ( entity->floorDecorationDestroyIfNoWall )
+							{
+							case 0:
+								// east
+								coords.push_back(std::make_pair(x + 1, y));
+								break;
+							case 1:
+								// southeast
+								coords.push_back(std::make_pair(x + 1, y));
+								coords.push_back(std::make_pair(x, y + 1));
+								break;
+							case 2:
+								// south
+								coords.push_back(std::make_pair(x, y + 1));
+								break;
+							case 3:
+								// southwest
+								coords.push_back(std::make_pair(x, y + 1));
+								coords.push_back(std::make_pair(x - 1, y));
+								break;
+							case 4:
+								// west
+								coords.push_back(std::make_pair(x - 1, y));
+								break;
+							case 5:
+								// northwest
+								coords.push_back(std::make_pair(x, y - 1));
+								coords.push_back(std::make_pair(x - 1, y));
+								break;
+							case 6:
+								// north
+								coords.push_back(std::make_pair(x, y - 1));
+								break;
+							case 7:
+								// northeast
+								coords.push_back(std::make_pair(x, y - 1));
+								coords.push_back(std::make_pair(x + 1, y));
+								break;
+							default:
+								break;
+							}
+
+							if ( coords.empty() )
+							{
+								printlog("Map: %s Decoration: %d, x: %d, y: %d, wall checker: %d | NO WALL SET", f.c_str(), entity->floorDecorationModel, x, y, entity->floorDecorationDestroyIfNoWall);
+							}
+							else
+							{
+								for ( auto& pair : coords )
+								{
+									int x1 = pair.first;
+									int y1 = pair.second;
+									if ( x1 < 0 || x1 >= map.width || y1 < 0 || y1 >= map.height )
+									{
+										printlog("Map: %s Decoration: %d, x: %d, y: %d, wall checker: %d | OUT OF BOUNDS?", f.c_str(), entity->floorDecorationModel, x, y, entity->floorDecorationDestroyIfNoWall);
+										break;
+									}
+									else if ( !map.tiles[OBSTACLELAYER + y1 * MAPLAYERS + x1 * MAPLAYERS * map.height] )
+									{
+										printlog("Map: %s Decoration: %d, x: %d, y: %d, wall checker: %d | WALL MISSING", f.c_str(), entity->floorDecorationModel, x, y, entity->floorDecorationDestroyIfNoWall);
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+				// will crash the game but will show results of every map load :)
+			}
+		}
+#endif
+		});
+
 	static ConsoleCommand ccmd_map_debug_floor_interact("/map_debug_floor_interact", "", []CCMD{
 #ifndef NINTENDO
 		if ( !(svFlags & SV_FLAG_CHEATS) )
