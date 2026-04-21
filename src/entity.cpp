@@ -10006,7 +10006,7 @@ bool Entity::isMobile()
 		return false;
 	}
 	
-	if ( entitystats->MISC_FLAGS[STAT_FLAG_NPC] != 0 && !strcmp(entitystats->name, "scriptNPC") )
+	if ( entitystats->MISC_FLAGS[STAT_FLAG_NPC] != 0 && (!strcmp(entitystats->name, "scriptNPC") || strstr(entitystats->name, "$summon")) )
 	{
 		return false;
 	}

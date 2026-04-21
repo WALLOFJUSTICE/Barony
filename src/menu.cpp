@@ -8873,6 +8873,7 @@ void doNewGame(bool makeHighscore) {
 	{
 		mimic_generator.init();
 		treasure_room_generator.init();
+		summon_trap_storage.reset();
 	}
 
 	Compendium_t::Events_t::clientReceiveData.clear();

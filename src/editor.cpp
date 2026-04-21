@@ -4705,7 +4705,7 @@ int main(int argc, char** argv)
 							{
 								if ( i == 0 ) //check input for valid entries, correct or notify the user if out of bounds.
 								{
-									if ( propertyInt > 32 || propertyInt < -1 )
+									if ( propertyInt >= NUMMONSTERS || propertyInt < -1 )
 									{
 										errorMessage = 60;
 										errorArr[i] = 1;

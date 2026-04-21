@@ -1654,7 +1654,8 @@ public:
 		TO_BREAKABLE,
 		TO_COLLIDER,
 		TO_GOLD,
-		TO_BELL
+		TO_BELL,
+		TO_SUMMONTRAP
 	};
 	enum ScriptType : int
 	{

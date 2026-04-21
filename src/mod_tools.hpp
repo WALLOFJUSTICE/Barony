@@ -4424,6 +4424,16 @@ struct TreasureRoomGenerator
 };
 extern TreasureRoomGenerator treasure_room_generator;
 
+struct SummonTrapStorage
+{
+	std::map<int, std::vector<Stat*>> summon_pool;
+	std::map<Uint32, int> uidToPool;
+	void init();
+	void reset();
+	Stat* pickStat(Uint32 uid, BaronyRNG& rng);
+};
+extern SummonTrapStorage summon_trap_storage;
+
 struct GameLevels_t
 {
 	void readFromFile();

@@ -32,6 +32,46 @@ See LICENSE for details.
 #define SUMMONTRAP_INITIALIZED my->skill[7]
 #define SUMMONTRAP_TICKS_TO_FIRE my->skill[8]
 #define SUMMONTRAP_SPAWN_IN_PLAYER_PROXIMITY my->skill[9]
+#define SUMMONTRAP_SETALLEGIANCE my->skill[10]
+#define SUMMONTRAP_NODROPITEMS my->skill[11]
+
+SummonTrapStorage summon_trap_storage;
+
+void SummonTrapStorage::reset()
+{
+	for ( auto& pair : summon_pool )
+	{
+		for ( auto& ptr : pair.second )
+		{
+			delete ptr;
+			ptr = nullptr;
+		}
+	}
+	summon_pool.clear();
+	uidToPool.clear();
+}
+
+void SummonTrapStorage::init()
+{
+	reset();
+}
+
+Stat* SummonTrapStorage::pickStat(Uint32 uid, BaronyRNG& rng)
+{
+	if ( uidToPool.find(uid) != uidToPool.end() )
+	{
+		if ( summon_pool.find(uidToPool[uid]) != summon_pool.end() )
+		{
+			if ( summon_pool[uidToPool[uid]].size() )
+			{
+				int pick = rng.rand() % summon_pool[uidToPool[uid]].size();
+				return summon_pool[uidToPool[uid]][pick];
+			}
+		}
+	}
+
+	return nullptr;
+}
 
 void actSummonTrap(Entity* my)
 {
@@ -149,8 +189,17 @@ void actSummonTrap(Entity* my)
 					{
 						typeToSpawn = customMonsterType;
 					}
+
+					auto summonNPCStats = summon_trap_storage.pickStat(my->getUID(), rng);
+					if ( summonNPCStats )
+					{
+						typeToSpawn = summonNPCStats->type;
+						useCustomMonsters = false;
+					}
+
 					monster = summonMonster(static_cast<Monster>(typeToSpawn), my->x, my->y);
-					if ( monster && monster->getStats() )
+					Stat* monsterStats = monster->getStats();
+					if ( monster && monsterStats )
 					{
 						monster->seedEntityRNG(rng.getU32());
 						if ( !(gameModeManager.getMode() == gameModeManager.GAME_MODE_TUTORIAL
@@ -178,14 +227,24 @@ void actSummonTrap(Entity* my)
 							if ( variantName.compare("default") != 0 )
 							{
 								Monster tmp = NOTHING;
-								monsterCurveCustomManager.createMonsterFromFile(monster, monster->getStats(), variantName, tmp);
+								monsterCurveCustomManager.createMonsterFromFile(monster, monsterStats, variantName, tmp);
 							}
 						}
 						else
 						{
-							monster->getStats()->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS] = 1; // disable champion normally.
+							monsterStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS] = 1; // disable champion normally.
 						}
-						monster->getStats()->setAttribute("spawn_no_sleep", "1");
+						monsterStats->setAttribute("spawn_no_sleep", "1");
+
+						if ( summonNPCStats )
+						{
+							for ( int c = 0; c < ITEM_SLOT_NUM; c++ )
+							{
+								monsterStats->EDITOR_ITEMS[c] = 0;
+							}
+							strcpy(monsterStats->name, summonNPCStats->name);
+							monsterStats->copyNPCStatsAndInventoryFrom(*summonNPCStats);
+						}
 
 						if ( foundTriggerEntity )
 						{
@@ -197,7 +256,7 @@ void actSummonTrap(Entity* my)
 							if ( foundTriggerEntity->behavior == &actPlayer )
 							{
 								messagePlayer(foundTriggerEntity->skill[2], MESSAGE_INTERACTION, Language::get(6248),
-									getMonsterLocalizedName(monster->getStats()->type).c_str());
+									getMonsterLocalizedName(monsterStats->type).c_str());
 							}
 						}
 					}

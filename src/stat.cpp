@@ -1127,6 +1127,22 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	this->EXP = src.EXP;
 	this->LVL = src.LVL;
 
+	if ( player < 0 )
+	{
+		this->RANDOM_STR = src.RANDOM_STR;
+		this->RANDOM_DEX = src.RANDOM_DEX;
+		this->RANDOM_CON = src.RANDOM_CON;
+		this->RANDOM_INT = src.RANDOM_INT;
+		this->RANDOM_PER = src.RANDOM_PER;
+		this->RANDOM_CHR = src.RANDOM_CHR;
+		this->RANDOM_MAXHP = src.RANDOM_MAXHP;
+		this->RANDOM_HP = src.RANDOM_HP;
+		this->RANDOM_MAXMP = src.RANDOM_MAXMP;
+		this->RANDOM_MP = src.RANDOM_MP;
+		this->RANDOM_LVL = src.RANDOM_LVL;
+		this->RANDOM_GOLD = src.RANDOM_GOLD;
+	}
+
 	this->GOLD = src.GOLD;
 	bool oldIntro = intro;
 	if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -1163,6 +1179,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->helmet )
+		{
+			if ( this->helmet->node )
+			{
+				list_RemoveNode(this->helmet->node);
+			}
+			else
+			{
+				free(this->helmet);
+			}
+		}
 		this->helmet = NULL;
 	}
 	if ( src.breastplate )
@@ -1195,6 +1222,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->breastplate )
+		{
+			if ( this->breastplate->node )
+			{
+				list_RemoveNode(this->breastplate->node);
+			}
+			else
+			{
+				free(this->breastplate);
+			}
+		}
 		this->breastplate = NULL;
 	}
 	if ( src.gloves )
@@ -1227,6 +1265,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->gloves )
+		{
+			if ( this->gloves->node )
+			{
+				list_RemoveNode(this->gloves->node);
+			}
+			else
+			{
+				free(this->gloves);
+			}
+		}
 		this->gloves = NULL;
 	}
 	if ( src.shoes )
@@ -1259,6 +1308,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->shoes )
+		{
+			if ( this->shoes->node )
+			{
+				list_RemoveNode(this->shoes->node);
+			}
+			else
+			{
+				free(this->shoes);
+			}
+		}
 		this->shoes = NULL;
 	}
 	if ( src.shield )
@@ -1291,6 +1351,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->shield )
+		{
+			if ( this->shield->node )
+			{
+				list_RemoveNode(this->shield->node);
+			}
+			else
+			{
+				free(this->shield);
+			}
+		}
 		this->shield = NULL;
 	}
 	if ( src.weapon )
@@ -1323,6 +1394,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->weapon )
+		{
+			if ( this->weapon->node )
+			{
+				list_RemoveNode(this->weapon->node);
+			}
+			else
+			{
+				free(this->weapon);
+			}
+		}
 		this->weapon = NULL;
 	}
 	if ( src.cloak )
@@ -1355,6 +1437,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->cloak )
+		{
+			if ( this->cloak->node )
+			{
+				list_RemoveNode(this->cloak->node);
+			}
+			else
+			{
+				free(this->cloak);
+			}
+		}
 		this->cloak = NULL;
 	}
 	if ( src.amulet )
@@ -1387,6 +1480,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->amulet )
+		{
+			if ( this->amulet->node )
+			{
+				list_RemoveNode(this->amulet->node);
+			}
+			else
+			{
+				free(this->amulet);
+			}
+		}
 		this->amulet = NULL;
 	}
 	if ( src.ring )
@@ -1419,6 +1523,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->ring )
+		{
+			if ( this->ring->node )
+			{
+				list_RemoveNode(this->ring->node);
+			}
+			else
+			{
+				free(this->ring);
+			}
+		}
 		this->ring = NULL;
 	}
 	if ( src.mask )
@@ -1451,6 +1566,17 @@ void Stat::copyNPCStatsAndInventoryFrom(Stat& src)
 	}
 	else
 	{
+		if ( this->mask )
+		{
+			if ( this->mask->node )
+			{
+				list_RemoveNode(this->mask->node);
+			}
+			else
+			{
+				free(this->mask);
+			}
+		}
 		this->mask = NULL;
 	}
 

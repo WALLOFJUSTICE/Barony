@@ -68,7 +68,7 @@ void initHuman(Entity* my, Stat* myStats)
 			if ( my->monsterSpecialTimer == 0 )
 			{
 				if ( ((*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED]) || rng.rand() % 25 == 0) && !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS]
-					&& strcmp(myStats->name, "scriptNPC") && myStats->MISC_FLAGS[STAT_FLAG_NPC] == 0
+					&& strcmp(myStats->name, "scriptNPC") && !strstr(myStats->name, "$summon") && myStats->MISC_FLAGS[STAT_FLAG_NPC] == 0
 					&& myStats->leader_uid == 0 )
 				{
 					specialMonsterVariant = 1;
@@ -366,7 +366,9 @@ void initHuman(Entity* my, Stat* myStats)
 			}
 
 			// random effects
-			if ( rng.rand() % 10 == 0 && strcmp(myStats->name, "scriptNPC") && myStats->MISC_FLAGS[STAT_FLAG_NPC] == 0 && myStats->getAttribute("spawn_no_sleep") == "" )
+			if ( rng.rand() % 10 == 0 && strcmp(myStats->name, "scriptNPC") 
+				&& !strstr(myStats->name, "$summon")
+				&& myStats->MISC_FLAGS[STAT_FLAG_NPC] == 0 && myStats->getAttribute("spawn_no_sleep") == "" )
 			{
 				myStats->setEffectActive(EFF_ASLEEP, 1);
 				myStats->EFFECTS_TIMERS[EFF_ASLEEP] = 1800 + rng.rand() % 1800;
@@ -385,7 +387,8 @@ void initHuman(Entity* my, Stat* myStats)
 			// count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
 
-			if ( specialMonsterVariant == 0 && isDefaultStats )
+			if ( specialMonsterVariant == 0 && isDefaultStats && strcmp(myStats->name, "scriptNPC")
+				&& !strstr(myStats->name, "$summon") )
 			{
 				if ( my->monsterStoreType == 0 && currentlevel > 5 )
 				{

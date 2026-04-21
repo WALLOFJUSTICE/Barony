@@ -2717,6 +2717,22 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 							// read old map formats
 							fp->read(&myStats->EDITOR_ITEMS, sizeof(Sint32), 96);
 						}
+#ifndef EDITOR
+						if ( strstr(myStats->name, "$summon") )
+						{
+							std::string name = myStats->name;
+							if ( name.find("$summon=") != std::string::npos )
+							{
+								name = name.substr(strlen("$summon="));
+								stringCopy(myStats->name, name.c_str(), sizeof(myStats->name), name.length());
+							}
+							else
+							{
+								strcpy(myStats->name, "");
+							}
+							entity->setEntityString("summonNPC");
+						}
+#endif
 						fp->read(&myStats->MISC_FLAGS, sizeof(Sint32), 32);
 					}
 					//Read dummy values to move fp for the client
@@ -2760,6 +2776,12 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 						{
 							fp->read(&dummyStats->EDITOR_ITEMS, sizeof(Sint32), 96);
 						}
+#ifndef EDITOR
+						if ( strstr(dummyStats->name, "$summon") )
+						{
+							entity->setEntityString("summonNPC");
+						}
+#endif
 						fp->read(&dummyStats->MISC_FLAGS, sizeof(Sint32), 32);
 						delete dummyStats;
 					}

@@ -7311,6 +7311,7 @@ void assignActions(map_t* map)
 		conductGameChallenges[CONDUCT_MODDED] = 1;
 		Mods::disableSteamAchievements = true;
 	}
+	summon_trap_storage.init();
 
 	int lastGeneratedItemType = -1;
 	int lastGeneratedItemSpellType = -1;
@@ -8099,24 +8100,38 @@ void assignActions(map_t* map)
 			case 247:
 			case 304:
 			{
-				entity->sizex = 4;
-				entity->sizey = 4;
-				entity->x += 8;
-				entity->y += 8;
-				entity->z = 6;
-				entity->yaw = (map_rng.rand() % 360) * PI / 180.0;
-				entity->behavior = &actMonster;
-				entity->flags[UPDATENEEDED] = true;
-				entity->flags[INVISIBLE] = true;
-				entity->skill[5] = -1;
 				Stat* myStats = NULL;
-				if ( multiplayer != CLIENT )
+				bool dummySummon = entity->entityHasString("summonNPC");
+				if ( !dummySummon )
 				{
-					myStats = entity->getStats();
-				}
-				//Assign entity creature list pointer.
-				entity->addToCreatureList(map->creatures);
+					entity->sizex = 4;
+					entity->sizey = 4;
+					entity->x += 8;
+					entity->y += 8;
+					entity->z = 6;
+					entity->yaw = (map_rng.rand() % 360) * PI / 180.0;
+					entity->behavior = &actMonster;
+					entity->flags[UPDATENEEDED] = true;
+					entity->flags[INVISIBLE] = true;
+					entity->skill[5] = -1;
 
+					if ( multiplayer != CLIENT )
+					{
+						myStats = entity->getStats();
+					}
+
+					//Assign entity creature list pointer.
+					entity->addToCreatureList(map->creatures);
+				}
+				else
+				{
+					entity->behavior = &actMonster;
+					if ( multiplayer != CLIENT )
+					{
+						myStats = entity->getStats();
+					}
+				}
+				
 				Monster monsterType = editorSpriteTypeToMonster(entity->sprite);
 				bool monsterIsFixedSprite = true;
 
@@ -8257,6 +8272,35 @@ void assignActions(map_t* map)
 						childEntity->setUID(-3);
 						entity_uids--;
 					}
+				}
+
+				if ( dummySummon )
+				{
+					if ( multiplayer != CLIENT )
+					{
+						summon_trap_storage.summon_pool[myStats->MISC_FLAGS[STAT_FLAG_NPC]].emplace_back(new Stat(1000 + myStats->type));
+						auto& summonStats = summon_trap_storage.summon_pool[myStats->MISC_FLAGS[STAT_FLAG_NPC]].back();
+						strcpy(summonStats->name, myStats->name);
+						for ( int c = 0; c < ITEM_SLOT_NUM; c++ )
+						{
+							summonStats->EDITOR_ITEMS[c] = myStats->EDITOR_ITEMS[c];
+						}
+
+						// generates equipment and weapons if available from editor
+						createMonsterEquipment(myStats, entity->entity_rng ? *entity->entity_rng : map_server_rng);
+
+						// generate 6 items max, less if there are any forced items from boss variants
+						int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
+
+						// create any custom inventory items from editor if available
+						createCustomInventory(myStats, customItemsToGenerate, entity->entity_rng ? *entity->entity_rng : map_server_rng);
+
+						summonStats->copyNPCStatsAndInventoryFrom(*myStats);
+					}
+
+					list_RemoveNode(entity->mynode);
+					entity = NULL;
+					break;
 				}
 				break;
 			}

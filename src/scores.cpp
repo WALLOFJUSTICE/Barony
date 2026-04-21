@@ -6733,6 +6733,7 @@ int loadGame(int player, const SaveGameInfo& info) {
 	{
 		mimic_generator.init();
 		treasure_room_generator.init();
+		summon_trap_storage.reset();
 	}
 
 	// shopkeeper hostility

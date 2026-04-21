@@ -1323,6 +1323,11 @@ void Entity::colliderOnDestroy()
 	if ( colliderHideMonster != 0 )
 	{
 		int type = colliderHideMonster % 1000;
+		auto summonNPCStats = summon_trap_storage.pickStat(getUID(), this->entity_rng ? *this->entity_rng : local_rng);
+		if ( summonNPCStats )
+		{
+			type = summonNPCStats->type;
+		}
 		int numSpawns = type == BAT_SMALL ? 2 : 1;
 		int successes = 0;
 		for ( int i = 0; i < numSpawns; ++i )
@@ -1345,6 +1350,15 @@ void Entity::colliderOnDestroy()
 					if ( stats->type == AUTOMATON && strcmp(map.filename, "automat.lmp") )
 					{
 						monster->monsterStoreType = 1; // damaged
+					}
+					if ( summonNPCStats )
+					{
+						for ( int c = 0; c < ITEM_SLOT_NUM; c++ )
+						{
+							stats->EDITOR_ITEMS[c] = 0;
+						}
+						strcpy(stats->name, summonNPCStats->name);
+						stats->copyNPCStatsAndInventoryFrom(*summonNPCStats);
 					}
 					++successes;
 				}
@@ -2291,6 +2305,12 @@ void actColliderDecoration(Entity* my)
 					if ( found )
 					{
 						int type = my->colliderHideMonster % 1000;
+						auto summonNPCStats = summon_trap_storage.pickStat(my->getUID(), my->entity_rng ? *my->entity_rng : local_rng);
+						if ( summonNPCStats )
+						{
+							type = summonNPCStats->type;
+						}
+
 						my->colliderHideMonster = 0;
 						bool bOldFlag = my->flags[PASSABLE];
 						my->flags[PASSABLE] = true;
@@ -2323,6 +2343,15 @@ void actColliderDecoration(Entity* my)
 									if ( stats->type == AUTOMATON && strcmp(map.filename, "automat.lmp") )
 									{
 										monster->monsterStoreType = 1; // damaged
+									}
+									if ( summonNPCStats )
+									{
+										for ( int c = 0; c < ITEM_SLOT_NUM; c++ )
+										{
+											stats->EDITOR_ITEMS[c] = 0;
+										}
+										strcpy(stats->name, summonNPCStats->name);
+										stats->copyNPCStatsAndInventoryFrom(*summonNPCStats);
 									}
 									++successes;
 								}
@@ -2905,6 +2934,10 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			{
 				return TO_BELL;
 			}
+			else if ( !tagValue.compare("summontrap") )
+			{
+				return TO_SUMMONTRAP;
+			}
 			else if ( !tagValue.compare("players") )
 			{
 				return TO_PLAYERS;
@@ -3070,6 +3103,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						|| (entity->behavior == &actBell && attachTo == TO_BELL)
 						|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
 						|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)
+						|| (entity->behavior == &actSummonTrap && attachTo == TO_SUMMONTRAP)
 						|| (entity->behavior == &actMonster
 							&& attachTo >= TO_NOTHING && attachTo < TO_MONSTER_MAX
 							&& entity->getRace() == (attachTo - TO_NOTHING)) )
@@ -3907,49 +3941,66 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				{
 					for ( auto entity : attachedEntities )
 					{
-						if ( entity->behavior != &actMonster && entity->behavior != &actPlayer )
+						if ( entity->behavior == &actSummonTrap || entity->isColliderBreakableContainer() )
 						{
-							continue;
+							summon_trap_storage.uidToPool[entity->getUID()] = result;
 						}
-						if ( entity->behavior == &actPlayer && client_disconnected[entity->skill[2]] )
+						else
 						{
-							continue;
+							if ( entity->behavior != &actMonster && entity->behavior != &actPlayer )
+							{
+								continue;
+							}
+							if ( entity->behavior == &actPlayer && client_disconnected[entity->skill[2]] )
+							{
+								continue;
+							}
+							applyToEntities.push_back(entity);
 						}
-						applyToEntities.push_back(entity);
 					}
 				}
-				
-				for ( node_t* node = map.entities->first; node; node = node->next )
+
+				if ( textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_SUMMONTRAP
+					|| textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_COLLIDER
+					|| textSourceScript.getAttachedToEntityType(src.textSourceIsScript) == textSourceScript.TO_BREAKABLE )
 				{
-					Entity* scriptEntity = (Entity*)node->element;
-					if ( scriptEntity && scriptEntity->behavior == &actMonster )
+					// no other details needed
+				}
+				else
+				{
+					for ( node_t* node = map.entities->first; node; node = node->next )
 					{
-						Stat* scriptStats = scriptEntity->getStats();
-						if ( scriptStats && !strcmp(scriptStats->name, "scriptNPC") && (scriptStats->MISC_FLAGS[STAT_FLAG_NPC] & 0xFF) == result )
+						Entity* scriptEntity = (Entity*)node->element;
+						if ( scriptEntity && scriptEntity->behavior == &actMonster )
 						{
-							// copy stats.
-							if ( processOnAttachedEntity )
+							Stat* scriptStats = scriptEntity->getStats();
+							if ( scriptStats && (!strcmp(scriptStats->name, "scriptNPC") || strstr(scriptStats->name, "$summon"))
+								&& (scriptStats->MISC_FLAGS[STAT_FLAG_NPC] & 0xFF) == result )
 							{
-								for ( auto entity : applyToEntities )
+								// copy stats.
+								if ( processOnAttachedEntity )
 								{
-									Stat* stats = entity->getStats();
-									if ( stats )
+									for ( auto entity : applyToEntities )
 									{
-										stats->copyNPCStatsAndInventoryFrom(*scriptStats);
-										if ( entity->behavior == &actPlayer )
+										Stat* stats = entity->getStats();
+										if ( stats )
 										{
-											statOnlyUpdateNeeded = true;
+											stats->copyNPCStatsAndInventoryFrom(*scriptStats);
+											if ( entity->behavior == &actPlayer )
+											{
+												statOnlyUpdateNeeded = true;
+											}
 										}
 									}
 								}
-							}
-							else
-							{
-								for ( int c = 0; c < MAXPLAYERS && !client_disconnected[c] && players[c] && players[c]->entity; ++c )
+								else
 								{
-									stats[c]->copyNPCStatsAndInventoryFrom(*scriptStats);
+									for ( int c = 0; c < MAXPLAYERS && !client_disconnected[c] && players[c] && players[c]->entity; ++c )
+									{
+										stats[c]->copyNPCStatsAndInventoryFrom(*scriptStats);
+									}
+									statOnlyUpdateNeeded = true;
 								}
-								statOnlyUpdateNeeded = true;
 							}
 						}
 					}
@@ -5361,6 +5412,7 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 					|| (entity->behavior == &actBell && attachTo == TO_BELL)
 					|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
 					|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)
+					|| (entity->behavior == &actSummonTrap && attachTo == TO_SUMMONTRAP)
 					|| (entity->behavior == &actMonster 
 						&& attachTo >= TO_NOTHING && attachTo < TO_MONSTER_MAX
 						&& entity->getRace() == (attachTo - TO_NOTHING)) )
