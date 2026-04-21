@@ -859,7 +859,7 @@ void buttonOpenConfirm(button_t* my)
 	}*/
 	std::string fullMapName = physfsFormatMapName(filename);
 	printlog("opening map file '%s'...\n", fullMapName.c_str());
-	if (loadMap(fullMapName.c_str(), &map, map.entities, map.creatures) == -1)
+	if (loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr) == -1)
 	{
 		strcat(message, "Failed to open ");
 		strcat(message, filename);

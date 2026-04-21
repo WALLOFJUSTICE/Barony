@@ -2091,7 +2091,7 @@ int main(int argc, char** argv)
 
 	if ( loadingmap )
 	{
-		if ( loadMap(physfsFormatMapName(maptoload).c_str(), &map, map.entities, map.creatures) == -1 )
+		if ( loadMap(physfsFormatMapName(maptoload).c_str(), &map, map.entities, map.creatures, nullptr) == -1 )
 		{
 			strcpy(message, "Failed to open ");
 			strcat(message, maptoload);
