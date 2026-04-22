@@ -360,7 +360,7 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 	auto m2 = minimapSurfaces[player];
 	const auto size1 = m1->w * m1->h * m1->format->BytesPerPixel;
 	const auto size2 = m2 ? (m2->w * m2->h * m2->format->BytesPerPixel) : 0;
-	if ( size1 != size2 || memcmp(m1, m2, size2) ) {
+	if ( size1 != size2 || (m1 && m2 && memcmp(m1->pixels, m2->pixels, size2)) ) {
 		if ( !minimapTextures[player] ) {
 			minimapTextures[player] = new TempTexture();
 		}
