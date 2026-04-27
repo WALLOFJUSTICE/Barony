@@ -4442,6 +4442,7 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 		case MONSTER_ADORCISED_WEAPON:
 		case FLAME_ELEMENTAL:
 		case EARTH_ELEMENTAL:
+		case WATER_ELEMENTAL:
 		case MOTH_SMALL:
 			creatureTier = 0;
 			break;
@@ -4596,7 +4597,7 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 		}
 	}
 
-	if ( option == ALLY_CMD_SPECIAL && monsterType == EARTH_ELEMENTAL )
+	if ( option == ALLY_CMD_SPECIAL && (monsterType == EARTH_ELEMENTAL || monsterType == WATER_ELEMENTAL) )
 	{
 		return -1; // disabled due to monster.
 	}

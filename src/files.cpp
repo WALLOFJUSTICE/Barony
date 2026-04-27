@@ -2732,6 +2732,10 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 							}
 							entity->setEntityString("summonNPC");
 						}
+						else if ( !strcmp(myStats->name, "scriptNPC") )
+						{
+							entity->setEntityString("scriptNPC");
+						}
 #endif
 						fp->read(&myStats->MISC_FLAGS, sizeof(Sint32), 32);
 					}
@@ -2780,6 +2784,10 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 						if ( strstr(dummyStats->name, "$summon") )
 						{
 							entity->setEntityString("summonNPC");
+						}
+						else if ( !strcmp(dummyStats->name, "scriptNPC") )
+						{
+							entity->setEntityString("scriptNPC");
 						}
 #endif
 						fp->read(&dummyStats->MISC_FLAGS, sizeof(Sint32), 32);

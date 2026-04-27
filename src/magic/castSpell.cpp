@@ -438,12 +438,6 @@ int getSpellbookBonusPercent(Entity* caster, Stat* stat, Item* spellbookItem)
 	return spellBookBonusPercent;
 }
 
-enum SpellTarget_t
-{
-	TARGET_NEUTRAL = 1,
-	TARGET_ENEMY = 2,
-	TARGET_FRIEND = 4
-};
 Entity* getSpellTarget(node_t* node, int radius, Entity* caster, bool targetCaster, SpellTarget_t target)
 {
 	if ( !node )
@@ -3689,7 +3683,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				}
 			}
 		}
-		else if ( spell->ID == SPELL_EARTH_ELEMENTAL )
+		else if ( spell->ID == SPELL_EARTH_ELEMENTAL || spell->ID == SPELL_WATER_ELEMENTAL )
 		{
 			if ( caster )
 			{
@@ -3700,22 +3694,25 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					int x = castSpellProps->target_x / 16;
 					int y = castSpellProps->target_y / 16;
 					bool noroom = false;
-					if ( x < 0 || x >= map.width || y < 0 || y >= map.height )
+					if ( spell->ID == SPELL_EARTH_ELEMENTAL )
 					{
-						noroom = true;
-					}
-					else
-					{
-						int mapIndex = (y)*MAPLAYERS + (x)*MAPLAYERS * map.height;
-						if ( map.tiles[OBSTACLELAYER + mapIndex] )
+						if ( x < 0 || x >= map.width || y < 0 || y >= map.height )
 						{
 							noroom = true;
 						}
-						else if ( map.skybox != 0 )
+						else
 						{
-							if ( !map.tiles[(MAPLAYERS - 1) + mapIndex] )
+							int mapIndex = (y)*MAPLAYERS + (x)*MAPLAYERS * map.height;
+							if ( map.tiles[OBSTACLELAYER + mapIndex] )
 							{
 								noroom = true;
+							}
+							else if ( map.skybox != 0 )
+							{
+								if ( !map.tiles[(MAPLAYERS - 1) + mapIndex] )
+								{
+									noroom = true;
+								}
 							}
 						}
 					}
@@ -3724,7 +3721,8 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					{
 						found = true;
 						Entity* spellTimer = createParticleTimer(caster, 5 * TICKS_PER_SECOND, -1);
-						spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_EARTH_ELEMENTAL;
+						spellTimer->particleTimerCountdownAction = spell->ID == SPELL_EARTH_ELEMENTAL ? PARTICLE_TIMER_ACTION_EARTH_ELEMENTAL
+							: PARTICLE_TIMER_ACTION_WATER_ELEMENTAL;
 						spellTimer->particleTimerCountdownSprite = -1;
 						spellTimer->yaw = caster->yaw;
 						spellTimer->x = x * 16.0 + 8.0;
@@ -3766,7 +3764,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				if ( found )
 				{
 					spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
-					playSoundEntity(caster, 799, 128);
+					if ( spell->ID == SPELL_EARTH_ELEMENTAL )
+					{
+						playSoundEntity(caster, 799, 128);
+					}
 				}
 				else
 				{
@@ -8313,9 +8314,18 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				}
 			}
 
-			if ( spell->ID == SPELL_SPORE_BOMB || spell->ID == SPELL_MYCELIUM_BOMB )
+			int volume = 128;
+
+			if ( spell->ID == SPELL_SPORE_BOMB || spell->ID == SPELL_MYCELIUM_BOMB || spell->ID == SPELL_WATER_BOLT )
 			{
-				missile_speed *= 0.5;
+				if ( spell->ID == SPELL_WATER_BOLT )
+				{
+					missile_speed *= 0.75;
+				}
+				else
+				{
+					missile_speed *= 0.5;
+				}
 				missileEntity->vel_x = cos(missileEntity->yaw) * (missile_speed);
 				missileEntity->vel_y = sin(missileEntity->yaw) * (missile_speed);
 				missileEntity->actmagicProjectileArc = 1;
@@ -8329,8 +8339,6 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			((spell_t*)node->element)->caster = caster->getUID();
 			node->deconstructor = &spellDeconstructor;
 			node->size = sizeof(spell_t);
-
-			int volume = 128;
 
 			// IMPORTANT - TRAP IS USED FOR STORM POTIONS AND ORBIT PARTICLES, QUIET SOUND HERE.
 			if ( trap && caster && (caster->behavior == &actPlayer || caster->behavior == &actMonster || caster->behavior == &actBoulder) )
@@ -8493,6 +8501,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			}
 
 			int sound = spellGetCastSound(spell);
+			if ( spell->ID == SPELL_WATER_BOLT && castSpellProps && castSpellProps->optionalData == 1 )
+			{
+				sound = 872;
+			}
 			if ( volume > 0 && sound > 0 )
 			{
 				playSoundEntity(missileEntity, sound, volume);
@@ -8940,6 +8952,13 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				if ( propulsion == PROPULSION_MISSILE )
 				{
 					missileEntity->sprite = 2367;
+				}
+			}
+			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_WATER_BOLT].element_internal_name) )
+			{
+				if ( propulsion == PROPULSION_MISSILE )
+				{
+					missileEntity->sprite = 2449;
 				}
 			}
 			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_BLOOD_WAVES].element_internal_name) )
@@ -9448,6 +9467,10 @@ int spellGetCastSound(spell_t* spell)
 	else if ( spell->ID == SPELL_METEOR || spell->ID == SPELL_METEOR_SHOWER )
 	{
 		return 814;
+	}
+	else if ( spell->ID == SPELL_WATER_BOLT )
+	{
+		return 873;
 	}
 	else
 	{

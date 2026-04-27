@@ -576,6 +576,7 @@ void Entity::actColumn()
 
 }
 
+Uint32 lastRainVfx = 0;
 void actCeilingTile(Entity* my)
 {
 	if ( !my )
@@ -589,6 +590,73 @@ void actCeilingTile(Entity* my)
 	if ( my->flags[BLOCKSIGHT] )
 	{
 		my->flags[BLOCKSIGHT] = false;
+	}
+
+	if ( multiplayer != CLIENT && my->sprite == 1847 )
+	{
+		if ( my->ceilingTileVfxCooldown > 0 )
+		{
+			--my->ceilingTileVfxCooldown;
+		}
+		const int interval = 10 * TICKS_PER_SECOND;
+		if ( my->ceilingTileLiquidTrap == 1 )
+		{
+			if ( my->ticks % TICKS_PER_SECOND == 0 && (::ticks - lastRainVfx) > 3 * TICKS_PER_SECOND )
+			{
+				Entity* foundTriggerEntity = nullptr;
+				auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 3);
+				for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !foundTriggerEntity; ++it )
+				{
+					list_t* currentList = *it;
+					node_t* node;
+					for ( node = currentList->first; node != nullptr; node = node->next )
+					{
+						Entity* entity = (Entity*)node->element;
+						if ( entity && (entity->behavior == &actPlayer || (entity->behavior == &actMonster && entity->monsterAllyGetPlayerLeader())) )
+						{
+							real_t tangent = atan2(entity->y - my->y, entity->x - my->x);
+							lineTraceTarget(my, my->x, my->y, tangent, 64.0, 0, false, entity);
+							if ( hit.entity == entity )
+							{
+								foundTriggerEntity = entity;
+								break;
+							}
+						}
+					}
+				}
+
+				if ( foundTriggerEntity )
+				{
+					my->ceilingTileLiquidTrap = 0;
+					createParticleRain(my, my->x, my->y, SPELL_WATER_ELEMENTAL);
+					my->ceilingTileVfxCooldown = 20 * TICKS_PER_SECOND;
+				}
+			}
+		}
+		if ( (my->ticks % (interval)) == my->getUID() % (interval) && my->ceilingTileVfxCooldown == 0 )
+		{
+			if ( (lastRainVfx / interval) != (::ticks / interval) && !strncmp(map.filename, "keep", 4) )
+			{
+				bool found = false;
+				for ( int i = 0; i < MAXPLAYERS; ++i )
+				{
+					if ( players[i] && players[i]->entity )
+					{
+						if ( entityDist(my, players[i]->entity) < 12 * 16.0 )
+						{
+							found = true;
+							break;
+						}
+					}
+				}
+				if ( found && local_rng.rand() % 3 == 0 )
+				{
+					lastRainVfx = ::ticks;
+					createParticleRain(my, my->x, my->y, SPELL_WATER_BOLT);
+					my->ceilingTileVfxCooldown = 25 * TICKS_PER_SECOND;
+				}
+			}
+		}
 	}
 }
 

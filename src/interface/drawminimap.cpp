@@ -571,7 +571,8 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 					}
 				}
 			}
-			if ( (entity->behavior == &actMonster && entity->monsterAllyIndex < 0)
+			if ( (entity->behavior == &actMonster && entity->monsterAllyIndex < 0 && !entity->entityHasString("scriptNPC") 
+				&& !(entity->getMonsterTypeFromSprite() == DUCK_SMALL) )
 				|| (entity->isDamageableCollider() && entity->colliderHideMonster != 0) )
 			{
 				bool warningEffect = false;
@@ -818,6 +819,7 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 						break;
 					case 4:
 						playerOwner = 3;
+						break;
 					default:
 						break;
 					}

@@ -282,6 +282,7 @@ void actGreasePuddleSpawner(Entity* my);
 void actGreasePuddle(Entity* my);
 void actMiscPuddle(Entity* my);
 void spawnGreasePuddleSpawner(Entity* caster, real_t x, real_t y, int duration);
+void spawnWaterPuddle(Entity* parent, real_t x, real_t y, int duration, int location, int sprite);
 void actDamageGib(Entity* my);
 void actFociGib(Entity* my);
 Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBonus, Uint32 parentUid, int sprite, Uint32 seed);
@@ -354,7 +355,8 @@ void actSignalGateAND(Entity* my);
 void actWallLock(Entity* my);
 void actWallButton(Entity* my);
 void actWind(Entity* my);
-void createWaterSplash(real_t x, real_t y, int lifetime);
+void createWaterSplash(real_t x, real_t y, int lifetime, bool ignoreTileCentering = false);
+void actWaterSplashParticle(Entity* my);
 
 void startMessages();
 bool frameRateLimit(Uint32 maxFrameRate, bool resetAccumulator = true, bool sleep = false);

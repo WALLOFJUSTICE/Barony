@@ -2740,6 +2740,12 @@
 		},
 		"spell_revenant_push": {
 			"name": "Revenant Chill"
+		},
+		"spell_water_bolt": {
+			"name": "Water Bolt"
+		},
+		"spell_water_elemental": {
+			"name": "Summon Water Elemental"
 		}
     }
 }

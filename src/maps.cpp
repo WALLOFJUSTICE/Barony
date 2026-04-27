@@ -645,6 +645,35 @@ int monsterCurve(int level)
 			}
 		}
 	}
+	else if ( !strncmp(map.filename, "keep", 4) )
+	{
+		return SALAMANDER;
+		/*switch ( map_rng.rand() % 10 )
+		{
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+			return MYCONID;
+		case 7:
+		case 8:
+			return EARTH_ELEMENTAL;
+		case 9:
+			if ( map_rng.rand() % 2 )
+			{
+				return MOTH_SMALL;
+			}
+			else
+			{
+				return EARTH_ELEMENTAL;
+			}
+		default:
+			break;
+		}*/
+	}
 	return SKELETON; // basic monster
 }
 
@@ -11087,6 +11116,7 @@ void assignActions(map_t* map)
 
 	std::vector<Entity*> chests;
 	std::vector<Entity*> textScripts;
+	std::vector<Entity*> ceilingTilesLiquidTraps;
 	static ConsoleVariable<bool> cvar_spellbookdebug("/spellbook_debug", false);
 	if ( currentlevel == 0 )
 	{
@@ -11105,6 +11135,11 @@ void assignActions(map_t* map)
 			if ( postProcessEntity->behavior == &actChest )
 			{
 				chests.push_back(postProcessEntity);
+			}
+			if ( postProcessEntity->behavior == &actCeilingTile && postProcessEntity->sprite == 1847
+				&& !strncmp(map->filename, "keep", 4) )
+			{
+				ceilingTilesLiquidTraps.push_back(postProcessEntity);
 			}
 #ifndef NDEBUG
 			if ( *cvar_spellbookdebug )
@@ -11127,6 +11162,18 @@ void assignActions(map_t* map)
 	{
 		numChests = 0;
 		numMimics = 0;
+	}
+
+	if ( ceilingTilesLiquidTraps.size() )
+	{
+		int numTraps = 5 + map_rng.rand() % 4;
+		while ( ceilingTilesLiquidTraps.size() && numTraps > 0 )
+		{
+			int pick = map_rng.rand() % ceilingTilesLiquidTraps.size();
+			ceilingTilesLiquidTraps[pick]->ceilingTileLiquidTrap = 1;
+			ceilingTilesLiquidTraps.erase(ceilingTilesLiquidTraps.begin() + pick);
+			--numTraps;
+		}
 	}
 
 	static ConsoleVariable<int> cvar_mimic_chance("/mimic_chance", 5);

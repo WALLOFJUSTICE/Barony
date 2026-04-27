@@ -6565,7 +6565,7 @@ void actPlayer(Entity* my)
 		else if ( *cvar_pbaoe == 10 )
 		{
 			Entity* spellTimer = createParticleTimer(my, 5 * TICKS_PER_SECOND + 10, -1);
-			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_EARTH_ELEMENTAL;
+			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_WATER_ELEMENTAL;
 			spellTimer->particleTimerCountdownSprite = -1;
 			spellTimer->flags[UPDATENEEDED] = true;
 			spellTimer->flags[NOUPDATE] = false;

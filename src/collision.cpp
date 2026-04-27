@@ -1257,6 +1257,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 			if ( entity->behavior == &actMonster && 
 				(entity->getMonsterTypeFromSprite() == REVENANT_SKULL 
 				|| entity->getMonsterTypeFromSprite() == BAT_SMALL
+				|| entity->getMonsterTypeFromSprite() == WATER_ELEMENTAL
 				|| entity->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON
 				|| entity->getMonsterTypeFromSprite() == FLAME_ELEMENTAL || entity->getMonsterTypeFromSprite() == MOTH_SMALL) )
 			{
@@ -1385,7 +1386,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 					{
 						continue;
 					}
-					if ( yourStats->type == EARTH_ELEMENTAL && entityInsideEntity(my, entity) )
+					if ( (yourStats->type == EARTH_ELEMENTAL || yourStats->type == WATER_ELEMENTAL) && entityInsideEntity(my, entity) )
 					{
 						continue;
 					}
@@ -1945,6 +1946,10 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 			|| myStats->type == FLAME_ELEMENTAL
 			|| (myStats->type == GRYPHON && my->isUntargetableGryphon())
 			);
+	if ( my && my->behavior == &actParticleFloorMagic && my->actfloorMagicType == ParticleTimerEffect_t::EffectType::EFFECT_WATERSPLASH )
+	{
+		ignoreFurniture = true;
+	}
 
 	for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
 	{
@@ -1975,6 +1980,7 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 									&& entity->sprite != 2232
 									&& entity->sprite != 2237
 									&& entity->sprite != 2238
+									&& entity->sprite != 2411
 									&& entity->sprite != 2414
 									&& entity->sprite != 2430) )
 						)
@@ -2925,6 +2931,11 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 						}
 						else if ( isMonster && my->getMonsterTypeFromSprite() == GYROBOT && entity->isDamageableCollider()
 							&& (entity->colliderHasCollision & EditorEntityData_t::COLLIDER_COLLISION_FLAG_NPC) )
+						{
+							continue;
+						}
+						else if ( isMonster && my->getMonsterTypeFromSprite() == WATER_ELEMENTAL 
+							&& (entity->isColliderBreakableContainer() || entity->behavior == &actFurniture || entity->behavior == &actDoor) )
 						{
 							continue;
 						}

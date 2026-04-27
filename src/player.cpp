@@ -4920,6 +4920,7 @@ void Player::WorldUI_t::handleTooltips()
 							|| parent->getMonsterTypeFromSprite() == MINIMIMIC
 							|| parent->getMonsterTypeFromSprite() == FLAME_ELEMENTAL
 							|| parent->getMonsterTypeFromSprite() == EARTH_ELEMENTAL
+							|| parent->getMonsterTypeFromSprite() == WATER_ELEMENTAL
 							|| parent->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON
 							|| parent->getMonsterTypeFromSprite() == MOTH_SMALL
 							|| parent->getMonsterTypeFromSprite() == BAT_SMALL

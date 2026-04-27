@@ -2869,35 +2869,19 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 
 void waterElementalDie(Entity* my)
 {
-	//int index = -1;
-	//for ( auto bodypart : my->bodyparts )
-	//{
-	//	++index;
-	//	if ( index == 1 ) // eyes
-	//	{
-	//		continue;
-	//	}
-	//	Entity* entity = spawnGib(my, bodypart->sprite);
-	//	entity->x = bodypart->x;
-	//	entity->y = bodypart->y;
-	//	entity->z = bodypart->z;
-	//	if ( index == 0 )
-	//	{
-	//		entity->skill[5] = 1; // poof
-	//	}
-	//	entity->vel_x *= 0.1;
-	//	entity->vel_y *= 0.1;
-	//	serverSpawnGibForClient(entity);
-	//}
-	//
-	//Entity* spellTimer = createParticleTimer(nullptr, TICKS_PER_SECOND, -1);
-	//spellTimer->x = my->x;
-	//spellTimer->y = my->y;
-	//spellTimer->z = my->z;
-	//spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_EARTH_ELEMENTAL_DIE;
-	//serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, spellTimer->z, PARTICLE_EFFECT_EARTH_ELEMENTAL_DIE, 0);
-	//
-	//playSoundEntity(my, 798, 64);
+	if ( multiplayer != CLIENT )
+	{
+		Entity* timer = floorMagicCreateSplash(my, my->x, my->y, my, 0, SPELL_WATER_BOLT, 64);
+	}
+
+	Entity* spellTimer = createParticleTimer(nullptr, TICKS_PER_SECOND, -1);
+	spellTimer->x = my->x;
+	spellTimer->y = my->y;
+	spellTimer->z = my->z;
+	spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE;
+	serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, spellTimer->z, PARTICLE_EFFECT_WATER_ELEMENTAL_DIE, 0);
+	
+	playSoundEntity(my, 864 + local_rng.rand() % 2, 64);
 
 	my->removeMonsterDeathNodes();
 	//spawnPoof(my->x, my->y, my->z, 1.0, true);
@@ -2930,10 +2914,10 @@ void initWaterElemental(Entity* my, Stat* myStats)
 	my->flags[PASSABLE] = true;
 	if ( multiplayer != CLIENT )
 	{
-		MONSTER_SPOTSND = 797;
-		MONSTER_SPOTVAR = 1;
-		MONSTER_IDLESND = 800;
-		MONSTER_IDLEVAR = 3;
+		MONSTER_SPOTSND = 860;
+		MONSTER_SPOTVAR = 2;
+		MONSTER_IDLESND = 862;
+		MONSTER_IDLEVAR = 1;
 	}
 
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
@@ -2967,22 +2951,22 @@ void initWaterElemental(Entity* my, Stat* myStats)
 
 			my->setHardcoreStats(*myStats);
 
-			//if ( myStats->getAttribute("SUMMONED_CREATURE") == "1" )
-			//{
-			//	// min 5, max 20
-			//	myStats->HP = 40 + std::max(0, (myStats->LVL - 5)) * 5; //40 - 115
-			//	myStats->MAXHP = myStats->HP;
-			//	myStats->OLDHP = myStats->HP;
-			//	myStats->STR = 5 + std::max(0, (myStats->LVL - 5)) * 1; //5-35
-			//	myStats->DEX = myStats->LVL / 5; // 1-5
-			//	myStats->CON = 5 + myStats->LVL; // 10-25
-			//	myStats->PER = 5 + myStats->LVL / 4; // 6-10
+			if ( myStats->getAttribute("SUMMONED_CREATURE") == "1" )
+			{
+				// min 5, max 20
+				myStats->HP = 40 + std::max(0, (myStats->LVL - 5)) * 5; //40 - 115
+				myStats->MAXHP = myStats->HP;
+				myStats->OLDHP = myStats->HP;
+				myStats->STR = 5 + std::max(0, (myStats->LVL - 5)) * 1; //5-35
+				myStats->DEX = myStats->LVL / 5; // 1-5
+				myStats->CON = 5 + myStats->LVL; // 10-25
+				myStats->PER = 5 + myStats->LVL / 4; // 6-10
 
-			//	if ( Entity* leader = my->monsterAllyGetPlayerLeader() )
-			//	{
-			//		serverUpdateAllyStat(leader->skill[2], my->getUID(), myStats->LVL, myStats->HP, myStats->MAXHP, myStats->type);
-			//	}
-			//}
+				if ( Entity* leader = my->monsterAllyGetPlayerLeader() )
+				{
+					serverUpdateAllyStat(leader->skill[2], my->getUID(), myStats->LVL, myStats->HP, myStats->MAXHP, myStats->type);
+				}
+			}
 		}
 	}
 
@@ -2995,11 +2979,12 @@ void initWaterElemental(Entity* my, Stat* myStats)
 	entity->flags[NOUPDATE] = true;
 	entity->yaw = my->yaw;
 	entity->z = 6;
+	entity->fskill[5] = 1.0; // dive animation
 	entity->flags[USERFLAG2] = monsterChangesColorWhenAlly(myStats, my) ? my->flags[USERFLAG2] : false;
-	entity->focalx = limbs[EARTH_ELEMENTAL][3][0];
-	entity->focaly = limbs[EARTH_ELEMENTAL][3][1];
-	entity->focalz = limbs[EARTH_ELEMENTAL][3][2];
-	entity->behavior = &actEarthElementalLimb;
+	entity->focalx = limbs[WATER_ELEMENTAL][3][0];
+	entity->focaly = limbs[WATER_ELEMENTAL][3][1];
+	entity->focalz = limbs[WATER_ELEMENTAL][3][2];
+	entity->behavior = &actWaterElementalLimb;
 	entity->parent = my->getUID();
 	node = list_AddNodeLast(&my->children);
 	node->element = entity;
@@ -3017,121 +3002,16 @@ void initWaterElemental(Entity* my, Stat* myStats)
 	entity->yaw = my->yaw;
 	entity->z = 6;
 	entity->flags[USERFLAG2] = monsterChangesColorWhenAlly(myStats, my) ? my->flags[USERFLAG2] : false;
-	entity->focalx = limbs[EARTH_ELEMENTAL][1][0];
-	entity->focaly = limbs[EARTH_ELEMENTAL][1][1];
-	entity->focalz = limbs[EARTH_ELEMENTAL][1][2];
-	entity->behavior = &actEarthElementalLimb;
+	entity->focalx = limbs[WATER_ELEMENTAL][1][0];
+	entity->focaly = limbs[WATER_ELEMENTAL][1][1];
+	entity->focalz = limbs[WATER_ELEMENTAL][1][2];
+	entity->behavior = &actWaterElementalLimb;
 	entity->parent = my->getUID();
 	node = list_AddNodeLast(&my->children);
 	node->element = entity;
 	node->deconstructor = &emptyDeconstructor;
 	node->size = sizeof(Entity*);
 	my->bodyparts.push_back(entity);
-
-	////fistleft
-	//entity = newEntity(1875, 1, map.entities, nullptr); //Limb entity.
-	//entity->sizex = 2;
-	//entity->sizey = 2;
-	//entity->skill[2] = my->getUID();
-	//entity->flags[PASSABLE] = true;
-	//entity->flags[NOUPDATE] = true;
-	//entity->yaw = my->yaw;
-	//entity->z = 6;
-	//entity->flags[USERFLAG2] = monsterChangesColorWhenAlly(myStats, my) ? my->flags[USERFLAG2] : false;
-	//entity->focalx = limbs[EARTH_ELEMENTAL][6][0];
-	//entity->focaly = limbs[EARTH_ELEMENTAL][6][1];
-	//entity->focalz = limbs[EARTH_ELEMENTAL][6][2];
-	//entity->behavior = &actEarthElementalLimb;
-	//entity->parent = my->getUID();
-	//node = list_AddNodeLast(&my->children);
-	//node->element = entity;
-	//node->deconstructor = &emptyDeconstructor;
-	//node->size = sizeof(Entity*);
-	//my->bodyparts.push_back(entity);
-
-	////fistright
-	//entity = newEntity(1875, 1, map.entities, nullptr); //Limb entity.
-	//entity->sizex = 2;
-	//entity->sizey = 2;
-	//entity->skill[2] = my->getUID();
-	//entity->flags[PASSABLE] = true;
-	//entity->flags[NOUPDATE] = true;
-	//entity->yaw = my->yaw;
-	//entity->z = 6;
-	//entity->flags[USERFLAG2] = monsterChangesColorWhenAlly(myStats, my) ? my->flags[USERFLAG2] : false;
-	//entity->focalx = limbs[EARTH_ELEMENTAL][6][0];
-	//entity->focaly = limbs[EARTH_ELEMENTAL][6][1];
-	//entity->focalz = limbs[EARTH_ELEMENTAL][6][2];
-	//entity->behavior = &actEarthElementalLimb;
-	//entity->parent = my->getUID();
-	//node = list_AddNodeLast(&my->children);
-	//node->element = entity;
-	//node->deconstructor = &emptyDeconstructor;
-	//node->size = sizeof(Entity*);
-	//my->bodyparts.push_back(entity);
-
-	////pebble1
-	//entity = newEntity(1874, 1, map.entities, nullptr); //Limb entity.
-	//entity->sizex = 2;
-	//entity->sizey = 2;
-	//entity->skill[2] = my->getUID();
-	//entity->flags[PASSABLE] = true;
-	//entity->flags[NOUPDATE] = true;
-	//entity->yaw = my->yaw;
-	//entity->z = 6;
-	//entity->flags[USERFLAG2] = monsterChangesColorWhenAlly(myStats, my) ? my->flags[USERFLAG2] : false;
-	//entity->focalx = limbs[EARTH_ELEMENTAL][9][0];
-	//entity->focaly = limbs[EARTH_ELEMENTAL][9][1];
-	//entity->focalz = limbs[EARTH_ELEMENTAL][9][2];
-	//entity->behavior = &actEarthElementalLimb;
-	//entity->parent = my->getUID();
-	//node = list_AddNodeLast(&my->children);
-	//node->element = entity;
-	//node->deconstructor = &emptyDeconstructor;
-	//node->size = sizeof(Entity*);
-	//my->bodyparts.push_back(entity);
-
-	////pebble1
-	//entity = newEntity(1874, 1, map.entities, nullptr); //Limb entity.
-	//entity->sizex = 2;
-	//entity->sizey = 2;
-	//entity->skill[2] = my->getUID();
-	//entity->flags[PASSABLE] = true;
-	//entity->flags[NOUPDATE] = true;
-	//entity->yaw = my->yaw;
-	//entity->z = 6;
-	//entity->flags[USERFLAG2] = monsterChangesColorWhenAlly(myStats, my) ? my->flags[USERFLAG2] : false;
-	//entity->focalx = limbs[EARTH_ELEMENTAL][9][0];
-	//entity->focaly = limbs[EARTH_ELEMENTAL][9][1];
-	//entity->focalz = limbs[EARTH_ELEMENTAL][9][2];
-	//entity->behavior = &actEarthElementalLimb;
-	//entity->parent = my->getUID();
-	//node = list_AddNodeLast(&my->children);
-	//node->element = entity;
-	//node->deconstructor = &emptyDeconstructor;
-	//node->size = sizeof(Entity*);
-	//my->bodyparts.push_back(entity);
-
-	////pebble1
-	//entity = newEntity(1874, 1, map.entities, nullptr); //Limb entity.
-	//entity->sizex = 2;
-	//entity->sizey = 2;
-	//entity->skill[2] = my->getUID();
-	//entity->flags[PASSABLE] = true;
-	//entity->flags[NOUPDATE] = true;
-	//entity->yaw = my->yaw;
-	//entity->z = 6;
-	//entity->flags[USERFLAG2] = monsterChangesColorWhenAlly(myStats, my) ? my->flags[USERFLAG2] : false;
-	//entity->focalx = limbs[EARTH_ELEMENTAL][9][0];
-	//entity->focaly = limbs[EARTH_ELEMENTAL][9][1];
-	//entity->focalz = limbs[EARTH_ELEMENTAL][9][2];
-	//entity->behavior = &actEarthElementalLimb;
-	//entity->parent = my->getUID();
-	//node = list_AddNodeLast(&my->children);
-	//node->element = entity;
-	//node->deconstructor = &emptyDeconstructor;
-	//node->size = sizeof(Entity*);
-	//my->bodyparts.push_back(entity);
 }
 
 #define WATER_BODY 2
@@ -3139,17 +3019,19 @@ void initWaterElemental(Entity* my, Stat* myStats)
 #define WATER_LIMB_FSKILL_YAW entity->fskill[0]
 #define WATER_LIMB_FSKILL_PITCH entity->fskill[1]
 #define WATER_LIMB_FSKILL_ROLL entity->fskill[2]
-#define WATER_BODY_FLOAT entity->fskill[3]
+#define WATER_BODY_FLOAT body->fskill[3]
+#define WATER_ATTACK body->fskill[4]
+#define WATER_STATE_ANIM body->fskill[5]
+#define WATER_BODY_SQUISH body->fskill[6]
+#define WATER_STATE body->skill[0]
 
 void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 {
 	node_t* node;
-	Entity* entity = nullptr;
 	Entity* head = nullptr;
 	int bodypart;
 
 	my->flags[INVISIBLE] = true; // hide the "AI" bodypart
-	//my->flags[PASSABLE] = true;
 
 	my->sizex = 4;
 	my->sizey = 4;
@@ -3157,71 +3039,338 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 	my->focalx = limbs[WATER_ELEMENTAL][0][0];
 	my->focaly = limbs[WATER_ELEMENTAL][0][1];
 	my->focalz = limbs[WATER_ELEMENTAL][0][2];
+
 	if ( multiplayer != CLIENT )
 	{
-		my->z = limbs[WATER_ELEMENTAL][5][2];
-		if ( !myStats->getEffectActive(EFF_LEVITATING) )
+		real_t percentHP = myStats->HP / (real_t)std::max(1, myStats->MAXHP);
+		if ( percentHP < 0.25 )
 		{
-			myStats->setEffectActive(EFF_LEVITATING, 1);
-			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
+			if ( myStats->getAttribute("water_elemental_state") != "3" )
+			{
+				myStats->setAttribute("water_elemental_state", "3");
+				if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 )
+				{
+					my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
+					my->monsterSpecialTimer = 5 * TICKS_PER_SECOND;
+					serverUpdateEntitySkill(my, 33);
+					if ( local_rng.rand() % 4 == 0 )
+					{
+						my->monsterReleaseAttackTarget(true);
+					}
+				}
+			}
+		}
+		else if ( percentHP < 0.5 )
+		{
+			if ( myStats->getAttribute("water_elemental_state") != "2" )
+			{
+				myStats->setAttribute("water_elemental_state", "2");
+				if ( my->monsterSpecialState == 0 /*&& local_rng.rand() % 2 == 0*/ )
+				{
+					my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
+					my->monsterSpecialTimer = 4 * TICKS_PER_SECOND;
+					serverUpdateEntitySkill(my, 33);
+					if ( local_rng.rand() % 2 == 0 )
+					{
+						my->monsterReleaseAttackTarget(true);
+					}
+				}
+			}
+		}
+		else if ( percentHP < 0.75 )
+		{
+			if ( myStats->getAttribute("water_elemental_state") != "1" )
+			{
+				myStats->setAttribute("water_elemental_state", "1");
+				if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 )
+				{
+					my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
+					my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
+					serverUpdateEntitySkill(my, 33);
+					if ( local_rng.rand() % 2 == 0 )
+					{
+						my->monsterReleaseAttackTarget(true);
+					}
+				}
+			}
+		}
+		else
+		{
+			myStats->setAttribute("water_elemental_state", "0");
+		}
+
+		if ( my->monsterSpecialState == WATER_ELEMENTAL_DIVE )
+		{
+			if ( !my->flags[PASSABLE] )
+			{
+				my->flags[PASSABLE] = true;
+				serverUpdateEntityFlag(my, 12);
+			}
+
+			myStats->setEffectActive(EFF_STUNNED, 1);
+			myStats->EFFECTS_TIMERS[EFF_STUNNED] = 5;
+
+			if ( my->monsterSpecialTimer > 0 )
+			{
+				--my->monsterSpecialTimer;
+			}
+
+			if ( my->ticks % TICKS_PER_SECOND == 0 && my->monsterSpecialTimer == 0 )
+			{
+				std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 7);
+				std::vector<Entity*> puddles;
+				std::vector<unsigned int> puddles_chances;
+				for ( auto it : entLists )
+				{
+					node_t* node;
+					for ( node = it->first; node != nullptr; node = node->next )
+					{
+						Entity* entity = (Entity*)node->element;
+						if ( entity && entity->behavior == &actParticleFloorMagic )
+						{
+							int x = static_cast<int>(entity->x) / 16;
+							int y = static_cast<int>(entity->y) / 16;
+							if ( x < 0 || y < 0 || x >= map.width || y >= map.height )
+							{
+								continue;
+							}
+							int mapIndex = (y) * MAPLAYERS + (x) * MAPLAYERS * map.height;
+							if ( !map.tiles[mapIndex] || map.tiles[OBSTACLELAYER + mapIndex] || lavatiles[map.tiles[mapIndex]] )
+							{
+								continue;
+							}
+							if ( entity->actfloorMagicType == ParticleTimerEffect_t::EffectType::EFFECT_WATERSPLASH )
+							{
+								if ( !checkObstacle(x * 16 + 8, y * 16 + 8, my, nullptr) )
+								{
+									puddles.push_back(entity);
+									real_t dist = entityDist(entity, my);
+									if ( dist < 15.0 )
+									{
+										puddles_chances.push_back(50); // close to me
+									}
+									else if ( dist < 32.0 )
+									{
+										puddles_chances.push_back(100); // close to me
+									}
+									else
+									{
+										puddles_chances.push_back(500); // standard weighting
+									}
+								}
+							}
+						}
+					}
+				}
+
+				Entity* currentTarget = uidToEntity(my->monsterTarget);
+				std::vector<int> swimTiles;
+				if ( !currentTarget && !my->monsterAllyGetPlayerLeader() )
+				{
+					for ( int x = 1; x < map.width - 1; ++x )
+					{
+						for ( int y = 1; y < map.height - 1; ++y )
+						{
+							int mapIndex = (y)*MAPLAYERS + (x)*MAPLAYERS * map.height;
+							if ( !map.tiles[OBSTACLELAYER + mapIndex] && map.tiles[mapIndex] && swimmingtiles[map.tiles[mapIndex]] )
+							{
+								if ( !checkObstacle(x * 16 + 8, y * 16 + 8, my, nullptr) )
+								{
+									puddles_chances.push_back(100); // water weighting
+									swimTiles.push_back(x + 10000 * y);
+								}
+							}
+						}
+					}
+				}
+
+				std::vector<Entity*> enemies;
+				for ( node_t* node = map.creatures->first; node; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( entity != currentTarget && getSpellTarget(node, 128, my, false, TARGET_ENEMY) )
+						{
+							enemies.push_back(entity);
+						}
+					}
+				}
+
+				bool anyTarget = false;
+				if ( currentTarget )
+				{
+					int index = -1;
+					for ( auto puddle : puddles )
+					{
+						++index;
+						real_t dist = entityDist(currentTarget, puddle);
+						if ( dist < 64.0 + 8.0 )
+						{
+							real_t tangent = atan2(currentTarget->y - puddle->y, currentTarget->x - puddle->x);
+							real_t d = lineTraceTarget(puddle, puddle->x, puddle->y, tangent, 64.0, 0, false, currentTarget);
+							if ( hit.entity == currentTarget )
+							{
+								if ( puddles_chances[index] > 100 )
+								{
+									puddles_chances[index] = 1000 - d;
+								}
+								anyTarget = true;
+							}
+						}
+					}
+				}
+
+				if ( anyTarget )
+				{
+					int pick = local_rng.discrete(puddles_chances.data(), puddles_chances.size());
+					my->x = static_cast<int>(puddles[pick]->x / 16) * 16 + 8.0;
+					my->y = static_cast<int>(puddles[pick]->y / 16) * 16 + 8.0;
+					TileEntityList.updateEntity(*my);
+					my->monsterSpecialState = 0;
+				}
+				else if ( puddles_chances.size() )
+				{
+					int index = -1;
+					for ( auto puddle : puddles )
+					{
+						++index;
+						for ( auto enemy : enemies )
+						{
+							real_t dist = entityDist(enemy, puddle);
+							if ( dist < 64.0 + 8.0 )
+							{
+								real_t tangent = atan2(enemy->y - puddle->y, enemy->x - puddle->x);
+								real_t d = lineTraceTarget(puddle, puddle->x, puddle->y, tangent, 64.0, 0, false, enemy);
+								if ( hit.entity == enemy )
+								{
+									if ( puddles_chances[index] > 100 )
+									{
+										puddles_chances[index] = 1000 - d;
+									}
+								}
+								else if ( !currentTarget && local_rng.rand() % 3 == 0 )
+								{
+									if ( puddles_chances[index] > 100 )
+									{
+										puddles_chances[index] = 1000;
+									}
+								}
+							}
+						}
+					}
+
+					int pick = local_rng.discrete(puddles_chances.data(), puddles_chances.size());
+					if ( pick >= puddles.size() )
+					{
+						if ( (pick - puddles.size()) < swimTiles.size() )
+						{
+							my->x = static_cast<int>((swimTiles[pick - puddles.size()] % 10000)) * 16 + 8.0;
+							my->y = static_cast<int>((swimTiles[pick - puddles.size()] / 10000)) * 16 + 8.0;
+						}
+					}
+					else
+					{
+						my->x = static_cast<int>(puddles[pick]->x / 16) * 16 + 8.0;
+						my->y = static_cast<int>(puddles[pick]->y / 16) * 16 + 8.0;
+					}
+					TileEntityList.updateEntity(*my);
+					my->monsterSpecialState = 0;
+				}
+				else
+				{
+					my->monsterSpecialState = 0;
+				}
+
+				if ( my->monsterSpecialState == 0 )
+				{
+					serverUpdateEntitySkill(my, 33);
+					my->monsterSpecialTimer = 4 * TICKS_PER_SECOND;
+					my->monsterHitTime = std::max(my->monsterHitTime, (int)(HITRATE * 1.5));
+					std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 2);
+					bool anyEnemy = false;
+					bool orbitAttack = false;
+					if ( (myStats->getAttribute("water_elemental_state") == "2" && local_rng.rand() % 2 == 0)
+						|| (myStats->getAttribute("water_elemental_state") == "3" && local_rng.rand() % 2 == 0) )
+					{
+						orbitAttack = true;
+					}
+					for ( auto it : entLists )
+					{
+						node_t* node;
+						for ( node = it->first; node != nullptr; node = node->next )
+						{
+							Entity* entity = (Entity*)node->element;
+							if ( entity )
+							{
+								if ( !anyEnemy && orbitAttack && my->checkEnemy(entity) )
+								{
+									anyEnemy = true;
+								}
+								else if ( entityInsideEntity(my, entity) )
+								{
+									if ( entity->behavior == &actDoor )
+									{
+										entity->doorHealth = 0;
+									}
+									else if ( entity->behavior == &actFurniture )
+									{
+										entity->furnitureHealth = 0;
+									}
+									else if ( entity->isColliderBreakableContainer() )
+									{
+										entity->colliderCurrentHP = 0;
+										entity->colliderKillerUid = 0;
+									}
+								}
+							}
+						}
+					}
+					if ( anyEnemy )
+					{
+						my->attack(MONSTER_POSE_RANGED_WINDUP1, 0, nullptr);
+						my->monsterHitTime = 0;
+					}
+				}
+			}
+		}
+
+		my->z = limbs[WATER_ELEMENTAL][5][2];
+		if ( myStats->getEffectActive(EFF_LEVITATING) )
+		{
+			my->setEffect(EFF_LEVITATING, false, 0, false);
 		}
 
 		my->creatureHandleLiftZ();
+
+		if ( my->ticks == 2 )
+		{
+			myStats->setEffectActive(EFF_STUNNED, 1);
+			myStats->EFFECTS_TIMERS[EFF_STUNNED] = 25;
+		}
 	}
 
-	//my->setEffect(EFF_STUNNED, true, -1, false);
-	//my->monsterLookDir = 0.0;
-	//my->yaw = 0.0;
-	//static ConsoleVariable<int> cvar_ee_yaw("/ee_yaw", 0);
-	//static ConsoleVariable<int> cvar_ee_pitch("/ee_pitch", 0);
-	//static ConsoleVariable<int> cvar_ee_roll("/ee_roll", 0);
+	Entity* entity = nullptr;
+
 	if ( enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 	{
 		if ( keystatus[SDLK_KP_5] )
 		{
-			my->yaw += 0.05;
+			my->yaw -= 0.05;
 			my->monsterLookDir = my->yaw;
 		}
 		if ( keystatus[SDLK_KP_4] )
 		{
 			my->setEffect(EFF_STUNNED, true, -1, false);
 		}
-		//if ( keystatus[SDLK_g] )
-		//{
-		//	keystatus[SDLK_g] = 0;
-		//	//MONSTER_ATTACK = mothGetAttackPose(my, MONSTER_POSE_MELEE_WINDUP1);
-		//	MONSTER_ATTACK = MONSTER_POSE_MELEE_WINDUP1;// mothGetAttackPose(my, MONSTER_POSE_MAGIC_WINDUP1);
-		//	MONSTER_ATTACKTIME = 0;
-		//}
-		//if ( keystatus[SDLK_h] )
-		//{
-		//	keystatus[SDLK_h] = 0;
-		//	//MONSTER_ATTACK = mothGetAttackPose(my, MONSTER_POSE_MELEE_WINDUP1);
-		//	MONSTER_ATTACK = MONSTER_POSE_MELEE_WINDUP3;// mothGetAttackPose(my, MONSTER_POSE_MAGIC_WINDUP1);
-		//	MONSTER_ATTACKTIME = 0;
-		//}
-		//if ( keystatus[SDLK_n] )
-		//{
-		//	keystatus[SDLK_n] = 0;
-		//	//MONSTER_ATTACK = mothGetAttackPose(my, MONSTER_POSE_MELEE_WINDUP1);
-		//	MONSTER_ATTACK = MONSTER_POSE_RANGED_WINDUP1;// mothGetAttackPose(my, MONSTER_POSE_MAGIC_WINDUP1);
-		//	MONSTER_ATTACKTIME = 0;
-		//}
-		//if ( keystatus[SDLK_y] )
-		//{
-		//	keystatus[SDLK_y] = 0;
-		//	//MONSTER_ATTACK = mothGetAttackPose(my, MONSTER_POSE_MELEE_WINDUP1);
-		//	MONSTER_ATTACK = MONSTER_POSE_MELEE_WINDUP2;// mothGetAttackPose(my, MONSTER_POSE_MAGIC_WINDUP1);
-		//	MONSTER_ATTACKTIME = 0;
-		//}
-		//	if ( keystatus[SDLK_h] )
-		//	{
-		//		keystatus[SDLK_h] = 0;
-		//		myStats->setEffectValueUnsafe(EFF_STUNNED, myStats->getEffectActive(EFF_STUNNED) ? 0 : 1);
-		//		myStats->EFFECTS_TIMERS[EFF_STUNNED] = myStats->getEffectActive(EFF_STUNNED) ? -1 : 0;
-		//	}
-		//}
+		if ( keystatus[SDLK_g] )
+		{
+			keystatus[SDLK_g] = 0;
+			MONSTER_ATTACK = MONSTER_POSE_MELEE_WINDUP1;
+			MONSTER_ATTACKTIME = 0;
+		}
 	}
+
+	const real_t squishFactor = 0.15;
 
 	//Move bodyparts
 	Entity* body = nullptr;
@@ -3238,9 +3387,347 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 		{
 			body = entity;
 
-			WATER_LIMB_FSKILL_YAW -= 0.15;
-			WATER_LIMB_FSKILL_PITCH = limbs[WATER_ELEMENTAL][11][1] * PI + 0.1 * sin(WATER_BODY_FLOAT);
+#ifdef USE_FMOD
+			if ( my->entity_sound )
+			{
+				bool playing = false;
+				my->entity_sound->isPlaying(&playing);
+				if ( !playing )
+				{
+					my->entity_sound = playSoundEntityLocal(my, 135, 8);
+					my->entity_sound->isPlaying(&playing);
+				}
+				if ( my->entity_sound )
+				{
+					if ( playing )
+					{
+						FMOD_VECTOR position;
+						position.x = (float)(my->x / (real_t)16.0);
+						position.y = (float)(0.0);
+						position.z = (float)(my->y / (real_t)16.0);
+						my->entity_sound->set3DAttributes(&position, nullptr);
+					}
+				}
+			}
+			else
+			{
+				my->entity_sound = playSoundEntityLocal(my, 135, 8);
+			}
+#endif
 
+			const real_t squishRate = 3.0;
+			const real_t inc = squishRate * (PI / TICKS_PER_SECOND);
+			WATER_BODY_SQUISH = fmod(WATER_BODY_SQUISH + inc, PI * 2);
+			body->scalex = 1.0 - std::min(1.0, WATER_ATTACK) * sin(WATER_BODY_SQUISH) * squishFactor;
+
+			if ( enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
+			{
+				if ( keystatus[SDLK_KP_6] )
+				{
+					keystatus[SDLK_KP_6] = 0;
+					my->monsterSpecialState = my->monsterSpecialState ? 0 : 1;
+					if ( my->monsterSpecialState == WATER_ELEMENTAL_DIVE )
+					{
+						my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
+					}
+				}
+			}
+
+			if ( my->monsterSpecialState == WATER_ELEMENTAL_DIVE )
+			{
+				WATER_STATE = 0;
+			}
+			else
+			{
+				WATER_STATE = 1;
+			}
+
+			if ( WATER_STATE == 0 )
+			{
+				real_t prevAnim = WATER_STATE_ANIM;
+				WATER_STATE_ANIM += 0.03;
+				if ( prevAnim < 0.25 && WATER_STATE_ANIM >= 0.25 )
+				{
+					createWaterSplash(body->x, body->y, 30, true);
+					playSoundEntityLocal(my, 868, 128);
+					if ( multiplayer != CLIENT )
+					{
+						if ( my->ticks > TICKS_PER_SECOND )
+						{
+							Entity* timer = floorMagicCreateSplash(my, my->x, my->y, my, 5, SPELL_WATER_BOLT, 64);
+						}
+					}
+				}
+				WATER_STATE_ANIM = std::min(WATER_STATE_ANIM, 1.0);
+			}
+			else
+			{
+				real_t prevAnim = WATER_STATE_ANIM;
+				WATER_STATE_ANIM -= 0.03;
+				if ( prevAnim > 0.9 && WATER_STATE_ANIM <= 0.9 )
+				{
+					createWaterSplash(body->x, body->y, 30, true);
+					playSoundEntityLocal(my, 869, 128);
+					if ( my->flags[PASSABLE] )
+					{
+						my->flags[PASSABLE] = false;
+						serverUpdateEntityFlag(my, 12);
+					}
+				}
+				if ( prevAnim > 0.3 && WATER_STATE_ANIM <= 0.3 )
+				{
+					createWaterSplash(body->x, body->y, 30, true);
+				}
+				WATER_STATE_ANIM = std::max(WATER_STATE_ANIM, 0.0);
+
+				if ( ticks % 25 == 0 && MONSTER_ATTACK > 0 )
+				{
+					real_t offsetYaw = ((local_rng.rand() % 9) / 8.0) * PI / 4;
+					for ( int i = 0; i < 1; ++i )
+					{
+						Entity* splashParticle = newEntity(2451, 1, map.entities, nullptr); //Gib entity.
+						splashParticle->yaw = offsetYaw + i * (PI / 2);
+						splashParticle->x = body->x + 0.5 * cos(splashParticle->yaw);
+						splashParticle->y = body->y + 0.5 * sin(splashParticle->yaw);
+						splashParticle->z = body->z - 14.0;
+						splashParticle->pitch = (local_rng.rand() % 360) * PI / 180.0;
+						splashParticle->roll = (local_rng.rand() % 360) * PI / 180.0;
+						splashParticle->vel_x = 0.25 * cos(splashParticle->yaw);
+						splashParticle->vel_y = 0.25 * sin(splashParticle->yaw);
+						splashParticle->vel_z = -0.5 + 0.4 * (local_rng.rand() % 11) / 10.0;
+						splashParticle->skill[0] = 50;
+						splashParticle->behavior = &actWaterSplashParticle;
+						splashParticle->flags[UPDATENEEDED] = false;
+						splashParticle->flags[NOUPDATE] = true;
+						splashParticle->flags[PASSABLE] = true;
+						splashParticle->flags[UNCLICKABLE] = true;
+						splashParticle->scalex = 1.0;
+						splashParticle->scaley = splashParticle->scalex;
+						splashParticle->scalez = splashParticle->scalex;
+						if ( multiplayer != CLIENT )
+						{
+							--entity_uids;
+						}
+						splashParticle->setUID(-3);
+					}
+				}
+			}
+
+			WATER_LIMB_FSKILL_YAW = 0.0;
+			if ( MONSTER_ATTACK == MONSTER_POSE_MELEE_WINDUP1 )
+			{
+				WATER_LIMB_FSKILL_ROLL += limbs[WATER_ELEMENTAL][11][0] * (1.0 + 0.25 * WATER_ATTACK);
+			}
+			else
+			{
+				WATER_LIMB_FSKILL_ROLL += limbs[WATER_ELEMENTAL][11][0] * (1.0 + std::min(1.0, WATER_ATTACK));
+			}
+			WATER_LIMB_FSKILL_PITCH = limbs[WATER_ELEMENTAL][11][1] * PI + (1.0 - std::min(1.0, WATER_ATTACK)) * 0.1 * sin(WATER_BODY_FLOAT);
+
+			if ( MONSTER_ATTACK == MONSTER_POSE_MELEE_WINDUP1 )
+			{
+				WATER_ATTACK += 0.1;
+				WATER_ATTACK = std::min(WATER_ATTACK, 2.0);
+
+				if ( my->monsterSpecialState != WATER_ELEMENTAL_DIVE )
+				{
+					if ( MONSTER_ATTACKTIME % 30 == 1 )
+					{
+						createWaterSplash(body->x, body->y, 30, true);
+					}
+				}
+				if ( MONSTER_ATTACKTIME >= 35 )
+				{
+					MONSTER_ATTACK = 0;
+				}
+			}
+			else if ( MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP1 )
+			{
+				WATER_ATTACK += 0.1;
+				WATER_ATTACK = std::min(WATER_ATTACK, 2.0);
+				if ( MONSTER_ATTACKTIME == 1 )
+				{
+					createParticleDot(my);
+
+					playSoundEntityLocal(my, MONSTER_SPOTSND, 128);
+				}
+				if ( MONSTER_ATTACKTIME == 40 )
+				{
+					if ( multiplayer != CLIENT )
+					{
+						if ( my->monsterSpecialState != WATER_ELEMENTAL_DIVE )
+						{
+							for ( int i = 0; i < 3; ++i )
+							{
+								my->castOrbitingMagicMissile(SPELL_WATER_BOLT, 20.0, i * 2 * PI / 3, 5 * TICKS_PER_SECOND);
+							}
+						}
+					}
+				}
+				if ( my->monsterSpecialState != WATER_ELEMENTAL_DIVE )
+				{
+					if ( MONSTER_ATTACKTIME % 30 == 1 )
+					{
+						createWaterSplash(body->x, body->y, 30, true);
+					}
+				}
+				if ( MONSTER_ATTACKTIME >= 100 )
+				{
+					MONSTER_ATTACK = 0;
+				}
+			}
+			else if ( (MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP1
+				|| MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP2
+				|| MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP3) )
+			{
+				WATER_ATTACK += 0.1;
+				WATER_ATTACK = std::min(WATER_ATTACK, 1.0);
+
+				if ( my->monsterSpecialState != WATER_ELEMENTAL_DIVE )
+				{
+					if ( MONSTER_ATTACKTIME % 30 == 1 )
+					{
+						createWaterSplash(body->x, body->y, 30, true);
+					}
+
+					if ( multiplayer != CLIENT )
+					{
+						Entity* missileEntity = nullptr;
+						bool straightProjectile = false;
+						if ( MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP2 )
+						{
+							if ( MONSTER_ATTACKTIME == 1 )
+							{
+								playSoundEntityLocal(my, 867, 128);
+							}
+
+							if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][15][0] )
+							{
+								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								straightProjectile = true;
+							}
+							else if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][15][1] )
+							{
+								CastSpellProps_t props;
+								props.optionalData = 1;
+								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false, false, &props);
+							}
+						}
+						else if ( MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP3 )
+						{
+							if ( MONSTER_ATTACKTIME == 1 )
+							{
+								playSoundEntityLocal(my, 870, 128);
+							}
+
+							if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][17][0] )
+							{
+								real_t yaw = my->yaw;
+								Entity* currentTarget = uidToEntity(my->monsterTarget);
+								if ( currentTarget )
+								{
+									real_t tangent = atan2(currentTarget->y - my->y, currentTarget->x - my->x);
+									real_t d = lineTraceTarget(my, my->x, my->y, tangent, 64.0, 0, false, currentTarget);
+									if ( hit.entity == currentTarget )
+									{
+										if ( local_rng.rand() % 2 == 0 )
+										{
+											my->yaw -= PI / 4;
+											my->yaw += (local_rng.rand() % 5) * PI / 8;
+										}
+									}
+								}
+								CastSpellProps_t props;
+								props.optionalData = 1;
+								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false, false, &props);
+								my->yaw = yaw;
+							}
+						}
+						else if ( MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP1 )
+						{
+							if ( MONSTER_ATTACKTIME == 1 )
+							{
+								playSoundEntityLocal(my, 871, 128);
+							}
+
+							if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][16][0] )
+							{
+								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								straightProjectile = true;
+							}
+							else if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][16][1] )
+							{
+								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								straightProjectile = true;
+							}
+							else if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][16][2] )
+							{
+								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								straightProjectile = true;
+							}
+						}
+
+						if ( missileEntity && straightProjectile )
+						{
+							missileEntity->vel_x /= 0.75;
+							missileEntity->vel_y /= 0.75;
+							missileEntity->actmagicProjectileArc = 0;
+							missileEntity->actmagicIsVertical = 0;
+							missileEntity->vel_z = 0.0;
+							missileEntity->pitch = 0.0;
+						}
+					}
+				}
+
+				if ( MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP3 )
+				{
+					if ( MONSTER_ATTACKTIME >= 50 )
+					{
+						MONSTER_ATTACK = 0;
+						if ( multiplayer != CLIENT )
+						{
+							if ( my->monsterSpecialState == 0 )
+							{
+								my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
+								my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
+								serverUpdateEntitySkill(my, 33);
+							}
+						}
+					}
+				}
+				else
+				{
+					if ( MONSTER_ATTACKTIME >= 100 )
+					{
+						if ( MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP2 )
+						{
+							if ( multiplayer != CLIENT )
+							{
+								int roll = local_rng.rand() % 6;
+								int hp = 10 - (10 * myStats->HP / myStats->MAXHP);
+								roll -= hp / 3;
+								if ( roll <= 0 )
+								{
+									if ( my->monsterSpecialState == 0 )
+									{
+										my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
+										my->monsterSpecialTimer = 2 * TICKS_PER_SECOND;
+										serverUpdateEntitySkill(my, 33);
+									}
+								}
+							}
+						}
+						MONSTER_ATTACK = 0;
+					}
+				}
+			}
+			else
+			{
+				WATER_ATTACK -= 0.1;
+				WATER_ATTACK = std::max(WATER_ATTACK, 0.0);
+			}
+
+			WATER_LIMB_FSKILL_PITCH -= 0.25 * sin(WATER_ATTACK * PI / 2);
 		}
 
 		entity->x = my->x;
@@ -3251,20 +3738,10 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 		entity->pitch = WATER_LIMB_FSKILL_PITCH;
 		entity->roll = WATER_LIMB_FSKILL_ROLL;
 		entity->yaw += WATER_LIMB_FSKILL_YAW;
-		///*if ( *cvar_ee_pitch == bodypart )
-		//{
-		//	EARTH_LIMB_FSKILL_PITCH += 0.05;
-		//}*/
-		//entity->pitch = EARTH_LIMB_FSKILL_PITCH;
-		///*if ( *cvar_ee_roll == bodypart )
-		//{
-		//	EARTH_LIMB_FSKILL_ROLL += 0.05;
-		//}*/
-		//entity->roll = EARTH_LIMB_FSKILL_ROLL;
 
 		switch ( bodypart )
 		{
-		case EARTH_BODY:
+		case WATER_BODY:
 		{
 			entity->x += limbs[WATER_ELEMENTAL][4][0] * cos(my->yaw) + limbs[WATER_ELEMENTAL][4][1] * cos(my->yaw + PI / 2);
 			entity->y += limbs[WATER_ELEMENTAL][4][0] * sin(my->yaw) + limbs[WATER_ELEMENTAL][4][1] * sin(my->yaw + PI / 2);
@@ -3274,47 +3751,11 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 			entity->focalz = limbs[WATER_ELEMENTAL][3][2];
 
 			WATER_BODY_FLOAT += limbs[WATER_ELEMENTAL][11][2];
+			entity->z += 15.0 * sin(std::max(0.0, (WATER_STATE_ANIM - 0.3) / 0.7) * PI / 2);
 
-			/*real_t pitchAngle = EARTH_FLOAT_ANIM * 1.0 * limbs[EARTH_ELEMENTAL][11][2] + PI / 4;
-			while ( pitchAngle >= 2 * PI )
-			{
-				pitchAngle -= 2 * PI;
-			}
-			while ( pitchAngle < 0 )
-			{
-				pitchAngle += 2 * PI;
-			}
-			entity->yaw += sin(EARTH_ATTACK_1);
-			entity->pitch += limbs[EARTH_ELEMENTAL][13][0] * sin(pitchAngle);
-
-			entity->x += EARTH_FLOAT_X;
-			entity->y += EARTH_FLOAT_Y;
-			entity->z += EARTH_FLOAT_Z;
-
-			if ( EARTH_DEFEND > 0.0 )
-			{
-				entity->x -= EARTH_DEFEND * cos(my->yaw);
-				entity->y -= EARTH_DEFEND * sin(my->yaw);
-				entity->pitch += 0.25 * sin(EARTH_DEFEND * PI / 2);
-			}*/
-
-
-			/*if ( MONSTER_ATTACK == MONSTER_POSE_MELEE_WINDUP1 || MONSTER_ATTACK == MONSTER_POSE_EARTH_ELEMENTAL_ROLL )
-			{
-				if ( EARTH_LIMB_FSKILL_YAW > -3 * PI )
-				{
-					EARTH_ATTACK_FLOAT = sin((PI / 2) * EARTH_LIMB_FSKILL_YAW / (-3 * PI));
-				}
-				else
-				{
-					EARTH_ATTACK_FLOAT = sin((PI / 2) * (-4 * PI - EARTH_LIMB_FSKILL_YAW) / -PI);
-				}
-			}
-			EARTH_ATTACK_FLOAT = -2.0 * sin(EARTH_ATTACK_1 / 2);
-			entity->z -= EARTH_ATTACK_FLOAT;*/
 			break;
 		}
-		case EARTH_EYES:
+		case WATER_EYES:
 		{
 			entity->x += limbs[WATER_ELEMENTAL][2][0] * cos(my->yaw) + limbs[WATER_ELEMENTAL][2][1] * cos(my->yaw + PI / 2);
 			entity->y += limbs[WATER_ELEMENTAL][2][0] * sin(my->yaw) + limbs[WATER_ELEMENTAL][2][1] * sin(my->yaw + PI / 2);
@@ -3323,54 +3764,17 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 			entity->focaly = limbs[WATER_ELEMENTAL][1][1];
 			entity->focalz = limbs[WATER_ELEMENTAL][1][2];
 
-			//if ( body )
-			//{
-			//	entity->x += EARTH_FLOAT_X;
-			//	entity->y += EARTH_FLOAT_Y;
+			if ( body )
+			{
+				entity->x += (-4.0 * sin(WATER_ATTACK * PI / 2) + sin(WATER_BODY_FLOAT)) * cos(entity->yaw);
+				entity->y += (-4.0 * sin(WATER_ATTACK * PI / 2) + sin(WATER_BODY_FLOAT)) * sin(entity->yaw);
+				entity->z += sin(WATER_BODY_FLOAT / 2) - 1.0 * sin(WATER_ATTACK * PI / 2);
 
-			//	if ( EARTH_SPAWN_STATE <= 1 )
-			//	{
-			//		entity->z += EARTH_FLOAT_Z;
-			//		entity->z = std::min(7.5, entity->z);
-			//		entity->x += 4.0 * cos(my->yaw);
-			//		entity->y += 4.0 * sin(my->yaw);
-			//	}
-			//	else
-			//	{
-			//		entity->z += 7.5 * EARTH_SPAWN_ANIM;
-			//		entity->x += 4.0 * EARTH_SPAWN_ANIM * cos(my->yaw);
-			//		entity->y += 4.0 * EARTH_SPAWN_ANIM * sin(my->yaw);
+				entity->z += 15.0 * sin(std::max(0.0, (WATER_STATE_ANIM - 0.3) / 0.7) * PI / 2);
+				entity->z -= 4.0 * sin(std::min(2.0, 2.0 * WATER_STATE_ANIM) * PI / 2);
 
-			//		//entity->roll = sin(EARTH_SPAWN_ANIM * PI);
-			//	}
-
-			//	real_t zAngle = EARTH_FLOAT_ANIM * limbs[EARTH_ELEMENTAL][11][2] + 3 * PI / 4;
-			//	zAngle = fmod(zAngle, 2 * PI);
-			//	while ( zAngle >= 2 * PI )
-			//	{
-			//		zAngle -= 2 * PI;
-			//	}
-			//	while ( zAngle < 0 )
-			//	{
-			//		zAngle += 2 * PI;
-			//	}
-			//	real_t zMag = 0.5 * sin(zAngle);
-			//	entity->z -= zMag;
-
-			//	if ( MONSTER_ATTACK == MONSTER_POSE_MELEE_WINDUP1 || MONSTER_ATTACK == MONSTER_POSE_EARTH_ELEMENTAL_ROLL )
-			//	{
-			//		if ( MONSTER_ATTACKTIME >= limbs[EARTH_ELEMENTAL][15][0] )
-			//		{
-			//			entity->fskill[7] = std::min(1.0, entity->fskill[7] + 0.1); // extra raise
-			//		}
-			//	}
-			//	else
-			//	{
-			//		entity->fskill[7] = std::max(0.0, entity->fskill[7] - 0.1);
-			//	}
-			//	entity->z -= EARTH_ATTACK_FLOAT;
-			//	entity->z -= 1.0 * sin(entity->fskill[7] * PI / 2);
-			//}
+				entity->scalez = 1.0 - WATER_ATTACK * sin(WATER_BODY_SQUISH) * squishFactor;
+			}
 			break;
 		}
 		default:

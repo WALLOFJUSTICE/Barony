@@ -246,7 +246,9 @@ static const int SPELL_SANCTUARY = 223;
 static const int SPELL_HOLY_BEAM = 224;
 static const int SPELL_FOCI_WINDBLAST = 225;
 static const int SPELL_REVENANT_PUSH = 226;
-static const int NUM_SPELLS = 227;
+static const int SPELL_WATER_BOLT = 227;
+static const int SPELL_WATER_ELEMENTAL = 228;
+static const int NUM_SPELLS = 229;
 
 #define SPELLELEMENT_CONFUSE_BASE_DURATION 2//In seconds.
 #define SPELLELEMENT_BLEED_BASE_DURATION 10//In seconds.
@@ -387,6 +389,7 @@ static const int PARTICLE_EFFECT_SMITE_PINPOINT = 93;
 static const int PARTICLE_EFFECT_HOLY_FIRE = 94;
 static const int PARTICLE_EFFECT_HOLY_BEAM_ORBIT = 95;
 static const int PARTICLE_EFFECT_REVENANT_PUSH = 96;
+static const int PARTICLE_EFFECT_WATER_ELEMENTAL_DIE = 97;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -432,6 +435,10 @@ static const int PARTICLE_TIMER_ACTION_SPIRIT_WEAPON_ATTACK = 35;
 static const int PARTICLE_TIMER_ACTION_SWEEP_ATTACK = 36;
 static const int PARTICLE_TIMER_ACTION_VORTEX_AESTHETIC = 37;
 static const int PARTICLE_TIMER_ACTION_REVENANT_PUSH = 38;
+static const int PARTICLE_TIMER_ACTION_WATERSPLASH = 39;
+static const int PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE = 40;
+static const int PARTICLE_TIMER_ACTION_WATER_ELEMENTAL = 41;
+static const int PARTICLE_TIMER_ACTION_WATER_VFX = 42;
 
 struct ParticleEmitterHit_t
 {
@@ -461,7 +468,8 @@ struct ParticleTimerEffect_t
 		EFFECT_ROOTS_PATH,
 		EFFECT_MYCELIUM,
 		EFFECT_ROOTS_SELF_SUSTAIN,
-		EFFECT_ROOTS_TILE_VOID
+		EFFECT_ROOTS_TILE_VOID,
+		EFFECT_WATERSPLASH
 	};
 	struct Effect_t
 	{
@@ -1059,6 +1067,8 @@ void radiusMagicClientReceive(Entity* entity);
 Entity* floorMagicSetLightningParticle(Entity* my);
 void floorMagicCreateLightningSequence(Entity* spellTimer, int startTickOffset);
 void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* caster, int damage, int spellID, bool magicstaff = false);
+Entity* floorMagicCreateSplash(Entity* spawnOnEntity, real_t x, real_t y, Entity* caster, int damage, int spellID, int volume, bool magicstaff = false, int duration = 6 * TICKS_PER_SECOND);
+Entity* createParticleRain(Entity* caster, real_t x, real_t y, int spellID);
 Entity* floorMagicCreateRoots(real_t x, real_t y, Entity* caster, int damage, int spellID, int duration, int particleTimerAction);
 Entity* createVortexMagic(int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime);
 Entity* createParticleWave(ParticleTimerEffect_t::EffectType particleType, int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime, bool light);
@@ -1341,3 +1351,11 @@ struct AOEIndicators_t
 	static void update();
 	static Uint32 createIndicator(int _radiusMin, int _radiusMax, int _size, int _lifetime);
 };
+
+enum SpellTarget_t
+{
+	TARGET_NEUTRAL = 1,
+	TARGET_ENEMY = 2,
+	TARGET_FRIEND = 4
+};
+Entity* getSpellTarget(node_t* node, int radius, Entity* caster, bool targetCaster, SpellTarget_t target);

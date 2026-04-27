@@ -1780,6 +1780,102 @@ void spawnGreasePuddleSpawner(Entity* caster, real_t x, real_t y, int duration)
 	}
 }
 
+void actWaterPuddle(Entity* my)
+{
+	if ( !my ) { return; }
+
+	if ( my->ticks % 10 == 0 )
+	{
+		if ( my->parent == 0 || !uidToEntity(my->parent) )
+		{
+			my->parent = 0;
+			my->skill[0] = 0;
+		}
+	}
+
+	if ( my->skill[0] <= 0 )
+	{
+		if ( my->scalex <= 0.0 )
+		{
+			list_RemoveNode(my->mynode);
+			return;
+		}
+
+		my->scalex -= 0.05;
+		my->scalez = my->scalex;
+	}
+	else
+	{
+		--my->skill[0];
+
+		if ( my->scalex < my->fskill[0] )
+		{
+			real_t diff = std::max(0.01, (my->fskill[0] - my->scalex) / 10.0);
+			my->scalex = std::min(my->scalex + diff, my->fskill[0]);
+		}
+		my->scalez = my->scalex;
+	}
+}
+
+void spawnWaterPuddle(Entity* parent, real_t x, real_t y, int duration, int location, int sprite)
+{
+	if ( !parent ) { return; }
+	int ox = x / 16;
+	int oy = y / 16;
+	if ( ox >= 0 && ox < map.width && oy >= 0 && oy < map.height )
+	{
+		int mapIndex = oy * MAPLAYERS + ox * MAPLAYERS * map.height;
+		if ( !map.tiles[mapIndex] || swimmingtiles[map.tiles[mapIndex]] )
+		{
+			return;
+		}
+
+		Entity* entity = newEntity(sprite, 1, map.entities, nullptr); //Blood/gib entity.
+		real_t x = ox * 16.0 + 8.0;
+		real_t y = oy * 16.0 + 8.0;
+
+		static const std::vector<float> locations = {
+			0 * PI / 4,
+			5 * PI / 4,
+			2 * PI / 4,
+			3 * PI / 4,
+			4 * PI / 4,
+			7 * PI / 4,
+			1 * PI / 4,
+			6 * PI / 4,
+		};
+
+		x += 4.0 * cos(locations[location]) + 2.0 * (local_rng.rand() % 10) / 10.0;
+		y += 4.0 * sin(locations[location]) + 2.0 * (local_rng.rand() % 10) / 10.0;
+
+		entity->x = x;
+		entity->y = y;
+		entity->z = 8 + (local_rng.rand() % 20) / 100.0;
+		entity->parent = 0;
+		entity->sizex = 2;
+		entity->sizey = 2;
+		entity->behavior = &actWaterPuddle;
+		entity->parent = parent->getUID();
+		entity->yaw = (local_rng.rand() % 360) * PI / 180.0;
+
+		int randomScale = local_rng.rand() % 10;
+		entity->fskill[0] = (100 - randomScale) / 100.f; // end scale
+		entity->skill[0] = duration + TICKS_PER_SECOND;
+		entity->scalex = 0.0;
+		entity->scalez = entity->scalex;
+
+		entity->flags[UPDATENEEDED] = false;
+		entity->flags[NOUPDATE] = true;
+		entity->flags[PASSABLE] = true;
+		entity->flags[UNCLICKABLE] = true;
+		if ( multiplayer != CLIENT )
+		{
+			--entity_uids;
+		}
+		entity->setUID(-3);
+	}
+}
+
 void spawnGreasePuddle(Entity* parent, real_t x, real_t y, int duration, int location)
 {
 	if ( !parent ) { return; }

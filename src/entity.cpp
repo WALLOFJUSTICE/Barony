@@ -9786,6 +9786,10 @@ bool Entity::isWaterWalking() const
 			{
 				return true;
 			}
+			else if ( stats->type == WATER_ELEMENTAL )
+			{
+				return true;
+			}
 			else if ( stats->type == DUCK_SMALL )
 			{
 				return true;
@@ -17859,6 +17863,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 			|| (srcStats->type == SKELETON && srcStats->getAttribute("revenant_skeleton") != "")
 			|| srcStats->type == FLAME_ELEMENTAL
 			|| srcStats->type == DUCK_SMALL
+			|| (srcStats->type == WATER_ELEMENTAL && src->monsterAllyGetPlayerLeader())
 			|| (srcStats->type == EARTH_ELEMENTAL && src->monsterAllyGetPlayerLeader())
 			|| srcStats->type == HOLOGRAM
 			|| src->monsterIsTinkeringCreation()) )
@@ -18112,6 +18117,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 								|| (follower->getStats() && follower->getStats()->type == SKELETON && follower->getStats()->getAttribute("revenant_skeleton") != "")
 								|| (follower->getStats() && follower->getStats()->type == MOTH_SMALL && follower->getStats()->getAttribute("fire_sprite") != "")
 								|| (follower->getStats() && follower->getStats()->type == EARTH_ELEMENTAL && follower->monsterAllyGetPlayerLeader())
+								|| (follower->getStats() && follower->getStats()->type == WATER_ELEMENTAL && follower->monsterAllyGetPlayerLeader())
 								|| (follower->getStats() && follower->getStats()->type == FLAME_ELEMENTAL)
 								|| (follower->getStats() && follower->getStats()->type == DUCK_SMALL) )
 							{
@@ -18183,6 +18189,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 		|| destStats->type == FLAME_ELEMENTAL
 		|| destStats->type == DUCK_SMALL
 		|| (destStats->type == EARTH_ELEMENTAL && monsterAllyGetPlayerLeader())
+		|| (destStats->type == WATER_ELEMENTAL && monsterAllyGetPlayerLeader())
 		|| destStats->type == HOLOGRAM
 		)
 		)
@@ -21631,6 +21638,25 @@ int Entity::getAttackPose() const
 				pose = mothGetAttackPose(const_cast<Entity*>(this), MONSTER_POSE_MELEE_WINDUP1);
 			}
 		}
+		else if ( myStats->type == WATER_ELEMENTAL )
+		{
+			switch ( local_rng.rand() % 5 )
+			{
+			case 0:
+			case 1:
+				pose = MONSTER_POSE_MAGIC_WINDUP2;
+				break;
+			case 2:
+			case 3:
+			case 4:
+				pose = MONSTER_POSE_MAGIC_WINDUP1;
+				break;
+			}
+			if ( local_rng.rand() % 10 == 0 )
+			{
+				pose = MONSTER_POSE_MAGIC_WINDUP3;
+			}
+		}
 		else if ( myStats->type == EARTH_ELEMENTAL )
 		{
 			switch ( local_rng.rand() % 4 )
@@ -21680,6 +21706,10 @@ bool Entity::hasRangedWeapon(bool ignoreMonsterNPCType) const
 			return true;
 		}
 		if ( myStats && myStats->type == GRYPHON && monsterSpecialState == GRYPHON_FLY )
+		{
+			return true;
+		}
+		if ( myStats && myStats->type == WATER_ELEMENTAL )
 		{
 			return true;
 		}
@@ -24236,6 +24266,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 					|| myStats->type == MOTH_SMALL
 					|| myStats->type == FLAME_ELEMENTAL
 					|| myStats->type == EARTH_ELEMENTAL
+					|| myStats->type == WATER_ELEMENTAL
 					|| monsterIsTinkeringCreation()
 					|| myStats->type == MIMIC
 					|| myStats->type == MINIMIMIC
@@ -24511,6 +24542,10 @@ void Entity::monsterAcquireAttackTarget(const Entity& target, Sint32 state, bool
 			{
 				monsterHitTime = std::max(monsterHitTime, (Sint32)(HITRATE * 1.5 - 10));
 			}
+			else if ( myStats->type == WATER_ELEMENTAL )
+			{
+				monsterHitTime = std::max(monsterHitTime, (Sint32)(HITRATE * 2.5 - 10));
+			}
 			else if ( ((svFlags & SV_FLAG_HARDCORE) || hasRangedWeapon()) && monsterSpecialTimer <= 0 )
 			{
 				if ( hasRangedWeapon() )
@@ -24671,7 +24706,8 @@ bool Entity::monsterReleaseAttackTarget(bool force)
 		return false;
 	}
 
-	if ( !force && myStats->type == SHADOW && monsterTarget && uidToEntity(monsterTarget) )
+	if ( !force && (myStats->type == SHADOW || (myStats->type == WATER_ELEMENTAL && monsterSpecialState == WATER_ELEMENTAL_DIVE)) 
+		&& monsterTarget && uidToEntity(monsterTarget) )
 	{
 		//messagePlayer(clientnum, "Shadow cannot lose target until it's dead!");
 		return false; //Shadow cannot lose its target.
@@ -25700,11 +25736,15 @@ double Entity::monsterRotate()
 	{
 		yaw -= dir / 4;
 	}
+	else if ( race == WATER_ELEMENTAL )
+	{
+		yaw -= abs(dir) / 16;
+	}
 	else if ( race == DUMMYBOT )
 	{
 		yaw -= dir / 4;
 	}
-	else if ( race == MIMIC )
+	else if ( race == MIMIC || race == MINIMIMIC )
 	{
 		yaw -= dir / 4;
 	}
@@ -26080,6 +26120,10 @@ bool Entity::shouldRetreat(Stat& myStats)
 	{
 		return false;
 	}
+	else if ( myStats.type == WATER_ELEMENTAL )
+	{
+		return false;
+	}
 	else if ( myStats.type == MONSTER_ADORCISED_WEAPON 
 		|| myStats.type == REVENANT_SKULL 
 		|| myStats.type == FLAME_ELEMENTAL
@@ -26240,6 +26284,10 @@ bool Entity::backupWithRangedWeapon(Stat& myStats, int dist, int hasrangedweapon
 		return false;
 	}
 	if ( myStats.getEffectActive(EFF_COURAGE) )
+	{
+		return false;
+	}
+	if ( myStats.type == WATER_ELEMENTAL )
 	{
 		return false;
 	}
@@ -30942,7 +30990,7 @@ bool monsterChangesColorWhenAlly(Stat* myStats, Entity* entity)
 	{
 		return false;
 	}
-	if ( race == FLAME_ELEMENTAL || race == EARTH_ELEMENTAL )
+	if ( race == FLAME_ELEMENTAL || race == EARTH_ELEMENTAL || race == WATER_ELEMENTAL )
 	{
 		return false;
 	}
@@ -32531,7 +32579,10 @@ void Entity::creatureHandleLiftZ()
 		case DUCK_SMALL: 
 			break;
 		case WATER_ELEMENTAL:
-			z -= shift / 2;
+			if ( !this->flags[PASSABLE] )
+			{
+				z -= shift / 2;
+			}
 			break;
 		case GRYPHON:
 			z -= shift / 2;

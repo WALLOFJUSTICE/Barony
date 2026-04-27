@@ -459,6 +459,8 @@ public:
 	Sint32& ceilingTileDir; //skill[1]
 	Sint32& ceilingTileAllowTrap; //skill[3]
 	Sint32& ceilingTileBreakable; //skill[4]
+	Sint32& ceilingTileLiquidTrap = skill[5];
+	Sint32& ceilingTileVfxCooldown = skill[6];
 
 	//--PUBLIC FLOOR DECORATION MODELS--
 	Sint32& floorDecorationModel; //skill[0]

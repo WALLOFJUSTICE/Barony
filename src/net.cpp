@@ -3777,6 +3777,15 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_EARTH_ELEMENTAL_DIE;
 				break;
 			}
+			case PARTICLE_EFFECT_WATER_ELEMENTAL_DIE:
+			{
+				Entity* spellTimer = createParticleTimer(nullptr, TICKS_PER_SECOND, -1);
+				spellTimer->x = particle_x;
+				spellTimer->y = particle_y;
+				spellTimer->z = particle_z;
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE;
+				break;
+			}
 			case PARTICLE_EFFECT_DUCK_SPAWN_FEATHER:
 			{
 				duckSpawnFeather(sprite, particle_x, particle_y, particle_z, nullptr);

@@ -441,14 +441,22 @@ void actWaterSplashParticle(Entity* my)
 	my->vel_z += 0.04;
 }
 
-void createWaterSplash(real_t x, real_t y, int lifetime)
+void createWaterSplash(real_t x, real_t y, int lifetime, bool ignoreTileCentering)
 {
 	{
 		Entity* splash = newEntity(2246, 1, map.entities, nullptr); //Gib entity.
-		real_t centerx = static_cast<int>(x / 16) * 16.0 + 8.0;
-		real_t centery = static_cast<int>(y / 16) * 16.0 + 8.0;
-		splash->x = std::max(-2.5, std::min(2.5, (x - centerx))) + centerx;
-		splash->y = std::max(-2.5, std::min(2.5, (y - centery))) + centery;
+		if ( !ignoreTileCentering )
+		{
+			real_t centerx = static_cast<int>(x / 16) * 16.0 + 8.0;
+			real_t centery = static_cast<int>(y / 16) * 16.0 + 8.0;
+			splash->x = std::max(-2.5, std::min(2.5, (x - centerx))) + centerx;
+			splash->y = std::max(-2.5, std::min(2.5, (y - centery))) + centery;
+		}
+		else
+		{
+			splash->x = x;
+			splash->y = y;
+		}
 		splash->z = 8.75;
 		splash->yaw = 0.0;
 		splash->skill[0] = lifetime;
@@ -469,8 +477,16 @@ void createWaterSplash(real_t x, real_t y, int lifetime)
 	{
 		Entity* splashParticle = newEntity(2248, 1, map.entities, nullptr); //Gib entity.
 		splashParticle->yaw = offsetYaw + i * (PI / 2);
-		splashParticle->x = static_cast<int>(x / 16) * 16.0 + 8.0 + 2.0 * cos(splashParticle->yaw);
-		splashParticle->y = static_cast<int>(y / 16) * 16.0 + 8.0 + 2.0 * sin(splashParticle->yaw);
+		if ( !ignoreTileCentering )
+		{
+			splashParticle->x = static_cast<int>(x / 16) * 16.0 + 8.0 + 2.0 * cos(splashParticle->yaw);
+			splashParticle->y = static_cast<int>(y / 16) * 16.0 + 8.0 + 2.0 * sin(splashParticle->yaw);
+		}
+		else
+		{
+			splashParticle->x = x + 2.0 * cos(splashParticle->yaw);
+			splashParticle->y = y + 2.0 * sin(splashParticle->yaw);
+		}
 		splashParticle->z = 7.5;
 		splashParticle->pitch = (local_rng.rand() % 360) * PI / 180.0;
 		splashParticle->roll = (local_rng.rand() % 360) * PI / 180.0;

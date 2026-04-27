@@ -1290,6 +1290,10 @@ static const int GRYPHON_STATE3 = 3;
 static const int ADORCISED_WEAPON_SPECIAL_CHARGE = 1;
 static const int ADORCISED_WEAPON_SPECIAL_COOLDOWN = 2;
 
+//-Water Elemental
+static const int WATER_ELEMENTAL_DIVE = 1;
+static const int WATER_ELEMENTAL_RISING = 2;
+
 struct MonsterData_t
 {
 	struct MonsterDataEntry_t

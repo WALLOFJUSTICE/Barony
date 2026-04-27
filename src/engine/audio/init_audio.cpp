@@ -412,6 +412,9 @@ int loadSoundResources(real_t base_load_percent, real_t top_load_percent)
 		{
 			flags |= FMOD_LOOP_NORMAL;
 		}
+#ifndef NDEBUG
+		flags |= FMOD_NONBLOCKING;
+#endif
 		fmod_result = fmod_system->createSound(full_path, flags, nullptr, &sounds[c]);
 		if (FMODErrorCheck())
 		{

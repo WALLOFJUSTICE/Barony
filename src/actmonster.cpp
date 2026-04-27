@@ -88,7 +88,7 @@ bool swornenemies[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MOTH_SMALL
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // EARTH_ELEMENTAL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // DUCK_SMALL
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // WATER_ELEMENTAL
+	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // WATER_ELEMENTAL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0 }, // GRYPHON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }  // MONSTER_UNUSED_8
 //    N  H  R  G  S  T  B  S  G  S  S  I  C  G  D  S  M  L  M  D  S  K  S  G  I  V  S  C  I  G  A  L  L  S  S  G  D  B  D  M  S  G  R  M  A  F  H  M  E  D  U  U  U
@@ -99,9 +99,9 @@ bool swornenemies[NUMMONSTERS][NUMMONSTERS] =
 // determines which monsters come to the aid of other monsters
 bool monsterally[NUMMONSTERS][NUMMONSTERS] =
 {
-//    N  H  R  G  S  T  B  S  G  S  S  I  C  G  D  S  M  L  M  D  S  K  S  G  I  V  S  C  I  G  A  L  L  S  S  G  D  B  D  M  S  G  R  M  A  U  U  U  U  U  U  G  U
-//    O  U  A  O  L  R  A  P  H  K  C  M  R  N  E  U  I  I  I  E  H  O  C  O  N  A  H  O  N  O  U  I  I  N  P  Y  U  U  D  M  S  G  E  I  D  N  N  N  N  N  N  R  N 
-//    T  M  T  B  I  O  T  I  O  E  O  P  A  O  M  C  M  C  N  V  P  B  A  L  C  M  A  C  S  A  T  F  I  T  L  R  M  G  D  M  S  G  V  N  O  1  2  3  4  5  6  Y  8  
+//    N  H  R  G  S  T  B  S  G  S  S  I  C  G  D  S  M  L  M  D  S  K  S  G  I  V  S  C  I  G  A  L  L  S  S  G  D  B  D  M  S  G  R  M  A  U  U  U  U  U  W  G  U
+//    O  U  A  O  L  R  A  P  H  K  C  M  R  N  E  U  I  I  I  E  H  O  C  O  N  A  H  O  N  O  U  I  I  N  P  Y  U  U  D  M  S  G  E  I  D  N  N  N  N  N  A  R  N 
+//    T  M  T  B  I  O  T  I  O  E  O  P  A  O  M  C  M  C  N  V  P  B  A  L  C  M  A  C  S  A  T  F  I  T  L  R  M  G  D  M  S  G  V  N  O  1  2  3  4  5  T  Y  8  
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // NOTHING
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // HUMAN
 	{ 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // RAT
@@ -152,12 +152,12 @@ bool monsterally[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0 }, // MOTH_SMALL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0 }, // EARTH_ELEMENTAL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // DUCK_SMALL
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // WATER_ELEMENTAL
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 }, // WATER_ELEMENTAL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0 }, // GRYPHON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }  // MONSTER_UNUSED_8
-//    N  H  R  G  S  T  B  S  G  S  S  I  C  G  D  S  M  L  M  D  S  K  S  G  I  V  S  C  I  G  A  L  L  S  S  G  D  B  D  M  S  G  R  M  A  F  H  M  E  D  U  G  U
-//    O  U  A  O  L  R  A  P  H  K  C  M  R  N  E  U  I  I  I  E  H  O  C  O  N  A  H  O  N  O  U  I  I  N  P  Y  U  U  D  M  S  G  E  I  D  L  O  T  R  U  N  R  N
-//    T  M  T  B  I  O  T  I  O  E  O  P  A  O  M  C  M  C  N  V  P  B  A  L  C  M  A  C  S  A  T  F  I  T  L  R  M  G 	D  M  S  G  V  N  O  M  L  H  F  C  6  Y  8
+//    N  H  R  G  S  T  B  S  G  S  S  I  C  G  D  S  M  L  M  D  S  K  S  G  I  V  S  C  I  G  A  L  L  S  S  G  D  B  D  M  S  G  R  M  A  F  H  M  E  D  W  G  U
+//    O  U  A  O  L  R  A  P  H  K  C  M  R  N  E  U  I  I  I  E  H  O  C  O  N  A  H  O  N  O  U  I  I  N  P  Y  U  U  D  M  S  G  E  I  D  L  O  T  R  U  A  R  N
+//    T  M  T  B  I  O  T  I  O  E  O  P  A  O  M  C  M  C  N  V  P  B  A  L  C  M  A  C  S  A  T  F  I  T  L  R  M  G 	D  M  S  G  V  N  O  M  L  H  F  C  T  Y  8
 };
 
 // monster sight ranges
@@ -1277,7 +1277,7 @@ Entity* summonMonster(Monster creature, long x, long y, bool forceLocation)
 			// small poof
 			auto poof = spawnPoof(entity->x, entity->y, -6, 0.5);
 		}
-		else if ( creature == EARTH_ELEMENTAL )
+		else if ( creature == EARTH_ELEMENTAL || creature == WATER_ELEMENTAL )
 		{
 			// no poof
 		}
@@ -2647,6 +2647,20 @@ void monsterAnimate(Entity* my, Stat* myStats, double dist)
 	default:
 		break;
 	}
+}
+
+int getFurnitureSmashPose(Entity* my, Stat* myStats)
+{
+	if ( my )
+	{
+		int pose = my->getAttackPose();
+		if ( myStats && myStats->type == WATER_ELEMENTAL )
+		{
+			pose = MONSTER_POSE_MELEE_WINDUP1;
+		}
+		return pose;
+	}
+	return 0;
 }
 
 void actMonster(Entity* my)
@@ -5419,7 +5433,8 @@ void actMonster(Entity* my)
 									visiontest = true;
 								}
 							}
-							else if ( myStats->type == GRYPHON && my->monsterSpecialState == GRYPHON_SKYBOX )
+							else if ( (myStats->type == GRYPHON && my->monsterSpecialState == GRYPHON_SKYBOX)
+								|| myStats->type == WATER_ELEMENTAL )
 							{
 								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
 								{
@@ -6511,7 +6526,7 @@ timeToGoAgain:
 											my->monsterHitTime++;
 											if ( my->monsterHitTime >= HITRATE )
 											{
-												my->monsterAttack = my->getAttackPose(); // random attack motion
+												my->monsterAttack = getFurnitureSmashPose(my, myStats); // random attack motion
 												my->monsterHitTime = 0;
 												my->monsterAttackTime = 0;
 												hit.entity->doorHealth--; // decrease door health
@@ -6564,7 +6579,7 @@ timeToGoAgain:
 										my->monsterHitTime++;
 										if ( my->monsterHitTime >= HITRATE )
 										{
-											my->monsterAttack = my->getAttackPose(); // random attack motion
+											my->monsterAttack = getFurnitureSmashPose(my, myStats); // random attack motion
 											my->monsterHitTime = HITRATE / 4;
 											my->monsterAttackTime = 0;
 											hit.entity->furnitureHealth--; // decrease door health
@@ -6582,9 +6597,9 @@ timeToGoAgain:
 										my->monsterHitTime++;
 										if ( my->monsterHitTime >= HITRATE )
 										{
-											if ( !hasrangedweapon )
+											if ( !hasrangedweapon || myStats->type == WATER_ELEMENTAL )
 											{
-												my->monsterAttack = my->getAttackPose(); // random attack motion
+												my->monsterAttack = getFurnitureSmashPose(my, myStats); // random attack motion
 											}
 											my->monsterHitTime = HITRATE / 4;
 											my->monsterAttackTime = 0;
@@ -7263,14 +7278,16 @@ timeToGoAgain:
 							{
 								visiontest = true;
 							}
-							else if ( hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM || myStats->type == SENTRYBOT || myStats->type == SPELLBOT )
+							else if ( hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM 
+								|| myStats->type == SENTRYBOT || myStats->type == SPELLBOT )
 							{
 								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
 								{
 									visiontest = true;
 								}
 							}
-							else if ( myStats->type == GRYPHON && my->monsterSpecialState == GRYPHON_SKYBOX )
+							else if ( (myStats->type == GRYPHON && my->monsterSpecialState == GRYPHON_SKYBOX)
+								|| myStats->type == WATER_ELEMENTAL )
 							{
 								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
 								{
@@ -7803,7 +7820,7 @@ timeToGoAgain:
 										my->monsterHitTime++;
 										if ( my->monsterHitTime >= HITRATE )
 										{
-											my->monsterAttack = my->getAttackPose(); // random attack motion
+											my->monsterAttack = getFurnitureSmashPose(my, myStats); // random attack motion
 											my->monsterAttackTime = 0;
 											my->monsterHitTime = 0;
 											hit.entity->doorHealth--; // decrease door health
@@ -7841,7 +7858,7 @@ timeToGoAgain:
 									my->monsterHitTime++;
 									if ( my->monsterHitTime >= HITRATE )
 									{
-										my->monsterAttack = my->getAttackPose(); // random attack motion
+										my->monsterAttack = getFurnitureSmashPose(my, myStats); // random attack motion
 										my->monsterAttackTime = 0;
 										my->monsterHitTime = HITRATE / 4;
 										hit.entity->furnitureHealth--; // decrease door health
@@ -7868,9 +7885,9 @@ timeToGoAgain:
 									my->monsterHitTime++;
 									if ( my->monsterHitTime >= HITRATE )
 									{
-										if ( !hasrangedweapon )
+										if ( !hasrangedweapon || myStats->type == WATER_ELEMENTAL )
 										{
-											my->monsterAttack = my->getAttackPose(); // random attack motion
+											my->monsterAttack = getFurnitureSmashPose(my, myStats); // random attack motion
 										}
 										my->monsterHitTime = HITRATE / 4;
 										my->monsterAttackTime = 0;
@@ -8181,12 +8198,21 @@ timeToGoAgain:
 										}
 									}
 
-									my->monsterAttack = my->getAttackPose(); // random attack motion
+									my->monsterAttack = getFurnitureSmashPose(my, myStats); // random attack motion
 									my->monsterAttackTime = 0;
 									my->monsterHitTime = std::max(my->monsterHitTime, HITRATE / 4);
 									serverUpdateEntitySkill(my, 9);
 									serverUpdateEntitySkill(my, 8);
 								}
+							}
+						}
+						if ( myStats->type == WATER_ELEMENTAL )
+						{
+							if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 )
+							{
+								my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
+								my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
+								serverUpdateEntitySkill(my, 33);
 							}
 						}
 						if ( !target && myStats->type == MIMIC )
@@ -8320,6 +8346,16 @@ timeToGoAgain:
 						}*/
 					}
 					my->monsterState = MONSTER_STATE_WAIT; // no path, return to wait state
+
+					if ( myStats->type == WATER_ELEMENTAL )
+					{
+						if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 )
+						{
+							my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
+							my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
+							serverUpdateEntitySkill(my, 33);
+						}
+					}
 					if ( !target && myStats->type == MIMIC )
 					{
 						mimicResetIdle(my);
@@ -10430,6 +10466,10 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			lichRangeCheckOverride = true;
 		}
 	}
+	else if ( myStats->type == WATER_ELEMENTAL )
+	{
+		lichRangeCheckOverride = true;
+	}
 	else if ( myStats->type == LICH_FIRE)
 	{
 		if ( monsterLichFireMeleeSeq == LICH_ATK_BASICSPELL_SINGLE )
@@ -10564,6 +10604,10 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			|| myStats->type == FLAME_ELEMENTAL || myStats->type == EARTH_ELEMENTAL )
 		{
 			bow = 1.5;
+		}
+		else if ( myStats->type == WATER_ELEMENTAL )
+		{
+			bow = 2.5;
 		}
 		else if ( myStats->type == MOTH_SMALL )
 		{
@@ -10726,6 +10770,15 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 					if ( myStats->type == MOTH_SMALL && pose == 0 )
 					{
 						// couldn't find a body to execute attack
+					}
+					else if ( myStats->type == WATER_ELEMENTAL )
+					{
+						if ( dist >= 64 && pose != MONSTER_POSE_MAGIC_WINDUP3 && local_rng.rand() % 3 == 0
+							&& monsterSpecialTimer == 0 )
+						{
+							pose = MONSTER_POSE_MAGIC_WINDUP3;
+						}
+						this->attack(pose, charge, nullptr); // attacku! D:<
 					}
 					else if ( myStats->type == BUGBEAR && monsterSpecialState == BUGBEAR_DEFENSE )
 					{
@@ -12622,6 +12675,11 @@ void Entity::monsterAllySendCommand(int command, int destX, int destY, Uint32 ui
 			{
 				setHP(0);
 				setObituary(Language::get(6803));
+			}
+			else if ( monsterAllySummonRank != 0 && myStats->type == WATER_ELEMENTAL )
+			{
+				setHP(0);
+				setObituary(Language::get(7004));
 			}
 			else if ( myStats->type == MONSTER_ADORCISED_WEAPON && myStats->getAttribute("adorcised_weapon") != "" )
 			{

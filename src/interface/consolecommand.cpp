@@ -4040,6 +4040,7 @@ namespace ConsoleCommands {
 			{
 				Mods::soundsListModifiedIndexes.push_back(soundIndex);
 				physfsReloadSounds(false);
+				playSound(soundIndex, 255);
 			}
 		}
 	});

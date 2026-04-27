@@ -1744,6 +1744,7 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			|| targetStats->type == REVENANT_SKULL
 			|| targetStats->type == FLAME_ELEMENTAL
 			|| targetStats->type == EARTH_ELEMENTAL
+			|| targetStats->type == WATER_ELEMENTAL
 			|| (targetStats->type == VAMPIRE && (targetStats->getAttribute("special_npc") == "bram kindly"))
 			|| (targetStats->type == INCUBUS && (targetStats->getAttribute("special_npc") == "johann"))
 			|| (targetStats->type == INCUBUS && !strncmp(targetStats->name, "inner demon", strlen("inner demon")))
@@ -2833,6 +2834,7 @@ bool spellEffectDemonIllusion(Entity& my, spellElement_t& element, Entity* paren
 				|| hitstats->type == REVENANT_SKULL
 				|| hitstats->type == FLAME_ELEMENTAL
 				|| hitstats->type == EARTH_ELEMENTAL
+				|| hitstats->type == WATER_ELEMENTAL
 				|| (hitstats->type == SKELETON && hitstats->getAttribute("revenant_skeleton") != "")
 				|| (hitstats->type == INCUBUS && !strncmp(hitstats->name, "inner demon", strlen("inner demon"))) )
 			{
@@ -4520,6 +4522,10 @@ int getSpellFromSummonedEntityForSpellEvent(Entity* summon)
 		if ( destStats->type == EARTH_ELEMENTAL )
 		{
 			return SPELL_EARTH_ELEMENTAL;
+		}
+		else if ( destStats->type == WATER_ELEMENTAL )
+		{
+			return SPELL_WATER_ELEMENTAL;
 		}
 		else if ( destStats->type == SKELETON )
 		{

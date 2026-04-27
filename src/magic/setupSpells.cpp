@@ -3447,6 +3447,37 @@ void setupSpells()   ///TODO: Verify this function.
 		5, // damage
 		1, // duration
 		"spell_revenant_push");
+	spell->hide_from_ui = true;
+
+	spellElementConstructor(SPELL_WATER_BOLT,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		0,		// damage
+		100,	// duration
+		"spell_element_water_bolt");
+	spell = spellConstructor(
+		SPELL_WATER_BOLT,											// ID
+		100,														// difficulty
+		"spell_water_bolt",											// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_WATER_BOLT }
+	);
+	spell->hide_from_ui = true;
+
+	spell = createSimpleSpell(
+		SPELL_WATER_ELEMENTAL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		20, // damage
+		1, // duration
+		"spell_water_elemental");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+	spell->hide_from_ui = true;
+
 
 	//static const int SPELL_LIGHTNING_NEXUS = 182;
 	//static const int SPELL_LIFT = 184;
