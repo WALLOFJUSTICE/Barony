@@ -3225,7 +3225,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 	}
 
 	bool boulderArrowTraps = true;
-	if ( !strncmp(map.filename, "fortress", 8) )
+	if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "keep", 4) )
 	{
 		boulderArrowTraps = false;
 	}
