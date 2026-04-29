@@ -8643,7 +8643,9 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		spell_t* thespell = getSpellFromID(SDLNet_Read32(&net_packet->data[5]));
 		if ( players[player] && players[player]->entity )
 		{
-			bool spellbookCast = net_packet->data[9] == 1;
+			bool spellbookCast = net_packet->data[9] & (1 << 0);
+			bool magicstaff = net_packet->data[9] & (1 << 1);
+			bool trap = net_packet->data[9] & (1 << 2);
 			if ( net_packet->len > 10 )
 			{
 				CastSpellProps_t castSpellProps;
@@ -8655,11 +8657,11 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 				castSpellProps.wallDir = net_packet->data[30];
 				castSpellProps.optionalData = net_packet->data[31];
 				castSpellProps.overcharge = net_packet->data[32];
-				castSpell(players[player]->entity->getUID(), thespell, false, false, spellbookCast, &castSpellProps);
+				castSpell(players[player]->entity->getUID(), thespell, magicstaff, trap, spellbookCast, &castSpellProps);
 			}
 			else
 			{
-				castSpell(players[player]->entity->getUID(), thespell, false, false, spellbookCast);
+				castSpell(players[player]->entity->getUID(), thespell, magicstaff, trap, spellbookCast);
 			}
 		}
 	}},

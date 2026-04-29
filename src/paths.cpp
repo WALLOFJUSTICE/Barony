@@ -318,7 +318,7 @@ Uint32 heuristic(int x1, int y1, int x2, int y2)
 
 -------------------------------------------------------------------------------*/
 
-int pathCheckObstacle(int x, int y, Entity* my, Entity* target)
+int pathCheckObstacle(int x, int y, Entity* my, Entity* target, GeneratePathTypes pathingType)
 {
 	const int u = std::min(std::max(0, x >> 4), (int)map.width - 1);
 	const int v = std::min(std::max(0, y >> 4), (int)map.height - 1);
@@ -386,6 +386,11 @@ int pathCheckObstacle(int x, int y, Entity* my, Entity* target)
 				if ( (entity->sprite == 217	// iron door
 					|| entity->sprite == 218) )
 				{
+					if ( pathingType == GeneratePathTypes::GENERATE_PATH_CHECK_EXIT 
+						&& loading && map.tileHasAttribute(u, v, 0, map_t::TILE_ATTRIBUTE_EXIT_ROOM) )
+					{
+						continue;
+					}
 					if ( strncmp(map.filename, "keep", 4) )
 					{
 						return 1;
@@ -701,6 +706,11 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 		}
 		int x = std::min<unsigned int>(std::max<int>(0, entity->x / 16), map.width - 1); //TODO: Why are int and double being compared? And why are int and unsigned int being compared?
 		int y = std::min<unsigned int>(std::max<int>(0, entity->y / 16), map.height - 1); //TODO: Why are int and double being compared? And why are int and unsigned int being compared?
+		if ( pathingType == GeneratePathTypes::GENERATE_PATH_CHECK_EXIT && loading
+			&& map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_EXIT_ROOM) )
+		{
+			continue;
+		}
 		pathMap[y + x * map.height] = 0;
 	}
 
@@ -865,14 +875,14 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 					}
 				}
 				else { // if (!loading)
-					if (pathCheckObstacle((newx << 4) + 8, (newy << 4) + 8, my, target)) {
+					if (pathCheckObstacle((newx << 4) + 8, (newy << 4) + 8, my, target, pathingType)) {
 						z++;
 					}
 					if (x && y) {
-						if (pathCheckObstacle((pathnode.x << 4) + 8, (newy << 4) + 8, my, target)) {
+						if (pathCheckObstacle((pathnode.x << 4) + 8, (newy << 4) + 8, my, target, pathingType)) {
 							z++;
 						}
-						if (pathCheckObstacle((newx << 4) + 8, (pathnode.y << 4) + 8, my, target)) {
+						if (pathCheckObstacle((newx << 4) + 8, (pathnode.y << 4) + 8, my, target, pathingType)) {
 							z++;
 						}
 					}

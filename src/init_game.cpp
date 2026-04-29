@@ -642,6 +642,10 @@ void deinitGame()
 		tutorialmusic->release();
 		gameovermusic->release();
 		introstorymusic->release();
+		bastillemusic->release();
+		warrenmusic->release();
+		fraternitymusic->release();
+		penitentiarymusic->release();
 #ifdef USE_FMOD
 		ensembleSounds.deinit();
 #endif
@@ -726,13 +730,17 @@ void deinitGame()
 		{
 			free(intromusic);
 		}
-		for ( int c = 0; c < NUMFORTRESSMUSIC; c++ )
+		for ( auto mus : fortressmusic )
 		{
-			fortressmusic[c]->release();
+			mus->release();
 		}
-		if ( fortressmusic )
+		for ( auto mus : keepmusic )
 		{
-			free(fortressmusic);
+			mus->release();
+		}
+		for ( auto mus : backroomsmusic )
+		{
+			mus->release();
 		}
 	}
 #ifdef USE_OPENAL

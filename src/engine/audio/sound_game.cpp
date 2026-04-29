@@ -265,6 +265,14 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
     channel->setMode(FMOD_3D_WORLDRELATIVE);
 	channel->setPaused(false);
 
+	if ( snd == 154 ) // portal hum
+	{
+		float f1, f2;
+		channel->get3DMinMaxDistance(&f1, &f2);
+		static ConsoleVariable<float> cvar_portal_mindist("/portal_distmin", 0.75);
+		channel->set3DMinMaxDistance(*cvar_portal_mindist, f2);
+	}
+
 	return channel;
 }
 

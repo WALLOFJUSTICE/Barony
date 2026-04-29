@@ -557,13 +557,18 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			strcpy( (char*)net_packet->data, "SPEL" );
 			net_packet->data[4] = clientnum;
 			SDLNet_Write32(spell->ID, &net_packet->data[5]);
+			net_packet->data[9] = 0;
 			if ( usingSpellbook )
 			{
-				net_packet->data[9] = 1;
+				net_packet->data[9] |= 1 << 0;
 			}
-			else
+			if ( using_magicstaff )
 			{
-				net_packet->data[9] = 0;
+				net_packet->data[9] |= 1 << 1;
+			}
+			if ( trap )
+			{
+				net_packet->data[9] |= 1 << 2;
 			}
 			if ( castSpellProps )
 			{
@@ -2236,19 +2241,48 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			if ( caster )
 			{
 				std::vector<Entity*> treasures;
+				int maxFound = 8;
 				int found = 0;
+
+				enum ScryType
+				{
+					SCRY_ALL_TREASURE,
+					SCRY_KEYS
+				};
+				ScryType scryType = SCRY_ALL_TREASURE;
+				if ( castSpellProps && castSpellProps->optionalData == 1 )
+				{
+					scryType = SCRY_KEYS;
+					maxFound = 100;
+				}
+
 				bool foundExisting = false;
+				bool overrideExisting = scryType == SCRY_KEYS;
 				std::set<int> mapTilesWithPinpoints;
 				for ( node_t* node = map.entities->first; node; node = node->next )
 				{
 					if ( Entity* ent = (Entity*)node->element )
 					{
 						if ( ent->behavior == &actChest || ent->isInertMimic()
-							|| ent->behavior == &actItem || ent->behavior == &actGoldBag )
+							|| ent->behavior == &actItem || ent->behavior == &actGoldBag
+							|| ent->behavior == &actMonster )
 						{
-							if ( found >= 8 )
+							if ( found >= maxFound )
 							{
 								break;
+							}
+
+							if ( scryType == SCRY_KEYS )
+							{
+								if ( ent->behavior == &actGoldBag ) { continue; }
+							}
+							else
+							{
+								if ( (ent->behavior == &actMonster)
+									&& !ent->isInertMimic() )
+								{
+									continue;
+								}
 							}
 
 							if ( ent->behavior == &actItem )
@@ -2262,9 +2296,16 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 									continue;
 								}
 							}
-							if ( entityDist(caster, ent) >= TOUCHRANGE * 8 )
+
+							if ( scryType == SCRY_KEYS ) // no dist limit
 							{
-								continue;
+							}
+							else
+							{
+								if ( entityDist(caster, ent) >= TOUCHRANGE * 8 )
+								{
+									continue;
+								}
 							}
 
 							if ( ent->behavior == &actChest )
@@ -2278,6 +2319,47 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 									if ( !inventory->first )
 									{
 										continue; // already looted
+									}
+									if ( scryType == SCRY_KEYS ) // check for keys
+									{
+										bool anyItem = false;
+										for ( auto node = inventory->first; node; node = node->next )
+										{
+											if ( Item* item = (Item*)node->element )
+											{
+												if ( item->type >= KEY_STONE && item->type <= KEY_MACHINE )
+												{
+													anyItem = true;
+													break;
+												}
+											}
+										}
+										if ( !anyItem )
+										{
+											continue;
+										}
+									}
+								}
+							}
+							else if ( Stat* stats = ent->getStats() )
+							{
+								if ( scryType == SCRY_KEYS ) // check for keys
+								{
+									bool anyItem = false;
+									for ( auto node = stats->inventory.first; node; node = node->next )
+									{
+										if ( Item* item = (Item*)node->element )
+										{
+											if ( item->type >= KEY_STONE && item->type <= KEY_MACHINE )
+											{
+												anyItem = true;
+												break;
+											}
+										}
+									}
+									if ( !anyItem )
+									{
+										continue;
 									}
 								}
 							}
@@ -2298,11 +2380,18 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 										{
 											if ( entity2->skill[4] == spell->ID )
 											{
-												mapTilesWithPinpoints.insert(std::max(0, x) + 10000 * std::max(0, y));
-												if ( entity2->parent == ent->getUID() )
+												if ( overrideExisting )
 												{
-													foundExisting = true;
-													skip = true;
+													entity2->skill[0] = 1; // fizzle existing pinpoint
+												}
+												else
+												{
+													mapTilesWithPinpoints.insert(std::max(0, x) + 10000 * std::max(0, y));
+													if ( entity2->parent == ent->getUID() )
+													{
+														foundExisting = true;
+														skip = true;
+													}
 												}
 											}
 										}
@@ -2319,10 +2408,14 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							{
 								found++;
 								int duration = element->duration;
+								if ( scryType == SCRY_KEYS )
+								{
+									duration = 2 * 60 * TICKS_PER_SECOND;
+								}
 								createParticleSpellPinpointTarget(ent, caster->getUID(), 1772, duration, spell->ID);
 								serverSpawnMiscParticles(ent, PARTICLE_EFFECT_PINPOINT, 1772, caster->getUID(), duration, spell->ID);
 
-								if ( caster->behavior == &actPlayer )
+								if ( caster->behavior == &actPlayer && !trap )
 								{
 									players[caster->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_SCRY_TREASURES, 10.0, 1.0, nullptr);
 								}
@@ -8958,7 +9051,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			{
 				if ( propulsion == PROPULSION_MISSILE )
 				{
-					missileEntity->sprite = 2449;
+					missileEntity->sprite = 2459;
 				}
 			}
 			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_BLOOD_WAVES].element_internal_name) )

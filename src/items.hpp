@@ -545,6 +545,7 @@ typedef enum ItemType
 	SPELLBOOK_SANCTUARY,
 	SPELLBOOK_HOLY_BEAM,
 	SPELLBOOK_DOMINATE,
+	SCROLL_SCRY_KEY,
 	ITEM_ENUM_MAX
 } ItemType;
 const int NUMITEMS = ITEM_ENUM_MAX;
@@ -832,6 +833,7 @@ bool item_ScrollFire(Item*& item, int player); // return true if exploded into f
 void item_ScrollFood(Item*& item, int player);
 void item_ScrollConjureArrow(Item*& item, int player);
 void item_ScrollMagicMapping(Item*& item, int player);
+void item_ScrollScry(Item*& item, int player);
 void item_ScrollRepair(Item*& item, int player);
 void item_ScrollDestroyArmor(Item*& item, int player);
 void item_ScrollTeleportation(Item*& item, int player);
@@ -934,7 +936,7 @@ static const std::vector<int> enchantedFeatherScrollsFixedList =
 	SCROLL_MAIL,
 	SCROLL_DESTROYARMOR,
 	SCROLL_DESTROYARMOR,
-	SCROLL_DESTROYARMOR,
+	SCROLL_SCRY_KEY,
 	SCROLL_FIRE,
 	SCROLL_FIRE,
 	SCROLL_FIRE,

@@ -3872,6 +3872,58 @@ void item_ScrollConjureArrow(Item*& item, int player)
 	item->identified = true;
 }
 
+void item_ScrollScry(Item*& item, int player)
+{
+	int x, y;
+
+	if ( players[player] == nullptr || players[player]->entity == nullptr )
+	{
+		return;
+	}
+
+	// this is a CLIENT function
+	if ( multiplayer == SERVER && player > 0 )
+	{
+		return;
+	}
+
+	if ( players[player]->entity->isBlind() )
+	{
+		messagePlayer(player, MESSAGE_HINT, Language::get(775));
+		playSoundPlayer(player, 90, 64);
+		return;
+	}
+
+	if ( players[player]->isLocalPlayer() )
+	{
+		conductIlliterate = false;
+	}
+
+	messagePlayer(player, MESSAGE_INVENTORY, Language::get(848));
+	if ( item->beatitude >= 0 )
+	{
+		//messagePlayer(player, MESSAGE_HINT, Language::get(868));
+		CastSpellProps_t props;
+		props.optionalData = 1;
+		castSpell(players[player]->entity->getUID(), getSpellFromID(SPELL_SCRY_TREASURES), true, true, false, &props);
+	}
+	else
+	{
+		messagePlayer(player, MESSAGE_HINT, Language::get(869));
+		for ( y = 0; y < map.height; y++ )
+		{
+			for ( x = 0; x < map.width; x++ )
+			{
+				minimap[y][x] = 0;
+			}
+		}
+	}
+	onScrollUseAppraisalIncrease(item, player);
+	item->identified = true;
+
+	consumeItem(item, player);
+}
+
 void item_ScrollMagicMapping(Item*& item, int player)
 {
 	int x, y;
@@ -6541,6 +6593,7 @@ void item_FoodAutomaton(Item*& item, int player)
 		case SCROLL_SUMMON:
 		case SCROLL_CONJUREARROW:
 		case SCROLL_CHARGING:
+		case SCROLL_SCRY_KEY:
 			players[player]->entity->modMP(20);
 			stats[player]->HUNGER += 600;
 			break;
@@ -6756,6 +6809,7 @@ bool itemIsConsumableByAutomaton(const Item& item)
 		case SCROLL_FIRE:
 		case SCROLL_CONJUREARROW:
 		case SCROLL_CHARGING:
+		case SCROLL_SCRY_KEY:
 		case TOOL_MAGIC_SCRAP:
 		case TOOL_METAL_SCRAP:
 			return true;

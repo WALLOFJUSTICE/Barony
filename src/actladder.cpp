@@ -232,7 +232,7 @@ void actPortal(Entity* my)
 		my->portalAmbience = TICKS_PER_SECOND * 2;
 		if ( !my->flags[INVISIBLE] )
 		{
-			playSoundEntityLocal( my, 154, 128 );
+			playSoundEntityLocal( my, 154, 92 );
 		}
 	}
 
@@ -475,7 +475,7 @@ void actWinningPortal(Entity* my)
 	if ( my->portalAmbience <= 0 )
 	{
 		my->portalAmbience = TICKS_PER_SECOND * 2;
-		playSoundEntityLocal( my, 154, 128 );
+		playSoundEntityLocal( my, 154, 92);
 	}
 
 	my->yaw += 0.01; // rotate slowly on my axis
@@ -725,7 +725,7 @@ void Entity::actExpansionEndGamePortal()
 	if ( portalAmbience <= 0 )
 	{
 		portalAmbience = TICKS_PER_SECOND * 2;
-		playSoundEntityLocal(this, 154, 128);
+		playSoundEntityLocal(this, 154, 92);
 	}
 
 	yaw += 0.01; // rotate slowly on my axis
@@ -949,7 +949,7 @@ void Entity::actMidGamePortal()
 	if ( portalAmbience <= 0 )
 	{
 		portalAmbience = TICKS_PER_SECOND * 2;
-		playSoundEntityLocal(this, 154, 128);
+		playSoundEntityLocal(this, 154, 92);
 	}
 
 	yaw += 0.01; // rotate slowly on my axis
@@ -1357,7 +1357,7 @@ void actCustomPortal(Entity* my)
 		if ( my->portalAmbience <= 0 )
 		{
 			my->portalAmbience = TICKS_PER_SECOND * 2; // portal whirr
-			playSoundEntityLocal(my, 154, 128);
+			playSoundEntityLocal(my, 154, 92);
 		}
 	}
 	else

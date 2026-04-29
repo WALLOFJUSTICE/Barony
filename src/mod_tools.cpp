@@ -19930,11 +19930,11 @@ void GameLevels_t::readFromFile()
 			}
 			if ( arr_it->HasMember("minotaur_chance") && (*arr_it)["minotaur_chance"].IsInt() )
 			{
-				data.node.spawn_minotaurs_chance = (*arr_it)["minotaur_chance"].IsInt();
+				data.node.spawn_minotaurs_chance = (*arr_it)["minotaur_chance"].GetInt();
 			}
 			if ( arr_it->HasMember("darkmap_chance") && (*arr_it)["darkmap_chance"].IsInt() )
 			{
-				data.node.darkmap_chance = (*arr_it)["darkmap_chance"].IsInt();
+				data.node.darkmap_chance = (*arr_it)["darkmap_chance"].GetInt();
 			}
 			if ( arr_it->HasMember("disable_gen_exits") && (*arr_it)["disable_gen_exits"].IsBool() )
 			{
@@ -19950,6 +19950,10 @@ void GameLevels_t::readFromFile()
 					//data.node.secret_exit.exit_index = (*arr_it)["secret_exit"]["exit_index"].GetInt();
 					data.node.secret_exit.filename = (*arr_it)["secret_exit"]["filename"].GetString();
 				}
+			}
+			if ( arr_it->HasMember("custom_exit") && (*arr_it)["custom_exit"].IsString() )
+			{
+				data.node.custom_exit = (*arr_it)["custom_exit"].GetString();
 			}
 			levelData[data.id] = data;
 			allLevels[data.level_track][data.depth] = data.id;

@@ -78,11 +78,6 @@ bool loadMusic()
         intromusic = (FMOD::Sound**)malloc(sizeof(FMOD::Sound*) * NUMINTROMUSIC);
         memset(intromusic, 0, sizeof(FMOD::Sound*) * NUMINTROMUSIC);
     }
-	if ( NUMFORTRESSMUSIC > 0 )
-	{
-		fortressmusic = (FMOD::Sound**)malloc(sizeof(FMOD::Sound*) * NUMINTROMUSIC);
-		memset(fortressmusic, 0, sizeof(FMOD::Sound*) * NUMINTROMUSIC);
-	}
 #endif
 
     bool introMusicChanged;
@@ -246,6 +241,13 @@ void handleLevelMusic()
 	bool playing = true;
 	music_channel->isPlaying(&playing);
 
+	static ConsoleVariable<bool> cvar_music_skip("/music_skip", false);
+	if ( *cvar_music_skip )
+	{
+		*cvar_music_skip = false;
+		playing = false;
+	}
+
 	if ( currenttrack == -1 )
 	{
 		currenttrack = local_rng.rand();
@@ -306,6 +308,10 @@ void handleLevelMusic()
 				currenttrack = 1;
 			}
 			playMusic(ruinsmusic[currenttrack], false, true, true);
+		}
+		else if ( !strncmp(map.filename, "penitentiary", 12) )
+		{
+			playMusic(penitentiarymusic, true, true, true);
 		}
 		else if ( !strncmp(map.name, "Underworld", 10) )     // the underworld
 		{
@@ -395,6 +401,10 @@ void handleLevelMusic()
 		{
 			playMusic(escapemusic, true, true, true);
 		}
+		else if ( !strncmp(map.filename, "fraternity", 10) )
+		{
+			playMusic(fraternitymusic, true, true, true);
+		}
 		else if ( !strncmp(map.name, "Hell", 4) )     // hell
 		{
 			if ( !playing )
@@ -438,14 +448,48 @@ void handleLevelMusic()
 		{
 			if ( !playing )
 			{
-				currenttrack = 1 + local_rng.rand() % (NUMFORTRESSMUSIC - 1);
+				currenttrack = 1 + local_rng.rand() % (fortressmusic.size() - 1);
 			}
-			currenttrack = currenttrack % NUMFORTRESSMUSIC;
+			currenttrack = currenttrack % fortressmusic.size();
 			if ( currenttrack == 0 )
 			{
 				currenttrack = 1;
 			}
 			playMusic(fortressmusic[currenttrack], false, true, true);
+		}
+		else if ( !strncmp(map.filename, "keep", 4) )
+		{
+			if ( !playing )
+			{
+				currenttrack = 1 + local_rng.rand() % (keepmusic.size() - 1);
+			}
+			currenttrack = currenttrack % keepmusic.size();
+			if ( currenttrack == 0 )
+			{
+				currenttrack = 1;
+			}
+			playMusic(keepmusic[currenttrack], false, true, true);
+		}
+		else if ( !strncmp(map.filename, "backrooms", 9) )
+		{
+			if ( !playing )
+			{
+				currenttrack = 1 + local_rng.rand() % (backroomsmusic.size() - 1);
+			}
+			currenttrack = currenttrack % backroomsmusic.size();
+			if ( currenttrack == 0 )
+			{
+				currenttrack = 1;
+			}
+			playMusic(backroomsmusic[currenttrack], false, true, true);
+		}
+		else if ( !strncmp(map.filename, "bastille", 8) )
+		{
+			playMusic(bastillemusic, true, true, true);
+		}
+		else if ( !strncmp(map.filename, "warren", 6) )
+		{
+			playMusic(warrenmusic, true, true, true);
 		}
 		else if ( !strcmp(map.name, "Mages Guild") )
 		{
@@ -563,6 +607,30 @@ void handleLevelMusic()
 		else if ( !strncmp(map.filename, "fortress", 8) )
 		{
 			playMusic(fortressmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "keep", 4) )
+		{
+			playMusic(keepmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "backrooms", 9) )
+		{
+			playMusic(backroomsmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "bastille", 8) )
+		{
+			playMusic(fortressmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "warren", 6) )
+		{
+			playMusic(fortressmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "fraternity", 10) )
+		{
+			playMusic(hellmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "penitentiary", 12) )
+		{
+			playMusic(underworldmusic[0], true, true, true);
 		}
 		else
 		{

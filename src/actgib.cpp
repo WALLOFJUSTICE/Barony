@@ -1806,7 +1806,10 @@ void actWaterPuddle(Entity* my)
 	}
 	else
 	{
-		--my->skill[0];
+		if ( multiplayer != CLIENT )
+		{
+			--my->skill[0];
+		}
 
 		if ( my->scalex < my->fskill[0] )
 		{

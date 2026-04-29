@@ -771,7 +771,7 @@ struct StartRoomInfo_t
 							}
 							else
 							{
-								if ( pathCheckObstacle(x1 - 2, y, nullptr, nullptr) == 1 ) // check interfering entities
+								if ( pathCheckObstacle(x1 - 2, y, nullptr, nullptr, GeneratePathTypes::GENERATE_PATH_DEFAULT) == 1 ) // check interfering entities
 								{
 									badTunnelPoints.push_back(std::make_pair(std::make_pair(x1, y), Direction::WEST));
 								}
@@ -811,7 +811,7 @@ struct StartRoomInfo_t
 							}
 							else
 							{
-								if ( pathCheckObstacle(x2 + 2, y, nullptr, nullptr) == 1 ) // check interfering entities
+								if ( pathCheckObstacle(x2 + 2, y, nullptr, nullptr, GeneratePathTypes::GENERATE_PATH_DEFAULT) == 1 ) // check interfering entities
 								{
 									badTunnelPoints.push_back(std::make_pair(std::make_pair(x2, y), Direction::EAST));
 								}
@@ -851,7 +851,7 @@ struct StartRoomInfo_t
 							}
 							else
 							{
-								if ( pathCheckObstacle(x, y1 - 2, nullptr, nullptr) == 1 ) // check interfering entities
+								if ( pathCheckObstacle(x, y1 - 2, nullptr, nullptr, GeneratePathTypes::GENERATE_PATH_DEFAULT) == 1 ) // check interfering entities
 								{
 									badTunnelPoints.push_back(std::make_pair(std::make_pair(x, y1), Direction::NORTH));
 								}
@@ -891,7 +891,7 @@ struct StartRoomInfo_t
 							}
 							else
 							{
-								if ( pathCheckObstacle(x, y2 + 2, nullptr, nullptr) == 1 ) // check interfering entities
+								if ( pathCheckObstacle(x, y2 + 2, nullptr, nullptr, GeneratePathTypes::GENERATE_PATH_DEFAULT) == 1 ) // check interfering entities
 								{
 									badTunnelPoints.push_back(std::make_pair(std::make_pair(x, y2), Direction::SOUTH));
 								}
@@ -1522,39 +1522,83 @@ int generateDungeon(char* levelset, Uint32 seed)
 		loadSubRoomData(fullMapPath, &mapList);
 	}
 
-	if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE )
+	if ( secretleveltype == SecretLevelType::SECRET_LEVEL_NONE && treasure_room_generator.orb_floors[(int)secretleveltype].find(currentlevel) != treasure_room_generator.orb_floors[(int)secretleveltype].end() )
 	{
-		if ( treasure_room_generator.orb_floors[(int)secretleveltype].find(currentlevel) != treasure_room_generator.orb_floors[(int)secretleveltype].end() )
+		std::string specialMapName = treasure_room_generator.orb_floors[(int)secretleveltype][currentlevel];
+		std::string fullMapPath = physfsFormatMapName(specialMapName.c_str());
+		if ( !fullMapPath.empty() )
 		{
-			std::string specialMapName = treasure_room_generator.orb_floors[(int)secretleveltype][currentlevel];
-			std::string fullMapPath = physfsFormatMapName(specialMapName.c_str());
-			if ( !fullMapPath.empty() )
+			if ( loadSubRoomData(fullMapPath, &specialMapRooms.list) )
 			{
-				if ( loadSubRoomData(fullMapPath, &specialMapRooms.list) )
+				++specialMapRooms.count;
+
+				// load subrooms if found
+				for ( char letter = 'a'; letter <= 'z'; letter++ )
 				{
-					++specialMapRooms.count;
+					char subRoomName[128] = "";
+					snprintf(subRoomName, sizeof(subRoomName), "%s%c", specialMapName.c_str(), letter);
 
-					// load subrooms if found
-					for ( char letter = 'a'; letter <= 'z'; letter++ )
+					std::string fullMapPath = physfsFormatMapName(subRoomName);
+
+					if ( fullMapPath.empty() )
 					{
-						char subRoomName[128] = "";
-						snprintf(subRoomName, sizeof(subRoomName), "%s%c", specialMapName.c_str(), letter);
+						break;    // no more levels to load
+					}
 
-						std::string fullMapPath = physfsFormatMapName(subRoomName);
+					auto& innerSubRooms = specialMapRooms.innerSubRooms[0];
+					printlog("[SUBMAP GENERATOR] Found map lv %s, count: %d", subRoomName, innerSubRooms.count);
 
-						if ( fullMapPath.empty() )
+					if ( loadSubRoomData(fullMapPath, &innerSubRooms.list) )
+					{
+						++innerSubRooms.count;
+					}
+				}
+			}
+		}
+		specialMapRooms.possibleRooms.resize(specialMapRooms.count, true);
+	}
+
+	{
+		if ( levelData.node.custom_exit != "" )
+		{
+			for ( int i = 0; i < 10; ++i )
+			{
+				char buf[128];
+				snprintf(buf, sizeof(buf), "%s%02d", levelData.node.custom_exit.c_str(), i);
+				std::string specialMapName = buf;
+				std::string fullMapPath = physfsFormatMapName(specialMapName.c_str());
+				if ( !fullMapPath.empty() )
+				{
+					if ( loadSubRoomData(fullMapPath, &specialMapRooms.list) )
+					{
+						++specialMapRooms.count;
+
+						// load subrooms if found
+						for ( char letter = 'a'; letter <= 'z'; letter++ )
 						{
-							break;    // no more levels to load
-						}
+							char subRoomName[128] = "";
+							snprintf(subRoomName, sizeof(subRoomName), "%s%c", specialMapName.c_str(), letter);
 
-						auto& innerSubRooms = specialMapRooms.innerSubRooms[0];
-						printlog("[SUBMAP GENERATOR] Found map lv %s, count: %d", subRoomName, innerSubRooms.count);
+							std::string fullMapPath = physfsFormatMapName(subRoomName);
 
-						if ( loadSubRoomData(fullMapPath, &innerSubRooms.list) )
-						{
-							++innerSubRooms.count;
+							if ( fullMapPath.empty() )
+							{
+								break;    // no more levels to load
+							}
+
+							auto& innerSubRooms = specialMapRooms.innerSubRooms[i];
+							printlog("[SUBMAP GENERATOR] Found map lv %s, count: %d", subRoomName, innerSubRooms.count);
+
+							if ( loadSubRoomData(fullMapPath, &innerSubRooms.list) )
+							{
+								++innerSubRooms.count;
+							}
 						}
 					}
+				}
+				else
+				{
+					break;
 				}
 			}
 			specialMapRooms.possibleRooms.resize(specialMapRooms.count, true);
@@ -1791,6 +1835,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 	StartRoomInfo_t startRoomInfo;
 	std::vector<bool> treasureRoomLocations(map.width * map.height, false);
 	std::vector<bool> decorationexcludelocations(map.width * map.height, false);
+	Entity* customExitEntity = nullptr;
 
 	// generate dungeon level...
 	int roomcount = 0;
@@ -2224,6 +2269,14 @@ int generateDungeon(char* levelset, Uint32 seed)
 						// pick random location across all map.
 						x = 2 + (map_rng.rand() % tempMap->width) * tempMap->width;
 						y = 2 + (map_rng.rand() % tempMap->height) * tempMap->height;
+						while ( x + tempMap->width >= map.width )
+						{
+							x = 2 + (map_rng.rand() % tempMap->width) * tempMap->width;
+						}
+						while ( y + tempMap->height >= map.height )
+						{
+							y = 2 + (map_rng.rand() % tempMap->height) * tempMap->height;
+						}
 					}
 				}
 
@@ -2529,7 +2582,15 @@ int generateDungeon(char* levelset, Uint32 seed)
 							{
 								decorationexcludelocations[x0 + y0 * map.width] = true;
 								treasureRoomLocations[x0 + y0 * map.width] = true;
-								map.tileAttributes[(y0)*MAPLAYERS + (x0)*MAPLAYERS * map.height] |= map_t::TILE_ATTRIBUTE_TREASURE_ROOM;
+
+								if ( c == 4 && specialMapRooms.count > 0 && levelData.node.custom_exit != "" )
+								{
+									map.tileAttributes[(y0)*MAPLAYERS + (x0)*MAPLAYERS * map.height] |= map_t::TILE_ATTRIBUTE_EXIT_ROOM;
+								}
+								else
+								{
+									map.tileAttributes[(y0)*MAPLAYERS + (x0)*MAPLAYERS * map.height] |= map_t::TILE_ATTRIBUTE_TREASURE_ROOM;
+								}
 							}
 						}
 
@@ -2571,6 +2632,15 @@ int generateDungeon(char* levelset, Uint32 seed)
 				{
 					entity->addToCreatureList(map.creatures);
 				}
+
+				if ( c == 4 && specialMapRooms.count > 0 && levelData.node.custom_exit != "" )
+				{
+					if ( childEntity->sprite == 11 || childEntity->sprite == 161
+						|| childEntity->sprite == 45 || childEntity->sprite == 46 )
+					{
+						customExitEntity = childEntity;
+					}
+				}
 			}
 
 			if ( foundSubRoom )
@@ -2596,6 +2666,15 @@ int generateDungeon(char* levelset, Uint32 seed)
 					if ( entity->behavior == &actMonster || entity->behavior == &actPlayer )
 					{
 						entity->addToCreatureList(map.creatures);
+					}
+
+					if ( c == 4 && specialMapRooms.count > 0 && levelData.node.custom_exit != "" )
+					{
+						if ( childEntity->sprite == 11 || childEntity->sprite == 161
+							|| childEntity->sprite == 45 || childEntity->sprite == 46 )
+						{
+							customExitEntity = childEntity;
+						}
 					}
 
 					//messagePlayer(0, "1 Generated entity. Sprite: %d X: %.2f Y: %.2f", childEntity->sprite, childEntity->x / 16, childEntity->y / 16);
@@ -3863,6 +3942,29 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 	std::vector<Uint32> itemsGeneratedList;
 	static ConsoleVariable<bool> cvar_underworldshrinetest("/underworldshrinetest", false);
+
+	if ( levelData.node.custom_exit != "" && customExitEntity )
+	{
+		for ( node = map.entities->first; node != NULL; node = node->next )
+		{
+			entity2 = (Entity*)node->element;
+			if ( entity2->sprite == 1 ) // note entity->behavior == nullptr at this point
+			{
+				list_t* path = generatePath(customExitEntity->x / 16, customExitEntity->y / 16, entity2->x / 16, entity2->y / 16,
+					customExitEntity, entity2, GeneratePathTypes::GENERATE_PATH_CHECK_EXIT, true);
+				if ( path == NULL )
+				{
+					//assert(false && "No exit pathing!");
+				}
+				else
+				{
+					list_FreeAll(path);
+					free(path);
+				}
+				break;
+			}
+		}
+	}
 
 	int exit_x = -1;
 	int exit_y = -1;
@@ -6873,6 +6975,19 @@ int generateDungeon(char* levelset, Uint32 seed)
 			while ( generateKeyItems.size() > 0 )
 			{
 				bool anychances = false;
+
+				auto previousChances = chances;
+
+				//{
+				//	// custom exit rooms don't put inside chest
+				//	auto checkx = generateKeyItems.front().second % 10000;
+				//	auto checky = generateKeyItems.front().second / 10000;
+				//	if ( map.tileHasAttribute(checkx, checky, 0, map_t::TILE_ATTRIBUTE_EXIT_ROOM) )
+				//	{
+				//		chances[KEY_GEN_CHEST] = 0;
+				//	}
+				//}
+
 				for ( int c = 0; c < KEY_GEN_ENUM_END; ++c )
 				{
 					if ( chances[c] > 0 )
@@ -6890,6 +7005,8 @@ int generateDungeon(char* levelset, Uint32 seed)
 				GenerateKeyPlaces pickedGenType = static_cast<GenerateKeyPlaces>(map_rng.discrete(chances.data(), chances.size()));
 				auto& entities = goodEntities[pickedGenType];
 
+				chances = previousChances;
+
 				int pick = map_rng.rand() % entities.size();
 				Entity* ent = entities[pick];
 				entities.erase(entities.begin() + pick);
@@ -6903,7 +7020,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 				if ( strncmp(map.name, "Underworld", 10) ) // underworld no check paths
 				{
 					list_t* path = generatePath(x, y, playerStart->x / 16, playerStart->y / 16,
-						ent, playerStart, GeneratePathTypes::GENERATE_PATH_CHECK_EXIT, true);
+						ent, playerStart, GeneratePathTypes::GENERATE_PATH_CHECK_KEY_ACCESS, true);
 					if ( path == NULL )
 					{
 						continue; // no path
@@ -7061,7 +7178,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					if ( strncmp(map.name, "Underworld", 10) ) // underworld no check paths
 					{
 						list_t* path = generatePath(x, y, playerStart->x / 16, playerStart->y / 16,
-							keyItem, playerStart, GeneratePathTypes::GENERATE_PATH_CHECK_EXIT, true);
+							keyItem, playerStart, GeneratePathTypes::GENERATE_PATH_CHECK_KEY_ACCESS, true);
 						if ( path == NULL )
 						{
 							list_RemoveNode(keyItem->mynode);
@@ -10998,7 +11115,7 @@ void assignActions(map_t* map)
 					entity->sizex = 8;
 					entity->sizey = 1;
 				}
-				entity->sprite = 2448;
+				entity->sprite = 2467;
 				entity->seedEntityRNG(map_rng.getU32());
 				break;
             default:

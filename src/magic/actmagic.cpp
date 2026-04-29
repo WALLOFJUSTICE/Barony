@@ -10591,6 +10591,11 @@ void floorMagicClientReceive(Entity* my)
 		my->skill[0] = (my->skill[2] >> 8) & 0xFFF; // duration
 		my->actmagicNoParticle = 1;
 	}
+	else if ( my->actfloorMagicType == ParticleTimerEffect_t::EFFECT_WATERSPLASH )
+	{
+		//my->skill[0] = (my->skill[2] >> 8) & 0xFFF; // duration
+		my->actmagicNoParticle = 1;
+	}
 
 	my->lightBonus = vec4(*cvar_magic_fx_light_bonus, *cvar_magic_fx_light_bonus,
 		*cvar_magic_fx_light_bonus, 0.f);
@@ -10911,7 +10916,7 @@ void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* c
 	spellTimer->actmagicCastByMagicstaff = magicstaff ? 1 : 0;
 
 	auto& timerEffects = particleTimerEffects[spellTimer->getUID()];
-
+	int tilerange = 1;
 	if ( caster && caster->behavior == &actPlayer && spellID == SPELL_SPORES )
 	{
 		if ( Stat* casterStats = caster->getStats() )
@@ -10933,14 +10938,31 @@ void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* c
 			}
 		}
 	}
+	if ( caster && caster->behavior == &actColliderDecoration && caster->isDamageableCollider() )
+	{
+		if ( spellID == SPELL_SPORES )
+		{
+			if ( EditorEntityData_t::colliderData.find(caster->colliderDamageTypes)
+				!= EditorEntityData_t::colliderData.end() )
+			{
+				auto& colliderData = EditorEntityData_t::colliderData[caster->colliderDamageTypes];
+				if ( colliderData.name.find("toxic") != std::string::npos
+					&& colliderData.name.find("tree") != std::string::npos )
+				{
+					spellTimer->particleTimerVariable4 = 2;
+					tilerange = 2;
+				}
+			}
+		}
+	}
 
 	std::vector<std::pair<int, int>> coords;
 	std::map<int, std::vector<ParticleTimerEffect_t::EffectLocations_t>> effLocations;
 	auto particleEffectType = (spellID == SPELL_MYCELIUM_BOMB || spellID == SPELL_MYCELIUM_SPORES) ? ParticleTimerEffect_t::EffectType::EFFECT_MYCELIUM
 		: ParticleTimerEffect_t::EffectType::EFFECT_SPORES;
-	for ( int i = -1; i < 2; ++i )
+	for ( int i = -tilerange; i <= tilerange; ++i )
 	{
-		for ( int j = -1; j < 2; ++j )
+		for ( int j = -tilerange; j <= tilerange; ++j )
 		{
 			coords.push_back(std::make_pair(i, j));
 			effLocations[particleEffectType].push_back(ParticleTimerEffect_t::EffectLocations_t());
@@ -13677,7 +13699,7 @@ void actParticleTimer(Entity* my)
 							if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_WATER_ELEMENTAL
 								|| my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_WATER_VFX )
 							{
-								sprite = 2456;
+								sprite = 2466;
 							}
 							Entity* fx = createParticleAestheticOrbit(my, sprite, TICKS_PER_SECOND, PARTICLE_EFFECT_SHATTER_EARTH_ORBIT);
 							fx->parent = 0;
@@ -14050,7 +14072,7 @@ void actParticleTimer(Entity* my)
 				if ( my->ticks % 10 == 1 )
 				{
 					int i = local_rng.rand() % 8;
-					Entity* fx = createParticleAestheticOrbit(my, 2456, 30, PARTICLE_EFFECT_SHATTER_EARTH_ORBIT);
+					Entity* fx = createParticleAestheticOrbit(my, 2466, 30, PARTICLE_EFFECT_SHATTER_EARTH_ORBIT);
 					fx->parent = 0;
 					fx->z = my->z;
 					fx->actmagicOrbitDist = 2;
@@ -15482,7 +15504,7 @@ Entity* Entity::castOrbitingMagicMissile(int spellID, real_t distFromCaster, rea
 		}
 		else if ( spellID == SPELL_WATER_BOLT )
 		{
-			entity->sprite = 2450;
+			entity->sprite = 2460;
 			entity->actmagicProjectileArc = 0;
 			entity->actmagicIsVertical = 0;
 			entity->vel_z = 0.0;
@@ -17839,7 +17861,7 @@ void actParticleFloorMagic(Entity* my)
 			{
 				int pick = local_rng.discrete(chances.data(), chances.size());
 				chances[pick] = 0;
-				spawnWaterPuddle(my, my->x, my->y, PARTICLE_LIFE, pick, i == 0 ? 2453 : 2454);
+				spawnWaterPuddle(my, my->x, my->y, PARTICLE_LIFE, pick, i == 0 ? 2463 : 2464);
 			}
 		}
 		else if ( my->actfloorMagicType == ParticleTimerEffect_t::EffectType::EFFECT_ROOTS_TILE
@@ -18108,7 +18130,36 @@ void actParticleFloorMagic(Entity* my)
 					}
 					if ( !skip && parentTimer->particleTimerVariable3 == 0 )
 					{
-						if ( Entity* breakable = Entity::createBreakableCollider(EditorEntityData_t::getColliderIndexFromName("mushroom_spell_fragile"),
+						std::string colliderName = "mushroom_spell_fragile";
+						if ( !strncmp(map.filename, "warren", 6) )
+						{
+							if ( local_rng.rand() % 2 )
+							{
+								colliderName = "mushroom_spell_toxic_fragile";
+							}
+							else
+							{
+								colliderName = "mushroom_spell_toxic_small_fragile";
+							}
+						}
+						else if ( caster && caster->behavior == &actColliderDecoration )
+						{
+							if ( EditorEntityData_t::colliderData.find(caster->colliderDamageTypes) != EditorEntityData_t::colliderData.end() )
+							{
+								if ( EditorEntityData_t::colliderData[caster->colliderDamageTypes].name.find("toxic") != std::string::npos )
+								{
+									if ( local_rng.rand() % 2 )
+									{
+										colliderName = "mushroom_spell_toxic_fragile";
+									}
+									else
+									{
+										colliderName = "mushroom_spell_toxic_small_fragile";
+									}
+								}
+							}
+						}
+						if ( Entity* breakable = Entity::createBreakableCollider(EditorEntityData_t::getColliderIndexFromName(colliderName),
 							my->x, my->y, caster) )
 						{
 							parentTimer->particleTimerVariable3 = 1;
@@ -18416,7 +18467,36 @@ void actParticleFloorMagic(Entity* my)
 									{
 										if ( parentTimer->particleTimerVariable3 == 0 )
 										{
-											if ( Entity* breakable = Entity::createBreakableCollider(EditorEntityData_t::getColliderIndexFromName("mushroom_spell_fragile"),
+											std::string colliderName = "mushroom_spell_fragile";
+											if ( !strncmp(map.filename, "warren", 6) )
+											{
+												if ( local_rng.rand() % 2 )
+												{
+													colliderName = "mushroom_spell_toxic_fragile";
+												}
+												else
+												{
+													colliderName = "mushroom_spell_toxic_small_fragile";
+												}
+											}
+											else if ( caster && caster->behavior == &actColliderDecoration )
+											{
+												if ( EditorEntityData_t::colliderData.find(caster->colliderDamageTypes) != EditorEntityData_t::colliderData.end() )
+												{
+													if ( EditorEntityData_t::colliderData[caster->colliderDamageTypes].name.find("toxic") != std::string::npos )
+													{
+														if ( local_rng.rand() % 2 )
+														{
+															colliderName = "mushroom_spell_toxic_fragile";
+														}
+														else
+														{
+															colliderName = "mushroom_spell_toxic_small_fragile";
+														}
+													}
+												}
+											}
+											if ( Entity* breakable = Entity::createBreakableCollider(EditorEntityData_t::getColliderIndexFromName(colliderName),
 												entity->x, entity->y, caster) )
 											{
 												parentTimer->particleTimerVariable3 = 1;

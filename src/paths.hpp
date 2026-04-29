@@ -41,12 +41,13 @@ enum GeneratePathTypes
 	GENERATE_PATH_PLAYER_GYRO_RETURN,
 	GENERATE_PATH_CHECK_EXIT,
 	GENERATE_PATH_MOVEASIDE,
-	GENERATE_PATH_ACHIEVEMENT
+	GENERATE_PATH_ACHIEVEMENT,
+	GENERATE_PATH_CHECK_KEY_ACCESS
 };
 extern int lastGeneratePathTries;
 list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target, GeneratePathTypes pathingType, bool lavaIsPassable = false);
 void generatePathMaps();
 // return true if an entity is blocks pathing
 bool isPathObstacle(Entity* entity);
-int pathCheckObstacle(int x, int y, Entity* my, Entity* target);
+int pathCheckObstacle(int x, int y, Entity* my, Entity* target, GeneratePathTypes pathingType);
 void updateGatePath(Entity& entity);

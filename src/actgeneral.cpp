@@ -769,11 +769,25 @@ void actColliderMushroomCap(Entity* my)
 		gib->sprite = my->sprite;
 		gib->z = my->z;
 		gib->skill[5] = 1; // poof
+		my->removeLightField();
 		list_RemoveNode(my->mynode);
 		return;
 	}
 
+	if ( !my->light && my->ticks == 2 )
+	{
+		auto& colliderData = EditorEntityData_t::colliderData[parent->colliderDamageTypes];
+		if ( colliderData.name.find("toxic") != std::string::npos )
+		{
+			my->light = addLight(my->x / 16, my->y / 16, "mushroom_toxic");
+		}
+	}
+
 	my->z = parent->z - 7.0 + 1.5;
+	if ( my->sprite == 2490 ) // tree cap
+	{
+		my->z -= 15.0;
+	}
 	my->pitch = (my->fskill[2]) * (PI / 24) * sin(my->fskill[1]);
 	my->roll =  (my->fskill[2]) * (PI / 24) * sin(my->fskill[1] + PI / 2);
 
@@ -1100,6 +1114,13 @@ void actColliderMushroomCap(Entity* my)
 						}
 
 						int damage = 5;
+						auto& colliderData = EditorEntityData_t::colliderData[parent->colliderDamageTypes];
+						if ( colliderData.name.find("mushroom") != std::string::npos
+							&& colliderData.name.find("toxic") != std::string::npos
+							&& colliderData.name.find("tree") != std::string::npos )
+						{
+							//damage *= 3;
+						}
 						bool alertTarget = true;
 						bool friendlyFireTarget = false;
 						if ( effectType == 6 || effectType == 7 ) // player casted
@@ -1351,6 +1372,15 @@ void Entity::colliderOnDestroy()
 	auto find = EditorEntityData_t::colliderData.find(colliderDamageTypes);
 	if ( find != EditorEntityData_t::colliderData.end() )
 	{
+		if ( find->second.name.find("mushroom") != std::string::npos
+			&& find->second.name.find("toxic") != std::string::npos )
+		{
+			if ( find->second.name.find("tree") != std::string::npos || local_rng.rand() % 5 == 0 )
+			{
+				floorMagicCreateSpores(this, this->x, this->y, this, 0, SPELL_SPORES);
+			}
+		}
+
 		if ( find->second.name == "mushroom_spell_casted" )
 		{
 			for ( int i = 0; i < this->colliderDropVariable; ++i )
@@ -1865,9 +1895,12 @@ void Entity::colliderAssignProperties(Entity* entity, bool mapGeneration, map_t*
 				int picked = data.spellTriggers[pickIndex];
 				if ( picked > 0 )
 				{
-					if ( entity->entity_rng->rand() % 5 > 0 )
+					if ( picked < 1000 )
 					{
-						picked += 1000;
+						if ( entity->entity_rng->rand() % 5 > 0 )
+						{
+							picked += 1000;
+						}
 					}
 					entity->colliderSpellEvent = picked;
 					lastSpellEvent = picked % 1000;
@@ -2048,10 +2081,26 @@ void actColliderDecoration(Entity* my)
 		}
 	}
 
+	/*if ( my->colliderDamageTypes == 0 && ticks % 50 == 0 )
+	{
+		messagePlayer(0, MESSAGE_DEBUG, "x: %.2f, y: %.2f", my->x / 16, my->y / 16);
+	}*/
+
 	my->removeLightField();
 	if ( my->flags[BURNABLE] && my->flags[BURNING] )
 	{
 		my->light = addLight(my->x / 16, my->y / 16, "object_burning");
+	}
+	else
+	{
+		if ( !my->light )
+		{
+			auto& colliderData = EditorEntityData_t::colliderData[my->colliderDamageTypes];
+			if ( colliderData.name.find("mushroom_toxic") != std::string::npos )
+			{
+				my->light = addLight(my->x / 16, my->y / 16, "mushroom_toxic");
+			}
+		}
 	}
 
 	if ( (my->colliderHasCollision == 0) )
@@ -2211,6 +2260,15 @@ void actColliderDecoration(Entity* my)
 							if ( effectType == 3 || effectType == 4 || effectType == 7 )
 							{
 								rescan = true; // look for a random target
+							}
+
+							if ( colliderData.name.find("toxic") != std::string::npos
+								&& colliderData.name.find("tree") != std::string::npos )
+							{
+								if ( local_rng.rand() % 8 == 0 )
+								{
+									floorMagicCreateSpores(my, my->x, my->y, my, 0, SPELL_SPORES);
+								}
 							}
 						}
 

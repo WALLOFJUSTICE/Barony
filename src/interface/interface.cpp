@@ -11809,6 +11809,7 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 
 		case SCROLL_ENCHANTWEAPON:
 		case SCROLL_ENCHANTARMOR:
+		case SCROLL_SCRY_KEY:
 
 		case SPELLBOOK_FIREBALL:
 		case SPELLBOOK_INVISIBILITY:
@@ -13217,6 +13218,7 @@ void GenericGUIMenu::scribingGetChargeCost(Item* itemUsedWith, int& outChargeCos
 			case SCROLL_MAGICMAPPING:
 				outChargeCostMin = 12;
 				break;
+			case SCROLL_SCRY_KEY:
 			case SCROLL_ENCHANTWEAPON:
 			case SCROLL_ENCHANTARMOR:
 				outChargeCostMin = 16;

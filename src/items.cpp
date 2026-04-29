@@ -3107,6 +3107,13 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 			}
 			break;
 		}
+		case SCROLL_SCRY_KEY:
+			item_ScrollScry(item, player);
+			if ( !players[player]->isLocalPlayer() )
+			{
+				consumeItem(item, player);
+			}
+			break;
 		case SCROLL_FOOD:
 			item_ScrollFood(item, player);
 			if ( !players[player]->entity->isBlind() )

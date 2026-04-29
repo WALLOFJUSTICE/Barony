@@ -3485,7 +3485,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 					real_t offsetYaw = ((local_rng.rand() % 9) / 8.0) * PI / 4;
 					for ( int i = 0; i < 1; ++i )
 					{
-						Entity* splashParticle = newEntity(2451, 1, map.entities, nullptr); //Gib entity.
+						Entity* splashParticle = newEntity(2461, 1, map.entities, nullptr); //Gib entity.
 						splashParticle->yaw = offsetYaw + i * (PI / 2);
 						splashParticle->x = body->x + 0.5 * cos(splashParticle->yaw);
 						splashParticle->y = body->y + 0.5 * sin(splashParticle->yaw);
