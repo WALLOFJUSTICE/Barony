@@ -75,12 +75,15 @@ void initMonsterG(Entity* my, Stat* myStats)
 
 			// boss variants
 
-			// random effects
-			/*if ( rng.rand() % 8 == 0 )
+			const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+			if ( levelData.depth >= 25 )
 			{
-				myStats->setEffectActive(EFF_ASLEEP, 1);
-				myStats->EFFECTS_TIMERS[EFF_ASLEEP] = 1800 + rng.rand() % 1800;
-			}*/
+				myStats->MAXHP += 60;
+				myStats->HP += 60;
+				myStats->OLDHP = myStats->HP;
+				myStats->CON += 7;
+				myStats->STR += 7;
+			}
 
 			// generates equipment and weapons if available from editor
 			createMonsterEquipment(myStats, rng);

@@ -2096,6 +2096,10 @@
 		"spellbook_dominate": {
             "name_identified": "spellbook of dominate",
             "name_unidentified": "spellbook"
+        },
+		"scroll_scry_key": {
+            "name_identified": "scroll of scry key",
+            "name_unidentified": "scroll"
         }
     },
 	"spell_names": {
