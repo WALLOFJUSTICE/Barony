@@ -6847,7 +6847,7 @@ Host to enable the game setting.
 6585 duck#
 6586 water elemental#
 6587 gryphon#
-6588 monster_unused_8#
+6588 haunted armor#
 6589 adorcised weapons#
 6590 flame elementals#
 6591 holograms#
@@ -6856,7 +6856,7 @@ Host to enable the game setting.
 6594 ducks#
 6595 water elementals#
 6596 gryphons#
-6597 monster_unused_8s#
+6597 haunted armors#
 6598 hits#
 6599 hits#
 6600 hits#
@@ -7279,5 +7279,39 @@ has been unlocked!#
 7005 root#
 7006 scry key#
 7007 boss#
+7008 staremaster#
+7009 monster_unused_10#
+7010 monster_unused_11#
+7011 monster_unused_12#
+7012 monster_unused_13#
+7013 monster_unused_14#
+7014 monster_unused_15#
+7015 staremasters#
+7016 monster_unused_10s#
+7017 monster_unused_11s#
+7018 monster_unused_12s#
+7019 monster_unused_13s#
+7020 monster_unused_14s#
+7021 monster_unused_15s#
+7022 strikes#
+7023 hits#
+7024 hits#
+7025 hits#
+7026 hits#
+7027 hits#
+7028 hits#
+7029 *blink*#
+7030 ...#
+7031 ...#
+7032 ...#
+7033 ...#
+7034 ...#
+7035 ...#
+7036 armor#
+7037 candelabra#
+7038 You are mesmerized by the staremaster!#
+7039 You regain your focus.#
+7040 The energy ray weakens you!#
+7041 Inspect statue#
 
 7999 END#

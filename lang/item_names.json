@@ -2100,6 +2100,10 @@
 		"scroll_scry_key": {
             "name_identified": "scroll of scry key",
             "name_unidentified": "scroll"
+        },
+		"mask_blackiron_visor": {
+            "name_identified": "blackiron visor",
+			"name_unidentified": "blackiron visor"
         }
     },
 	"spell_names": {
@@ -2750,6 +2754,9 @@
 		},
 		"spell_water_elemental": {
 			"name": "Summon Water Elemental"
+		},
+		"spell_stare_beam": {
+			"name": "Eternals Gaze"
 		}
     }
 }
