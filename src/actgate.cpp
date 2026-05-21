@@ -31,6 +31,26 @@ void actGate(Entity* my)
 
 void Entity::actGate()
 {
+	if ( circuit_status == 0 )
+	{
+		if ( parent != 0 )
+		{
+			this->flags[INVISIBLE] = true;
+			if ( Entity* gate = uidToEntity(parent) ) // dummy gate for double wides
+			{
+				if ( gate->behavior == &::actGate )
+				{
+					this->flags[PASSABLE] = gate->flags[PASSABLE];
+				}
+			}
+			else
+			{
+				this->flags[PASSABLE] = true;
+			}
+			return;
+		}
+	}
+
 	const bool oldPassable = flags[PASSABLE];
 	if ( multiplayer != CLIENT )
 	{
@@ -92,13 +112,20 @@ void Entity::actGate()
 	{
 		this->flags[NOUPDATE] = true;
 	}
+
+	real_t gateMoveHeight = 12.0;
+	if ( gateWide == 1 )
+	{
+		gateMoveHeight = 24.0;
+	}
+
 	if ( !gateInit )
 	{
 		gateInit = 1;
 		gateStartHeight = this->z;
 		if ( gateInverted )
 		{
-			this->z = gateStartHeight - 12;
+			this->z = gateStartHeight - gateMoveHeight;
 		}
 		this->scalex = 1.01;
 		this->scaley = 1.01;
@@ -138,9 +165,9 @@ void Entity::actGate()
 	else
 	{
 		//Opening gate.
-		if ( this->z > gateStartHeight - 12 )
+		if ( this->z > gateStartHeight - gateMoveHeight )
 		{
-			this->z = std::max(gateStartHeight - 12, this->z - 0.25);
+			this->z = std::max(gateStartHeight - gateMoveHeight, this->z - 0.25);
 
 			// rattle the gate
 			gateRattle = (gateRattle == 0);
@@ -181,6 +208,25 @@ void Entity::actGate()
 		{
 			entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(this, 1);
 		}
+
+		Sint32 sx = sizex;
+		Sint32 sy = sizey;
+		real_t ox = x;
+		real_t oy = y;
+		if ( gateWide == 1 ) // visible part of wide gate
+		{
+			if ( sizex == 8 )
+			{
+				sizex = 16;
+				x += 4.0;
+			}
+			else if ( sizey == 8 )
+			{
+				sizey = 16;
+				y += 4.0;
+			}
+		}
+
 		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !somebodyinside; ++it )
 		{
 			list_t* currentList = *it;
@@ -203,6 +249,11 @@ void Entity::actGate()
 		{
 			this->flags[PASSABLE] = false;
 		}
+
+		sizex = sx;
+		sizey = sy;
+		x = ox;
+		y = oy;
 	}
 	else if ( this->z < gateStartHeight - 9 && !this->flags[PASSABLE] )
 	{

@@ -1087,11 +1087,19 @@ bool item_PotionSickness(Item*& item, Entity* entity, Entity* usedBy)
 	messagePlayer(player, MESSAGE_HINT, Language::get(761));
 	int oldHP = stats->HP;
 	entity->modHP(-damage);
-	stats->setEffectActive(EFF_POISONED, 1);
+	if ( stats->isPoisonable() )
+	{
+		stats->setEffectActive(EFF_POISONED, 1);
+		if ( stats->type == LICH || stats->type == SHOPKEEPER || stats->type == DEVIL
+			|| stats->type == MINOTAUR || stats->type == LICH_FIRE || stats->type == LICH_ICE )
+		{
+			stats->EFFECTS_TIMERS[EFF_POISONED] = TICKS_PER_SECOND * 15;
+		}
+	}
 	if ( usedBy && usedBy != entity )
 	{
 		Stat* usedByStats = usedBy->getStats();
-		if ( usedByStats )
+		if ( usedByStats && stats->isPoisonable() )
 		{
 			stats->poisonKiller = usedBy->getUID();
 		}
@@ -1100,11 +1108,6 @@ bool item_PotionSickness(Item*& item, Entity* entity, Entity* usedBy)
 		{
 			Compendium_t::Events_t::eventUpdate(usedBy->skill[2], Compendium_t::CPDM_THROWN_DMG_TOTAL, item->type, oldHP - stats->HP);
 		}
-	}
-	if ( stats->type == LICH || stats->type == SHOPKEEPER || stats->type == DEVIL
-		|| stats->type == MINOTAUR || stats->type == LICH_FIRE || stats->type == LICH_ICE )
-	{
-		stats->EFFECTS_TIMERS[EFF_POISONED] = TICKS_PER_SECOND * 15;
 	}
 	playSoundEntity(entity, 28, 64);
 	serverUpdateEffects(player);
@@ -1443,8 +1446,11 @@ bool item_PotionCureAilment(Item*& item, Entity* entity, Entity* usedBy)
 	if ( item->beatitude < 0 )
 	{
 		messagePlayer(player, MESSAGE_HINT, Language::get(2903));
-		stats->setEffectActive(EFF_POISONED, 1);
-		stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		if ( stats->isPoisonable() )
+		{
+			stats->setEffectActive(EFF_POISONED, 1);
+			stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		}
 	}
 	else if ( item->beatitude > 0 )
 	{
@@ -2350,8 +2356,11 @@ bool item_PotionHealing(Item*& item, Entity* entity, Entity* usedBy, bool should
 		{
 			messagePlayer(player, MESSAGE_HINT, Language::get(2900));
 			messagePlayer(player, MESSAGE_HINT, Language::get(2903));
-			stats->setEffectActive(EFF_POISONED, 1);
-			stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			if ( stats->isPoisonable() )
+			{
+				stats->setEffectActive(EFF_POISONED, 1);
+				stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			}
 		}
 		else
 		{
@@ -2416,8 +2425,11 @@ bool item_PotionHealing(Item*& item, Entity* entity, Entity* usedBy, bool should
 	{
 		messagePlayer(player, MESSAGE_HINT, Language::get(2900));
 		messagePlayer(player, MESSAGE_HINT, Language::get(2903));
-		stats->setEffectActive(EFF_POISONED, 1);
-		stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		if ( stats->isPoisonable() )
+		{
+			stats->setEffectActive(EFF_POISONED, 1);
+			stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		}
 	}
 	else
 	{
@@ -2505,8 +2517,11 @@ bool item_PotionExtraHealing(Item*& item, Entity* entity, Entity* usedBy, bool s
 		{
 			messagePlayer(player, MESSAGE_HINT, Language::get(2900));
 			messagePlayer(player, MESSAGE_HINT, Language::get(2903));
-			stats->setEffectActive(EFF_POISONED, 1);
-			stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			if ( stats->isPoisonable() )
+			{
+				stats->setEffectActive(EFF_POISONED, 1);
+				stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			}
 		}
 		else
 		{
@@ -2570,8 +2585,11 @@ bool item_PotionExtraHealing(Item*& item, Entity* entity, Entity* usedBy, bool s
 	{
 		messagePlayer(player, MESSAGE_HINT, Language::get(2900));
 		messagePlayer(player, MESSAGE_HINT, Language::get(2903));
-		stats->setEffectActive(EFF_POISONED, 1);
-		stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		if ( stats->isPoisonable() )
+		{
+			stats->setEffectActive(EFF_POISONED, 1);
+			stats->EFFECTS_TIMERS[EFF_POISONED] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		}
 	}
 	else
 	{

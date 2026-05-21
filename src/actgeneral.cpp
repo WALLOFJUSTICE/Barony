@@ -451,7 +451,15 @@ void actStatue(Entity* my)
 		// needs to init.
 		if ( StatueManager.allStatues.find(my->statueId) != StatueManager.allStatues.end() )
 		{
-			my->statueInit = 1;
+			if ( StatueManager.allStatues[my->statueId].message != "" )
+			{
+				my->createWorldUITooltip();
+				my->statueInit = 2;
+			}
+			else
+			{
+				my->statueInit = 1;
+			}
 			if ( my->statueDir >= 0 && my->statueDir < StatueManager.directionKeys.size() )
 			{
 				int index = 0;
@@ -471,12 +479,41 @@ void actStatue(Entity* my)
 					childEntity->roll = limb.roll;
 					childEntity->yaw = limb.yaw;
 					childEntity->flags[PASSABLE] = true;
+					childEntity->flags[NOUPDATE] = true;
+					childEntity->flags[UNCLICKABLE] = true;
+					childEntity->flags[UPDATENEEDED] = false;
 					childEntity->grayscaleGLRender = 1.0;
 					node_t* tempNode = list_AddNodeLast(&my->children);
 					tempNode->element = childEntity; // add the node to the children list.
 					tempNode->deconstructor = &emptyDeconstructor;
 					tempNode->size = sizeof(Entity*);
 					++index;
+
+					if ( multiplayer != CLIENT )
+					{
+						entity_uids--;
+					}
+					childEntity->setUID(-3);
+				}
+			}
+		}
+	}
+
+	if ( my->statueInit == 2 )
+	{
+		if ( multiplayer != CLIENT )
+		{
+			for ( int i = 0; i < MAXPLAYERS; i++ )
+			{
+				if ( selectedEntity[i] == my || client_selected[i] == my )
+				{
+					if ( inrange[i] )
+					{
+						//messagePlayer(i, MESSAGE_INTERACTION, Language::get(485 + HEADSTONE_MESSAGE % 17));
+						players[i]->worldUI.worldTooltipDialogue.createDialogueTooltip(my->getUID(),
+							Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_STATUE,
+							StatueManager.allStatues[my->statueId].message.c_str());
+					}
 				}
 			}
 		}
@@ -2459,6 +2496,7 @@ void actColliderDecoration(Entity* my)
 
 								if ( Stat* stats = monster->getStats() )
 								{
+									my->colliderSpawnedMonster = stats->type;
 									stats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS] = 1;
 									if ( stats->type == GHOUL && currentlevel >= 15 )
 									{
@@ -2525,7 +2563,14 @@ void actColliderDecoration(Entity* my)
 						serverSpawnMiscParticles(my, PARTICLE_EFFECT_ABILITY_ROCK, sprite);
 					}
 				}
-				playSoundEntity(my, my->getColliderSfxOnBreak(), 128);
+				if ( my->colliderSpawnedMonster == HAUNTED_ARMOR )
+				{
+					playSoundEntity(my, 877, 128);
+				}
+				else
+				{
+					playSoundEntity(my, my->getColliderSfxOnBreak(), 128);
+				}
 				my->colliderOnDestroy();
 				list_RemoveNode(my->mynode);
 				return;
@@ -3060,6 +3105,10 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			{
 				return TO_BELL;
 			}
+			else if ( !tagValue.compare("teleporter") )
+			{
+				return TO_TELEPORTER;
+			}
 			else if ( !tagValue.compare("summontrap") )
 			{
 				return TO_SUMMONTRAP;
@@ -3227,6 +3276,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
 						|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
 						|| (entity->behavior == &actBell && attachTo == TO_BELL)
+						|| (entity->behavior == &actTeleporter && attachTo == TO_TELEPORTER && entity->teleporterType != 3)
 						|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
 						|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)
 						|| (entity->behavior == &actSummonTrap && attachTo == TO_SUMMONTRAP)
@@ -5115,6 +5165,30 @@ void Entity::actTextSource()
 						powered = true;
 					}
 				}
+				else if ( textSourceScript.getAttachedToEntityType(textSourceIsScript) == textSourceScript.TO_TELEPORTER )
+				{
+					bool doEffect = false;
+					for ( node_t* node = children.first; node; node = node->next )
+					{
+						Uint32 entityUid = *((Uint32*)node->element);
+						Entity* child = uidToEntity(entityUid);
+						if ( child )
+						{
+							if ( child->behavior == &::actTeleporter && child->teleporterType != 3 )
+							{
+								if ( child->teleporterInteracted > 0 )
+								{
+									doEffect = true;
+								}
+							}
+						}
+					}
+					if ( doEffect )
+					{
+						textSourceScript.setScriptType(textSourceIsScript, textSourceScript.SCRIPT_ATTACHED_FIRED);
+						powered = true;
+					}
+				}
 			}
 
 			if ( textSourceScript.getTriggerType(textSourceIsScript) == textSourceScript.TRIGGER_ATTACHED_EXISTS )
@@ -5536,6 +5610,7 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 					|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
 					|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
 					|| (entity->behavior == &actBell && attachTo == TO_BELL)
+					|| (entity->behavior == &actTeleporter && attachTo == TO_TELEPORTER && entity->teleporterType != 3)
 					|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
 					|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)
 					|| (entity->behavior == &actSummonTrap && attachTo == TO_SUMMONTRAP)

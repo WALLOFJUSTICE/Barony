@@ -156,6 +156,8 @@ static const int EFF_HOLY_FIRE = 131;
 static const int EFF_SIGIL = 132;
 static const int EFF_SANCTUARY = 133;
 static const int EFF_DUCKED = 134;
+static const int EFF_MESMERIZED = 135;
+static const int EFF_SIGIL_NPC = 136;
 static const int NUMEFFECTS = 160;
 
 // stats
@@ -540,6 +542,7 @@ public:
 	};
 	MonsterRangedAccuracy monsterRangedAccuracy;
 	std::map<ItemType, Uint32> itemLastDegradeTick;
+	bool isPoisonable();
 };
 extern Stat* stats[MAXPLAYERS];
 

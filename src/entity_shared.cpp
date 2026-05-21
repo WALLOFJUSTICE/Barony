@@ -757,6 +757,9 @@ int checkSpriteType(Sint32 sprite)
 	case 45: // portal
 	case 46: // secret ladder
 		return 34;
+	case 306:
+	case 307:
+		return 35;
 	default:
 		return 0;
 		break;
@@ -1294,6 +1297,7 @@ char itemNameStrings[NUM_ITEM_STRINGS][32] =
 	"spellbook_holy_beam",
 	"spellbook_dominate",
 	"scroll_scry_key",
+	"mask_blackiron_visor",
 	""
 };
 
@@ -1759,6 +1763,7 @@ char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32] =
 		"mask_crystal_visor",
 		"mask_artifact_visor",
 		"mask_marigold",
+		"mask_blackiron_visor",
 		""
 	},
 	{
@@ -2149,7 +2154,14 @@ char monsterEditorNameStrings[NUMMONSTERS][32] =
 	"duck_small",
 	"water_elemental",
 	"gryphon",
-	"monster_unused_8"
+	"haunted_armor",
+	"staremaster",
+	"monster_unused_10",
+	"monster_unused_11",
+	"monster_unused_12",
+	"monster_unused_13",
+	"monster_unused_14",
+	"monster_unused_15"
 };
 
 char tileEditorNameStrings[NUM_EDITOR_TILES][44] =
@@ -2725,6 +2737,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->teleporterX = entityToCopy->teleporterX;
 			entityNew->teleporterY = entityToCopy->teleporterY;
 			entityNew->teleporterType = entityToCopy->teleporterType;
+			entityNew->teleporterRequirePower = entityToCopy->teleporterRequirePower;
 		}
 		else
 		{
@@ -2732,6 +2745,7 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->teleporterX = 1;
 			entityNew->teleporterY = 1;
 			entityNew->teleporterType = 0;
+			entityNew->teleporterRequirePower = 0;
 		}
 	}
 	// ceiling tile
@@ -3250,6 +3264,25 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 		{
 			// set default new entity attributes.
 			entityNew->portalLevelTrack = -1;
+		}
+	}
+	else if ( spriteType == 35 ) // wide gate
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->gateModel = entityToCopy->gateModel;
+			entityNew->gateFrame = entityToCopy->gateFrame;
+			entityNew->gateDisableOpening = entityToCopy->gateDisableOpening;
+			entityNew->gateInverted = entityToCopy->gateInverted;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->gateModel = 2159;
+			entityNew->gateFrame = 2158;
+			entityNew->gateDisableOpening = 1;
+			entityNew->gateInverted = 0;
 		}
 	}
 

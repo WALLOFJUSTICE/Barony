@@ -7130,6 +7130,26 @@ void StatueManager_t::readStatueFromFile(int index, std::string filename)
 			{
 				statue.heightOffset = d["height_offset"].GetDouble();
 			}
+			if ( d.HasMember("message") )
+			{
+				if ( d["message"].IsString() )
+				{
+					statue.message = d["message"].GetString();
+				}
+				else if ( d["message"].IsArray() )
+				{
+					std::string buf = "";
+					for ( auto itr = d["message"].Begin(); itr != d["message"].End(); ++itr )
+					{
+						if ( itr->IsString() )
+						{
+							if ( buf != "" ) { buf += '\n'; }
+							buf += itr->GetString();
+						}
+					}
+					statue.message = buf;
+				}
+			}
 			for ( rapidjson::Value::ConstValueIterator dir_itr = limb_itr->value.Begin(); dir_itr != limb_itr->value.End(); ++dir_itr )
 			{
 				const rapidjson::Value& attributes = *dir_itr;

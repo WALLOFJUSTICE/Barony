@@ -2029,6 +2029,7 @@ void buttonSpriteProperties(button_t* my)
 				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->teleporterX));
 				snprintf(spriteProperties[1], 4, "%d", static_cast<int>(selectedEntity[0]->teleporterY));
 				snprintf(spriteProperties[2], 2, "%d", static_cast<int>(selectedEntity[0]->teleporterType));
+				snprintf(spriteProperties[3], 2, "%d", static_cast<int>(selectedEntity[0]->teleporterRequirePower));
 				inputstr = spriteProperties[0];
 				cursorflash = ticks;
 				menuVisible = 0;
@@ -2573,6 +2574,22 @@ void buttonSpriteProperties(button_t* my)
 				suby1 = yres / 2 - 60;
 				suby2 = yres / 2 + 60;
 				strcpy(subtext, "Portal/Secret Ladder Properties:");
+				break;
+			case 35:
+				snprintf(spriteProperties[0], 5, "%d", static_cast<int>(selectedEntity[0]->gateModel));
+				snprintf(spriteProperties[1], 5, "%d", static_cast<int>(selectedEntity[0]->gateFrame));
+				snprintf(spriteProperties[2], 2, "%d", static_cast<int>(selectedEntity[0]->gateDisableOpening));
+				snprintf(spriteProperties[3], 2, "%d", static_cast<int>(selectedEntity[0]->gateInverted));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 39;
+				subx1 = xres / 2 - 200;
+				subx2 = xres / 2 + 200;
+				suby1 = yres / 2 - 100;
+				suby2 = yres / 2 + 100;
+				strcpy(subtext, "Wide Gate Properties:");
 				break;
 			default:
 				strcpy(message, "No properties available for current sprite.");
@@ -3413,6 +3430,7 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				selectedEntity[0]->teleporterX = (Sint32)atoi(spriteProperties[0]);
 				selectedEntity[0]->teleporterY = (Sint32)atoi(spriteProperties[1]);
 				selectedEntity[0]->teleporterType = (Sint32)atoi(spriteProperties[2]);
+				selectedEntity[0]->teleporterRequirePower = (Sint32)atoi(spriteProperties[3]);
 				break;
 			case 10: //ceiling tile model
 				selectedEntity[0]->ceilingTileModel = (Sint32)atoi(spriteProperties[0]);
@@ -3721,6 +3739,12 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				break;
 			case 34:
 				selectedEntity[0]->portalLevelTrack = (Sint32)atoi(spriteProperties[0]);
+				break;
+			case 35:
+				selectedEntity[0]->gateModel = (Sint32)atoi(spriteProperties[0]);
+				selectedEntity[0]->gateFrame = (Sint32)atoi(spriteProperties[1]);
+				selectedEntity[0]->gateDisableOpening = (Sint32)atoi(spriteProperties[2]);
+				selectedEntity[0]->gateInverted = (Sint32)atoi(spriteProperties[3]);
 				break;
 			default:
 				break;

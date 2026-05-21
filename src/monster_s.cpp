@@ -37,7 +37,7 @@ void initMonsterS(Entity* my, Stat* myStats)
 	node_t* node;
 	bool spawnedBoss = false;
 
-	my->flags[BURNABLE] = true;
+	my->flags[BURNABLE] = false;
 	my->initMonster(1536);
 	my->z = getNormalHeightMonsterS(*my);
 
@@ -70,62 +70,6 @@ void initMonsterS(Entity* my, Stat* myStats)
 			// generate 6 items max, less if there are any forced items from boss variants
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
-
-			// boss variants
-			//const bool boss =
-			//    rng.rand() % 50 == 0 &&
-			//    !my->flags[USERFLAG2] &&
-			//    !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS];
-			//if ( (boss || (*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED])) && myStats->leader_uid == 0 )
-			//{
-			//	myStats->setAttribute("special_npc", "gharbad");
-			//	strcpy(myStats->name, MonsterMata_t::getSpecialNPCName(*myStats).c_str());
-			//	my->sprite = MonsterMata_t::getSpecialNPCBaseModel(*myStats);
-			//	myStats->sex = MALE;
-			//	myStats->STR += 10;
-			//	myStats->DEX += 2;
-			//	myStats->MAXHP += 75;
-			//	myStats->HP = myStats->MAXHP;
-			//	myStats->OLDHP = myStats->MAXHP;
-			//	myStats->CHR = -1;
-			//	spawnedBoss = true;
-			//	//TODO: Boss stats
-
-			//	//Spawn in potions.
-			//	int end = rng.rand()%NUM_GOATMAN_BOSS_GHARBAD_POTIONS + 5;
-			//	for ( int i = 0; i < end; ++i )
-			//	{
-			//		switch ( rng.rand()%10 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//			case 2:
-			//			case 3:
-			//			case 4:
-			//			case 5:
-			//			case 6:
-			//			case 7:
-			//			case 8:
-			//				newItem(POTION_BOOZE, EXCELLENT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
-			//				break;
-			//			case 9:
-			//				newItem(POTION_HEALING, EXCELLENT, 0, 1, rng.rand(), false, &myStats->inventory);
-			//				break;
-			//			default:
-			//				printlog("Tried to spawn goatman boss \"Gharbad\" invalid potion.");
-			//				break;
-			//		}
-			//	}
-
-			//	newItem(CRYSTAL_SHURIKEN, EXCELLENT, 1 + rng.rand()%1, rng.rand()%NUM_GOATMAN_BOSS_GHARBAD_THROWN_WEAPONS + 2, rng.rand(), true, &myStats->inventory);
-			//}
-
-			// random effects
-			/*if ( rng.rand() % 8 == 0 )
-			{
-				my->setEffect(EFF_ASLEEP, true, 1800 + rng.rand() % 1800, false);
-			}*/
-
 			// generates equipment and weapons if available from editor
 			createMonsterEquipment(myStats, rng);
 
@@ -140,349 +84,198 @@ void initMonsterS(Entity* my, Stat* myStats)
 
 			my->setHardcoreStats(*myStats);
 
-			//bool isShaman = false;
-			//if ( rng.rand() % 2 && !spawnedBoss && !minion )
-			//{
-			//	isShaman = true;
-			//	if ( myStats->leader_uid == 0 && !my->flags[USERFLAG2] && rng.rand() % 2 == 0 )
-			//	{
-			//		Entity* entity = summonMonster(GOATMAN, my->x, my->y);
-			//		if ( entity )
-			//		{
-			//			entity->parent = my->getUID();
-			//			if ( Stat* followerStats = entity->getStats() )
-			//			{
-			//				followerStats->leader_uid = entity->parent;
-			//			}
-			//			entity->seedEntityRNG(rng.getU32());
-			//		}
-			//		if ( rng.rand() % 5 == 0 )
-			//		{
-			//			// summon second ally randomly.
-			//			entity = summonMonster(GOATMAN, my->x, my->y);
-			//			if ( entity )
-			//			{
-			//				entity->parent = my->getUID();
-			//				if ( Stat* followerStats = entity->getStats() )
-			//				{
-			//					followerStats->leader_uid = entity->parent;
-			//				}
-			//				entity->seedEntityRNG(rng.getU32());
-			//			}
-			//		}
-			//	}
-			//}
-			//else
-			//{
-			//	myStats->DEX += 1; // more speed for brawlers.
-			//}
-
 			// generate the default inventory items for the monster, provided the editor sprite allowed enough default slots
-			//switch ( defaultItems )
-			//{
-			//	case 6:
-			//	case 5:
-			//	case 4:
-			//	case 3:
-			//	case 2:
-			//	case 1:
-			//		if ( isShaman && rng.rand() % 10 == 0 )
-			//		{
-			//			switch ( rng.rand() % 4 )
-			//			{
-			//				case 0:
-			//					newItem(SPELLBOOK_SLOW, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//				case 1:
-			//					newItem(SPELLBOOK_FIREBALL, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//				case 2:
-			//					newItem(SPELLBOOK_COLD, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//				case 3:
-			//					newItem(SPELLBOOK_FORCEBOLT, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
-			//					break;
-			//			}
-			//		}
-			//		break;
-			//	default:
-			//		break;
-			//}
+			switch ( defaultItems )
+			{
+			case 6:
+			case 5:
+			case 4:
+			case 3:
+			case 2:
+			case 1:
+				break;
+			default:
+				break;
+			}
 
+			enum SalamanderType
+			{
+				SALAMANDER_RADIANT,
+				SALAMANDER_ZEALOT
+			};
+			SalamanderType type = SALAMANDER_ZEALOT;
 
-			////Give weapons.
-			//if ( !spawnedBoss )
-			//{
-			//	if ( !isShaman && rng.rand() % 3 > 0 )
-			//	{
-			//		newItem(STEEL_CHAKRAM, SERVICABLE, 0, rng.rand()%NUM_GOATMAN_THROWN_WEAPONS + 1, rng.rand(), false, &myStats->inventory);
-			//	}
-			//	int numpotions = rng.rand() % NUM_GOATMAN_POTIONS + 2;
-			//	if ( rng.rand() % 3 == 0 )
-			//	{
-			//		int numhealpotion = rng.rand() % 2 + 1;
-			//		newItem(POTION_HEALING, static_cast<Status>(rng.rand() % 3 + DECREPIT), 0, numhealpotion, rng.rand(), false, &myStats->inventory);
-			//		numpotions -= numhealpotion;
-			//	}
-			//	if ( rng.rand() % 4 > 0 )
-			//	{
-			//		// undroppable
-			//		newItem(POTION_BOOZE, static_cast<Status>(rng.rand() % 3 + DECREPIT), 0, numpotions, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
-			//	}
-			//}
+			if ( myStats->getAttribute("salamander_type") == "" )
+			{
+				if ( rng.rand() % 4 == 0 )
+				{
+					myStats->setAttribute("salamander_type", "radiant");
+				}
+				else
+				{
+					myStats->setAttribute("salamander_type", "zealot");
 
-			//if ( isShaman )
-			//{
-			//	//give shield
-			//	if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
-			//	{
-			//		// give shield
-			//		switch ( rng.rand() % 20 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//			case 2:
-			//			case 3:
-			//			case 4:
-			//			case 5:
-			//			case 6:
-			//			case 7:
-			//				myStats->shield = newItem(TOOL_CRYSTALSHARD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			case 8:
-			//				myStats->shield = newItem(MIRROR_SHIELD, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			default:
-			//				myStats->shield = newItem(TOOL_LANTERN, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//		}
-			//	}
-			//	// give cloak
-			//	if ( myStats->cloak == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] == 1 )
-			//	{
-			//		switch ( rng.rand() % 10 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//				break;
-			//			default:
-			//				myStats->cloak = newItem(CLOAK, WORN, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//		}
-			//	}
-			//	// give helmet
-			//	if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
-			//	{
-			//		switch ( rng.rand() % 10 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//				myStats->helmet = newItem(HAT_HOOD, WORN, -1 + rng.rand() % 3, 1, 0, false, nullptr);
-			//				break;
-			//			default:
-			//				myStats->helmet = newItem(HAT_WIZARD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//		}
-			//	}
-			//	// give armor
-			//	if ( myStats->breastplate == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_ARMOR] == 1 )
-			//	{
-			//		switch ( rng.rand() % 10 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//				myStats->breastplate = newItem(WIZARD_DOUBLET, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			case 2:
-			//				myStats->breastplate = newItem(LEATHER_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			default:
-			//				break;
-			//		}
-			//	}
-			//	// give booties
-			//	if ( myStats->shoes == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] == 1 )
-			//	{
-			//		switch ( rng.rand() % 20 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//			case 2:
-			//			case 3:
-			//				myStats->shoes = newItem(IRON_BOOTS, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			case 19:
-			//				myStats->shoes = newItem(CRYSTAL_BOOTS, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			default:
-			//				myStats->shoes = newItem(STEEL_BOOTS, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//		}
-			//	}
-			//	// give weapon
-			//	if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
-			//	{
-			//		switch ( rng.rand() % 12 )
-			//		{
-			//			case 0:
-			//			case 1:
-			//			case 2:
-			//			case 3:
-			//			case 4:
-			//				myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			case 5:
-			//			case 6:
-			//			case 7:
-			//			case 8:
-			//				myStats->weapon = newItem(MAGICSTAFF_FIRE, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//			case 9:
-			//				switch ( rng.rand() % 4 )
-			//				{
-			//					case 0:
-			//						myStats->weapon = newItem(SPELLBOOK_SLOW, static_cast<Status>(rng.rand() % 2 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
-			//						break;
-			//					case 1:
-			//						myStats->weapon = newItem(SPELLBOOK_FIREBALL, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
-			//						break;
-			//					case 2:
-			//						myStats->weapon = newItem(SPELLBOOK_COLD, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
-			//						break;
-			//					case 3:
-			//						myStats->weapon = newItem(SPELLBOOK_FORCEBOLT, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
-			//						break;
-			//				}
-			//				break;
-			//			default:
-			//				myStats->weapon = newItem(MAGICSTAFF_SLOW, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//				break;
-			//		}
-			//	}
-			//}
-			//else
-			//{
-			//	////give shield
-			//	//if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
-			//	//{
-			//	//	switch ( rng.rand() % 20 )
-			//	//	{
-			//	//	case 0:
-			//	//	case 1:
-			//	//	case 2:
-			//	//	case 3:
-			//	//	case 4:
-			//	//	case 5:
-			//	//	case 6:
-			//	//	case 7:
-			//	//		myStats->shield = newItem(TOOL_CRYSTALSHARD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//	//		break;
-			//	//	case 8:
-			//	//		myStats->shield = newItem(MIRROR_SHIELD, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//	//		break;
-			//	//	default:
-			//	//		myStats->shield = newItem(TOOL_LANTERN, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//	//		break;
-			//	//	}
-			//	//}
-			//	// give cloak
-			//	/*if ( myStats->cloak == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] == 1 )
-			//	{
-			//		switch ( rng.rand() % 10 )
-			//		{
-			//		case 0:
-			//		case 1:
-			//			break;
-			//		default:
-			//			myStats->cloak = newItem(CLOAK, WORN, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		}
-			//	}*/
-			//	//// give helmet
-			//	//if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
-			//	//{
-			//	//	switch ( rng.rand() % 10 )
-			//	//	{
-			//	//	case 0:
-			//	//	case 1:
-			//	//		myStats->helmet = newItem(HAT_HOOD, WORN, -1 + rng.rand() % 3, 1, 0, false, nullptr);
-			//	//		break;
-			//	//	default:
-			//	//		myStats->helmet = newItem(HAT_WIZARD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, 0, false, nullptr);
-			//	//		break;
-			//	//	}
-			//	//}
-			//	// give armor
-			//	if ( myStats->breastplate == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_ARMOR] == 1 )
-			//	{
-			//		switch ( rng.rand() % 20 )
-			//		{
-			//		case 0:
-			//		case 1:
-			//		case 2:
-			//			myStats->breastplate = newItem(STEEL_BREASTPIECE, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		case 3:
-			//		case 4:
-			//			myStats->breastplate = newItem(LEATHER_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		case 5:
-			//		case 6:
-			//			myStats->breastplate = newItem(IRON_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		case 19:
-			//			myStats->breastplate = newItem(CRYSTAL_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		default:
-			//			break;
-			//		}
-			//	}
-			//	// give booties
-			//	if ( myStats->shoes == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] == 1 )
-			//	{
-			//		switch ( rng.rand() % 20 )
-			//		{
-			//		case 0:
-			//		case 1:
-			//		case 2:
-			//		case 3:
-			//			myStats->shoes = newItem(IRON_BOOTS, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		case 19:
-			//			myStats->shoes = newItem(CRYSTAL_BOOTS, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		default:
-			//			myStats->shoes = newItem(STEEL_BOOTS, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		}
-			//	}
-			//	// give weapon
-			//	if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
-			//	{
-			//		switch ( rng.rand() % 20 )
-			//		{
-			//		case 0:
-			//		case 1:
-			//		case 2:
-			//		case 3:
-			//		case 4:
-			//		case 5:
-			//		case 6:
-			//		case 7:
-			//			myStats->weapon = newItem(STEEL_AXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		case 18:
-			//			myStats->weapon = newItem(CRYSTAL_BATTLEAXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		case 19:
-			//			myStats->weapon = newItem(CRYSTAL_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		default:
-			//			myStats->weapon = newItem(STEEL_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-			//			break;
-			//		}
-			//	}
-			//}
+					if ( myStats->leader_uid == 0 && !my->flags[USERFLAG2] && rng.rand() % 2 == 0 )
+					{
+						Entity* entity = summonMonster(SALAMANDER, my->x, my->y);
+						if ( entity )
+						{
+							entity->parent = my->getUID();
+							if ( Stat* followerStats = entity->getStats() )
+							{
+								followerStats->leader_uid = entity->parent;
+								followerStats->setAttribute("salamander_type", "radiant");
+							}
+							my->parent = entity->getUID(); // so I know my ally
+							entity->seedEntityRNG(rng.getU32());
+						}
+					}
+				}
+			}
+
+			if ( myStats->getAttribute("salamander_type").find("radiant") != std::string::npos )
+			{
+				type = SALAMANDER_RADIANT;
+			}
+
+			//give weapon
+			if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
+			{
+				if ( type == SALAMANDER_RADIANT )
+				{
+					myStats->weapon = newItem(SILVER_GLAIVE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+				}
+				else
+				{
+					switch ( rng.rand() % 4 )
+					{
+					case 0:
+						myStats->weapon = newItem(SILVER_AXE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 1:
+						myStats->weapon = newItem(SILVER_AXE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 2:
+						myStats->weapon = newItem(SILVER_SWORD, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 3:
+						myStats->weapon = newItem(SILVER_MACE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					default:
+						break;
+					}
+				}
+			}
+
+			//give shield
+			if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
+			{
+				if ( myStats->weapon && isRangedWeapon(*myStats->weapon) )
+				{
+					my->monsterGenerateQuiverItem(myStats);
+				}
+				else
+				{
+					if ( rng.rand() % 5 == 0 || (type == SALAMANDER_ZEALOT) )
+					{
+						myStats->shield = newItem(SILVER_SHIELD, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					}
+				}
+			}
+
+			// give helmet
+			if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
+			{
+				if ( type == SALAMANDER_ZEALOT )
+				{
+					switch ( rng.rand() % 3 )
+					{
+					case 0:
+						break;
+					case 1:
+						myStats->helmet = newItem(CHAIN_COIF, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 2:
+						myStats->helmet = newItem(SILVER_HELM, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					}
+				}
+			}
+
+			// give cloak
+			/*if ( myStats->cloak == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] == 1 )
+			{
+				if ( type == SALAMANDER_ZEALOT )
+				{
+					switch ( rng.rand() % 10 )
+					{
+						case 0:
+						case 1:
+						case 2:
+						case 3:
+						case 4:
+						case 5:
+							break;
+						case 6:
+						case 7:
+						case 8:
+						case 9:
+							myStats->cloak = newItem(CLOAK, WORN, 0, 1, rng.rand(), false, nullptr);
+							break;
+					}
+				}
+			}*/
+
+			// give breast
+			if ( myStats->breastplate == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_ARMOR] == 1 )
+			{
+				if ( type == SALAMANDER_ZEALOT )
+				{
+					switch ( rng.rand() % 3 )
+					{
+					case 0:
+						break;
+					case 1:
+						myStats->breastplate = newItem(CHAIN_HAUBERK, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 2:
+						myStats->breastplate = newItem(SILVER_BREASTPIECE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					}
+				}
+			}
+
+			// give gloves
+			if ( myStats->gloves == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] == 1 )
+			{
+				switch ( rng.rand() % 3 )
+				{
+				case 0:
+					break;
+				case 1:
+					myStats->gloves = newItem(CHAIN_GLOVES, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					break;
+				case 2:
+					myStats->gloves = newItem(SILVER_GAUNTLETS, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					break;
+				}
+			}
+
+			// give boots
+			if ( myStats->shoes == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] == 1 )
+			{
+				switch ( rng.rand() % 3 )
+				{
+				case 0:
+					break;
+				case 1:
+					myStats->shoes = newItem(CHAIN_BOOTS, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					break;
+				case 2:
+					myStats->shoes = newItem(SILVER_BOOTS, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					break;
+				}
+			}
 		}
 	}
 
@@ -736,6 +529,7 @@ void monsterSDie(Entity* my)
 		serverSpawnGibForClient(gib);
 	}
 
+	my->removeLightField();
 	my->spawnBlood();
 
 	playSoundEntity(my, 856 + local_rng.rand() % 4, 128);
@@ -747,6 +541,166 @@ void monsterSDie(Entity* my)
 }
 
 #define MONSTER_SWALKSPEED .13
+
+void Entity::salamanderChooseWeapon(const Entity* target, double dist)
+{
+	Stat* myStats = getStats();
+	if ( !myStats )
+	{
+		return;
+	}
+
+	if ( monsterSpecialState == SALAMANDER_STRAFE )
+	{
+		if ( monsterStrafeDirection == 0 && local_rng.rand() % 10 == 0 && ticks % 10 == 0 )
+		{
+			setBugbearStrafeDir(true);
+			//monsterStrafeDirection = -1 + ((local_rng.rand() % 2 == 0) ? 2 : 0);
+		}
+	}
+
+	if ( monsterSpecialState != 0 || monsterSpecialTimer != 0 /*|| monsterAttack != 0*/ )
+	{
+		if ( monsterSpecialTimer < MONSTER_SPECIAL_COOLDOWN_SALAMANDER_FLAMES / 2 )
+		{
+			if ( monsterStrafeDirection != 0 )
+			{
+				if ( monsterAttack == 0 )
+				{
+					monsterSpecialState = 0;
+					monsterStrafeDirection = 0;
+				}
+			}
+		}
+		return;
+	}
+
+	int roll = 4;
+	/*if ( target && target->hasRangedWeapon() && dist > TOUCHRANGE * 1.5 )
+	{
+		roll = 2;
+	}*/
+
+	if ( monsterSpecialTimer == 0
+		&& (ticks % 10 == 0) )
+	{
+
+		int specialRoll = -1;
+		int bonusFromHP = 0;
+		specialRoll = local_rng.rand() % 40;
+		if ( myStats->HP <= myStats->MAXHP * 0.8 )
+		{
+			bonusFromHP += 2; // +% chance if on low health
+		}
+		if ( myStats->HP <= myStats->MAXHP * 0.4 )
+		{
+			bonusFromHP += 3; // +extra % chance if on lower health
+		}
+
+		int requiredRoll = (2 + bonusFromHP);
+
+		if ( dist < STRIKERANGE )
+		{
+			requiredRoll += 5;
+		}
+
+		bool strafeChance = true;
+
+		if ( specialRoll < requiredRoll )
+		{
+			Entity* leader = nullptr;
+			if ( myStats->leader_uid != 0 )
+			{
+				leader = uidToEntity(myStats->leader_uid);
+			}
+			else if ( parent != 0 )
+			{
+				leader = uidToEntity(parent);
+			}
+
+			if ( leader && leader->monsterSpecialState == SALAMANDER_STRAFE )
+			{
+				if ( local_rng.rand() % 2 != 0 )
+				{
+					strafeChance = false;
+				}
+			}
+
+			if ( !(dist < STRIKERANGE * 2 || hasRangedWeapon()) )
+			{
+				strafeChance = false;
+			}
+
+			bool setStrafe = false;
+			if ( myStats->getAttribute("salamander_type") == "zealot" )
+			{
+				int chance = 0;
+				if ( !myStats->getEffectActive(EFF_SALAMANDER_HEART) && myStats->EFFECTS_TIMERS[EFF_SALAMANDER_HEART] == 0 )
+				{
+					real_t hp = (myStats->HP / (real_t)myStats->MAXHP);
+					if ( hp < 0.6 )
+					{
+						chance = 1;
+					}
+					else if ( hp < 0.8 )
+					{
+						chance = 2;
+					}
+					else
+					{
+						chance = 2;
+					}
+				}
+				if ( chance && local_rng.rand() % chance == 0 )
+				{
+					monsterSpecialState = SALAMANDER_CAST;
+					strafeChance = false;
+				}
+			}
+
+			if ( strafeChance )
+			{
+				setStrafe = true;
+				monsterSpecialState = SALAMANDER_STRAFE;
+				monsterSpecialTimer = MONSTER_SPECIAL_COOLDOWN_SALAMANDER_FLAMES;
+			}
+
+			if ( setStrafe )
+			{
+				if ( leader )
+				{
+					if ( leader->monsterStrafeDirection != 0 )
+					{
+						if ( local_rng.rand() % 2 == 0 )
+						{
+							monsterStrafeDirection = 0;
+							return;
+						}
+					}
+				}
+				setBugbearStrafeDir(true);
+
+				if ( myStats->getAttribute("salamander_type") == "radiant" )
+				{
+					if ( !myStats->getEffectActive(EFF_SALAMANDER_HEART) && myStats->EFFECTS_TIMERS[EFF_SALAMANDER_HEART] == 0 )
+					{
+						setEffect(EFF_SALAMANDER_HEART, (Uint8)2, 20 * TICKS_PER_SECOND, true, true, true);
+						castSpell(getUID(), getSpellFromID(SPELL_IGNITE), true, false, false);
+						playSoundEntity(this, 167, 128);
+					}
+				}
+			}
+		}
+	}
+
+	if ( myStats->type == SALAMANDER )
+	{
+		if ( myStats->getAttribute("salamander_type") == "zealot" && monsterSpecialState == SALAMANDER_CAST )
+		{
+			setEffect(EFF_SALAMANDER_HEART, (Uint8)4, 5 * TICKS_PER_SECOND, true, true, true);
+		}
+	}
+}
 
 void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 {
@@ -770,7 +724,21 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			my->sprite = 1536;
 		}
+	}
+	if ( keystatus[SDLK_h] )
+	{
+		keystatus[SDLK_h] = 0;
+		my->setEffect(EFF_SALAMANDER_HEART, (Uint8)1, 5 * TICKS_PER_SECOND, true, true, true);
+		castSpell(my->getUID(), getSpellFromID(SPELL_IGNITE), true, false, false);
+		playSoundEntity(my, 167, 128);
+	}
+	if ( keystatus[SDLK_j] )
+	{
+		keystatus[SDLK_j] = 0;
+		my->attack(MONSTER_POSE_RANGED_WINDUP3, 0, nullptr);
 	}*/
+
+	my->removeLightField();
 
 	bool debugModel = monsterDebugModels(my, &dist);
 
@@ -866,7 +834,95 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				}
 			}
 		}
+
 		my->creatureHandleLiftZ();
+	}
+
+	bool hovering = false;
+	if ( (myStats && myStats->getEffectActive(EFF_SALAMANDER_HEART) >= 1 && myStats->getEffectActive(EFF_SALAMANDER_HEART) <= 2)
+		|| (my->sprite == 1538 || my->sprite == 1539) )
+	{
+		hovering = true;
+		my->light = addLight(my->x / 16, my->y / 16, "magic_foci_idle_red");
+	}
+
+	if ( multiplayer != CLIENT )
+	{
+		int particle = 0;
+		// radiant -> stone
+		//particle = 1;
+		//playSoundEntity(this, 826, 128);
+		if ( (myStats && myStats->getEffectActive(EFF_SALAMANDER_HEART) >= 1 && myStats->getEffectActive(EFF_SALAMANDER_HEART) <= 2) )
+		{
+			if ( my->sprite == 1536 || my->sprite == 1540 )
+			{
+				my->sprite = 1538;
+				//particle = 2;
+			}
+			else if ( my->sprite == 1537 || my->sprite == 1541 )
+			{
+				my->sprite = 1539;
+				//particle = 2;
+			}
+		}
+		else if ( (myStats && myStats->getEffectActive(EFF_SALAMANDER_HEART) >= 3 && myStats->getEffectActive(EFF_SALAMANDER_HEART) <= 4) )
+		{
+			if ( my->sprite == 1536 || my->sprite == 1538 )
+			{
+				my->sprite = 1540;
+				particle = 1;
+				playSoundEntity(my, 826, 128);
+			}
+			else if ( my->sprite == 1537 || my->sprite == 1539 )
+			{
+				my->sprite = 1541;
+				particle = 1;
+				playSoundEntity(my, 826, 128);
+			}
+		}
+		else
+		{
+			if ( my->sprite == 1538 || my->sprite == 1540 )
+			{
+				my->sprite = 1536;
+				particle = 2;
+				playSoundEntity(my, 827, 128);
+			}
+			else if ( my->sprite == 1539 || my->sprite == 1541 )
+			{
+				my->sprite = 1537;
+				particle = 2;
+				playSoundEntity(my, 827, 128);
+			}
+		}
+
+		if ( particle )
+		{
+			for ( int i = 0; i < 2; ++i )
+			{
+				if ( Entity* fx = createParticleAestheticOrbit(my, 263, TICKS_PER_SECOND / 2, PARTICLE_EFFECT_HEAT_ORBIT_SPIN) )
+				{
+					fx->flags[SPRITE] = true;
+					fx->x = my->x;
+					fx->y = my->y;
+					fx->z = 7.5;
+					fx->fskill[0] = fx->x;
+					fx->fskill[1] = fx->y;
+					fx->vel_z = -0.5;
+					fx->actmagicOrbitDist = 5;
+					fx->fskill[2] = my->yaw + PI / 4.0 + i * PI;
+					fx->yaw = fx->fskill[2];
+					fx->fskill[4] = 0.25;
+					if ( particle == 1 )
+					{
+						fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+						fx->actmagicNoLight = 1;
+					}
+
+					serverSpawnMiscParticles(my, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, particle, fx->skill[0]);
+				}
+			}
+		}
 	}
 
 	Entity* shieldarm = nullptr;
@@ -899,7 +955,61 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 
 		if ( bodypart == LIMB_HUMANOID_RIGHTLEG || bodypart == LIMB_HUMANOID_LEFTARM )
 		{
-			my->humanoidAnimateWalk(entity, node, bodypart, MONSTER_SWALKSPEED, dist, 0.4);
+			if ( bodypart == LIMB_HUMANOID_RIGHTLEG )
+			{
+				rightbody = (Entity*)node->next->element;
+			}
+			if ( hovering )
+			{
+				// hands stationary, legs pitched back and little swing.
+				real_t limbSpeed = 0.03;
+				if ( bodypart == LIMB_HUMANOID_LEFTARM ) // left arm
+				{
+					if ( entity->pitch < 0 )
+					{
+						entity->pitch += 1 / fmax(limbSpeed * .1, 10.0);
+						if ( entity->pitch > 0 )
+						{
+							entity->pitch = 0;
+						}
+					}
+					else if ( entity->pitch > 0 )
+					{
+						entity->pitch -= 1 / fmax(limbSpeed * .1, 10.0);
+						if ( entity->pitch < 0 )
+						{
+							entity->pitch = 0;
+						}
+					}
+				}
+				else if ( bodypart == LIMB_HUMANOID_RIGHTLEG )
+				{
+					if ( entity->pitch < 0 )
+					{
+						entity->pitch += 5 * limbSpeed * MONSTER_SWALKSPEED; // speed up to reach target.
+					}
+					if ( !rightbody->skill[3] )
+					{
+						entity->pitch -= limbSpeed * MONSTER_SWALKSPEED;
+						if ( entity->pitch < PI / 6.f )
+						{
+							entity->pitch = PI / 6.f;
+						}
+					}
+					else
+					{
+						entity->pitch += limbSpeed * MONSTER_SWALKSPEED;
+						if ( entity->pitch > PI / 3.f )
+						{
+							entity->pitch = PI / 3.f;
+						}
+					}
+				}
+			}
+			else
+			{
+				my->humanoidAnimateWalk(entity, node, bodypart, MONSTER_SWALKSPEED, dist, 0.4);
+			}
 		}
 		else if ( bodypart == LIMB_HUMANOID_LEFTLEG || bodypart == LIMB_HUMANOID_RIGHTARM || bodypart == LIMB_HUMANOID_CLOAK )
 		{
@@ -931,17 +1041,19 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							my->monsterWeaponYaw = 0;
 							weaponarm->roll = 0;
 							weaponarm->skill[1] = 0;
+							playSoundEntityLocal(my, 170, 32);
+							createParticleDot(my);
 							if ( multiplayer != CLIENT )
 							{
-								myStats->setEffectActive(EFF_PARALYZED, 1);
-								myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 40;
+								//myStats->setEffectActive(EFF_ROOTED, 1);
+								//myStats->EFFECTS_TIMERS[EFF_ROOTED] = 40;
 							}
 						}
 						if ( multiplayer != CLIENT )
 						{
 							// move the head and weapon yaw
 							limbAnimateToLimit(my, ANIMATE_PITCH, -0.1, 11 * PI / 6, true, 0.05);
-							limbAnimateToLimit(my, ANIMATE_WEAPON_YAW, -0.25, 14 * PI / 8, false, 0.0);
+							limbAnimateToLimit(my, ANIMATE_WEAPON_YAW, 0.05, 2 * PI / 8, false, 0.0);
 						}
 						limbAnimateToLimit(weaponarm, ANIMATE_PITCH, -0.25, 7 * PI / 4, true, 0.0);
 						//limbAnimateToLimit(weaponarm, ANIMATE_ROLL, -0.25, 7 * PI / 4, false, 0.0);
@@ -950,7 +1062,161 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						{
 							if ( multiplayer != CLIENT )
 							{
-								my->attack(MONSTER_POSE_MELEE_WINDUP1, 0, nullptr);
+								my->attack(MONSTER_POSE_MAGIC_WINDUP3, 0, nullptr);
+							}
+						}
+					}
+					else if ( my->monsterAttack == MONSTER_POSE_MAGIC_WINDUP3 )
+					{
+						if ( multiplayer != CLIENT )
+						{
+							if ( my->monsterAttackTime == 1 )
+							{
+								if ( myStats->getAttribute("salamander_type") == "zealot" )
+								{
+									bool found = false;
+									if ( local_rng.rand() % 3 == 0 || (myStats->getEffectActive(EFF_DIVINE_ZEAL) && local_rng.rand() % 2 == 0) )
+									{
+										if ( myStats->getAttribute("salamander_spell") == "" )
+										{
+											if ( Entity* ally = uidToEntity(my->parent) )
+											{
+												if ( ally->behavior == &actMonster )
+												{
+													if ( Stat* allyStats = ally->getStats() )
+													{
+														if ( allyStats->type == SALAMANDER )
+														{
+															if ( local_rng.rand() % 3 == 0 )
+															{
+																myStats->setAttribute("salamander_spell", std::to_string(SPELL_SIGIL));
+															}
+															else
+															{
+																myStats->setAttribute("salamander_spell", std::to_string(SPELL_SANCTUARY));
+															}
+														}
+													}
+												}
+											}
+											if ( myStats->getAttribute("salamander_spell") == "" )
+											{
+												myStats->setAttribute("salamander_spell", std::to_string(SPELL_SIGIL));
+											}
+										}
+
+										int spellID = std::stoi(myStats->getAttribute("salamander_spell"));
+										if ( spellID == SPELL_SANCTUARY && !myStats->getEffectActive(EFF_SANCTUARY) )
+										{
+											CastSpellProps_t props;
+											props.target_x = my->x;
+											props.target_y = my->y;
+											castSpell(my->getUID(), getSpellFromID(spellID), true, false, false, &props);
+											found = true;
+										}
+										if ( spellID == SPELL_SIGIL && !myStats->getEffectActive(EFF_SIGIL) )
+										{
+											CastSpellProps_t props;
+											props.target_x = my->x;
+											props.target_y = my->y;
+											castSpell(my->getUID(), getSpellFromID(spellID), true, false, false, &props);
+											found = true;
+										}
+									}
+
+									if ( !found )
+									{
+										Entity* target = my;
+										if ( myStats->getEffectActive(EFF_DIVINE_ZEAL) )
+										{
+											if ( Entity* ally = uidToEntity(my->parent) )
+											{
+												if ( ally->behavior == &actMonster )
+												{
+													if ( Stat* allyStats = ally->getStats() )
+													{
+														if ( allyStats->type == SALAMANDER && !allyStats->getEffectActive(EFF_DIVINE_ZEAL) )
+														{
+															target = ally;
+														}
+													}
+												}
+											}
+										}
+										CastSpellProps_t props;
+										props.targetUID = target->getUID();
+										castSpell(my->getUID(), getSpellFromID(SPELL_DIVINE_ZEAL), true, false, false, &props);
+									}
+								}
+								else
+								{
+									//castSpell(my->getUID(), getSpellFromID(SPELL_FOCI_FIRE), true, false, false, nullptr);
+									castSpell(my->getUID(), getSpellFromID(SPELL_BREATHE_FIRE), true, false, false, nullptr);
+								}
+							}
+						}
+						if ( weaponarm->pitch >= 3 * PI / 2 )
+						{
+							my->monsterArmbended = 1;
+						}
+
+						if ( weaponarm->skill[1] == 0 )
+						{
+							// chop forwards
+							if ( limbAnimateToLimit(weaponarm, ANIMATE_PITCH, 0.4, PI / 3, false, 0.0) )
+							{
+								weaponarm->skill[1] = 1;
+							}
+						}
+						else if ( weaponarm->skill[1] == 1 )
+						{
+							if ( limbAnimateToLimit(weaponarm, ANIMATE_PITCH, -0.25, 7 * PI / 4, false, 0.0) )
+							{
+								weaponarm->skill[1] = 2;
+								weaponarm->pitch = 0.0;
+								my->monsterWeaponYaw = 0;
+								weaponarm->roll = 0;
+							}
+						}
+						else
+						{
+							my->monsterArmbended = 0;
+						}
+						if ( my->monsterAttackTime >= 4 * ANIMATE_DURATION_WINDUP / (monsterGlobalAnimationMultiplier / 10.0) )
+						{
+							weaponarm->skill[1] = 0;
+							my->monsterArmbended = 0;
+							my->monsterAttack = 0;
+							weaponarm->skill[0] = rightbody->skill[0];
+							weaponarm->pitch = rightbody->pitch;
+						}
+					}
+					else if ( my->monsterAttack == MONSTER_POSE_MAGIC_CAST1 )
+					{
+						if ( weaponarm->pitch >= 3 * PI / 2 )
+						{
+							my->monsterArmbended = 1;
+						}
+
+						if ( weaponarm->skill[1] == 0 )
+						{
+							// chop forwards
+							if ( limbAnimateToLimit(weaponarm, ANIMATE_PITCH, 0.4, PI / 3, false, 0.0) )
+							{
+								weaponarm->skill[1] = 1;
+							}
+						}
+						else if ( weaponarm->skill[1] >= 1 )
+						{
+							if ( limbAnimateToLimit(weaponarm, ANIMATE_PITCH, -0.25, 7 * PI / 4, false, 0.0) )
+							{
+								weaponarm->skill[1] = 0;
+								weaponarm->skill[0] = rightbody->skill[0];
+								my->monsterWeaponYaw = 0;
+								weaponarm->pitch = rightbody->pitch;
+								weaponarm->roll = 0;
+								my->monsterArmbended = 0;
+								my->monsterAttack = 0;
 							}
 						}
 					}
@@ -965,7 +1231,89 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				entity->pitch = entity->fskill[0];
 			}
 
-			my->humanoidAnimateWalk(entity, node, bodypart, MONSTER_SWALKSPEED, dist, 0.4);
+			if ( hovering )
+			{
+				// hands stationary, legs pitched back and little swing.
+				double limbSpeed = 0.03;
+				if ( bodypart == LIMB_HUMANOID_RIGHTARM && (MONSTER_ATTACK == 0 && MONSTER_ATTACKTIME == 0) ) // right arm relaxed, not attacking.
+				{
+					entity->skill[0] = rightbody->skill[0];
+					if ( entity->pitch < 0 )
+					{
+						entity->pitch += 1 / fmax(limbSpeed * .1, 10.0);
+						if ( entity->pitch > 0 )
+						{
+							entity->pitch = 0;
+						}
+					}
+					else if ( entity->pitch > 0 )
+					{
+						entity->pitch -= 1 / fmax(limbSpeed * .1, 10.0);
+						if ( entity->pitch < 0 )
+						{
+							entity->pitch = 0;
+						}
+					}
+				}
+				else if ( bodypart == LIMB_HUMANOID_LEFTLEG ) // leftleg
+				{
+					if ( entity->pitch < 0 )
+					{
+						entity->pitch += 5 * limbSpeed * MONSTER_SWALKSPEED; // speed up to reach target.
+					}
+					entity->skill[0] = 1;
+					if ( entity->skill[3] == 1 ) // throwaway skill.
+					{
+						entity->pitch -= limbSpeed * MONSTER_SWALKSPEED;
+						if ( entity->pitch < PI / 6.f )
+						{
+							entity->skill[3] = 0;
+							entity->pitch = PI / 6.f;
+						}
+					}
+					else
+					{
+						entity->pitch += limbSpeed * MONSTER_SWALKSPEED;
+						if ( entity->pitch > PI / 3.f )
+						{
+							entity->skill[3] = 1;
+							entity->pitch = PI / 3.f;
+						}
+					}
+				}
+
+				if ( bodypart == LIMB_HUMANOID_CLOAK )
+				{
+					if ( dist > 0.1 )
+					{
+						if ( entity->skill[0] == 0 )
+						{
+							entity->pitch -= dist * MONSTER_SWALKSPEED * 0.05;
+							if ( entity->pitch < -PI / 4.0 )
+							{
+								entity->skill[0] = 1;
+							}
+						}
+						else
+						{
+							entity->pitch += dist * MONSTER_SWALKSPEED * 0.05;
+							if ( entity->pitch > -PI / 8.0 )
+							{
+								entity->skill[0] = 0;
+							}
+						}
+					}
+					else
+					{
+						entity->pitch += MONSTER_SWALKSPEED / 5;
+						entity->pitch = std::min(entity->pitch, 0.0);
+					}
+				}
+			}
+			else
+			{
+				my->humanoidAnimateWalk(entity, node, bodypart, MONSTER_SWALKSPEED, dist, 0.4);
+			}
 
 			if ( bodypart == LIMB_HUMANOID_CLOAK )
 			{
@@ -1172,7 +1520,7 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			if ( weaponNode )
 			{
 				Entity* weapon = (Entity*)weaponNode->element;
-				if ( MONSTER_ARMBENDED || (weapon->flags[INVISIBLE] && my->monsterState == MONSTER_STATE_WAIT) )
+				if ( (MONSTER_ARMBENDED || (weapon->flags[INVISIBLE] && my->monsterState == MONSTER_STATE_WAIT)) && !hovering )
 				{
 					// if weapon invisible and I'm not attacking, relax arm.
 					entity->focalx = limbs[SALAMANDER][4][0]; // 0
@@ -1276,7 +1624,7 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			if ( shieldNode )
 			{
 				Entity* shield = (Entity*)shieldNode->element;
-				if ( shield->flags[INVISIBLE] && my->monsterState == MONSTER_STATE_WAIT )
+				if ( (shield->flags[INVISIBLE] && my->monsterState == MONSTER_STATE_WAIT) && !hovering )
 				{
 					entity->focalx = limbs[SALAMANDER][5][0]; // 0
 					entity->focaly = limbs[SALAMANDER][5][1];
@@ -1627,9 +1975,12 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			entity->x += limbs[SALAMANDER][12][0] * cos(my->yaw + PI / 2) + limbs[SALAMANDER][12][1] * cos(my->yaw);
 			entity->y += limbs[SALAMANDER][12][0] * sin(my->yaw + PI / 2) + limbs[SALAMANDER][12][1] * sin(my->yaw);
 			entity->z += limbs[SALAMANDER][12][2];
-			entity->pitch = my->pitch + 0.15;
+			entity->pitch = 0.15;
+
 			if ( multiplayer != CLIENT )
 			{
+				entity->flags[INVISIBLE] = my->flags[INVISIBLE];
+				entity->flags[INVISIBLE_DITHER] = entity->flags[INVISIBLE];
 				entity->sprite = 1563;
 				switch ( my->sprite )
 				{
@@ -1735,7 +2086,14 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			{
 				if ( moving )
 				{
-					entity->fskill[0] -= std::min(dist * MONSTER_SWALKSPEED, 2.f * MONSTER_SWALKSPEED);
+					if ( hovering )
+					{
+						entity->fskill[0] -= std::min(std::max(0.15, dist * MONSTER_SWALKSPEED), 2.f * MONSTER_SWALKSPEED);
+					}
+					else
+					{
+						entity->fskill[0] -= std::min(dist * MONSTER_SWALKSPEED, 2.f * MONSTER_SWALKSPEED);
+					}
 				}
 				else if ( my->monsterAttack != 0 )
 				{

@@ -1331,6 +1331,10 @@ void actCustomPortal(Entity* my)
 						my->portalFireAnimation = 1;
 					}
 				}
+				else
+				{
+					return;
+				}
 			}
 		}
 	}

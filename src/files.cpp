@@ -2401,7 +2401,12 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 
 	// read map version number
 	fp->read(valid_data, sizeof(char), strlen("BARONY LMPV2.0"));
-	if ( strncmp(valid_data, "BARONY LMPV3.3", strlen("BARONY LMPV2.0")) == 0 )
+	if ( strncmp(valid_data, "BARONY LMPV3.4", strlen("BARONY LMPV2.0")) == 0 )
+	{
+		// teleporter updates
+		editorVersion = 34;
+	}
+	else if ( strncmp(valid_data, "BARONY LMPV3.3", strlen("BARONY LMPV2.0")) == 0 )
 	{
 		// portal/ladder updates
 		editorVersion = 33;
@@ -2865,6 +2870,14 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 					fp->read(&entity->teleporterX, sizeof(Sint32), 1);
 					fp->read(&entity->teleporterY, sizeof(Sint32), 1);
 					fp->read(&entity->teleporterType, sizeof(Sint32), 1);
+					if ( editorVersion >= 34 )
+					{
+						fp->read(&entity->teleporterRequirePower, sizeof(Sint32), 1);
+					}
+					else
+					{
+						entity->teleporterRequirePower = 0;
+					}
 					break;
 				case 10:
 					if ( editorVersion >= 28 )
@@ -3121,6 +3134,18 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 						fp->read(&dummy, sizeof(Sint32), 1);
 					}
 					break;
+				case 35:
+				{
+					fp->read(&entity->gateModel, sizeof(Sint32), 1);
+					fp->read(&entity->gateFrame, sizeof(Sint32), 1);
+					fp->read(&entity->gateDisableOpening, sizeof(Sint32), 1);
+					fp->read(&entity->gateInverted, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					break;
+				}
 				default:
 					break;
 			}
@@ -3388,7 +3413,7 @@ int saveMap(const char* filename2)
 			return 1;
 		}
 
-		fp->write("BARONY LMPV3.3", sizeof(char), strlen("BARONY LMPV2.0")); // magic code
+		fp->write("BARONY LMPV3.4", sizeof(char), strlen("BARONY LMPV2.0")); // magic code
 		fp->write(map.name, sizeof(char), 32); // map filename
 		fp->write(map.author, sizeof(char), 32); // map author
 		fp->write(&map.width, sizeof(Uint32), 1); // map width
@@ -3494,6 +3519,7 @@ int saveMap(const char* filename2)
 					fp->write(&entity->teleporterX, sizeof(Sint32), 1);
 					fp->write(&entity->teleporterY, sizeof(Sint32), 1);
 					fp->write(&entity->teleporterType, sizeof(Sint32), 1);
+					fp->write(&entity->teleporterRequirePower, sizeof(Sint32), 1);
 					break;
 				case 10:
 					fp->write(&entity->ceilingTileModel, sizeof(Sint32), 1);
@@ -3661,6 +3687,18 @@ int saveMap(const char* filename2)
 					fp->write(&entity->portalLevelTrack, sizeof(Sint32), 1);
 					Sint32 dummy = 0;
 					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					break;
+				}
+				case 35:
+				{
+					fp->write(&entity->gateModel, sizeof(Sint32), 1);
+					fp->write(&entity->gateFrame, sizeof(Sint32), 1);
+					fp->write(&entity->gateDisableOpening, sizeof(Sint32), 1);
+					fp->write(&entity->gateInverted, sizeof(Sint32), 1);
+					Sint32 dummy = 0;
 					fp->write(&dummy, sizeof(Sint32), 1);
 					fp->write(&dummy, sizeof(Sint32), 1);
 					fp->write(&dummy, sizeof(Sint32), 1);

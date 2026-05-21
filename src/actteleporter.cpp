@@ -47,6 +47,72 @@ void Entity::actTeleporter()
 		createWorldUITooltip();
 	}
 
+	if ( multiplayer == CLIENT )
+	{
+		if ( flags[INVISIBLE] )
+		{
+			stopEntitySound();
+#ifdef USE_FMOD
+			teleporterAmbience = 0;
+#endif
+			this->removeLightField();
+			return;
+		}
+	}
+	else
+	{
+		if ( teleporterRequirePower == 1 ) // latch on
+		{
+			if ( skill[28] != 0 )
+			{
+				if ( skill[28] == 2 )
+				{
+					if ( flags[INVISIBLE] )
+					{
+						flags[INVISIBLE] = false;
+						serverUpdateEntityFlag(this, INVISIBLE);
+						spawnMagicEffectParticles(x, y, z, 174);
+						playSoundEntity(this, 167, 128);
+					}
+				}
+			}
+		}
+		else if ( teleporterRequirePower == 2 ) // toggle
+		{
+			if ( skill[28] != 0 )
+			{
+				if ( skill[28] == 1 )
+				{
+					if ( !flags[INVISIBLE] )
+					{
+						flags[INVISIBLE] = true;
+						serverUpdateEntityFlag(this, INVISIBLE);
+					}
+				}
+				else if ( skill[28] == 2 )
+				{
+					if ( flags[INVISIBLE] )
+					{
+						flags[INVISIBLE] = false;
+						serverUpdateEntityFlag(this, INVISIBLE);
+						spawnMagicEffectParticles(x, y, z, 174);
+						playSoundEntity(this, 167, 128);
+					}
+				}
+			}
+		}
+
+		if ( flags[INVISIBLE] )
+		{
+			stopEntitySound();
+#ifdef USE_FMOD
+			teleporterAmbience = 0;
+#endif
+			this->removeLightField();
+			return;
+		}
+	}
+
 	if ( teleporterDuration > 0 && multiplayer != CLIENT )
 	{
 		--teleporterDuration;
@@ -157,6 +223,10 @@ void Entity::actTeleporter()
 					}
 					else
 					{
+						if ( Player::getPlayerInteractEntity(i)->behavior == &actPlayer )
+						{
+							teleporterInteracted = i + 1;
+						}
 						Player::getPlayerInteractEntity(i)->teleporterMove(teleporterX, teleporterY, teleporterType);
 					}
 					return;

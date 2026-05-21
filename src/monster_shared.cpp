@@ -262,6 +262,10 @@ void Entity::initMonster(int mySprite)
 			monsterFootstepType = MONSTER_FOOTSTEP_USE_BOOTS;
 			monsterSpellAnimation = MONSTER_SPELLCAST_HUMANOID;
 			break;
+		case HAUNTED_ARMOR:
+			monsterFootstepType = MONSTER_FOOTSTEP_NONE;
+			monsterSpellAnimation = MONSTER_SPELLCAST_HUMANOID;
+			break;
 		case REVENANT_SKULL:
 		case MONSTER_ADORCISED_WEAPON:
 		case FLAME_ELEMENTAL:
@@ -271,7 +275,12 @@ void Entity::initMonster(int mySprite)
 		case DUCK_SMALL:
 		case WATER_ELEMENTAL:
 		case GRYPHON:
-		case MONSTER_UNUSED_8:
+		case MONSTER_UNUSED_10:
+		case MONSTER_UNUSED_11:
+		case MONSTER_UNUSED_12:
+		case MONSTER_UNUSED_13:
+		case MONSTER_UNUSED_14:
+		case MONSTER_UNUSED_15:
 			// unused
 			break;
 		default:

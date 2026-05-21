@@ -112,7 +112,7 @@ Sint32 Stat::getModifiedProficiency(int skill) const
 				equipmentBonus -= 999;
 			}
 		}
-		else if ( (mask->type == MASK_STEEL_VISOR || mask->type == MASK_CRYSTAL_VISOR)
+		else if ( (mask->type == MASK_STEEL_VISOR || mask->type == MASK_CRYSTAL_VISOR || mask->type == MASK_BLACKIRON_VISOR)
 			&& (skill == PRO_SWORD || skill == PRO_AXE || skill == PRO_POLEARM || skill == PRO_MACE) )
 		{
 			if ( mask->beatitude >= 0 || cursedItemIsBuff )
@@ -1799,6 +1799,7 @@ bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
 		case EFF_DISRUPTED:
 		case EFF_FROST:
 		case EFF_HOLY_FIRE:
+		case EFF_MESMERIZED:
 			return true;
 			break;
 		case EFF_DRUNK:
@@ -2421,4 +2422,20 @@ void Stat::MonsterRangedAccuracy::modifyProjectile(Entity& my, Entity& projectil
 			hit.entity = ohitentity;
 		}
 	}
+}
+
+bool Stat::isPoisonable()
+{
+	switch ( type )
+	{
+	case MONSTER_ADORCISED_WEAPON:
+	case HAUNTED_ARMOR:
+	case FLAME_ELEMENTAL:
+		return false;
+		break;
+	default:
+		break;
+	}
+
+	return true;
 }

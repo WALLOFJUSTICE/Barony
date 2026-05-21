@@ -12101,8 +12101,16 @@ void actParticleTimer(Entity* my)
 											{
 												if ( caster == entity ) { continue; }
 
-												//if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+												if ( caster->behavior == &actMonster )
 												{
+													if ( caster->checkFriend(entity) )
+													{
+														continue;
+													}
+												}
+												else 
+												{
+													//if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
 													if ( caster->checkFriend(entity) && caster->friendlyFireProtection(entity) )
 													{
 														continue;
@@ -12651,6 +12659,138 @@ void actParticleTimer(Entity* my)
 				else
 				{
 					PARTICLE_LIFE = 0;
+				}
+			}
+			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_STAREMASTER_PUSH )
+			{
+				Entity* caster = uidToEntity(my->parent);
+				if ( caster )
+				{
+					my->x = caster->x;
+					my->y = caster->y;
+				}
+				else
+				{
+					caster = my;
+				}
+				if ( PARTICLE_LIFE < 10 )
+				{
+					if ( multiplayer != CLIENT )
+					{
+						int numTargets = 0;
+						std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(caster, 2);
+						for ( auto it : entLists )
+						{
+							node_t* node;
+							for ( node = it->first; node != nullptr; node = node->next )
+							{
+								Entity* entity = (Entity*)node->element;
+								if ( entityDist(caster, entity) >= 32.0 )
+								{
+									continue;
+								}
+								Stat* stats = (entity->behavior == &actMonster || entity->behavior == &actPlayer) ? entity->getStats() : nullptr;
+								if ( stats )
+								{
+									auto hitProps = getParticleEmitterHitProps(my->getUID(), entity);
+									if ( !hitProps )
+									{
+										continue;
+									}
+									if ( hitProps->hits > 0 )
+									{
+										continue;
+									}
+
+									real_t tangent = atan2(entity->y - my->y, entity->x - my->x);
+									while ( tangent >= 2 * PI )
+									{
+										tangent -= 2 * PI;
+									}
+									while ( tangent < 0 )
+									{
+										tangent += 2 * PI;
+									}
+
+									real_t myYaw = my->yaw;
+									while ( myYaw >= 2 * PI )
+									{
+										myYaw -= 2 * PI;
+									}
+									while ( myYaw < 0 )
+									{
+										myYaw += 2 * PI;
+									}
+
+									real_t interactAngle = PI / 3;
+									if ( !(abs(tangent - myYaw) < (interactAngle)) || (abs(tangent - myYaw) > (2 * PI - interactAngle)) )
+									{
+										continue;
+									}
+
+									if ( caster && caster->getStats() )
+									{
+										if ( caster == entity ) { continue; }
+
+										if ( caster && caster->behavior == &actMonster )
+										{
+											if ( caster->checkFriend(entity) )
+											{
+												++hitProps->hits;
+												continue;
+											}
+										}
+										else
+										{
+											//if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+											{
+												if ( caster->checkFriend(entity) && caster->friendlyFireProtection(entity) )
+												{
+													++hitProps->hits;
+													continue;
+												}
+											}
+										}
+									}
+									if ( entity->monsterIsTargetable() )
+									{
+										//if ( caster->checkEnemy(entity) )
+										{
+											++hitProps->hits;
+											if ( entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
+											{
+												real_t pushbackMultiplier = 0.7;
+												real_t tangent = atan2(entity->y - caster->y, entity->x - caster->x);
+												if ( entity->behavior == &actPlayer )
+												{
+													if ( !players[entity->skill[2]]->isLocalPlayer() )
+													{
+														entity->monsterKnockbackVelocity = pushbackMultiplier;
+														entity->monsterKnockbackTangentDir = tangent;
+														serverUpdateEntityFSkill(entity, 11);
+														serverUpdateEntityFSkill(entity, 9);
+													}
+													else
+													{
+														entity->monsterKnockbackVelocity = pushbackMultiplier;
+														entity->monsterKnockbackTangentDir = tangent;
+													}
+												}
+												else if ( entity->behavior == &actMonster )
+												{
+													entity->vel_x = cos(tangent) * pushbackMultiplier;
+													entity->vel_y = sin(tangent) * pushbackMultiplier;
+													entity->monsterKnockbackVelocity = 0.01;
+													entity->monsterKnockbackUID = caster ? caster->getUID() : 0;
+													entity->monsterKnockbackTangentDir = tangent;
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_REVENANT_PUSH )
@@ -13638,6 +13778,176 @@ void actParticleTimer(Entity* my)
 					//		fx->actmagicNoLight = 1;
 					//	}
 					//}
+				}
+			}
+			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_STARE_GAZE )
+			{
+				if ( my->ticks < 50 )
+				{
+					if ( my->ticks == 1 )
+					{
+						if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, 0.0, TICKS_PER_SECOND, 16) )
+						{
+							real_t scale = 1.0;
+							fx->scalex = scale;
+							fx->scaley = scale;
+							fx->actSpriteCheckParentExists = 0;
+							//fx->actSpriteFollowUID = my->getUID();
+							if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+							{
+								//indicator->arc = PI / 2;
+								indicator->indicatorColor = makeColorRGB(92, 255, 200);
+								indicator->cacheType = AOEIndicators_t::CACHE_STAREMASTER_STARE;
+								indicator->loop = false;
+								indicator->gradient = 4;
+								indicator->framesPerTick = 2;
+								indicator->ticksPerUpdate = 1;
+								indicator->delayTicks = 0;
+								indicator->expireAlphaRate = 0.95;
+							}
+						}
+					}
+					if ( my->ticks % 5 == 1 )
+					{
+						if ( Entity* parent = uidToEntity(my->parent) )
+						{
+							if ( Entity* fx = createStareParticle(my) )
+							{
+								fx->parent = my->getUID();
+							}
+							if ( my->particleTimerVariable1 == 0 )
+							{
+								my->yaw += (PI / 64);
+							}
+							else if ( my->particleTimerVariable1 == 2 )
+							{
+								my->yaw -= (PI / 64);
+							}
+						}
+					}
+				}
+			}
+			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_STAREMASTER_MESMERIZE )
+			{
+				if ( Entity* parent = uidToEntity(my->parent) )
+				{
+					my->x = parent->x;
+					my->y = parent->y;
+
+					if ( multiplayer != CLIENT )
+					{
+						real_t range = 128.0;
+						for ( node_t* node = map.creatures->first; node != nullptr; node = node->next )
+						{
+							Entity* entity = (Entity*)node->element;
+							if ( !(entity->behavior == &actPlayer || entity->behavior == &actMonster) )
+							{
+								continue;
+							}
+							if ( !entity->monsterIsTargetable() )
+							{
+								continue;
+							}
+							if ( entityDist(my, entity) > (real_t)(range + 4.0) )
+							{
+								continue;
+							}
+
+							Stat* stats = entity->getStats();
+							if ( !stats ) { continue; }
+
+							if ( parent == entity )
+							{
+								continue;
+							}
+							if ( parent && parent->behavior == &actMonster )
+							{
+								if ( parent->checkFriend(entity) )
+								{
+									continue;
+								}
+							}
+							if ( parent && parent->behavior == &actPlayer )
+							{
+								//if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+								{
+									if ( parent->checkFriend(entity) && parent->friendlyFireProtection(entity) )
+									{
+										continue;
+									}
+								}
+							}
+
+							auto props = getParticleEmitterHitProps(my->getUID(), entity);
+							if ( !props )
+							{
+								continue;
+							}
+							if ( props->hits > 0 && (ticks - props->tick) < 30 )
+							{
+								continue;
+							}
+							if ( props->hits > 5 )
+							{
+								continue;
+							}
+
+							real_t tangent = atan2(entity->y - parent->y, entity->x - parent->x);
+							bool oldPassable = entity->flags[PASSABLE];
+							entity->flags[PASSABLE] = false;
+							real_t d = lineTraceTarget(parent, parent->x, parent->y, tangent, (real_t)(range + 4.0), 0, false, entity);
+							entity->flags[PASSABLE] = oldPassable;
+							if ( hit.entity != entity )
+							{
+								continue;
+							}
+
+							if ( entityWithinStareAngle(parent, entity) )
+							{
+								++props->hits;
+								props->tick = ticks;
+
+								if ( props->hits >= 3 )
+								{
+									if ( entity->behavior == &actPlayer )
+									{
+										bool prevEffect = stats->getEffectActive(EFF_MESMERIZED);
+										if ( entity->setEffect(EFF_MESMERIZED, true, !prevEffect ? 3 * TICKS_PER_SECOND
+											: stats->EFFECTS_TIMERS[EFF_MESMERIZED] + TICKS_PER_SECOND, false) )
+										{
+											entity->playerFearfulUid = parent->getUID();
+											if ( !players[entity->skill[2]]->isLocalPlayer() )
+											{
+												serverUpdateEntitySkill(entity, 19);
+											}
+											if ( !prevEffect )
+											{
+												playSoundEntity(entity, 687, 128); // fear.ogg
+												spawnMagicEffectParticles(entity->x, entity->y, entity->z, 174);
+
+												messagePlayerColor(entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7038));
+											}
+										}
+									}
+									else if ( entity->behavior == &actMonster )
+									{
+										bool prevEffect = stats->getEffectActive(EFF_FEAR);
+										if ( entity->setEffect(EFF_FEAR, true, !prevEffect ? 3 * TICKS_PER_SECOND
+											: stats->EFFECTS_TIMERS[EFF_FEAR] + TICKS_PER_SECOND, true) )
+										{
+											entity->monsterFearfulOfUid = parent->getUID();
+											if ( !prevEffect )
+											{
+												playSoundEntity(entity, 687, 128); // fear.ogg
+												spawnMagicEffectParticles(entity->x, entity->y, entity->z, 174);
+											}
+										}
+									}
+								}
+								createStareAOE(entity, true);
+							}
+						}
+					}
 				}
 			}
 			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_SHATTER_EARTH
@@ -20702,6 +21012,9 @@ Entity* createRadiusMagic(int spellID, Entity* caster, real_t x, real_t y, real_
 	case SPELL_FORGE_JEWEL:
 		sprite = 2409;
 		break;
+	case SPELL_ENVENOM_WEAPON:
+		sprite = 2508;
+		break;
 	default:
 		break;
 	}
@@ -20949,6 +21262,9 @@ void actRadiusMagic(Entity* my)
 				case 2405:
 					color = makeColorRGB(104, 188, 252);
 					break;
+				case 2508:
+					color = makeColorRGB(107, 167, 0);
+					break;
 				default:
 					break;
 				}
@@ -21026,6 +21342,7 @@ void actRadiusMagic(Entity* my)
 					|| my->actRadiusMagicID == SPELL_PINPOINT
 					|| my->actRadiusMagicID == SPELL_MAGICMAPPING
 					|| my->actRadiusMagicID == SPELL_FORGE_JEWEL
+					|| my->actRadiusMagicID == SPELL_ENVENOM_WEAPON
 						)
 				{
 					fx->scalex = 0.8;
@@ -21159,6 +21476,7 @@ void actRadiusMagic(Entity* my)
 		|| my->actRadiusMagicID == SPELL_FOCI_LIGHT_PURITY
 		|| my->actRadiusMagicID == SPELL_FOCI_LIGHT_SANCTUARY
 		|| my->actRadiusMagicID == SPELL_DIVINE_ZEAL
+		|| my->actRadiusMagicID == SPELL_ENVENOM_WEAPON
 		|| my->actRadiusMagicID == SPELL_PROF_COUNSEL
 		|| my->actRadiusMagicID == SPELL_PROF_GREATER_MIGHT
 		|| my->actRadiusMagicID == SPELL_PROF_NIMBLENESS
@@ -21489,6 +21807,10 @@ void actRadiusMagic(Entity* my)
 						playSoundEntity(my, 168, 128);
 						spawnMagicEffectParticles(my->x, my->y, my->z, 169);
 					}
+					if ( caster && caster->behavior == &actMonster )
+					{
+						amount = 15;
+					}
 
 					int oldHP = ent->getHP();
 					spell_changeHealth(ent, amount);
@@ -21518,6 +21840,10 @@ void actRadiusMagic(Entity* my)
 						playSoundEntity(my, 168, 128);
 						spawnMagicEffectParticles(my->x, my->y, my->z, 169);
 					}*/
+					if ( caster && caster->behavior == &actMonster )
+					{
+						amount = 15;
+					}
 
 					int oldHP = ent->getHP();
 					spell_changeHealth(ent, amount, false, false);
@@ -21597,14 +21923,24 @@ void actRadiusMagic(Entity* my)
 					}
 					else
 					{
+						effectStrength = 3;
 						effectStrength |= ((MAXPLAYERS + 1) << 4);
 					}
 
 					if ( Stat* entitystats = ent->getStats() )
 					{
-						if ( !entitystats->getEffectActive(EFF_SIGIL) )
+						int effectID = EFF_SIGIL;
+						if ( (caster && caster->behavior == &actMonster) )
 						{
-							if ( ent->setEffect(EFF_SIGIL, effectStrength, effectDuration, false, true, true) )
+							if ( (ent->behavior == &actPlayer || (ent->behavior == &actMonster && ent->monsterAllyGetPlayerLeader()))
+								&& !caster->checkFriend(ent) )
+							{
+								effectID = EFF_SIGIL_NPC;
+							}
+						}
+						if ( !entitystats->getEffectActive(effectID) )
+						{
+							if ( ent->setEffect(effectID, effectStrength, effectDuration, false, true, true) )
 							{
 								spawnMagicEffectParticles(ent->x, ent->y, ent->z, 174);
 								firstEffect = false;
@@ -21617,12 +21953,12 @@ void actRadiusMagic(Entity* my)
 						}
 						else
 						{
-							if ( entitystats->EFFECTS_TIMERS[EFF_SIGIL] < TICKS_PER_SECOND )
+							if ( entitystats->EFFECTS_TIMERS[effectID] < TICKS_PER_SECOND )
 							{
 								spawnMagicEffectParticles(ent->x, ent->y, ent->z, 174);
 							}
-							entitystats->setEffectActive(EFF_SIGIL, effectStrength);
-							entitystats->EFFECTS_TIMERS[EFF_SIGIL] = effectDuration;
+							entitystats->setEffectActive(effectID, effectStrength);
+							entitystats->EFFECTS_TIMERS[effectID] = effectDuration;
 							firstEffect = false;
 						}
 					}
@@ -21639,6 +21975,7 @@ void actRadiusMagic(Entity* my)
 					}
 					else
 					{
+						effectStrength = 3;
 						effectStrength |= ((MAXPLAYERS + 1) << 4);
 					}
 

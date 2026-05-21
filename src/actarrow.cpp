@@ -1220,7 +1220,7 @@ void actArrow(Entity* my)
 									Entity* gib = spawnGib(hit.entity, 211);
 									serverSpawnGibForClient(gib);
 								}
-								if ( !hitstats->getEffectActive(EFF_POISONED) )
+								if ( !hitstats->getEffectActive(EFF_POISONED) && hitstats->isPoisonable() )
 								{
 									envenomWeapon = true;
 									hitstats->setEffectActive(EFF_POISONED, 1);
@@ -1552,7 +1552,7 @@ void actArrow(Entity* my)
 						else if ( my->arrowQuiverType == QUIVER_HUNTING && !(hitstats->amulet && hitstats->amulet->type == AMULET_POISONRESISTANCE)
 							&& !(hitstats->type == INSECTOID) && procEffect )
 						{
-							if ( !hitstats->getEffectActive(EFF_POISONED) )
+							if ( !hitstats->getEffectActive(EFF_POISONED) && hitstats->isPoisonable() )
 							{
 								hitstats->poisonKiller = my->parent;
 								hitstats->setEffectActive(EFF_POISONED, 1);

@@ -312,6 +312,7 @@ public:
 	Sint32& playerAutomatonDeathCounter; //skill[15] - 0 if unused, > 0 if counting to death
 	Sint32& playerCreatedDeathCam; //skill[16] - if we triggered actDeathCam already.
 	Sint32& playerCastTimeAnim = skill[17]; // how many ticks we're casting for in the current animation
+	Sint32& playerFearfulUid = skill[19];
 
 	//--PUBLIC MONSTER ANIMATION SKILLS--
 	Sint32& monsterAnimationLimbDirection;  //skill[20]
@@ -354,6 +355,9 @@ public:
 	real_t& gateVelZ; //vel_z
 	Sint32& gateInverted; //skill[5]
 	Sint32& gateDisableOpening; //skill[6]
+	Sint32& gateModel = skill[7];
+	Sint32& gateFrame = skill[8];
+	Sint32& gateWide = skill[9];
 
 	//--PUBLIC LEVER SKILLS--
 	Sint32& leverTimerTicks;//skill[1]
@@ -453,6 +457,8 @@ public:
 	Sint32& teleporterCurrentFrame = skill[6];
 	Sint32& teleporterNumFrames = skill[7];
 	Sint32& teleporterDuration = skill[8];
+	Sint32& teleporterInteracted = skill[9];
+	Sint32& teleporterRequirePower = skill[10];
 
 	//--PUBLIC CEILING TILE SKILLS--
 	Sint32& ceilingTileModel; //skill[0]
@@ -505,6 +511,7 @@ public:
 	Sint32& colliderSpellTarget = skill[23];
 	Sint32& colliderTelepathy = skill[24];
 	Sint32& colliderDropVariable = skill[25]; // store germinate drop qtys
+	Sint32& colliderSpawnedMonster = skill[26];
 	static void colliderAssignProperties(Entity* entity, bool mapGeneration, map_t* whichMap);
 	static Entity* createBreakableCollider(int colliderDamageType, real_t _x, real_t _y, Entity* parent);
 	void colliderSetServerSkillOnSpawned();
@@ -807,7 +814,10 @@ public:
 	Sint32& actSpriteFollowUID = skill[11];
 	Sint32& actSpriteHasLightInit = skill[12];
 	Sint32& actSpriteVelXY = skill[13];
+	Sint32& actSpriteFollowYaw = skill[14];
 	real_t& actSpritePitchRotate = fskill[4];
+	real_t& actSpriteFollowForwardDist = fskill[5];
+	real_t& actSpriteFollowSideDist = fskill[6];
 
 	// actGib
 	Sint32& actGibHitGroundEvent = skill[10];
@@ -1201,6 +1211,15 @@ public:
 			case GRYPHON:
 				gryphonChooseWeapon(target, dist);
 				break;
+			case HAUNTED_ARMOR:
+				hauntedArmorChooseWeapon(target, dist);
+				break;
+			case SALAMANDER:
+				salamanderChooseWeapon(target, dist);
+				break;
+			case STAREMASTER:
+				stareMasterChooseWeapon(target, dist);
+				break;
 			case SHOPKEEPER:
 				if ( target )
 				{
@@ -1234,6 +1253,9 @@ public:
 	void monsterMChooseWeapon(const Entity* target, double dist);
 	void monsterGChooseWeapon(const Entity* target, double dist);
 	void gryphonChooseWeapon(const Entity* target, double dist);
+	void hauntedArmorChooseWeapon(const Entity* target, double dist);
+	void stareMasterChooseWeapon(const Entity* target, double dist);
+	void salamanderChooseWeapon(const Entity* target, double dist);
 	void adorcisedWeaponChooseWeapon(const Entity* target, double dist);
 	void skeletonSummonSetEquipment(Stat* myStats, int rank);
 	static void tinkerBotSetStats(Stat* myStats, int rank);
@@ -1651,13 +1673,21 @@ public:
 		TO_DUCK_SMALL,
 		TO_WATER_ELEMENTAL,
 		TO_GRYPHON,
-		TO_MONSTER_UNUSED_8,
+		TO_HAUNTED_ARMOR,
+		TO_STAREMASTER,
+		TO_MONSTER_UNUSED_10,
+		TO_MONSTER_UNUSED_11,
+		TO_MONSTER_UNUSED_12,
+		TO_MONSTER_UNUSED_13,
+		TO_MONSTER_UNUSED_14,
+		TO_MONSTER_UNUSED_15,
 		TO_MONSTER_MAX,
 		TO_BREAKABLE,
 		TO_COLLIDER,
 		TO_GOLD,
 		TO_BELL,
-		TO_SUMMONTRAP
+		TO_SUMMONTRAP,
+		TO_TELEPORTER
 	};
 	enum ScriptType : int
 	{

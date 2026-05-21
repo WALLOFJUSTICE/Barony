@@ -65,6 +65,17 @@ void actSprite(Entity* my)
 		{
 			my->x = parent->x;
 			my->y = parent->y;
+
+			if ( my->actSpriteFollowYaw != 0 )
+			{
+				my->yaw = parent->yaw;
+				my->x += my->actSpriteFollowForwardDist * cos(my->yaw) + my->actSpriteFollowSideDist * cos(my->yaw + PI / 2);
+				my->y += my->actSpriteFollowForwardDist * sin(my->yaw) + my->actSpriteFollowSideDist * sin(my->yaw + PI / 2);
+				if ( my->actSpriteFollowYaw == 2 )
+				{
+					my->yaw += PI;
+				}
+			}
 		}
 	}
 
@@ -75,7 +86,7 @@ void actSprite(Entity* my)
 	}
 	else if ( !SPRITE_LIT )
 	{
-		my->light = NULL;
+		//my->light = NULL;
 	}
 	my->skill[3]++;
 	if ( my->skill[3] >= SPRITE_ANIMSPEED )
@@ -186,6 +197,17 @@ void actSpriteWorldTooltip(Entity* my)
 		{
 			my->x += parent->focalx * cos(parent->yaw) + parent->focaly * cos(parent->yaw + PI / 2);
 			my->y += parent->focalx * sin(parent->yaw) + parent->focaly * sin(parent->yaw + PI / 2);
+		}
+		else if ( parent->behavior == &actGate && parent->gateWide != 0 )
+		{
+			if ( parent->sizex == 8 )
+			{
+				my->x += 8.0;
+			}
+			else if ( parent->sizey == 8 )
+			{
+				my->y += 8.0;
+			}
 		}
 
 		bool inrange = (my->worldTooltipActive == 1);

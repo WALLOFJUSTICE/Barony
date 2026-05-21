@@ -608,6 +608,7 @@ bool isHatShopItem(ItemType hat)
 	case HAT_CHEF:
 	case HELM_MINING:
 	case MASK_STEEL_VISOR:
+	case MASK_BLACKIRON_VISOR:
 	case MASK_CRYSTAL_VISOR:
 	case HAT_CIRCLET_WISDOM:
 	case HAT_HOOD_APPRENTICE:
@@ -2047,7 +2048,7 @@ Entity* dropItemMonster(Item* const item, Entity* const monster, Stat* const mon
 			}
 			else
 			{
-				if ( monsterStats->type == SHADOW || monsterStats->type == AUTOMATON )
+				if ( monsterStats->type == SHADOW || monsterStats->type == AUTOMATON || monsterStats->type == HAUNTED_ARMOR )
 				{
 					itemDroppable = false;
 				}
@@ -3440,6 +3441,7 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 		case MASK_PLAGUE:
 		case MASK_MOUTHKNIFE:
 		case MASK_STEEL_VISOR:
+		case MASK_BLACKIRON_VISOR:
 		case MASK_CRYSTAL_VISOR:
 		case MASK_ARTIFACT_VISOR:
 			equipItemResult = equipItem(item, &stats[player]->mask, player, checkInventorySpaceForPaperDoll);
@@ -4962,6 +4964,7 @@ bool Item::doesItemProvideBeatitudeAC(ItemType type)
 		if ( type == MASK_SPOOKY
 			|| type == MASK_GOLDEN
 			|| type == MASK_STEEL_VISOR
+			|| type == MASK_BLACKIRON_VISOR
 			|| type == MASK_CRYSTAL_VISOR 
 			|| type == MASK_ARTIFACT_VISOR
 			|| type == MASK_PLAGUE )
@@ -5610,7 +5613,8 @@ Sint32 Item::armorGetAC(const Stat* const wielder) const
 	else if ( type == VAMPIRE_DOUBLET
 		|| type == HELM_MINING
 		|| type == HAT_BOUNTYHUNTER
-		|| type == MASK_STEEL_VISOR )
+		|| type == MASK_STEEL_VISOR
+		|| type == MASK_BLACKIRON_VISOR )
 	{
 		armor += 1;
 	}

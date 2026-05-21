@@ -11933,6 +11933,7 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case HAT_PLUMED_CAP:
 		case HAT_BYCOCKET:
 		case MASK_STEEL_VISOR:
+		case MASK_BLACKIRON_VISOR:
 			*metal = 2;
 			*magic = 1;
 			break;
@@ -13761,6 +13762,13 @@ void EnemyHPDamageBarHandler::EnemyHPDetails::updateWorldCoordinates()
 					worldZ += entity->bodyparts[0]->lerpRenderState.z.position;
 				}
 			}
+			else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == HAUNTED_ARMOR )
+			{
+				if ( entity->bodyparts.size() > 0 )
+				{
+					worldZ += entity->bodyparts[0]->lerpRenderState.z.position;
+				}
+			}
 		}
 		else
 		{
@@ -13775,6 +13783,13 @@ void EnemyHPDamageBarHandler::EnemyHPDetails::updateWorldCoordinates()
 				}
 			}
 			else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == GRYPHON )
+			{
+				if ( entity->bodyparts.size() > 0 )
+				{
+					worldZ += entity->bodyparts[0]->z;
+				}
+			}
+			else if ( entity->behavior == &actMonster && entity->getMonsterTypeFromSprite() == HAUNTED_ARMOR )
 			{
 				if ( entity->bodyparts.size() > 0 )
 				{

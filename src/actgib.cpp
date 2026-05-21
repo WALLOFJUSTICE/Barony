@@ -581,15 +581,29 @@ void actFociGib(Entity* my)
 								continue;
 							}
 
-							//if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+							if ( parent && parent->behavior == &actMonster )
 							{
-								if ( parent && parent->checkFriend(entity) && parent->friendlyFireProtection(entity) )
+								if ( parent->checkFriend(entity) )
 								{
 									if ( hitprops )
 									{
 										hitprops->hits++;
 									}
 									continue;
+								}
+							}
+							else
+							{
+								//if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+								{
+									if ( parent && parent->checkFriend(entity) && parent->friendlyFireProtection(entity) )
+									{
+										if ( hitprops )
+										{
+											hitprops->hits++;
+										}
+										continue;
+									}
 								}
 							}
 						}

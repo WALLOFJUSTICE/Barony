@@ -3478,6 +3478,16 @@ void setupSpells()   ///TODO: Verify this function.
 	spell->distance = 64.0;
 	spell->hide_from_ui = true;
 
+	spell = createSimpleSpell(
+		SPELL_STARE_BEAM,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_stare_beam");
+	spell->hide_from_ui = true;
 
 	//static const int SPELL_LIGHTNING_NEXUS = 182;
 	//static const int SPELL_LIFT = 184;

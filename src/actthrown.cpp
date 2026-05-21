@@ -1320,7 +1320,7 @@ void actThrown(Entity* my)
 								Entity* gib = spawnGib(hit.entity, 211);
 								serverSpawnGibForClient(gib);
 							}
-							if ( !hitstats->getEffectActive(EFF_POISONED) )
+							if ( !hitstats->getEffectActive(EFF_POISONED) && hitstats->isPoisonable() )
 							{
 								envenomWeapon = true;
 								hitstats->setEffectActive(EFF_POISONED, 1);

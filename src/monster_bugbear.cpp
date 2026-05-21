@@ -1271,11 +1271,21 @@ void Entity::setBugbearStrafeDir(bool forceDirection)
 {
 	Stat* myStats = getStats();
 	if ( !myStats ) { return; }
-	if ( myStats->type != BUGBEAR )
+	if ( myStats->type == BUGBEAR )
 	{
-		return;
+		if ( monsterSpecialState != BUGBEAR_DEFENSE )
+		{
+			return;
+		}
 	}
-	if ( monsterSpecialState != BUGBEAR_DEFENSE )
+	else if ( myStats->type == SALAMANDER )
+	{
+		if ( monsterSpecialState != SALAMANDER_STRAFE )
+		{
+			return;
+		}
+	}
+	else
 	{
 		return;
 	}

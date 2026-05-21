@@ -6372,6 +6372,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_STURDINESS)
 				|| stats[player]->getEffectActive(EFF_GROWTH)
 				|| stats[player]->getEffectActive(EFF_SIGIL)
+				|| stats[player]->getEffectActive(EFF_SIGIL_NPC)
 				|| stats[player]->getEffectActive(EFF_SANCTUARY)
 				|| (cast_animation[player].overcharge > 0 || cast_animation[player].overcharge_init > 0)
 				|| (players[player]->mechanics.gremlinBreakableCounter > 0 && stats[player]->type == GREMLIN)
@@ -6881,6 +6882,37 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 						{
 							alignRight = true;
 							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SIGIL) & 0xF;
+							if ( effectStrength >= 1 )
+							{
+								std::string val = "I";
+								if ( effectStrength >= 4 )
+								{
+									val = "IV";
+								}
+								else if ( effectStrength >= 3 )
+								{
+									val = "III";
+								}
+								else if ( effectStrength >= 2 )
+								{
+									val = "II";
+								}
+								if ( auto text = Text::get(val.c_str(),
+									"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+								{
+									text->drawColor(SDL_Rect{ 0,0,0,0 },
+										SDL_Rect{ pos.x + img->pos.x + (alignRight ? (img->pos.w - (int)text->getWidth()) : (img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x)),
+										pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+										0, 0 },
+										SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+										makeColor(255, 255, 255, 255));
+								}
+							}
+						}
+						else if ( img->path.find("sigil_npc.png") != std::string::npos )
+						{
+							alignRight = true;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SIGIL_NPC) & 0xF;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
@@ -26851,6 +26883,10 @@ void loadHUDSettingsJSON()
 							{
 								dialogueType = Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_GRAVE;
 							}
+							else if ( type == "statue" )
+							{
+								dialogueType = Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_STATUE;
+							}
 							else if ( type == "signpost" )
 							{
 								dialogueType = Player::WorldUI_t::WorldTooltipDialogue_t::DIALOGUE_SIGNPOST;
@@ -41900,6 +41936,7 @@ void Player::WorldUI_t::WorldTooltipDialogue_t::createDialogueTooltip(Uint32 uid
 
 	Dialogue_t* d = &playerDialogue;
 	if ( !(type == DIALOGUE_GRAVE || type == DIALOGUE_SIGNPOST
+		|| type == DIALOGUE_STATUE
 		|| type == DIALOGUE_NPC) )
 	{
 		if ( type == DIALOGUE_ATTACK && (sharedDialogues.find(uid) != sharedDialogues.end()) )
@@ -42043,7 +42080,7 @@ SDL_Surface* Player::WorldUI_t::WorldTooltipDialogue_t::Dialogue_t::blitDialogue
 	dialogueTooltipSurface = SDL_CreateRGBSurface(0, tooltip.w, tooltip.h, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 
 	SDL_Rect imgPos{ 0, 0, 0, 0 };
-	if ( dialogueType == DIALOGUE_GRAVE )
+	if ( dialogueType == DIALOGUE_GRAVE || dialogueType == DIALOGUE_STATUE )
 	{
 		dialogueField->setTextColor(makeColor(51, 45, 59, 255));
 		dialogueField->setOutlineColor(makeColor(115, 127, 134, 255));

@@ -1011,12 +1011,29 @@ real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spell
 	{
 		if ( casterStats )
 		{
+			real_t bonus = 0.0;
 			if ( Uint8 effectStrength = casterStats->getEffectActive(EFF_INCOHERENCE) )
 			{
 				real_t mult = std::min(0.9, 0.2 + (effectStrength - 1) * 0.1);
-				real_t bonus = -mult;
-				return std::max(-0.9, bonus);
+				bonus += -mult;
 			}
+
+			if ( casterStats->type == SALAMANDER )
+			{
+				if ( Uint8 effectStrength = casterStats->getEffectActive(EFF_SALAMANDER_HEART) )
+				{
+					if ( effectStrength == 1 || effectStrength == 2 )
+					{
+						real_t ratio = (statGetCHR(casterStats, caster) * 2 + 10) / 100.0;
+						bonus += 1.0 * (ratio);
+					}
+				}
+				if ( spellID == SPELL_DIVINE_ZEAL )
+				{
+					bonus += 1.0;
+				}
+			}
+			return std::max(-0.9, bonus);
 		}
 		return 0.0;
 	}

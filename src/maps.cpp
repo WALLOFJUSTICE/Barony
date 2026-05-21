@@ -4989,6 +4989,40 @@ int generateDungeon(char* levelset, Uint32 seed)
 		}
 	}
 
+	if ( !strncmp(map.filename, "keep", 4) )
+	{
+		Uint32 hauntedTrapSeed = map_rng.getU32();
+		BaronyRNG tmpRng;
+		tmpRng.seedBytes(&hauntedTrapSeed, sizeof(hauntedTrapSeed));
+		int numHauntedArmors = 5 + tmpRng.rand() % 3;
+
+		std::vector<Entity*> possibleArmors;
+		for ( node_t* node = map.entities->first; node != NULL; node = node->next )
+		{
+			if ( (entity2 = (Entity*)node->element) )
+			{
+				if ( entity2->sprite == 179 && entity2->colliderDamageTypes > 0
+					&& (entity2->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["blackiron_armor_stand"]
+						|| entity2->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["silver_armor_stand"]) )
+				{
+					possibleArmors.push_back(entity2);
+				}
+			}
+		}
+
+		while ( possibleArmors.size() && numHauntedArmors > 0 )
+		{
+			int pick = tmpRng.rand() % possibleArmors.size();
+			possibleArmors[pick]->colliderHideMonster = HAUNTED_ARMOR;
+			//if ( tmpRng.rand() % 4 == 0 )
+			{
+				possibleArmors[pick]->colliderHideMonster += 1000;
+			}
+			possibleArmors.erase(possibleArmors.begin() + pick);
+			--numHauntedArmors;
+		}
+	}
+
 	Uint32 slimeTrapSeed = map_rng.getU32();
 	if ( svFlags & SV_FLAG_TRAPS )
 	{
@@ -5003,6 +5037,12 @@ int generateDungeon(char* levelset, Uint32 seed)
 		else if ( currentlevel >= 10 )
 		{
 			numSlimebushes += 4 + tmpRng.rand() % 3;
+		}
+
+		if ( !strncmp(map.filename, "fortress", 8)
+			|| !strncmp(map.filename, "keep", 4) )
+		{
+			numSlimebushes /= 2;
 		}
 
 		std::set<int> visited;
@@ -5789,6 +5829,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 	}
 	int numOpenAreaBreakables = 0;
 	std::vector<BreakableNode_t> breakableLocations;
+
 	if ( findBreakables != EditorEntityData_t::colliderRandomGenPool.end()
 		&& findBreakables->first == "The Fortress" )
 	{
@@ -8712,6 +8753,159 @@ void assignActions(map_t* map)
                 childEntity->behavior = &actDoorFrame;
                 break;
             }
+			// large gate north/south
+			case 306:
+			{
+				entity->x += 8;
+				entity->y += 8;
+				entity->z = 7.5;
+				entity->yaw -= PI / 2.0;
+				entity->sprite = entity->gateFrame;
+				entity->flags[PASSABLE] = true;
+				entity->behavior = &actDoorFrame;
+
+				//entity->skill[28] = 1; //It's a mechanism.
+				auto childEntity = newEntity(entity->gateModel, 0, map->entities, nullptr); //Gate entity.
+				childEntity->x = entity->x;
+				childEntity->y = entity->y;
+				childEntity->z = 7.5;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("23 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 8;
+				childEntity->sizey = 1;
+				childEntity->yaw -= PI / 2.0;
+				childEntity->gateInverted = entity->gateInverted;
+				childEntity->gateStatus = childEntity->gateInverted; // closed.
+				childEntity->skill[28] = 1; //It's a mechanism.
+				childEntity->behavior = &actGate;
+				childEntity->skill[0] = 1; // signify behavior code of DOOR_DIR
+				childEntity->gateWide = 1;
+				Uint32 gateUID = childEntity->getUID();
+
+				// copy editor options from frame to gate itself.
+				childEntity->gateDisableOpening = entity->gateDisableOpening;
+				childEntity->skill[2] = -27;
+
+				// ************ wide gate invisible unit
+				childEntity = newEntity(entity->gateModel, 0, map->entities, nullptr); //Gate entity.
+				childEntity->x = entity->x + 16.0;
+				childEntity->y = entity->y;
+				childEntity->z = 7.5;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("26 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 8;
+				childEntity->sizey = 1;
+				childEntity->gateInverted = entity->gateInverted;
+				childEntity->gateStatus = childEntity->gateInverted;
+				childEntity->skill[28] = 0; //No mechanism
+				childEntity->behavior = &actGate;
+				childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
+				childEntity->gateWide = 2;
+				childEntity->parent = gateUID;
+				childEntity->flags[INVISIBLE] = true;
+				childEntity->gateDisableOpening = entity->gateDisableOpening;
+				childEntity->skill[2] = -27;
+				// ************ wide gate invisible unit
+
+				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+				childEntity->flags[INVISIBLE] = true;
+				childEntity->flags[BLOCKSIGHT] = true;
+				childEntity->x = entity->x - 7;
+				childEntity->y = entity->y;
+				childEntity->yaw -= PI / 2.0;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("24 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 2;
+				childEntity->sizey = 2;
+				childEntity->behavior = &actDoorFrame;
+
+				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+				childEntity->flags[INVISIBLE] = true;
+				childEntity->flags[BLOCKSIGHT] = true;
+				childEntity->x = entity->x + 7 + 16;
+				childEntity->y = entity->y;
+				childEntity->yaw -= PI / 2.0;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("25 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 2;
+				childEntity->sizey = 2;
+				childEntity->behavior = &actDoorFrame;
+				break;
+			}
+			// large gate east/west
+			case 307:
+			{
+				entity->x += 8;
+				entity->y += 8;
+				entity->z = 7.5;
+				entity->sprite = entity->gateFrame;
+				entity->flags[PASSABLE] = true;
+				entity->behavior = &actDoorFrame;
+
+				auto childEntity = newEntity(entity->gateModel, 0, map->entities, nullptr); //Gate entity.
+				childEntity->x = entity->x;
+				childEntity->y = entity->y;
+				childEntity->z = 7.5;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("26 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 1;
+				childEntity->sizey = 8;
+				childEntity->gateInverted = entity->gateInverted;
+				childEntity->gateStatus = childEntity->gateInverted;
+				childEntity->skill[28] = 1; //Mechanism
+				childEntity->behavior = &actGate;
+				childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
+				childEntity->gateWide = 1;
+				Uint32 gateUID = childEntity->getUID();
+
+				// copy editor options from frame to gate itself.
+				childEntity->gateDisableOpening = entity->gateDisableOpening;
+				childEntity->skill[2] = -27;
+
+				// ************ wide gate invisible unit
+				childEntity = newEntity(entity->gateModel, 0, map->entities, nullptr); //Gate entity.
+				childEntity->x = entity->x;
+				childEntity->y = entity->y + 16.0;
+				childEntity->z = 7.5;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("26 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 1;
+				childEntity->sizey = 8;
+				childEntity->gateInverted = entity->gateInverted;
+				childEntity->gateStatus = childEntity->gateInverted;
+				childEntity->skill[28] = 0; //No mechanism
+				childEntity->behavior = &actGate;
+				childEntity->skill[0] = 0; // signify behavior code of DOOR_DIR
+				childEntity->gateWide = 2;
+				childEntity->parent = gateUID;
+				childEntity->flags[INVISIBLE] = true;
+				childEntity->gateDisableOpening = entity->gateDisableOpening;
+				childEntity->skill[2] = -27;
+				// ************ wide gate invisible unit
+
+				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+				childEntity->flags[INVISIBLE] = true;
+				childEntity->flags[BLOCKSIGHT] = true;
+				childEntity->x = entity->x;
+				childEntity->y = entity->y - 7;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("27 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 2;
+				childEntity->sizey = 2;
+				childEntity->behavior = &actDoorFrame;
+
+				childEntity = newEntity(doorFrameSprite(), 0, map->entities, nullptr); //Door frame entity.
+				childEntity->flags[INVISIBLE] = true;
+				childEntity->flags[BLOCKSIGHT] = true;
+				childEntity->x = entity->x;
+				childEntity->y = entity->y + 7 + 16;
+				TileEntityList.addEntity(*childEntity);
+				//printlog("28 Generated entity. Sprite: %d Uid: %d X: %.2f Y: %.2f\n",childEntity->sprite,childEntity->getUID(),childEntity->x,childEntity->y);
+				childEntity->sizex = 2;
+				childEntity->sizey = 2;
+				childEntity->behavior = &actDoorFrame;
+				break;
+			}
 			//Chest.
 			case 21:
 			{
@@ -9942,6 +10136,12 @@ void assignActions(map_t* map)
 					entity->yaw = PI / 2;
 					entity->behavior = &actTeleporter;
 					entity->flags[PASSABLE] = true;
+				}
+
+				if ( entity->teleporterRequirePower > 0 )
+				{
+					entity->flags[INVISIBLE] = true;
+					entity->skill[28] = 1; // is a mechanism
 				}
 				break;
 			// ceiling tile:

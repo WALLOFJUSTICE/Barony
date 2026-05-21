@@ -248,7 +248,8 @@ static const int SPELL_FOCI_WINDBLAST = 225;
 static const int SPELL_REVENANT_PUSH = 226;
 static const int SPELL_WATER_BOLT = 227;
 static const int SPELL_WATER_ELEMENTAL = 228;
-static const int NUM_SPELLS = 229;
+static const int SPELL_STARE_BEAM = 229;
+static const int NUM_SPELLS = 230;
 
 #define SPELLELEMENT_CONFUSE_BASE_DURATION 2//In seconds.
 #define SPELLELEMENT_BLEED_BASE_DURATION 10//In seconds.
@@ -390,6 +391,9 @@ static const int PARTICLE_EFFECT_HOLY_FIRE = 94;
 static const int PARTICLE_EFFECT_HOLY_BEAM_ORBIT = 95;
 static const int PARTICLE_EFFECT_REVENANT_PUSH = 96;
 static const int PARTICLE_EFFECT_WATER_ELEMENTAL_DIE = 97;
+static const int PARTICLE_EFFECT_HAUNTED_ARMOR = 98;
+static const int PARTICLE_EFFECT_STARE_GAZE = 99;
+static const int PARTICLE_EFFECT_STARE_MESMERIZE = 100;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -439,6 +443,9 @@ static const int PARTICLE_TIMER_ACTION_WATERSPLASH = 39;
 static const int PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE = 40;
 static const int PARTICLE_TIMER_ACTION_WATER_ELEMENTAL = 41;
 static const int PARTICLE_TIMER_ACTION_WATER_VFX = 42;
+static const int PARTICLE_TIMER_ACTION_STARE_GAZE = 43;
+static const int PARTICLE_TIMER_ACTION_STAREMASTER_PUSH = 44;
+static const int PARTICLE_TIMER_ACTION_STAREMASTER_MESMERIZE = 45;
 
 struct ParticleEmitterHit_t
 {
@@ -1087,6 +1094,10 @@ void actLeafParticle(Entity* my);
 void actLeafPile(Entity* my);
 Entity* spawnLeafPile(real_t x, real_t y, bool trap);
 int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, Entity* attacker, int effectID);
+Entity* createStareParticle(Entity* caster);
+void createStareAOE(Entity* my, bool updateClients = false);
+bool entityWithinStareAngle(Entity* my, Entity* target);
+void actStareParticle(Entity* my);
 
 void spawnMagicTower(Entity* parent, real_t x, real_t y, int spellID, Entity* autoHitTarget, bool castedSpell = false); // autoHitTarget is to immediate damage an entity, as all 3 tower magics hitting is unreliable
 bool magicDig(Entity* parent, Entity* projectile, int numRocks, int randRocks);
@@ -1251,7 +1262,10 @@ struct AOEIndicators_t
 		CACHE_VORTEX_AESTHETIC,
 		CACHE_VORTEX_AESTHETIC2,
 		CACHE_REVENANT_PUSH,
-		CACHE_REVENANT_PUSH2
+		CACHE_REVENANT_PUSH2,
+		CACHE_STAREMASTER_STARE,
+		CACHE_STAREMASTER_SWIPE,
+		CACHE_STARE_BEAM
 	};
 	struct Indicator_t
 	{

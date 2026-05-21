@@ -1982,14 +1982,16 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 									&& entity->sprite != 2238
 									&& entity->sprite != 2411
 									&& entity->sprite != 2414
-									&& entity->sprite != 2430) )
+									&& entity->sprite != 2430
+									&& entity->sprite != 2468
+									&& entity->sprite != 2477) )
 						)
 					) 
 				)
 			{
 				// if entities & LINETRACE_IGNORE_ENTITIES, then ignore entities that block sight.
 				// 16/11/19 - added exception to monsters. if monster, use the INVISIBLE flag to skip checking.
-				// 889/1247/1408 is dummybot/mimic/bat/revenant_skull/adorcised weapon/elemental/moth/duck/gryphon "invisible" AI entity. so it's invisible, need to make it shown here.
+				// 889/1247/1408 is dummybot/mimic/bat/revenant_skull/adorcised weapon/elemental/moth/duck/gryphon/armor/staremaster "invisible" AI entity. so it's invisible, need to make it shown here.
 				if ( entity->behavior == &actMonster && entity->sprite == 1408 )
 				{
 					if ( (entity != target && target != nullptr) || entity == my || entity->flags[PASSABLE] )

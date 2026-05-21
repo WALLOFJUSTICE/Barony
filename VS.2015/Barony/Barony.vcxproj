@@ -1334,6 +1334,7 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     <ClCompile Include="..\..\src\monster_goatman.cpp" />
     <ClCompile Include="..\..\src\monster_goblin.cpp" />
     <ClCompile Include="..\..\src\monster_gryphon.cpp" />
+    <ClCompile Include="..\..\src\monster_haunted_armor.cpp" />
     <ClCompile Include="..\..\src\monster_human.cpp" />
     <ClCompile Include="..\..\src\monster_imp.cpp" />
     <ClCompile Include="..\..\src\monster_incubus.cpp" />
@@ -1357,6 +1358,7 @@ if %errorlevel% leq 1 exit 0 else exit %errorlevel%</Command>
     <ClCompile Include="..\..\src\monster_skeleton.cpp" />
     <ClCompile Include="..\..\src\monster_slime.cpp" />
     <ClCompile Include="..\..\src\monster_spider.cpp" />
+    <ClCompile Include="..\..\src\monster_staremaster.cpp" />
     <ClCompile Include="..\..\src\monster_succubus.cpp" />
     <ClCompile Include="..\..\src\monster_summons.cpp" />
     <ClCompile Include="..\..\src\monster_troll.cpp" />

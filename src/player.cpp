@@ -4203,6 +4203,10 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 		{
 			interactText = Language::get(4010); // "Inspect gravestone" 
 		}
+		else if ( parent->behavior == &actStatue )
+		{
+			interactText = Language::get(7041); // "Inspect statue" 
+		}
 		else if ( parent->behavior == &actMonster )
 		{
 			int monsterType = parent->getMonsterTypeFromSprite();

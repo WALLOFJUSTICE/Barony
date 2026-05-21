@@ -200,11 +200,12 @@ char pedestalPropertyNames[5][35] =
 	"Lock orb when placed(0-1)"
 };
 
-char teleporterPropertyNames[3][25] =
+char teleporterPropertyNames[4][25] =
 {
 	"X Coordinate to teleport",
 	"Y Coordinate to teleport",
-	"Type of sprite (0-2)"
+	"Type of sprite (0-2)",
+	"Requires power (0-2)"
 };
 
 char ceilingTilePropertyNames[4][30] =
@@ -382,6 +383,14 @@ char doorIronPropertyNames[4][42] =
 char gatePropertyNames[1][35] =
 {
 	"Disable unlocking with spell (0-1)"
+};
+
+char wideGatePropertyNames[4][35] =
+{
+	"Gate model to use (0-9999)",
+	"Frame model to use (0-9999)",
+	"Disable unlocking with spell (0-1)",
+	"Invert gate power (0-1)"
 };
 
 char playerSpawnPropertyNames[1][35] =
@@ -5570,6 +5579,30 @@ int main(int argc, char** argv)
 										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
 									}
 								}
+								else if ( i == 3 )
+								{
+									if ( propertyInt > 2 || propertyInt < 0 )
+									{
+										propertyPageError(i, 0); // reset to default 0 up.
+									}
+									else
+									{
+										char tmpStr[32] = "";
+										if ( propertyInt == 2 )
+										{
+											strcpy(tmpStr, "toggle from power");
+										}
+										else if ( propertyInt == 1 )
+										{
+											strcpy(tmpStr, "stay on if powered");
+										}
+										else
+										{
+											strcpy(tmpStr, "n/a");
+										}
+										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
+									}
+								}
 								else
 								{
 									// enter other row entries here
@@ -5596,7 +5629,7 @@ int main(int argc, char** argv)
 							}
 
 							// set the maximum length allowed for user input
-							if ( editproperty == 2 )
+							if ( editproperty == 2 || editproperty == 3 )
 							{
 								inputlen = 2;
 							}
@@ -7990,6 +8023,127 @@ int main(int argc, char** argv)
 
 							// set the maximum length allowed for user input
 							inputlen = 2;
+							propertyPageCursorFlash(spacing);
+						}
+					}
+				}
+				else if ( newwindow == 39 )
+				{
+					if ( selectedEntity[0] != NULL )
+					{
+						int numProperties = sizeof(wideGatePropertyNames) / sizeof(wideGatePropertyNames[0]); //find number of entries in property list
+						const int lenProperties = sizeof(wideGatePropertyNames[0]) / sizeof(char); //find length of entry in property list
+						int spacing = 36; // 36 px between each item in the list.
+						int inputFieldHeader_y = suby1 + 28; // 28 px spacing from subwindow start.
+						int inputField_x = subx1 + 8; // 8px spacing from subwindow start.
+						int inputField_y = inputFieldHeader_y + 16;
+						int inputFieldWidth = 64; // width of the text field
+						int inputFieldFeedback_x = inputField_x + inputFieldWidth + 8;
+						char tmpPropertyName[lenProperties] = "";
+						Uint32 color = makeColorRGB(0, 255, 0);
+						Uint32 colorRandom = makeColorRGB(0, 168, 255);
+						Uint32 colorError = makeColorRGB(255, 0, 0);
+
+						for ( int i = 0; i < numProperties; i++ )
+						{
+							int propertyInt = atoi(spriteProperties[i]);
+
+							strcpy(tmpPropertyName, wideGatePropertyNames[i]);
+							inputFieldHeader_y = suby1 + 28 + i * spacing;
+							inputField_y = inputFieldHeader_y + 16;
+							// box outlines then text
+							drawDepressed(inputField_x - 4, inputField_y - 4, inputField_x - 4 + inputFieldWidth, inputField_y + 16 - 4);
+							// print values on top of boxes
+							printText(font8x8_bmp, inputField_x, suby1 + 44 + i * spacing, spriteProperties[i]);
+							printText(font8x8_bmp, inputField_x, inputFieldHeader_y, tmpPropertyName);
+
+							if ( errorArr[i] != 1 )
+							{
+								if ( i == 0 || i == 1 )
+								{
+									if ( propertyInt > 9999 || propertyInt < 0 )
+									{
+										propertyPageError(i, 0); // reset to default
+									}
+									else
+									{
+										if ( modelFileNames.find(propertyInt) != modelFileNames.end() )
+										{
+											std::string tmpStr = modelFileNames[propertyInt];
+											printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr.c_str());
+										}
+										else
+										{
+											printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 0, 0), "Unknown Model!");
+										}
+									}
+								}
+								else if ( i == 2 )
+								{
+									if ( propertyInt > 1 || propertyInt < 0 )
+									{
+										propertyPageError(i, 0); // reset to default no disable
+									}
+									else
+									{
+										char tmpStr[32] = "";
+										if ( propertyInt == 1 )
+										{
+											strcpy(tmpStr, "disabled");
+										}
+										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
+									}
+								}
+								else if ( i == 3 )
+								{
+									if ( propertyInt > 1 || propertyInt < 0 )
+									{
+										propertyPageError(i, 0); // reset to default no invert
+									}
+									else
+									{
+										char tmpStr[32] = "";
+										if ( propertyInt == 1 )
+										{
+											strcpy(tmpStr, "inverted");
+										}
+										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
+									}
+								}
+								else
+								{
+									// enter other row entries here
+								}
+							}
+
+							if ( errorMessage )
+							{
+								if ( errorArr[i] == 1 )
+								{
+									printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, colorError, "Invalid ID!");
+								}
+							}
+						}
+
+						propertyPageTextAndInput(numProperties, inputFieldWidth);
+
+						if ( editproperty < numProperties )   // edit
+						{
+							if ( !SDL_IsTextInputActive() )
+							{
+								SDL_StartTextInput();
+								inputstr = spriteProperties[0];
+							}
+
+							// set the maximum length allowed for user input
+							if ( editproperty <= 1 )
+							{
+								inputlen = 5;
+							}
+							else
+							{
+								inputlen = 2;
+							}
 							propertyPageCursorFlash(spacing);
 						}
 					}

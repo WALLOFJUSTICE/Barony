@@ -3806,7 +3806,10 @@ void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta
 
 	// rotate
 	if ( !player.usingCommand()
-		&& player.bControlEnabled && !gamePaused && my->isMobile() && !inputs.hasController(PLAYER_NUM) )
+		&& player.bControlEnabled && !gamePaused 
+		&& my->isMobile() 
+		&& !inputs.hasController(PLAYER_NUM)
+		&& !stats[player.playernum]->getEffectActive(EFF_MESMERIZED) )
 	{
 		if ( !stats[playernum]->getEffectActive(EFF_CONFUSED) )
 		{
@@ -3826,7 +3829,32 @@ void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta
 	}
 	bool shootmode = players[PLAYER_NUM]->shootmode;
 
-	if ( handleQuickTurn(useRefreshRateDelta) )
+	if ( stats[player.playernum]->getEffectActive(EFF_MESMERIZED) )
+	{
+		if ( Entity* lookEntity = uidToEntity(my->playerFearfulUid) )
+		{
+			real_t tangent = atan2(lookEntity->y - my->y, lookEntity->x - my->x);
+			real_t dir = (my->yaw - tangent);
+			while ( dir >= PI )
+			{
+				dir -= PI * 2;
+			}
+			while ( dir < -PI )
+			{
+				dir += PI * 2;
+			}
+			my->yaw -= dir / 8;
+			while ( my->yaw >= PI * 2 )
+			{
+				my->yaw -= PI * 2;
+			}
+			while ( my->yaw < 0 )
+			{
+				my->yaw += PI * 2;
+			}
+		}
+	}
+	else if ( handleQuickTurn(useRefreshRateDelta) )
 	{
 		// do nothing, override rotations.
 	}
@@ -6596,7 +6624,7 @@ void actPlayer(Entity* my)
 		}
 		else if ( *cvar_pbaoe == 11 )
 		{
-			Entity* spellTimer = createParticleTimer(my, 3 * TICKS_PER_SECOND + 10, -1);
+			/*Entity* spellTimer = createParticleTimer(my, 3 * TICKS_PER_SECOND + 10, -1);
 			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_ETERNALS_GAZE;
 			spellTimer->particleTimerCountdownSprite = -1;
 			spellTimer->flags[UPDATENEEDED] = true;
@@ -6608,7 +6636,21 @@ void actPlayer(Entity* my)
 			val |= (Uint8)(19);
 			val |= (((Uint16)(spellTimer->particleTimerDuration) & 0xFFF) << 8);
 			val |= (Uint8)(spellTimer->particleTimerCountdownAction & 0xFF) << 20;
-			spellTimer->skill[2] = val;
+			spellTimer->skill[2] = val;*/
+
+			//Entity* spellTimer = createParticleTimer(my, 3 * TICKS_PER_SECOND + 10, -1);
+			//spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_STARE_GAZE2;
+			//spellTimer->particleTimerCountdownSprite = -1;
+			//spellTimer->yaw = my->yaw;
+			//spellTimer->x = my->x + 16.0 * cos(my->yaw);
+			//spellTimer->y = my->y + 16.0 * sin(my->yaw);
+			//spellTimer->flags[NOUPDATE] = false; // spawn for client
+			//spellTimer->flags[UPDATENEEDED] = true;
+			//Sint32 val = (1 << 31);
+			//val |= (Uint8)(19);
+			//val |= (((Uint16)(spellTimer->particleTimerDuration) & 0xFFF) << 8);
+			//val |= (Uint8)(spellTimer->particleTimerCountdownAction & 0xFF) << 20;
+			//spellTimer->skill[2] = val;
 		}
 		else if ( *cvar_pbaoe == 5 || *cvar_pbaoe == 16 )
 		{

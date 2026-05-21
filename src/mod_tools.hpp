@@ -2982,6 +2982,7 @@ public:
 			bool visible = true;
 		};
 		std::map<std::string, std::vector<StatueLimb_t>> limbs;
+		std::string message = "";
 		Statue_t() {
 			id = statueId; 
 			++statueId;

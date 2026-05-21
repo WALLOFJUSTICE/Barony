@@ -2176,6 +2176,9 @@ void clientActions(Entity* entity)
 					entity->behavior = &actParticleFloorMagic;
 					entity->flags[NOUPDATE] = true;
 					break;
+				case -27:
+					entity->behavior = &actGate;
+					break;
 				default:
 					if ( static_cast<Uint8>(c & 0xFF) == 17 )
 					{
@@ -3619,6 +3622,11 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					createParticleBolas(entity, sprite, duration, nullptr);
 				}
 				break;
+				case PARTICLE_EFFECT_STARE_MESMERIZE:
+				{
+					createStareAOE(entity);
+					break;
+				}
 				default:
 					break;
 			}
@@ -3694,6 +3702,27 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			case PARTICLE_EFFECT_MISC_PUDDLE:
 				spawnMiscPuddle(nullptr, particle_x, particle_y, sprite);
 				break;
+			case PARTICLE_EFFECT_STARE_GAZE:
+			{
+				Sint32 dir = SDLNet_Read32(&net_packet->data[17]);
+				Uint32 casterUid = SDLNet_Read32(&net_packet->data[21]);
+				Entity* spellTimer = createParticleTimer(uidToEntity(casterUid), TICKS_PER_SECOND + 50, -1);
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_STARE_GAZE;
+				spellTimer->particleTimerCountdownSprite = -1;
+				spellTimer->yaw = dir / 256.0;
+				spellTimer->particleTimerVariable1 = sprite;
+				if ( sprite == 0 )
+				{
+					spellTimer->yaw -= (PI / 64) * 4.0;
+				}
+				else if ( sprite == 2 )
+				{
+					spellTimer->yaw += (PI / 64) * 4.0;
+				}
+				spellTimer->x = particle_x;
+				spellTimer->y = particle_y;
+				break;
+			}
 			case PARTICLE_EFFECT_BLOOD_BUBBLE:
 			{
 				for ( int i = 0; i < 4; ++i )

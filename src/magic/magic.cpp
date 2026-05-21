@@ -130,6 +130,11 @@ bool spellEffectDominate(Entity& my, spellElement_t& element, Entity& caster, En
 	if ( hit.entity->isBossMonster()
 		|| hitstats->type == MIMIC
 		|| hitstats->type == MINIMIMIC
+		|| hitstats->type == STAREMASTER
+		|| hitstats->type == GRYPHON
+		|| hitstats->type == SALAMANDER
+		|| hitstats->type == HAUNTED_ARMOR
+		|| hitstats->type == MONSTER_ADORCISED_WEAPON
 		|| hitstats->type == BAT_SMALL
 		|| hitstats->type == HOLOGRAM
 		|| hit.entity->monsterIsTinkeringCreation()
@@ -352,8 +357,12 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int da
 			bool recentlyHitBySameSpell = false;
 			if ( !hasamulet && !hasgoggles )
 			{
-				hitstats->setEffectActive(EFF_POISONED, 1);
-				hitstats->EFFECTS_TIMERS[EFF_POISONED] = duration; // 6 seconds.
+				if ( hitstats->isPoisonable() )
+				{
+					hitstats->setEffectActive(EFF_POISONED, 1);
+					hitstats->EFFECTS_TIMERS[EFF_POISONED] = duration; // 6 seconds.
+					hitstats->poisonKiller = my.parent;
+				}
 				if ( abs(duration - previousDuration) > 10 ) // message if not recently acidified
 				{
 					recentlyHitBySameSpell = false;
@@ -362,7 +371,6 @@ void spellEffectAcid(Entity& my, spellElement_t& element, Entity* parent, int da
 				{
 					recentlyHitBySameSpell = true;
 				}
-				hitstats->poisonKiller = my.parent;
 			}
 			
 			if ( !recentlyHitBySameSpell && !hasgoggles )
@@ -1268,14 +1276,12 @@ int getCharmMonsterDifficulty(Entity& my, Stat& myStats)
 	case INSECTOID:
 	case GOATMAN:
 	case BUGBEAR:
-	case MONSTER_ADORCISED_WEAPON:
 	case FLAME_ELEMENTAL:
 	case EARTH_ELEMENTAL:
-	case WATER_ELEMENTAL:
 	case MOTH_SMALL:
 	case DRYAD:
 	case MYCONID:
-	case SALAMANDER:
+	case WATER_ELEMENTAL:
 		difficulty = 2;
 		break;
 	case CRYSTALGOLEM:
@@ -1295,7 +1301,16 @@ int getCharmMonsterDifficulty(Entity& my, Stat& myStats)
 	case HOLOGRAM:
 	case DUCK_SMALL:
 	case GRYPHON:
-	case MONSTER_UNUSED_8:
+	case MONSTER_ADORCISED_WEAPON:
+	case SALAMANDER:
+	case HAUNTED_ARMOR:
+	case STAREMASTER:
+	case MONSTER_UNUSED_10:
+	case MONSTER_UNUSED_11:
+	case MONSTER_UNUSED_12:
+	case MONSTER_UNUSED_13:
+	case MONSTER_UNUSED_14:
+	case MONSTER_UNUSED_15:
 		difficulty = 666;
 		break;
 	}
@@ -1745,6 +1760,10 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			|| targetStats->type == FLAME_ELEMENTAL
 			|| targetStats->type == EARTH_ELEMENTAL
 			|| targetStats->type == WATER_ELEMENTAL
+			|| targetStats->type == GRYPHON
+			|| targetStats->type == HAUNTED_ARMOR
+			|| targetStats->type == MONSTER_ADORCISED_WEAPON
+			|| targetStats->type == STAREMASTER
 			|| (targetStats->type == VAMPIRE && (targetStats->getAttribute("special_npc") == "bram kindly"))
 			|| (targetStats->type == INCUBUS && (targetStats->getAttribute("special_npc") == "johann"))
 			|| (targetStats->type == INCUBUS && !strncmp(targetStats->name, "inner demon", strlen("inner demon")))
@@ -1787,13 +1806,20 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 				HOLOGRAM,
 				EARTH_ELEMENTAL,
 				DUCK_SMALL,
-				MYCONID,
-				DRYAD,
-				GREMLIN,
+				//MYCONID,
+				//DRYAD,
+				//GREMLIN,
 				SALAMANDER,
 				WATER_ELEMENTAL,
 				GRYPHON,
-				MONSTER_UNUSED_8,
+				HAUNTED_ARMOR,
+				STAREMASTER,
+				MONSTER_UNUSED_10,
+				MONSTER_UNUSED_11,
+				MONSTER_UNUSED_12,
+				MONSTER_UNUSED_13,
+				MONSTER_UNUSED_14,
+				MONSTER_UNUSED_15,
 				MOTH_SMALL
 	        };
 			typesToSkip.insert(targetStats->type);

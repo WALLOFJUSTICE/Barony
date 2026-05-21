@@ -73,7 +73,14 @@ enum Monster : int
 	DUCK_SMALL,
 	WATER_ELEMENTAL,
 	GRYPHON,
-	MONSTER_UNUSED_8,
+	HAUNTED_ARMOR,
+	STAREMASTER,
+	MONSTER_UNUSED_10,
+	MONSTER_UNUSED_11,
+	MONSTER_UNUSED_12,
+	MONSTER_UNUSED_13,
+	MONSTER_UNUSED_14,
+	MONSTER_UNUSED_15,
 	MAX_MONSTER
 };
 const int NUMMONSTERS = MAX_MONSTER;
@@ -369,7 +376,32 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 	{
 		2414, 2430
 	},
-	//MONSTER_UNUSED_8
+	// HAUNTED_ARMOR
+	{
+		2468
+	},
+	//STAREMASTER
+	{
+		2477
+	},
+	//MONSTER_UNUSED_10
+	{
+	},
+	//MONSTER_UNUSED_11
+	{
+	},
+	//MONSTER_UNUSED_12
+	{
+	},
+	//MONSTER_UNUSED_13
+	{
+	},
+	//MONSTER_UNUSED_14
+	{
+	},
+	//MONSTER_UNUSED_15
+	{
+	}
 };
 
 static char monstertypename[][32] =
@@ -426,7 +458,14 @@ static char monstertypename[][32] =
 	"duck_small",
 	"water_elemental",
 	"gryphon",
-	"monster_unused_8"
+	"haunted_armor",
+	"staremaster",
+	"monster_unused_10",
+	"monster_unused_11",
+	"monster_unused_12",
+	"monster_unused_13",
+	"monster_unused_14",
+	"monster_unused_15"
 };
 
 // body part focal points
@@ -490,7 +529,14 @@ static char gibtype[NUMMONSTERS] =
 	0,  //DUCK_SMALL
 	0,  //WATER_ELEMENTAL
 	1,  //GRYPHON
-	1   //MONSTER_UNUSED_8
+	0,  //HAUNTED_ARMOR
+	1,  //STAREMASTER
+	1,  //MONSTER_UNUSED_10
+	1,  //MONSTER_UNUSED_11
+	1,  //MONSTER_UNUSED_12
+	1,  //MONSTER_UNUSED_13
+	1,  //MONSTER_UNUSED_14
+	1   //MONSTER_UNUSED_15
 };
 
 // columns go like this:
@@ -545,12 +591,19 @@ static double damagetables[NUMMONSTERS][7] =
 	{ 0.5, 1.f, 0.7, 0.5, 0.5, 1.5, 0.5 }, // monster_adorcised_weapon
 	{ 0.5, 0.5, 0.5, 0.5, 0.5, 1.5, 0.5 }, // flame_elemental
 	{ 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f }, // hologram
-	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // moth_small
+	{ 0.5, 0.5, 0.5, 0.5, 0.3, 0.8, 0.8 }, // moth_small
 	{ 0.7, 1.5, 1.f, 1.f, 0.7, 1.5, 0.7 }, // earth_elemental
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // duck_small
-	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // water_elemental
-	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // gryphon
-	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }  // monster_unused_8
+	{ 1.f, 0.7, 0.9, 0.5, 0.5, 1.5, 0.7 }, // water_elemental
+	{ 1.f, 1.f, 0.8, 1.3, 1.3, 0.8, 0.8 }, // gryphon
+	{ 0.7, 1.5, 1.f, 1.2, 0.8, 1.5, 0.5 }, // haunted_armor
+	{ 1.f, 0.7, 0.8, 1.3, 1.3, 0.4, 0.8 }, // staremaster
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_10
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_11
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_12
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_13
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_14
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }  // monster_unused_15
 };
 
 enum DamageTableType : int
@@ -810,6 +863,8 @@ void initEarthElemental(Entity* my, Stat* myStats);
 void initWaterElemental(Entity* my, Stat* myStats);
 void initDuck(Entity* my, Stat* myStats);
 void initGryphon(Entity* my, Stat* myStats);
+void initHauntedArmor(Entity* my, Stat* myStats);
+void initStareMaster(Entity* my, Stat* myStats);
 
 //--act*Limb functions--
 void actHumanLimb(Entity* my);
@@ -859,6 +914,8 @@ void actEarthElementalLimb(Entity* my);
 void actWaterElementalLimb(Entity* my);
 void actDuckLimb(Entity* my);
 void actGryphonLimb(Entity* my);
+void actHauntedArmorLimb(Entity* my);
+void actStareMasterLimb(Entity* my);
 
 //--*Die functions--
 void humanDie(Entity* my);
@@ -910,6 +967,8 @@ void earthElementalDie(Entity* my);
 void waterElementalDie(Entity* my);
 void duckDie(Entity* my);
 void gryphonDie(Entity* my);
+void hauntedArmorDie(Entity* my);
+void stareMasterDie(Entity* my);
 
 void monsterAnimate(Entity* my, Stat* myStats, double dist);
 //--*MoveBodyparts functions--
@@ -957,6 +1016,7 @@ void monsterGMoveBodyparts(Entity* my, Stat* myStats, double dist);
 void revenantSkullAnimate(Entity* my, Stat* myStats, double dist);
 void hologramAnimate(Entity* my, Stat* myStats, double dist);
 int mothGetAttackPose(Entity* my, int basePose);
+int stareMasterGetAttackPose(Entity* my);
 void mothAnimate(Entity* my, Stat* myStats, double dist);
 void earthElementalAnimate(Entity* my, Stat* myStats, double dist);
 void waterElementalAnimate(Entity* my, Stat* myStats, double dist);
@@ -964,6 +1024,9 @@ void duckAnimate(Entity* my, Stat* myStats, double dist);
 void duckSpawnFeather(int sprite, real_t x, real_t y, real_t z, Entity* my);
 bool duckAreaQuck(Entity* my);
 void gryphonAnimate(Entity* my, Stat* myStats, double dist);
+void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist);
+void hauntedArmorSelectSpell(Entity* my, Stat* myStats);
+void stareMasterAnimate(Entity* my, Stat* myStats, double dist);
 
 //--misc functions--
 void actMinotaurTrap(Entity* my);
@@ -1090,6 +1153,13 @@ static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_M_CAST_SHORT = 150;
 static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_M_CAST_LONG = 250;
 static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_G_THROW = 200;
 static const int MONSTER_SPECIAL_COOLDOWN_MONSTER_G_CAST = 500;
+static const int MONSTER_SPECIAL_COOLDOWN_HAUNTED_ARMOR_CAST_SHORT = 300;
+static const int MONSTER_SPECIAL_COOLDOWN_HAUNTED_ARMOR_CAST_LONG = 500;
+static const int MONSTER_SPECIAL_COOLDOWN_SALAMANDER_FLAMES = 500;
+static const int MONSTER_SPECIAL_COOLDOWN_SALAMANDER_CAST = 200;
+static const int MONSTER_SPECIAL_COOLDOWN_STAREMASTER_FORMCHANGE_NORMAL = 250;
+static const int MONSTER_SPECIAL_COOLDOWN_STAREMASTER_FORMCHANGE_BEAM = 500;
+static const int MONSTER_SPECIAL_COOLDOWN_STAREMASTER_FORMCHANGE_ALT = 350;
 
 //--monster target search types
 static const int MONSTER_TARGET_ENEMY = 0;
@@ -1286,6 +1356,11 @@ static const int GRYPHON_FLY = 1;
 static const int GRYPHON_WALK = 2;
 static const int GRYPHON_STATE3 = 3;
 
+//-Haunted Armor
+static const int HAUNTED_ARMOR_SPECIAL_CAST1 = 1;
+static const int HAUNTED_ARMOR_SPECIAL_CAST2 = 2;
+static const int HAUNTED_ARMOR_SPECIAL_CAST3 = 3;
+
 //-Adorcised weapon
 static const int ADORCISED_WEAPON_SPECIAL_CHARGE = 1;
 static const int ADORCISED_WEAPON_SPECIAL_COOLDOWN = 2;
@@ -1293,6 +1368,13 @@ static const int ADORCISED_WEAPON_SPECIAL_COOLDOWN = 2;
 //-Water Elemental
 static const int WATER_ELEMENTAL_DIVE = 1;
 static const int WATER_ELEMENTAL_RISING = 2;
+
+static const int SALAMANDER_STRAFE = 1;
+static const int SALAMANDER_CAST = 2;
+
+static const int STAREMASTER_MODE_NORMAL = 1;
+static const int STAREMASTER_MODE_BEAM = 2;
+static const int STAREMASTER_MODE_ALTERNATE = 3;
 
 struct MonsterData_t
 {

@@ -164,7 +164,13 @@ void actSummonTrap(Entity* my)
 						DUCK_SMALL,
 						WATER_ELEMENTAL,
 						GRYPHON,
-						MONSTER_UNUSED_8,
+						HAUNTED_ARMOR,
+						MONSTER_UNUSED_10,
+						MONSTER_UNUSED_11,
+						MONSTER_UNUSED_12,
+						MONSTER_UNUSED_13,
+						MONSTER_UNUSED_14,
+						MONSTER_UNUSED_15,
 						MOTH_SMALL
 	                };
 	                
