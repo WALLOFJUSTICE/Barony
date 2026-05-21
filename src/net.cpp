@@ -8703,7 +8703,12 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		}
 		else
 		{
-			Item* chestItem = Entity::addItemToVoidChestServer(player, newitem, forceNewStack, nullptr);
+			bool checkDestinationSpace = false;
+			if ( net_packet->len >= 29 )
+			{
+				checkDestinationSpace = net_packet->data[28] ? true : false;
+			}
+			Item* chestItem = Entity::addItemToVoidChestServer(player, newitem, forceNewStack, nullptr, checkDestinationSpace);
 			if ( chestItem != newitem )
 			{
 				free(newitem);

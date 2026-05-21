@@ -1337,7 +1337,8 @@ Item* Entity::addItemToVoidChest(int player, Item* item, bool forceNewStack, Ite
 			net_packet->data[25] = item->identified;
 			net_packet->data[26] = forceNewStack ? 1 : 0;
 			net_packet->data[27] = 1;
-			net_packet->len = 28;
+			net_packet->data[28] = 1; // check for full chest
+			net_packet->len = 29;
 			sendPacketSafe(net_sock, -1, net_packet, 0);
 
 			return item;
@@ -1345,7 +1346,7 @@ Item* Entity::addItemToVoidChest(int player, Item* item, bool forceNewStack, Ite
 		return nullptr;
 	}
 
-	return addItemToVoidChestServer(player, item, forceNewStack, specificDestinationStack);
+	return addItemToVoidChestServer(player, item, forceNewStack, specificDestinationStack, true);
 }
 
 Item* Entity::addItemToChest(Item* item, bool forceNewStack, Item* specificDestinationStack)
@@ -1374,7 +1375,8 @@ Item* Entity::addItemToChest(Item* item, bool forceNewStack, Item* specificDesti
 		net_packet->data[25] = item->identified;
 		net_packet->data[26] = forceNewStack ? 1 : 0;
 		net_packet->data[27] = players[player]->inventoryUI.chestGUI.voidChest ? 1 : 0;
-		net_packet->len = 28;
+		net_packet->data[28] = 0; // don't check for full chest, we've already verified
+		net_packet->len = 29;
 		sendPacketSafe(net_sock, -1, net_packet, 0);
 
 		return addItemToChestClientside(player, item, forceNewStack, specificDestinationStack);
@@ -1770,7 +1772,7 @@ Item* addItemToChestClientside(const int player, Item* item, bool forceNewStack,
 	return nullptr;
 }
 
-Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStack, Item* specificDestinationStack)
+Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStack, Item* specificDestinationStack, bool checkDestinationSpace)
 {
 	if ( !item )
 	{
@@ -1797,7 +1799,7 @@ Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStac
 			break;
 		}
 	}
-	if ( voidChestInUse ) // someone already has a void chest open
+	if ( voidChestInUse && checkDestinationSpace ) // someone already has a void chest open
 	{
 		if ( player >= 1 && player < MAXPLAYERS )
 		{
@@ -1899,7 +1901,7 @@ Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStac
 	}
 
 	bool voidChestFull = list_Size(inventory) >= Player::Inventory_t::MAX_CHEST_X * Player::Inventory_t::MAX_CHEST_Y;
-	if ( voidChestFull ) // void chest is full
+	if ( voidChestFull && checkDestinationSpace ) // void chest is full
 	{
 		bool dropped = false;
 		if ( player >= 1 && player < MAXPLAYERS )

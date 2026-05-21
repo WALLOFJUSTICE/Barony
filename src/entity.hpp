@@ -955,7 +955,7 @@ public:
 	void closeChestServer(); //Close the chest serverside, silently. Called when the chest is closed somewhere else for that client, but the server end stuff needs to be tied up.
 	Item* addItemToChest(Item* item, bool forceNewStack, Item* specificDestinationStack); //Adds an item to the chest. If server, notifies the client. If client, notifies the server.
 	static Item* addItemToVoidChest(int player, Item* item, bool forceNewStack, Item* specificDestinationStack); //Adds an item to the chest. If client, notifies the server.
-	static Item* addItemToVoidChestServer(int player, Item* item, bool forceNewStack, Item* specificDestinationStack);
+	static Item* addItemToVoidChestServer(int player, Item* item, bool forceNewStack, Item* specificDestinationStack, bool checkDestinationSpace);
 	Item* getItemFromChest(Item* item, int amount, bool getInfoOnly = false); //Removes an item from the chest and returns a pointer to it.
 	Item* addItemToChestFromInventory(int player, Item* item, int amount, bool forceNewStack, Item* specificDestinationStack);
 	Item* addItemToChestServer(Item* item, bool forceNewStack, Item* specificDestinationStack); //Adds an item to the chest. Called when the server receives a notification from the client that an item was added to the chest.
