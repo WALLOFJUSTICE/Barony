@@ -75,7 +75,7 @@ enum Monster : int
 	GRYPHON,
 	HAUNTED_ARMOR,
 	STAREMASTER,
-	MONSTER_UNUSED_10,
+	DRAGON,
 	MONSTER_UNUSED_11,
 	MONSTER_UNUSED_12,
 	MONSTER_UNUSED_13,
@@ -384,8 +384,9 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 	{
 		2477
 	},
-	//MONSTER_UNUSED_10
+	//DRAGON
 	{
+		2509
 	},
 	//MONSTER_UNUSED_11
 	{
@@ -460,7 +461,7 @@ static char monstertypename[][32] =
 	"gryphon",
 	"haunted_armor",
 	"staremaster",
-	"monster_unused_10",
+	"dragon",
 	"monster_unused_11",
 	"monster_unused_12",
 	"monster_unused_13",
@@ -469,7 +470,7 @@ static char monstertypename[][32] =
 };
 
 // body part focal points
-extern float limbs[NUMMONSTERS][30][3];
+extern float limbs[NUMMONSTERS][40][3];
 
 // 0: nothing
 // 1: red blood
@@ -531,7 +532,7 @@ static char gibtype[NUMMONSTERS] =
 	1,  //GRYPHON
 	0,  //HAUNTED_ARMOR
 	1,  //STAREMASTER
-	1,  //MONSTER_UNUSED_10
+	1,  //DRAGON
 	1,  //MONSTER_UNUSED_11
 	1,  //MONSTER_UNUSED_12
 	1,  //MONSTER_UNUSED_13
@@ -598,7 +599,7 @@ static double damagetables[NUMMONSTERS][7] =
 	{ 1.f, 1.f, 0.8, 1.3, 1.3, 0.8, 0.8 }, // gryphon
 	{ 0.7, 1.5, 1.f, 1.2, 0.8, 1.5, 0.5 }, // haunted_armor
 	{ 1.f, 0.7, 0.8, 1.3, 1.3, 0.4, 0.8 }, // staremaster
-	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_10
+	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // dragon
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_11
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_12
 	{ 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f }, // monster_unused_13
@@ -865,6 +866,7 @@ void initDuck(Entity* my, Stat* myStats);
 void initGryphon(Entity* my, Stat* myStats);
 void initHauntedArmor(Entity* my, Stat* myStats);
 void initStareMaster(Entity* my, Stat* myStats);
+void initDragon(Entity* my, Stat* myStats);
 
 //--act*Limb functions--
 void actHumanLimb(Entity* my);
@@ -916,6 +918,7 @@ void actDuckLimb(Entity* my);
 void actGryphonLimb(Entity* my);
 void actHauntedArmorLimb(Entity* my);
 void actStareMasterLimb(Entity* my);
+void actDragonLimb(Entity* my);
 
 //--*Die functions--
 void humanDie(Entity* my);
@@ -969,6 +972,7 @@ void duckDie(Entity* my);
 void gryphonDie(Entity* my);
 void hauntedArmorDie(Entity* my);
 void stareMasterDie(Entity* my);
+void dragonDie(Entity* my);
 
 void monsterAnimate(Entity* my, Stat* myStats, double dist);
 //--*MoveBodyparts functions--
@@ -1027,6 +1031,7 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist);
 void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist);
 void hauntedArmorSelectSpell(Entity* my, Stat* myStats);
 void stareMasterAnimate(Entity* my, Stat* myStats, double dist);
+void dragonAnimate(Entity* my, Stat* myStats, double dist);
 
 //--misc functions--
 void actMinotaurTrap(Entity* my);

@@ -3523,6 +3523,23 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 				consumeItem(item, player);
 			}
 			break;
+		case KEY_STONE:
+		case KEY_BONE:
+		case KEY_BRONZE:
+		case KEY_IRON:
+		case KEY_SILVER:
+		case KEY_GOLD:
+		case KEY_CRYSTAL:
+		case KEY_MACHINE:
+			if ( players[player]->isLocalPlayer() )
+			{
+				messagePlayer(player, MESSAGE_HINT, Language::get(7042));
+			}
+			if ( !players[player]->isLocalPlayer() )
+			{
+				consumeItem(item, player);
+			}
+			break;
 		case READABLE_BOOK:
 			if (numbooks && players[player]->isLocalPlayer() )
 			{

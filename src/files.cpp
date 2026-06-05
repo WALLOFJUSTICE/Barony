@@ -3238,6 +3238,25 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 						lightmapSmoothed[c].z = ambienceColor.z;
 					}
 				}
+				else if ( !strncmp(map.filename, "rooftop", 7) )
+				{
+					Vector4 ambienceColor = { 156.f, 156.f, 228.0, 1.f };
+					ambienceColor.x *= ambienceColor.w;
+					ambienceColor.y *= ambienceColor.w;
+					ambienceColor.z *= ambienceColor.w;
+					for ( int c = 0; c < destmap->width * destmap->height; c++ )
+					{
+						lightmap[c].x = ambienceColor.x;
+						lightmap[c].y = ambienceColor.y;
+						lightmap[c].z = ambienceColor.z;
+					}
+					for ( int c = 0; c < (destmap->width + 2) * (destmap->height + 2); c++ )
+					{
+						lightmapSmoothed[c].x = ambienceColor.x;
+						lightmapSmoothed[c].y = ambienceColor.y;
+						lightmapSmoothed[c].z = ambienceColor.z;
+					}
+				}
 				else if ( !strncmp(map.filename, "bastille", 8) )
 				{
 					Vector4 ambienceColor = { 32.f, 32.f, 40.f, 1.f };
@@ -6077,7 +6096,7 @@ void physfsReloadMonsterLimbFiles()
 	for ( int c = 1; c < NUMMONSTERS; c++ )
 	{
 		// initialize all offsets to zero
-		for ( int x = 0; x < 30; x++ )
+		for ( int x = 0; x < 40; x++ )
 		{
 			limbs[c][x][0] = 0;
 			limbs[c][x][1] = 0;
@@ -6126,7 +6145,7 @@ void physfsReloadMonsterLimbFiles()
 			}
 
 			// process line
-			if ( sscanf(data, "%d", &limb) != 1 || limb >= 30 || limb < 0 )
+			if ( sscanf(data, "%d", &limb) != 1 || limb >= 40 || limb < 0 )
 			{
 				printlog("warning: syntax error in '%s':%d\n invalid limb index!\n", filename, line);
 				continue;

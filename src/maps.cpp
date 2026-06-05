@@ -8286,6 +8286,7 @@ void assignActions(map_t* map)
 			case 246:
 			case 247:
 			case 304:
+			case 308:
 			{
 				Stat* myStats = NULL;
 				bool dummySummon = entity->entityHasString("summonNPC");
@@ -10143,6 +10144,8 @@ void assignActions(map_t* map)
 					entity->flags[INVISIBLE] = true;
 					entity->skill[28] = 1; // is a mechanism
 				}
+				entity->teleporterX += entity->mapGenerationRoomX;
+				entity->teleporterY += entity->mapGenerationRoomY;
 				break;
 			// ceiling tile:
 			case 119:
@@ -11977,7 +11980,8 @@ void map_t::setMapHDRSettings()
 		*cvar_fogDistance = 384.f;
 		*cvar_hdrLimitLow = 1.2f;
 	}
-	else if ( !strncmp(map.filename, "fortress", 8) )
+	else if ( !strncmp(map.filename, "fortress", 8)
+		|| !strncmp(map.filename, "rooftop", 7) )
 	{
 		*cvar_hdrBrightness = defaultBrightness;
 		if ( !*MainMenu::cvar_hdrEnabled )

@@ -20843,7 +20843,8 @@ void actRadiusMagicBadge(Entity* my)
 			|| my->sprite == 2402
 			|| my->sprite == 2403
 			|| my->sprite == 2408
-			|| my->sprite == 2409 )
+			|| my->sprite == 2409
+			|| my->sprite == 2508 )
 		{
 			badgeScale = 0.5;
 		}
@@ -21056,6 +21057,7 @@ Entity* createMagicRadiusBadge(Entity& parent)
 	static ConsoleVariable<float> cvar_magic_radius_badge1("/magic_radius_badge1", 4.0);
 	static ConsoleVariable<float> cvar_magic_radius_badge2("/magic_radius_badge2", 0.0);
 	entity->z = 4.0;
+
 	int mapx = entity->x / 16;
 	int mapy = entity->y / 16;
 	if ( mapx >= 0 && mapx < map.width && mapy >= 0 && mapy < map.height )
@@ -21074,6 +21076,19 @@ Entity* createMagicRadiusBadge(Entity& parent)
 	{
 		entity->fskill[0] = *cvar_magic_radius_badge2;
 	}
+
+	if ( parent.behavior == &actRadiusMagic && parent.actRadiusMagicFollowUID != 0 )
+	{
+		if ( Entity* follow = uidToEntity(parent.actRadiusMagicFollowUID) )
+		{
+			if ( follow->behavior == &actMonster && follow->getMonsterTypeFromSprite() == HAUNTED_ARMOR )
+			{
+				entity->z -= 4.0;
+				entity->fskill[0] -= 4.0;
+			}
+		}
+	}
+
 	entity->vel_z = -0.8;
 	entity->scalex = 0.1;
 	entity->scaley = 0.1;

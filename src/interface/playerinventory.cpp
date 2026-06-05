@@ -11764,6 +11764,12 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 		options.push_back(PROMPT_APPRAISE);
 		options.push_back(PROMPT_DROP);
 	}
+	else if ( item->type >= KEY_STONE && item->type <= KEY_MACHINE )
+	{
+		options.push_back(PROMPT_INSPECT);
+		options.push_back(PROMPT_APPRAISE);
+		options.push_back(PROMPT_DROP);
+	}
 	else if ( item->type == TOOL_PLAYER_LOOT_BAG )
 	{
 		options.push_back(PROMPT_INSPECT);

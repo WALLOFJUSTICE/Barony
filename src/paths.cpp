@@ -432,7 +432,7 @@ static std::chrono::high_resolution_clock::time_point pathtime;
 static std::chrono::high_resolution_clock::time_point starttime;
 static std::chrono::microseconds ms(0);
 static Uint32 updatedOnTick = 0;
-static ConsoleVariable<int> cvar_pathlimit("/pathlimit", 200);
+static ConsoleVariable<int> cvar_pathlimit("/pathlimit", 300);
 static ConsoleVariable<bool> cvar_pathing_debug("/pathing_debug", false);
 static ConsoleVariable<bool> cvar_pathing_collider_npc("/pathing_collider_npc", true);
 int lastGeneratePathTries = 0;
@@ -743,7 +743,7 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 	int tries = 0;
 	int maxtries = *cvar_pathlimit;
 	static ConsoleVariable<int> cvar_pathlimit_idlewalk("/pathlimit_idlewalk", 40);
-	static ConsoleVariable<int> cvar_pathlimit_allyfollow("/pathlimit_allyfollow", 200);
+	static ConsoleVariable<int> cvar_pathlimit_allyfollow("/pathlimit_allyfollow", 300);
 	static ConsoleVariable<int> cvar_pathlimit_bosses("/pathlimit_bosses", 2000);
 	static ConsoleVariable<int> cvar_pathlimit_commandmove("/pathlimit_commandmove", 1000);
 	static ConsoleVariable<int> cvar_pathlimit_achievement("/pathlimit_achievement", 1600);

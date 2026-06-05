@@ -1984,7 +1984,8 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 									&& entity->sprite != 2414
 									&& entity->sprite != 2430
 									&& entity->sprite != 2468
-									&& entity->sprite != 2477) )
+									&& entity->sprite != 2477
+									&& entity->sprite != 2509) )
 						)
 					) 
 				)

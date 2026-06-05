@@ -864,7 +864,7 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 		myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
 	}
 
-	static ConsoleVariable<int> cvar_stare_atk("/stare_atk", 0);
+	/*static ConsoleVariable<int> cvar_stare_atk("/stare_atk", 0);
 	if ( *cvar_stare_atk )
 	{
 		if ( *cvar_stare_atk - 1 < attacks.size() )
@@ -873,7 +873,7 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 			my->monsterAttackTime = 0;
 		}
 		*cvar_stare_atk = 0;
-	}
+	}*/
 
 	//my->yaw += 0.05;
 
@@ -896,12 +896,12 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 		entity->z = my->z;
 		entity->yaw = my->yaw;
 
-		static ConsoleVariable<int> cvar_stare("/stare", 0);
+		/*static ConsoleVariable<int> cvar_stare("/stare", 0);
 		if ( *cvar_stare == bodypart )
 		{
 			entity->pitch += 0.05;
 		}
-		else
+		else*/
 		{
 			entity->pitch = 0.0;
 		}

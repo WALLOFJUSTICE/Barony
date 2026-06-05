@@ -25897,6 +25897,10 @@ double Entity::monsterRotate()
 	{
 		yaw -= dir / 4;
 	}
+	else if ( race == DRAGON )
+	{
+		yaw -= dir / 8;
+	}
 	else if ( race == WATER_ELEMENTAL )
 	{
 		yaw -= abs(dir) / 16;
@@ -30777,6 +30781,7 @@ bool Entity::isBossMonster()
 			|| myStats->type == LICH_FIRE
 			|| myStats->type == LICH_ICE
 			|| myStats->type == DEVIL
+			|| myStats->type == DRAGON
 			|| (myStats->type == VAMPIRE && (myStats->getAttribute("special_npc") == "bram kindly"))
 			|| (myStats->type == INCUBUS && (myStats->getAttribute("special_npc") == "johann"))
 			|| (myStats->type == COCKATRICE && !strncmp(map.name, "Cockatrice Lair", 15))
@@ -32793,7 +32798,8 @@ void Entity::creatureHandleLiftZ()
 		case STAREMASTER:
 			z -= shift / 2;
 			break;
-		case MONSTER_UNUSED_10:
+		case DRAGON:
+			break;
 		case MONSTER_UNUSED_11:
 		case MONSTER_UNUSED_12:
 		case MONSTER_UNUSED_13:

@@ -7280,28 +7280,28 @@ has been unlocked!#
 7006 scry key#
 7007 boss#
 7008 staremaster#
-7009 monster_unused_10#
+7009 dragon#
 7010 monster_unused_11#
 7011 monster_unused_12#
 7012 monster_unused_13#
 7013 monster_unused_14#
 7014 monster_unused_15#
 7015 staremasters#
-7016 monster_unused_10s#
+7016 dragons#
 7017 monster_unused_11s#
 7018 monster_unused_12s#
 7019 monster_unused_13s#
 7020 monster_unused_14s#
 7021 monster_unused_15s#
 7022 strikes#
-7023 hits#
+7023 strikes#
 7024 hits#
 7025 hits#
 7026 hits#
 7027 hits#
 7028 hits#
 7029 *blink*#
-7030 ...#
+7030 *roar*#
 7031 ...#
 7032 ...#
 7033 ...#
@@ -7313,5 +7313,6 @@ has been unlocked!#
 7039 You regain your focus.#
 7040 The energy ray weakens you!#
 7041 Inspect statue#
+7042 You should find a matching lock to use this with.#
 
 7999 END#

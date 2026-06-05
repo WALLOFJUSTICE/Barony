@@ -30,7 +30,7 @@
 #include "ui/MainMenu.hpp"
 #include "menu.hpp"
 
-float limbs[NUMMONSTERS][30][3];
+float limbs[NUMMONSTERS][40][3];
 
 // determines which monsters fight which
 bool swornenemies[NUMMONSTERS][NUMMONSTERS] =
@@ -92,7 +92,7 @@ bool swornenemies[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // GRYPHON
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // HAUNTED_ARMOR
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // STAREMASTER
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_10
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // DRAGON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_11
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_12
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_13
@@ -163,7 +163,7 @@ bool monsterally[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0 }, // GRYPHON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0 }, // HAUNTED_ARMOR
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0 }, // STAREMASTER
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_10
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // DRAGON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_11
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_12
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_UNUSED_13
@@ -2683,7 +2683,7 @@ void monsterAnimate(Entity* my, Stat* myStats, double dist)
 	case GRYPHON: gryphonAnimate(my, myStats, dist); break;
 	case HAUNTED_ARMOR: hauntedArmorMoveBodyparts(my, myStats, dist); break;
 	case STAREMASTER: stareMasterAnimate(my, myStats, dist); break;
-	case MONSTER_UNUSED_10: break;
+	case DRAGON: dragonAnimate(my, myStats, dist); break;
 	case MONSTER_UNUSED_11: break;
 	case MONSTER_UNUSED_12: break;
 	case MONSTER_UNUSED_13: break;
@@ -2818,7 +2818,7 @@ void actMonster(Entity* my)
 			case GRYPHON: initGryphon(my, nullptr); break;
 			case HAUNTED_ARMOR: initHauntedArmor(my, nullptr); break;
 			case STAREMASTER: initStareMaster(my, nullptr); break;
-			case MONSTER_UNUSED_10: break;
+			case DRAGON: initDragon(my, nullptr); break;
 			case MONSTER_UNUSED_11: break;
 			case MONSTER_UNUSED_12: break;
 			case MONSTER_UNUSED_13: break;
@@ -2934,7 +2934,7 @@ void actMonster(Entity* my)
 				case GRYPHON: initGryphon(my, myStats); break;
 				case HAUNTED_ARMOR: initHauntedArmor(my, myStats); break;
 				case STAREMASTER: initStareMaster(my, myStats); break;
-				case MONSTER_UNUSED_10: break;
+				case DRAGON: initDragon(my, myStats); break;
 				case MONSTER_UNUSED_11: break;
 				case MONSTER_UNUSED_12: break;
 				case MONSTER_UNUSED_13: break;
@@ -4234,7 +4234,8 @@ void actMonster(Entity* my)
 			case STAREMASTER: 
 				stareMasterDie(my);
 				break;
-			case MONSTER_UNUSED_10: 
+			case DRAGON: 
+				dragonDie(my);
 				break;
 			case MONSTER_UNUSED_11: 
 				break;
@@ -4520,7 +4521,7 @@ void actMonster(Entity* my)
 		case GRYPHON:
 		case HAUNTED_ARMOR:
 		case STAREMASTER:
-		case MONSTER_UNUSED_10:
+		case DRAGON:
 		case MONSTER_UNUSED_11:
 		case MONSTER_UNUSED_12:
 		case MONSTER_UNUSED_13:
@@ -5208,7 +5209,8 @@ void actMonster(Entity* my)
 		if ( myStats->type != LICH 
 			&& myStats->type != DEVIL 
 			&& myStats->type != LICH_ICE
-			&& myStats->type != LICH_FIRE )
+			&& myStats->type != LICH_FIRE
+			&& myStats->type != DRAGON )
 		{
 			if ( my->monsterSpecialTimer > 0 )
 			{
@@ -6031,7 +6033,8 @@ void actMonster(Entity* my)
 				&& !myStats->getEffectActive(EFF_ROOTED)
 				&& !isIllusionTaunt
 				&& !(monsterIsImmobileTurret(my, myStats))
-				&& myStats->type != DEVIL )
+				&& myStats->type != DEVIL
+				&& myStats->type != DRAGON )
 			{
 				std::vector<std::pair<int, int>> possibleCoordinates;
 				my->monsterMoveTime = local_rng.rand() % 30;
@@ -6409,8 +6412,40 @@ void actMonster(Entity* my)
 
 							// get movement dir
 							int goAgain = 0;
+
+							int chaseRange = 16;
+							if ( myStats->type == BUGBEAR || myStats->type == SALAMANDER )
+							{
+								chaseRange = 20;
+							}
+							if ( myStats->type == GRYPHON )
+							{
+								chaseRange = 20;
+							}
+							if ( myStats->type == DUCK_SMALL )
+							{
+								chaseRange = 32;
+							}
+							if ( myStats->type == HAUNTED_ARMOR )
+							{
+								chaseRange = TOUCHRANGE - 2;
+							}
+							if ( myStats->type == DRAGON )
+							{
+								chaseRange = TOUCHRANGE * 2 - 4;
+							}
+							if ( myStats->weapon && (myStats->weapon->type == TOOL_WHIP || myStats->weapon->type == STEEL_FLAIL) )
+							{
+								chaseRange = std::max(chaseRange, TOUCHRANGE);
+							}
+
+							real_t traceDist = TOUCHRANGE * 1.5;
+							if ( myStats->type == DRAGON )
+							{
+								traceDist = TOUCHRANGE * 2.5;
+							}
 timeToGoAgain:
-							if ( targetdist > TOUCHRANGE * 1.5 && !hasrangedweapon && !my->shouldRetreat(*myStats) && my->getINT() > -2 )
+							if ( targetdist > traceDist && !hasrangedweapon && !my->shouldRetreat(*myStats) && my->getINT() > -2 )
 							{
 								if ( MONSTER_FLIPPEDANGLE < 5 )
 								{
@@ -6486,28 +6521,6 @@ timeToGoAgain:
 								{
 									rangedWeaponDistance = 64;
 								}
-							}
-
-							int chaseRange = 16;
-							if ( myStats->type == BUGBEAR || myStats->type == SALAMANDER )
-							{
-								chaseRange = 20;
-							}
-							if ( myStats->type == GRYPHON )
-							{
-								chaseRange = 20;
-							}
-							if ( myStats->type == DUCK_SMALL )
-							{
-								chaseRange = 32;
-							}
-							if ( myStats->type == HAUNTED_ARMOR )
-							{
-								chaseRange = TOUCHRANGE - 2;
-							}
-							if ( myStats->weapon && (myStats->weapon->type == TOOL_WHIP || myStats->weapon->type == STEEL_FLAIL) )
-							{
-								chaseRange = TOUCHRANGE;
 							}
 
 							if ( monsterIsImmobileTurret(my, myStats) || myStats->getEffectActive(EFF_ROOTED) )
@@ -10688,6 +10701,11 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 	{
 		meleeDist = TOUCHRANGE - 1;
 		strikeRange = (int)(STRIKERANGE * 1.5);
+	}
+	if ( myStats->type == DRAGON )
+	{
+		meleeDist = TOUCHRANGE * 2 - 1;
+		strikeRange = (int)(TOUCHRANGE * 2);
 	}
 	if ( myStats->weapon && myStats->weapon->type == TOOL_WHIP )
 	{

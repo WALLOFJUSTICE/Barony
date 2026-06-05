@@ -3866,7 +3866,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						for ( node_t* node = map.creatures->first; node; node = node->next )
 						{
 							Entity* target = (Entity*)node->element;
-							if ( (target->behavior == &actMonster || target->behavior == &actPlayer) && target != entity
+							if ( ((target->behavior == &actMonster && target->monsterAllyGetPlayerLeader()) || target->behavior == &actPlayer) && target != entity
 								&& entity->checkEnemy(target) )
 							{
 								int findx = static_cast<int>(target->x) >> 4;
@@ -3885,6 +3885,66 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 											//my->monsterMoveTime = local_rng.rand() % 10 + 1;
 											entity->monsterLookDir = tangent;
 											toAttack = target;
+										//}
+									}
+									else
+									{
+										dist = oldDist;
+									}
+								}
+							}
+						}
+						if ( toAttack )
+						{
+							entity->monsterAcquireAttackTarget(*toAttack, MONSTER_STATE_PATH);
+						}
+					}
+				}
+			}
+		}
+		else if ( (*it).find("@findanytarget=") != std::string::npos )
+		{
+			int result = textSourceProcessScriptTag(input, "@findanytarget=", src);
+			if ( result != k_ScriptError )
+			{
+				int x1 = result & 0xFF;
+				int x2 = (result >> 8) & 0xFF;
+				int y1 = (result >> 16) & 0xFF;
+				int y2 = (result >> 24) & 0xFF;
+				if ( processOnAttachedEntity )
+				{
+					for ( auto entity : attachedEntities )
+					{
+						if ( entity->behavior != &actMonster )
+						{
+							continue;
+						}
+						Stat* stats = entity->getStats();
+						real_t dist = 10000.f;
+						real_t sightrange = 256.0;
+						Entity* toAttack = nullptr;
+						for ( node_t* node = map.creatures->first; node; node = node->next )
+						{
+							Entity* target = (Entity*)node->element;
+							if ( ((target->behavior == &actMonster) || target->behavior == &actPlayer) && target != entity
+								&& entity->checkEnemy(target) )
+							{
+								int findx = static_cast<int>(target->x) >> 4;
+								int findy = static_cast<int>(target->y) >> 4;
+								if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
+								{
+									real_t oldDist = dist;
+									dist = sqrt(pow(entity->x - target->x, 2) + pow(entity->y - target->y, 2));
+									if ( dist < sightrange && dist <= oldDist )
+									{
+										double tangent = atan2(target->y - entity->y, target->x - entity->x);
+										//lineTrace(entity, entity->x, entity->y, tangent, sightrange, 0, false);
+										//if ( hit.entity == target )
+										//{
+											//my->monsterLookTime = 1;
+											//my->monsterMoveTime = local_rng.rand() % 10 + 1;
+										entity->monsterLookDir = tangent;
+										toAttack = target;
 										//}
 									}
 									else

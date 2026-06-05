@@ -346,6 +346,15 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 					}
 				}
 			}
+
+			if ( myStats->amulet )
+			{
+				myStats->amulet->isDroppable = false;
+			}
+			if ( myStats->ring )
+			{
+				myStats->ring->isDroppable = false;
+			}
 		}
 	}
 

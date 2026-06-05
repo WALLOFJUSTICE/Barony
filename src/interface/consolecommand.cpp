@@ -2643,7 +2643,7 @@ namespace ConsoleCommands {
 		for (int c = 1; c < NUMMONSTERS; c++)
 		{
 			// initialize all offsets to zero
-			for (x = 0; x < 30; x++)
+			for (x = 0; x < 40; x++)
 			{
 				limbs[c][x][0] = 0;
 				limbs[c][x][1] = 0;
@@ -2678,7 +2678,7 @@ namespace ConsoleCommands {
 				}
 
 				// process line
-				if (sscanf(data, "%d", &limb) != 1 || limb >= 30 || limb < 0)
+				if (sscanf(data, "%d", &limb) != 1 || limb >= 40 || limb < 0)
 				{
 					messagePlayer(clientnum, MESSAGE_MISC, "warning: syntax error in '%s':%d\n invalid limb index!", filename, line);
 					printlog("warning: syntax error in '%s':%d\n invalid limb index!\n", filename, line);
@@ -6665,6 +6665,7 @@ namespace ConsoleCommands {
 						case 246: monsterType = REVENANT_SKULL; break;
 						case 247: monsterType = MONSTER_ADORCISED_WEAPON; break;
 						case 304: monsterType = GRYPHON; break;
+						case 308: monsterType = HAUNTED_ARMOR; break;
 						default:
 							break;
 						}

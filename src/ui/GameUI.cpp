@@ -29730,6 +29730,10 @@ void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextM
 				useItem(item, player);
 			}
 		}
+		else if ( item->type >= KEY_STONE && item->type <= KEY_MACHINE && prompt == PROMPT_INSPECT )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7042));
+		}
 		else if ( item->type == MAGICSTAFF_SCEPTER )
 		{
 			if ( !disableItemUsage )

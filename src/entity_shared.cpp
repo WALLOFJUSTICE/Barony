@@ -566,6 +566,7 @@ Monster editorSpriteTypeToMonster(Sint32 sprite)
 	case 246: monsterType = REVENANT_SKULL; break;
 	case 247: monsterType = MONSTER_ADORCISED_WEAPON; break;
 	case 304: monsterType = GRYPHON; break;
+	case 308: monsterType = HAUNTED_ARMOR; break;
 	default:
 		break;
 	}
@@ -626,6 +627,7 @@ int checkSpriteType(Sint32 sprite)
 	case 246:
 	case 247:
 	case 304:
+	case 308:
 		//monsters
 		return 1;
 		break;
@@ -2097,7 +2099,11 @@ std::vector<const char*> spriteEditorNameStrings =
 	"WORKBENCH",
 	"MAILBOX",
 	"MAILBOX",
-	"GRYPHON"
+	"GRYPHON",
+	"FORCEFIELD",
+	"WIDE GATE (North-South)",
+	"WIDE GATE (East-West)",
+	"HAUNTED_ARMOR"
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][32] =
@@ -2156,7 +2162,7 @@ char monsterEditorNameStrings[NUMMONSTERS][32] =
 	"gryphon",
 	"haunted_armor",
 	"staremaster",
-	"monster_unused_10",
+	"dragon",
 	"monster_unused_11",
 	"monster_unused_12",
 	"monster_unused_13",
@@ -2495,6 +2501,7 @@ int canWearEquip(Entity* entity, int category)
 				case MYCONID:
 				case SALAMANDER:
 				case GREMLIN:
+				case HAUNTED_ARMOR:
 					equipType = 3;
 					break;
 

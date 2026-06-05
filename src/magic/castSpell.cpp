@@ -5201,7 +5201,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 							itemPool.emplace_back(
 								NOTHING,
-								newItem(TOOL_FRYING_PAN, DECREPIT, -1 + rng.rand() % 3, 2 + rng.rand() % 3, rng.rand(), false, nullptr),
+								newItem(TOOL_FRYING_PAN, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr),
 								1);
 
 							itemPool.emplace_back(

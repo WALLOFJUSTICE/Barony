@@ -1305,7 +1305,7 @@ int getCharmMonsterDifficulty(Entity& my, Stat& myStats)
 	case SALAMANDER:
 	case HAUNTED_ARMOR:
 	case STAREMASTER:
-	case MONSTER_UNUSED_10:
+	case DRAGON:
 	case MONSTER_UNUSED_11:
 	case MONSTER_UNUSED_12:
 	case MONSTER_UNUSED_13:
@@ -1814,7 +1814,7 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 				GRYPHON,
 				HAUNTED_ARMOR,
 				STAREMASTER,
-				MONSTER_UNUSED_10,
+				DRAGON,
 				MONSTER_UNUSED_11,
 				MONSTER_UNUSED_12,
 				MONSTER_UNUSED_13,

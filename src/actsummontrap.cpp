@@ -165,7 +165,7 @@ void actSummonTrap(Entity* my)
 						WATER_ELEMENTAL,
 						GRYPHON,
 						HAUNTED_ARMOR,
-						MONSTER_UNUSED_10,
+						DRAGON,
 						MONSTER_UNUSED_11,
 						MONSTER_UNUSED_12,
 						MONSTER_UNUSED_13,

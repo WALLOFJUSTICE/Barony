@@ -1477,7 +1477,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->STR = 28;
 			stats->DEX = 10;
 			stats->CON = 30;
-			stats->INT = -4;
+			stats->INT = 20;
 			stats->PER = 20;
 			stats->CHR = 50;
 			stats->EXP = 0;
@@ -1772,6 +1772,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->GOLD = 0;
 			stats->RANDOM_GOLD = 0;
 			break;
+		case 308:
 		case (1000 + HAUNTED_ARMOR):
 			stats->type = HAUNTED_ARMOR;
 			stats->stat_appearance = local_rng.rand();
@@ -1800,6 +1801,8 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_MASK] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_AMULET] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_RING] = 1;
 
 			stats->setProficiency(PRO_SWORD, 80);
 			stats->setProficiency(PRO_MACE, 80);
@@ -1832,12 +1835,12 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->setProficiency(PRO_THAUMATURGY, 100);
 			stats->setProficiency(PRO_MYSTICISM, 100);
 			break;
-		case (1000 + MONSTER_UNUSED_10):
-			stats->type = MONSTER_UNUSED_10;
+		case (1000 + DRAGON):
+			stats->type = DRAGON;
 			stats->stat_appearance = local_rng.rand();
 			stats->inventory.first = NULL;
 			stats->inventory.last = NULL;
-			stats->MAXHP = 10;
+			stats->MAXHP = 100;
 			stats->HP = stats->MAXHP;
 			stats->OLDHP = stats->HP;
 			stats->RANDOM_MAXHP = 20;

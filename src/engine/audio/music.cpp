@@ -16,6 +16,7 @@
 #include "../../player.hpp"
 #include "../../prng.hpp"
 #include "../../files.hpp"
+#include "../../mod_tools.hpp"
 #ifdef NINTENDO
  #include "../../nintendo/music.hpp"
 #else
@@ -257,6 +258,9 @@ void handleLevelMusic()
 		&& !inshop 
 		&& (!activeminotaur || !strcmp(map.name, "Hell Boss")) && !herxaround && !devilaround && !magisteraround )
 	{
+		const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+		static std::string previousLevelThemeID = "";
+
 		if ( !strncmp(map.name, "The Mines", 9) )     // the mines
 		{
 			if ( !playing )
@@ -459,14 +463,22 @@ void handleLevelMusic()
 		}
 		else if ( !strncmp(map.filename, "keep", 4) )
 		{
-			if ( !playing )
-			{
-				currenttrack = 1 + local_rng.rand() % (keepmusic.size() - 1);
-			}
-			currenttrack = currenttrack % keepmusic.size();
-			if ( currenttrack == 0 )
+			const auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+			if ( levelData.id == "keep1" && previousLevelThemeID != "keep1" )
 			{
 				currenttrack = 1;
+			}
+			else
+			{
+				if ( !playing )
+				{
+					currenttrack = 1 + local_rng.rand() % (keepmusic.size() - 1);
+				}
+				currenttrack = currenttrack % keepmusic.size();
+				if ( currenttrack == 0 )
+				{
+					currenttrack = 1;
+				}
 			}
 			playMusic(keepmusic[currenttrack], false, true, true);
 		}
@@ -519,6 +531,8 @@ void handleLevelMusic()
 		shopmusicplaying = false;
 		fadein_increment = default_fadein_increment;
 		fadeout_increment = default_fadeout_increment;
+
+		previousLevelThemeID = levelData.id;
 	}
 	else if ( (!devilmusicplaying || !playing) && devilaround )
 	{
