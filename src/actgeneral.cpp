@@ -3239,6 +3239,26 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 			{
 				return;
 			}
+
+			auto triggerType = textSourceScript.getTriggerType(src.textSourceIsScript);
+			if ( triggerType != ScriptTriggeredBy::TRIGGER_ATTACHED_ALWAYS
+				&& triggerType != ScriptTriggeredBy::TRIGGER_POWER )
+			{
+				// if we've already run once, then triggerType has been set to an attach# type
+				// no need to reattach again
+				continue;
+			}
+
+			if ( input.find("@triggerif=") != std::string::npos )
+			{
+				int result = textSourceProcessScriptTag(input, "@triggerif=", src);
+				if ( result != k_ScriptError )
+				{
+					// set triggerType to an attach# type
+					textSourceScript.setTriggerType(src.textSourceIsScript, static_cast<ScriptTriggeredBy>(result));
+				}
+			}
+
 			attachedEntities.clear();
 			list_FreeAll(&src.children); // reattach all the entities again.
 
@@ -3304,6 +3324,15 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				}
 			}
 			attachedEntities = textSourceScript.getScriptAttachedEntities(src);
+
+			triggerType = textSourceScript.getTriggerType(src.textSourceIsScript);
+			if ( triggerType != ScriptTriggeredBy::TRIGGER_ATTACHED_ALWAYS
+				&& triggerType != ScriptTriggeredBy::TRIGGER_POWER )
+			{
+				// we're going to wait to re-run the script on an attach trigger
+				// just gathering reattach targets this run
+				return;
+			}
 		}
 		else if ( (*it).find("@clrplayer") != std::string::npos )
 		{
@@ -5627,7 +5656,17 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 		int result = textSourceProcessScriptTag(script, "@triggerif=", src);
 		if ( result != k_ScriptError )
 		{
-			textSourceScript.setTriggerType(src.textSourceIsScript, static_cast<ScriptTriggeredBy>(result));
+			if ( result != ScriptTriggeredBy::TRIGGER_ATTACHED_ALWAYS && script.find("@reattachto=") != std::string::npos )
+			{
+				//assert(false && "@triggerif= and @reattachto= found together");
+				// using @reattachto= we'll set as standard power to trigger first run
+				// second run will set the proper triggerType and then not care about it's power state within @reattachto
+				textSourceScript.setTriggerType(src.textSourceIsScript, ScriptTriggeredBy::TRIGGER_POWER);
+			}
+			else
+			{
+				textSourceScript.setTriggerType(src.textSourceIsScript, static_cast<ScriptTriggeredBy>(result));
+			}
 		}
 	}
 
