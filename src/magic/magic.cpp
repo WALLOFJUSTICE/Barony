@@ -140,6 +140,7 @@ bool spellEffectDominate(Entity& my, spellElement_t& element, Entity& caster, En
 		|| hit.entity->monsterIsTinkeringCreation()
 		|| hit.entity->monsterAllySummonRank != 0
 		|| (hitstats->type == INCUBUS && !strncmp(hitstats->name, "inner demon", strlen("inner demon")))
+		|| !strcmp(map.filename, "arena.lmp")
 		)
 	{
 		Uint32 color = makeColorRGB(255, 0, 0);
@@ -1475,6 +1476,11 @@ void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent
 				)
 			{
 				chance = 0; // not allowed to control summons
+			}
+
+			if ( !strcmp(map.filename, "arena.lmp") )
+			{
+				chance = 0;
 			}
 
 			bool doPacify = false;
