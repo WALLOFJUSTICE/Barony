@@ -24384,64 +24384,14 @@ failed:
 
 				// add savegame picture
 				std::string screenshot_path = "images/ui/Main Menus/ContinueGame/savescreens/";
-				if (saveGameInfo.level_track == 1) {
-					switch (saveGameInfo.dungeon_lvl) {
-					default: screenshot_path += "save_unknown00.png"; break;
-					case 3: screenshot_path += "save_gnome00.png"; break;
-					case 4: screenshot_path += "save_minetown00.png"; break;
-					case 6:
-					case 7: screenshot_path += "save_underworld00.png"; break;
-					case 8: screenshot_path += "save_temple00.png"; break;
-					case 9: screenshot_path += "save_castle00.png"; break;
-					case 12: screenshot_path += "save_sokoban00.png"; break;
-					case 14: screenshot_path += "save_maze00.png"; break;
-					case 17: screenshot_path += "save_library00.png"; break;
-					case 19:
-					case 20: screenshot_path += "save_underworld00.png"; break;
-					case 24: screenshot_path += "save_boss00.png"; break;
-					case 29: screenshot_path += "save_lair00.png"; break;
-					case 34: screenshot_path += "save_bram00.png"; break;
-					}
-				} else {
-					switch (saveGameInfo.dungeon_lvl) {
-					default: screenshot_path += "save_unknown00.png"; break;
-					case 0: screenshot_path += "save_start00.png"; break;
-					case 1:
-					case 2:
-					case 3:
-					case 4: screenshot_path += "save_mines00.png"; break;
-					case 5: screenshot_path += "save_minetoswamp00.png"; break;
-					case 6:
-					case 7:
-					case 8:
-					case 9: screenshot_path += "save_swamp00.png"; break;
-					case 10: screenshot_path += "save_swamptolab00.png"; break;
-					case 11:
-					case 12:
-					case 13:
-					case 14: screenshot_path += "save_labyrinth00.png"; break;
-					case 15: screenshot_path += "save_labtoruin00.png"; break;
-					case 16:
-					case 17:
-					case 18:
-					case 19: screenshot_path += "save_ruin00.png"; break;
-					case 20: screenshot_path += "save_boss00.png"; break;
-					case 21:
-					case 22:
-					case 23: screenshot_path += "save_hell00.png"; break;
-					case 24: screenshot_path += "save_devil00.png"; break;
-					case 25: screenshot_path += "save_hamlet00.png"; break;
-					case 26:
-					case 27:
-					case 28:
-					case 29: screenshot_path += "save_caves00.png"; break;
-					case 30: screenshot_path += "save_cavetocitadel00.png"; break;
-					case 31:
-					case 32:
-					case 33:
-					case 34: screenshot_path += "save_citadel00.png"; break;
-					case 35: screenshot_path += "save_sanctum00.png"; break;
-					}
+				auto levelData = gameLevels.getCurrentMap(saveGameInfo.dungeon_lvl, (SecretLevelType)saveGameInfo.level_track);
+				if ( levelData.node.save_img != "" )
+				{
+					screenshot_path += levelData.node.save_img;
+				}
+				else
+				{
+					screenshot_path += "save_unknown00.png";
 				}
 
 				auto screenshot = cover->addImage(

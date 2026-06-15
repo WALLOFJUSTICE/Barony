@@ -19984,6 +19984,10 @@ void GameLevels_t::readFromFile()
 			{
 				data.node.custom_exit = (*arr_it)["custom_exit"].GetString();
 			}
+			if ( arr_it->HasMember("save_img") && (*arr_it)["save_img"].IsString() )
+			{
+				data.node.save_img = (*arr_it)["save_img"].GetString();
+			}
 			levelData[data.id] = data;
 			allLevels[data.level_track][data.depth] = data.id;
 		}

@@ -4459,6 +4459,7 @@ struct GameLevels_t
 		std::string custom_exit;
 		SecretExit_t secret_exit;
 		ShopRoom_t shop_room;
+		std::string save_img = "";
 		bool disable_gen_exits = false;
 	};
 	struct LevelData_t
