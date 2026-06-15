@@ -2527,6 +2527,7 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 		}
 		destmap->liquidSfxPlayedTiles.clear();
 		destmap->tileAttributes.clear();
+		destmap->tileWind.clear();
 	}
 	if ( destmap->tiles != nullptr )
 	{

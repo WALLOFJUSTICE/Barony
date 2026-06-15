@@ -342,11 +342,11 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 	},
 	//MINIMIMIC
 	{
-		1794
+		1794, 2527
 	},
 	//MONSTER_ADORCISED_WEAPON
 	{
-		1797
+		1797, 2529
 	},
 	//FLAME_ELEMENTAL
 	{

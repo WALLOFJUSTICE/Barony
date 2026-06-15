@@ -2104,6 +2104,70 @@
 		"mask_blackiron_visor": {
             "name_identified": "blackiron visor",
 			"name_unidentified": "blackiron visor"
+        },
+		"magicstaff_deep_shade": {
+            "name_identified": "magicstaff of deep shade",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_blink": {
+            "name_identified": "magicstaff of jump",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_shadow_tag": {
+            "name_identified": "magicstaff of arcane mark",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_disarm": {
+            "name_identified": "magicstaff of disarm",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_teleother": {
+            "name_identified": "magicstaff of teleport other",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_psychic_spear": {
+            "name_identified": "magicstaff of psychic spear",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_portal": {
+            "name_identified": "magicstaff of portal",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_splinter_gear": {
+            "name_identified": "magicstaff of splinter armor",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_disrupt_earth": {
+            "name_identified": "magicstaff of disrupt earth",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_wonderlight": {
+            "name_identified": "magicstaff of wonderlight",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_greaseball": {
+            "name_identified": "magicstaff of grease",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_holy_beam": {
+            "name_identified": "magicstaff of holy beam",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_booby_trap": {
+            "name_identified": "magicstaff of booby trap",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_slam": {
+            "name_identified": "magicstaff of lift",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_windgate": {
+            "name_identified": "magicstaff of windgate",
+            "name_unidentified": "magicstaff"
+        },
+		"magicstaff_shade_bolt": {
+            "name_identified": "magicstaff of shade bolt",
+            "name_unidentified": "magicstaff"
         }
     },
 	"spell_names": {

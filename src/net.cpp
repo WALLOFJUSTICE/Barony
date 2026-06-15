@@ -4946,7 +4946,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		combatmusicplaying = false;
 		fadein_increment = default_fadein_increment * 4;
 		fadeout_increment = default_fadeout_increment * 4;
-		playMusic(gameovermusic, false, false, false);
+		playMusic(gameovermusic, false, true, false);
 #endif
 		combat = false;
 		assailant[clientnum] = false;
@@ -9517,6 +9517,30 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 					{
 						players[player]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_DEGRADE, nullptr);
 					}
+				}
+			}
+		}
+	} },
+
+	// client void map wind
+	{ 'VOWI', []() {
+		int player = net_packet->data[4];
+		if ( player >= 0 && player < MAXPLAYERS )
+		{
+			if ( !players[player]->isLocalPlayer() && players[player]->entity
+				&& !stats[player]->getEffectActive(EFF_STASIS) )
+			{
+				Entity* spellEntity = createParticleSapCenter(players[player]->entity, players[player]->entity, 0, 2178, 2178);
+				if ( spellEntity )
+				{
+					spellEntity->x = players[player]->entity->x;
+					spellEntity->y = players[player]->entity->y;
+					spellEntity->skill[0] = 25; // duration
+					spellEntity->skill[7] = players[player]->entity->getUID();
+				}
+				if ( players[player]->entity->setEffect(EFF_STASIS, true, 3 * TICKS_PER_SECOND, true) )
+				{
+					playSoundEntity(players[player]->entity, 166, 128);
 				}
 			}
 		}

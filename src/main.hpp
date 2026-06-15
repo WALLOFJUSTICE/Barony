@@ -472,6 +472,7 @@ typedef struct map_t
 	bool* lootexcludelocations = nullptr;
 	std::set<int> liquidSfxPlayedTiles;
 	std::map<int, Uint32> tileAttributes;
+	std::map<int, int> tileWind;
 	static const Uint32 TILE_ATTRIBUTE_NODIG = 1 << 0;
 	static const Uint32 TILE_ATTRIBUTE_SLIPPERY = 1 << 1;
 	static const Uint32 TILE_ATTRIBUTE_SLOW = 1 << 2;

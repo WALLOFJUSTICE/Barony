@@ -201,6 +201,25 @@ void initAdorcisedWeapon(Entity* my, Stat* myStats)
 					break;
 				}
 			}
+			else if ( myStats->weapon == nullptr )
+			{
+				if ( MonsterData_t::nameMatchesSpecialNPCName(*myStats, "void treasure") )
+				{
+					node_t* nextnode = nullptr;
+					for ( auto node = myStats->inventory.first; node; node = nextnode )
+					{
+						nextnode = node->next;
+						if ( Item* item = (Item*)node->element )
+						{
+							myStats->weapon = item;
+							myStats->weapon->node = nullptr;
+							node->deconstructor = &emptyDeconstructor;
+							list_RemoveNode(node);
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -317,8 +336,10 @@ void actAdorcisedWeaponLimb(Entity* my)
 		list_RemoveNode(my->light->node);
 		my->light = nullptr;
 	}
-
-	my->light = addLight(my->x / 16, my->y / 16, "adorcised_weapon_glow");
+	if ( !my->entityHasString("no_light") )
+	{
+		my->light = addLight(my->x / 16, my->y / 16, "adorcised_weapon_glow");
+	}
 	my->actMonsterLimb(false);
 }
 
@@ -506,7 +527,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 	my->sizex = 4;
 	my->sizey = 4;
 
-	Monster monsterType = my->sprite == 1804 ? FLAME_ELEMENTAL : (my->sprite == 1797 ? MONSTER_ADORCISED_WEAPON : REVENANT_SKULL);
+	Monster monsterType = my->sprite == 1804 ? FLAME_ELEMENTAL : ((my->sprite == 1797 || my->sprite == 2529) ? MONSTER_ADORCISED_WEAPON : REVENANT_SKULL);
 
 	my->focalx = limbs[monsterType][0][0];
 	my->focaly = limbs[monsterType][0][1];
@@ -521,6 +542,18 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 		}
 
 		my->creatureHandleLiftZ();
+
+		real_t renderSetpoint = 0.0;
+		if ( myStats && myStats->getEffectActive(EFF_MIST_FORM) )
+		{
+			renderSetpoint = 1.0;
+		}
+		if ( abs(my->mistformGLRender - renderSetpoint) > 0.05
+			|| (my->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10)) )
+		{
+			my->mistformGLRender = renderSetpoint;
+			serverUpdateEntityFSkill(my, 22);
+		}
 
 		if ( monsterType == REVENANT_SKULL && myStats )
 		{
@@ -554,6 +587,18 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 			if ( myStats->getAttribute("spirit_weapon") != "" )
 			{
 				my->flags[PASSABLE] = true;
+			}
+
+			if ( MonsterData_t::nameMatchesSpecialNPCName(*myStats, "void treasure") )
+			{
+				if ( my->ticks == (5 * TICKS_PER_SECOND) )
+				{
+					my->setEffect(EFF_STASIS, true, -1, true, true, true);
+				}
+				else if ( my->ticks == 2 )
+				{
+					my->setEffect(EFF_STASIS, true, -1, true, true, true);
+				}
 			}
 
 			if ( !myStats->weapon )
@@ -590,6 +635,18 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 				}
 				if ( myStats->getAttribute("adorcised_weapon") != "" )
 				{
+					if ( my->parent != 0 )
+					{
+						Entity* parent = uidToEntity(my->parent);
+						if ( !parent )
+						{
+							my->setHP(0);
+							if ( myStats->weapon )
+							{
+								my->setObituary(Language::get(6619));
+							}
+						}
+					}
 					if ( my->ticks > std::stoi(myStats->getAttribute("adorcised_weapon")) )
 					{
 						my->setHP(0);
@@ -640,6 +697,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 		entity->y = my->y;
 		entity->z = my->z;
 		entity->yaw = my->yaw;
+		entity->mistformGLRender = my->mistformGLRender;
 
 		if ( bodypart == REVENANT_SKULL_BODY )
 		{
@@ -670,6 +728,11 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 					|| entity->sprite == items[RAPIER].index )
 				{
 					poke = true;
+				}
+
+				if ( my->sprite == 2529 )
+				{
+					entity->setEntityString("no_light");
 				}
 			}
 
@@ -1326,12 +1389,18 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 				}
 				else
 				{
-					Entity* fx = spawnMagicParticleCustom(entity, 96, 0.5, 1.0);
-					fx->vel_x = 0.25 * cos(entity->yaw + PI);
-					fx->vel_y = 0.25 * sin(entity->yaw + PI);
-					fx->vel_z = 0.3;
-					fx->flags[SPRITE] = true;
-					fx->ditheringDisabled = true;
+					if ( adorcisedWeapon && entity->entityHasString("no_light") )
+					{
+					}
+					else
+					{
+						Entity* fx = spawnMagicParticleCustom(entity, 96, 0.5, 1.0);
+						fx->vel_x = 0.25 * cos(entity->yaw + PI);
+						fx->vel_y = 0.25 * sin(entity->yaw + PI);
+						fx->vel_z = 0.3;
+						fx->flags[SPRITE] = true;
+						fx->ditheringDisabled = true;
+					}
 				}
 				break;
 			}
@@ -3138,6 +3207,14 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 							if ( !map.tiles[mapIndex] || map.tiles[OBSTACLELAYER + mapIndex] || lavatiles[map.tiles[mapIndex]] )
 							{
 								continue;
+							}
+							if ( !strcmp(map.filename, "arena.lmp") )
+							{
+								if ( !(x >= 10 && x <= 19 && y >= 9 && y <= 18) )
+								{
+									// stay within arena
+									continue;
+								}
 							}
 							if ( entity->actfloorMagicType == ParticleTimerEffect_t::EffectType::EFFECT_WATERSPLASH )
 							{

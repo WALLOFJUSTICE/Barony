@@ -1415,7 +1415,8 @@ void actThrown(Entity* my)
 				{
 					int postDmgHP = hit.entity->getHP();
 					if ( hitstats->type == LICH || hitstats->type == SHOPKEEPER || hitstats->type == DEVIL
-						|| hitstats->type == MINOTAUR || hitstats->type == LICH_FIRE || hitstats->type == LICH_ICE )
+						|| hitstats->type == MINOTAUR || hitstats->type == LICH_FIRE || hitstats->type == LICH_ICE
+						|| hitstats->type == DRAGON )
 					{
 						switch ( item->type )
 						{

@@ -849,8 +849,14 @@ void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent,
 				|| hitstats->type == LICH_FIRE 
 				|| hitstats->type == LICH_ICE 
 				|| hitstats->type == DEVIL
+				|| hitstats->type == DRAGON
 				|| hitstats->type == SHADOW
 				|| hitstats->type == SHOPKEEPER )
+			{
+				return;
+			}
+
+			if ( hit.entity->behavior == &actMonster && hitstats->type == MONSTER_ADORCISED_WEAPON && hitstats->weapon && itemCategory(hitstats->weapon) == SPELLBOOK )
 			{
 				return;
 			}
@@ -1749,6 +1755,7 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 	{
 		if ( targetStats->type == LICH || targetStats->type == SHOPKEEPER || targetStats->type == DEVIL
 			|| targetStats->type == MINOTAUR || targetStats->type == LICH_FIRE || targetStats->type == LICH_ICE
+			|| targetStats->type == DRAGON
 			|| (target->behavior == &actMonster && target->monsterAllySummonRank != 0)
 			|| target->monsterCanTradeWith(-1)
 			|| (targetStats->type == SKELETON && targetStats->getAttribute("revenant_skeleton") != "" )

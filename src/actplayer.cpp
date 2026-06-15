@@ -4417,6 +4417,11 @@ real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 		maxSpeed += 1.0;
 	}
 
+	if ( !strcmp(map.filename, "void.lmp") )
+	{
+		maxSpeed *= 0.75;
+	}
+
 	real_t speedFactor = std::min((((DEX) * .4) + 8.5 - slowSpeedPenalty) * weightratio, maxSpeed);
 	/*if ( DEX <= 5 )
 	{
@@ -4827,6 +4832,7 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 
 	}
 
+	my->mapTileWindMove();
 	my->processEntityWind();
 
 	PLAYER_VELX *= pow(movementDrag, refreshRateDelta);

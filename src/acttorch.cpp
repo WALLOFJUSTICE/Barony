@@ -379,11 +379,24 @@ void actLightSource(Entity* my)
 
 void Entity::actLightSource()
 {
+	bool proximity = false;
+
 	if ( multiplayer != CLIENT )
 	{
 		if ( lightSourceDelay > 0 && lightSourceDelayCounter == 0 )
 		{
 			lightSourceDelayCounter = lightSourceDelay;
+		}
+		if ( lightSourceProximity > 0 )
+		{
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				if ( players[i] && players[i]->entity && entityDist(players[i]->entity, this) <= lightSourceProximity * 16.0 )
+				{
+					proximity = true;
+					break;
+				}
+			}
 		}
 	}
 
@@ -444,8 +457,22 @@ void Entity::actLightSource()
 
 		if ( multiplayer != CLIENT )
 		{
-			if ( (!lightSourceAlwaysOn && (circuit_status == CIRCUIT_OFF && !lightSourceInvertPower))
+			bool toggle = false;
+			if ( lightSourceProximity > 0 )
+			{
+				if ( (!lightSourceAlwaysOn && (!proximity && !lightSourceInvertPower))
+					|| (proximity && lightSourceInvertPower == 1) )
+				{
+					toggle = true;
+				}
+			}
+			else if ( (!lightSourceAlwaysOn && (circuit_status == CIRCUIT_OFF && !lightSourceInvertPower))
 				|| (circuit_status == CIRCUIT_ON && lightSourceInvertPower == 1) )
+			{
+				toggle = true;
+			}
+
+			if ( toggle )
 			{
 				if ( LIGHTSOURCE_ENABLED == 1 && lightSourceLatchOn < 2 + lightSourceInvertPower )
 				{
@@ -479,8 +506,22 @@ void Entity::actLightSource()
 			return;
 		}
 
-		if ( lightSourceAlwaysOn == 1 || (circuit_status == CIRCUIT_ON && !lightSourceInvertPower)
+		bool toggle = false;
+		if ( lightSourceProximity > 0 )
+		{
+			if ( lightSourceAlwaysOn == 1 || (proximity && !lightSourceInvertPower)
+				|| (!proximity && lightSourceInvertPower == 1) )
+			{
+				toggle = true;
+			}
+		}
+		else if ( lightSourceAlwaysOn == 1 || (circuit_status == CIRCUIT_ON && !lightSourceInvertPower)
 			|| (circuit_status == CIRCUIT_OFF && lightSourceInvertPower == 1) )
+		{
+			toggle = true;
+		}
+
+		if ( toggle )
 		{
 			if ( LIGHTSOURCE_ENABLED == 0 && lightSourceLatchOn < 2 + lightSourceInvertPower )
 			{

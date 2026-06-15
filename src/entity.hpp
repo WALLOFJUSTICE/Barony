@@ -678,6 +678,7 @@ public:
 	Sint32& lightSourceDelay; //skill[6]
 	Sint32& lightSourceDelayCounter;//skill[7]
 	Sint32& lightSourceRGB;//skill[11]
+	Sint32& lightSourceProximity = skill[12];
 
 	//--PUBLIC TEXT SOURCE SKILLS--
 	Sint32& textSourceColorRGB; //skill[0]
@@ -722,6 +723,10 @@ public:
 
 	//--ACTTRAP/PERMANENT
 	Sint32& pressurePlateTriggerType; //skill[3]
+
+	//--SUMMON TRAP
+	Sint32& summonTrapSetHostility = skill[12];
+	Sint32& summonTrapFindTargetRange = skill[13]; // x1/x2/y1/y2 in 8 bits order low to high
 
 	enum PressurePlateTriggerTypes : int
 	{
@@ -1020,6 +1025,7 @@ public:
 	void actWallButton();
 	void actIronDoor();
 	void actWind();
+	void mapTileWindMove();
 
 	Monster getRace() const
 	{
@@ -1074,7 +1080,7 @@ public:
 	// handle walking movement for arms and legs
 	void humanoidAnimateWalk(Entity* limb, node_t* bodypartNode, int bodypart, double walkSpeed, double dist, double distForFootstepSound);
 	// monster footsteps, needs to be client friendly
-	Uint32 getMonsterFootstepSound(int footstepType, int bootSprite);
+	int getMonsterFootstepSound(int footstepType, int bootSprite);
 	// handle humanoid weapon arm animation/sprite offsets
 	void handleHumanoidWeaponLimb(Entity* weaponLimb, Entity* weaponArmLimb);
 	void handleHumanoidShieldLimb(Entity* shieldLimb, Entity* shieldArmLimb);
@@ -1515,7 +1521,7 @@ void actTextSource(Entity* my);
 //checks if a sprite falls in certain sprite ranges
 
 static const int NUM_ITEM_STRINGS = ITEM_ENUM_MAX + 3;
-static const int NUM_ITEM_STRINGS_BY_TYPE = 236;
+static const int NUM_ITEM_STRINGS_BY_TYPE = 252;
 static const int NUM_EDITOR_TILES = 350;
 
 // furniture types.

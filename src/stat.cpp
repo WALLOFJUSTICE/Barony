@@ -2342,7 +2342,8 @@ void Stat::MonsterRangedAccuracy::modifyProjectile(Entity& my, Entity& projectil
 	if ( myStats->type == LICH
 		|| myStats->type == LICH_FIRE
 		|| myStats->type == LICH_ICE
-		|| myStats->type == DEVIL )
+		|| myStats->type == DEVIL
+		|| myStats->type == DRAGON )
 	{
 		return;
 	}

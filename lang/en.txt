@@ -7314,5 +7314,7 @@ has been unlocked!#
 7040 The energy ray weakens you!#
 7041 Inspect statue#
 7042 You should find a matching lock to use this with.#
+7043 Your spell has no effect here!#
+7044 You recall your previous shade.#
 
 7999 END#

@@ -1580,6 +1580,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->GOLD = 0;
 			stats->HUNGER = 900;
 			break;
+		case 309:
 		case (1000 + MINIMIMIC):
 			stats->type = MINIMIMIC;
 			stats->stat_appearance = local_rng.rand();

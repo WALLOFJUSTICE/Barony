@@ -327,13 +327,17 @@ bool rangefinderTargetEnemyType(spell_t& spell, Entity& entity)
 	}
 	else if ( spell.ID == SPELL_VOID_CHEST )
 	{
-		return (entity.behavior == &actMonster && entity.getMonsterTypeFromSprite() == MIMIC) || entity.behavior == &actChest;
+		return (entity.behavior == &actMonster 
+			&& (entity.getMonsterTypeFromSprite() == MIMIC
+				|| entity.getMonsterTypeFromSprite() == MINIMIMIC)) || entity.behavior == &actChest;
 	}
 	else if ( spell.ID == SPELL_BOOBY_TRAP )
 	{
 		return entity.isDamageableCollider() || entity.behavior == &actFurniture
 			|| entity.behavior == &actChest || entity.behavior == &actDoor 
-			|| (entity.behavior == &actMonster && entity.getMonsterTypeFromSprite() == MIMIC);
+			|| (entity.behavior == &actMonster 
+				&& (entity.getMonsterTypeFromSprite() == MIMIC
+					|| entity.getMonsterTypeFromSprite() == MINIMIMIC));
 	}
 	else if ( spell.ID == SPELL_SPLINTER_GEAR )
 	{

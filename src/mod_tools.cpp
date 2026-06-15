@@ -19971,6 +19971,15 @@ void GameLevels_t::readFromFile()
 					data.node.secret_exit.filename = (*arr_it)["secret_exit"]["filename"].GetString();
 				}
 			}
+			if ( arr_it->HasMember("shop_room") && (*arr_it)["shop_room"].IsObject() )
+			{
+				if ( (*arr_it)["shop_room"].HasMember("chance") && (*arr_it)["shop_room"]["chance"].IsInt()
+					&& (*arr_it)["shop_room"].HasMember("filename") && (*arr_it)["shop_room"]["filename"].IsString() )
+				{
+					data.node.shop_room.chance = (*arr_it)["shop_room"]["chance"].GetInt();
+					data.node.shop_room.filename = (*arr_it)["shop_room"]["filename"].GetString();
+				}
+			}
 			if ( arr_it->HasMember("custom_exit") && (*arr_it)["custom_exit"].IsString() )
 			{
 				data.node.custom_exit = (*arr_it)["custom_exit"].GetString();

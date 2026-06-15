@@ -185,9 +185,9 @@ void initMiniMimic(Entity* my, Stat* myStats)
 
 			my->setHardcoreStats(*myStats);
 
-			if ( rng.rand() % 10 == 0 )
+			if ( !strcmp(map.filename, "void.lmp") )
 			{
-				my->setEffect(EFF_MIMIC_LOCKED, true, -1, false);
+				my->setEffect(EFF_MIMIC_VOID, true, 0, false);
 			}
 		}
 	}
@@ -392,6 +392,22 @@ void mimicAnimate(Entity* my, Stat* myStats, double dist)
 					serverSpawnMiscParticles(my, PARTICLE_EFFECT_ERUPT, 625);
 				}
 				my->sprite = 1247;
+			}
+		}
+		else if ( myStats->type == MINIMIMIC )
+		{
+			if ( myStats && myStats->getEffectActive(EFF_MIMIC_VOID) )
+			{
+				my->sprite = 2527;
+			}
+			else
+			{
+				if ( my->sprite == 2527 )
+				{
+					createParticleErupt(my, 625);
+					serverSpawnMiscParticles(my, PARTICLE_EFFECT_ERUPT, 625);
+				}
+				my->sprite = 1794;
 			}
 		}
 	}
@@ -1118,7 +1134,14 @@ bool Entity::disturbMimic(Entity* touched, bool takenDamage, bool doMessage)
 		lookAtEntity(*touched);
 		if ( !uidToEntity(monsterTarget) )
 		{
-			monsterAcquireAttackTarget(*touched, MONSTER_STATE_PATH, true);
+			if ( myStats && myStats->type == MINIMIMIC && touched->behavior == &actPlayer && !takenDamage )
+			{
+				// no alert
+			}
+			else
+			{
+				monsterAcquireAttackTarget(*touched, MONSTER_STATE_PATH, true);
+			}
 			if ( touched->behavior == &actPlayer )
 			{
 				if ( doMessage )

@@ -4451,8 +4451,14 @@ struct GameLevels_t
 			int exit_index = 0;
 			std::string filename = "";
 		};
+		struct ShopRoom_t
+		{
+			int chance = 0;
+			std::string filename = "";
+		};
 		std::string custom_exit;
 		SecretExit_t secret_exit;
+		ShopRoom_t shop_room;
 		bool disable_gen_exits = false;
 	};
 	struct LevelData_t

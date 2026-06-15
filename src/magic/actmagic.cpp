@@ -954,6 +954,55 @@ void actMagiclightBall(Entity* my)
 			lightball_movement_timer = 0;
 		}
 	}
+
+	if ( (my->sprite == 1801 || my->sprite == 1800) && my->actmagicOrbitHitTargetUID4 == 0 )
+	{
+		for ( auto node = map.creatures->first; node; node = node->next )
+		{
+			if ( Entity* target = (Entity*)node->element )
+			{
+				if ( Stat* targetStats = target->getStats() )
+				{
+					if ( targetStats->type == MINIMIMIC )
+					{
+						if ( target->monsterState == MONSTER_STATE_WAIT || target->isInertMimic() )
+						{
+							Sint32 tmp = target->monsterSpecialState;
+							target->monsterSpecialState = 0;
+							bool mobile = target->isMobile();
+							target->monsterSpecialState = tmp;
+
+							if ( mobile && entityDist(my, target) < 192.0/*sightranges[MINIMIMIC] */
+								&& !targetStats->getEffectActive(EFF_DISTRACTED_COOLDOWN) )
+							{
+								if ( target->monsterSetPathToLocation(my->x / 16, my->y / 16, 1,
+									GeneratePathTypes::GENERATE_PATH_DEFAULT, false, false) && target->children.first )
+								{
+									if ( target->isInertMimic() )
+									{
+										target->disturbMimic(nullptr, false, false);
+									}
+
+									//my->actmagicOrbitHitTargetUID4 = target->getUID();
+									target->monsterLastDistractedByNoisemaker = my->getUID();
+									target->monsterTarget = my->getUID();
+									target->monsterState = MONSTER_STATE_HUNT; // hunt state
+									serverUpdateEntitySkill(target, 0);
+
+									if ( target->setEffect(EFF_DISORIENTED, true, TICKS_PER_SECOND, false) )
+									{
+										target->setEffect(EFF_DISTRACTED_COOLDOWN, true, TICKS_PER_SECOND * 3 + 25, false);
+										spawnFloatingSpriteMisc(134, target->x + (-4 + local_rng.rand() % 9) + cos(target->yaw) * 2,
+											target->y + (-4 + local_rng.rand() % 9) + sin(target->yaw) * 2, target->z + local_rng.rand() % 4);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 void spawnBloodVialOnMonsterDeath(Entity* entity, Stat* hitstats, Entity* killer)
@@ -6395,6 +6444,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 								|| hitstats->type == SENTRYBOT
 								|| hitstats->type == SPELLBOT
 								|| hitstats->type == DUMMYBOT
+								|| hitstats->type == HAUNTED_ARMOR
 								|| hitstats->type == MINIMIMIC
 								|| hitstats->type == MIMIC )
 							{
@@ -13862,7 +13912,7 @@ void actParticleTimer(Entity* my)
 							}
 							if ( parent && parent->behavior == &actMonster )
 							{
-								if ( parent->checkFriend(entity) )
+								if ( !parent->checkEnemy(entity) )
 								{
 									continue;
 								}

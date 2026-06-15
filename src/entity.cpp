@@ -587,7 +587,7 @@ int Entity::entityLightAfterReductions(Stat& myStats, Entity* observer)
 		}
 
 		real_t sneakEffectiveness = 1.0;
-		if ( !strncmp(map.filename, "fortress", 8) )
+		if ( !strncmp(map.filename, "fortress", 8) || !strcmp(map.filename, "void.lmp") )
 		{
 			sneakEffectiveness = 0.25;
 		}
@@ -662,6 +662,19 @@ int Entity::entityLightAfterReductions(Stat& myStats, Entity* observer)
 			}
 		}
 		light = std::max(increment, light + increment);
+	}
+	if ( !strcmp(map.filename, "void.lmp") )
+	{
+		if ( player >= 0 )
+		{
+			int increment = 16 * 7;
+			light = std::max(increment, light + increment);
+		}
+		else
+		{
+			int increment = 16 * 5;
+			light = std::max(increment, light + increment);
+		}
 	}
 	if ( Uint8 effectStrength = myStats.getEffectActive(EFF_NOISE_VISIBILITY) )
 	{
@@ -1677,7 +1690,7 @@ void Entity::effectTimes()
 						}
 						break;
 					case EFF_MIMIC_LOCKED:
-						if ( myStats->type == MIMIC )
+						if ( myStats->type == MIMIC || myStats->type == MINIMIMIC )
 						{
 							monsterHitTime = std::max(HITRATE - 12, monsterHitTime); // ready to attack
 							myStats->monsterMimicLockedBy = 0;
@@ -6635,7 +6648,8 @@ void Entity::handleEffects(Stat* myStats)
 			if ( myStats->type == LICH_ICE
 				|| myStats->type == LICH_FIRE
 				|| myStats->type == LICH
-				|| myStats->type == DEVIL )
+				|| myStats->type == DEVIL
+				|| myStats->type == DRAGON )
 			{
 				poisonhurt = std::min(poisonhurt, 15); // prevent doing 50+ dmg
 			}
@@ -6766,7 +6780,8 @@ void Entity::handleEffects(Stat* myStats)
 				if ( myStats->type == LICH_ICE
 					|| myStats->type == LICH_FIRE
 					|| myStats->type == LICH
-					|| myStats->type == DEVIL )
+					|| myStats->type == DEVIL
+					|| myStats->type == DRAGON )
 				{
 					bleedhurt = std::min(bleedhurt, 15); // prevent doing 50+ dmg
 				}
@@ -8842,7 +8857,7 @@ Sint32 statGetSTR(Stat* entitystats, Entity* my)
 
 	STR += (Sint32)entitystats->getEnsembleEffectBonus(Stat::ENSEMBLE_DRUM_EFF_1);
 
-	if ( entitystats->type == MIMIC )
+	if ( entitystats->type == MIMIC || entitystats->type == MINIMIMIC )
 	{
 		if ( entitystats->getEffectActive(EFF_MIMIC_VOID) )
 		{
@@ -9170,7 +9185,7 @@ Sint32 statGetDEX(Stat* entitystats, Entity* my)
 		}
 	}
 
-	if ( entitystats->type == MIMIC )
+	if ( entitystats->type == MIMIC || entitystats->type == MINIMIMIC )
 	{
 		if ( entitystats->getEffectActive(EFF_MIMIC_VOID) )
 		{
@@ -9354,7 +9369,7 @@ Sint32 statGetCON(Stat* entitystats, Entity* my)
 		}
 	}
 
-	if ( entitystats->type == MIMIC )
+	if ( entitystats->type == MIMIC || entitystats->type == MINIMIMIC )
 	{
 		if ( entitystats->getEffectActive(EFF_MIMIC_VOID) )
 		{
@@ -9842,7 +9857,19 @@ bool Entity::isWaterWalking() const
 			{
 				return true;
 			}
+			else if ( stats->type == FLAME_ELEMENTAL )
+			{
+				return true;
+			}
 			else if ( stats->type == WATER_ELEMENTAL )
+			{
+				return true;
+			}
+			else if ( stats->type == BAT_SMALL
+				|| stats->type == REVENANT_SKULL
+				|| stats->type == MONSTER_ADORCISED_WEAPON
+				|| stats->type == HOLOGRAM
+				|| stats->type == MOTH_SMALL )
 			{
 				return true;
 			}
@@ -9877,6 +9904,18 @@ bool Entity::isLavaWalking() const
 				}
 			}
 			else if ( stats->type == EARTH_ELEMENTAL )
+			{
+				return true;
+			}
+			else if ( stats->type == FLAME_ELEMENTAL )
+			{
+				return true;
+			}
+			else if ( stats->type == BAT_SMALL
+				|| stats->type == REVENANT_SKULL
+				|| stats->type == MONSTER_ADORCISED_WEAPON
+				|| stats->type == HOLOGRAM
+				|| stats->type == MOTH_SMALL )
 			{
 				return true;
 			}
@@ -10026,7 +10065,7 @@ bool Entity::isMobile()
 		return false;
 	}
 
-	if ( isInertMimic() || (entitystats->type == MIMIC 
+	if ( isInertMimic() || ((entitystats->type == MIMIC || entitystats->type == MINIMIMIC)
 		&& (entitystats->getEffectActive(EFF_MIMIC_LOCKED) || monsterSpecialState == MIMIC_MAGIC)) )
 	{
 		return false;
@@ -10335,7 +10374,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 					serverUpdateEntitySkill(this, 9);
 				}
 
-				if ( myStats->type == MIMIC && pose == MONSTER_POSE_MIMIC_LOCKED2 )
+				if ( (myStats->type == MIMIC || myStats->type == MINIMIMIC) && pose == MONSTER_POSE_MIMIC_LOCKED2 )
 				{
 					int lockhurt = std::max(3, (myStats->MAXHP / 20));
 					if ( lockhurt > 3 )
@@ -10399,7 +10438,8 @@ void Entity::attack(int pose, int charge, Entity* target)
 			}
 			else if ( myStats->weapon != nullptr 
 				|| myStats->type == CRYSTALGOLEM || myStats->type == COCKATRICE
-				|| myStats->type == MIMIC )
+				|| myStats->type == MIMIC 
+				|| myStats->type == MINIMIMIC )
 			{
 				monsterAttack = pose;
 			}
@@ -10649,6 +10689,9 @@ void Entity::attack(int pose, int charge, Entity* target)
 							castSpellResult = castSpell(uid, &spell_light, true, false);
 							break;
 						}
+						case MAGICSTAFF_DEEP_SHADE:
+							castSpellResult = castSpell(uid, getSpellFromID(SPELL_DEEP_SHADE), true, false);
+							break;
 						case MAGICSTAFF_DIGGING:
 							castSpell(uid, &spell_dig, true, false);
 							break;
@@ -10727,7 +10770,9 @@ void Entity::attack(int pose, int charge, Entity* target)
 					{
 						degradeWeapon = false;
 					}
-					if ( myStats->weapon->type == MAGICSTAFF_LIGHT && !castSpellResult )
+					if ( (myStats->weapon->type == MAGICSTAFF_LIGHT 
+						|| myStats->weapon->type == MAGICSTAFF_DEEP_SHADE)
+						&& !castSpellResult )
 					{
 						degradeWeapon = false;
 					}
@@ -14509,7 +14554,9 @@ void Entity::attack(int pose, int charge, Entity* target)
 							}
 						}
 					}
-					else if ( myStats->type == MIMIC && local_rng.rand() % 4 == 0 )
+					else if ( (myStats->type == MIMIC || myStats->type == MINIMIMIC) 
+						&& ((local_rng.rand() % 4 == 0) 
+							|| (hit.entity->behavior == &actMonster && hitstats->type == MONSTER_ADORCISED_WEAPON)) )
 					{
 						Item* armor = nullptr;
 						int armornum = 0;
@@ -14517,14 +14564,18 @@ void Entity::attack(int pose, int charge, Entity* target)
 							|| (hit.entity->behavior == &actMonster
 								&& ((hit.entity->monsterAllySummonRank != 0 && hitstats->type == SKELETON)
 									|| hit.entity->monsterIsTinkeringCreation()
-									|| hitstats->type == MONSTER_ADORCISED_WEAPON
+									|| (hitstats->type == MONSTER_ADORCISED_WEAPON && ((hitstats->weapon && !hitstats->weapon->isDroppable) || hitstats->monsterNoDropItems))
 									|| hitstats->type == REVENANT_SKULL)) )
 						{
 							armor = nullptr;
 						}
 						else
 						{
-							if ( hitstats->defending && hitstats->shield && itemCategory(hitstats->shield) == ARMOR )
+							if ( hitstats->type == MONSTER_ADORCISED_WEAPON )
+							{
+								armornum = hitstats->pickRandomEquippedItem(&armor, false, true, true, true);
+							}
+							else if ( hitstats->defending && hitstats->shield && itemCategory(hitstats->shield) == ARMOR )
 							{
 								// try eat shield
 								armornum = hitstats->pickRandomEquippedItem(&armor, true, false, true, true);
@@ -15745,7 +15796,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 
 					DamageGib dmgGib = DMG_DEFAULT;
 					bool charged = static_cast<int>(std::max(charge, Stat::getMaxAttackCharge(myStats) / 2) / ((double)(Stat::getMaxAttackCharge(myStats) / 2))) > 1;
-					if ( weaponMultipliers >= 1.15 || (weaponskill == PRO_AXE && hitstats->type == MIMIC) || shillelaghDamage > 0 )
+					if ( weaponMultipliers >= 1.15 || (weaponskill == PRO_AXE && (hitstats->type == MIMIC || hitstats->type == MINIMIMIC)) || shillelaghDamage > 0 )
 					{
 						dmgGib = DMG_STRONGER;
 						if ( charged )
@@ -17203,7 +17254,7 @@ int AC(Stat* stat)
 	{
 		armor *= 2;
 	}
-	if ( stat->type == MIMIC && stat->getEffectActive(EFF_MIMIC_LOCKED) )
+	if ( (stat->type == MIMIC || stat->type == MINIMIMIC) && stat->getEffectActive(EFF_MIMIC_LOCKED) )
 	{
 		armor *= 2;
 	}
@@ -17404,6 +17455,14 @@ bool Entity::teleportRandom(int x1, int x2, int y1, int y2)
 	if ( y2 == 0 )
 	{
 		y2 = map.height;
+	}
+
+	if ( !strcmp(map.filename, "void.lmp") )
+	{
+		x1 = 19;
+		y1 = 37;
+		x2 = 23;
+		y2 = 41;
 	}
 
 	for ( int iy = y1; iy < y2; ++iy )
@@ -18410,7 +18469,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 		if ( src->behavior == &actPlayer && this->behavior == &actMonster )
 		{
 			achievementObserver.updateGlobalStat(getIndexForDeathType(destStats->type), src->skill[2]);
-			if ( destStats->type == MIMIC )
+			if ( destStats->type == MIMIC || destStats->type == MINIMIMIC )
 			{
 				steamAchievementClient(src->skill[2], "BARONY_ACH_ETERNAL_REWARD");
 			}
@@ -22604,9 +22663,23 @@ void Entity::humanoidAnimateWalk(Entity* limb, node_t* bodypartNode, int bodypar
 	return;
 }
 
-Uint32 Entity::getMonsterFootstepSound(int footstepType, int bootSprite)
+int Entity::getMonsterFootstepSound(int footstepType, int bootSprite)
 {
 	int sound = -1;
+
+	{
+		int x = this->x / 16;
+		int y = this->y / 16;
+		if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+		{
+			int mapIndex = y * MAPLAYERS + x * MAPLAYERS * map.height;
+			if ( !map.tiles[mapIndex] 
+				|| (map.tiles[mapIndex] == TRANSPARENT_TILE && !strcmp(map.filename, "void.lmp")) )
+			{
+				return -1;
+			}
+		}
+	}
 
 	switch ( footstepType )
 	{
@@ -22647,7 +22720,7 @@ Uint32 Entity::getMonsterFootstepSound(int footstepType, int bootSprite)
 		default:
 			break;
 	}
-	return static_cast<Uint32>(sound);
+	return sound;
 }
 
 void Entity::handleHumanoidWeaponLimb(Entity* weaponLimb, Entity* weaponArmLimb)
@@ -24328,6 +24401,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 				}
 				if ( myStats->type == LICH || myStats->type == DEVIL
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
+					|| myStats->type == DRAGON
 					|| myStats->type == MINOTAUR || myStats->type == MIMIC || myStats->type == MINIMIMIC )
 				{
 					return false;
@@ -24342,6 +24416,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_CONFUSED:
 				if ( myStats->type == LICH || myStats->type == DEVIL
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
+					|| myStats->type == DRAGON
 					|| myStats->type == MINOTAUR || myStats->type == MIMIC || myStats->type == MINIMIMIC
 					|| myStats->type == GRYPHON || myStats->type == STAREMASTER )
 				{
@@ -24351,6 +24426,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_STASIS:
 				if ( myStats->type == LICH || myStats->type == DEVIL
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
+					|| myStats->type == DRAGON
 					|| myStats->type == SHADOW )
 				{
 					return false;
@@ -24364,7 +24440,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_WEBBED:
 				if ( (myStats->type >= LICH && myStats->type < KOBOLD)
 					|| myStats->type == COCKATRICE || myStats->type == LICH_FIRE || myStats->type == LICH_ICE
-					|| myStats->type == STAREMASTER || myStats->type == GRYPHON )
+					|| myStats->type == STAREMASTER || myStats->type == GRYPHON || myStats->type == DRAGON )
 				{
 					if ( !(effect == EFF_PACIFY && myStats->type == SHOPKEEPER) &&
 						!(effect == EFF_KNOCKBACK && myStats->type == COCKATRICE) &&
@@ -24379,6 +24455,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_LIFT:
 				if ( myStats->type == LICH || myStats->type == DEVIL
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
+					|| myStats->type == DRAGON
 					|| myStats->type == GRYPHON )
 				{
 					return false;
@@ -24390,6 +24467,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_COMMAND:
 				if ( myStats->type == LICH || myStats->type == DEVIL
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
+					|| myStats->type == DRAGON
 					|| myStats->type == SHADOW || myStats->type == SHOPKEEPER 
 					|| myStats->type == GRYPHON )
 				{
@@ -24408,6 +24486,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 				if ( myStats->type == LICH || myStats->type == DEVIL 
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
 					|| myStats->type == SHADOW || myStats->type == MINOTAUR
+					|| myStats->type == DRAGON
 					|| myStats->type == GRYPHON || myStats->type == STAREMASTER )
 				{
 					return false;
@@ -24429,6 +24508,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 					|| myStats->type == MINIMIMIC
 					|| myStats->type == CRYSTALGOLEM
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
+					|| myStats->type == DRAGON
 					|| myStats->type == SHADOW )
 				{
 					return false;
@@ -24585,7 +24665,7 @@ void Entity::monsterAcquireAttackTarget(const Entity& target, Sint32 state, bool
 			}
 		}
 	}
-	else if ( myStats->type == MIMIC && isInertMimic() )
+	else if ( (myStats->type == MIMIC || myStats->type == MINIMIMIC) && isInertMimic() )
 	{
 		return;
 	}
@@ -26254,6 +26334,14 @@ bool Entity::shouldRetreat(Stat& myStats)
 	}
 	if ( myStats.type == MINIMIMIC )
 	{
+		if ( Entity* target = uidToEntity(monsterTarget) )
+		{
+			if ( target->behavior == &actMonster && !target->monsterAllyGetPlayerLeader()
+				&& target->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON )
+			{
+				return false;
+			}
+		}
 		return true;
 	}
 	if ( (myStats.getEffectActive(EFF_DASH) || (myStats.weapon && myStats.weapon->type == SPELLBOOK_DASH)) && behavior == &actMonster )
@@ -26301,7 +26389,8 @@ bool Entity::shouldRetreat(Stat& myStats)
 		|| myStats.type == REVENANT_SKULL 
 		|| myStats.type == FLAME_ELEMENTAL
 		|| myStats.type == EARTH_ELEMENTAL
-		|| myStats.type == MOTH_SMALL )
+		|| myStats.type == MOTH_SMALL
+		|| myStats.type == DRAGON )
 	{
 		return false;
 	}
@@ -28857,6 +28946,7 @@ bool monsterNameIsGeneric(Stat& monsterStats)
 		|| !strcmp(monsterStats.name, Language::get(7002)) // adorcised instrument
 		|| !strcmp(monsterStats.name, Language::get(7003)) // forsaken skeleton
 		|| MonsterData_t::nameMatchesSpecialNPCName(monsterStats, "fire sprite")
+		|| MonsterData_t::nameMatchesSpecialNPCName(monsterStats, "void treasure")
 		|| strstr(monsterStats.name, getMonsterLocalizedName(SLIME).c_str()) )
 	{
 		// If true, pretend the monster doesn't have a name and use the generic message "You hit the lesser skeleton!"
@@ -31430,7 +31520,8 @@ real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableTy
 	real_t damageMultiplier = damagetables[myStats.type][damageType];
 	if ( myStats.getEffectActive(EFF_SHADOW_TAGGED) )
 	{
-		if ( myStats.type == LICH || myStats.type == LICH_FIRE || myStats.type == LICH_ICE
+		if ( myStats.type == LICH || myStats.type == LICH_FIRE 
+			|| myStats.type == LICH_ICE
 			|| myStats.type == DEVIL )
 		{
 			return 1.5; // rough average.
@@ -32516,7 +32607,8 @@ bool Entity::windEffectsEntity(Entity* entity)
 			if ( myStats->type == LICH
 				|| myStats->type == DEVIL
 				|| myStats->type == LICH_FIRE
-				|| myStats->type == LICH_ICE )
+				|| myStats->type == LICH_ICE
+				|| myStats->type == DRAGON )
 			{
 				return false;
 			}

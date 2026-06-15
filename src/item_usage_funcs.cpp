@@ -1091,6 +1091,7 @@ bool item_PotionSickness(Item*& item, Entity* entity, Entity* usedBy)
 	{
 		stats->setEffectActive(EFF_POISONED, 1);
 		if ( stats->type == LICH || stats->type == SHOPKEEPER || stats->type == DEVIL
+			|| stats->type == DRAGON
 			|| stats->type == MINOTAUR || stats->type == LICH_FIRE || stats->type == LICH_ICE )
 		{
 			stats->EFFECTS_TIMERS[EFF_POISONED] = TICKS_PER_SECOND * 15;

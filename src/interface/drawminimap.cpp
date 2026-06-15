@@ -154,7 +154,14 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 		if ( entity->sprite == 161 || (entity->sprite >= 254 && entity->sprite < 258)
 			|| entity->behavior == &actCustomPortal )   // ladder or portal models
 		{
-			entityPointsOfInterest.push_back(entity);
+			if ( entity->flags[INVISIBLE] )
+			{
+				continue;
+			}
+			else
+			{
+				entityPointsOfInterest.push_back(entity);
+			}
 		}
 		else if ( entity->behavior == &actColliderDecoration && entity->isColliderShownAsWallOnMinimap() )
 		{

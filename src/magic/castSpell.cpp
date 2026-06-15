@@ -1145,6 +1145,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 		else if ( !strcmp(element->element_internal_name, spellElementMap[SPELL_DEEP_SHADE].element_internal_name) )
 		{
 			if ( using_magicstaff ) {
+				bool removed = false;
 				for ( auto node = map.entities->first; node != nullptr; node = node->next ) {
 					auto entity = (Entity*)node->element;
 					if ( entity->behavior == &actMagiclightBall && entity->sprite == 1800 ) {
@@ -1153,9 +1154,19 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							if ( spell && spell->magicstaff )
 							{
 								spell->sustain = false; // remove other lightballs to prevent lightball insanity
+								removed = true;
 							}
 						}
 					}
+				}
+
+				if ( removed )
+				{
+					if ( player >= 0 )
+					{
+						messagePlayer(player, MESSAGE_HINT, Language::get(7044));
+					}
+					return nullptr;
 				}
 			}
 			Entity* entity = newEntity(1800, 1, map.entities, nullptr); // black magic ball
@@ -4518,11 +4529,18 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 							}
 						}
-						else if ( target->behavior == &actMonster && target->getStats() && target->getStats()->type == MIMIC )
+						else if ( target->behavior == &actMonster && target->getStats() 
+							&& (target->getStats()->type == MIMIC
+								|| target->getStats()->type == MINIMIMIC) )
 						{
 							found = true;
 							bool prevEffect = target->getStats()->getEffectActive(EFF_MIMIC_VOID);
-							target->setEffect(EFF_MIMIC_VOID, true, TICKS_PER_SECOND * 30, false);
+							int duration = TICKS_PER_SECOND * 30;
+							if ( prevEffect && target->getStats()->EFFECTS_TIMERS[EFF_MIMIC_VOID] <= 0 )
+							{
+								duration = target->getStats()->EFFECTS_TIMERS[EFF_MIMIC_VOID];
+							}
+							target->setEffect(EFF_MIMIC_VOID, true, duration, false);
 							if ( target->isInertMimic() )
 							{
 								target->disturbMimic(caster, false, true);
@@ -4992,6 +5010,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 									|| targetStats->type == AUTOMATON
 									|| targetStats->type == MINIMIMIC
 									|| targetStats->type == MIMIC
+									|| targetStats->type == HAUNTED_ARMOR
 									|| monsterIsImmobileTurret(target, targetStats)
 									)
 								{
@@ -5726,7 +5745,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 								{
 									doEffect = false;
 								}
-								else if ( targetStats->type == LICH || targetStats->type == LICH_FIRE || targetStats->type == LICH_ICE || targetStats->type == DEVIL
+								else if ( targetStats->type == LICH 
+									|| targetStats->type == LICH_FIRE 
+									|| targetStats->type == DRAGON
+									|| targetStats->type == LICH_ICE || targetStats->type == DEVIL
 									|| targetStats->type == SHADOW )
 								{
 									doEffect = false;
@@ -7892,27 +7914,36 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					int radius = getSpellPropertyFromID(spell_t::SPELLPROP_MODIFIED_RADIUS, spell->ID, caster, nullptr, caster);
 					if ( finishCast )
 					{
-						real_t x = caster->x;
-						real_t y = caster->y;
-						real_t dist = lineTrace(caster, caster->x, caster->y, caster->yaw, 64.0, 0, false);
-						x += dist * cos(caster->yaw);
-						y += dist * sin(caster->yaw);
-
-						const int maxDuration = getSpellEffectDurationSecondaryFromID(spell->ID, caster, nullptr, caster);
-						if ( innerElement )
+						if ( spell->ID == SPELL_FOCI_DARK_RIFT && !strcmp(map.filename, "void.lmp") )
 						{
-							int duration = std::min(maxDuration, innerElement->duration * charge);
-							if ( Entity* fx = createRadiusMagic(spell->ID, caster,
-								x, y, radius, duration, nullptr) )
-							{
-								fx->actRadiusMagicEffectPower = duration;
-								playSoundEntity(fx, 166, 128);
-							}
+							playSoundEntity(caster, 163, 128);
+							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(255, 0, 0),
+								Language::get(7043));
 						}
+						else
+						{
+							real_t x = caster->x;
+							real_t y = caster->y;
+							real_t dist = lineTrace(caster, caster->x, caster->y, caster->yaw, 64.0, 0, false);
+							x += dist * cos(caster->yaw);
+							y += dist * sin(caster->yaw);
 
-						//spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
-						createParticleFociDark(caster, spell->ID, true);
-						playSoundEntity(caster, 166, 128);
+							const int maxDuration = getSpellEffectDurationSecondaryFromID(spell->ID, caster, nullptr, caster);
+							if ( innerElement )
+							{
+								int duration = std::min(maxDuration, innerElement->duration * charge);
+								if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+									x, y, radius, duration, nullptr) )
+								{
+									fx->actRadiusMagicEffectPower = duration;
+									playSoundEntity(fx, 166, 128);
+								}
+							}
+
+							//spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+							createParticleFociDark(caster, spell->ID, true);
+							playSoundEntity(caster, 166, 128);
+						}
 					}
 					/*for ( node_t* node = map.entities->first; node; node = nextnode )
 					{

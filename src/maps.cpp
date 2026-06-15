@@ -1352,10 +1352,14 @@ int generateDungeon(char* levelset, Uint32 seed)
 	{
 		// function sets shop level for us.
 	}
-	else if ( map_rng.rand() % 2 && currentlevel > 1 
-		&& strncmp(map.name, "Underworld", 10) && strncmp(map.name, "Hell", 4)
-		&& strncmp(map.filename, "fortress", 8) )
+	else if ( map_rng.rand() % 100 < levelData.node.shop_room.chance )
 	{
+		/*if ( map_rng.rand() % 2 && currentlevel > 1 
+			&& strncmp(map.name, "Underworld", 10) && strncmp(map.name, "Hell", 4)
+			&& strncmp(map.filename, "fortress", 8) )
+		{
+			shoplevel = true;
+		}*/
 		shoplevel = true;
 	}
 
@@ -1447,15 +1451,17 @@ int generateDungeon(char* levelset, Uint32 seed)
 	if ( shoplevel )
 	{
 		char sublevelname[128] = "";
-		std::string shopMapTitle = "shop";
-		if ( MFLAG_GENADJACENTROOMS )
+		std::string shopMapTitle = levelData.node.shop_room.filename;
+		/*if ( MFLAG_GENADJACENTROOMS )
 		{
 			shopMapTitle = "shop-roomgen";
-		}
-		for ( numlevels = 0; numlevels < 100; numlevels++ )
+		}*/
+
+		int numShopLevels = 0;
+		for ( numShopLevels = 0; numShopLevels < 100; numShopLevels++ )
 		{
 			strcpy(sublevelname, shopMapTitle.c_str());
-			snprintf(sublevelnum, 3, "%02d", numlevels);
+			snprintf(sublevelnum, 3, "%02d", numShopLevels);
 			strcat(sublevelname, sublevelnum);
 
 			std::string fullMapPath = physfsFormatMapName(sublevelname);
@@ -1465,9 +1471,9 @@ int generateDungeon(char* levelset, Uint32 seed)
 				break;    // no more levels to load
 			}
 		}
-		if ( numlevels )
+		if ( numShopLevels )
 		{
-			int shopleveltouse = map_rng.rand() % numlevels;
+			int shopleveltouse = map_rng.rand() % numShopLevels;
 			strcpy(sublevelname, shopMapTitle.c_str());
 			snprintf(sublevelnum, 3, "%02d", shopleveltouse);
 			strcat(sublevelname, sublevelnum);
@@ -8287,6 +8293,7 @@ void assignActions(map_t* map)
 			case 247:
 			case 304:
 			case 308:
+			case 309:
 			{
 				Stat* myStats = NULL;
 				bool dummySummon = entity->entityHasString("summonNPC");
@@ -8344,6 +8351,11 @@ void assignActions(map_t* map)
 				if ( monsterType == MIMIC )
 				{
 					entity->yaw = 90 * (map_rng.rand() % 4) * PI / 180.0;
+					entity->monsterLookDir = entity->yaw;
+				}
+				else if ( monsterType == MINIMIMIC )
+				{
+					entity->yaw = 0.0;
 					entity->monsterLookDir = entity->yaw;
 				}
 				else if ( monsterType == BAT_SMALL )
@@ -10131,7 +10143,7 @@ void assignActions(map_t* map)
 				}
 				else
 				{
-					entity->sprite = 254;
+					entity->sprite = 620;
 					entity->sizex = 4;
 					entity->sizey = 4;
 					entity->yaw = PI / 2;
@@ -10559,6 +10571,14 @@ void assignActions(map_t* map)
 				entity->flags[PASSABLE] = true;
 				//entity->flags[NOUPDATE] = true;
 				entity->skill[28] = 1; // is a mechanism
+				if ( !strcmp(map->filename, "void.lmp") )
+				{
+					if ( entity->lightSourceAlwaysOn )
+					{
+						entity->lightSourceAlwaysOn = 0;
+						entity->lightSourceProximity = 3;
+					}
+				}
 				break;
 			//text source
 			case 132:
@@ -11204,24 +11224,42 @@ void assignActions(map_t* map)
 				break;
 			case 220: // wind
 			{
-				entity->x += 8;
-				entity->y += 8;
-				entity->sprite = -1;
-				entity->flags[INVISIBLE] = true;
-				entity->behavior = &actWind;
-				int dir = entity->skill[0];
-				if ( dir == -1 )
+				if ( !strcmp(map->filename, "void.lmp") )
 				{
-					dir = map_rng.rand() % 8;
+					int dir = entity->skill[0];
+					if ( dir == -1 )
+					{
+						dir = map_rng.rand() % 8;
+					}
+					int mapIndex = 0 + (static_cast<int>(entity->y) >> 4)
+						* MAPLAYERS + (static_cast<int>(entity->x) >> 4)
+						* MAPLAYERS * map->height;
+					map->tileWind[mapIndex] = dir;
+					list_RemoveNode(entity->mynode);
+					entity = nullptr;
+					break;
 				}
-				entity->yaw = dir * PI / 4;
-				entity->skill[0] = 0;
-				entity->sizex = 6;
-				entity->sizey = 6;
-				entity->flags[PASSABLE] = true;
-				entity->flags[NOUPDATE] = true;
-				entity->flags[UPDATENEEDED] = false;
-				break;
+				else
+				{
+					entity->x += 8;
+					entity->y += 8;
+					entity->sprite = -1;
+					entity->flags[INVISIBLE] = true;
+					entity->behavior = &actWind;
+					int dir = entity->skill[0];
+					if ( dir == -1 )
+					{
+						dir = map_rng.rand() % 8;
+					}
+					entity->yaw = dir * PI / 4;
+					entity->skill[0] = 0;
+					entity->sizex = 6;
+					entity->sizey = 6;
+					entity->flags[PASSABLE] = true;
+					entity->flags[NOUPDATE] = true;
+					entity->flags[UPDATENEEDED] = false;
+					break;
+				}
 			}
 			case 221: // slow tile
 				map->tileAttributes[0 + (static_cast<int>(entity->y) >> 4)

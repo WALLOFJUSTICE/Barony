@@ -81,7 +81,7 @@ bool swornenemies[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // SALAMANDER
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0 }, // GREMLIN
 	{ 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // REVENANT_SKULL
-	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MINIMIMIC
+	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // MINIMIMIC
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0 }, // MONSTER_ADORCISED_WEAPON
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // FLAME_ELEMENTAL
 	{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // HOLOGRAM
@@ -220,7 +220,7 @@ double sightranges[NUMMONSTERS] =
 	256,  // SALAMANDER
 	256,  // GREMLIN
 	192,  // REVENANT_SKULL
-	256,  // MINIMIMIC
+	128,  // MINIMIMIC
 	128,  // ADORCISED_WEAPON
 	128, // FLAME_ELEMENTAL
 	256, // HOLOGRAM
@@ -231,7 +231,7 @@ double sightranges[NUMMONSTERS] =
 	256, // GRYPHON
 	256,  // HAUNTED_ARMOR
 	256,  // STAREMASTER
-	256,  // MONSTER_UNUSED_0
+	512,  // DRAGON
 	256,  // MONSTER_UNUSED_1
 	256,  // MONSTER_UNUSED_2
 	256,  // MONSTER_UNUSED_3
@@ -838,7 +838,7 @@ void Entity::updateEntityOnHit(Entity* attacker, bool alertTarget)
 				}*/
 			}
 		}
-		else if ( myStats->type == MIMIC )
+		else if ( (myStats->type == MIMIC || myStats->type == MINIMIMIC) )
 		{
 			disturbMimic(attacker, true, true);
 		}
@@ -1331,7 +1331,7 @@ Entity* summonMonsterNoSmoke(Monster creature, long x, long y, bool forceLocatio
 	entity->x = x;
 	entity->y = y;
 	entity->z = 6;
-	if ( creature == MIMIC )
+	if ( creature == MIMIC || creature == MINIMIMIC )
 	{
 		entity->yaw = 90 * (local_rng.rand() % 4) * PI / 180.0;
 		entity->monsterLookDir = entity->yaw;
@@ -2946,7 +2946,7 @@ void actMonster(Entity* my)
 		}
 
 		MONSTER_INIT = 2;
-		if ( myStats->type == MIMIC )
+		if ( myStats->type == MIMIC || myStats->type == MINIMIMIC )
 		{
 			// no turn, handled earlier
 		}
@@ -4453,7 +4453,7 @@ void actMonster(Entity* my)
 	// effect of a ring of conflict
 	bool ringconflict = false;
 	Entity* ringConflictHolder = nullptr;
-	if ( myStats->type != LICH_ICE && myStats->type != LICH_FIRE )
+	if ( myStats->type != LICH_ICE && myStats->type != LICH_FIRE && myStats->type != DRAGON )
 	{
 		for ( node = map.creatures->first; node != nullptr; node = node->next ) //Only creatures can wear rings, so don't search map.entities.
 		{
@@ -4891,6 +4891,7 @@ void actMonster(Entity* my)
 						case LICH_FIRE:
 						case LICH_ICE:
 						case MINOTAUR:
+						case DRAGON:
 							break;
 						default:
 							myTarget->monsterAcquireAttackTarget(*my, MONSTER_STATE_PATH);
@@ -5236,7 +5237,7 @@ void actMonster(Entity* my)
 		{
 			my->automatonRecycleItem();
 		}
-		else if ( myStats->type == MIMIC )
+		else if ( myStats->type == MIMIC || myStats->type == MINIMIMIC )
 		{
 			if ( my->monsterSpecialState != MIMIC_ACTIVE )
 			{
@@ -5444,7 +5445,9 @@ void actMonster(Entity* my)
 							// skip if light level is too low and distance is too high
 							int light = entity->entityLightAfterReductions(*hitstats, my);
 							if ( (myStats->type >= LICH && myStats->type < KOBOLD) || myStats->type == LICH_FIRE 
-								|| myStats->type == LICH_ICE || myStats->type == SHADOW || myStats->type == MONSTER_ADORCISED_WEAPON
+								|| myStats->type == LICH_ICE || myStats->type == SHADOW 
+								|| myStats->type == DRAGON
+								|| myStats->type == MONSTER_ADORCISED_WEAPON
 								|| myStats->type == HAUNTED_ARMOR || myStats->type == STAREMASTER )
 							{
 								//See invisible.
@@ -5551,6 +5554,7 @@ void actMonster(Entity* my)
 								if ( (myStats->type >= LICH && myStats->type < KOBOLD) || myStats->type == LICH_FIRE 
 									|| myStats->type == LICH_ICE || myStats->type == SHADOW
 									|| myStats->type == MONSTER_ADORCISED_WEAPON
+									|| myStats->type == DRAGON
 									|| myStats->type == HAUNTED_ARMOR || myStats->type == STAREMASTER )
 								{
 									//See invisible
@@ -5908,7 +5912,7 @@ void actMonster(Entity* my)
 							my->monsterLookDir = (local_rng.rand() % 360) * PI / 180;
 						}
 					}
-					else if ( myStats->type == MIMIC )
+					else if ( myStats->type == MIMIC || myStats->type == MINIMIMIC )
 					{
 						my->monsterLookDir = 90 * (local_rng.rand() % 4) * PI / 180;
 					}
@@ -6038,7 +6042,7 @@ void actMonster(Entity* my)
 			{
 				std::vector<std::pair<int, int>> possibleCoordinates;
 				my->monsterMoveTime = local_rng.rand() % 30;
-				if ( myStats->type == MIMIC || myStats->type == BAT_SMALL )
+				if ( myStats->type == MIMIC || myStats->type == MINIMIMIC || myStats->type == BAT_SMALL )
 				{
 					my->monsterMoveTime = 2 + local_rng.rand() % 4;
 				}
@@ -6052,6 +6056,11 @@ void actMonster(Entity* my)
 				{
 					searchLimitX = 5;
 					searchLimitY = 5;
+				}
+				else if ( myStats->type == MINIMIMIC )
+				{
+					searchLimitX = 1;
+					searchLimitY = 1;
 				}
 				else if ( myStats->type == BAT_SMALL )
 				{
@@ -6216,6 +6225,7 @@ void actMonster(Entity* my)
 				int light = entity->entityLightAfterReductions(*hitstats, my);
 				if ( (myStats->type >= LICH && myStats->type < KOBOLD) || myStats->type == LICH_FIRE || myStats->type == LICH_ICE 
 					|| myStats->type == SHADOW || myStats->type == MONSTER_ADORCISED_WEAPON
+					|| myStats->type == DRAGON
 					|| myStats->type == HAUNTED_ARMOR || myStats->type == STAREMASTER )
 				{
 					//See invisible.
@@ -7343,7 +7353,10 @@ timeToGoAgain:
 
 							// skip if light level is too low and distance is too high
 							int light = entity->entityLightAfterReductions(*hitstats, my);
-							if ( (myStats->type >= LICH && myStats->type < KOBOLD) || myStats->type == LICH_FIRE || myStats->type == LICH_ICE || myStats->type == SHADOW
+							if ( (myStats->type >= LICH && myStats->type < KOBOLD) || myStats->type == LICH_FIRE 
+								|| myStats->type == LICH_ICE 
+								|| myStats->type == DRAGON
+								|| myStats->type == SHADOW
 								|| myStats->type == MONSTER_ADORCISED_WEAPON || myStats->type == HAUNTED_ARMOR || myStats->type == STAREMASTER )
 							{
 								//See invisible.
@@ -8347,7 +8360,7 @@ timeToGoAgain:
 								serverUpdateEntitySkill(my, 33);
 							}
 						}
-						if ( !target && myStats->type == MIMIC )
+						if ( !target && (myStats->type == MIMIC || myStats->type == MINIMIMIC) )
 						{
 							mimicResetIdle(my);
 						}
@@ -8488,7 +8501,7 @@ timeToGoAgain:
 							serverUpdateEntitySkill(my, 33);
 						}
 					}
-					if ( !target && myStats->type == MIMIC )
+					if ( !target && (myStats->type == MIMIC || myStats->type == MINIMIMIC) )
 					{
 						mimicResetIdle(my);
 					}
@@ -10183,7 +10196,7 @@ timeToGoAgain:
 				}
 			}
 		}
-		else if ( myStats && myStats->type == MIMIC && myStats->getEffectActive(EFF_MIMIC_LOCKED) && !my->isInertMimic() )
+		else if ( myStats && (myStats->type == MIMIC || myStats->type == MINIMIMIC) && myStats->getEffectActive(EFF_MIMIC_LOCKED) && !my->isInertMimic() )
 		{
 			my->monsterHitTime++;
 			if ( my->monsterHitTime >= HITRATE )
@@ -10200,7 +10213,7 @@ timeToGoAgain:
 				}
 			}
 		}
-		else if ( myStats && myStats->type == MIMIC && !my->isInertMimic() )
+		else if ( myStats && (myStats->type == MIMIC || myStats->type == MINIMIMIC) && !my->isInertMimic() )
 		{
 			if ( myStats->getEffectActive(EFF_ASLEEP) || myStats->getEffectActive(EFF_PARALYZED) )
 			{
@@ -11634,7 +11647,8 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 			|| myStats->type == DEVIL 
 			|| myStats->type == SHOPKEEPER
 			|| myStats->type == LICH_FIRE
-			|| myStats->type == LICH_ICE )
+			|| myStats->type == LICH_ICE
+			|| myStats->type == DRAGON )
 		{
 			// monster should attack after this function is called.
 			return true;
@@ -14207,6 +14221,7 @@ int Entity::shouldMonsterDefend(Stat& myStats, const Entity& target, const Stat&
 		|| myStats.type == DEVIL
 		|| myStats.type == LICH_ICE
 		|| myStats.type == LICH_FIRE
+		|| myStats.type == DRAGON
 		|| myStats.type == SHOPKEEPER
 		)
 	{
@@ -14814,7 +14829,7 @@ int Entity::monsterGetDexterityForMovement()
 		{
 			myDex += 30;
 		}
-		if ( myStats->type == MIMIC && monsterAttack == MONSTER_POSE_MELEE_WINDUP1 )
+		if ( (myStats->type == MIMIC || myStats->type == MINIMIMIC) && monsterAttack == MONSTER_POSE_MELEE_WINDUP1 )
 		{
 			myDex += 3;
 		}
@@ -15171,7 +15186,9 @@ bool Entity::isFollowerFreeToPathToPlayer(Stat* myStats)
 
 bool Entity::isInertMimic() const
 {
-	if ( behavior == &actMonster && getMonsterTypeFromSprite() == MIMIC )
+	if ( behavior == &actMonster 
+		&& (getMonsterTypeFromSprite() == MIMIC
+			|| getMonsterTypeFromSprite() == MINIMIMIC) )
 	{
 		if ( monsterSpecialState == MIMIC_INERT || monsterSpecialState == MIMIC_INERT_SECOND )
 		{
@@ -15254,7 +15271,7 @@ bool Entity::monsterIsTargetable(bool targetInertMimics) const
 		{
 			return false;
 		}
-		else if ( type == MIMIC && !targetInertMimics && isInertMimic() )
+		else if ( (type == MIMIC || type == MINIMIMIC) && !targetInertMimics && isInertMimic() )
 		{
 			return false;
 		}
@@ -15310,6 +15327,15 @@ void batResetIdle(Entity* my)
 void mimicResetIdle(Entity* my)
 {
 	if ( !my ) { return; }
+
+	if ( my->getStats() && my->getStats()->type == MINIMIMIC )
+	{
+		if ( !strcmp(map.filename, "void.lmp") )
+		{
+			return; // no reset after activate
+		}
+	}
+
 	// reset to inert after wandering with no target
 	my->monsterSpecialState = MIMIC_INERT_SECOND;
 	serverUpdateEntitySkill(my, 33);

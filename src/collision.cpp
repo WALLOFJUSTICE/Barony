@@ -529,7 +529,7 @@ bool entityInsideSomething(Entity* entity)
 					}
 				}
 			}
-			if ( type == DUCK_SMALL && (entity->behavior == &actPlayer || entity->behavior == &actMonster) )
+			if ( (type == DUCK_SMALL || type == MINIMIMIC) && (entity->behavior == &actPlayer || entity->behavior == &actMonster) )
 			{
 				continue;
 			}
@@ -1168,9 +1168,12 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 			{
 				if ( my->behavior == &actBoulder && (entity->behavior == &actMonster 
 					&& (entity->sprite == 886
-						|| entity->sprite == 1797)) )
+						|| entity->sprite == 1797
+						|| entity->sprite == 2529
+						|| entity->sprite == 1794
+						|| entity->sprite == 2527)) )
 				{
-					// 886/1797 is gyrobot/spirit weapon, as they are passable, force collision here.
+					// 886/1797/2529 is gyrobot/spirit weapon/minimimic, as they are passable, force collision here.
 				}
 				else if ( (entity->sprite == 1478 || entity->sprite == 1786)
 					&& (projectileAttack 
@@ -1259,6 +1262,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				|| entity->getMonsterTypeFromSprite() == BAT_SMALL
 				|| entity->getMonsterTypeFromSprite() == WATER_ELEMENTAL
 				|| entity->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON
+				|| entity->getMonsterTypeFromSprite() == MINIMIMIC
 				|| entity->getMonsterTypeFromSprite() == FLAME_ELEMENTAL || entity->getMonsterTypeFromSprite() == MOTH_SMALL) )
 			{
 				if ( my->behavior == &actBoulder )
@@ -1965,9 +1969,11 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 									&& entity->sprite != 1247 
 									&& entity->sprite != 1792
 									&& entity->sprite != 1794
+									&& entity->sprite != 2527
 									&& entity->sprite != 1408
 									&& entity->sprite != 1796
 									&& entity->sprite != 1797
+									&& entity->sprite != 2529
 									&& entity->sprite != 1803
 									&& entity->sprite != 1804
 									&& entity->sprite != 1819

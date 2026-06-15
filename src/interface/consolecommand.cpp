@@ -6666,6 +6666,7 @@ namespace ConsoleCommands {
 						case 247: monsterType = MONSTER_ADORCISED_WEAPON; break;
 						case 304: monsterType = GRYPHON; break;
 						case 308: monsterType = HAUNTED_ARMOR; break;
+						case 309: monsterType = MINIMIMIC; break;
 						default:
 							break;
 						}

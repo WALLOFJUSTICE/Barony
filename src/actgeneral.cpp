@@ -3884,6 +3884,11 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				{
 					for ( auto entity : attachedEntities )
 					{
+						if ( entity->behavior == &actSummonTrap )
+						{
+							entity->summonTrapFindTargetRange = result;
+							continue;
+						}
 						if ( entity->behavior != &actMonster )
 						{
 							continue;
@@ -3895,12 +3900,12 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						for ( node_t* node = map.creatures->first; node; node = node->next )
 						{
 							Entity* target = (Entity*)node->element;
-							if ( ((target->behavior == &actMonster && target->monsterAllyGetPlayerLeader()) || target->behavior == &actPlayer) && target != entity
-								&& entity->checkEnemy(target) )
+							int findx = static_cast<int>(target->x) >> 4;
+							int findy = static_cast<int>(target->y) >> 4;
+							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
 							{
-								int findx = static_cast<int>(target->x) >> 4;
-								int findy = static_cast<int>(target->y) >> 4;
-								if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
+								if ( ((target->behavior == &actMonster && target->monsterAllyGetPlayerLeader()) || target->behavior == &actPlayer) && target != entity
+									&& entity->checkEnemy(target) && target->monsterIsTargetable() )
 								{
 									real_t oldDist = dist;
 									dist = sqrt(pow(entity->x - target->x, 2) + pow(entity->y - target->y, 2));
@@ -3955,12 +3960,12 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						for ( node_t* node = map.creatures->first; node; node = node->next )
 						{
 							Entity* target = (Entity*)node->element;
-							if ( ((target->behavior == &actMonster) || target->behavior == &actPlayer) && target != entity
-								&& entity->checkEnemy(target) )
+							int findx = static_cast<int>(target->x) >> 4;
+							int findy = static_cast<int>(target->y) >> 4;
+							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
 							{
-								int findx = static_cast<int>(target->x) >> 4;
-								int findy = static_cast<int>(target->y) >> 4;
-								if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
+								if ( ((target->behavior == &actMonster) || target->behavior == &actPlayer) && target != entity
+									&& entity->checkEnemy(target) && target->monsterIsTargetable() )
 								{
 									real_t oldDist = dist;
 									dist = sqrt(pow(entity->x - target->x, 2) + pow(entity->y - target->y, 2));
@@ -4286,13 +4291,22 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				{
 					for ( auto entity : attachedEntities )
 					{
-						if ( entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() )
+						if ( entity->behavior == &actSummonTrap )
 						{
 							int findx = static_cast<int>(entity->x) >> 4;
 							int findy = static_cast<int>(entity->y) >> 4;
 							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
 							{
-								if ( entity->getStats() )
+								entity->summonTrapSetHostility = Stat::MONSTER_FORCE_PLAYER_ENEMY;
+							}
+						}
+						else if ( entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() )
+						{
+							int findx = static_cast<int>(entity->x) >> 4;
+							int findy = static_cast<int>(entity->y) >> 4;
+							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
+							{
+								if ( entity->getStats() && achievementObserver.checkUidIsFromPlayer(entity->getStats()->leader_uid) < 0 )
 								{
 									entity->getStats()->monsterForceAllegiance = Stat::MONSTER_FORCE_PLAYER_ENEMY;
 									serverUpdateEntityStatFlag(entity, 20);
@@ -4312,7 +4326,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							int findy = static_cast<int>(entity->y) >> 4;
 							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
 							{
-								if ( entity->getStats() )
+								if ( entity->getStats() && achievementObserver.checkUidIsFromPlayer(entity->getStats()->leader_uid) < 0 )
 								{
 									entity->getStats()->monsterForceAllegiance = Stat::MONSTER_FORCE_PLAYER_ENEMY;
 									serverUpdateEntityStatFlag(entity, 20);
@@ -4337,13 +4351,22 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				{
 					for ( auto entity : attachedEntities )
 					{
-						if ( entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() )
+						if ( entity->behavior == &actSummonTrap )
 						{
 							int findx = static_cast<int>(entity->x) >> 4;
 							int findy = static_cast<int>(entity->y) >> 4;
 							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
 							{
-								if ( entity->getStats() )
+								entity->summonTrapSetHostility = Stat::MONSTER_FORCE_PLAYER_ALLY;
+							}
+						}
+						else if ( entity->behavior == &actMonster && !entity->monsterAllyGetPlayerLeader() )
+						{
+							int findx = static_cast<int>(entity->x) >> 4;
+							int findy = static_cast<int>(entity->y) >> 4;
+							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
+							{
+								if ( entity->getStats() && achievementObserver.checkUidIsFromPlayer(entity->getStats()->leader_uid) < 0 )
 								{
 									entity->getStats()->monsterForceAllegiance = Stat::MONSTER_FORCE_PLAYER_ALLY;
 								}
@@ -4362,7 +4385,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							int findy = static_cast<int>(entity->y) >> 4;
 							if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
 							{
-								if ( entity->getStats() )
+								if ( entity->getStats() && achievementObserver.checkUidIsFromPlayer(entity->getStats()->leader_uid) < 0 )
 								{
 									entity->getStats()->monsterForceAllegiance = Stat::MONSTER_FORCE_PLAYER_ALLY;
 								}

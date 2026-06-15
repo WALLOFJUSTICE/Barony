@@ -252,6 +252,14 @@ void actSummonTrap(Entity* my)
 							monsterStats->copyNPCStatsAndInventoryFrom(*summonNPCStats);
 						}
 
+						if ( my->summonTrapSetHostility == Stat::MONSTER_FORCE_PLAYER_ALLY
+							|| my->summonTrapSetHostility == Stat::MONSTER_FORCE_PLAYER_ENEMY
+							|| my->summonTrapSetHostility == Stat::MONSTER_FORCE_PLAYER_RECRUITABLE )
+						{
+							monsterStats->monsterForceAllegiance = my->summonTrapSetHostility;
+							serverUpdateEntityStatFlag(monster, 20);
+						}
+
 						if ( foundTriggerEntity )
 						{
 							monster->lookAtEntity(*foundTriggerEntity);
@@ -263,6 +271,56 @@ void actSummonTrap(Entity* my)
 							{
 								messagePlayer(foundTriggerEntity->skill[2], MESSAGE_INTERACTION, Language::get(6248),
 									getMonsterLocalizedName(monsterStats->type).c_str());
+							}
+						}
+						else
+						{
+							if ( my->summonTrapFindTargetRange != 0 )
+							{
+								int x1 = my->summonTrapFindTargetRange & 0xFF;
+								int x2 = (my->summonTrapFindTargetRange >> 8) & 0xFF;
+								int y1 = (my->summonTrapFindTargetRange >> 16) & 0xFF;
+								int y2 = (my->summonTrapFindTargetRange >> 24) & 0xFF;
+
+								real_t dist = 10000.f;
+								real_t sightrange = 256.0;
+								Entity* toAttack = nullptr;
+								for ( node_t* node = map.creatures->first; node; node = node->next )
+								{
+									Entity* target = (Entity*)node->element;
+									int findx = static_cast<int>(target->x) >> 4;
+									int findy = static_cast<int>(target->y) >> 4;
+									if ( findx >= x1 && findx <= x2 && findy >= y1 && findy <= y2 )
+									{
+										if ( ((target->behavior == &actMonster && target->monsterAllyGetPlayerLeader()) || target->behavior == &actPlayer) && target != monster
+											&& monster->checkEnemy(target) && target->monsterIsTargetable() )
+										{
+											real_t oldDist = dist;
+											dist = sqrt(pow(monster->x - target->x, 2) + pow(monster->y - target->y, 2));
+											if ( dist < sightrange && dist <= oldDist )
+											{
+												double tangent = atan2(target->y - monster->y, target->x - monster->x);
+												//lineTrace(entity, entity->x, entity->y, tangent, sightrange, 0, false);
+												//if ( hit.entity == target )
+												//{
+													//my->monsterLookTime = 1;
+													//my->monsterMoveTime = local_rng.rand() % 10 + 1;
+												monster->monsterLookDir = tangent;
+												monster->lookAtEntity(*target);
+												toAttack = target;
+												//}
+											}
+											else
+											{
+												dist = oldDist;
+											}
+										}
+									}
+								}
+								if ( toAttack )
+								{
+									monster->monsterAcquireAttackTarget(*toAttack, MONSTER_STATE_PATH);
+								}
 							}
 						}
 					}

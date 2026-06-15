@@ -32366,41 +32366,11 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 				{
 					int variation = -1;
 					SDL_Surface* srcSurf = nullptr;
-					if ( i == EFF_SHAPESHIFT )
-					{
-						if ( entity && entity->behavior == &actPlayer )
-						{
-							switch ( entity->effectShapeshift )
-							{
-								case RAT:
-									variation = 0;
-									break;
-								case SPIDER:
-									variation = 1;
-									break;
-								case TROLL:
-									variation = 2;
-									break;
-								case CREATURE_IMP:
-									variation = 3;
-									break;
-								default:
-									break;
-							}
-						}
-					}
 					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(effectID);
 					if ( !definition.neverDisplay )
 					{
 						std::string imgPath;
-						if ( i == EFF_SHAPESHIFT && variation == -1 )
-						{
-							imgPath = "";
-						}
-						else
-						{
-							imgPath = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffectImgPath(definition, variation);
-						}
+						imgPath = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffectImgPath(definition, variation);
 						if ( imgPath != "" )
 						{
 							srcSurf = const_cast<SDL_Surface*>(Image::get(imgPath.c_str())->getSurf());
@@ -32428,34 +32398,11 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 				{
 					int variation = -1;
 					SDL_Surface* srcSurf = nullptr;
-					if ( i == EFF_SHAPESHIFT )
-					{
-						if ( entity && entity->behavior == &actPlayer )
-						{
-							switch ( entity->effectShapeshift )
-							{
-							case RAT:
-								variation = 0;
-								break;
-							case SPIDER:
-								variation = 1;
-								break;
-							case TROLL:
-								variation = 2;
-								break;
-							case CREATURE_IMP:
-								variation = 3;
-								break;
-							default:
-								break;
-							}
-						}
-					}
 					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(effectID);
 					if ( !definition.neverDisplay )
 					{
 						std::string imgPath;
-						if ( i == EFF_SHAPESHIFT && variation == -1 )
+						if ( effectID == EFF_MIMIC_VOID && this->barType == HPBarType::BAR_TYPE_FURNITURE )
 						{
 							imgPath = "";
 						}
@@ -32490,41 +32437,11 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 				{
 					int variation = -1;
 					SDL_Surface* srcSurf = nullptr;
-					if ( i == EFF_SHAPESHIFT )
-					{
-						if ( entity && entity->behavior == &actPlayer )
-						{
-							switch ( entity->effectShapeshift )
-							{
-							case RAT:
-								variation = 0;
-								break;
-							case SPIDER:
-								variation = 1;
-								break;
-							case TROLL:
-								variation = 2;
-								break;
-							case CREATURE_IMP:
-								variation = 3;
-								break;
-							default:
-								break;
-							}
-						}
-					}
 					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(effectID);
 					if ( !definition.neverDisplay )
 					{
 						std::string imgPath;
-						if ( i == EFF_SHAPESHIFT && variation == -1 )
-						{
-							imgPath = "";
-						}
-						else
-						{
-							imgPath = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffectImgPath(definition, variation);
-						}
+						imgPath = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffectImgPath(definition, variation);
 						if ( imgPath != "" )
 						{
 							srcSurf = const_cast<SDL_Surface*>(Image::get(imgPath.c_str())->getSurf());
@@ -32573,11 +32490,7 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 					if ( !definition.neverDisplay )
 					{
 						std::string imgPath;
-						if ( effectID == EFF_SHAPESHIFT && variation == -1 )
-						{
-							imgPath = "";
-						}
-						else if ( effectID == EFF_SALAMANDER_HEART && variation == -1 )
+						if ( effectID == EFF_SALAMANDER_HEART && variation == -1 )
 						{
 							imgPath = "";
 						}

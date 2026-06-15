@@ -567,6 +567,7 @@ Monster editorSpriteTypeToMonster(Sint32 sprite)
 	case 247: monsterType = MONSTER_ADORCISED_WEAPON; break;
 	case 304: monsterType = GRYPHON; break;
 	case 308: monsterType = HAUNTED_ARMOR; break;
+	case 309: monsterType = MINIMIMIC; break;
 	default:
 		break;
 	}
@@ -628,6 +629,7 @@ int checkSpriteType(Sint32 sprite)
 	case 247:
 	case 304:
 	case 308:
+	case 309:
 		//monsters
 		return 1;
 		break;
@@ -1300,6 +1302,22 @@ char itemNameStrings[NUM_ITEM_STRINGS][32] =
 	"spellbook_dominate",
 	"scroll_scry_key",
 	"mask_blackiron_visor",
+	"magicstaff_deep_shade",
+	"magicstaff_blink",
+	"magicstaff_shadow_tag",
+	"magicstaff_disarm",
+	"magicstaff_teleother",
+	"magicstaff_psychic_spear",
+	"magicstaff_portal",
+	"magicstaff_splinter_gear",
+	"magicstaff_disrupt_earth",
+	"magicstaff_wonderlight",
+	"magicstaff_greaseball",
+	"magicstaff_holy_beam",
+	"magicstaff_booby_trap",
+	"magicstaff_slam",
+	"magicstaff_windgate",
+	"magicstaff_shade_bolt",
 	""
 };
 
@@ -1593,6 +1611,22 @@ char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32] =
 		"spellbook_sanctuary",
 		"spellbook_holy_beam",
 		"spellbook_dominate",
+		"magicstaff_deep_shade",
+		"magicstaff_blink",
+		"magicstaff_shadow_tag",
+		"magicstaff_disarm",
+		"magicstaff_teleother",
+		"magicstaff_psychic_spear",
+		"magicstaff_portal",
+		"magicstaff_splinter_gear",
+		"magicstaff_disrupt_earth",
+		"magicstaff_wonderlight",
+		"magicstaff_greaseball",
+		"magicstaff_holy_beam",
+		"magicstaff_booby_trap",
+		"magicstaff_slam",
+		"magicstaff_windgate",
+		"magicstaff_shade_bolt",
 		""
 	},
 	{
@@ -2103,7 +2137,8 @@ std::vector<const char*> spriteEditorNameStrings =
 	"FORCEFIELD",
 	"WIDE GATE (North-South)",
 	"WIDE GATE (East-West)",
-	"HAUNTED_ARMOR"
+	"HAUNTED_ARMOR",
+	"MINIMIMIC"
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][32] =

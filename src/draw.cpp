@@ -2101,7 +2101,7 @@ void drawEntities3D(view_t* camera, int mode)
                 nextnode = map.worldUI->first;
             }
         }
-        
+
         if ( entity->flags[INVISIBLE] && !entity->flags[INVISIBLE_DITHER] )
         {
             continue;
@@ -2223,6 +2223,19 @@ void drawEntities3D(view_t* camera, int mode)
                         decrease = true;
                         goto end;
                     }
+
+#ifndef EDITOR
+					if ( entity->sprite == 2458 && entity->behavior == &actFloorDecoration )
+					{
+						real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
+							+ pow(camera->y * 16.0 - entity->y, 2));
+						if ( camDist >= 64.0 * 64.0 )
+						{
+							decrease = true;
+							goto end;
+						}
+					}
+#endif
                 }
 
 				const real_t rx = entity->x / 16.0;
@@ -2284,7 +2297,7 @@ void drawEntities3D(view_t* camera, int mode)
 				continue;
 			}
 		}
-        
+ 
 		if ( entity->flags[SPRITE] == false )
 		{
             GL_CHECK_ERR(glDrawVoxel(camera, entity, mode));
@@ -3880,7 +3893,7 @@ void occlusionCulling(map_t& map, view_t& camera)
 
 	const int size = map.width * map.height;
 	
-    if (*disabled) {
+    if (*disabled || !strcmp(map.filename, "void.lmp") ) {
         memset(camera.vismap, 1, sizeof(bool) * size);
         return;
     }

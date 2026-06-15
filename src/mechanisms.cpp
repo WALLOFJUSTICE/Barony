@@ -2231,6 +2231,90 @@ bool entityInsideWind(Entity* entity1, Entity* wind)
 	return result;
 }
 
+void Entity::mapTileWindMove()
+{
+	if ( map.tileWind.size() > 0 && behavior == &actPlayer && players[skill[2]]->isLocalPlayer() )
+	{
+		static std::pair<int, Uint32> lastEffectedIndex[MAXPLAYERS];
+		int ox = (static_cast<int>(x) >> 4);
+		int oy = (static_cast<int>(y) >> 4);
+		const real_t radius = 6.0;
+		int mapIndex = oy * MAPLAYERS + ox * MAPLAYERS * map.height;
+		for ( int iy = oy - 1; iy <= oy + 1; ++iy )
+		{
+			for ( int ix = ox - 1; ix <= ox + 1; ++ix )
+			{
+				auto find = map.tileWind.find(mapIndex);
+				if ( find != map.tileWind.end() )
+				{
+					real_t testx = ix * 16.0 + 8.0;
+					real_t testy = iy * 16.0 + 8.0;
+					if ( x + sizex > testx - radius )
+					{
+						if ( x - sizex < testx + radius )
+						{
+							if ( y + sizey > testy - radius )
+							{
+								if ( y - sizey < testy + radius )
+								{
+									if ( players[skill[2]]->isLocalPlayer() )
+									{
+										real_t dirx = creatureWindVelocity * cos(creatureWindDir);
+										real_t diry = creatureWindVelocity * sin(creatureWindDir);
+										creatureWindVelocity = *cvar_map_tile_wind * 0.5;
+										real_t dir = find->second * PI / 4;
+										dirx += cos(dir);
+										diry += sin(dir);
+										creatureWindDir = atan2(diry, dirx);
+									}
+
+									if ( !strcmp(map.filename, "void.lmp") )
+									{
+										if ( lastEffectedIndex[skill[2]].first == mapIndex
+											&& ((::ticks - lastEffectedIndex[skill[2]].second) < 5 * TICKS_PER_SECOND) )
+										{
+											// skip due to recency
+										}
+										else if ( getStats() && !getStats()->getEffectActive(EFF_STASIS) )
+										{
+											if ( multiplayer == CLIENT )
+											{
+												strcpy((char*)net_packet->data, "VOWI");
+												net_packet->data[4] = clientnum;
+												net_packet->address.host = net_server.host;
+												net_packet->address.port = net_server.port;
+												net_packet->len = 5;
+												sendPacketSafe(net_sock, -1, net_packet, 0);
+											}
+											else if ( players[skill[2]]->isLocalPlayer() )
+											{
+												Entity* spellEntity = createParticleSapCenter(this, this, 0, 2178, 2178);
+												if ( spellEntity )
+												{
+													spellEntity->x = this->x;
+													spellEntity->y = this->y;
+													spellEntity->skill[0] = 25; // duration
+													spellEntity->skill[7] = this->getUID();
+												}
+												if ( setEffect(EFF_STASIS, true, 3 * TICKS_PER_SECOND, true) )
+												{
+													playSoundEntityLocal(this, 166, 128);
+												}
+											}
+											lastEffectedIndex[skill[2]].first = mapIndex;
+											lastEffectedIndex[skill[2]].second = ::ticks;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void Entity::actWind()
 {
 	if ( actWindLifetime > 0 )

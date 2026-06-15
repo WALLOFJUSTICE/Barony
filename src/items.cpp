@@ -3178,6 +3178,21 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 		case MAGICSTAFF_POISON:
 		case BRANCH_STAFF:
 		case MAGICSTAFF_SCEPTER:
+		case MAGICSTAFF_DEEP_SHADE:
+		case MAGICSTAFF_BLINK:
+		case MAGICSTAFF_SHADOW_TAG:
+		case MAGICSTAFF_DISARM:
+		case MAGICSTAFF_TELEOTHER:
+		case MAGICSTAFF_PSYCHIC_SPEAR:
+		case MAGICSTAFF_PORTAL:
+		case MAGICSTAFF_SPLINTER_GEAR:
+		case MAGICSTAFF_DISRUPT_EARTH:
+		case MAGICSTAFF_WONDERLIGHT:
+		case MAGICSTAFF_GREASEBALL:
+		case MAGICSTAFF_HOLY_BEAM:
+		case MAGICSTAFF_BOOBY_TRAP:
+		case MAGICSTAFF_SLAM:
+		case MAGICSTAFF_WINDGATE:
 			equipItemResult = equipItem(item, &stats[player]->weapon, player, checkInventorySpaceForPaperDoll);
 			break;
 		case RING_ADORNMENT:
