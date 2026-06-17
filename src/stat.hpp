@@ -531,6 +531,7 @@ public:
 	real_t getEnsembleEffectBonus(EnsembleEffectsBonusType bonusType, int checkEffectStrength = -1);
 	Sint32 getThaumProficiencySpellStatBonus(int whichStat, Sint32 currentBonus);
 	static int getMaxAttackCharge(Stat* myStats);
+	static bool effectIsFreeAction(int effect);
 	struct MonsterRangedAccuracy
 	{
 		Uint32 lastTarget = 0;

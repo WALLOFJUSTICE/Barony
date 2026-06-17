@@ -227,6 +227,7 @@ void stareMasterDie(Entity* my)
 #define EYE_SPRITE_NORMAL 2479
 #define EYE_SPRITE_BEAM 2483
 #define EYE_SPRITE_ALT 2484
+#define EYE_SPRITE_BLIND 2530
 
 void actStareParticle(Entity* my)
 {
@@ -403,6 +404,7 @@ void actStareParticle(Entity* my)
 void createStareAOE(Entity* my, bool updateClients)
 {
 	if ( !my ) { return; }
+
 	for ( int j = 0; j < 3; ++j )
 	{
 		for ( int i = 0; i < 2; ++i )
@@ -648,6 +650,21 @@ void Entity::stareMasterChooseWeapon(const Entity* target, double dist)
 		myStats->setAttribute("staremaster_form_delay", std::to_string(formDelay));
 	}
 
+	if ( myStats->getEffectActive(EFF_BLIND) )
+	{
+		if ( monsterSpecialState != STAREMASTER_MODE_BLIND )
+		{
+			monsterSpecialState = STAREMASTER_MODE_BLIND;
+			myStats->setAttribute("staremaster_form_delay", std::to_string(100));
+			myStats->setAttribute("staremaster_atk_cycle", "");
+
+			this->setEffect(EFF_STUNNED, true, 50, false);
+			this->attack(MONSTER_POSE_MELEE_WINDUP3, 0, nullptr);
+		}
+		this->monsterSpecialTimer = 0;
+		return;
+	}
+
 	if ( formDelay <= 0 && monsterSpecialTimer == 0 && (ticks % 5 == 0) /*&& monsterAttack == 0*/ )
 	{
 		std::vector<int> options;
@@ -748,7 +765,7 @@ int stareMasterGetAttackPose(Entity* my)
 		atkCycle = std::stoi(myStats->getAttribute("staremaster_atk_cycle"));
 	}
 
-	if ( my->monsterSpecialState == 0 || my->monsterSpecialState == STAREMASTER_MODE_NORMAL )
+	if ( my->monsterSpecialState == 0 || my->monsterSpecialState == STAREMASTER_MODE_NORMAL || my->monsterSpecialState == STAREMASTER_MODE_BLIND )
 	{
 		if ( my->monsterSpecialTimer == MONSTER_SPECIAL_COOLDOWN_STAREMASTER_FORMCHANGE_NORMAL )
 		{
@@ -757,6 +774,11 @@ int stareMasterGetAttackPose(Entity* my)
 		else
 		{
 			options.push_back(MONSTER_POSE_MAGIC_WINDUP1);
+			if ( myStats->getEffectActive(EFF_BLIND) )
+			{
+				options.push_back(MONSTER_POSE_MAGIC_WINDUP1);
+				options.push_back(MONSTER_POSE_MAGIC_WINDUP3);
+			}
 			if ( dist <= TOUCHRANGE )
 			{
 				options.push_back(MONSTER_POSE_MELEE_WINDUP1);
@@ -778,8 +800,11 @@ int stareMasterGetAttackPose(Entity* my)
 			options.push_back(MONSTER_POSE_MAGIC_WINDUP3);
 			if ( dist <= 92 )
 			{
-				options.push_back(MONSTER_POSE_MAGIC_WINDUP2);
-				options.push_back(MONSTER_POSE_MAGIC_WINDUP2);
+				if ( !myStats->getEffectActive(EFF_BLIND) )
+				{
+					options.push_back(MONSTER_POSE_MAGIC_WINDUP2);
+					options.push_back(MONSTER_POSE_MAGIC_WINDUP2);
+				}
 			}
 			if ( dist <= TOUCHRANGE )
 			{
@@ -795,14 +820,14 @@ int stareMasterGetAttackPose(Entity* my)
 		}
 		else
 		{
-			if ( atkCycle == 0 || atkCycle == 5 )
+			if ( (atkCycle == 0 || atkCycle == 5) && !myStats->getEffectActive(EFF_BLIND) )
 			{
 				options.push_back(MONSTER_POSE_SPECIAL_WINDUP1);
 			}
 			else
 			{
 				if ( target && target->getStats() && !target->getStats()->getEffectActive(EFF_MESMERIZED)
-					&& atkCycle != 1 && atkCycle != 2 )
+					&& atkCycle != 1 && atkCycle != 2 && !myStats->getEffectActive(EFF_BLIND) )
 				{
 					options.push_back(MONSTER_POSE_SPECIAL_WINDUP1);
 					options.push_back(MONSTER_POSE_SPECIAL_WINDUP1);
@@ -862,6 +887,20 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 
 		myStats->setEffectActive(EFF_LEVITATING, 1);
 		myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
+
+		if ( myStats->getEffectActive(EFF_BLIND) )
+		{
+			if ( my->monsterSpecialState != STAREMASTER_MODE_BLIND )
+			{
+				my->monsterSpecialState = STAREMASTER_MODE_BLIND;
+				myStats->setAttribute("staremaster_form_delay", std::to_string(100));
+				myStats->setAttribute("staremaster_atk_cycle", "");
+
+				my->setEffect(EFF_STUNNED, true, 50, false);
+				my->attack(MONSTER_POSE_MELEE_WINDUP3, 0, nullptr);
+			}
+			my->monsterSpecialTimer = 0;
+		}
 	}
 
 	/*static ConsoleVariable<int> cvar_stare_atk("/stare_atk", 0);
@@ -913,6 +952,7 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 				&& my->monsterAttack != MONSTER_POSE_RANGED_WINDUP1
 				&& my->monsterAttack != MONSTER_POSE_RANGED_WINDUP2
 				&& my->monsterAttack != MONSTER_POSE_RANGED_WINDUP3
+				&& my->monsterAttack != MONSTER_POSE_MELEE_WINDUP3
 				&& my->monsterAttack != MONSTER_POSE_SPECIAL_WINDUP1 )
 			{
 				STARE_ATTACK_ANIM += 0.05;
@@ -963,7 +1003,8 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 
 			if ( my->monsterAttack == MONSTER_POSE_RANGED_WINDUP1
 				|| my->monsterAttack == MONSTER_POSE_RANGED_WINDUP2
-				|| my->monsterAttack == MONSTER_POSE_RANGED_WINDUP3 )
+				|| my->monsterAttack == MONSTER_POSE_RANGED_WINDUP3
+				|| my->monsterAttack == MONSTER_POSE_MELEE_WINDUP3 )
 			{
 				if ( my->monsterAttackTime == 0 )
 				{
@@ -979,6 +1020,10 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 					else if ( my->monsterAttack == MONSTER_POSE_RANGED_WINDUP3 )
 					{
 						STARE_EYE_SPRITE = EYE_SPRITE_ALT;
+					}
+					else if ( my->monsterAttack == MONSTER_POSE_MELEE_WINDUP3 )
+					{
+						STARE_EYE_SPRITE = EYE_SPRITE_BLIND;
 					}
 				}
 				else
@@ -1089,7 +1134,8 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 					{
 						if ( multiplayer != CLIENT )
 						{
-							if ( my->monsterSpecialState == STAREMASTER_MODE_ALTERNATE )
+							if ( my->monsterSpecialState == STAREMASTER_MODE_ALTERNATE
+								|| my->monsterSpecialState == STAREMASTER_MODE_BLIND )
 							{
 								if ( local_rng.rand() % 3 == 0 )
 								{
@@ -1097,7 +1143,21 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 								}
 								else
 								{
-									castSpell(my->getUID(), getSpellFromID(SPELL_CONFUSE), true, false);
+									if ( my->monsterSpecialState == STAREMASTER_MODE_BLIND )
+									{
+										if ( local_rng.rand() % 2 )
+										{
+											castSpell(my->getUID(), getSpellFromID(SPELL_PSYCHIC_SPEAR), true, false);
+										}
+										else
+										{
+											castSpell(my->getUID(), getSpellFromID(SPELL_CONFUSE), true, false);
+										}
+									}
+									else
+									{
+										castSpell(my->getUID(), getSpellFromID(SPELL_CONFUSE), true, false);
+									}
 								}
 							}
 							else
@@ -1180,7 +1240,14 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 							my->yaw = tangent;
 							my->lookAtEntity(*target);
 						}
-						castStareBeam(my);
+						if ( !myStats->getEffectActive(EFF_BLIND) )
+						{
+							castStareBeam(my);
+						}
+						else
+						{
+							playSoundEntity(my, 163, 128);
+						}
 					}
 					STARE_RECOIL = 1.0;
 				}
@@ -1338,7 +1405,8 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 				if ( STARE_EYE_CHANGE >= 0.005 
 					&& (my->monsterAttack == MONSTER_POSE_RANGED_WINDUP1
 						|| my->monsterAttack == MONSTER_POSE_RANGED_WINDUP2
-						|| my->monsterAttack == MONSTER_POSE_RANGED_WINDUP3) )
+						|| my->monsterAttack == MONSTER_POSE_RANGED_WINDUP3
+						|| my->monsterAttack == MONSTER_POSE_MELEE_WINDUP3) )
 				{
 					entity->pitch -= 2 * PI * STARE_EYE_CHANGE;
 					if ( STARE_EYE_CHANGE >= 0.5 )

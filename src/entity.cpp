@@ -665,7 +665,12 @@ int Entity::entityLightAfterReductions(Stat& myStats, Entity* observer)
 	}
 	if ( !strcmp(map.filename, "void.lmp") )
 	{
-		if ( player >= 0 )
+		if ( myStats.getEffectActive(EFF_STASIS) && monsterAllyGetPlayerLeader() )
+		{
+			// stasis allies no target
+			light = 16;
+		}
+		else if ( player >= 0 )
 		{
 			int increment = 16 * 7;
 			light = std::max(increment, light + increment);
@@ -8143,6 +8148,51 @@ void Entity::handleEffects(Stat* myStats)
 		{
 			cured = true;
 			myStats->EFFECTS_TIMERS[EFF_WEBBED] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_PACIFY] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_PACIFY] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_FEAR] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_FEAR] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_ROOTED] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_ROOTED] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_LIFT] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_LIFT] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_DIZZY] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_DIZZY] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_SPIN] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_SPIN] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_MESMERIZED] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_MESMERIZED] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_DUCKED] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_DUCKED] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
+		}
+		if ( myStats->EFFECTS_TIMERS[EFF_STASIS] > 0 )
+		{
+			cured = true;
+			myStats->EFFECTS_TIMERS[EFF_STASIS] = 1; // tick over to 0 and dissipate on the next check, and play the appropriate message.
 		}
 		if ( cured )
 		{
@@ -16370,7 +16420,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 								if ( hitstats->getEffectActive(EFF_BLEEDING) && (!wasBleeding || heavyBleedEffect) )
 								{
 									hitstats->bleedInflictedBy = static_cast<Sint32>(this->getUID());
-									if ( heavyBleedEffect )
+									if ( heavyBleedEffect && !hit.entity->hasFreeAction() )
 									{
 										hitstats->setEffectActive(EFF_SLOW, 1);
 										hitstats->EFFECTS_TIMERS[EFF_SLOW] = 60;
@@ -24350,6 +24400,50 @@ void Entity::serverUpdateEffectsForEntity(bool guarantee)
 	}
 }
 
+bool Entity::hasFreeAction() const
+{
+	Stat* myStats = getStats();
+
+	if ( !myStats )
+	{
+		return false;
+	}
+
+	bool freeAction = false;
+	if ( myStats->mask && myStats->mask->type == TOOL_BLINDFOLD_FOCUS )
+	{
+		freeAction = true;
+	}
+	else if ( myStats->type == GOATMAN && myStats->getEffectActive(EFF_DRUNK) )
+	{
+		freeAction = true;
+	}
+	return freeAction;
+}
+
+bool Stat::effectIsFreeAction(int effect)
+{
+	switch ( effect )
+	{
+	case EFF_ASLEEP:
+	case EFF_PARALYZED:
+	case EFF_SLOW:
+	case EFF_WEBBED:
+	case EFF_PACIFY:
+	case EFF_FEAR:
+	case EFF_ROOTED:
+	case EFF_LIFT:
+	case EFF_DIZZY:
+	case EFF_SPIN:
+	case EFF_MESMERIZED:
+	case EFF_DUCKED:
+	case EFF_STASIS:
+		return true;
+		break;
+	}
+	return false;
+}
+
 bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration, 
 	bool updateClients, bool guarantee, bool overrideEffectStrength,
 	bool overrideDuration)
@@ -24361,9 +24455,16 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 		return false;
 	}
 
+	bool freeAction = hasFreeAction();
+
 	Uint8 effectStrength = std::holds_alternative<bool>(value) ? (std::get<bool>(value) ? 1 : 0) : std::get<Uint8>(value);
 	if ( effectStrength > 0 )
 	{
+		if ( freeAction && Stat::effectIsFreeAction(effect) )
+		{
+			return false;
+		}
+
 		switch ( effect )
 		{
 			case EFF_MESSY:
@@ -24438,6 +24539,12 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_KNOCKBACK:
 			case EFF_BLIND:
 			case EFF_WEBBED:
+			case EFF_MESMERIZED:
+				if ( effect == EFF_MESMERIZED && myStats->getEffectActive(EFF_BLIND) )
+				{
+					return false;
+				}
+
 				if ( (myStats->type >= LICH && myStats->type < KOBOLD)
 					|| myStats->type == COCKATRICE || myStats->type == LICH_FIRE || myStats->type == LICH_ICE
 					|| myStats->type == STAREMASTER || myStats->type == GRYPHON || myStats->type == DRAGON )
@@ -24446,7 +24553,8 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 						!(effect == EFF_KNOCKBACK && myStats->type == COCKATRICE) &&
 						!(effect == EFF_WEBBED && myStats->type == COCKATRICE) &&
 						!(effect == EFF_BLIND && myStats->type == COCKATRICE) &&
-						!(effect == EFF_BLIND && myStats->type == SHOPKEEPER) )
+						!(effect == EFF_BLIND && myStats->type == SHOPKEEPER) &&
+						!(effect == EFF_BLIND && myStats->type == STAREMASTER) )
 					{
 						return false;
 					}

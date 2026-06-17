@@ -750,6 +750,7 @@ void actArrow(Entity* my)
 							case COCKATRICE:
 							case TROLL:
 							case BUGBEAR:
+							case STAREMASTER:
 								// more damage to these creatures
 								huntingDamage = true;
 								for ( int gibs = 0; gibs < 10; ++gibs )
@@ -1566,7 +1567,7 @@ void actArrow(Entity* my)
 								}
 								statusEffectApplied = true;
 							}
-							if ( !hitstats->getEffectActive(EFF_SLOW) )
+							if ( !hitstats->getEffectActive(EFF_SLOW) && !hit.entity->hasFreeAction() )
 							{
 								hitstats->setEffectActive(EFF_SLOW, 1);
 								if ( my->arrowPoisonTime > 0 )

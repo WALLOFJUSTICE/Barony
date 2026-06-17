@@ -1147,7 +1147,8 @@ public:
 	 * Returns true on successfully setting value.
 	 */
 	bool setEffect(int effect, std::variant<bool, Uint8> value, int duration, bool updateClients, bool guarantee = true, bool overrideEffectStrength = false, bool overrideDuration = true);
-
+	bool hasFreeAction() const;
+	
 	/*
 	 * @param state: required to let the entity know if it should enter MONSTER_STATE_PATH, MONSTER_STATE_ATTACK, etc.
 	 * @param monsterWasHit: monster is retaliating to an attack as opposed to finding an enemy. to set reaction time accordingly in hardcore

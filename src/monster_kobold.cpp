@@ -82,6 +82,10 @@ void initKobold(Entity* my, Stat* myStats)
 			{
 				cultist = 1 + rng.rand() % 2;
 			}
+			else if ( rng.rand() % 5 == 0 )
+			{
+				cultist = 1;
+			}
 
 			my->setHardcoreStats(*myStats);
 
@@ -181,11 +185,30 @@ void initKobold(Entity* my, Stat* myStats)
 						}
 					}
 				case 1:
-					if ( my->hasRangedWeapon() )
+					//if ( my->hasRangedWeapon() )
 					{
 						if ( rng.rand() % 5 > 0 ) // 80% chance
 						{
-							newItem(SPELLBOOK_SLOW, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+							//if ( !cultist )
+							{
+								switch ( rng.rand() % 3 )
+								{
+								case 0:
+									newItem(SPELLBOOK_COLD, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+									break;
+								case 1:
+									newItem(SPELLBOOK_FIREBALL, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+									break;
+								case 2:
+									newItem(SPELLBOOK_BLEED, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+									break;
+								/*case 3:
+									newItem(SPELLBOOK_SLOW, DECREPIT, 0, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, &myStats->inventory);
+									break;*/
+								default:
+									break;
+								}
+							}
 						}
 					}
 					break;

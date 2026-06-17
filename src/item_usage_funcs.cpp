@@ -1708,9 +1708,12 @@ bool item_PotionLevitation(Item*& item, Entity* entity, Entity* usedBy)
 	{
 		//Cursed effect slows you.
 		messagePlayer(player, MESSAGE_HINT, Language::get(2900));
-		messagePlayer(player, MESSAGE_HINT, Language::get(2901));
-		stats->setEffectActive(EFF_SLOW, 1);
-		stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		if ( !entity->hasFreeAction() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(2901));
+			stats->setEffectActive(EFF_SLOW, 1);
+			stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		}
 	}
 	else
 	{
@@ -1799,9 +1802,12 @@ bool item_PotionSpeed(Item*& item, Entity* entity, Entity* usedBy)
 		}
 		else
 		{
-			messagePlayer(player, MESSAGE_HINT, Language::get(2902));
-			stats->setEffectActive(EFF_SLOW, 1);
-			stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			if ( !entity->hasFreeAction() )
+			{
+				messagePlayer(player, MESSAGE_HINT, Language::get(2902));
+				stats->setEffectActive(EFF_SLOW, 1);
+				stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			}
 		}
 	}
 	else
@@ -2679,9 +2685,12 @@ bool item_PotionRestoreMagic(Item*& item, Entity* entity, Entity* usedBy)
 		if ( item->beatitude < 0 )
 		{
 			messagePlayer(player, MESSAGE_HINT, Language::get(774));
-			messagePlayer(player, MESSAGE_HINT | MESSAGE_STATUS, Language::get(2902));
-			stats->setEffectActive(EFF_SLOW, 1);
-			stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			if ( !entity->hasFreeAction() )
+			{
+				messagePlayer(player, MESSAGE_HINT | MESSAGE_STATUS, Language::get(2902));
+				stats->setEffectActive(EFF_SLOW, 1);
+				stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+			}
 		}
 		else
 		{
@@ -2703,9 +2712,12 @@ bool item_PotionRestoreMagic(Item*& item, Entity* entity, Entity* usedBy)
 	{
 		amount /= (std::abs(item->beatitude) * 2);
 		messagePlayer(player, MESSAGE_HINT, Language::get(774));
-		messagePlayer(player, MESSAGE_HINT | MESSAGE_STATUS, Language::get(2902));
-		stats->setEffectActive(EFF_SLOW, 1);
-		stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		if ( !entity->hasFreeAction() )
+		{
+			messagePlayer(player, MESSAGE_HINT | MESSAGE_STATUS, Language::get(2902));
+			stats->setEffectActive(EFF_SLOW, 1);
+			stats->EFFECTS_TIMERS[EFF_SLOW] = item->potionGetCursedEffectDurationRandom(entity, stats);
+		}
 	}
 	else
 	{

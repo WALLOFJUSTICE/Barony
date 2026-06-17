@@ -4699,7 +4699,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 
 							playSoundEntity(hit.entity, 28, 128);
 
-							if ( !warmHat )
+							if ( !warmHat && !hit.entity->hasFreeAction() )
 							{
 								hitstats->setEffectActive(EFF_SLOW, 1);
 								hitstats->EFFECTS_TIMERS[EFF_SLOW] = convertResistancePointsToMagicValue(element->duration, resistance);
@@ -4787,36 +4787,50 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 				}
 				else if (!strcmp(element->element_internal_name, spellElement_slow.element_internal_name))
 				{
-					if (hit.entity)
+					if (hit.entity )
 					{
 						if ( (!mimic && hit.entity->behavior == &actMonster) || hit.entity->behavior == &actPlayer)
 						{
-							playSoundEntity(hit.entity, 396 + local_rng.rand() % 3, 64);
-							hitstats->setEffectActive(EFF_SLOW, 1);
-							hitstats->EFFECTS_TIMERS[EFF_SLOW] = convertResistancePointsToMagicValue(element->duration, resistance);
-
-							magicOnEntityHit(parent, my, hit.entity, hitstats, 0, 0, 0, spell ? spell->ID : SPELL_NONE);
-							magicTrapOnHit(parent, hit.entity, hitstats, 0, spell ? spell->ID : SPELL_NONE);
-
-							// If the Entity hit is a Player, update their status to be Slowed
-							if ( hit.entity->behavior == &actPlayer )
+							if ( hit.entity->hasFreeAction() )
 							{
-								serverUpdateEffects(hit.entity->skill[2]);
-							}
-
-							// update enemy bar for attacker
-							if ( parent )
-							{
-								Uint32 color = makeColorRGB(0, 255, 0);
-								if ( parent->behavior == &actPlayer )
+								if ( parent )
 								{
-									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(394), Language::get(393), MSG_COMBAT);
+									Uint32 color = makeColorRGB(255, 0, 0);
+									if ( parent->behavior == &actPlayer )
+									{
+										messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(2905), Language::get(2906), MSG_COMBAT);
+									}
 								}
 							}
-							Uint32 color = makeColorRGB(255, 0, 0);
-							if ( player >= 0 )
+							else
 							{
-								messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(395));
+								playSoundEntity(hit.entity, 396 + local_rng.rand() % 3, 64);
+								hitstats->setEffectActive(EFF_SLOW, 1);
+								hitstats->EFFECTS_TIMERS[EFF_SLOW] = convertResistancePointsToMagicValue(element->duration, resistance);
+
+								magicOnEntityHit(parent, my, hit.entity, hitstats, 0, 0, 0, spell ? spell->ID : SPELL_NONE);
+								magicTrapOnHit(parent, hit.entity, hitstats, 0, spell ? spell->ID : SPELL_NONE);
+
+								// If the Entity hit is a Player, update their status to be Slowed
+								if ( hit.entity->behavior == &actPlayer )
+								{
+									serverUpdateEffects(hit.entity->skill[2]);
+								}
+
+								// update enemy bar for attacker
+								if ( parent )
+								{
+									Uint32 color = makeColorRGB(0, 255, 0);
+									if ( parent->behavior == &actPlayer )
+									{
+										messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(394), Language::get(393), MSG_COMBAT);
+									}
+								}
+								Uint32 color = makeColorRGB(255, 0, 0);
+								if ( player >= 0 )
+								{
+									messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(395));
+								}
 							}
 							spawnMagicEffectParticles(hit.entity->x, hit.entity->y, hit.entity->z, my->sprite);
 						}
@@ -13884,7 +13898,7 @@ void actParticleTimer(Entity* my)
 					my->x = parent->x;
 					my->y = parent->y;
 
-					if ( multiplayer != CLIENT )
+					if ( multiplayer != CLIENT && !(parent->getStats() && parent->getStats()->getEffectActive(EFF_BLIND)) )
 					{
 						real_t range = 128.0;
 						for ( node_t* node = map.creatures->first; node != nullptr; node = node->next )
@@ -13907,6 +13921,10 @@ void actParticleTimer(Entity* my)
 							if ( !stats ) { continue; }
 
 							if ( parent == entity )
+							{
+								continue;
+							}
+							if ( stats->getEffectActive(EFF_BLIND) )
 							{
 								continue;
 							}

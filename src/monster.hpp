@@ -1380,6 +1380,7 @@ static const int SALAMANDER_CAST = 2;
 static const int STAREMASTER_MODE_NORMAL = 1;
 static const int STAREMASTER_MODE_BEAM = 2;
 static const int STAREMASTER_MODE_ALTERNATE = 3;
+static const int STAREMASTER_MODE_BLIND = 4;
 
 struct MonsterData_t
 {

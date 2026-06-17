@@ -2712,6 +2712,8 @@ int getFurnitureSmashPose(Entity* my, Stat* myStats)
 	return 0;
 }
 
+std::map<int, std::queue<Uint32>> monsterIdleSfxQueue;
+
 void actMonster(Entity* my)
 {
 	if (!my)
@@ -3040,6 +3042,28 @@ void actMonster(Entity* my)
 	if ( my->ticks == 120 + MONSTER_NUMBER )
 	{
 		serverUpdateBodypartIDs(my);
+	}
+
+	if ( !strcmp(map.filename, "void.lmp") )
+	{
+		if ( my->monsterAllyGetPlayerLeader() )
+		{
+			if ( !myStats->getEffectActive(EFF_STASIS) 
+				|| (myStats->EFFECTS_TIMERS[EFF_STASIS] > 0 && myStats->EFFECTS_TIMERS[EFF_STASIS] < 5 * TICKS_PER_SECOND) )
+			{
+				if ( myStats->type != MINIMIMIC && myStats->type != MIMIC )
+				{
+					if ( my->ticks < (15 * TICKS_PER_SECOND) )
+					{
+						my->setEffect(EFF_STASIS, true, 10 * TICKS_PER_SECOND, true);
+					}
+					else
+					{
+						my->setEffect(EFF_STASIS, true, 35 * TICKS_PER_SECOND, true);
+					}
+				}
+			}
+		}
 	}
 
 	// some special herx behavior
@@ -5984,22 +6008,39 @@ void actMonster(Entity* my)
 								if ( myStats->type == KOBOLD )
 								{
 									doIdleSound = local_rng.rand() % 2 == 0;
-									for ( node_t* node = map.creatures->first; node && doIdleSound; node = node->next )
+								}
+
+								if ( monsterIdleSfxQueue[MONSTER_IDLESND].size() > 0 )
+								{
+									auto& queue = monsterIdleSfxQueue[MONSTER_IDLESND];
+									if ( (ticks - queue.front()) >= 3 * TICKS_PER_SECOND )
 									{
-										Entity* entity = (Entity*)node->element;
-										if ( entity->behavior == &actMonster && entity->skill[19] == MONSTER_IDLESND ) // skill 19 is monster idle snd
+										while ( queue.size() )
 										{
-											if ( Stat* stats = entity->getStats() )
+											queue.pop();
+										}
+									}
+									if ( queue.size() >= 3 )
+									{
+										doIdleSound = false;
+									}
+								}
+
+								for ( node_t* node = map.creatures->first; node && doIdleSound; node = node->next )
+								{
+									Entity* entity = (Entity*)node->element;
+									if ( entity->behavior == &actMonster && entity->skill[19] == MONSTER_IDLESND ) // skill 19 is monster idle snd
+									{
+										if ( Stat* stats = entity->getStats() )
+										{
+											if ( stats->monster_sound )
 											{
-												if ( stats->monster_sound )
+												bool playing;
+												stats->monster_sound->isPlaying(&playing);
+												if ( playing )
 												{
-													bool playing;
-													stats->monster_sound->isPlaying(&playing);
-													if ( playing )
-													{
-														doIdleSound = false;
-														break;
-													}
+													doIdleSound = false;
+													break;
 												}
 											}
 										}
@@ -6009,6 +6050,7 @@ void actMonster(Entity* my)
 								if ( doIdleSound )
 								{
 									MONSTER_SOUND = playSoundEntity(my, MONSTER_IDLESND + (local_rng.rand() % MONSTER_IDLEVAR), 128);
+									monsterIdleSfxQueue[MONSTER_IDLESND].push(::ticks);
 								}
 							}
 						}
@@ -11698,7 +11740,7 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 				case BUGBEAR:
 					break;
 				case KOBOLD:
-					if ( (hasrangedweapon && !(myStats->weapon && itemCategory(myStats->weapon) == SPELLBOOK)) || myStats->weapon == nullptr )
+					if ( (/*hasrangedweapon &&*/ !(myStats->weapon && itemCategory(myStats->weapon) == SPELLBOOK)) || myStats->weapon == nullptr )
 					{
 						specialRoll = local_rng.rand() % 20;
 						//messagePlayer(0, "Rolled: %d", specialRoll);
@@ -11714,7 +11756,7 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 								}
 							}
 						}
-						else if ( myStats->HP < (0.8 * myStats->MAXHP) )
+						else if ( true/*myStats->HP < (0.8 * myStats->MAXHP)*/ )
 						{
 							if ( (dist < 40 && specialRoll < 5) || (dist < 100 && specialRoll < 2) ) // 25%/10% chance
 							{
@@ -15108,7 +15150,11 @@ int Entity::getMonsterEffectiveDistanceOfRangedWeapon(Item* weapon)
 		}
 		if ( myStats->type == STAREMASTER )
 		{
-			if ( monsterSpecialState == STAREMASTER_MODE_ALTERNATE )
+			if ( myStats->getEffectActive(EFF_BLIND) )
+			{
+				distance = 48;
+			}
+			else if ( monsterSpecialState == STAREMASTER_MODE_ALTERNATE )
 			{
 				distance = 100;
 			}
