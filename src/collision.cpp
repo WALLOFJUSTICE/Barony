@@ -1476,6 +1476,13 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				}
 			}
 
+			if ( my && my->behavior == &actPlayer && entity->behavior == &actMonster )
+			{
+				if ( entityInsideEntity(my, entity) )
+				{
+					continue;
+				}
+			}
 			if ( multiplayer == CLIENT )
 			{
 				// fixes bug where clients can't move through humans

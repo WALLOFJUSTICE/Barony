@@ -19688,6 +19688,10 @@ bool Entity::friendlyFireProtection(Entity* your)
 			&& your->getStats() 
 			&& achievementObserver.checkUidIsFromPlayer(your->getStats()->leader_uid) >= 0)) )
 	{
+		if ( your->behavior == &actMonster && your->getStats() && your->getStats()->getEffectActive(EFF_CONFUSED) )
+		{
+			return false; // confused allies can be targeted by player
+		}
 		return true;
 	}
 

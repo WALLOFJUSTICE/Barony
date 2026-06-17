@@ -203,7 +203,13 @@ void actSummonTrap(Entity* my)
 						useCustomMonsters = false;
 					}
 
-					monster = summonMonster(static_cast<Monster>(typeToSpawn), my->x, my->y);
+					bool forceLocation = false;
+					if ( !strcmp(map.filename, "arena.lmp") )
+					{
+						forceLocation = true;
+					}
+
+					monster = summonMonster(static_cast<Monster>(typeToSpawn), my->x, my->y, forceLocation);
 					Stat* monsterStats = monster->getStats();
 					if ( monster && monsterStats )
 					{
