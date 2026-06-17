@@ -846,6 +846,8 @@ void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent,
 				return;
 			}
 
+			bool allowedSteal = true;
+
 			if ( hitstats->type == LICH 
 				|| hitstats->type == LICH_FIRE 
 				|| hitstats->type == LICH_ICE 
@@ -854,12 +856,20 @@ void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent,
 				|| hitstats->type == SHADOW
 				|| hitstats->type == SHOPKEEPER )
 			{
-				return;
+				allowedSteal = false;
 			}
 
 			if ( hit.entity->behavior == &actMonster && hitstats->type == MONSTER_ADORCISED_WEAPON && hitstats->weapon && itemCategory(hitstats->weapon) == SPELLBOOK )
 			{
-				return;
+				allowedSteal = false;
+			}
+
+			if ( hitstats->getAttribute("no_steal_weapon") == "1" )
+			{
+				if ( hitstats->weapon && itemCategory(hitstats->weapon) == SPELLBOOK )
+				{
+					allowedSteal = false;
+				}
 			}
 
 			if ( hit.entity->behavior == &actMonster 
@@ -868,7 +878,7 @@ void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent,
 					|| (hitstats->type == INCUBUS && !strncmp(hitstats->name, "inner demon", strlen("inner demon"))))
 				)
 			{
-				return;
+				allowedSteal = false;
 			}
 
 			// update enemy bar for attacker
@@ -889,7 +899,7 @@ void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent,
 				player = hit.entity->skill[2];
 			}
 
-			if ( hitstats->weapon )
+			if ( hitstats->weapon && allowedSteal )
 			{
 				Entity* spellEntity = createParticleSapCenter(parent, hit.entity, SPELL_STEAL_WEAPON, my.sprite, my.sprite);
 				if ( spellEntity )
@@ -902,6 +912,7 @@ void spellEffectStealWeapon(Entity& my, spellElement_t& element, Entity* parent,
 					if ( itemCategory(hitstats->weapon) == SPELLBOOK )
 					{
 						spellEntity->skill[11] = DECREPIT;
+						hitstats->setAttribute("no_steal_weapon", "1"); // only once
 					}
 					else
 					{

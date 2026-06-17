@@ -6947,6 +6947,24 @@ void Entity::handleEffects(Stat* myStats)
 		}
 	}
 
+	/*if ( myStats->getEffectActive(EFF_BLIND) )
+	{
+		if ( ticks % 25 == 0 )
+		{
+			if ( Entity* particle = createParticleAestheticOrbit(this, 2531, 0.5 * TICKS_PER_SECOND, PARTICLE_EFFECT_BLIND_ORBIT) )
+			{
+				particle->yaw = this->yaw - PI / 8;
+				particle->fskill[2] = particle->yaw;
+				particle->actmagicOrbitDist = 8;
+				particle->scalex = 0.05;
+				particle->scaley = 0.05;
+				particle->scalez = 0.05;
+				particle->z -= 4;
+				particle->z = std::max(-6.0, particle->z);
+			}
+		}
+	}*/
+
 	bool stasisDither = flags[STASIS_DITHER];
 	if ( myStats->getEffectActive(EFF_STASIS) )
 	{
@@ -23992,6 +24010,23 @@ void Entity::handleEffectsClient()
 			}
 		}
 	}
+
+	/*if ( myStats->getEffectActive(EFF_BLIND) )
+	{
+		if ( ticks % 25 == 0 )
+		{
+			if ( Entity* particle = createParticleAestheticOrbit(this, 175, 3 * TICKS_PER_SECOND, PARTICLE_EFFECT_BLIND_ORBIT) )
+			{
+				particle->yaw = 0.0;
+				particle->actmagicOrbitDist = 4;
+				particle->scalex = 0.05;
+				particle->scaley = 0.05;
+				particle->scalez = 0.05;
+				particle->z -= 2;
+				particle->z = std::max(-6.0, particle->z);
+			}
+		}
+	}*/
 
 	if ( myStats->getEffectActive(EFF_STASIS) )
 	{

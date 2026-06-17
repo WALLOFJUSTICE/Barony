@@ -1686,7 +1686,7 @@ void actThrown(Entity* my)
 								{
 									wasBlind = hitstats->getEffectActive(EFF_BLIND) > 0;
 								}
-								if ( hit.entity->setEffect(EFF_BLIND, true, 5 * TICKS_PER_SECOND, false) )
+								if ( hit.entity->setEffect(EFF_BLIND, true, 5 * TICKS_PER_SECOND, true) )
 								{
 									if ( hit.entity->behavior == &actPlayer )
 									{
@@ -1791,7 +1791,7 @@ void actThrown(Entity* my)
 								}
 								if ( hit.entity->behavior == &actMonster )
 								{
-									if ( hit.entity->setEffect(EFF_BLIND, true, 250, false) )
+									if ( hit.entity->setEffect(EFF_BLIND, true, 250, true) )
 									{
 										if ( parent && parent->behavior == &actPlayer )
 										{

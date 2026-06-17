@@ -395,6 +395,7 @@ static const int PARTICLE_EFFECT_HAUNTED_ARMOR = 98;
 static const int PARTICLE_EFFECT_STARE_GAZE = 99;
 static const int PARTICLE_EFFECT_STARE_MESMERIZE = 100;
 static const int PARTICLE_EFFECT_VOID_WIND = 101;
+static const int PARTICLE_EFFECT_BLIND_ORBIT = 102;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;

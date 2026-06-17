@@ -6991,7 +6991,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							if ( spell->ID == SPELL_SHADE_BOLT )
 							{
 								if ( hit.entity->behavior == &actMonster
-									&& hit.entity->setEffect(EFF_BLIND, true, element->duration, false) )
+									&& hit.entity->setEffect(EFF_BLIND, true, element->duration, true) )
 								{
 									if ( hit.entity->behavior == &actMonster && !hit.entity->isBossMonster() )
 									{
@@ -7386,6 +7386,23 @@ void actMagicParticle(Entity* my)
 		my->scalex -= 0.025;
 		my->scaley -= 0.025;
 		my->scalez -= 0.025;
+	}
+	else if ( my->sprite == 2531 )
+	{
+		// blind particle
+		my->yaw += 0.1;
+		if ( my->ticks >= 10 )
+		{
+			my->scalex -= 0.025;
+			my->scaley -= 0.025;
+			my->scalez -= 0.025;
+		}
+		else
+		{
+			my->scalex = std::min(my->scalex + 0.05, 0.25);
+			my->scaley = std::min(my->scaley + 0.05, 0.25);
+			my->scalez = std::min(my->scalez + 0.05, 0.25);
+		}
 	}
 	else if ( my->sprite == 2364 || my->sprite == 2365 || my->sprite == 2366 )
 	{
@@ -8845,6 +8862,41 @@ void actParticleAestheticOrbit(Entity* my)
 				my->scalex = std::min(my->scalex + 0.05, 0.5);
 				my->scaley = std::min(my->scaley + 0.05, 0.5);
 				my->scalez = std::min(my->scalez + 0.05, 0.5);
+			}
+		}
+		else if ( my->skill[1] == PARTICLE_EFFECT_BLIND_ORBIT )
+		{
+			my->fskill[2] += 0.05;
+			my->yaw += 0.15;
+			my->x = parent->x + my->actmagicOrbitDist * cos(my->fskill[2]);
+			my->y = parent->y + my->actmagicOrbitDist * sin(my->fskill[2]);
+
+			Stat* stats = parent->getStats();
+			if ( PARTICLE_LIFE <= 10 || (!stats || !stats->getEffectActive(EFF_BLIND)) )
+			{
+				my->scalex -= 0.05;
+				my->scaley -= 0.05;
+				my->scalez -= 0.05;
+				if ( my->scalex <= 0.0 )
+				{
+					my->removeLightField();
+					list_RemoveNode(my->mynode);
+					return;
+				}
+			}
+			else
+			{
+				my->scalex = std::min(my->scalex + 0.05, 0.25);
+				my->scaley = std::min(my->scaley + 0.05, 0.25);
+				my->scalez = std::min(my->scalez + 0.05, 0.25);
+
+				//if ( my->ticks % 2 == 0 )
+				{
+					if ( Entity* fx = spawnMagicParticleCustom(my, my->sprite, 0.05, 1.0) )
+					{
+						fx->ditheringDisabled = true;
+					}
+				}
 			}
 		}
 		else if ( my->skill[1] == PARTICLE_EFFECT_BLOOD_BUBBLE )
