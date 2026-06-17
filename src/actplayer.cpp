@@ -11662,89 +11662,107 @@ void actPlayer(Entity* my)
 			// bumping into monsters disturbs them
 			if ( hit.entity && !intro )
 			{
-				if ( multiplayer != CLIENT )
+				/*if ( hit.entity->behavior == &actMonster )
 				{
-					if ( !everybodyfriendly && hit.entity->behavior == &actMonster )
+					Entity* tmp = hit.entity;
+					bool passable = tmp->flags[PASSABLE];
+					if ( !passable )
 					{
-						bool enemy = my->checkEnemy(hit.entity);
-						if ( enemy && !hit.entity->isInertMimic() )
+						tmp->flags[PASSABLE] = true;
+						double tangent = atan2(PLAYER_VELY, PLAYER_VELX);
+						real_t velx = cos(tangent) * .11;
+						real_t vely = sin(tangent) * .11;
+						dist = clipMove(&my->x, &my->y, velx, vely, my);
+						tmp->flags[PASSABLE] = passable;
+					}
+				}*/
+
+				if ( hit.entity )
+				{
+					if ( multiplayer != CLIENT )
+					{
+						if ( !everybodyfriendly && hit.entity->behavior == &actMonster )
 						{
-							if ( hit.entity->monsterState == MONSTER_STATE_WAIT || (hit.entity->monsterState == MONSTER_STATE_HUNT && hit.entity->monsterTarget == 0) )
+							bool enemy = my->checkEnemy(hit.entity);
+							if ( enemy && !hit.entity->isInertMimic() )
 							{
-								hit.entity->lookAtEntity(*my);
+								if ( hit.entity->monsterState == MONSTER_STATE_WAIT || (hit.entity->monsterState == MONSTER_STATE_HUNT && hit.entity->monsterTarget == 0) )
+								{
+									hit.entity->lookAtEntity(*my);
+								}
+							}
+						}
+						else if ( stats[PLAYER_NUM]->getEffectActive(EFF_DASH) && hit.entity->behavior == &actDoor )
+						{
+							if ( hit.entity->doorHealth > 0 )
+							{
+								hit.entity->doorHealth = 0;
+								magicOnSpellCastEvent(my, my, nullptr,
+									SPELL_DASH, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
 							}
 						}
 					}
-					else if ( stats[PLAYER_NUM]->getEffectActive(EFF_DASH) && hit.entity->behavior == &actDoor )
-					{
-						if ( hit.entity->doorHealth > 0 )
-						{
-							hit.entity->doorHealth = 0;
-							magicOnSpellCastEvent(my, my, nullptr,
-								SPELL_DASH, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
-						}
-					}
-				}
 
-				if ( hit.entity->behavior == &actDoorFrame &&
-					hit.entity->flags[INVISIBLE] )
-				{
-					// code that almost fixes door frame collision
-					bool doSlide = true;
-					if ( hit.entity->yaw >= -0.1 && hit.entity->yaw <= 0.1 )
+					if ( hit.entity->behavior == &actDoorFrame &&
+						hit.entity->flags[INVISIBLE] )
 					{
-						// east/west doorway
-						if ( static_cast<int>(hit.entity->y / 16) != static_cast<int>(my->y / 16) )
+						// code that almost fixes door frame collision
+						bool doSlide = true;
+						if ( hit.entity->yaw >= -0.1 && hit.entity->yaw <= 0.1 )
 						{
-							doSlide = false;
+							// east/west doorway
+							if ( static_cast<int>(hit.entity->y / 16) != static_cast<int>(my->y / 16) )
+							{
+								doSlide = false;
+							}
 						}
-					}
-					else
-					{
-						// north/south doorway
-						if ( static_cast<int>(hit.entity->x / 16) != static_cast<int>(my->x / 16) )
+						else
 						{
-							doSlide = false;
+							// north/south doorway
+							if ( static_cast<int>(hit.entity->x / 16) != static_cast<int>(my->x / 16) )
+							{
+								doSlide = false;
+							}
 						}
-					}
 
-					if ( doSlide )
-					{
-						real_t centerx = floor(hit.entity->x / 16) * 16 + 8;
-						real_t centery = floor(hit.entity->y / 16) * 16 + 8;
-						real_t tangent = atan2(centery - my->y, centerx - my->x);
-						real_t dir = atan2(my->vel_y, my->vel_x);
-						real_t spd = sqrt(my->vel_x * my->vel_x + my->vel_y * my->vel_y);
-						//real_t dirx = cos(tangent - dir);
-						//real_t diry = sin(tangent - dir);
-						//real_t tangent2 = atan2(diry, dirx);
-						real_t diff = tangent - dir;
-						if ( diff >= PI )
+						if ( doSlide )
 						{
-							diff -= 2 * PI;
+							real_t centerx = floor(hit.entity->x / 16) * 16 + 8;
+							real_t centery = floor(hit.entity->y / 16) * 16 + 8;
+							real_t tangent = atan2(centery - my->y, centerx - my->x);
+							real_t dir = atan2(my->vel_y, my->vel_x);
+							real_t spd = sqrt(my->vel_x * my->vel_x + my->vel_y * my->vel_y);
+							//real_t dirx = cos(tangent - dir);
+							//real_t diry = sin(tangent - dir);
+							//real_t tangent2 = atan2(diry, dirx);
+							real_t diff = tangent - dir;
+							if ( diff >= PI )
+							{
+								diff -= 2 * PI;
+							}
+							else if ( diff < -PI )
+							{
+								diff += 2 * PI;
+							}
+							//messagePlayer(0, MESSAGE_DEBUG, "%.2f", diff);
+							if ( abs(diff) < PI / 2 )
+							{
+								dir += (tangent - dir);
+								my->vel_x = spd * cos(dir);
+								my->vel_y = spd * sin(dir);
+							}
 						}
-						else if ( diff < -PI )
-						{
-							diff += 2 * PI;
-						}
-						//messagePlayer(0, MESSAGE_DEBUG, "%.2f", diff);
-						if ( abs(diff) < PI / 2 )
-						{
-							dir += (tangent - dir);
-							my->vel_x = spd * cos(dir);
-							my->vel_y = spd * sin(dir);
-						}
-					}
 
-					/*if ( abs(slidex) > 0.0 )
-					{
-						PLAYER_VELX += slidex;
+						/*if ( abs(slidex) > 0.0 )
+						{
+							PLAYER_VELX += slidex;
+						}
+						if ( abs(slidey) > 0.0 )
+						{
+							PLAYER_VELY += slidey;
+						}*/
+						//dist += clipMove(&my->x, &my->y, slidex, slidey, my);
 					}
-					if ( abs(slidey) > 0.0 )
-					{
-						PLAYER_VELY += slidey;
-					}*/
-					//dist += clipMove(&my->x, &my->y, slidex, slidey, my);
 				}
 			}
 		}

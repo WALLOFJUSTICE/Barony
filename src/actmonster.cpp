@@ -5212,10 +5212,11 @@ void actMonster(Entity* my)
 
 
 					if ( (entity->sprite == 274 || entity->sprite == 646 
-						|| entity->sprite == 650 || entity->sprite == 304) 
+						|| entity->sprite == 650 || entity->sprite == 304
+						|| entity->getRace() == DRAGON ) 
 						&& entity->flags[PASSABLE] == true )
 					{
-						// LICH/LICH_FIRE/LICH_ICE/DEVIL
+						// LICH/LICH_FIRE/LICH_ICE/DEVIL/DRAGON
 						// If these guys are PASSABLE then they're either dying or some other animation
 						// Move the monster inside the boss, but don't set PASSABLE to false again.
 						clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
