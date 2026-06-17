@@ -594,7 +594,7 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 
 	if ( enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 	{
-		if ( keystatus[SDLK_KP_7] )
+		/*if ( keystatus[SDLK_KP_7] )
 		{
 			if ( keystatus[SDLK_LSHIFT] )
 			{
@@ -604,7 +604,7 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 			{
 				my->pitch += 0.05;
 			}
-		}
+		}*/
 		if ( keystatus[SDLK_KP_5] )
 		{
 			keystatus[SDLK_KP_5] = 0;
@@ -790,21 +790,19 @@ void gryphonAnimate(Entity* my, Stat* myStats, double dist)
 				if ( keystatus[SDLK_KP_2] )
 				{
 					keystatus[SDLK_KP_2] = 0;
-					if ( GRYPHON_STATE == 1 )
+					myStats->setAttribute("gryphon_state_delay", "250");
+					myStats->setAttribute("gryphon_idle_delay", "250");
+					if ( my->monsterSpecialState == GRYPHON_SKYBOX )
 					{
-						GRYPHON_STATE = 3;
+						my->monsterSpecialState = GRYPHON_FLY;
 					}
-					else if ( GRYPHON_STATE == 3 )
+					else if ( my->monsterSpecialState == GRYPHON_FLY )
 					{
-						GRYPHON_STATE = 0;
+						my->monsterSpecialState = GRYPHON_WALK;
 					}
-					else if ( GRYPHON_STATE == 0 )
+					else if ( my->monsterSpecialState == GRYPHON_WALK )
 					{
-						GRYPHON_STATE = 2;
-					}
-					else
-					{
-						GRYPHON_STATE = 1;
+						my->monsterSpecialState = GRYPHON_FLY;
 					}
 				}
 			}
