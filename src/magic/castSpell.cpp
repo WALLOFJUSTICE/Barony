@@ -5011,6 +5011,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 									|| targetStats->type == MINIMIMIC
 									|| targetStats->type == MIMIC
 									|| targetStats->type == HAUNTED_ARMOR
+									|| targetStats->type == MONSTER_ADORCISED_WEAPON
 									|| monsterIsImmobileTurret(target, targetStats)
 									)
 								{

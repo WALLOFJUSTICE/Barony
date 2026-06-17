@@ -30950,6 +30950,7 @@ bool Entity::isSmiteWeakMonster()
 			case SHADOW:
 			case REVENANT_SKULL:
 			case MONSTER_ADORCISED_WEAPON:
+			case HAUNTED_ARMOR:
 				return true;
 				break;
 			case MIMIC:

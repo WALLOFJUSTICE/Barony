@@ -6459,6 +6459,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 								|| hitstats->type == SPELLBOT
 								|| hitstats->type == DUMMYBOT
 								|| hitstats->type == HAUNTED_ARMOR
+								|| hitstats->type == MONSTER_ADORCISED_WEAPON
 								|| hitstats->type == MINIMIMIC
 								|| hitstats->type == MIMIC )
 							{
