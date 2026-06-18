@@ -268,7 +268,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 155, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, 311, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -281,7 +281,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 155, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, 310, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -550,14 +550,34 @@ void actArrow(Entity* my)
 			{
 				my->entityCheckIfTriggeredWallButton();
 			}
+
+			int arrowVolume = 64;
+			if ( my->arrowShotByWeapon == BLACKIRON_CROSSBOW )
+			{
+				arrowVolume = 32;
+				if ( my->sprite == PROJECTILE_BONE_SPRITE )
+				{
+					arrowVolume = 16;
+				}
+			}
+			else if ( my->sprite == PROJECTILE_BONE_SPRITE )
+			{
+				arrowVolume = 48;
+			}
+
 			if ( hit.entity != NULL )
 			{
 				Entity* parent = uidToEntity(my->parent);
 				Stat* hitstats = hit.entity->getStats();
-				playSoundEntity(my, 72 + local_rng.rand() % 3, 64);
+				playSoundEntity(my, 72 + local_rng.rand() % 3, arrowVolume);
+
+				updateEntityOldHPBeforeMagicHit(*hit.entity, *my); // for multi-shot arrows
+
 				if ( hit.entity->behavior == &actChest || hit.entity->isInertMimic() )
 				{
-					playSoundEntity(hit.entity, 66, 64); //*tink*
+					playSoundEntity(hit.entity, 66, arrowVolume); //*tink*
+
+					spawnBang(hit.entity->x, hit.entity->y, my->z);
 
 					if ( parent )
 					{
@@ -578,6 +598,186 @@ void actArrow(Entity* my)
 						{
 							updateEnemyBar(parent, hit.entity, Language::get(675), hit.entity->chestHealth, hit.entity->chestMaxHealth,
 								false, DamageGib::DMG_WEAKEST);
+						}
+					}
+				}
+				else if ( hit.entity->behavior == &actGate )
+				{
+					playSoundEntity(hit.entity, 66, arrowVolume); //*tink*
+
+					spawnBang(hit.entity->x, hit.entity->y, my->z);
+				}
+				else if ( hit.entity->behavior == &::actFurniture
+					|| hit.entity->behavior == &actDoor || hit.entity->behavior == &actIronDoor )
+				{
+					int damage = damage = 2 + local_rng.rand() % 3;
+					int axe = 0;
+					if ( parent && parent->getStats() )
+					{
+						axe = 1 * (parent->getStats()->getModifiedProficiency(PRO_RANGED) / 20);
+					}
+					axe = std::min(axe, 9);
+					damage += axe;
+
+					if ( hit.entity->behavior == &::actIronDoor )
+					{
+						damage = 0;
+					}
+
+					int& entityHP = (hit.entity->behavior == &actDoor 
+						|| hit.entity->behavior == &::actIronDoor) 
+						? hit.entity->doorHealth : hit.entity->furnitureHealth;
+					int oldHP = entityHP;
+					entityHP -= damage;
+
+					int sound = 28; //damage.ogg
+					if ( hit.entity->behavior == &actIronDoor )
+					{
+						playSoundEntity(hit.entity, 66, arrowVolume); //*tink*
+					}
+					else
+					{
+						playSoundEntity(hit.entity, sound, arrowVolume);
+					}
+
+					if ( entityHP > 0 )
+					{
+						if ( parent && parent->behavior == &actPlayer )
+						{
+							if ( hit.entity->behavior == &actDoor )
+							{
+								messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(666));
+							}
+							else if ( hit.entity->behavior == &::actIronDoor )
+							{
+								messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(6412));
+							}
+							if ( hit.entity->behavior == &actFurniture )
+							{
+								switch ( hit.entity->furnitureType )
+								{
+								case FURNITURE_CHAIR:
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(669));
+									break;
+								case FURNITURE_TABLE:
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(668));
+									break;
+								case FURNITURE_BED:
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(2509), Language::get(2505));
+									break;
+								case FURNITURE_BUNKBED:
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(2509), Language::get(2506));
+									break;
+								case FURNITURE_PODIUM:
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(2509), Language::get(2507));
+									break;
+								default:
+									break;
+								}
+							}
+						}
+					}
+					else
+					{
+						entityHP = 0;
+
+						if ( oldHP > 0 )
+						{
+							if ( hit.entity->behavior == &actDoor || hit.entity->behavior == &actIronDoor )
+							{
+								if ( !hit.entity->skill[0] )
+								{
+									hit.entity->skill[6] = (my->x > hit.entity->x);
+								}
+								else
+								{
+									hit.entity->skill[6] = (my->y < hit.entity->y);
+								}
+							}
+
+							if ( parent && parent->behavior == &actPlayer )
+							{
+								if ( parent->getStats() && parent->getStats()->getProficiency(PRO_RANGED) < SKILL_LEVEL_BASIC
+									&& local_rng.rand() % 20 == 0 )
+								{
+									parent->increaseSkill(PRO_RANGED);
+								}
+
+								if ( hit.entity->behavior == &actDoor )
+								{
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT, Language::get(670));
+									Compendium_t::Events_t::eventUpdateWorld(parent->skill[2], Compendium_t::CPDM_DOOR_BROKEN, "door", 1);
+								}
+								else if ( hit.entity->behavior == &actIronDoor )
+								{
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT, Language::get(6413));
+									Compendium_t::Events_t::eventUpdateWorld(parent->skill[2], Compendium_t::CPDM_DOOR_BROKEN, "iron door", 1);
+								}
+								else if ( hit.entity->behavior == &actFurniture )
+								{
+									gameModeManager.currentSession.challengeRun.updateKillEvent(hit.entity);
+									switch ( hit.entity->furnitureType )
+									{
+									case FURNITURE_CHAIR:
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT, Language::get(673));
+										break;
+									case FURNITURE_TABLE:
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT, Language::get(672));
+										break;
+									case FURNITURE_BED:
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT, Language::get(2510), Language::get(2505));
+										break;
+									case FURNITURE_BUNKBED:
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT, Language::get(2510), Language::get(2506));
+										break;
+									case FURNITURE_PODIUM:
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT, Language::get(2510), Language::get(2507));
+										break;
+									default:
+										break;
+									}
+								}
+
+								players[parent->skill[2]]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, hit.entity);
+							}
+						}
+					}
+
+					if ( parent && oldHP > 0 )
+					{
+						if ( hit.entity->behavior == &actDoor || hit.entity->behavior == &::actIronDoor )
+						{
+							updateEnemyBar(parent, hit.entity, hit.entity->behavior == &::actIronDoor ? Language::get(6414) : Language::get(674),
+								entityHP, hit.entity->doorMaxHealth, false,
+								DamageGib::DMG_DEFAULT);
+						}
+						else if ( hit.entity->behavior == &::actFurniture )
+						{
+							switch ( hit.entity->furnitureType )
+							{
+							case FURNITURE_CHAIR:
+								updateEnemyBar(parent, hit.entity, Language::get(677), entityHP, hit.entity->furnitureMaxHealth, false,
+									DamageGib::DMG_DEFAULT);
+								break;
+							case FURNITURE_TABLE:
+								updateEnemyBar(parent, hit.entity, Language::get(676), entityHP, hit.entity->furnitureMaxHealth, false,
+									DamageGib::DMG_DEFAULT);
+								break;
+							case FURNITURE_BED:
+								updateEnemyBar(parent, hit.entity, Language::get(2505), entityHP, hit.entity->furnitureMaxHealth, false,
+									DamageGib::DMG_DEFAULT);
+								break;
+							case FURNITURE_BUNKBED:
+								updateEnemyBar(parent, hit.entity, Language::get(2506), entityHP, hit.entity->furnitureMaxHealth, false,
+									DamageGib::DMG_DEFAULT);
+								break;
+							case FURNITURE_PODIUM:
+								updateEnemyBar(parent, hit.entity, Language::get(2507), entityHP, hit.entity->furnitureMaxHealth, false,
+									DamageGib::DMG_DEFAULT);
+								break;
+							default:
+								break;
+							}
 						}
 					}
 				}
@@ -612,7 +812,7 @@ void actArrow(Entity* my)
 					{
 						sound = hit.entity->getColliderSfxOnHit();
 					}
-					playSoundEntity(hit.entity, sound, 64);
+					playSoundEntity(hit.entity, sound, arrowVolume);
 
 					if ( entityHP > 0 )
 					{
@@ -655,7 +855,7 @@ void actArrow(Entity* my)
 						}
 					}
 
-					if ( parent )
+					if ( parent && oldHP > 0 )
 					{
 						updateEnemyBar(parent, hit.entity, Language::get(hit.entity->getColliderLangName()), entityHP, hit.entity->colliderMaxHP, false,
 							DamageGib::DMG_DEFAULT);
@@ -727,7 +927,7 @@ void actArrow(Entity* my)
 							// smite these creatures
 							silverDamage = true;
 							spawnMagicEffectParticles(hit.entity->x, hit.entity->y, hit.entity->z, 981);
-							playSoundEntity(hit.entity, 249, 64);
+							playSoundEntity(hit.entity, 249, arrowVolume);
 						}
 						else
 						{
@@ -1109,7 +1309,7 @@ void actArrow(Entity* my)
 					{
 						Entity* gib = spawnGib(hit.entity);
 						serverSpawnGibForClient(gib);
-						playSoundEntity(hit.entity, 28, 64);
+						playSoundEntity(hit.entity, 28, arrowVolume);
 						if ( hit.entity->behavior == &actPlayer )
 						{
 							if ( players[hit.entity->skill[2]]->isLocalPlayer() )
@@ -1629,7 +1829,7 @@ void actArrow(Entity* my)
 					else
 					{
 						// HP <= 0
-						if ( parent && parent->behavior == &actPlayer )
+						if ( parent && parent->behavior == &actPlayer && hitstats->OLDHP > 0 )
 						{
 							Uint32 color = makeColorRGB(0, 255, 0);
 							if ( backstab )
@@ -1661,7 +1861,7 @@ void actArrow(Entity* my)
 					bool armorDegraded = false;
 
 					// hit armor degrade
-					if ( hitstats && parent && parent->getStats() )
+					if ( hitstats && parent && parent->getStats() && hitstats->OLDHP > 0 )
 					{
 						Item* armor = NULL;
 						int armornum = 0;
@@ -1874,62 +2074,69 @@ void actArrow(Entity* my)
 
 					if ( damage == 0 && !statusEffectApplied && !armorDegraded )
 					{
-						playSoundEntity(hit.entity, 66, 64); //*tink*
-						if ( hit.entity->behavior == &actPlayer )
+						playSoundEntity(hit.entity, 66, arrowVolume); //*tink*
+
+						if ( hitstats->OLDHP > 0 )
 						{
-							messagePlayer(hit.entity->skill[2], MESSAGE_COMBAT_BASIC, Language::get(452)); // player notified no damage.
-						}
-						if ( parent && parent->behavior == &actPlayer )
-						{
-							if ( hitstats->type == HUMAN )
+							if ( hit.entity->behavior == &actPlayer )
 							{
-								if ( hitstats->sex )
+								messagePlayer(hit.entity->skill[2], MESSAGE_COMBAT_BASIC, Language::get(452)); // player notified no damage.
+							}
+							if ( parent && parent->behavior == &actPlayer )
+							{
+								if ( hitstats->type == HUMAN )
 								{
-									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(449));
+									if ( hitstats->sex )
+									{
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(449));
+									}
+									else
+									{
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(450));
+									}
 								}
 								else
 								{
-									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(450));
+									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(447));
 								}
-							}
-							else
-							{
-								messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(447));
 							}
 						}
 					}
 					else if ( damage == 0 && (statusEffectApplied || armorDegraded) )
 					{
-						playSoundEntity(hit.entity, 28, 64);
+						playSoundEntity(hit.entity, 28, arrowVolume);
 					}
 
-					// update enemy bar for attacker
-					DamageGib dmgGib = DMG_DEFAULT;
-					if ( damageMultiplier <= 0.75 )
+					if ( hitstats->OLDHP > 0 )
 					{
-						dmgGib = DMG_WEAKEST;
-					}
-					else if ( damageMultiplier <= 0.85 )
-					{
-						dmgGib = DMG_WEAKER;
-					}
-					else if ( damageMultiplier >= 1.25 )
-					{
-						dmgGib = DMG_STRONGEST;
-					}
-					else if ( damageMultiplier >= 1.15 )
-					{
-						dmgGib = DMG_STRONGER;
-					}
-					if ( !strcmp(hitstats->name, "") )
-					{
-						updateEnemyBar(parent, hit.entity, getMonsterLocalizedName(hitstats->type).c_str(), hitstats->HP, hitstats->MAXHP, 
-							false, dmgGib);
-					}
-					else
-					{
-						updateEnemyBar(parent, hit.entity, hitstats->name, hitstats->HP, hitstats->MAXHP,
-							false, dmgGib);
+						// update enemy bar for attacker
+						DamageGib dmgGib = DMG_DEFAULT;
+						if ( damageMultiplier <= 0.75 )
+						{
+							dmgGib = DMG_WEAKEST;
+						}
+						else if ( damageMultiplier <= 0.85 )
+						{
+							dmgGib = DMG_WEAKER;
+						}
+						else if ( damageMultiplier >= 1.25 )
+						{
+							dmgGib = DMG_STRONGEST;
+						}
+						else if ( damageMultiplier >= 1.15 )
+						{
+							dmgGib = DMG_STRONGER;
+						}
+						if ( !strcmp(hitstats->name, "") )
+						{
+							updateEnemyBar(parent, hit.entity, getMonsterLocalizedName(hitstats->type).c_str(), hitstats->HP, hitstats->MAXHP, 
+								false, dmgGib);
+						}
+						else
+						{
+							updateEnemyBar(parent, hit.entity, hitstats->name, hitstats->HP, hitstats->MAXHP,
+								false, dmgGib);
+						}
 					}
 				}
 
@@ -1973,7 +2180,7 @@ void actArrow(Entity* my)
 			}
 			else
 			{
-				playSoundEntity(my, 72 + local_rng.rand() % 3, 64);
+				playSoundEntity(my, 72 + local_rng.rand() % 3, arrowVolume);
 			}
 		}
 	}

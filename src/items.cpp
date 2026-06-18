@@ -4837,7 +4837,7 @@ Sint32 Item::weaponGetAttack(const Stat* const wielder) const
 	}
 	else if ( type == BLACKIRON_CROSSBOW )
 	{
-		attack += 7;
+		attack += 4;
 	}
 	else if ( type == LONGBOW )
 	{
@@ -4927,6 +4927,10 @@ Sint32 Item::weaponGetAttack(const Stat* const wielder) const
 	{
 		return attack + 2;
 	}
+	else if ( type == QUIVER_BLACKIRON )
+	{
+		return attack + 2;
+	}
 	else if ( type == QUIVER_PIERCE )
 	{
 		return attack + 4;
@@ -4934,6 +4938,10 @@ Sint32 Item::weaponGetAttack(const Stat* const wielder) const
 	else if ( type == QUIVER_LIGHTWEIGHT )
 	{
 		return attack - 2;
+	}
+	else if ( type == QUIVER_BONE )
+	{
+		return attack - 3;
 	}
 	else if ( type == QUIVER_FIRE )
 	{
@@ -7290,8 +7298,7 @@ real_t rangedAttackGetSpeedModifier(const Stat* const myStats)
 		bowModifier = 1.25;
 	}
 	else if ( myStats->weapon->type == BRANCH_BOW 
-		|| myStats->weapon->type == BRANCH_BOW_INFECTED
-		|| myStats->weapon->type == BONE_SHORTBOW )
+		|| myStats->weapon->type == BRANCH_BOW_INFECTED )
 	{
 		bowModifier = 1.0;
 	}
@@ -7302,6 +7309,11 @@ real_t rangedAttackGetSpeedModifier(const Stat* const myStats)
 	else if ( myStats->weapon->type == COMPOUND_BOW )
 	{
 		bowModifier = 0.75;
+		arrowModifier /= 2;
+	}
+	else if ( myStats->weapon->type == BONE_SHORTBOW )
+	{
+		bowModifier = 0.85;
 		arrowModifier /= 2;
 	}
 	else if ( myStats->weapon->type == SLING )

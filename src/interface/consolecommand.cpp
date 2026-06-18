@@ -545,11 +545,16 @@ namespace ConsoleCommands {
 		}
 
 		int c;
+		int qty = 1;
 		for (c = 0; c < NUMITEMS; c++)
 		{
 			if (strcmp(items[c].getIdentifiedName(), name.c_str()) == 0)
 			{
-				dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, 1, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+				if ( itemTypeIsQuiver((ItemType)c) )
+				{
+					qty = 50;
+				}
+				dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
 				break;
 			}
 		}
@@ -559,7 +564,11 @@ namespace ConsoleCommands {
 			{
 				if (strstr(items[c].getIdentifiedName(), name.c_str()))
 				{
-					dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, 1, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+					if ( itemTypeIsQuiver((ItemType)c) )
+					{
+						qty = 50;
+					}
+					dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
 					break;
 				}
 			}
@@ -3395,6 +3404,8 @@ namespace ConsoleCommands {
 		{
 			dropItem(newItem(static_cast<ItemType>(i), EXCELLENT, 0, 25 + local_rng.rand() % 26, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
 		}
+		dropItem(newItem(QUIVER_BONE, EXCELLENT, 0, 25 + local_rng.rand() % 26, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+		dropItem(newItem(QUIVER_BLACKIRON, EXCELLENT, 0, 25 + local_rng.rand() % 26, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
 		});
 
 	static ConsoleCommand ccmd_gimmescrap("/gimmescrap", "give the player some scrap metal (cheat)", []CCMD{

@@ -11161,10 +11161,18 @@ void Entity::attack(int pose, int charge, Entity* target)
 					}
 				}
 				Entity* entity = nullptr;
+
+				int numProjectiles = 0;
+				int numQuiverFired = 0;
+				int quiverFiredType = 0;
+fireagain:
 				if ( myStats->weapon->type == SLING )
 				{
 					entity = newEntity(78, 1, map.entities, nullptr); // rock
-					playSoundEntity(this, 239 + local_rng.rand() % 3, 96);
+					if ( numProjectiles == 0 )
+					{
+						playSoundEntity(this, 239 + local_rng.rand() % 3, 96);
+					}
 				}
 				else if ( myStats->weapon->type == CROSSBOW 
 					|| myStats->weapon->type == HEAVY_CROSSBOW
@@ -11173,21 +11181,41 @@ void Entity::attack(int pose, int charge, Entity* target)
 					entity = newEntity(167, 1, map.entities, nullptr); // bolt
 					if ( myStats->weapon->type == HEAVY_CROSSBOW )
 					{
-						playSoundEntity(this, 411 + local_rng.rand() % 3, 128);
-						if ( this->behavior == &actPlayer && this->skill[2] > 0 )
+						if ( numProjectiles == 0 )
 						{
-							this->setEffect(EFF_KNOCKBACK, true, 30, false);
+							playSoundEntity(this, 411 + local_rng.rand() % 3, 128);
+							if ( this->behavior == &actPlayer && this->skill[2] > 0 )
+							{
+								this->setEffect(EFF_KNOCKBACK, true, 30, false);
+							}
+						}
+					}
+					else if ( myStats->weapon->type == BLACKIRON_CROSSBOW )
+					{
+						if ( numProjectiles == 0 )
+						{
+							playSoundEntity(this, 411 + local_rng.rand() % 3, 128);
+							if ( this->behavior == &actPlayer && this->skill[2] > 0 )
+							{
+								this->setEffect(EFF_KNOCKBACK, true, 15, false);
+							}
 						}
 					}
 					else
 					{
-						playSoundEntity(this, 239 + local_rng.rand() % 3, 96);
+						if ( numProjectiles == 0 )
+						{
+							playSoundEntity(this, 239 + local_rng.rand() % 3, 96);
+						}
 					}
 				}
 				else
 				{
 					entity = newEntity(166, 1, map.entities, nullptr); // arrow
-					playSoundEntity(this, 239 + local_rng.rand() % 3, 96);
+					if ( numProjectiles == 0 )
+					{
+						playSoundEntity(this, 239 + local_rng.rand() % 3, 96);
+					}
 				}
 				if ( !entity )
 				{
@@ -11215,11 +11243,21 @@ void Entity::attack(int pose, int charge, Entity* target)
 				// set properties of the arrow.
 				if ( pose == MONSTER_POSE_RANGED_SHOOT2 && myStats->weapon->type == ARTIFACT_BOW )
 				{
-					entity->setRangedProjectileAttack(*this, *myStats, QUIVER_SILVER + local_rng.rand() % 7);
+					entity->setRangedProjectileAttack(*this, *myStats, numProjectiles, QUIVER_SILVER + local_rng.rand() % 7);
 				}
 				else
 				{
-					entity->setRangedProjectileAttack(*this, *myStats);
+					entity->setRangedProjectileAttack(*this, *myStats, numProjectiles, 0);
+				}
+
+				if ( behavior == &actMonster && entity )
+				{
+					int accuracy = myStats->monsterRangedAccuracy.getAccuracy(monsterTarget);
+					if ( accuracy > 0 && numProjectiles % 3 == 0 )
+					{
+						myStats->monsterRangedAccuracy.modifyProjectile(*this, *entity);
+					}
+					myStats->monsterRangedAccuracy.incrementAccuracy();
 				}
 
 				if ( entity->arrowQuiverType != 0 && myStats->shield && itemTypeIsQuiver(myStats->shield->type) )
@@ -11227,36 +11265,119 @@ void Entity::attack(int pose, int charge, Entity* target)
 					//TODO: Refactor this so that we don't have to copy paste this check a million times whenever some-one uses up an item.
 					if ( behavior == &actPlayer && pose != MONSTER_POSE_RANGED_SHOOT2 )
 					{
-						if ( players[skill[2]]->isLocalPlayer() )
+						quiverFiredType = myStats->shield->type;
+
+						bool deplete = true;
+						if ( entity->arrowShotByWeapon == BLACKIRON_CROSSBOW )
 						{
-							Compendium_t::Events_t::eventUpdate(skill[2], Compendium_t::CPDM_AMMO_FIRED,
-								myStats->shield->type, 1);
+							if ( numProjectiles > 2 )
+							{
+								deplete = false;
+							}
+						}
+						else if ( quiverFiredType == QUIVER_BONE )
+						{
+							if ( numProjectiles > 0 )
+							{
+								deplete = false;
+							}
 						}
 
-						myStats->shield->count--;
-						if ( myStats->shield->count <= 0 )
+						if ( deplete )
 						{
-							if ( myStats->shield->node )
+							myStats->shield->count--;
+							if ( myStats->shield->count <= 0 )
 							{
-								list_RemoveNode(myStats->shield->node);
+								if ( myStats->shield->node )
+								{
+									list_RemoveNode(myStats->shield->node);
+								}
+								else
+								{
+									free(myStats->shield);
+								}
+								myStats->shield = nullptr;
 							}
-							else
-							{
-								free(myStats->shield);
-							}
-							myStats->shield = nullptr;
+
+							++numQuiverFired;
 						}
 					}
 				}
 
-				if ( behavior == &actMonster && entity )
+				if ( entity->arrowShotByWeapon == BLACKIRON_CROSSBOW )
 				{
-					int accuracy = myStats->monsterRangedAccuracy.getAccuracy(monsterTarget);
-					if ( accuracy > 0 )
+					real_t velocity = sqrt(pow(entity->vel_x, 2) + pow(entity->vel_y, 2));
+					real_t projectileYaw = atan2(entity->vel_y, entity->vel_x);
+					real_t angleAdjust = (-8 + local_rng.rand() % 5) * PI / 180.0;
+					if ( numProjectiles == 1 )
 					{
-						myStats->monsterRangedAccuracy.modifyProjectile(*this, *entity);
+						angleAdjust = (-4 + local_rng.rand() % 9) * PI / 180.0;
 					}
-					myStats->monsterRangedAccuracy.incrementAccuracy();
+					else if ( numProjectiles == 2 )
+					{
+						angleAdjust = (4 + local_rng.rand() % 9) * PI / 180.0;
+					}
+					else if ( numProjectiles == 3 )
+					{
+						angleAdjust = (-10 + local_rng.rand() % 21) * PI / 180.0;
+					}
+					else if ( numProjectiles == 4 )
+					{
+						angleAdjust = (-8 - local_rng.rand() % 11) * PI / 180.0;
+					}
+					else if ( numProjectiles == 5 )
+					{
+						angleAdjust = (8 + local_rng.rand() % 11) * PI / 180.0;
+					}
+					if ( ticks % 2 == 0 )
+					{
+						angleAdjust *= -1;
+					}
+					projectileYaw += angleAdjust;
+					entity->yaw = projectileYaw;
+					entity->vel_x = cos(projectileYaw) * velocity;
+					entity->vel_y = sin(projectileYaw) * velocity;
+					int limit = 2;
+					if ( entity->arrowQuiverType == QUIVER_BONE )
+					{
+						limit = 5;
+					}
+					if ( numProjectiles < limit )
+					{
+						numProjectiles++;
+						goto fireagain;
+					}
+				}
+				else if ( entity->arrowQuiverType == QUIVER_BONE )
+				{
+					real_t velocity = sqrt(pow(entity->vel_x, 2) + pow(entity->vel_y, 2));
+					real_t projectileYaw = atan2(entity->vel_y, entity->vel_x);
+					real_t angleAdjust = (-5 + local_rng.rand() % 11) * PI / 180.0;
+					if ( (numProjectiles % 2) == 1 )
+					{
+						angleAdjust = (-10 + local_rng.rand() % 21) * PI / 180.0;
+					}
+					projectileYaw += angleAdjust;
+					entity->yaw = projectileYaw;
+					entity->vel_x = cos(projectileYaw) * velocity;
+					entity->vel_y = sin(projectileYaw) * velocity;
+					if ( numProjectiles == 0 )
+					{
+						numProjectiles = 1;
+						goto fireagain;
+					}
+				}
+
+				if ( behavior == &actPlayer )
+				{
+					if ( quiverFiredType != 0 && numQuiverFired > 0 )
+					{
+						if ( players[skill[2]]->isLocalPlayer() )
+						{
+							Compendium_t::Events_t::eventUpdate(skill[2], Compendium_t::CPDM_AMMO_FIRED,
+								(ItemType)quiverFiredType, numQuiverFired);
+						}
+					}
 				}
 				return;
 			}
@@ -19706,7 +19827,8 @@ bool Entity::friendlyFireProtection(Entity* your)
 			&& your->getStats() 
 			&& achievementObserver.checkUidIsFromPlayer(your->getStats()->leader_uid) >= 0)) )
 	{
-		if ( your->behavior == &actMonster && your->getStats() && your->getStats()->getEffectActive(EFF_CONFUSED) )
+		if ( your->behavior == &actMonster && your->getStats() 
+			&& (your->getStats()->getEffectActive(EFF_CONFUSED) || your->getStats()->getEffectActive(EFF_CONFLICTED)) )
 		{
 			return false; // confused allies can be targeted by player
 		}
@@ -27787,11 +27909,64 @@ int getBaseManaRegen(Entity* my, Stat& myStats, bool excludeItemsEffectsBonus)
 	return MAGIC_REGEN_TIME;
 }
 
-void Entity::setRangedProjectileAttack(Entity& marksman, Stat& myStats, int optionalOverrideForArrowType)
+void Entity::setRangedProjectileAttack(Entity& marksman, Stat& myStats, int projectileIndex, int optionalOverrideForArrowType)
 {
 	this->arrowSpeed = 7;
 	this->arrowShotByWeapon = 0;
 	this->arrowQuiverType = 0;
+
+	int attack = 0;
+	if ( (myStats.shield && rangedWeaponUseQuiverOnAttack(&myStats)) || optionalOverrideForArrowType != WOODEN_SHIELD )
+	{
+		if ( optionalOverrideForArrowType != WOODEN_SHIELD )
+		{
+			this->arrowQuiverType = optionalOverrideForArrowType;
+			if ( myStats.weapon )
+			{
+				ItemType oldType = myStats.weapon->type;
+				myStats.weapon->type = static_cast<ItemType>(optionalOverrideForArrowType);
+				attack += myStats.weapon->weaponGetAttack(&myStats);
+				myStats.weapon->type = oldType;
+			}
+		}
+		else
+		{
+			this->arrowQuiverType = myStats.shield->type;
+			attack += myStats.shield->weaponGetAttack(&myStats);
+		}
+		switch ( arrowQuiverType )
+		{
+		case QUIVER_SILVER:
+			sprite = 924;
+			break;
+		case QUIVER_PIERCE:
+			sprite = 925;
+			break;
+		case QUIVER_LIGHTWEIGHT:
+			sprite = 926;
+			break;
+		case QUIVER_FIRE:
+			sprite = 927;
+			break;
+		case QUIVER_KNOCKBACK:
+			sprite = 928;
+			break;
+		case QUIVER_CRYSTAL:
+			sprite = 929;
+			break;
+		case QUIVER_HUNTING:
+			sprite = 930;
+			break;
+		case QUIVER_BONE:
+			sprite = 2304;
+			break;
+		case QUIVER_BLACKIRON:
+			sprite = 2305;
+			break;
+		default:
+			break;
+		}
+	}
 
 	// get arrow effects.
 	if ( myStats.weapon )
@@ -27843,6 +28018,42 @@ void Entity::setRangedProjectileAttack(Entity& marksman, Stat& myStats, int opti
 					dropOffModifier = std::max(-4, -2 * abs(myStats.helmet->beatitude));
 				}
 			}
+
+			if ( this->arrowShotByWeapon == BLACKIRON_CROSSBOW )
+			{
+				if ( projectileIndex % 6 == 0 )
+				{
+					dropOffModifier -= 6;
+				}
+				else if ( projectileIndex % 6 == 1 )
+				{
+					dropOffModifier -= 4;
+				}
+				else if ( projectileIndex % 6 == 2 )
+				{
+					dropOffModifier -= 2;
+				}
+				else if ( projectileIndex % 6 == 3 )
+				{
+					dropOffModifier -= 3;
+				}
+				else if ( projectileIndex % 6 == 4 )
+				{
+					dropOffModifier -= 5;
+				}
+				else if ( projectileIndex % 6 == 5 )
+				{
+					dropOffModifier -= 7;
+				}
+			}
+			else if ( this->arrowQuiverType == QUIVER_BONE )
+			{
+				dropOffModifier -= 4;
+			}
+			if ( this->arrowQuiverType == QUIVER_BLACKIRON )
+			{
+				dropOffModifier += 3;
+			}
 			arrowDropOffEquipmentModifier = std::min(7, std::max(-7, dropOffModifier));
 		}
 
@@ -27875,59 +28086,9 @@ void Entity::setRangedProjectileAttack(Entity& marksman, Stat& myStats, int opti
 		}
 	}
 
-	int attack = 0;
-
-	if ( (myStats.shield && rangedWeaponUseQuiverOnAttack(&myStats)) || optionalOverrideForArrowType != WOODEN_SHIELD )
+	if ( arrowQuiverType == QUIVER_PIERCE )
 	{
-		if ( optionalOverrideForArrowType != WOODEN_SHIELD )
-		{
-			this->arrowQuiverType = optionalOverrideForArrowType;
-			if ( myStats.weapon )
-			{
-				ItemType oldType = myStats.weapon->type;
-				myStats.weapon->type = static_cast<ItemType>(optionalOverrideForArrowType);
-				attack += myStats.weapon->weaponGetAttack(&myStats);
-				myStats.weapon->type = oldType;
-			}
-		}
-		else
-		{
-			this->arrowQuiverType = myStats.shield->type;
-			attack += myStats.shield->weaponGetAttack(&myStats);
-		}
-		switch ( arrowQuiverType )
-		{
-			case QUIVER_SILVER:
-				sprite = 924;
-				break;
-			case QUIVER_PIERCE:
-				arrowArmorPierce = 2;
-				sprite = 925;
-				break;
-			case QUIVER_LIGHTWEIGHT:
-				sprite = 926;
-				break;
-			case QUIVER_FIRE:
-				sprite = 927;
-				break;
-			case QUIVER_KNOCKBACK:
-				sprite = 928;
-				break;
-			case QUIVER_CRYSTAL:
-				sprite = 929;
-				break;
-			case QUIVER_HUNTING:
-				sprite = 930;
-				break;
-			case QUIVER_BONE:
-				sprite = 2304;
-				break;
-			case QUIVER_BLACKIRON:
-				sprite = 2305;
-				break;
-			default:
-				break;
-		}
+		arrowArmorPierce = 2;
 	}
 
 	if ( myStats.weapon )
@@ -27996,7 +28157,8 @@ bool Entity::setArrowProjectileProperties(int weaponType)
 		}
 		else if ( this->arrowDropOffEquipmentModifier < 0 )
 		{
-			this->arrowBoltDropOffRange = 0;
+			this->arrowFallSpeed *= 1.0 + (-this->arrowDropOffEquipmentModifier) / 10.0;
+			this->arrowBoltDropOffRange = std::max(1, this->arrowBoltDropOffRange + (this->arrowDropOffEquipmentModifier / 2));
 		}
 		return true;
 	}

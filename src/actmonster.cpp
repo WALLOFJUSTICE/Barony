@@ -4477,7 +4477,8 @@ void actMonster(Entity* my)
 	// effect of a ring of conflict
 	bool ringconflict = false;
 	Entity* ringConflictHolder = nullptr;
-	if ( myStats->type != LICH_ICE && myStats->type != LICH_FIRE && myStats->type != DRAGON )
+	if ( myStats->type != LICH_ICE && myStats->type != LICH_FIRE && myStats->type != DRAGON
+		&& myStats->type != DEVIL )
 	{
 		for ( node = map.creatures->first; node != nullptr; node = node->next ) //Only creatures can wear rings, so don't search map.entities.
 		{
@@ -4502,6 +4503,12 @@ void actMonster(Entity* my)
 				}
 			}
 		}
+	}
+
+	if ( ringconflict )
+	{
+		myStats->setEffectActive(EFF_CONFLICTED, true);
+		myStats->EFFECTS_TIMERS[EFF_CONFLICTED] = 5;
 	}
 
 	// invisibility

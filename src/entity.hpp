@@ -1127,7 +1127,7 @@ public:
 	static int getHealringFromEffects(Entity* my, Stat& myStats);
 	static int getHealthRegenInterval(Entity* my, Stat& myStats, bool isPlayer, bool excludeItemsEffectsBonus = false);
 	// calc damage/effects for ranged weapons.
-	void setRangedProjectileAttack(Entity& marksman, Stat& myStats, int optionalOverrideForArrowType = 0);
+	void setRangedProjectileAttack(Entity& marksman, Stat& myStats, int projectileIndex, int optionalOverrideForArrowType);
 	bool setArrowProjectileProperties(int weaponType);
 	real_t yawDifferenceFromEntity(Entity* entity); // calc targets yaw compared to an entity, returns 0 - 2 * PI, where > PI is facing towards player.
 	spell_t* getActiveMagicEffect(int spellID);

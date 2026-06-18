@@ -4626,7 +4626,10 @@ int getSpellDamageFromStatic(int spellID, Stat* hitstats)
 
 void updateEntityOldHPBeforeMagicHit(Entity& my, Entity& projectile)
 {
-	if ( projectile.behavior == &actMagicMissile && projectile.actmagicUpdateOLDHPOnHit == 1 )
+	if ( (projectile.behavior == &actMagicMissile && projectile.actmagicUpdateOLDHPOnHit == 1)
+		|| (projectile.behavior == &actArrow &&
+			(projectile.arrowQuiverType == QUIVER_BONE
+			|| projectile.arrowShotByWeapon == BLACKIRON_CROSSBOW)) )
 	{
 		if ( my.getStats() )
 		{

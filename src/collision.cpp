@@ -1318,6 +1318,11 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 					continue;
 				}
 			}
+			if ( projectileAttack && my->behavior == &actArrow && yourStats && yourStats->HP <= 0 )
+			{
+				my->collisionIgnoreTargets.insert(entity->getUID());
+				continue;
+			}
 			if ( projectileAttack 
 				&& (yourStats && (parentDodgeChance 
 				|| yourStats->getEffectActive(EFF_AGILITY) 
