@@ -72,6 +72,7 @@ struct HUDFlail_t
 	real_t rollSpin = 2 * PI;
 	real_t prevYaw = 0.0;
 	int spinState = 0;
+	bool weaponSwitch = false;
 	bool needsInit = true;
 
 	static void reset(HUDFlail_t& my)
@@ -713,6 +714,7 @@ void actHudWeapon(Entity* my)
 						// force a reload animation.
 						HUDWEAPON_CROSSBOW_RELOAD_ANIMATION = CROSSBOW_ANIM_RELOAD_START;
 						HUDWEAPON_CHOP = CROSSBOW_CHOP_RELOAD_START;
+						HUDFlail[HUDWEAPON_PLAYERNUM].weaponSwitch = true;
 						if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == HEAVY_CROSSBOW )
 						{
 #ifdef SOUND
@@ -891,6 +893,7 @@ void actHudWeapon(Entity* my)
 				{
 					HUDWEAPON_CROSSBOW_RELOAD_ANIMATION = CROSSBOW_ANIM_RELOAD_START;
 					HUDWEAPON_CHOP = CROSSBOW_CHOP_RELOAD_START;
+					HUDFlail[HUDWEAPON_PLAYERNUM].weaponSwitch = true;
 					HUDWEAPON_MOVEX = -1;
 					if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == HEAVY_CROSSBOW )
 					{
@@ -1151,6 +1154,11 @@ void actHudWeapon(Entity* my)
 
 		if ( !ignoreAttack && (swingweapon || castStrikeAnimation) )
 		{
+			if ( !castStrikeAnimation && (rapier || claymore) && stats[HUDWEAPON_PLAYERNUM]->sneaking && !stats[HUDWEAPON_PLAYERNUM]->defending )
+			{
+				input.consumeBinaryToggle("Defend");
+			}
+
 			if ( cast_animation[HUDWEAPON_PLAYERNUM].active || cast_animation[HUDWEAPON_PLAYERNUM].active_spellbook )
 			{
 				messagePlayer(HUDWEAPON_PLAYERNUM, MESSAGE_COMBAT, Language::get(1301));
@@ -1410,10 +1418,15 @@ void actHudWeapon(Entity* my)
 									if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == CROSSBOW
 										|| stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
 									{
+										if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+										{
+											throwGimpTimer = 60;
+										}
 										throwGimpTimer *= rangedAttackGetSpeedModifier(stats[HUDWEAPON_PLAYERNUM]);
 									}
 
 									HUDWEAPON_CHOP = CROSSBOW_CHOP_RELOAD_START;
+									HUDFlail[HUDWEAPON_PLAYERNUM].weaponSwitch = true;
 									HUDWEAPON_CROSSBOW_RELOAD_ANIMATION = CROSSBOW_ANIM_SHOOT;
 
 									if ( heavyCrossbow )
@@ -1430,28 +1443,51 @@ void actHudWeapon(Entity* my)
 											camera_shakey += 6;
 										}
 									}
+									else if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+									{
+										players[HUDWEAPON_PLAYERNUM]->entity->playerStrafeVelocity = 0.2;
+										players[HUDWEAPON_PLAYERNUM]->entity->playerStrafeDir = players[HUDWEAPON_PLAYERNUM]->entity->yaw + PI;
+										if ( multiplayer != CLIENT )
+										{
+											players[HUDWEAPON_PLAYERNUM]->entity->setEffect(EFF_KNOCKBACK, true, 15, false);
+										}
+										if ( players[HUDWEAPON_PLAYERNUM]->entity->skill[3] == 0 )   // debug cam OFF
+										{
+											camera_shakex += .06;
+											camera_shakey += 6;
+										}
+									}
 
 									if ( multiplayer == CLIENT )
 									{
 										if ( rangedWeaponUseQuiverOnAttack(stats[HUDWEAPON_PLAYERNUM]) )
 										{
 											Item* quiver = stats[HUDWEAPON_PLAYERNUM]->shield;
-											quiver->count--;
 
-											Compendium_t::Events_t::eventUpdate(HUDWEAPON_PLAYERNUM, Compendium_t::CPDM_AMMO_FIRED,
-												quiver->type, 1);
-
-											if ( quiver->count <= 0 )
+											int deplete = 1;
+											if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
 											{
-												if ( quiver->node )
+												deplete = 3;
+											}
+											for ( int i = 0; i < deplete; ++i )
+											{
+												quiver->count--;
+												Compendium_t::Events_t::eventUpdate(HUDWEAPON_PLAYERNUM, Compendium_t::CPDM_AMMO_FIRED,
+													quiver->type, 1);
+
+												if ( quiver->count <= 0 )
 												{
-													list_RemoveNode(quiver->node);
+													if ( quiver->node )
+													{
+														list_RemoveNode(quiver->node);
+													}
+													else
+													{
+														free(quiver);
+													}
+													stats[HUDWEAPON_PLAYERNUM]->shield = NULL;
+													break;
 												}
-												else
-												{
-													free(quiver);
-												}
-												stats[HUDWEAPON_PLAYERNUM]->shield = NULL;
 											}
 										}
 									}
@@ -3122,6 +3158,10 @@ void actHudWeapon(Entity* my)
 				&& (stats[HUDWEAPON_PLAYERNUM]->weapon->type == CROSSBOW
 					|| stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW) )
 			{
+				if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+				{
+					reloadSpeed = 0.6;
+				}
 				reloadSpeed += 5 * std::max(0.0, 1.0 - rangedAttackGetSpeedModifier(stats[HUDWEAPON_PLAYERNUM]));
 			}
 			HUDWEAPON_MOVEX = std::min<real_t>(HUDWEAPON_MOVEX + .15 * reloadSpeed, 0.0);
@@ -3157,6 +3197,7 @@ void actHudWeapon(Entity* my)
 				}
 			}
 		}
+
 		if ( fabs(HUDWEAPON_MOVEX) < 0.01 )
 		{
 			HUDWEAPON_CHOP = CROSSBOW_CHOP_RELOAD_ENDING;
@@ -3564,6 +3605,10 @@ void actHudWeapon(Entity* my)
 				}
 				if ( swingweapon && (rapier || claymore) )
 				{
+					/*if ( (rapier || claymore) && stats[HUDWEAPON_PLAYERNUM]->sneaking && !stats[HUDWEAPON_PLAYERNUM]->defending )
+					{
+						input.consumeBinaryToggle("Defend");
+					}*/
 					/*if ( claymore && *cvar_claymore_toggle == 1)
 					{
 						HUDWEAPON_CHOP = 1;
@@ -4717,6 +4762,7 @@ void actHudShield(Entity* my)
 			{
 				hudweapon->skill[8] = CROSSBOW_ANIM_RELOAD_START;
 				hudweapon->skill[0] = CROSSBOW_CHOP_RELOAD_START;
+				HUDFlail[HUDWEAPON_PLAYERNUM].weaponSwitch = true;
 				hudweapon->fskill[0] = -1;
 				players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer = std::max(players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer, 20);
 
@@ -5198,7 +5244,8 @@ void actHudAdditional2(Entity* my)
 			return;
 		}
 
-		if ( !(stats[HUDADDITIONAL_PLAYERNUM]->weapon && stats[HUDADDITIONAL_PLAYERNUM]->weapon->type == STEEL_FLAIL) )
+		if ( !(stats[HUDADDITIONAL_PLAYERNUM]->weapon && 
+			(stats[HUDADDITIONAL_PLAYERNUM]->weapon->type == STEEL_FLAIL || stats[HUDADDITIONAL_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW)) )
 		{
 			my->flags[INVISIBLE] = true;
 			my->flags[INVISIBLE_DITHER] = false;
@@ -5217,14 +5264,32 @@ void actHudAdditional2(Entity* my)
 		return;
 	}
 
+	if ( stats[HUDADDITIONAL_PLAYERNUM]->weapon->type == STEEL_FLAIL && my->sprite != 1922 )
+	{
+		hudFlail.needsInit = true;
+	}
+	else if ( stats[HUDADDITIONAL_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW && my->sprite != 2258 )
+	{
+		hudFlail.needsInit = true;
+	}
+
 	if ( hudFlail.needsInit )
 	{
 		HUDFlail_t::reset(hudFlail);
 		hudFlail.needsInit = false;
 	}
 
+	if ( stats[HUDADDITIONAL_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+	{
+		// blackiron lever
+		my->sprite = 2258;
+	}
+	else
+	{
+		my->sprite = 1922;
+	}
 	my->mistformGLRender = weaponLimb->mistformGLRender;
-	my->sprite = 1922;
+
 	//my->flags[OVERDRAW] = false;
 	my->x = weaponLimb->x;
 	my->y = weaponLimb->y;
@@ -5232,6 +5297,67 @@ void actHudAdditional2(Entity* my)
 	my->focalx = 0;
 	my->focaly = 0;
 	my->focalz = 4;
+	my->scalex = 1.0;
+	my->scaley = 1.0;
+	my->scalez = 1.0;
+
+	if ( stats[HUDADDITIONAL_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+	{
+		auto& spin = hudFlail.spin;
+		if ( (weaponLimb->skill[0] == CROSSBOW_CHOP_RELOAD_START
+			&& weaponLimb->skill[8] == CROSSBOW_ANIM_SHOOT)
+			|| hudFlail.weaponSwitch )
+		{
+			spin = 0.0;
+			hudFlail.spinState = 0;
+		}
+
+		hudFlail.weaponSwitch = false;
+		my->pitch = (0.10 * PI) * (spin);
+		my->pitch += (0.125 * PI) * sin((spin) * PI);
+		my->roll = weaponLimb->roll;
+		my->yaw = weaponLimb->yaw;
+		if ( hudFlail.spinState < 15 )
+		{
+			++hudFlail.spinState;
+		}
+		else
+		{
+			spin += std::max(0.05, (1.0 - spin) / 8);
+			spin = std::min(1.0, spin);
+		}
+		my->x += 0.5;
+		my->z -= 0.625;
+		my->focalx = -1;
+		my->focaly = 0;
+		my->focalz = 0.125;
+		my->scalex = weaponLimb->scalex;
+		my->scaley = weaponLimb->scaley;
+		my->scalez = weaponLimb->scalez;
+		//weaponLimb->flags[OVERDRAW] = true;
+		//my->flags[OVERDRAW] = true;
+
+		real_t focalx = 0;
+		real_t focaly = 0;
+		real_t focalz = -4;
+
+		// magic code to translate focals into pure coords (doesn't include focaly), keeps rotations the same but just follows yaw/pitch
+		real_t xoffset = focalz * sin(weaponLimb->pitch + PI) * cos(weaponLimb->roll) * cos(weaponLimb->yaw);
+		real_t yoffset = focalz * sin(weaponLimb->pitch + PI) * cos(weaponLimb->roll) * sin(weaponLimb->yaw);
+		xoffset += focalz * sin(weaponLimb->roll + PI) * cos(weaponLimb->yaw + PI / 2);
+		yoffset += focalz * sin(weaponLimb->roll + PI) * sin(weaponLimb->yaw + PI / 2);
+
+		xoffset += focalx * cos(weaponLimb->yaw) * sin(weaponLimb->pitch + PI / 2) + focaly * cos(weaponLimb->yaw + PI / 2);
+		yoffset += focalx * sin(weaponLimb->yaw) * sin(weaponLimb->pitch + PI / 2) + focaly * sin(weaponLimb->yaw + PI / 2);
+
+		real_t zoffset = focalz * cos(weaponLimb->pitch) * cos(weaponLimb->roll);
+		zoffset += focalx * sin(weaponLimb->pitch);
+		my->x += xoffset;
+		my->y += yoffset;
+		my->z += zoffset;
+
+		return;
+	}
 
 	/*static ConsoleVariable<float> cvar_bounce("/bounce", 1.f);
 	if ( keystatus[SDLK_F1] )
