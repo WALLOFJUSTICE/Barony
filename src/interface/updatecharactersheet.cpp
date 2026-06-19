@@ -118,7 +118,14 @@ Sint32 displayAttackPower(const int player, AttackHoverText_t& output)
 							skillModifierMin /= 100.0;
 							skillModifierMin = std::min(skillModifierMin, 1.0);
 							skillModifierMax /= 100.0;
-							skillModifierMax = std::min(skillModifierMax, 1.0);
+
+							real_t highestMax = 1.0;
+							if ( stats[player]->weapon && items[stats[player]->weapon->type].hasAttribute("ATK_MAX_VARIANCE") )
+							{
+								highestMax = items[stats[player]->weapon->type].attributes["ATK_MAX_VARIANCE"] / 100.0;
+							}
+							skillModifierMax = std::min(skillModifierMax, highestMax);
+
 							output.proficiencyVariance = variance;
 							output.attackMaxRange = attack - static_cast<int>((1.0 - skillModifierMax) * attack);
 							output.attackMinRange = attack - static_cast<int>((1.0 - skillModifierMin) * attack);
@@ -304,7 +311,14 @@ Sint32 displayAttackPower(const int player, AttackHoverText_t& output)
 						skillModifierMin /= 100.0;
 						skillModifierMin = std::min(skillModifierMin, 1.0);
 						skillModifierMax /= 100.0;
-						skillModifierMax = std::min(skillModifierMax, 1.0);
+
+						real_t highestMax = 1.0;
+						if ( stats[player]->weapon && items[stats[player]->weapon->type].hasAttribute("ATK_MAX_VARIANCE") )
+						{
+							highestMax = items[stats[player]->weapon->type].attributes["ATK_MAX_VARIANCE"] / 100.0;
+						}
+						skillModifierMax = std::min(skillModifierMax, highestMax);
+
 						output.proficiencyVariance = variance;
 						output.attackMaxRange = attack - static_cast<int>((1.0 - skillModifierMax) * attack);
 						output.attackMinRange = attack - static_cast<int>((1.0 - skillModifierMin) * attack);

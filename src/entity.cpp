@@ -21430,16 +21430,17 @@ void Entity::setMeleeDamageSkillModifiers(Entity* my, Stat* myStats, int skill, 
 	variance = 20;
 	baseSkillModifier = 50.0; // 40-60 base
 
+	ItemType type = WOODEN_SHIELD;
 	if ( !shapeshifted )
 	{
-		if ( myStats && myStats->weapon && myStats->weapon->type == ARTIFACT_SPEAR )
+		if ( myStats && myStats->weapon )
 		{
-			gungnir = true;
+			type = myStats->weapon->type;
 		}
 	}
-	if ( itemType && (*itemType) == ARTIFACT_SPEAR )
+	if ( itemType )
 	{
-		gungnir = true;
+		type = (*itemType);
 	}
 
 	if ( skill == PRO_UNARMED )
@@ -21449,17 +21450,19 @@ void Entity::setMeleeDamageSkillModifiers(Entity* my, Stat* myStats, int skill, 
 	}
 	else if ( skill == PRO_POLEARM )
 	{
-		if ( gungnir )
-		{
-			variance = 0.0;
-			baseSkillModifier = 60.0;
-		}
-		else
-		{
-			variance = 10.0;
-			baseSkillModifier = 55.0; // 50-60 base
-		}
+		variance = 10.0;
+		baseSkillModifier = 55.0; // 50-60 base
 	}
+
+	if ( items[type].hasAttribute("ATK_BASE_VARIANCE") )
+	{
+		baseSkillModifier = items[type].attributes["ATK_BASE_VARIANCE"];
+	}
+	if ( items[type].hasAttribute("ATK_VARIANCE") )
+	{
+		variance = items[type].attributes["ATK_VARIANCE"];
+	}
+
 	return;
 }
 
@@ -27992,6 +27995,10 @@ void Entity::setRangedProjectileAttack(Entity& marksman, Stat& myStats, int proj
 			{
 				statChance += 50;
 			}
+			if ( projectileIndex % 3 > 0 )
+			{
+				statChance /= 2; // multi-shots reduced pierce chance
+			}
 			int chance = local_rng.rand() % 100;
 			if ( chance < statChance )
 			{
@@ -28113,12 +28120,24 @@ void Entity::setRangedProjectileAttack(Entity& marksman, Stat& myStats, int proj
 
 	// get arrow power.
 	attack = marksman.getRangedAttack(attack);
-	real_t variance = 20;
+	real_t variance = 20.0;
 	real_t baseSkillModifier = 50.0; // 40-60 base
+	Entity::setMeleeDamageSkillModifiers(&marksman, &myStats, PRO_RANGED, baseSkillModifier, variance, nullptr);
+	if ( projectileIndex % 3 > 0 )
+	{
+		baseSkillModifier = std::max(baseSkillModifier - (10.0 + (real_t)(local_rng.rand() % 6)), 10.0); // multi shot reduced
+	}
+
 	real_t skillModifier = baseSkillModifier - (variance / 2) + (myStats.getModifiedProficiency(PRO_RANGED) / 2.0);
 	skillModifier += (local_rng.rand() % (1 + static_cast<int>(variance)));
 	skillModifier /= 100.0;
-	skillModifier = std::min(skillModifier, 1.0);
+
+	real_t highestMax = 1.0;
+	if ( myStats.weapon && items[myStats.weapon->type].hasAttribute("ATK_MAX_VARIANCE") )
+	{
+		highestMax = items[myStats.weapon->type].attributes["ATK_MAX_VARIANCE"] / 100.0;
+	}
+	skillModifier = std::min(skillModifier, highestMax);
 	attack = attack - static_cast<int>((1.0 - skillModifier) * attack);
 	this->arrowPower = attack;
 }

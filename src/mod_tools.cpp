@@ -980,6 +980,30 @@ void ItemTooltips_t::readItemsFromFile()
 	//itemValueTableByCategory.clear();
 	Uint32 shift = 0;
 	Uint32 hash = 0;
+
+	const std::vector<std::string> hashedAttributes =
+	{	
+		"ATK",
+		"AC",
+		"ATK_MAX_VARIANCE",
+		"ATK_BASE_VARIANCE",
+		"ATK_VARIANCE",
+		"no_stack",
+		"UNVOIDABLE",
+		"UNSELLABLE",
+		"UNVANDALISABLE",
+		"UNBURNABLE",
+		"SHOP_EXCLUDE_FROM_CATEGORY_1",
+		"SHOP_EXCLUDE_FROM_CATEGORY_2",
+		"SHOP_EXCLUDE_FROM_CATEGORY_3",
+		"SHOP_EXCLUDE_FROM_CATEGORY_4",
+		"SHOP_EXCLUDE_FROM_CATEGORY_5",
+		"SHOP_EXCLUDE_FROM_CATEGORY_6",
+		"SHOP_EXCLUDE_FROM_CATEGORY_7",
+		"SHOP_EXCLUDE_FROM_CATEGORY_8",
+		"SHOP_EXCLUDE_FROM_CATEGORY_9"
+	};
+
 	for ( int i = 0; i < NUMITEMS && i < itemsRead; ++i )
 	{
 		assert(i == tmpItems[i].itemId);
@@ -1125,9 +1149,18 @@ void ItemTooltips_t::readItemsFromFile()
 			items[i].item_slot = ItemEquippableSlot::EQUIPPABLE_IN_SLOT_HELM;
 		}
 
+		hash += (Uint32)((Uint32)items[i].item_slot << (shift % 32)); ++shift;
 		hash += (Uint32)((Uint32)items[i].weight << (shift % 32)); ++shift;
 		hash += (Uint32)((Uint32)items[i].gold_value << (shift % 32)); ++shift;
 		hash += (Uint32)((Uint32)items[i].level << (shift % 32)); ++shift;
+
+		for ( auto& str : hashedAttributes )
+		{
+			if ( items[i].attributes.find(str) != items[i].attributes.end() )
+			{
+				hash += (Uint32)((Uint32)(items[i].attributes[str] + 10000) << (shift % 32)); ++shift;
+			}
+		}
 		/*{
 			auto pair = std::make_pair(items[i].value, i);
 			auto lower = std::lower_bound(itemValueTable.begin(), itemValueTable.end(), pair,
@@ -4832,7 +4865,7 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 	}
 	else if ( tooltipType.find("tooltip_tool_beartrap") != std::string::npos )
 	{
-		const int atk = 10 + 3 * (item.status + item.beatitude);
+		const int atk = items[TOOL_BEARTRAP].attributes["ATK"] + 3 * (item.status + item.beatitude);
 		snprintf(buf, sizeof(buf), str.c_str(), atk);
 	}
 	else if ( tooltipType.find("tooltip_jewel") != std::string::npos )
@@ -5745,8 +5778,15 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 			Entity::setMeleeDamageSkillModifiers(compendiumTooltipIntro ? nullptr : players[player]->entity, 
 				nullptr, proficiency, baseSkillModifier, variance, &itemType);
 			real_t lowest = baseSkillModifier - (variance / 2) + (compendiumTooltipIntro ? 0 : stats[player]->getModifiedProficiency(proficiency) / 2.0);
+
+			real_t highestMax = 100.0;
+			if ( items[itemType].hasAttribute("ATK_MAX_VARIANCE") )
+			{
+				highestMax = items[itemType].attributes["ATK_MAX_VARIANCE"];
+			}
+
 			lowest = std::min(100.0, std::max(0.0, lowest));
-			real_t highest = std::min(100.0, lowest + variance);
+			real_t highest = std::min(highestMax, lowest + variance);
 
 			snprintf(buf, sizeof(buf), str.c_str(), (int)lowest, (int)highest, getItemProficiencyName(proficiency).c_str());
 		}

@@ -174,7 +174,7 @@ void actBeartrap(Entity* my)
 							}
 						}
 					}
-					int damage = 10 + 3 * (BEARTRAP_STATUS + BEARTRAP_BEATITUDE);
+					int damage = items[TOOL_BEARTRAP].attributes["ATK"] + 3 * (BEARTRAP_STATUS + BEARTRAP_BEATITUDE);
 					if ( parent )
 					{
 						stat->bleedInflictedBy = static_cast<Sint32>(parent->getUID());
