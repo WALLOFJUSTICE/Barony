@@ -2771,11 +2771,23 @@ void gameLogic(void)
 						printlog("entity: %d, accum: %.2f", pair.first, pair.second);
 					}
 				}
-				}
+			}
+			std::queue<Entity*> highPriorityUpdates;
+			static ConsoleVariable<int> cvar_net_projectile_priority("/net_projectile_priority", 1);
 			for ( node = map.entities->first; node != nullptr; node = node->next )
 			{
 				entity = (Entity*)node->element;
 				entity->ranbehavior = false;
+				if ( entity->behavior == &actArrow || entity->behavior == &actThrown )
+				{
+					if ( *cvar_net_projectile_priority )
+					{
+						if ( entity->flags[UPDATENEEDED] == true && entity->flags[NOUPDATE] == false )
+						{
+							highPriorityUpdates.push(entity);
+						}
+					}
+				}
 			}
 			for ( node = map.worldUI->first; node != nullptr; node = node->next )
 			{
@@ -2860,6 +2872,23 @@ void gameLogic(void)
 									}
 								}
 							}
+						}
+					}
+				}
+				else
+				{
+					if ( *cvar_net_projectile_priority > 0 && ticks % *cvar_net_projectile_priority == 0 )
+					{
+						while ( highPriorityUpdates.size() )
+						{
+							for ( c = 1; c < MAXPLAYERS; ++c )
+							{
+								if ( !client_disconnected[c] )
+								{
+									sendEntityUDP(highPriorityUpdates.front(), c, false);
+								}
+							}
+							highPriorityUpdates.pop();
 						}
 					}
 				}
