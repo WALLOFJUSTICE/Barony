@@ -2765,8 +2765,8 @@ but it retracts beyond your might!#
 2433 You magically coerce %s's %s out of their grasp!#
 2434 You magically coerce the %s's %s out of their grasp!#
 2435 Your %s is magically coerced from your grasp!#
-2436 %s is not wielding a weapon to steal!#
-2437 The %s is not wielding a weapon to steal!#
+2436 You fail to steal anything from %s!#
+2437 You fail to steal anything from the %s!#
 2438 The spell fails to steal the non-existent weapon from your hand!#
 2439 %s's life force is drained!#
 2440 The %s's life force is drained!#
@@ -7316,5 +7316,34 @@ has been unlocked!#
 7042 You should find a matching lock to use this with.#
 7043 Your spell has no effect here!#
 7044 You recall your previous shade.#
+7045 Bone shards splinter into the %s!#
+7046 Bone shards splinter into %s!#
+7047 Bone shards splinter into you!#
+7048 Your strike tears into the %s!#
+7049 Your strike tears into %s!#
+7050 A bone arrow tears into your flesh!#
+7051 A blackiron arrow rips at your essence!#
+7052 Your strike rips into the %s!#
+7053 Your strike rips into %s!#
+7054 Your bone arrow tears into the %s!#
+7055 Your bone arrow tears into %s!#
+7056 Your blackiron arrow rips into the %s!#
+7057 Your blackiron arrow rips into %s!#
+7058 Your shot tears into the %s!#
+7059 Your shot tears into %s!#
+7060 Your shot rips into the %s!#
+7061 Your shot rips into %s!#
+7062 Your bone tears into the %s!#
+7063 Your bone tears into %s!#
+7064 Your dart rips into the %s!#
+7065 Your dart rips into %s!#
+7066 Your plumbata smites the %s!#
+7067 Your plumbata smites %s!#
+7068 The bone tears into you!#
+7069 The dart rips into you!#
+7070 The plumbata smites you!#
+7071 The %s is disrupted!#
+7072 %s is disrupted!#
+7073 A flying dart disrupts you!#
 
 7999 END#
