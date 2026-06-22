@@ -11049,7 +11049,9 @@ void actPlayer(Entity* my)
 							}
 							if ( myFollower )
 							{
-								if ( myFollower->monsterAllySummonRank != 0 )
+								Stat* followerStats = myFollower->getStats();
+								if ( myFollower->monsterAllySummonRank != 0 
+									|| (followerStats && followerStats->type == MOTH_SMALL && followerStats->getAttribute("fire_sprite") != "") )
 								{
 									myFollower->setMP(0);
 									myFollower->setHP(0); // rip
@@ -11080,7 +11082,6 @@ void actPlayer(Entity* my)
 										++bodypart;
 									}
 
-									Stat* followerStats = myFollower->getStats();
 									if ( followerStats )
 									{
 										followerStats->leader_uid = 0;
@@ -11697,6 +11698,7 @@ void actPlayer(Entity* my)
 							if ( hit.entity->doorHealth > 0 )
 							{
 								hit.entity->doorHealth = 0;
+								players[PLAYER_NUM]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, hit.entity);
 								magicOnSpellCastEvent(my, my, nullptr,
 									SPELL_DASH, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
 							}
@@ -11997,6 +11999,7 @@ void actPlayer(Entity* my)
 					if ( hit.entity->doorHealth > 0 )
 					{
 						hit.entity->doorHealth = 0;
+						players[PLAYER_NUM]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, hit.entity);
 						magicOnSpellCastEvent(my, my, nullptr,
 							SPELL_DASH, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
 					}

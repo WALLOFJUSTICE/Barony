@@ -4121,7 +4121,14 @@ Entity* spellEffectDemesneDoor(Entity& caster, Entity& target)
 				{
 					if ( entity->behavior == &actDoor )
 					{
-						entity->doorHealth = 0;
+						if ( entity->doorHealth > 0 )
+						{
+							entity->doorHealth = 0;
+							if ( caster.behavior == &actPlayer )
+							{
+								players[caster.skill[2]]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, entity);
+							}
+						}
 					}
 					if ( entity->behavior == &actGate && entity->gateStatus == 0 )
 					{

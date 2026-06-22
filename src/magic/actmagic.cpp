@@ -6453,15 +6453,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 									}
 								}
 							}
-							if ( hitstats->type == CRYSTALGOLEM
-								|| hitstats->type == AUTOMATON
-								|| hitstats->type == SENTRYBOT
-								|| hitstats->type == SPELLBOT
-								|| hitstats->type == DUMMYBOT
-								|| hitstats->type == HAUNTED_ARMOR
-								|| hitstats->type == MONSTER_ADORCISED_WEAPON
-								|| hitstats->type == MINIMIMIC
-								|| hitstats->type == MIMIC )
+							if ( hit.entity->isConstructMonster() )
 							{
 								if ( !found )
 								{

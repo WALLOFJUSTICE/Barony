@@ -5960,6 +5960,11 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
                     {
                         continue;
                     }
+					else if ( tag.compare("weapon_on_cursed_sideeffect") == 0
+						&& (item->beatitude >= 0 || !items[item->type].hasAttribute("WEAPON_CURSED_SIDEEFFECT")) )
+					{
+							continue;
+					}
                     else if ( tag.compare("ring_on_cursed_sideeffect") == 0
                              && (item->beatitude >= 0 || !items[item->type].hasAttribute("RING_CURSED_SIDEEFFECT")) )
                     {
@@ -5997,6 +6002,10 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
                     }
 					else if ( (tag == "thrown_atk_from_player_stat" || tag == "thrown_skill_modifier")
 						&& (itemTypeIsThrownBall(item->type) || item->type == BOLAS) )
+					{
+						continue;
+					}
+					else if ( tag == "unbreakable" && items[item->type].hasAttribute("EFF_BONE_WEAPON") )
 					{
 						continue;
 					}

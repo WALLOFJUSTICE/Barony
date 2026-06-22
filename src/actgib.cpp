@@ -180,6 +180,11 @@ void actGib(Entity* my)
 			my->roll += 0.1;
 		}
 
+		if ( my->sprite == 2532 ) // bone gibs
+		{
+			my->pitch += 0.1;
+		}
+
 		if ( GIB_LIGHTING && my->flags[SPRITE] && my->sprite >= 180 && my->sprite <= 184 )
 		{
 			const char* lightname = nullptr;

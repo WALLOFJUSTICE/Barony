@@ -7457,13 +7457,13 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 			switch ( item->type )
 			{
 			case WOODEN_SHIELD:
+			case BONE_SHIELD:
 				interval = 10;
 				break;
 			case BRONZE_SHIELD:
 				interval = 20;
 				break;
 			case IRON_SHIELD:
-			case BONE_SHIELD:
 				interval = 20;
 				break;
 			case STEEL_SHIELD:
@@ -7498,6 +7498,20 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 		else
 		{
 			interval = 4 + item->status;
+
+			if ( item->type == BONE_SWORD || item->type == BONE_AXE || item->type == BONE_SPEAR
+				|| item->type == BONE_SHORTBOW || item->type == BONE_MACE )
+			{
+				interval = 0;
+			}
+			else if ( item->type == BONE_HELM
+				|| item->type == BONE_BREASTPIECE
+				|| item->type == BONE_BRACERS
+				|| item->type == BONE_BOOTS )
+			{
+				interval = 0;
+			}
+
 			if ( item->beatitude < 0
 				&& !intro && !shouldInvertEquipmentBeatitude(stats[player.playernum]) )
 			{
@@ -7510,6 +7524,14 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 						&& !intro && shouldInvertEquipmentBeatitude(stats[player.playernum])) )
 				{
 					interval += std::min(abs(item->beatitude), 1);
+				}
+
+				if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_BREASTPLATE )
+				{
+					if ( items[item->type].hasAttribute("AC") && items[item->type].attributes["AC"] > 0 )
+					{
+						interval += 1 + (int)item->status / 2;
+					}
 				}
 				if ( skillID >= 0 )
 				{

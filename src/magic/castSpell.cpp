@@ -5006,14 +5006,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							}
 							else if ( Stat* targetStats = target->getStats() )
 							{
-								if ( targetStats->type == CRYSTALGOLEM 
-									|| targetStats->type == AUTOMATON
-									|| targetStats->type == MINIMIMIC
-									|| targetStats->type == MIMIC
-									|| targetStats->type == HAUNTED_ARMOR
-									|| targetStats->type == MONSTER_ADORCISED_WEAPON
-									|| monsterIsImmobileTurret(target, targetStats)
-									)
+								if ( target->isConstructMonster() )
 								{
 									Sint32 oldHP = targetStats->HP;
 									if ( effect = applyGenericMagicDamage(caster, target, *caster, spell->ID, damage, true, false, usingSpellbook ? SPELLBOOK_SABOTAGE : 0) )

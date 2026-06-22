@@ -1812,6 +1812,9 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->setProficiency(PRO_POLEARM, 80);
 			stats->setProficiency(PRO_RANGED, 80);
 			stats->setProficiency(PRO_SHIELD, 80);
+			stats->setProficiency(PRO_MYSTICISM, 80);
+			stats->setProficiency(PRO_THAUMATURGY, 80);
+			stats->setProficiency(PRO_SORCERY, 80);
 			break;
 		case (1000 + STAREMASTER):
 			stats->type = STAREMASTER;
@@ -1823,7 +1826,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->OLDHP = stats->HP;
 			stats->RANDOM_MAXHP = 20;
 			stats->RANDOM_HP = stats->RANDOM_MAXHP;
-			stats->STR = 20;
+			stats->STR = 30;
 			stats->DEX = 8;
 			stats->CON = 40;
 			stats->PER = 50;
