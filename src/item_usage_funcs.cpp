@@ -5304,7 +5304,7 @@ void item_Food(Item*& item, int player)
 		}
 		if ( stats[player] && players[player] && players[player]->entity )
 		{
-			if ( players[player]->entity->entityCanVomit() )
+			if ( players[player]->entity->entityCanVomit() && !(stats[player]->type == INSECTOID || stats[player]->type == MYCONID) )
 			{
 				players[player]->entity->char_gonnavomit = 40 + local_rng.rand() % 10;
 			}
@@ -5771,7 +5771,7 @@ void item_FoodTin(Item*& item, int player)
 
 		if ( stats[player] && players[player] && players[player]->entity )
 		{
-			if ( players[player]->entity->entityCanVomit() )
+			if ( players[player]->entity->entityCanVomit() && !(stats[player]->type == INSECTOID || stats[player]->type == MYCONID) )
 			{
 				players[player]->entity->char_gonnavomit = 40 + local_rng.rand() % 10;
 			}

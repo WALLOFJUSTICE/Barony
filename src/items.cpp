@@ -384,7 +384,32 @@ bool itemLevelCurvePostProcess(Entity* my, Item* item, BaronyRNG& rng, int itemL
 			item->status = static_cast<Status>(itemStatus);
 		}
 	}
-	if ( itemType == BOLAS )
+	else if ( itemType == BONE_THROWING )
+	{
+		itemStatus = DECREPIT;
+		if ( my && my->behavior == &actItem )
+		{
+			my->skill[11] = itemStatus;
+		}
+		else
+		{
+			item->status = static_cast<Status>(itemStatus);
+		}
+	}
+	else if ( itemType == BLACKIRON_DART
+		|| itemType == SILVER_PLUMBATA )
+	{
+		itemStatus = EXCELLENT;
+		if ( my && my->behavior == &actItem )
+		{
+			my->skill[11] = itemStatus;
+		}
+		else
+		{
+			item->status = static_cast<Status>(itemStatus);
+		}
+	}
+	else if ( itemType == BOLAS )
 	{
 		itemStatus = SERVICABLE;
 		if ( my && my->behavior == &actItem )

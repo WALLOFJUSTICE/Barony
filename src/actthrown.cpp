@@ -132,6 +132,20 @@ void onThrownLandingParticle(Entity* my)
 						}
 					}
 					break;
+				case BONE_THROWING:
+					for ( int i = 0; i < 5; ++i )
+					{
+						if ( Entity* gib = spawnGib(hit.entity ? hit.entity : my, 2532) )
+						{
+							gib->sprite = 2532;
+							if ( !hit.entity )
+							{
+								gib->z = my->z;
+							}
+							serverSpawnGibForClient(gib);
+						}
+					}
+					break;
 				default:
 					break;
 				}
@@ -404,7 +418,14 @@ void actThrown(Entity* my)
 			}
 			else
 			{
-				THROWN_VELZ += 0.03;
+				if ( type == SILVER_PLUMBATA )
+				{
+					THROWN_VELZ += 0.04;
+				}
+				else
+				{
+					THROWN_VELZ += 0.03;
+				}
 				my->z += THROWN_VELZ;
 			}
 			/*THROWN_VELX = 0.f;
@@ -1205,6 +1226,10 @@ void actThrown(Entity* my)
 				oldHP = hit.entity->getHP();
 				int damage = (BASE_THROWN_DAMAGE + item->weaponGetAttack(parentStats));
 				bool thrownTypeWeapon = false;
+				bool beastDamage = false;
+				bool constructDamage = false;
+				bool smiteDamage = false;
+				real_t weaponMult = 1.0;
 				if ( parentStats )
 				{
 					if ( itemCategory(item) == POTION )
@@ -1241,6 +1266,50 @@ void actThrown(Entity* my)
 							damage = attackAfterReductions;
 
 							thrownTypeWeapon = true;
+
+							if ( item->type == BLACKIRON_DART && (hit.entity->isConstructMonster() || hit.entity->isElementalMonster()) )
+							{
+								constructDamage = true;
+								if ( parent && parent->getStats() )
+								{
+									weaponMult += (items[item->type].attributes["BLACKIRON_DAMAGE_BASE"] / 100.0)
+										* (0.5 + parent->getStats()->getModifiedProficiency(PRO_MYSTICISM) / 200.0);
+								}
+								else
+								{
+									weaponMult += items[item->type].attributes["BLACKIRON_DAMAGE_BASE"] / 100.0;
+								}
+								for ( int i = 0; i < 5; ++i )
+								{
+									spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								}
+							}
+							else if ( item->type == BONE_THROWING && hit.entity->isBeastMonster() )
+							{
+								beastDamage = true;
+								weaponMult += items[item->type].attributes["BONE_DAMAGE_BASE"] / 100.0;
+								for ( int i = 0; i < 5; ++i )
+								{
+									spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								}
+							}
+							else if ( item->type == SILVER_PLUMBATA && hit.entity->isSmiteWeakMonster() )
+							{
+								smiteDamage = true;
+								if ( parent && parent->getStats() )
+								{
+									weaponMult += (items[item->type].attributes["SILVER_DAMAGE_BASE"] / 100.0)
+										* (0.5 + parent->getStats()->getModifiedProficiency(PRO_MYSTICISM) / 200.0);
+								}
+								else
+								{
+									weaponMult += items[item->type].attributes["SILVER_DAMAGE_BASE"] / 100.0;
+								}
+								for ( int i = 0; i < 5; ++i )
+								{
+									spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								}
+							}
 						}
 						else
 						{
@@ -1274,6 +1343,9 @@ void actThrown(Entity* my)
 					case IRON_DAGGER:
 					case STEEL_CHAKRAM:
 					case CRYSTAL_SHURIKEN:
+					case BONE_THROWING:
+					case SILVER_PLUMBATA:
+					case BLACKIRON_DART:
 					case BOOMERANG:
 					{
 						if ( damage <= 0 && hit.entity->behavior == &actPlayer )
@@ -1301,6 +1373,7 @@ void actThrown(Entity* my)
 					}
 					damage = std::min(10, damage); // impact damage is 10 max on allies.
 				}
+				damage *= weaponMult;
 
 				bool envenomWeapon = false;
 				if ( parent )
@@ -1709,6 +1782,100 @@ void actThrown(Entity* my)
 								}
 								break;
 							}
+							case BLACKIRON_DART:
+								if ( hit.entity->setEffect(EFF_DISRUPTED, 
+									((hitstats && hitstats->getEffectActive(EFF_DISRUPTED)) ? Uint8(2) : Uint8(1)), 
+									8 * TICKS_PER_SECOND, false) )
+								{
+									if ( hit.entity->behavior == &actPlayer )
+									{
+										messagePlayerColor(hit.entity->skill[2], MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7073));
+									}
+									if ( parent && parent->behavior == &actPlayer )
+									{
+										Uint32 color = makeColorRGB(0, 255, 0);
+										messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7071), Language::get(7072), MSG_COMBAT);
+									}
+								}
+								break;
+							case BONE_THROWING:
+								if ( hit.entity->setEffect(EFF_BLEEDING, true, 400, false) )
+								{
+									if ( parent && parent->behavior == &actPlayer )
+									{
+										if ( stats[parent->skill[2]]->helmet && stats[parent->skill[2]]->helmet->type == PUNISHER_HOOD )
+										{
+											int mpAmount = parent->modMP(1 + local_rng.rand() % 2);
+											parent->playerInsectoidIncrementHungerToMP(mpAmount);
+											Uint32 color = makeColorRGB(0, 255, 0);
+											parent->setEffect(EFF_MP_REGEN, true, std::max(stats[parent->skill[2]]->EFFECTS_TIMERS[EFF_MP_REGEN], 10 * TICKS_PER_SECOND), false);
+											if ( parent->behavior == &actPlayer )
+											{
+												messagePlayerColor(parent->skill[2], MESSAGE_HINT, color, Language::get(3753));
+												steamStatisticUpdateClient(parent->skill[2], STEAM_STAT_ITS_A_LIVING, STEAM_STAT_INT, 1);
+											}
+											playSoundEntity(parent, 168, 128);
+										}
+									}
+								}
+								if ( !hitstats->getEffectActive(EFF_KNOCKBACK) && hit.entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
+								{
+									real_t pushbackMultiplier = 0.8;
+									if ( my->thrownProjectileCharge > 0 )
+									{
+										pushbackMultiplier += (my->thrownProjectileCharge / 5) * 0.1; //0-3 knock
+									}
+									if ( !hit.entity->isMobile() )
+									{
+										pushbackMultiplier += 0.3;
+									}
+									real_t tangent = parent ? atan2(hit.entity->y - parent->y, hit.entity->x - parent->x)
+										: atan2(hit.entity->y - my->y, hit.entity->x - my->x);
+									if ( hit.entity->behavior == &actMonster )
+									{
+										hit.entity->vel_x = cos(tangent) * pushbackMultiplier;
+										hit.entity->vel_y = sin(tangent) * pushbackMultiplier;
+										hit.entity->monsterKnockbackVelocity = 0.01;
+										hit.entity->monsterKnockbackUID = my->parent;
+										hit.entity->monsterKnockbackTangentDir = tangent;
+									}
+									else if ( hit.entity->behavior == &actPlayer )
+									{
+										// normalize tangent
+										while ( tangent < 0 )
+										{
+											tangent += 2 * PI;
+										}
+										while ( tangent > 2 * PI )
+										{
+											tangent -= 2 * PI;
+										}
+										if ( !players[hit.entity->skill[2]]->isLocalPlayer() )
+										{
+											hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+											hit.entity->monsterKnockbackTangentDir = tangent;
+											serverUpdateEntityFSkill(hit.entity, 11);
+											serverUpdateEntityFSkill(hit.entity, 9);
+										}
+										else
+										{
+											hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+											hit.entity->monsterKnockbackTangentDir = tangent;
+										}
+									}
+
+									if ( parent && parent->behavior == &actPlayer )
+									{
+										Uint32 color = makeColorRGB(0, 255, 0);
+										messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(3215), Language::get(3214), MSG_COMBAT);
+									}
+									if ( hit.entity->behavior == &actPlayer )
+									{
+										Uint32 color = makeColorRGB(255, 0, 0);
+										messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(3742));
+									}
+								}
+								break;
 							case BOLAS:
 							{
 								int duration = 3 * TICKS_PER_SECOND;
@@ -1902,15 +2069,24 @@ void actThrown(Entity* my)
 				// update enemy bar for attacker
 				if ( !friendlyHit || healingPotion )
 				{
+					DamageGib gibType = DamageGib::DMG_DEFAULT;
+					if ( weaponMult >= 1.15 )
+					{
+						gibType = DamageGib::DMG_STRONGER;
+					}
+					else if ( weaponMult > 1.01 )
+					{
+						gibType = DamageGib::DMG_STRONGEST;
+					}
 					if ( !strcmp(hitstats->name, "") )
 					{
 						updateEnemyBar(parent, hit.entity, getMonsterLocalizedName(hitstats->type).c_str(), hitstats->HP, hitstats->MAXHP,
-							false, DamageGib::DMG_DEFAULT);
+							false, gibType);
 					}
 					else
 					{
 						updateEnemyBar(parent, hit.entity, hitstats->name, hitstats->HP, hitstats->MAXHP,
-							false, DamageGib::DMG_DEFAULT);
+							false, gibType);
 					}
 				}
 
@@ -1918,7 +2094,7 @@ void actThrown(Entity* my)
 				{
 					if ( item && itemCategory(item) != POTION && item->type != BOOMERANG
 						&& item->type != GREASE_BALL && item->type != DUST_BALL 
-						&& item->type != SLOP_BALL )
+						&& item->type != SLOP_BALL && item->type != BONE_THROWING )
 					{
 						Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Item entity.
 						entity->flags[INVISIBLE] = true;
@@ -1932,8 +2108,16 @@ void actThrown(Entity* my)
 						entity->yaw = my->yaw;
 						entity->pitch = my->pitch;
 						entity->roll = my->roll;
-						entity->vel_x = THROWN_VELX / 2;
-						entity->vel_y = THROWN_VELY / 2;
+						if ( item->type == SILVER_PLUMBATA )
+						{
+							entity->vel_x = THROWN_VELX / 10;
+							entity->vel_y = THROWN_VELX / 10;
+						}
+						else
+						{
+							entity->vel_x = THROWN_VELX / 2;
+							entity->vel_y = THROWN_VELY / 2;
+						}
 						entity->vel_z = my->vel_z;
 						entity->behavior = &actItem;
 						entity->skill[10] = item->type;
@@ -2163,10 +2347,25 @@ void actThrown(Entity* my)
 							}
 							else
 							{
-								messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(690), Language::get(690), MSG_COMBAT_BASIC);
-								if ( damage == 0 )
+								if ( beastDamage && damage > 0 )
 								{
-									messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(447));
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7062), Language::get(7063), MSG_COMBAT);
+								}
+								else if ( constructDamage && damage > 0 )
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7064), Language::get(7065), MSG_COMBAT);
+								}
+								else if ( smiteDamage && damage > 0 )
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7066), Language::get(7067), MSG_COMBAT);
+								}
+								else
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(690), Language::get(690), MSG_COMBAT_BASIC);
+									if ( damage == 0 )
+									{
+										messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(447));
+									}
 								}
 							}
 						}
@@ -2182,16 +2381,31 @@ void actThrown(Entity* my)
 							}
 							else
 							{
-								messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(690), Language::get(694), MSG_COMBAT_BASIC);
-								if ( damage == 0 )
+								if ( beastDamage && damage > 0 )
 								{
-									if ( hitstats->sex )
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7062), Language::get(7063), MSG_COMBAT);
+								}
+								else if ( constructDamage && damage > 0 )
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7064), Language::get(7065), MSG_COMBAT);
+								}
+								else if ( smiteDamage && damage > 0 )
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7066), Language::get(7067), MSG_COMBAT);
+								}
+								else
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(690), Language::get(694), MSG_COMBAT_BASIC);
+									if ( damage == 0 )
 									{
-										messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(449));
-									}
-									else
-									{
-										messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(450));
+										if ( hitstats->sex )
+										{
+											messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(449));
+										}
+										else
+										{
+											messagePlayer(parent->skill[2], MESSAGE_COMBAT_BASIC, Language::get(450));
+										}
 									}
 								}
 							}
@@ -2206,6 +2420,19 @@ void actThrown(Entity* my)
 					{
 						messagePlayer(hit.entity->skill[2], MESSAGE_COMBAT, Language::get(452));
 					}
+					else if ( beastDamage )
+					{
+						messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(7068));
+					}
+					else if ( constructDamage )
+					{
+						messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(7069));
+					}
+					else if ( smiteDamage )
+					{
+						messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(7070));
+					}
+
 					if ( goggleProtection )
 					{
 						messagePlayerColor(hit.entity->skill[2], MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6088));
@@ -2466,6 +2693,16 @@ void actThrown(Entity* my)
 				return;
 			}
 		}
+		else if ( item->type == BONE_THROWING )
+		{
+			playSoundEntity(my, 880, 64);
+			free(item);
+			item = nullptr;
+			onThrownLandingParticle(my);
+			my->removeLightField();
+			list_RemoveNode(my->mynode);
+			return;
+		}
 		else if ( itemCategory(item) == THROWN && (item->type == STEEL_CHAKRAM 
 			|| item->type == CRYSTAL_SHURIKEN || (item->type == BOOMERANG && uidToEntity(my->parent))) 
 				&& hit.entity == NULL )
@@ -2554,8 +2791,16 @@ void actThrown(Entity* my)
 				entity->yaw = my->yaw;
 				entity->pitch = my->pitch;
 				entity->roll = my->roll;
-				entity->vel_x = THROWN_VELX / 2;
-				entity->vel_y = THROWN_VELY / 2;
+				if ( item->type == SILVER_PLUMBATA )
+				{
+					entity->vel_x = THROWN_VELX / 10;
+					entity->vel_y = THROWN_VELY / 10;
+				}
+				else
+				{
+					entity->vel_x = THROWN_VELX / 2;
+					entity->vel_y = THROWN_VELY / 2;
+				}
 				entity->vel_z = my->vel_z;
 				entity->behavior = &actItem;
 				entity->skill[10] = item->type;

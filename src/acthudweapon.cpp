@@ -859,7 +859,14 @@ void actHudWeapon(Entity* my)
 				HUDWEAPON_CHARGE = 0;
 				HUDWEAPON_OVERCHARGE = 0;
 				HUDWEAPON_CHOP = 0;
-				throwGimpTimer = std::max(throwGimpTimer, 20);
+				if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+				{
+					throwGimpTimer = std::max(throwGimpTimer, 40);
+				}
+				else
+				{
+					throwGimpTimer = std::max(throwGimpTimer, 20);
+				}
 			
 				HUDWEAPON_MOVEY = 0;
 				HUDWEAPON_PITCH = 0;
@@ -1413,6 +1420,14 @@ void actHudWeapon(Entity* my)
 									players[HUDWEAPON_PLAYERNUM]->entity->attack(MONSTER_POSE_RANGED_SHOOT1, 0, nullptr);
 									HUDWEAPON_MOVEX = -4;
 
+									static ConsoleVariable<bool> cvar_hud_crossbow_debug_tick("/hud_crossbow_debug_tick", false);
+									if ( *cvar_hud_crossbow_debug_tick )
+									{
+										static Uint32 lastFiredTick = 0;
+										messagePlayer(0, MESSAGE_DEBUG, "%lu", ticks - lastFiredTick);
+										lastFiredTick = ticks;
+									}
+
 									// set delay before crossbow can fire again
 									throwGimpTimer = 40;
 									if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == CROSSBOW
@@ -1420,7 +1435,7 @@ void actHudWeapon(Entity* my)
 									{
 										if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
 										{
-											throwGimpTimer = 60;
+											throwGimpTimer = 70;
 										}
 										throwGimpTimer *= rangedAttackGetSpeedModifier(stats[HUDWEAPON_PLAYERNUM]);
 									}
@@ -4764,11 +4779,26 @@ void actHudShield(Entity* my)
 				hudweapon->skill[0] = CROSSBOW_CHOP_RELOAD_START;
 				HUDFlail[HUDWEAPON_PLAYERNUM].weaponSwitch = true;
 				hudweapon->fskill[0] = -1;
-				players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer = std::max(players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer, 20);
+
+				if ( stats[HUDSHIELD_PLAYERNUM]->weapon && stats[HUDSHIELD_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+				{
+					players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer = std::max(players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer, 40);
+				}
+				else
+				{
+					players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer = std::max(players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer, 20);
+				}
 
 				if ( fabs(hudweapon->fskill[5]) < 0.01 )
 				{
-					players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer = std::max(players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer, 20);
+					if ( stats[HUDSHIELD_PLAYERNUM]->weapon && stats[HUDSHIELD_PLAYERNUM]->weapon->type == BLACKIRON_CROSSBOW )
+					{
+						players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer = std::max(players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer, 40);
+					}
+					else
+					{
+						players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer = std::max(players[HUDSHIELD_PLAYERNUM]->hud.throwGimpTimer, 20);
+					}
 					my->flags[INVISIBLE] = true;
 					my->flags[INVISIBLE_DITHER] = false;
 					HUDSHIELD_MOVEY = 0;
@@ -5320,6 +5350,10 @@ void actHudAdditional2(Entity* my)
 		if ( hudFlail.spinState < 15 )
 		{
 			++hudFlail.spinState;
+			if ( hudFlail.spinState == 15 )
+			{
+				playSoundEntityLocal(players[HUDWEAPON_PLAYERNUM]->entity, 253, 32);
+			}
 		}
 		else
 		{

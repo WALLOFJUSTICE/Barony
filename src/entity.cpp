@@ -10653,7 +10653,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 			{
 				if ( myTarget->monsterAllyIndex != -1 || myTarget->behavior == &actPlayer )
 				{
-					this->monsterReleaseAttackTarget(true); // stop attacking player allies or players after this hit executes.
+					if ( !myStats->getEffectActive(EFF_CONFLICTED) && !myStats->getEffectActive(EFF_CONFUSED) )
+					{
+						this->monsterReleaseAttackTarget(true); // stop attacking player allies or players after this hit executes.
+					}
 				}
 			}
 		}
@@ -11089,9 +11092,16 @@ void Entity::attack(int pose, int charge, Entity* target)
 						stats[skill[2]]->weapon->type, 1);
 				}
 
+				bool boneBow = myStats->weapon->type == BONE_SHORTBOW;
+
 				// damage weapon if applicable
 				int bowDegradeChance = 50;
-				if ( behavior == &actPlayer )
+				if ( boneBow )
+				{
+					bowDegradeChance = 30;
+				}
+
+				if ( behavior == &actPlayer && !boneBow )
 				{
 					bowDegradeChance += (stats[skill[2]]->getModifiedProficiency(PRO_RANGED) / 20) * 10;
 				}
@@ -11475,6 +11485,10 @@ fireagain:
 					if ( myStats->weapon->type == BOOMERANG )
 					{
 						speed = 3.75 + normalisedCharge; //3.75
+					}
+					else if ( myStats->weapon->type == SILVER_PLUMBATA )
+					{
+						speed *= 0.75;
 					}
 					else
 					{
@@ -12960,6 +12974,8 @@ fireagain:
 
 				bool dyrnwynSmite = false;
 				bool zealSmite = false;
+				bool beastDamage = false;
+				bool constructDamage = false;
 				bool gugnirProc = false;
 				bool armorPierceProc = false;
 				bool whipPierce = false;
@@ -12988,11 +13004,118 @@ fireagain:
 
 				Entity::modifyDamageMultipliersFromEffects(hit.entity, this, weaponMultipliers, dmgType);
 
+				real_t silverWeaponMult = 0.0;
+				if ( !shapeshifted )
+				{
+					if ( hit.entity->isBeastMonster() )
+					{
+						bool doMult = false;
+						if ( myStats->weapon && myStats->weapon->type == BONE_AXE && weaponskill == PRO_AXE )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == BONE_SWORD && weaponskill == PRO_SWORD )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == BONE_MACE && weaponskill == PRO_MACE )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == BONE_SPEAR && weaponskill == PRO_POLEARM )
+						{
+							doMult = true;
+						}
+						if ( doMult )
+						{
+							real_t mult = Entity::getDamageTableEquipmentMod(*myStats, *myStats->weapon, "BONE_DAMAGE_BASE", "BONE_DAMAGE_MULT");
+							if ( mult > 0.0 )
+							{
+								beastDamage = true;
+								for ( int i = 0; i < 5; ++i )
+								{
+									spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								}
+							}
+							weaponMultipliers = std::max(0.1, weaponMultipliers + mult);
+						}
+					}
+					if ( hit.entity->isConstructMonster() || hit.entity->isElementalMonster() )
+					{
+						bool doMult = false;
+						if ( myStats->weapon && myStats->weapon->type == BLACKIRON_AXE && weaponskill == PRO_AXE )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == BLACKIRON_SWORD && weaponskill == PRO_SWORD )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == BLACKIRON_MACE && weaponskill == PRO_MACE )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == BLACKIRON_TRIDENT && weaponskill == PRO_POLEARM )
+						{
+							doMult = true;
+						}
+						if ( doMult )
+						{
+							real_t mult = Entity::getDamageTableEquipmentMod(*myStats, *myStats->weapon, "BLACKIRON_DAMAGE_BASE", "BLACKIRON_DAMAGE_MULT");
+							if ( mult > 0.0 )
+							{
+								constructDamage = true;
+								for ( int i = 0; i < 5; ++i )
+								{
+									spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								}
+							}
+							weaponMultipliers = std::max(0.1, weaponMultipliers + mult);
+						}
+					}
+					if ( hit.entity->isSmiteWeakMonster() )
+					{
+						bool doMult = false;
+						if ( myStats->weapon && myStats->weapon->type == SILVER_AXE && weaponskill == PRO_AXE )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == SILVER_SWORD && weaponskill == PRO_SWORD )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == SILVER_MACE && weaponskill == PRO_MACE )
+						{
+							doMult = true;
+						}
+						else if ( myStats->weapon && myStats->weapon->type == SILVER_GLAIVE && weaponskill == PRO_POLEARM )
+						{
+							doMult = true;
+						}
+						if ( doMult )
+						{
+							silverWeaponMult = Entity::getDamageTableEquipmentMod(*myStats, *myStats->weapon, "SILVER_DAMAGE_BASE", "SILVER_DAMAGE_MULT");
+							if ( silverWeaponMult < -0.01 )
+							{
+								weaponMultipliers = std::max(0.1, weaponMultipliers + silverWeaponMult);
+							}
+							else
+							{
+								for ( int i = 0; i < 5; ++i )
+								{
+									spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								}
+							}
+						}
+					}
+				}
+
 				if ( (hitstats->getEffectActive(EFF_DIVINE_FIRE) & 0xF) ||
 						(
 							(!shapeshifted && weaponskill == PRO_SWORD && myStats->weapon && myStats->weapon->type == ARTIFACT_SWORD)
 							|| (/*myStats->weapon &&*/ myStats->getEffectActive(EFF_DIVINE_ZEAL))
-							|| (/*myStats->weapon &&*/ myStats->getEffectActive(EFF_FOCI_LIGHT_JUSTICE)))
+							|| (/*myStats->weapon &&*/ myStats->getEffectActive(EFF_FOCI_LIGHT_JUSTICE))
+							|| silverWeaponMult > 0.01)
 					)
 				{
 					bool particle = false;
@@ -13045,6 +13168,13 @@ fireagain:
 								weaponMultipliers += getSpellEffectDurationSecondaryFromID(SPELL_FOCI_LIGHT_JUSTICE, nullptr, nullptr, nullptr) / 100.0;
 								int tier = std::max(0, (myStats->getEffectActive(EFF_FOCI_LIGHT_JUSTICE) - 1));
 								weaponMultipliers += tier * getSpellDamageSecondaryFromID(SPELL_FOCI_LIGHT_JUSTICE, nullptr, nullptr, nullptr) / 100.0;
+							}
+							if ( silverWeaponMult > 0.01 )
+							{
+								weaponMultipliers += silverWeaponMult;
+								effect = true;
+								//zealSmite = true;
+								//particle = true;
 							}
 						}
 					}
@@ -13711,6 +13841,7 @@ fireagain:
 					bool isWeakWeapon = false;
 					bool artifactWeapon = false;
 					bool degradeWeapon = false;
+					bool boneBreak = false;
 
 					if ( pose == PLAYER_POSE_GOLEM_SMASH )
 					{
@@ -13741,6 +13872,8 @@ fireagain:
 							}
 						}
 
+						bool isBoneWeapon = false;
+
 						if ( weaponType == ARTIFACT_AXE || weaponType == ARTIFACT_MACE || weaponType == ARTIFACT_SPEAR || weaponType == ARTIFACT_SWORD )
 						{
 							artifactWeapon = true;
@@ -13749,6 +13882,11 @@ fireagain:
 						{
 							// crystal weapons degrade faster.
 							isWeakWeapon = true;
+						}
+						else if ( weaponType == BONE_AXE || weaponType == BONE_MACE || weaponType == BONE_SWORD || weaponType == BONE_SPEAR )
+						{
+							// bone weapons degrade faster.
+							isBoneWeapon = true;
 						}
 
 						if ( myStats->type == GOBLIN )
@@ -13768,6 +13906,16 @@ fireagain:
 								degradeOnZeroDMG = 8 + (myStats->type == GOBLIN ? 4 : 0);
 								degradeOnNormalDMG = 100 + (myStats->type == GOBLIN ? 20 : 0);
 							}
+							else if ( isBoneWeapon )
+							{
+								// bone weapons chance to not degrade 66% chance on 0 dmg, else 96.3%
+								degradeOnZeroDMG = 3 + (myStats->type == GOBLIN ? 3 : 0);
+								degradeOnNormalDMG = 30 + (myStats->type == GOBLIN ? 20 : 0);
+								/*if ( (*weaponToBreak)->beatitude < 0 && !shouldInvertEquipmentBeatitude(myStats) )
+								{
+									degradeOnNormalDMG = std::max(5, degradeOnNormalDMG + (*weaponToBreak)->beatitude * 20);
+								}*/
+							}
 							else if ( isWeakWeapon )
 							{
 								// crystal weapons chance to not degrade 66% chance on 0 dmg, else 97.5%
@@ -13779,8 +13927,11 @@ fireagain:
 								|| weaponskill == PRO_UNARMED || weaponskill == PRO_RANGED) )
 							{
 								int skillLVL = myStats->getModifiedProficiency(weaponskill) / 20;
-								degradeOnZeroDMG += skillLVL; // increase by 1-5
-								degradeOnNormalDMG += (skillLVL * 10); // increase by 10-50
+								if ( !isBoneWeapon )
+								{
+									degradeOnZeroDMG += skillLVL; // increase by 1-5
+									degradeOnNormalDMG += (skillLVL * 10); // increase by 10-50
+								}
 							}
 							if ( myStats->weapon && myStats->weapon->type == TOOL_WHIP )
 							{
@@ -13859,6 +14010,45 @@ fireagain:
 									players[player]->mechanics.onItemDegrade(*weaponToBreak);
 								}
 
+								if ( damage > 0 )
+								{
+									if ( (*weaponToBreak)->type == BONE_SWORD
+										|| (*weaponToBreak)->type == BONE_AXE
+										|| (*weaponToBreak)->type == BONE_SPEAR
+										|| (*weaponToBreak)->type == BONE_MACE )
+									{
+										Sint32 breakDamage = std::max(damage, (*weaponToBreak)->weaponGetAttack(myStats));
+										if ( breakDamage > 0 )
+										{
+											Sint32 prevHP = hitstats->HP;
+											hit.entity->modHP(-breakDamage);
+											if ( hitstats->HP < prevHP )
+											{
+												boneBreak = true;
+												if ( gibtype[hitstats->type] > 0 && gibtype[(int)hitstats->type] != 5 )
+												{
+													for ( int gibs = 0; gibs < 3; ++gibs )
+													{
+														Entity* gib = spawnGib(hit.entity);
+														serverSpawnGibForClient(gib);
+													}
+												}
+												//playSoundEntity(hit.entity, 880, 64);
+												for ( int i = 0; i < 5; ++i )
+												{
+													/*if ( Entity* gib = spawnGib(hit.entity, 310) )
+													{
+														gib->sprite = 310;
+														gib->flags[SPRITE] = true;
+														serverSpawnGibForClient(gib);
+													}*/
+													spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+												}
+											}
+										}
+									}
+								}
+
 								if ( (player >= 0 && players[player]->isLocalPlayer()) || player < 0 )
 								{
 									if ( (*weaponToBreak)->count > 1 )
@@ -13908,6 +14098,14 @@ fireagain:
 								{
 									steamStatisticUpdateClient(playerhit, STEAM_STAT_TOUGH_AS_NAILS, STEAM_STAT_INT, 1);
 								}
+
+								if ( boneBreak )
+								{
+									if ( hit.entity->behavior == &actPlayer )
+									{
+										messagePlayerColor(playerhit, MESSAGE_EQUIPMENT, makeColorRGB(255, 0, 0), Language::get(7047));
+									}
+								}
 							}
 						}
 					}
@@ -13936,6 +14134,11 @@ fireagain:
 								case CRYSTAL_BREASTPIECE:
 								case CRYSTAL_BOOTS:
 								case CRYSTAL_GLOVES:
+								case BONE_HELM:
+								case BONE_BREASTPIECE:
+								case BONE_BRACERS:
+								case BONE_BOOTS:
+								case BONE_SHIELD:
 									isWeakArmor = true;
 									break;
 								default:
@@ -13968,6 +14171,11 @@ fireagain:
 						}
 
 						if ( hitstats->type == GOBLIN )
+						{
+							armorDegradeChance += 10;
+						}
+						if ( armor && items[armor->type].item_slot == EQUIPPABLE_IN_SLOT_BREASTPLATE
+							&& items[armor->type].hasAttribute("AC") && items[armor->type].attributes["AC"] > 0 )
 						{
 							armorDegradeChance += 10;
 						}
@@ -14028,6 +14236,8 @@ fireagain:
 							}
 						}
 					}
+
+					bool boneThorns = false;
 
 					// if nothing chosen to degrade, check extra shield chances to degrade
 					if ( hitstats->shield != NULL && hitstats->shield->status > BROKEN && armor == NULL
@@ -14148,10 +14358,21 @@ fireagain:
 							{
 								if ( itemCategory(hitstats->shield) == ARMOR )
 								{
-									shieldDegradeChance += 2 * (hitstats->getModifiedProficiency(PRO_SHIELD) / 10); // 2x shield bonus offhand
-									if ( !players[hit.entity->skill[2]]->mechanics.itemDegradeRoll(hitstats->shield) )
+									if ( hitstats->shield->type == BONE_SHIELD )
 									{
-										shieldDegradeChance = 100; // don't break.
+										// no proficiency
+										if ( !players[hit.entity->skill[2]]->mechanics.itemDegradeRoll(hitstats->shield) )
+										{
+											shieldDegradeChance = 100; // don't break.
+										}
+									}
+									else
+									{
+										shieldDegradeChance += 2 * (hitstats->getModifiedProficiency(PRO_SHIELD) / 10); // 2x shield bonus offhand
+										if ( !players[hit.entity->skill[2]]->mechanics.itemDegradeRoll(hitstats->shield) )
+										{
+											shieldDegradeChance = 100; // don't break.
+										}
 									}
 								}
 								else
@@ -14177,17 +14398,47 @@ fireagain:
 
 					if ( armor != NULL && armor->status > BROKEN )
 					{
-						hit.entity->degradeArmor(*hitstats, *armor, armornum);
-						if ( armor->status == BROKEN )
+						Status prevStatus = armor->status;
+						if ( hit.entity->degradeArmor(*hitstats, *armor, armornum) )
 						{
-							if ( player >= 0 && hit.entity->behavior == &actMonster )
+							if ( armor->status == BROKEN )
 							{
-								players[player]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_DEGRADE, hit.entity);
-								steamStatisticUpdateClient(player, STEAM_STAT_UNSTOPPABLE_FORCE, STEAM_STAT_INT, 1);
-								if ( armornum == 4 && hitstats->type == BUGBEAR 
-									&& (hitstats->defending || hit.entity->monsterAttack == MONSTER_POSE_BUGBEAR_SHIELD) )
+								if ( player >= 0 && hit.entity->behavior == &actMonster )
 								{
-									steamAchievementClient(player, "BARONY_ACH_BEAR_WITH_ME");
+									players[player]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_DEGRADE, hit.entity);
+									steamStatisticUpdateClient(player, STEAM_STAT_UNSTOPPABLE_FORCE, STEAM_STAT_INT, 1);
+									if ( armornum == 4 && hitstats->type == BUGBEAR 
+										&& (hitstats->defending || hit.entity->monsterAttack == MONSTER_POSE_BUGBEAR_SHIELD) )
+									{
+										steamAchievementClient(player, "BARONY_ACH_BEAR_WITH_ME");
+									}
+								}
+							}
+
+							if ( armor->type == BONE_HELM
+								|| armor->type == BONE_BOOTS
+								|| armor->type == BONE_BRACERS
+								|| armor->type == BONE_BREASTPIECE
+								|| armor->type == BONE_SHIELD )
+							{
+								Status tmp = armor->status;
+								armor->status = prevStatus;
+								Sint32 breakDamage = std::max(3, armor->armorGetAC() * 3);
+								armor->status = tmp;
+								if ( breakDamage > 0 )
+								{
+									thornsEffect += breakDamage;
+									thornsAllowZeroDmg = true;
+									boneThorns = true;
+									playSoundEntity(hit.entity, 880, 64);
+									for ( int i = 0; i < 5; ++i )
+									{
+										if ( Entity* gib = spawnGib(hit.entity, 2532) )
+										{
+											gib->sprite = 2532;
+											serverSpawnGibForClient(gib);
+										}
+									}
 								}
 							}
 						}
@@ -15158,7 +15409,7 @@ fireagain:
 						}
 					}
 
-					bool specialWeaponProc = parashuProc || dyrnwynSmite || dyrnwynBurn || gugnirProc || armorPierceProc || zealSmite;
+					bool specialWeaponProc = parashuProc || dyrnwynSmite || dyrnwynBurn || gugnirProc || armorPierceProc || zealSmite || boneBreak;
 
 					// send messages
 					if ( !strcmp(hitstats->name, "") || monsterNameIsGeneric(*hitstats) )
@@ -15173,6 +15424,14 @@ fireagain:
 								{
 									// critical hit
 									messagePlayerMonsterEvent(player, color, *hitstats, Language::get(689), Language::get(689), MSG_COMBAT);
+								}
+								else if ( beastDamage )
+								{
+									messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(7048), Language::get(7049), MSG_COMBAT_BASIC);
+								}
+								else if ( constructDamage )
+								{
+									messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(7052), Language::get(7053), MSG_COMBAT_BASIC);
 								}
 								else
 								{
@@ -15200,6 +15459,10 @@ fireagain:
 							else if ( armorPierceProc )
 							{
 								messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(6432), Language::get(6433), MSG_COMBAT);
+							}
+							else if ( boneBreak )
+							{
+								messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(7045), Language::get(7046), MSG_COMBAT);
 							}
 							else if ( zealSmite )
 							{
@@ -15387,6 +15650,14 @@ fireagain:
 									// critical hit
 									messagePlayerMonsterEvent(player, color, *hitstats, Language::get(689), Language::get(693), MSG_COMBAT);
 								}
+								else if ( beastDamage )
+								{
+									messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(7048), Language::get(7049), MSG_COMBAT_BASIC);
+								}
+								else if ( constructDamage )
+								{
+									messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(7052), Language::get(7053), MSG_COMBAT_BASIC);
+								}
 								else
 								{
 									// normal hit
@@ -15413,6 +15684,10 @@ fireagain:
 							else if ( armorPierceProc )
 							{
 								messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(6432), Language::get(6433), MSG_COMBAT);
+							}
+							else if ( boneBreak )
+							{
+								messagePlayerMonsterEvent(player, colorSpecial, *hitstats, Language::get(7045), Language::get(7046), MSG_COMBAT);
 							}
 							else if ( zealSmite )
 							{
@@ -15985,7 +16260,9 @@ fireagain:
 
 					DamageGib dmgGib = DMG_DEFAULT;
 					bool charged = static_cast<int>(std::max(charge, Stat::getMaxAttackCharge(myStats) / 2) / ((double)(Stat::getMaxAttackCharge(myStats) / 2))) > 1;
-					if ( weaponMultipliers >= 1.15 || (weaponskill == PRO_AXE && (hitstats->type == MIMIC || hitstats->type == MINIMIMIC)) || shillelaghDamage > 0 )
+					if ( weaponMultipliers >= 1.15 || (weaponskill == PRO_AXE && (hitstats->type == MIMIC || hitstats->type == MINIMIMIC)) 
+						|| shillelaghDamage > 0
+						|| boneBreak > 0 )
 					{
 						dmgGib = DMG_STRONGER;
 						if ( charged )
@@ -16264,12 +16541,14 @@ fireagain:
 
 					if ( thornsEffect != 0 && (damage > 0 || thornsAllowZeroDmg) )
 					{
+						bool bleedStatus = false;
 						if ( hitstats->getEffectActive(EFF_BLADEVINES) )
 						{
 							if ( !myStats->getEffectActive(EFF_BLEEDING) )
 							{
 								if ( setEffect(EFF_BLEEDING, true, 3 * TICKS_PER_SECOND, false) )
 								{
+									bleedStatus = true;
 									myStats->bleedInflictedBy = hit.entity->getUID();
 									for ( int gibs = 0; gibs < 3; ++gibs )
 									{
@@ -16279,6 +16558,22 @@ fireagain:
 								}
 							}
 						}
+						if ( boneThorns )
+						{
+							if ( setEffect(EFF_BLEEDING, true, 
+								(myStats->getEffectActive(EFF_BLEEDING) ? myStats->EFFECTS_TIMERS[EFF_BLEEDING] : 0) 
+								+ 12 * TICKS_PER_SECOND, false) )
+							{
+								bleedStatus = true;
+								myStats->bleedInflictedBy = hit.entity->getUID();
+								for ( int gibs = 0; gibs < 3; ++gibs )
+								{
+									Entity* gib = spawnGib(this);
+									serverSpawnGibForClient(gib);
+								}
+							}
+						}
+
 						Sint32 oldHP = myStats->HP;
 						this->modHP(-abs(thornsEffect));
 						if ( myStats->HP <= 0 && oldHP > myStats->HP )
@@ -16291,38 +16586,51 @@ fireagain:
 								steamStatisticUpdateClient(hit.entity->skill[2], STEAM_STAT_PRICKLY_PERSONALITY, STEAM_STAT_INT, 1);
 							}
 						}
-						if ( player > 0 && multiplayer == SERVER && !players[player]->isLocalPlayer() )
-						{
-							strcpy((char*)net_packet->data, "SHAK");
-							net_packet->data[4] = 10; // turns into .1
-							net_packet->data[5] = 10;
-							net_packet->address.host = net_clients[player - 1].host;
-							net_packet->address.port = net_clients[player - 1].port;
-							net_packet->len = 6;
-							sendPacketSafe(net_sock, -1, net_packet, player - 1);
-						}
-						else if ( player >= 0 && players[player]->isLocalPlayer() )
-						{
-							cameravars[player].shakex += 0.1;
-							cameravars[player].shakey += 10;
-						}
 
-						if ( player >= 0 )
+						if ( oldHP > myStats->HP )
 						{
-							Uint32 color = makeColorRGB(255, 0, 0);
-							const char* thornsMsg = Language::get(6264); // named
-							if ( !strcmp(hitstats->name, "") || monsterNameIsGeneric(*hitstats) )
+							if ( player > 0 && multiplayer == SERVER && !players[player]->isLocalPlayer() )
 							{
-								thornsMsg = Language::get(6263);
+								strcpy((char*)net_packet->data, "SHAK");
+								net_packet->data[4] = 10; // turns into .1
+								net_packet->data[5] = 10;
+								net_packet->address.host = net_clients[player - 1].host;
+								net_packet->address.port = net_clients[player - 1].port;
+								net_packet->len = 6;
+								sendPacketSafe(net_sock, -1, net_packet, player - 1);
+							}
+							else if ( player >= 0 && players[player]->isLocalPlayer() )
+							{
+								cameravars[player].shakex += 0.1;
+								cameravars[player].shakey += 10;
 							}
 
-							if ( !strcmp(hitstats->name, "") )
+							if ( player >= 0 )
 							{
-								messagePlayerColor(player, MESSAGE_COMBAT, color, thornsMsg, getMonsterLocalizedName(hitstats->type).c_str());
+								Uint32 color = makeColorRGB(255, 0, 0);
+								const char* thornsMsg = Language::get(6264); // named
+								if ( !strcmp(hitstats->name, "") || monsterNameIsGeneric(*hitstats) )
+								{
+									thornsMsg = Language::get(6263);
+								}
+
+								if ( bleedStatus && boneThorns )
+								{
+									messagePlayerColor(player, MESSAGE_COMBAT, color, Language::get(7047));
+								}
+								else if ( !strcmp(hitstats->name, "") )
+								{
+									messagePlayerColor(player, MESSAGE_COMBAT, color, thornsMsg, getMonsterLocalizedName(hitstats->type).c_str());
+								}
+								else
+								{
+									messagePlayerColor(player, MESSAGE_COMBAT, color, thornsMsg, hitstats->name);
+								}
 							}
-							else
+							if ( playerhit >= 0 )
 							{
-								messagePlayerColor(player, MESSAGE_COMBAT, color, thornsMsg, hitstats->name);
+								Uint32 color = makeColorRGB(255, 0, 0);
+								messagePlayerMonsterEvent(playerhit, color, *myStats, Language::get(7045), Language::get(7046), MSG_COMBAT);
 							}
 						}
 
@@ -16456,7 +16764,7 @@ fireagain:
 					bool wasBleeding = hitstats->getEffectActive(EFF_BLEEDING) > 0; // check if currently bleeding when this roll occurred.
 					if ( gibtype[(int)hitstats->type] > 0 && gibtype[(int)hitstats->type] != 5 )
 					{
-						if ( bleedStatusInflicted || (hitstats->HP > 5 && damage > 0) )
+						if ( bleedStatusInflicted || (hitstats->HP > 5 && damage > 0) || boneBreak )
 						{
 							if ( bleedStatusInflicted || (local_rng.rand() % 20 == 0 && (weaponskill > PRO_SWORD && weaponskill <= PRO_POLEARM) )
 								|| (local_rng.rand() % 10 == 0 && weaponskill == PRO_SWORD)
@@ -16464,6 +16772,7 @@ fireagain:
 								|| (local_rng.rand() % 4 == 0 && pose == MONSTER_POSE_GOLEM_SMASH)
 								|| (local_rng.rand() % 4 == 0 && pose == PLAYER_POSE_GOLEM_SMASH)
 								|| myStats->type == STAREMASTER
+								|| boneBreak
 								|| (thornsEffect < 0 && behavior == &actPlayer)
 								|| (local_rng.rand() % 10 == 0 && myStats->type == VAMPIRE && myStats->weapon == nullptr)
 								|| (local_rng.rand() % 8 == 0 && myStats->getEffectActive(EFF_VAMPIRICAURA) && (myStats->weapon == nullptr || myStats->type == LICH_FIRE))
@@ -31187,6 +31496,116 @@ bool Entity::isSmiteWeakMonster()
 	return false;
 }
 
+bool Entity::isBeastMonster(Monster type, bool includeBeastFolk)
+{
+	Monster monsterType = NOTHING;
+	if ( type != NOTHING )
+	{
+		monsterType = type;
+	}
+	else if ( Stat* myStats = getStats() )
+	{
+		monsterType = myStats->type;
+	}
+
+	switch ( monsterType )
+	{
+	case RAT:
+	case SPIDER:
+	case CRAB:
+	case SCORPION:
+	case SCARAB:
+	case MINOTAUR:
+	case COCKATRICE:
+	case TROLL:
+	case BAT_SMALL:
+	case GRYPHON:
+	case STAREMASTER:
+		return true;
+
+	// undead crossover
+	/*case CREATURE_IMP:
+	case DEMON:*/
+
+	// beastfolk
+	case KOBOLD:
+	case INSECTOID:
+	case GOATMAN:
+	case BUGBEAR:
+	case SALAMANDER:
+		return includeBeastFolk;
+		break;
+	default:
+		break;
+	}
+	return false;
+}
+
+bool Entity::isConstructMonster(Monster type)
+{
+	Monster monsterType = NOTHING;
+	if ( type != NOTHING )
+	{
+		monsterType = type;
+	}
+	else if ( Stat* myStats = getStats() )
+	{
+		monsterType = myStats->type;
+	}
+
+	switch ( monsterType )
+	{
+	case CRYSTALGOLEM:
+	case AUTOMATON:
+	case MINIMIMIC:
+	case MIMIC:
+	case HAUNTED_ARMOR:
+	case MONSTER_ADORCISED_WEAPON:
+	case DUMMYBOT:
+	case SENTRYBOT:
+	case SPELLBOT:
+		return true;
+		break;
+	default:
+		break;
+	}
+	return false;
+}
+
+bool Entity::isElementalMonster(Monster type)
+{
+	Monster monsterType = NOTHING;
+	if ( type != NOTHING )
+	{
+		monsterType = type;
+	}
+	else if ( Stat* myStats = getStats() )
+	{
+		monsterType = myStats->type;
+	}
+
+	switch ( monsterType )
+	{
+	case DRYAD:
+	case MYCONID:
+	case FLAME_ELEMENTAL:
+	case MOTH_SMALL:
+	case EARTH_ELEMENTAL:
+	case WATER_ELEMENTAL:
+	case DRAGON:
+	case SLIME:
+	//case STAREMASTER:
+	case MIMIC:
+	case MINIMIMIC:
+	case CRYSTALGOLEM:
+		return true;
+		break;
+	default:
+		break;
+	}
+	return false;
+}
+
 bool Entity::isBossMonster()
 {
 	Stat* myStats = getStats();
@@ -31829,9 +32248,39 @@ void Entity::playerInsectoidIncrementHungerToMP(int mpAmount)
 	}
 }
 
-real_t Entity::getDamageTableEquipmentMod(Stat& myStats, Item& item, real_t base, real_t mod)
+real_t Entity::getDamageTableEquipmentMod(Stat& myStats, Item& item, std::string baseStr, std::string baseMod, const bool excludeStats)
+{
+	if ( item.type >= WOODEN_SHIELD && item.type < NUMITEMS )
+	{
+		if ( items[item.type].hasAttribute(baseStr) && items[item.type].hasAttribute(baseMod) )
+		{
+			return getDamageTableEquipmentMod(myStats, item, items[item.type].attributes[baseStr] / 100.0, items[item.type].attributes[baseMod] / 100.0, excludeStats);
+		}
+	}
+	return 0.0;
+}
+
+real_t Entity::getDamageTableEquipmentMod(Stat& myStats, Item& item, real_t base, real_t mod, const bool excludeStats)
 {
 	real_t bonus = base;
+
+	real_t skillModifier = 1.0;
+	if ( item.type == BLACKIRON_AXE
+		|| item.type == BLACKIRON_SWORD
+		|| item.type == BLACKIRON_TRIDENT
+		|| item.type == BLACKIRON_MACE
+		|| item.type == BLACKIRON_CROSSBOW )
+	{
+		skillModifier = 0.5 + (excludeStats ? 0 : myStats.getModifiedProficiency(PRO_MYSTICISM)) / 200.0;
+	}
+	else if ( item.type == SILVER_AXE
+		|| item.type == SILVER_SWORD
+		|| item.type == SILVER_GLAIVE
+		|| item.type == SILVER_MACE )
+	{
+		skillModifier = 0.5 + (excludeStats ? 0 : myStats.getModifiedProficiency(PRO_THAUMATURGY)) / 200.0;
+	}
+
 	if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(&myStats) )
 	{
 		bonus += mod * std::min(abs(item.beatitude), 3);
@@ -31840,6 +32289,8 @@ real_t Entity::getDamageTableEquipmentMod(Stat& myStats, Item& item, real_t base
 	{
 		bonus = -base - mod * abs(item.beatitude);
 	}
+
+	bonus *= skillModifier;
 
 	return bonus;
 }
@@ -31941,7 +32392,7 @@ real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableTy
 
 	if ( !shapeshifted )
 	{
-		if ( damageType == DAMAGE_TABLE_AXE || damageType == DAMAGE_TABLE_SWORD )
+		if ( damageType == DAMAGE_TABLE_AXE || damageType == DAMAGE_TABLE_SWORD || damageType == DAMAGE_TABLE_MACE || damageType == DAMAGE_TABLE_POLEARM )
 		{
 			if ( myStats.breastplate && myStats.breastplate->type == CHAIN_HAUBERK )
 			{
@@ -31960,7 +32411,7 @@ real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableTy
 				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.05));
 			}
 		}
-		if ( damageType == DAMAGE_TABLE_POLEARM || damageType == DAMAGE_TABLE_RANGED )
+		if ( damageType == DAMAGE_TABLE_MAGIC || damageType == DAMAGE_TABLE_RANGED )
 		{
 			if ( myStats.breastplate && myStats.breastplate->type == QUILTED_GAMBESON )
 			{
@@ -31979,7 +32430,7 @@ real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableTy
 				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.05));
 			}
 		}
-		if ( damageType == DAMAGE_TABLE_UNARMED || damageType == DAMAGE_TABLE_MACE )
+		if ( damageType == DAMAGE_TABLE_UNARMED )
 		{
 			if ( myStats.breastplate && myStats.breastplate->type == BONE_BREASTPIECE )
 			{
@@ -32406,7 +32857,7 @@ bool Entity::entityCanVomit() const
 		}
 	}
 
-	if ( myStats->type == SKELETON || myStats->type == AUTOMATON || myStats->type == MYCONID )
+	if ( myStats->type == SKELETON || myStats->type == AUTOMATON )
 	{
 		return false;
 	}

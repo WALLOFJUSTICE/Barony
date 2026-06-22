@@ -2778,7 +2778,7 @@ void gameLogic(void)
 			{
 				entity = (Entity*)node->element;
 				entity->ranbehavior = false;
-				if ( entity->behavior == &actArrow || entity->behavior == &actThrown )
+				if ( (entity->behavior == &actArrow && !entity->skill[0] /* arrow_stuck */) || entity->behavior == &actThrown )
 				{
 					if ( *cvar_net_projectile_priority )
 					{

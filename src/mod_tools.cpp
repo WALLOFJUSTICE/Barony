@@ -1001,7 +1001,13 @@ void ItemTooltips_t::readItemsFromFile()
 		"SHOP_EXCLUDE_FROM_CATEGORY_6",
 		"SHOP_EXCLUDE_FROM_CATEGORY_7",
 		"SHOP_EXCLUDE_FROM_CATEGORY_8",
-		"SHOP_EXCLUDE_FROM_CATEGORY_9"
+		"SHOP_EXCLUDE_FROM_CATEGORY_9",
+		"SILVER_DAMAGE_BASE",
+		"SILVER_DAMAGE_MULT",
+		"BONE_DAMAGE_BASE",
+		"BONE_DAMAGE_MULT",
+		"BLACKIRON_DAMAGE_BASE",
+		"BLACKIRON_DAMAGE_MULT",
 	};
 
 	for ( int i = 0; i < NUMITEMS && i < itemsRead; ++i )
@@ -4236,6 +4242,10 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 						dropOffModifier = 1;
 					}
 				}
+				else if ( item.type == QUIVER_BLACKIRON )
+				{
+					dropOffModifier = 3;
+				}
 				snprintf(buf, sizeof(buf), str.c_str(), dropOffModifier);
 			}
 			else if ( conditionalAttribute == "EFF_RANGED_FIRERATE" )
@@ -4447,6 +4457,79 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 						getItemEquipmentEffectsForIconText(conditionalAttribute).c_str());
 				}
 			}
+			else if ( conditionalAttribute == "EFF_BLACKIRON_WEAPON" && (itemCategory(&item) == WEAPON || itemCategory(&item) == THROWN) )
+			{
+				if ( itemCategory(&item) == THROWN )
+				{
+					snprintf(buf, sizeof(buf), str.c_str(), (int)(items[item.type].attributes["BLACKIRON_DAMAGE_BASE"]
+						* (0.5 + (compendiumTooltipIntro ? 0 : stats[player]->getModifiedProficiency(PRO_MYSTICISM) / 200.0))));
+				}
+				else
+				{
+					real_t base = items[item.type].attributes["BLACKIRON_DAMAGE_BASE"] / 200.0;
+					real_t mod = 0.0;
+					Sint16 tmp = item.beatitude;
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+					}
+					else
+					{
+						item.beatitude = 0;
+					}
+					mod = Entity::getDamageTableEquipmentMod(*stats[player], item, "BLACKIRON_DAMAGE_BASE", "BLACKIRON_DAMAGE_MULT", compendiumTooltipIntro);
+					item.beatitude = tmp;
+					snprintf(buf, sizeof(buf), str.c_str(), (int)(mod * 100));
+				}
+			}
+			else if ( conditionalAttribute == "EFF_BONE_WEAPON" && (itemCategory(&item) == WEAPON || itemCategory(&item) == THROWN) )
+			{
+				if ( itemCategory(&item) == THROWN )
+				{
+					snprintf(buf, sizeof(buf), str.c_str(), items[item.type].attributes["BONE_DAMAGE_BASE"]);
+				}
+				else
+				{
+					real_t base = items[item.type].attributes["BONE_DAMAGE_BASE"] / 200.0;
+					real_t mod = 0.0;
+
+					Sint16 tmp = item.beatitude;
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+					}
+					else
+					{
+						item.beatitude = 0;
+					}
+					mod = Entity::getDamageTableEquipmentMod(*stats[player], item, "BONE_DAMAGE_BASE", "BONE_DAMAGE_MULT", compendiumTooltipIntro);
+					item.beatitude = tmp;
+					snprintf(buf, sizeof(buf), str.c_str(), (int)(mod * 100));
+				}
+			}
+			else if ( conditionalAttribute == "EFF_SILVER_WEAPON" && (itemCategory(&item) == WEAPON || itemCategory(&item) == THROWN) )
+			{
+				if ( itemCategory(&item) == THROWN )
+				{
+					snprintf(buf, sizeof(buf), str.c_str(), (int)(items[item.type].attributes["SILVER_DAMAGE_BASE"]
+						* (0.5 + (compendiumTooltipIntro ? 0 : stats[player]->getModifiedProficiency(PRO_THAUMATURGY) / 200.0))));
+				}
+				else
+				{
+					real_t base = items[item.type].attributes["SILVER_DAMAGE_BASE"] / 200.0;
+					real_t mod = 0.0;
+
+					Sint16 tmp = item.beatitude;
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+					}
+					else
+					{
+						item.beatitude = 0;
+					}
+					mod = Entity::getDamageTableEquipmentMod(*stats[player], item, "SILVER_DAMAGE_BASE", "SILVER_DAMAGE_MULT", compendiumTooltipIntro);
+					item.beatitude = tmp;
+					snprintf(buf, sizeof(buf), str.c_str(), (int)(mod * 100));
+				}
+			}
 			else if ( conditionalAttribute == "EFF_CHAIN_RESIST" || conditionalAttribute == "EFF_QUILT_RESIST"
 				|| conditionalAttribute == "EFF_BONE_RESIST" || conditionalAttribute == "EFF_BANDIT_LEATHER" )
 			{
@@ -4487,21 +4570,15 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 						std::string skillnames = "";
 						if ( conditionalAttribute == "EFF_CHAIN_RESIST" )
 						{
-							skillnames += getItemProficiencyName(PRO_SWORD);
-							skillnames += "/";
-							skillnames += getItemProficiencyName(PRO_AXE);
+							skillnames = getItemEquipmentEffectsForIconText(conditionalAttribute);
 						}
 						else if ( conditionalAttribute == "EFF_QUILT_RESIST" )
 						{
-							skillnames += getItemProficiencyName(PRO_POLEARM);
-							skillnames += "/";
-							skillnames += getItemProficiencyName(PRO_RANGED);
+							skillnames = getItemEquipmentEffectsForIconText(conditionalAttribute);
 						}
 						else if ( conditionalAttribute == "EFF_BONE_RESIST" )
 						{
 							skillnames += getItemProficiencyName(PRO_UNARMED);
-							skillnames += "/";
-							skillnames += getItemProficiencyName(PRO_MACE);
 						}
 						snprintf(tmp, sizeof(tmp), ItemTooltips.templates["template_armor_resist_icon"][0].c_str(),
 							skillnames.c_str());
@@ -5026,6 +5103,12 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		{
 			int skillLVL = compendiumTooltipIntro ? 0 : (stats[player]->getModifiedProficiency(PRO_UNARMED) / 20);
 			int durabilityBonus = skillLVL * 20;
+
+			if ( items[item.type].hasAttribute("EFF_BONE_WEAPON")
+				|| items[item.type].hasAttribute("EFF_BONE_ARMOR") )
+			{
+				durabilityBonus = 0;
+			}
 			snprintf(buf, sizeof(buf), str.c_str(), durabilityBonus, getItemProficiencyName(PRO_UNARMED).c_str());
 		}
 		else if ( detailTag.compare("weapon_legendary_durability") == 0 )
@@ -5829,6 +5912,12 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		{
 			int skillLVL = compendiumTooltipIntro ? 0 : (stats[player]->getModifiedProficiency(proficiency) / 20);
 			int durabilityBonus = skillLVL * 20;
+
+			if ( items[item.type].hasAttribute("EFF_BONE_WEAPON")
+				|| items[item.type].hasAttribute("EFF_BONE_ARMOR") )
+			{
+				durabilityBonus = 0;
+			}
 			snprintf(buf, sizeof(buf), str.c_str(), durabilityBonus, getItemProficiencyName(proficiency).c_str());
 		}
 		else if ( detailTag.compare("weapon_legendary_durability") == 0 )
@@ -5913,6 +6002,14 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 			Stat* myStats = compendiumTooltipIntro ? nullptr : stats[player];
 			int parryBonus = Stat::getParryingACBonus(myStats, &item, true, false, proficiency);
 			snprintf(buf, sizeof(buf), str.c_str(), parryBonus);
+		}
+		else if ( detailTag.compare("equipment_on_cursed_sideeffect") == 0 )
+		{
+			snprintf(buf, sizeof(buf), str.c_str(), getItemBeatitudeAdjective(item.beatitude).c_str());
+		}
+		else if ( detailTag.compare("weapon_on_cursed_sideeffect") == 0 )
+		{
+			snprintf(buf, sizeof(buf), str.c_str(), getItemBeatitudeAdjective(item.beatitude).c_str());
 		}
 		else
 		{

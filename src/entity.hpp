@@ -1343,6 +1343,9 @@ public:
 	void playerStatIncrease(int playerClass, int chosenStats[3]);
 	bool isBossMonster(); // return true if boss map (hell boss, boss etc or shopkeeper/shadow/other boss
 	bool isSmiteWeakMonster();
+	bool isBeastMonster(Monster type = NOTHING, bool includeBeastFolk = true);
+	bool isConstructMonster(Monster type = NOTHING);
+	bool isElementalMonster(Monster type = NOTHING);
 	void handleKnockbackDamage(Stat& myStats, Entity* knockedInto); // handle knockback damage from getting hit into other things.
 	void setHelmetLimbOffsetWithMask(Entity* helm, Entity* mask);
 	bool entityCheckIfTriggeredBomb(bool triggerBomb);
@@ -1351,7 +1354,8 @@ public:
 	Sint32 playerInsectoidHungerValueOfManaPoint(Stat& myStats);
 	void playerInsectoidIncrementHungerToMP(int mpAmount);
 	static real_t getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableType damageType, int* magicResistance = nullptr, int* outNumSources = nullptr);
-	static real_t getDamageTableEquipmentMod(Stat& myStats, Item& item, real_t base, real_t mod);
+	static real_t getDamageTableEquipmentMod(Stat& myStats, Item& item, real_t base, real_t mod, const bool excludeStats = false);
+	static real_t getDamageTableEquipmentMod(Stat& myStats, Item& item, std::string baseStr, std::string baseMod, const bool excludeStats = false);
 	bool isBoulderSprite();
 	void createWorldUITooltip();
 	bool bEntityTooltipRequiresButtonHeld() const;

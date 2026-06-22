@@ -556,6 +556,17 @@ bool useSmallCollision(Entity& my, Stat& myStats, Entity& your, Stat& yourStats)
 			|| (my.behavior == &actPlayer && (your.monsterAllyGetPlayerLeader() || achievementObserver.checkUidIsFromPlayer(yourStats.leader_uid) >= 0))
 			|| (your.behavior == &actPlayer && (my.monsterAllyGetPlayerLeader() || achievementObserver.checkUidIsFromPlayer(myStats.leader_uid) >= 0)) )
 		{
+			if ( yourStats.getEffectActive(EFF_CONFLICTED) 
+				|| myStats.getEffectActive(EFF_CONFLICTED)
+				|| myStats.getEffectActive(EFF_CONFUSED)
+				|| yourStats.getEffectActive(EFF_CONFUSED) )
+			{
+				/*if ( (my.behavior == &actMonster && my.monsterTarget == your.getUID())
+					|| (your.behavior == &actMonster && your.monsterTarget == my.getUID()) )*/
+				{
+					return false;
+				}
+			}
 			return true;
 		}
 	}

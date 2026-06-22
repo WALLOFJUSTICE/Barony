@@ -10819,7 +10819,7 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 					}
 				}
 			}
-			else if ( myStats->weapon->type == CROSSBOW || myStats->weapon->type == BLACKIRON_CROSSBOW )
+			else if ( myStats->weapon->type == CROSSBOW )
 			{
 				if ( myStats->shield && itemTypeIsQuiver(myStats->shield->type) )
 				{
@@ -10829,9 +10829,20 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 					}
 				}
 			}
+			else if ( myStats->weapon->type == BLACKIRON_CROSSBOW )
+			{
+				bow = 2.0;
+				if ( myStats->shield && itemTypeIsQuiver(myStats->shield->type) )
+				{
+					if ( myStats->shield->type == QUIVER_LIGHTWEIGHT )
+					{
+						bow = 1.5;
+					}
+				}
+			}
 			else if ( myStats->weapon->type == HEAVY_CROSSBOW )
 			{
-				bow = 1.5;
+				bow = 2.25;
 			}
 		}
 		if ( myStats->type == BAT_SMALL )
@@ -14445,7 +14456,7 @@ bool Entity::monsterConsumeFoodEntity(Entity* food, Stat* myStats)
 	if ( local_rng.rand() % pukeChance == 0 && pukeChance < 100 )
 	{
 		buffDuration = 0;
-		if ( this->entityCanVomit() )
+		if ( this->entityCanVomit() && !(myStats->type == INSECTOID || myStats->type == MYCONID)  )
 		{
 			this->char_gonnavomit = 40 + local_rng.rand() % 10;
 			puking = true;
@@ -15202,10 +15213,12 @@ int Entity::getMonsterEffectiveDistanceOfRangedWeapon(Item* weapon)
 
 	switch ( weapon->type )
 	{
+		case BLACKIRON_CROSSBOW:
+			distance = 80;
+			break;
 		case SLING:
 		case CROSSBOW:
 		case HEAVY_CROSSBOW:
-		case BLACKIRON_CROSSBOW:
 			distance = 100;
 			break;
 		case LONGBOW:

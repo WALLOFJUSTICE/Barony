@@ -920,6 +920,11 @@ void actArrow(Entity* my)
 
 					bool silverDamage = false;
 					bool huntingDamage = false;
+					bool beastDamage = false;
+					bool constructDamage = false;
+					bool beastArrowDamage = false;
+					bool constructArrowDamage = false;
+					real_t multWeapon = 1.0;
 					if ( my->arrowQuiverType == QUIVER_SILVER )
 					{
 						if ( hit.entity->isSmiteWeakMonster() )
@@ -936,32 +941,114 @@ void actArrow(Entity* my)
 					}
 					else if ( my->arrowQuiverType == QUIVER_HUNTING )
 					{
-						switch ( hitstats->type )
+						if ( hit.entity->isBeastMonster(hitstats->type, false) ) // no beastfolk
 						{
-							case RAT:
-							case SPIDER:
-							case SCORPION:
-							case SCARAB:
-							case SLIME:
-							case CREATURE_IMP:
-							case DEMON:
-							case MINOTAUR:
-							case KOBOLD:
-							case COCKATRICE:
-							case TROLL:
-							case BUGBEAR:
-							case STAREMASTER:
-								// more damage to these creatures
-								huntingDamage = true;
-								for ( int gibs = 0; gibs < 10; ++gibs )
+							// more damage to these creatures
+							huntingDamage = true;
+							for ( int gibs = 0; gibs < 5; ++gibs )
+							{
+								Entity* gib = spawnGib(hit.entity);
+								serverSpawnGibForClient(gib);
+							}
+						}
+					}
+
+					if ( (my->arrowShotByWeapon == BONE_SHORTBOW || my->arrowQuiverType == QUIVER_BONE)
+						&& hit.entity->isBeastMonster() )
+					{
+						// more damage to these creatures
+						bool particle = false;
+						if ( my->arrowQuiverType == QUIVER_BONE )
+						{
+							beastArrowDamage = true;
+							particle = true;
+							multWeapon += items[my->arrowQuiverType].attributes["BONE_DAMAGE_BASE"] / 100.0;
+						}
+
+						if ( my->arrowShotByWeapon == BONE_SHORTBOW )
+						{
+							if ( parent && parent->getStats() && parent->getStats()->weapon && parent->getStats()->weapon->type == BONE_SHORTBOW )
+							{
+								real_t mult = Entity::getDamageTableEquipmentMod(*parent->getStats(), *parent->getStats()->weapon, "BONE_DAMAGE_BASE", "BONE_DAMAGE_MULT");
+								if ( mult > 0.0 )
 								{
-									Entity* gib = spawnGib(hit.entity);
-									serverSpawnGibForClient(gib);
+									beastDamage = true;
+									particle = true;
 								}
-								break;
-							default:
-								huntingDamage = false;
-								break;
+								multWeapon += mult;
+							}
+							else
+							{
+								multWeapon += 0.1;
+								beastDamage = true;
+								particle = true;
+							}
+						}
+
+						if ( particle )
+						{
+							int numParticles = 5;
+							if ( my->arrowQuiverType == QUIVER_BONE )
+							{
+								numParticles = 2;
+							}
+							for ( int i = 0; i < numParticles; ++i )
+							{
+								spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+						}
+					}
+					else if ( (my->arrowShotByWeapon == BLACKIRON_CROSSBOW || my->arrowQuiverType == QUIVER_BLACKIRON)
+						&& (hit.entity->isConstructMonster() || hit.entity->isElementalMonster()) )
+					{
+						// more damage to these creatures
+						bool particle = false;
+						if ( my->arrowQuiverType == QUIVER_BLACKIRON )
+						{
+							constructArrowDamage = true;
+							particle = true;
+							if ( parent && parent->getStats() )
+							{
+								multWeapon += (items[my->arrowQuiverType].attributes["BLACKIRON_DAMAGE_BASE"] / 100.0) 
+									* (0.5 + parent->getStats()->getModifiedProficiency(PRO_MYSTICISM) / 200.0);
+							}
+							else
+							{
+								multWeapon += items[my->arrowQuiverType].attributes["BLACKIRON_DAMAGE_BASE"] / 100.0;
+							}
+						}
+
+						if ( my->arrowShotByWeapon == BLACKIRON_CROSSBOW )
+						{
+							if ( parent && parent->getStats() && parent->getStats()->weapon && parent->getStats()->weapon->type == BLACKIRON_CROSSBOW )
+							{
+								real_t mult = Entity::getDamageTableEquipmentMod(*parent->getStats(), *parent->getStats()->weapon, "BLACKIRON_DAMAGE_BASE", "BLACKIRON_DAMAGE_MULT");
+								if ( mult > 0.0 )
+								{
+									constructDamage = true;
+									particle = true;
+								}
+								multWeapon += mult;
+							}
+							else
+							{
+								multWeapon += 0.1;
+								constructDamage = true;
+								particle = true;
+							}
+						}
+
+						if ( particle )
+						{
+							int numParticles = 5;
+							if ( my->arrowShotByWeapon == BLACKIRON_CROSSBOW )
+							{
+								numParticles = 2;
+							}
+							for ( int i = 0; i < numParticles; ++i )
+							{
+								spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
 						}
 					}
 
@@ -987,6 +1074,11 @@ void actArrow(Entity* my)
 					{
 						// normal damage.
 					}
+
+					/*if ( my->arrowShotByWeapon == BONE_SHORTBOW )
+					{
+						enemyAC *= 0.8;
+					}*/
 
 					int numBlessings = 0;
 					real_t targetACEffectiveness = Entity::getACEffectiveness(hit.entity, hitstats, hit.entity->behavior == &actPlayer, parent, parent ? parent->getStats() : nullptr, numBlessings);
@@ -1078,10 +1170,13 @@ void actArrow(Entity* my)
 
 					damage = std::max(0, damage);
 
+					real_t mult = 1.0;
 					if ( silverDamage || huntingDamage )
 					{
-						damage *= 1.5;
+						mult += 0.5;
 					}
+					mult *= multWeapon;
+					damage *= mult;
 
 					bool hitWeaklyOnTarget = false;
 					int nominalDamage = damage;
@@ -1099,8 +1194,37 @@ void actArrow(Entity* my)
 									case SCARAB:
 									case GNOME:
 									case KOBOLD:
+									case GREMLIN:
 										// small creatures, no penalty for low shot.
 										hitWeaklyOnTarget = false;
+										break;
+									case MYCONID:
+									{
+										if ( hit.entity->sprite == 1520 || hit.entity->sprite == 1998 )
+										{
+											// small creatures, no penalty for low shot.
+											hitWeaklyOnTarget = false;
+											break;
+										}
+										else
+										{
+											hitWeaklyOnTarget = true;
+										}
+									}
+										break;
+									case DRYAD:
+									{
+										if ( hit.entity->sprite == 1514 || hit.entity->sprite == 1515 || hit.entity->sprite == 1992 || hit.entity->sprite == 1993 )
+										{
+											// small creatures, no penalty for low shot.
+											hitWeaklyOnTarget = false;
+											break;
+										}
+										else
+										{
+											hitWeaklyOnTarget = true;
+										}
+									}
 										break;
 									default:
 										hitWeaklyOnTarget = true;
@@ -1110,7 +1234,7 @@ void actArrow(Entity* my)
 						}
 					}
 					real_t damageMultiplier = Entity::getDamageTableMultiplier(hit.entity, *hitstats, DAMAGE_TABLE_RANGED);
-					if ( huntingDamage || silverDamage )
+					if ( huntingDamage || silverDamage || beastArrowDamage || constructArrowDamage )
 					{
 						damageMultiplier = std::max(0.75, damageMultiplier);
 					}
@@ -1489,6 +1613,14 @@ void actArrow(Entity* my)
 								// plunges into the %s!
 								messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(3750), Language::get(3751), MSG_COMBAT);
 							}
+							else if ( beastArrowDamage && damage > 0 )
+							{
+								messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7054), Language::get(7055), MSG_COMBAT);
+							}
+							else if ( constructArrowDamage && damage > 0 )
+							{
+								messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7056), Language::get(7057), MSG_COMBAT);
+							}
 							else if ( silverDamage )
 							{
 								// smites the %s!
@@ -1505,8 +1637,20 @@ void actArrow(Entity* my)
 							}
 							else
 							{
-								// you shot the %s!
-								messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(446), Language::get(448), MSG_COMBAT_BASIC);
+								if ( beastDamage && damage > 0 )
+								{
+									// plunges into the %s!
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7058), Language::get(7059), MSG_COMBAT_BASIC);
+								}
+								else if ( constructDamage && damage > 0 )
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7060), Language::get(7061), MSG_COMBAT_BASIC);
+								}
+								else
+								{
+									// you shot the %s!
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(446), Language::get(448), MSG_COMBAT_BASIC);
+								}
 							}
 							if ( my->arrowArmorPierce > 0 /*&& AC(hitstats) > 0*/ )
 							{
@@ -1524,6 +1668,14 @@ void actArrow(Entity* my)
 						else if ( huntingDamage )
 						{
 							messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(3752)); // arrow plunged into you!
+						}
+						else if ( beastArrowDamage && damage > 0 )
+						{
+							messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(7050)); // arrow tears into you!
+						}
+						else if ( constructArrowDamage && damage > 0 )
+						{
+							messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, color, Language::get(7051)); // arrow rips into you!
 						}
 						else if ( my->arrowQuiverType == QUIVER_KNOCKBACK )
 						{
@@ -2111,19 +2263,19 @@ void actArrow(Entity* my)
 					{
 						// update enemy bar for attacker
 						DamageGib dmgGib = DMG_DEFAULT;
-						if ( damageMultiplier <= 0.75 )
+						if ( damageMultiplier * multWeapon <= 0.75 )
 						{
 							dmgGib = DMG_WEAKEST;
 						}
-						else if ( damageMultiplier <= 0.85 )
+						else if ( damageMultiplier * multWeapon <= 0.85 )
 						{
 							dmgGib = DMG_WEAKER;
 						}
-						else if ( damageMultiplier >= 1.25 )
+						else if ( damageMultiplier * multWeapon >= 1.25 )
 						{
 							dmgGib = DMG_STRONGEST;
 						}
-						else if ( damageMultiplier >= 1.15 )
+						else if ( damageMultiplier * multWeapon >= 1.15 )
 						{
 							dmgGib = DMG_STRONGER;
 						}
