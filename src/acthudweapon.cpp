@@ -86,6 +86,8 @@ HUDFlail_t HUDFlail[MAXPLAYERS];
 #define HUD_SHAPESHIFT_HIDE my->skill[12]
 #define HUD_LASTSHAPESHIFT_FORM my->skill[13]
 
+static ConsoleVariable<bool> cvar_hud_weapon_hide("/hud_weapon_hide", false);
+
 void actHudArm(Entity* my)
 {
 	players[HUDARM_PLAYERNUM]->hud.arm = my;
@@ -541,6 +543,18 @@ void actHudWeapon(Entity* my)
 			}
 			return;
 		}
+	}
+
+	if ( *cvar_hud_weapon_hide )
+	{
+		my->flags[INVISIBLE] = true;
+		my->flags[INVISIBLE_DITHER] = false;
+		if ( parent )
+		{
+			parent->flags[INVISIBLE] = true;
+			parent->flags[INVISIBLE_DITHER] = false;
+		}
+		return;
 	}
 
 	Monster playerRace = players[HUDWEAPON_PLAYERNUM]->entity->getMonsterFromPlayerRace(stats[HUDWEAPON_PLAYERNUM]->playerRace);
