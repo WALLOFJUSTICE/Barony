@@ -11486,10 +11486,6 @@ fireagain:
 					{
 						speed = 3.75 + normalisedCharge; //3.75
 					}
-					else if ( myStats->weapon->type == SILVER_PLUMBATA )
-					{
-						speed *= 0.75;
-					}
 					else
 					{
 						speed = 5.f + normalisedCharge;
@@ -16629,8 +16625,22 @@ fireagain:
 							}
 							if ( playerhit >= 0 )
 							{
-								Uint32 color = makeColorRGB(255, 0, 0);
+								Uint32 color = makeColorRGB(0, 255, 0);
 								messagePlayerMonsterEvent(playerhit, color, *myStats, Language::get(7045), Language::get(7046), MSG_COMBAT);
+							}
+						}
+
+						if ( bleedStatus && playerhit >= 0 )
+						{
+							if ( hitstats->helmet && hitstats->helmet->type == PUNISHER_HOOD )
+							{
+								int mpAmount = hit.entity->modMP(1 + local_rng.rand() % 2);
+								hit.entity->playerInsectoidIncrementHungerToMP(mpAmount);
+								Uint32 color = makeColorRGB(0, 255, 0);
+								hit.entity->setEffect(EFF_MP_REGEN, true, std::max(hitstats->EFFECTS_TIMERS[EFF_MP_REGEN], 10 * TICKS_PER_SECOND), false);
+								messagePlayerColor(playerhit, MESSAGE_HINT, color, Language::get(3753));
+								steamStatisticUpdateClient(playerhit, STEAM_STAT_ITS_A_LIVING, STEAM_STAT_INT, 1);
+								playSoundEntity(hit.entity, 168, 128);
 							}
 						}
 

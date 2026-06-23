@@ -418,14 +418,7 @@ void actThrown(Entity* my)
 			}
 			else
 			{
-				if ( type == SILVER_PLUMBATA )
-				{
-					THROWN_VELZ += 0.04;
-				}
-				else
-				{
-					THROWN_VELZ += 0.03;
-				}
+				THROWN_VELZ += 0.03;
 				my->z += THROWN_VELZ;
 			}
 			/*THROWN_VELX = 0.f;
@@ -1798,8 +1791,29 @@ void actThrown(Entity* my)
 									}
 								}
 								break;
+							case SILVER_PLUMBATA:
+							{
+								Uint8 effectStrength = hitstats->getEffectActive(EFF_INCOHERENCE);
+								effectStrength = std::max(effectStrength, (Uint8)4);
+								if ( hit.entity->setEffect(EFF_INCOHERENCE,
+									effectStrength, 8 * TICKS_PER_SECOND, false, true, true, false) )
+								{
+									if ( hit.entity->behavior == &actPlayer )
+									{
+										messagePlayerColor(hit.entity->skill[2], MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6911));
+									}
+									if ( parent && parent->behavior == &actPlayer )
+									{
+										Uint32 color = makeColorRGB(0, 255, 0);
+										messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(6910), Language::get(6909), MSG_COMBAT);
+									}
+									playSoundEntity(hit.entity, 825, 64);
+									spawnMagicEffectParticles(hit.entity->x, hit.entity->y, hit.entity->z, 2355);
+								}
+								break;
+							}
 							case BONE_THROWING:
-								if ( hit.entity->setEffect(EFF_BLEEDING, true, 400, false) )
+								if ( hit.entity->setEffect(EFF_BLEEDING, true, 8 * TICKS_PER_SECOND, false) )
 								{
 									if ( parent && parent->behavior == &actPlayer )
 									{
