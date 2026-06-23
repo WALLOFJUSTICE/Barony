@@ -870,7 +870,7 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	bool debugModel = monsterDebugModels(my, &dist);
 	Entity* body = nullptr;
 	HauntedType type = HAUNTED_SILVER;
-	if ( myStats->getAttribute("haunted_type") != "" )
+	if ( myStats && myStats->getAttribute("haunted_type") != "" )
 	{
 		if ( myStats->getAttribute("haunted_type").find("silver") != std::string::npos )
 		{
