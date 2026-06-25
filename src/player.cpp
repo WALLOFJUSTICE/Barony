@@ -7499,10 +7499,12 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 		{
 			interval = 4 + item->status;
 
+			bool boneItem = false;
 			if ( item->type == BONE_SWORD || item->type == BONE_AXE || item->type == BONE_SPEAR
 				|| item->type == BONE_SHORTBOW || item->type == BONE_MACE )
 			{
 				interval = 0;
+				boneItem = true;
 			}
 			else if ( item->type == BONE_HELM
 				|| item->type == BONE_BREASTPIECE
@@ -7510,6 +7512,7 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 				|| item->type == BONE_BOOTS )
 			{
 				interval = 0;
+				boneItem = true;
 			}
 
 			if ( item->beatitude < 0
@@ -7533,7 +7536,7 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 						interval += 1 + (int)item->status / 2;
 					}
 				}
-				if ( skillID >= 0 )
+				if ( skillID >= 0 && !boneItem )
 				{
 					if ( skillID == PRO_SWORD || skillID == PRO_RANGED || skillID == PRO_AXE
 						|| skillID == PRO_MACE || skillID == PRO_POLEARM || skillID == PRO_UNARMED )
