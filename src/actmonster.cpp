@@ -5415,6 +5415,7 @@ void actMonster(Entity* my)
 				if ( abs(MONSTER_VELX) > 0.01 || abs(MONSTER_VELY) > 0.01 )
 				{
 					dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+					my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 					my->handleKnockbackDamage(*myStats, hit.entity);
 				}
 			}
@@ -5431,7 +5432,8 @@ void actMonster(Entity* my)
 					MONSTER_VELX = 0.25 * cos(tangent + PI);
 					MONSTER_VELY = 0.25 * sin(tangent + PI);
 					my->lookAtEntity(*scaryEntity);
-					clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+					real_t dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+					my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 				}
 			}
 
@@ -6600,6 +6602,7 @@ timeToGoAgain:
 										my->flags[PASSABLE] = true; // hack to zoom through stuff
 									}
 									dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+									my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 									my->handleKnockbackDamage(*myStats, hit.entity);
 									my->flags[PASSABLE] = flag;
 								}
@@ -6613,6 +6616,7 @@ timeToGoAgain:
 									MONSTER_VELX *= -.5;
 									MONSTER_VELY *= -.5;
 									dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+									my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 								}
 								else
 								{
@@ -6647,6 +6651,7 @@ timeToGoAgain:
 									}
 
 									dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+									my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 								}
 								if ( hit.entity != NULL )
 								{
@@ -6924,6 +6929,7 @@ timeToGoAgain:
 										}
 									}
 									dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+									my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 									my->handleKnockbackDamage(*myStats, hit.entity);
 								}
 								else
@@ -6957,6 +6963,7 @@ timeToGoAgain:
 										MONSTER_VELY = maxVelY;
 
 										dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+										my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 									}
 									else
 									{
@@ -7956,6 +7963,7 @@ timeToGoAgain:
 								MONSTER_VELY = maxVelY;
 							}
 							dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+							my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 							my->handleKnockbackDamage(*myStats, hit.entity);
 							if ( hit.entity != NULL )
 							{
@@ -9673,6 +9681,7 @@ timeToGoAgain:
 		else if ( my->monsterState == MONSTER_STATE_GENERIC_DODGE )
 		{
 			dist = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+			my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist);
 
 			Entity* target = uidToEntity(my->monsterTarget);
 			if ( dist != sqrt(MONSTER_VELX * MONSTER_VELX + MONSTER_VELY * MONSTER_VELY) )
@@ -9752,6 +9761,7 @@ timeToGoAgain:
 			MONSTER_VELY = maxVelY;
 
 			dist = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+			my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist);
 
 			bool stopPath = false;
 			if ( dist != sqrt(MONSTER_VELX * MONSTER_VELX + MONSTER_VELY * MONSTER_VELY) )
@@ -10489,6 +10499,7 @@ timeToGoAgain:
 			if ( abs(MONSTER_VELX) > 0.01 || abs(MONSTER_VELY) > 0.01 )
 			{
 				dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+				my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 				my->handleKnockbackDamage(*myStats, hit.entity);
 			}
 		}

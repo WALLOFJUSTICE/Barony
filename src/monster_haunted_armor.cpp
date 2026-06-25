@@ -588,6 +588,9 @@ void hauntedArmorDie(Entity* my)
 		}
 		if ( Entity* entity = spawnGib(my, bodypart->sprite) )
 		{
+			entity->x = bodypart->x;
+			entity->y = bodypart->y;
+			entity->z = bodypart->z;
 			entity->skill[5] = 1; // poof
 			serverSpawnGibForClient(entity);
 		}
@@ -725,7 +728,7 @@ void hauntedArmorSelectSpell(Entity* my, Stat* myStats)
 				options.push_back({ SPELL_PROF_NIMBLENESS, EFF_NIMBLENESS, true });
 			}*/
 			if ( !(myStats->getEffectActive(EFF_GUARD_BODY) || myStats->getEffectActive(EFF_GUARD_SPIRIT)
-				|| myStats->getEffectActive(EFF_DIVINE_GUARD)) )
+				/*|| myStats->getEffectActive(EFF_DIVINE_GUARD)*/) )
 			{
 				options.push_back({ SPELL_GUARD_BODY, EFF_GUARD_BODY, true });
 				//options.push_back({ SPELL_GUARD_SPIRIT, true });
@@ -812,6 +815,231 @@ void hauntedArmorSelectSpell(Entity* my, Stat* myStats)
 	}
 }
 
+static std::vector<std::map<int, int>> degradeOrder =
+{ 
+{
+	{ LIMB_HUMANOID_LEFTARM, 1 },
+	{ LIMB_HUMANOID_RIGHTLEG, 2 },
+	{ LIMB_HUMANOID_MASK, 3 },
+	{ LIMB_HUMANOID_SHIELD, 4 },
+	{ LIMB_HUMANOID_RIGHTARM, 5 },
+	{ LIMB_HUMANOID_LEFTLEG, 6 }
+},
+{
+	{ LIMB_HUMANOID_LEFTARM, 1 },
+	{ LIMB_HUMANOID_RIGHTLEG, 2 },
+	{ LIMB_HUMANOID_RIGHTARM, 3 },
+	{ LIMB_HUMANOID_HELMET, 4 },
+	{ LIMB_HUMANOID_MASK, 5 },
+	{ LIMB_HUMANOID_LEFTLEG, 6 }
+},
+{
+	{ LIMB_HUMANOID_RIGHTLEG, 1 },
+	{ LIMB_HUMANOID_LEFTARM, 2 },
+	{ LIMB_HUMANOID_LEFTLEG, 3 },
+	{ LIMB_HUMANOID_HELMET, 4 },
+	{ LIMB_HUMANOID_RIGHTARM, 5 },
+	{ LIMB_HUMANOID_TORSO, 6 }
+}
+};
+
+void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, int currentState)
+{
+	if ( !limb || !my ) { return; }
+	if ( multiplayer == CLIENT ) { return; }
+	Stat* myStats = my->getStats();
+	if ( !myStats ) { return; }
+	bool fx = false;
+	if ( prevState != currentState )
+	{
+		fx = true;
+	}
+
+	int variant = 0;
+	if ( myStats->getAttribute("haunted_degrade_type") == "" )
+	{
+		variant = local_rng.rand() % 3;
+		myStats->setAttribute("haunted_degrade_type", std::to_string(variant));
+	}
+	else
+	{
+		variant = stoi(myStats->getAttribute("haunted_degrade_type"));
+	}
+
+	auto find = degradeOrder[variant].find(bodypart);
+	if ( find != degradeOrder[variant].end() )
+	{
+		if ( currentState >= find->second )
+		{
+			if ( fx )
+			{
+				switch ( bodypart )
+				{
+				case LIMB_HUMANOID_TORSO:
+					if ( myStats->breastplate )
+					{
+						if ( myStats->breastplate->isDroppable )
+						{
+							if ( dropItemMonster(myStats->breastplate, my, myStats, myStats->breastplate->count) )
+							{
+								fx = false;
+							}
+						}
+					}
+					break;
+					case LIMB_HUMANOID_RIGHTLEG:
+					{
+						if ( degradeOrder[variant].find(LIMB_HUMANOID_LEFTLEG) != degradeOrder[variant].end()
+							&& degradeOrder[variant][LIMB_HUMANOID_LEFTLEG] < find->second )
+						{
+							if ( myStats->shoes )
+							{
+								if ( myStats->shoes->isDroppable )
+								{
+									if ( dropItemMonster(myStats->shoes, my, myStats, myStats->shoes->count) )
+									{
+										fx = false;
+									}
+								}
+							}
+						}
+						break;
+					}
+					case LIMB_HUMANOID_LEFTLEG:
+					{
+						if ( degradeOrder[variant].find(LIMB_HUMANOID_RIGHTLEG) != degradeOrder[variant].end()
+							&& degradeOrder[variant][LIMB_HUMANOID_RIGHTLEG] < find->second )
+						{
+							if ( myStats->shoes )
+							{
+								if ( myStats->shoes->isDroppable )
+								{
+									if ( dropItemMonster(myStats->shoes, my, myStats, myStats->shoes->count) )
+									{
+										fx = false;
+									}
+								}
+							}
+						}
+						break;
+					}
+					case LIMB_HUMANOID_RIGHTARM:
+					{
+						if ( degradeOrder[variant].find(LIMB_HUMANOID_LEFTARM) != degradeOrder[variant].end()
+							&& degradeOrder[variant][LIMB_HUMANOID_LEFTARM] < find->second )
+						{
+							if ( myStats->gloves )
+							{
+								if ( myStats->gloves->isDroppable )
+								{
+									if ( dropItemMonster(myStats->gloves, my, myStats, myStats->gloves->count) )
+									{
+										fx = false;
+									}
+								}
+							}
+						}
+						break;
+					}
+					case LIMB_HUMANOID_LEFTARM:
+					{
+						if ( degradeOrder[variant].find(LIMB_HUMANOID_RIGHTLEG) != degradeOrder[variant].end()
+							&& degradeOrder[variant][LIMB_HUMANOID_RIGHTLEG] < find->second )
+						{
+							if ( myStats->gloves )
+							{
+								if ( myStats->gloves->isDroppable )
+								{
+									if ( dropItemMonster(myStats->gloves, my, myStats, myStats->gloves->count) )
+									{
+										fx = false;
+									}
+								}
+							}
+						}
+						break;
+					}
+					case LIMB_HUMANOID_WEAPON:
+						if ( myStats->weapon )
+						{
+							if ( myStats->weapon->isDroppable )
+							{
+								if ( dropItemMonster(myStats->weapon, my, myStats, myStats->weapon->count) )
+								{
+									fx = false;
+								}
+							}
+						}
+						break;
+					case LIMB_HUMANOID_SHIELD:
+						if ( myStats->shield )
+						{
+							if ( myStats->shield->isDroppable )
+							{
+								if ( dropItemMonster(myStats->shield, my, myStats, myStats->shield->count) )
+								{
+									fx = false;
+								}
+							}
+						}
+						break;
+					case LIMB_HUMANOID_CLOAK:
+						if ( myStats->mask )
+						{
+							if ( myStats->mask->isDroppable )
+							{
+								if ( dropItemMonster(myStats->mask, my, myStats, myStats->mask->count) )
+								{
+									fx = false;
+								}
+							}
+						}
+						break;
+					case LIMB_HUMANOID_HELMET:
+						if ( myStats->mask )
+						{
+							if ( myStats->mask->isDroppable )
+							{
+								if ( dropItemMonster(myStats->mask, my, myStats, myStats->mask->count) )
+								{
+									fx = false;
+								}
+							}
+						}
+						break;
+					case LIMB_HUMANOID_MASK:
+						if ( myStats->mask )
+						{
+							if ( myStats->mask->isDroppable )
+							{
+								if ( dropItemMonster(myStats->mask, my, myStats, myStats->mask->count) )
+								{
+									fx = false;
+								}
+							}
+						}
+						break;
+					default:
+						break;
+				}
+
+			}
+			if ( fx && !limb->flags[INVISIBLE] && currentState == find->second )
+			{
+				//playSoundEntity(my, 76, 64);
+				Entity* gib = spawnGib(limb, limb->sprite);
+				gib->skill[5] = 1;
+				gib->sprite = limb->sprite;
+				gib->x = limb->x;
+				gib->y = limb->y;
+				gib->z = limb->z;
+				serverSpawnGibForClient(gib);
+			}
+			limb->flags[INVISIBLE] = true;
+		}
+	}
+}
+
 #define HUMANWALKSPEED .12
 #define HAUNTED_ARMOR_CAST_ANIM body->fskill[5]
 #define HAUNTED_ARMOR_BOB body->fskill[6]
@@ -822,7 +1050,8 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* rightbody = nullptr;
 	Entity* weaponarm = nullptr;
 	int bodypart;
-
+	int hauntedHPState = 0;
+	int hauntedPrevState = 0;
 	my->flags[INVISIBLE] = true;
 
 	if ( multiplayer != CLIENT )
@@ -880,6 +1109,64 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			type = HAUNTED_BLACKIRON;
 		}
+
+		real_t percentHP = myStats->HP / (real_t)std::max(1, myStats->MAXHP);
+
+		int hauntedHPState = myStats->getAttribute("haunted_state") != "" ? stoi(myStats->getAttribute("haunted_state")) : 0;
+		int hauntedPrevState = hauntedHPState;
+		if ( percentHP < 0.2 )
+		{
+			if ( hauntedHPState < 6 )
+			{
+				hauntedHPState = 6;
+				myStats->setAttribute("haunted_state", "6");
+			}
+		}
+		else if ( percentHP < 0.3 )
+		{
+			if ( hauntedHPState < 5 )
+			{
+				hauntedHPState = 5;
+				myStats->setAttribute("haunted_state", "5");
+			}
+		}
+		else if ( percentHP < 0.5 )
+		{
+			if ( hauntedHPState < 4 )
+			{
+				hauntedHPState = 4;
+				myStats->setAttribute("haunted_state", "4");
+			}
+		}
+		else if ( percentHP < 0.65 )
+		{
+			if ( hauntedHPState < 3 )
+			{
+				hauntedHPState = 3;
+				myStats->setAttribute("haunted_state", "3");
+			}
+		}
+		else if ( percentHP < 0.8 )
+		{
+			if ( hauntedHPState < 2 )
+			{
+				hauntedHPState = 2;
+				myStats->setAttribute("haunted_state", "2");
+			}
+		}
+		else if ( percentHP < 0.9 )
+		{
+			if ( hauntedHPState < 1 )
+			{
+				hauntedHPState = 1;
+				myStats->setAttribute("haunted_state", "1");
+			}
+		}
+		else
+		{
+			myStats->setAttribute("haunted_state", "0");
+		}
+
 	}
 
 	// move bodyparts
@@ -1203,6 +1490,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->sprite = itemModel(myStats->breastplate, false, my);
 						entity->flags[INVISIBLE] = false;
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1242,6 +1532,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						my->setBootSprite(entity, SPRITE_BOOT_RIGHT_OFFSET);
 						entity->flags[INVISIBLE] = false;
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1281,6 +1574,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						my->setBootSprite(entity, SPRITE_BOOT_LEFT_OFFSET);
 						entity->flags[INVISIBLE] = false;
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1324,6 +1620,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							entity->flags[INVISIBLE] = false;
 						}
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1416,6 +1715,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							entity->flags[INVISIBLE] = false;
 						}
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1559,6 +1861,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							entity->handleQuiverThirdPersonModel(*myStats);
 						}
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1665,6 +1970,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					{
 						entity->flags[INVISIBLE] = false;
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1745,6 +2053,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 							entity->sprite = itemModel(myStats->mask);
 						}
 					}
+
+					hauntedArmorDegrade(my, entity, bodypart, hauntedPrevState, hauntedHPState);
+
 					if ( multiplayer == SERVER )
 					{
 						// update sprites for clients
@@ -1809,128 +2120,6 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				break;
 		}
 
-		/*if ( bodypart == LIMB_HUMANOID_TORSO )
-		{
-			if ( myStats->breastplate )
-			{
-				if ( myStats->HP < myStats->MAXHP * 0.4 )
-				{
-					Entity* gib = spawnGib(entity, entity->sprite);
-					gib->skill[5] = 1;
-					gib->sprite = entity->sprite;
-					gib->x = entity->x;
-					gib->y = entity->y;
-					gib->z = entity->z;
-					free(myStats->breastplate);
-					myStats->breastplate = nullptr;
-				}
-			}
-			if ( !myStats->breastplate )
-			{
-				entity->flags[INVISIBLE] = true;
-				continue;
-			}
-		}
-		if ( bodypart == LIMB_HUMANOID_RIGHTLEG || bodypart == LIMB_HUMANOID_LEFTLEG )
-		{
-			if ( myStats->shoes )
-			{
-				if ( myStats->HP < myStats->MAXHP * 0.8 )
-				{
-					Entity* gib = spawnGib(entity, entity->sprite);
-					gib->skill[5] = 1;
-					gib->sprite = entity->sprite;
-					gib->x = entity->x;
-					gib->y = entity->y;
-					gib->z = entity->z;
-					if ( bodypart == LIMB_HUMANOID_LEFTLEG )
-					{
-						free(myStats->shoes);
-						myStats->shoes = nullptr;
-					}
-				}
-			}
-			if ( !myStats->shoes )
-			{
-				entity->flags[INVISIBLE] = true;
-				continue;
-			}
-		}
-		if ( bodypart == LIMB_HUMANOID_RIGHTARM || bodypart == LIMB_HUMANOID_LEFTARM )
-		{
-			if ( myStats->gloves )
-			{
-				if ( myStats->HP < myStats->MAXHP * 0.6 )
-				{
-					Entity* gib = spawnGib(entity, entity->sprite);
-					gib->skill[5] = 1;
-					gib->sprite = entity->sprite;
-					gib->x = entity->x;
-					gib->y = entity->y;
-					gib->z = entity->z;
-					if ( bodypart == LIMB_HUMANOID_LEFTARM )
-					{
-						free(myStats->gloves);
-						myStats->gloves = nullptr;
-					}
-				}
-			}
-			if ( !myStats->gloves )
-			{
-				entity->flags[INVISIBLE] = true;
-				continue;
-			}
-		}
-		if ( bodypart == LIMB_HUMANOID_HELMET )
-		{
-			if ( myStats->helmet )
-			{
-				if ( myStats->HP < myStats->MAXHP * 0.2 )
-				{
-					Entity* gib = spawnGib(entity, entity->sprite);
-					gib->skill[5] = 1;
-					gib->sprite = entity->sprite;
-					gib->x = entity->x;
-					gib->y = entity->y;
-					gib->z = entity->z;
-					if ( bodypart == LIMB_HUMANOID_HELMET )
-					{
-						free(myStats->helmet);
-						myStats->helmet = nullptr;
-					}
-				}
-			}
-			if ( !myStats->helmet )
-			{
-				entity->flags[INVISIBLE] = true;
-				continue;
-			}
-		}
-		if ( bodypart == LIMB_HUMANOID_MASK )
-		{
-			if ( myStats->mask )
-			{
-				if ( myStats->HP < myStats->MAXHP * 0.5 )
-				{
-					Entity* gib = spawnGib(entity, entity->sprite);
-					gib->skill[5] = 1;
-					gib->sprite = entity->sprite;
-					gib->x = entity->x;
-					gib->y = entity->y;
-					gib->z = entity->z;
-					if ( bodypart == LIMB_HUMANOID_MASK )
-					{
-						free(myStats->mask);
-						myStats->mask = nullptr;
-					}
-				}
-			}
-			if ( !myStats->mask )
-			{
-				entity->flags[INVISIBLE] = true;
-				continue;
-			}
-		}*/
 	}
 	// rotate shield a bit
 	node_t* shieldNode = list_Node(&my->children, LIMB_HUMANOID_SHIELD);

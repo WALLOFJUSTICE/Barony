@@ -159,6 +159,7 @@ static const int EFF_DUCKED = 134;
 static const int EFF_MESMERIZED = 135;
 static const int EFF_SIGIL_NPC = 136;
 static const int EFF_CONFLICTED = 137;
+static const int EFF_MOMENTUM = 138;
 static const int NUMEFFECTS = 160;
 
 // stats

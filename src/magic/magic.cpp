@@ -3592,10 +3592,21 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 				if ( my )
 				{
 					int baseMinValue = (effectID == EFF_GUARD_SPIRIT) ? 1 : 3;
+					if ( my->behavior == &actPlayer && !my->getActiveMagicEffect(spellID) )
+					{
+						if ( myStats.shoes && myStats.shoes->type == SILVER_BOOTS )
+						{
+							baseMinValue = 1;
+						}
+						else
+						{
+							baseMinValue = 0;
+						}
+					}
 					//int minValue = std::max(baseMinValue, getSpellDamageFromID(spellID, my, nullptr, my));
 					//minValue = std::min(minValue, getSpellEffectDurationSecondaryFromID(spellID, my, nullptr, my));
 					my->setEffect(effectID, (Uint8)std::max(baseMinValue, myStats.getEffectActive(effectID) - 1),
-						myStats.EFFECTS_TIMERS[effectID], false, true, true);
+						myStats.EFFECTS_TIMERS[effectID], true, true, true);
 					if ( my->getActiveMagicEffect(spellID) )
 					{
 						if ( result != myStats.getEffectActive(effectID) )
@@ -3617,7 +3628,30 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 			{
 				if ( my && my->behavior == &actMonster )
 				{
-					myStats.EFFECTS_TIMERS[effectID] = std::max(1, myStats.EFFECTS_TIMERS[effectID] - TICKS_PER_SECOND);
+					if ( myStats.EFFECTS_TIMERS[effectID] > 0 )
+					{
+						myStats.EFFECTS_TIMERS[effectID] = std::max(1, myStats.EFFECTS_TIMERS[effectID] - TICKS_PER_SECOND);
+					}
+					else
+					{
+						int result = myStats.getEffectActive(effectID);
+						result--;
+						if ( result <= 0 )
+						{
+							if ( myStats.shoes && myStats.shoes->type == SILVER_BOOTS )
+							{
+								// keep charge
+							}
+							else
+							{
+								my->setEffect(effectID, false, 0, true);
+							}
+						}
+						else
+						{
+							myStats.setEffectActive(effectID, (Uint8)result);
+						}
+					}
 				}
 			}
 			return myStats.getEffectActive(effectID);

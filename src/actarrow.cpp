@@ -1319,6 +1319,23 @@ void actArrow(Entity* my)
 						}
 					}
 
+					if ( parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_MOMENTUM) )
+					{
+						Uint8 effectStrength = parent->getStats()->getEffectActive(EFF_MOMENTUM);
+						if ( effectStrength > 0 )
+						{
+							--effectStrength;
+						}
+						if ( effectStrength == 0 )
+						{
+							parent->setEffect(EFF_MOMENTUM, false, 0, false);
+						}
+						else
+						{
+							parent->setEffect(EFF_MOMENTUM, effectStrength, parent->getStats()->EFFECTS_TIMERS[EFF_MOMENTUM], false, true, true);
+						}
+					}
+
 					// write obituary
 					if ( parent )
 					{

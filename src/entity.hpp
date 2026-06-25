@@ -1131,6 +1131,7 @@ public:
 	bool setArrowProjectileProperties(int weaponType);
 	real_t yawDifferenceFromEntity(Entity* entity); // calc targets yaw compared to an entity, returns 0 - 2 * PI, where > PI is facing towards player.
 	spell_t* getActiveMagicEffect(int spellID);
+	void processWalkEquipmentEffects(real_t movex, real_t movey, real_t dist);
 
 	/*
 	 * 1 in @chance chance in spawning a particle with the given sprite and duration.

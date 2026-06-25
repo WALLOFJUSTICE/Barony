@@ -4629,6 +4629,19 @@ void Entity::handleEffects(Stat* myStats)
 		{
 			myStats->MAXHP += hpMod;
 		}
+
+		if ( myStats->gloves && myStats->gloves->type == SILVER_GAUNTLETS )
+		{
+			int mod = items[myStats->gloves->type].attributes["SILVER_ARMOR_BASE"];
+			if ( myStats->gloves->beatitude >= 0 || shouldInvertEquipmentBeatitude(myStats) )
+			{
+				mod += items[myStats->gloves->type].attributes["SILVER_ARMOR_MULT"]
+					* std::min(3, abs(myStats->gloves->beatitude)) / 100;
+			}
+			hpMod += mod;
+			mpMod += mod;
+		}
+
 		int hpRestore = Entity::getHPRestoreOnLevelUp(this, myStats, hpMod);
 		int mpRestore = Entity::getMPRestoreOnLevelUp(this, myStats, mpMod);
 
@@ -8538,6 +8551,11 @@ Sint32 Entity::getAttack(Entity* my, Stat* myStats, bool isPlayer, int chargeMod
 		}
 	}
 
+	if ( Uint8 effectStrength = myStats->getEffectActive(EFF_MOMENTUM) )
+	{
+		attack += myStats->getEffectActive(EFF_MOMENTUM);
+	}
+
 	if ( Uint8 effectStrength = myStats->getEffectActive(EFF_WEAKNESS) )
 	{
 		real_t mult = std::min(0.9, 0.2 + (effectStrength - 1) * 0.1);
@@ -8586,6 +8604,11 @@ Sint32 Entity::getRangedAttack(int atkFromQuivers)
 	else
 	{
 		return 0;
+	}
+
+	if ( Uint8 effectStrength = entitystats->getEffectActive(EFF_MOMENTUM) )
+	{
+		attack += entitystats->getEffectActive(EFF_MOMENTUM);
 	}
 
 	/*if ( Uint8 effectStrength = entitystats->getEffectActive(EFF_WEAKNESS) )
@@ -8671,6 +8694,11 @@ Sint32 Entity::getThrownAttack()
 	else
 	{
 		return 0;
+	}
+
+	if ( Uint8 effectStrength = entitystats->getEffectActive(EFF_MOMENTUM) )
+	{
+		attack += entitystats->getEffectActive(EFF_MOMENTUM);
 	}
 
 	/*if ( Uint8 effectStrength = entitystats->getEffectActive(EFF_WEAKNESS) )
@@ -9393,6 +9421,15 @@ Sint32 statGetCON(Stat* entitystats, Entity* my)
 		percentHP = std::min(100, std::max(0, percentHP));
 		percentHP = 100 - percentHP;
 		CON += percentHP / 10;
+	}
+
+	if ( entitystats->breastplate && entitystats->breastplate->type == SILVER_BREASTPIECE )
+	{
+		int percentHP = static_cast<int>(100.0 * (real_t)entitystats->HP / std::max(1, entitystats->MAXHP));
+		percentHP = std::min(100, std::max(0, percentHP));
+		percentHP = 100 - percentHP;
+		CON += (percentHP / std::max(1, items[entitystats->breastplate->type].attributes["EFF_STAMINA"]))
+			* items[entitystats->breastplate->type].attributes["EFF_STAMINA_MOD"];
 	}
 
 	if ( entitystats->getEffectActive(EFF_MAXIMISE) )
@@ -13532,6 +13569,19 @@ fireagain:
 						}
 					}
 					damage *= chargeMult;
+					if ( chargeMult > 1.0 )
+					{
+						if ( myStats->gloves && myStats->gloves->type == BLACKIRON_GAUNTLETS )
+						{
+							int mod = items[myStats->gloves->type].attributes["BLACKIRON_ARMOR_BASE"];
+							if ( myStats->gloves->beatitude >= 0 || shouldInvertEquipmentBeatitude(myStats) )
+							{
+								mod += items[myStats->gloves->type].attributes["BLACKIRON_ARMOR_MULT"]
+									* std::min(3, abs(myStats->gloves->beatitude));
+							}
+							damage += mod;
+						}
+					}
 					bool parashuProc = false;
 					if ( myStats->weapon && !shapeshifted )
 					{
@@ -13661,6 +13711,23 @@ fireagain:
 						if ( damageTaken > 0 && hitstats->getEffectActive(EFF_DEFY_FLESH) )
 						{
 							hit.entity->defyFleshProc(this);
+						}
+					}
+
+					if ( myStats->getEffectActive(EFF_MOMENTUM) )
+					{
+						Uint8 effectStrength = myStats->getEffectActive(EFF_MOMENTUM);
+						if ( effectStrength > 0 )
+						{
+							--effectStrength;
+						}
+						if ( effectStrength == 0 )
+						{
+							this->setEffect(EFF_MOMENTUM, false, 0, false);
+						}
+						else
+						{
+							this->setEffect(EFF_MOMENTUM, effectStrength, myStats->EFFECTS_TIMERS[EFF_MOMENTUM], false, true, true);
 						}
 					}
 
@@ -16482,6 +16549,174 @@ fireagain:
 						}
 					}
 
+					bool smiteThorns = false;
+					if ( hitstats->shield && hitstats->shield->type == SILVER_SHIELD && hitstats->defending )
+					{
+						bool doEffect = false;
+						if ( hit.entity->behavior == &actPlayer && (::ticks - players[playerhit]->mechanics.defendTicks) < (TICKS_PER_SECOND / 3) )
+						{
+							// perfect block timing
+							doEffect = true;
+						}
+						else if ( hit.entity->behavior == &actMonster )
+						{
+							doEffect = true;
+						}
+
+						if ( doEffect )
+						{
+							int mod = items[hitstats->shield->type].attributes["EFF_SHIELD_THORNS"];
+							if ( hitstats->shield->beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+							{
+								mod += items[hitstats->shield->type].attributes["EFF_SHIELD_THORNS_MOD"]
+									* std::min(3, abs(hitstats->shield->beatitude));
+							}
+
+							if ( isSmiteWeakMonster() )
+							{
+								mod *= 1.5;
+								spawnMagicEffectParticles(this->x, this->y, this->z, 981);
+
+								if ( myStats->type == SALAMANDER
+									&& myStats->getEffectActive(EFF_SALAMANDER_HEART) == 2 )
+								{
+									if ( myStats->EFFECTS_TIMERS[EFF_SALAMANDER_HEART] > 0 )
+									{
+										int prevDuration = myStats->EFFECTS_TIMERS[EFF_SALAMANDER_HEART];
+										myStats->EFFECTS_TIMERS[EFF_SALAMANDER_HEART] += TICKS_PER_SECOND / 2;
+										if ( prevDuration < 5 * TICKS_PER_SECOND && myStats->EFFECTS_TIMERS[EFF_SALAMANDER_HEART] >= 5 * TICKS_PER_SECOND )
+										{
+											if ( this->behavior == &actPlayer )
+											{
+												serverUpdateEffects(skill[2]); // update timer
+											}
+										}
+									}
+								}
+							}
+
+							for ( int i = 0; i < 5; ++i )
+							{
+								spawnDamageGib(this, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+							playSoundEntity(this, 881, 64);
+
+							thornsEffect += mod;
+							thornsAllowZeroDmg = true;
+							smiteThorns = true;
+
+						}
+					}
+
+					if ( hitstats->shield && hitstats->shield->type == BONE_SHIELD && hitstats->defending )
+					{
+						bool doEffect = false;
+						if ( hit.entity->behavior == &actPlayer && (::ticks - players[playerhit]->mechanics.defendTicks) < (TICKS_PER_SECOND / 3) )
+						{
+							// perfect block timing
+							doEffect = true;
+						}
+						else if ( hit.entity->behavior == &actMonster )
+						{
+							doEffect = true;
+						}
+
+						Entity* attacker = this;
+						Entity* defender = hit.entity;
+						if ( doEffect && attacker->setEffect(EFF_KNOCKBACK, true, 30, false) )
+						{
+							real_t pushbackMultiplier = 0.9;
+
+							real_t tangent = atan2(attacker->y - defender->y, attacker->x - defender->x);
+							if ( attacker->behavior == &actMonster )
+							{
+								attacker->vel_x = cos(tangent) * pushbackMultiplier;
+								attacker->vel_y = sin(tangent) * pushbackMultiplier;
+								attacker->monsterKnockbackVelocity = 0.01;
+								attacker->monsterKnockbackUID = defender->getUID();
+								attacker->monsterKnockbackTangentDir = tangent;
+								//enemyHit->lookAtEntity(*parent);
+							}
+							else if ( attacker->behavior == &actPlayer )
+							{
+								if ( !players[attacker->skill[2]]->isLocalPlayer() )
+								{
+									attacker->monsterKnockbackVelocity = pushbackMultiplier;
+									attacker->monsterKnockbackTangentDir = tangent;
+									serverUpdateEntityFSkill(attacker, 11);
+									serverUpdateEntityFSkill(attacker, 9);
+								}
+								else
+								{
+									attacker->monsterKnockbackVelocity = pushbackMultiplier;
+									attacker->monsterKnockbackTangentDir = tangent;
+								}
+							}
+
+							for ( int i = 0; i < 5; ++i )
+							{
+								spawnDamageGib(attacker, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+							playSoundEntity(this, 881, 64);
+
+							if ( defender->behavior == &actPlayer )
+							{
+								messagePlayerMonsterEvent(defender->skill[2], makeColorRGB(0, 255, 0), 
+									*myStats, Language::get(3215), Language::get(3214), MSG_COMBAT);
+							}
+							if ( attacker->behavior == &actPlayer )
+							{
+								messagePlayerColor(attacker->skill[2], MESSAGE_COMBAT, makeColorRGB(0, 255, 0), Language::get(3216));
+							}
+						}
+					}
+
+					if ( hitstats->shield && hitstats->shield->type == BLACKIRON_SHIELD && hitstats->defending )
+					{
+						bool doEffect = false;
+						if ( hit.entity->behavior == &actPlayer && (::ticks - players[playerhit]->mechanics.defendTicks) < (TICKS_PER_SECOND / 3) )
+						{
+							// perfect block timing
+							doEffect = true;
+						}
+						else if ( hit.entity->behavior == &actMonster )
+						{
+							doEffect = true;
+						}
+
+						Entity* attacker = this;
+						Entity* defender = hit.entity;
+						int effectStrength = items[hitstats->shield->type].attributes["BLACKIRON_ARMOR_BASE"];
+						if ( hitstats->shield->beatitude >= 0 || shouldInvertEquipmentBeatitude(hitstats) )
+						{
+							effectStrength += items[hitstats->shield->type].attributes["BLACKIRON_ARMOR_MULT"]
+								* std::min(3, abs(hitstats->shield->beatitude)) / 100;
+						}
+
+						int duration = hit.entity->behavior == &actMonster ? 3 * TICKS_PER_SECOND : 1 * TICKS_PER_SECOND;
+
+						if ( doEffect && attacker->setEffect(EFF_DISRUPTED,
+							(Uint8)effectStrength,
+							duration, false, true, true, false) )
+						{
+							for ( int i = 0; i < 5; ++i )
+							{
+								spawnDamageGib(attacker, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+							playSoundEntity(this, 881, 64);
+
+							if ( attacker->behavior == &actPlayer )
+							{
+								messagePlayerMonsterEvent(defender->skill[2], makeColorRGB(255, 0, 0), *myStats, Language::get(7075), Language::get(7076), MSG_COMBAT);
+							}
+							if ( defender->behavior == &actPlayer )
+							{
+								Uint32 color = makeColorRGB(0, 255, 0);
+								messagePlayerMonsterEvent(defender->skill[2], color, *myStats, Language::get(7071), Language::get(7072), MSG_COMBAT);
+							}
+						}
+					}
+
 					if ( flail && !hitstats->getEffectActive(EFF_KNOCKBACK) && pose == MONSTER_POSE_FLAIL_SWING )
 					{
 						real_t dist = entityDist(hit.entity, this);
@@ -16581,6 +16816,12 @@ fireagain:
 							{
 								steamStatisticUpdateClient(hit.entity->skill[2], STEAM_STAT_PRICKLY_PERSONALITY, STEAM_STAT_INT, 1);
 							}
+
+							if ( hit.entity->behavior == &actPlayer )
+							{
+								messagePlayerMonsterEvent(hit.entity->skill[2], makeColorRGB(0, 255, 0), 
+									*myStats, Language::get(692), Language::get(697), MSG_COMBAT);
+							}
 						}
 
 						if ( oldHP > myStats->HP )
@@ -16623,7 +16864,7 @@ fireagain:
 									messagePlayerColor(player, MESSAGE_COMBAT, color, thornsMsg, hitstats->name);
 								}
 							}
-							if ( playerhit >= 0 )
+							if ( playerhit >= 0 && boneThorns )
 							{
 								Uint32 color = makeColorRGB(0, 255, 0);
 								messagePlayerMonsterEvent(playerhit, color, *myStats, Language::get(7045), Language::get(7046), MSG_COMBAT);
@@ -23213,14 +23454,30 @@ int Entity::getMonsterFootstepSound(int footstepType, int bootSprite)
 		}
 		case MONSTER_FOOTSTEP_USE_BOOTS:
 		{
-			if ( bootSprite >= 152 && bootSprite <= 155 ) // iron boots
+			if ( (bootSprite >= 152 && bootSprite <= 155) // iron boots
+				|| (bootSprite >= 1467 && bootSprite <= 1468) // iron boots short
+				|| (bootSprite >= 2067 && bootSprite <= 2068) // bone boots
+				|| (bootSprite >= 2079 && bootSprite <= 2080) // bone boots short
+				|| (bootSprite == 2063 || bootSprite == 2064) // cleats
+				|| (bootSprite == 2075 || bootSprite == 2076) // cleats short
+				|| (bootSprite >= 2071 && bootSprite <= 2072) // chain boots
+				|| (bootSprite >= 2083 && bootSprite <= 2084) // chain boots short
+				) 
 			{
 				static std::vector<int> ironSteps{ 7, 10, 11, 12, 13 };
 				sound = ironSteps[local_rng.rand() % ironSteps.size()];
 			}
 			else if ( (bootSprite >= 156 && bootSprite <= 159) // steel boots
+				|| (bootSprite >= 1471 && bootSprite <= 1472) // steel boots short
 				|| (bootSprite >= 499 && bootSprite <= 502) // crystal boots
-				|| (bootSprite >= 521 && bootSprite <= 524) ) // artifact boots
+				|| (bootSprite >= 1465 && bootSprite <= 1466) // crystal boots short
+				|| (bootSprite >= 521 && bootSprite <= 524) // artifact boots
+				|| (bootSprite >= 1461 && bootSprite <= 1462) // artifact boots short
+				|| (bootSprite >= 2065 && bootSprite <= 2066) // blackiron boots
+				|| (bootSprite >= 2077 && bootSprite <= 2078) // blackiron boots short
+				|| (bootSprite >= 2069 && bootSprite <= 2070) // silver boots
+				|| (bootSprite >= 2081 && bootSprite <= 2082) // silver boots short
+				) 
 			{
 				static std::vector<int> steelSteps{ 14, 15, 16, 17, 18, 19, 20 };
 				sound = steelSteps[local_rng.rand() % steelSteps.size()];
@@ -33823,6 +34080,36 @@ bool Entity::modifyDamageMultipliersFromEffects(Entity* hitentity, Entity* attac
 			}
 		}
 	}
+
+	if ( hitstats->helmet && hitstats->helmet->type == SILVER_HELM )
+	{
+		if ( attackerStats && (attacker->isSmiteWeakMonster()) )
+		{
+			real_t reduction = items[hitstats->helmet->type].attributes["SILVER_ARMOR_BASE"];
+			if ( hitstats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(hitstats) )
+			{
+				reduction += items[hitstats->helmet->type].attributes["SILVER_ARMOR_MULT"]
+					* std::min(3, abs(hitstats->helmet->beatitude));
+			}
+			damageMultiplier = std::max(0.1, damageMultiplier * (1.0 - reduction / 100.0));
+			result = true;
+		}
+	}
+	if ( hitstats->helmet && hitstats->helmet->type == BLACKIRON_HELM )
+	{
+		if ( attackerStats && (attacker->isElementalMonster() || attacker->isConstructMonster()) )
+		{
+			real_t reduction = items[hitstats->helmet->type].attributes["BLACKIRON_ARMOR_BASE"];
+			if ( hitstats->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(hitstats) )
+			{
+				reduction += items[hitstats->helmet->type].attributes["BLACKIRON_ARMOR_MULT"]
+					* std::min(3, abs(hitstats->helmet->beatitude));
+			}
+			damageMultiplier = std::max(0.1, damageMultiplier * (1.0 - reduction / 100.0));
+			result = true;
+		}
+	}
+
 	if ( hitstats->getEffectActive(EFF_SIGIL) )
 	{
 		int caster = ((hitstats->getEffectActive(EFF_SIGIL) >> 4) & 0xF) - 1;
@@ -33900,4 +34187,100 @@ real_t Entity::getHealingSpellPotionModifierFromEffects(bool processLevelup)
 	}
 
 	return result;
+}
+
+void Entity::processWalkEquipmentEffects(real_t movex, real_t movey, real_t dist)
+{
+	Stat* myStats = getStats();
+	if ( !myStats ) { return; }
+	if ( multiplayer == CLIENT ) { return; }
+	if ( dist < 0.05 ) { return; }
+
+	bool doEffect = false;
+	Item* item = nullptr;
+	if ( (myStats->shoes && myStats->shoes->type == SILVER_BOOTS)
+		|| (myStats->shoes && myStats->shoes->type == BLACKIRON_BOOTS) )
+	{
+		doEffect = true;
+		item = myStats->shoes;
+	}
+
+	if ( myStats->getEffectActive(EFF_MOMENTUM) && !(myStats->shoes && myStats->shoes->type == BLACKIRON_BOOTS)
+		&& myStats->EFFECTS_TIMERS[EFF_MOMENTUM] == 0 )
+	{
+		setEffect(EFF_MOMENTUM, false, 0, false);
+	}
+
+	if ( doEffect )
+	{
+		static int floor = 0;
+		static std::map<Uint32, real_t> distances;
+		if ( floor != currentlevel )
+		{
+			distances.clear();
+		}
+		floor = currentlevel;
+		auto& distance = distances[getUID()];
+		real_t mult = 0.1;
+		if ( item && items[item->type].hasAttribute("EFF_WALK_MOD") )
+		{
+			mult *= items[item->type].attributes["EFF_WALK_MOD"] / 100.0;
+		}
+		distance += dist * mult;
+		if ( distance >= 32.0 )
+		{
+			distance = 0;
+
+			if ( myStats->shoes && myStats->shoes->type == SILVER_BOOTS )
+			{
+				Uint8 effectStrength = myStats->getEffectActive(EFF_DIVINE_GUARD);
+				int maxStrength = items[myStats->shoes->type].attributes["SILVER_ARMOR_BASE"];
+				if ( myStats->shoes->beatitude >= 0 || shouldInvertEquipmentBeatitude(myStats) )
+				{
+					maxStrength += items[myStats->shoes->type].attributes["SILVER_ARMOR_MULT"]
+						* std::min(3, abs(myStats->shoes->beatitude));
+				}
+
+				if ( getActiveMagicEffect(SPELL_DIVINE_GUARD) )
+				{
+					if ( effectStrength >= maxStrength )
+					{
+						// no change
+					}
+					else
+					{
+						effectStrength = std::min(maxStrength, effectStrength + 1);
+						if ( myStats->getEffectActive(EFF_DIVINE_GUARD) < effectStrength )
+						{
+							setEffect(EFF_DIVINE_GUARD, effectStrength, myStats->EFFECTS_TIMERS[EFF_DIVINE_GUARD], true, true, true);
+						}
+					}
+				}
+				else
+				{
+					effectStrength = std::min(maxStrength, effectStrength + 1);
+					if ( myStats->getEffectActive(EFF_DIVINE_GUARD) < effectStrength )
+					{
+						setEffect(EFF_DIVINE_GUARD, effectStrength, myStats->EFFECTS_TIMERS[EFF_DIVINE_GUARD], true, true, true);
+					}
+				}
+			}
+			if ( myStats->shoes && myStats->shoes->type == BLACKIRON_BOOTS )
+			{
+				Uint8 effectStrength = myStats->getEffectActive(EFF_MOMENTUM);
+				int maxStrength = items[myStats->shoes->type].attributes["BLACKIRON_ARMOR_BASE"];
+				if ( myStats->shoes->beatitude >= 0 || shouldInvertEquipmentBeatitude(myStats) )
+				{
+					maxStrength += items[myStats->shoes->type].attributes["BLACKIRON_ARMOR_MULT"]
+						* std::min(3, abs(myStats->shoes->beatitude));
+				}
+				effectStrength = std::min(maxStrength, effectStrength + 1);
+
+				if ( myStats->getEffectActive(EFF_MOMENTUM) < effectStrength )
+				{
+					setEffect(EFF_MOMENTUM, effectStrength, myStats->EFFECTS_TIMERS[EFF_MOMENTUM], false, true, true);
+				}
+			}
+		}
+	}
 }

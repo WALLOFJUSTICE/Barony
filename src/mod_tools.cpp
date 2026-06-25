@@ -1008,6 +1008,15 @@ void ItemTooltips_t::readItemsFromFile()
 		"BONE_DAMAGE_MULT",
 		"BLACKIRON_DAMAGE_BASE",
 		"BLACKIRON_DAMAGE_MULT",
+		"BLACKIRON_ARMOR_BASE",
+		"BLACKIRON_ARMOR_MULT",
+		"SILVER_ARMOR_BASE",
+		"SILVER_ARMOR_MULT",
+		"EFF_STAMINA",
+		"EFF_STAMINA_MOD",
+		"EFF_WALK_MOD",
+		"EFF_SHIELD_THORNS",
+		"EFF_SHIELD_THORNS_MOD"
 	};
 
 	for ( int i = 0; i < NUMITEMS && i < itemsRead; ++i )
@@ -4479,6 +4488,154 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 					mod = Entity::getDamageTableEquipmentMod(*stats[player], item, "BLACKIRON_DAMAGE_BASE", "BLACKIRON_DAMAGE_MULT", compendiumTooltipIntro);
 					item.beatitude = tmp;
 					snprintf(buf, sizeof(buf), str.c_str(), (int)(mod * 100));
+				}
+			}
+			else if ( conditionalAttribute == "EFF_NULL_MAGIC" )
+			{
+				if ( item.type == BLACKIRON_BREASTPIECE )
+				{
+					int chance = items[item.type].attributes["BLACKIRON_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						chance += items[item.type].attributes["BLACKIRON_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), chance);
+				}
+			}
+			/*else if ( conditionalAttribute == "EFF_MAGIC_ABSORB" )
+			{
+				if ( item.type == BLACKIRON_SHIELD )
+				{
+					int chance = items[item.type].attributes["BLACKIRON_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						chance += items[item.type].attributes["BLACKIRON_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), chance);
+				}
+			}*/
+			else if ( conditionalAttribute == "EFF_SHIELD_DISRUPTION" )
+			{
+				if ( item.type == BLACKIRON_SHIELD )
+				{
+					int chance = items[item.type].attributes["BLACKIRON_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						chance += items[item.type].attributes["BLACKIRON_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude)) / 100;
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), chance);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_CONSTRUCT_RESIST" )
+			{
+				if ( item.type == BLACKIRON_HELM )
+				{
+					int chance = items[item.type].attributes["BLACKIRON_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						chance += items[item.type].attributes["BLACKIRON_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), chance);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_STAMINA" )
+			{
+				if ( item.type == SILVER_BREASTPIECE )
+				{
+					int mod = items[item.type].attributes["EFF_STAMINA"];
+					snprintf(buf, sizeof(buf), str.c_str(), items[item.type].attributes["EFF_STAMINA_MOD"], mod);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_WALK_DIVINE_GUARD" )
+			{
+				if ( item.type == SILVER_BOOTS )
+				{
+					int mod = items[item.type].attributes["SILVER_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						mod += items[item.type].attributes["SILVER_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), mod);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_WALK_MOMENTUM" )
+			{
+				if ( item.type == BLACKIRON_BOOTS )
+				{
+					int mod = items[item.type].attributes["BLACKIRON_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						mod += items[item.type].attributes["BLACKIRON_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), mod);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_SHIELD_THORNS" )
+			{
+				if ( item.type == SILVER_SHIELD )
+				{
+					int mod = items[item.type].attributes["EFF_SHIELD_THORNS"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						mod += items[item.type].attributes["EFF_SHIELD_THORNS_MOD"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), mod);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_CRITICAL_DAMAGE" )
+			{
+				if ( item.type == BLACKIRON_GAUNTLETS )
+				{
+					int mod = items[item.type].attributes["BLACKIRON_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						mod += items[item.type].attributes["BLACKIRON_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), mod);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_SMITE_RESIST" )
+			{
+				if ( item.type == SILVER_HELM )
+				{
+					int chance = items[item.type].attributes["SILVER_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						chance += items[item.type].attributes["SILVER_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude));
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), chance);
+				}
+			}
+			else if ( conditionalAttribute == "EFF_HPMP_GROWTH" )
+			{
+				if ( item.type == SILVER_GAUNTLETS )
+				{
+					int mod = items[item.type].attributes["SILVER_ARMOR_BASE"];
+					if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+					{
+						mod += items[item.type].attributes["SILVER_ARMOR_MULT"]
+							* std::min(3, abs(item.beatitude)) / 100;
+					}
+
+					snprintf(buf, sizeof(buf), str.c_str(), mod);
 				}
 			}
 			else if ( conditionalAttribute == "EFF_BONE_WEAPON" && (itemCategory(&item) == WEAPON || itemCategory(&item) == THROWN) )

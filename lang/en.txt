@@ -7345,5 +7345,8 @@ has been unlocked!#
 7071 The %s is disrupted!#
 7072 %s is disrupted!#
 7073 A flying dart disrupts you!#
+7074 You absorbed an incoming spell!#
+7075 The %s shield disrupts you!#
+7076 %s's shield disrupts you!#
 
 7999 END#

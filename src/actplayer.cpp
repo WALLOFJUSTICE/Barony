@@ -11573,6 +11573,7 @@ void actPlayer(Entity* my)
 					}
 				}
 
+				my->processWalkEquipmentEffects(PLAYER_VELX, PLAYER_VELY, dist);
 				if ( my->isInvisible() && !assailant[PLAYER_NUM] )
 				{
 					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_INVISIBILITY, dist, 0.1, nullptr);
@@ -11893,6 +11894,8 @@ void actPlayer(Entity* my)
 						my->handleKnockbackDamage(*stats[PLAYER_NUM], hit.entity);
 					}
 				}
+
+				my->processWalkEquipmentEffects(PLAYER_VELX, PLAYER_VELY, dist);
 				if ( my->isInvisible() )
 				{
 					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_INVISIBILITY, dist, 0.1, nullptr);

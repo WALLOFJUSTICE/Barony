@@ -1453,6 +1453,23 @@ void actThrown(Entity* my)
 					}
 				}
 
+				if ( parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_MOMENTUM) )
+				{
+					Uint8 effectStrength = parent->getStats()->getEffectActive(EFF_MOMENTUM);
+					if ( effectStrength > 0 )
+					{
+						--effectStrength;
+					}
+					if ( effectStrength == 0 )
+					{
+						parent->setEffect(EFF_MOMENTUM, false, 0, false);
+					}
+					else
+					{
+						parent->setEffect(EFF_MOMENTUM, effectStrength, parent->getStats()->EFFECTS_TIMERS[EFF_MOMENTUM], false, true, true);
+					}
+				}
+
 				if ( parent && parent->behavior == &actPlayer )
 				{
 					Compendium_t::Events_t::eventUpdate(parent->skill[2],
@@ -1788,6 +1805,13 @@ void actThrown(Entity* my)
 									{
 										Uint32 color = makeColorRGB(0, 255, 0);
 										messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7071), Language::get(7072), MSG_COMBAT);
+									}
+									if ( !constructDamage )
+									{
+										for ( int i = 0; i < 5; ++i )
+										{
+											spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+										}
 									}
 								}
 								break;

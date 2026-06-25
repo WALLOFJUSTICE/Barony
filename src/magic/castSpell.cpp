@@ -1862,9 +1862,11 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				if ( Stat* casterStats = caster->getStats() )
 				{
 					Uint8 effectStrength = casterStats->getEffectActive(EFF_ABSORB_MAGIC);
-					if ( effectStrength == 0 )
+					if ( (effectStrength & (1 << 7)) == 0 )
 					{
-						if ( caster->setEffect(EFF_ABSORB_MAGIC, (Uint8)1, element->duration, false) )
+						effectStrength = (effectStrength & 0x7F);
+						effectStrength |= (1 << 7);
+						if ( caster->setEffect(EFF_ABSORB_MAGIC, effectStrength, element->duration, false) )
 						{
 							messagePlayerColor(caster->isEntityPlayer(),
 								MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6735));
@@ -6625,6 +6627,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					channeled_spell->channel_effectStrength = 1;
 					int effectStrength = 3;//std::max(3, getSpellDamageFromID(SPELL_DIVINE_GUARD, caster, nullptr, caster));
 					effectStrength = std::min(effectStrength, getSpellEffectDurationSecondaryFromID(SPELL_DIVINE_GUARD, caster, nullptr, caster));
+					if ( caster->getStats()->getEffectActive(EFF_DIVINE_GUARD) )
+					{
+						effectStrength = std::max((int)caster->getStats()->getEffectActive(EFF_DIVINE_GUARD), effectStrength);
+					}
 					channeled_spell->channel_effectStrength = std::min(100, effectStrength);
 					if ( caster->setEffect(EFF_DIVINE_GUARD, (Uint8)channeled_spell->channel_effectStrength, duration, true, true, true) )
 					{

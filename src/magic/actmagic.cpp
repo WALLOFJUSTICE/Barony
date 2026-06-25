@@ -1496,6 +1496,23 @@ void magicOnEntityHit(Entity* parent, Entity* particle, Entity* hitentity, Stat*
 			}
 		}
 	}
+	else if ( hitentity->behavior == &actMonster && spellID > SPELL_NONE )
+	{
+		if ( hitstats )
+		{
+			if ( damage > 0 )
+			{
+				if ( hitstats->getEffectActive(EFF_GUARD_SPIRIT) )
+				{
+					thaumSpellArmorProc(hitentity, *hitstats, false, nullptr, EFF_GUARD_SPIRIT);
+				}
+				if ( hitstats->getEffectActive(EFF_DIVINE_GUARD) )
+				{
+					thaumSpellArmorProc(hitentity, *hitstats, false, nullptr, EFF_DIVINE_GUARD);
+				}
+			}
+		}
+	}
 
 	if ( parent && parent->behavior == &actMonster )
 	{
@@ -1851,9 +1868,10 @@ bool absorbMagicEvent(Entity* entity, Entity* parent, Entity& damageSourceProjec
 	if ( !entity || !parent ) { return false; }
 	if ( Stat* parentStats = parent->getStats() )
 	{
-		if ( parentStats->getEffectActive(EFF_ABSORB_MAGIC) > 1 && spellID > SPELL_NONE )
+		if ( (parentStats->getEffectActive(EFF_ABSORB_MAGIC) & 0x7F) > 0 && spellID > SPELL_NONE )
 		{
-			if ( entity->behavior == &actMonster && parent && !entity->monsterAllyGetPlayerLeader() )
+			if ( entity->behavior == &actMonster && parent && !entity->monsterAllyGetPlayerLeader()
+				&& !(damageSourceProjectile.behavior == &actMagicMissile && damageSourceProjectile.actmagicSpray == 2) )
 			{
 				if ( auto spell = getSpellFromID(spellID) )
 				{
@@ -1862,7 +1880,7 @@ bool absorbMagicEvent(Entity* entity, Entity* parent, Entity& damageSourceProjec
 					{
 						if ( find->second.spellTags.find(ItemTooltips_t::SPELL_TAG_DAMAGE) != find->second.spellTags.end() )
 						{
-							real_t bonus = (parentStats->getEffectActive(EFF_ABSORB_MAGIC) - 1) / 100.0;
+							real_t bonus = (parentStats->getEffectActive(EFF_ABSORB_MAGIC) & 0x7F) / 100.0;
 							bonus = std::min(getSpellDamageSecondaryFromID(SPELL_ABSORB_MAGIC, parent, nullptr, parent) / 100.0, bonus);
 							if ( result )
 							{
@@ -2377,6 +2395,30 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 					}
 					if ( hit.entity && hitstats )
 					{
+						//if ( hit.entity && hitstats && hitstats->shield && hitstats->shield->type == BLACKIRON_SHIELD
+						//	&& hit.entity->behavior == &actPlayer )
+						//{
+						//	Uint8 effectStrength = hitstats->getEffectActive(EFF_ABSORB_MAGIC) & 0x7F;
+						//	if ( effectStrength >= 100 )
+						//	{
+						//		// no more
+						//	}
+						//	else
+						//	{
+						//		int mod = items[hitstats->shield->type].attributes["BLACKIRON_ARMOR_BASE"];
+						//		if ( hitstats->shield->beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+						//		{
+						//			mod += items[hitstats->shield->type].attributes["BLACKIRON_ARMOR_MULT"]
+						//				* std::min(3, abs(hitstats->shield->beatitude));
+						//		}
+						//		int increase = mod;//std::max(damage, getSpellDamageFromID(SPELL_ABSORB_MAGIC, hit.entity, nullptr, hit.entity));
+						//		effectStrength = std::min(100, (int)(effectStrength + increase));
+						//		effectStrength |= (hitstats->getEffectActive(EFF_ABSORB_MAGIC) & (1 << 7));
+						//		hit.entity->setEffect(EFF_ABSORB_MAGIC, effectStrength, hitstats->EFFECTS_TIMERS[EFF_ABSORB_MAGIC], false, true, true);
+						//	}
+						//}
+
+
 						if ( hitstats->getEffectActive(EFF_MAGICIANS_ARMOR)
 							&& !(!(svFlags & SV_FLAG_FRIENDLYFIRE) && parent 
 									&& parent->checkFriend(hit.entity) 
@@ -3438,10 +3480,10 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 				const Sint32 preResistanceDamage = preResistanceDamageTmp;
 				const int damage = damageTmp;
 
-				if ( hit.entity && hitstats && hitstats->getEffectActive(EFF_ABSORB_MAGIC) )
+				if ( hit.entity && hitstats && (hitstats->getEffectActive(EFF_ABSORB_MAGIC) & (1 << 7)) )
 				{
-					Uint8 effectStrength = hitstats->getEffectActive(EFF_ABSORB_MAGIC);
-					if ( effectStrength >= 101 )
+					Uint8 effectStrength = hitstats->getEffectActive(EFF_ABSORB_MAGIC) & 0x7F;
+					if ( effectStrength >= 100 )
 					{
 						if ( hit.entity->behavior == &actPlayer )
 						{
@@ -3451,7 +3493,8 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 					else
 					{
 						int increase = std::max(damage, getSpellDamageFromID(SPELL_ABSORB_MAGIC, hit.entity, nullptr, hit.entity));
-						effectStrength = std::min(101, (int)(effectStrength + increase));
+						effectStrength = std::min(100, (int)(effectStrength + increase));
+						effectStrength |= (hitstats->getEffectActive(EFF_ABSORB_MAGIC) & (1 << 7));
 						hit.entity->setEffect(EFF_ABSORB_MAGIC, effectStrength, hitstats->EFFECTS_TIMERS[EFF_ABSORB_MAGIC], false, true, true);
 						if ( hit.entity->behavior == &actPlayer )
 						{
@@ -3469,6 +3512,38 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 						serverSpawnMiscParticlesAtLocation(fx->x, fx->y, fx->z, PARTICLE_EFFECT_NULL_PARTICLE, 1817, 0, fx->yaw * 256.0);
 
 						magicOnSpellCastEvent(hit.entity, nullptr, parent, SPELL_ABSORB_MAGIC, spell_t::SPELL_LEVEL_EVENT_DEFAULT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE, 1);
+
+						my->removeLightField();
+						list_RemoveNode(my->mynode);
+						return;
+					}
+				}
+
+				if ( hit.entity && hitstats && hitstats->breastplate && hitstats->breastplate->type == BLACKIRON_BREASTPIECE )
+				{
+					int chance = items[hitstats->breastplate->type].attributes["BLACKIRON_ARMOR_BASE"];
+					if ( hitstats->breastplate->beatitude >= 0 || shouldInvertEquipmentBeatitude(hitstats) )
+					{
+						chance += items[hitstats->breastplate->type].attributes["BLACKIRON_ARMOR_MULT"] 
+							* std::min(3, abs(hitstats->breastplate->beatitude));
+					}
+
+					if ( local_rng.rand() % 100 < chance )
+					{
+						if ( hit.entity->behavior == &actPlayer )
+						{
+							messagePlayerColor(hit.entity->skill[2], MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7074));
+						}
+
+						Entity* fx = createParticleAestheticOrbit(hit.entity, 1817, TICKS_PER_SECOND / 4, PARTICLE_EFFECT_NULL_PARTICLE);
+						fx->x = my->x;
+						fx->y = my->y;
+						fx->z = my->z;
+						real_t tangent = atan2(my->y - hit.entity->y, my->x - hit.entity->x);
+						fx->yaw = tangent;
+						fx->actmagicOrbitDist = 0;
+						fx->actmagicNoLight = 0;
+						serverSpawnMiscParticlesAtLocation(fx->x, fx->y, fx->z, PARTICLE_EFFECT_NULL_PARTICLE, 1817, 0, fx->yaw * 256.0);
 
 						my->removeLightField();
 						list_RemoveNode(my->mynode);

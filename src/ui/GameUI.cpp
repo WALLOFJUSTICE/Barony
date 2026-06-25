@@ -6355,6 +6355,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_GUARD_SPIRIT)
 				|| stats[player]->getEffectActive(EFF_GUARD_BODY)
 				|| stats[player]->getEffectActive(EFF_DIVINE_GUARD)
+				|| stats[player]->getEffectActive(EFF_MOMENTUM)
 				|| stats[player]->getEffectActive(EFF_DELAY_PAIN)
 				|| stats[player]->getEffectActive(EFF_ABSORB_MAGIC)
 				|| stats[player]->getEffectActive(EFF_STATIC)
@@ -6579,6 +6580,20 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 									makeColor(255, 255, 255, 255));
 							}
 						}
+						else if ( img->path.find("momentum.png") != std::string::npos )
+						{
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_MOMENTUM);
+							if ( auto text = Text::get(std::to_string(effectStrength).c_str(),
+								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+							{
+								text->drawColor(SDL_Rect{ 0,0,0,0 },
+									SDL_Rect{ pos.x + img->pos.x + (alignRight ? (img->pos.w - (int)text->getWidth()) : (img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x)),
+									pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+									0, 0 },
+									SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+									makeColor(255, 255, 255, 255));
+							}
+						}
 						else if ( img->path.find("spell_guard.png") != std::string::npos )
 						{
 							Uint8 effectStrength = stats[player]->getEffectActive(EFF_GUARD_SPIRIT);
@@ -6627,9 +6642,9 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 						else if ( img->path.find("asborb_magic.png") != std::string::npos )
 						{
 							Uint8 effectStrength = stats[player]->getEffectActive(EFF_ABSORB_MAGIC);
-							if ( effectStrength > 1 )
+							if ( (effectStrength & 0x7F) > 0 )
 							{
-								if ( auto text = Text::get(std::to_string(effectStrength - 1).c_str(),
+								if ( auto text = Text::get(std::to_string((effectStrength & 0x7F)).c_str(),
 									"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
 								{
 									text->drawColor(SDL_Rect{ 0,0,0,0 },
@@ -8737,6 +8752,16 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 				}
 			}
 			else if ( i == EFF_TELEPATH )
+			{
+				skipAnim = true;
+				effectsToSkipAnim.insert(i);
+			}
+			else if ( i == EFF_MOMENTUM )
+			{
+				skipAnim = true;
+				effectsToSkipAnim.insert(i);
+			}
+			else if ( i == EFF_DIVINE_GUARD && stats[player]->shoes && stats[player]->shoes->type == SILVER_BOOTS )
 			{
 				skipAnim = true;
 				effectsToSkipAnim.insert(i);
