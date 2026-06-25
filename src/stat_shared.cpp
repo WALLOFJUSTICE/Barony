@@ -1550,6 +1550,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_3 + ITEM_CHANCE] = 33;
 
 			stats->setProficiency(PRO_SWORD, 40);
+			stats->setProficiency(PRO_SHIELD, 60);
 			stats->setProficiency(PRO_AXE, 60);
 			stats->setProficiency(PRO_POLEARM, 40);
 			stats->setProficiency(PRO_MACE, 60);
