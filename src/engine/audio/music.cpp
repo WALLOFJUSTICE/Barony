@@ -94,6 +94,7 @@ void stopMusic()
 }
 
 #ifdef USE_FMOD
+static ConsoleVariable<float> cvar_music_low_volume("/music_low_volume", 0.75f);
 void playMusic(FMOD::Sound* sound, bool loop, bool crossfade, bool resume)
 {
 	if (no_sound)
@@ -142,6 +143,22 @@ void playMusic(FMOD::Sound* sound, bool loop, bool crossfade, bool resume)
 		    fmod_result = fmod_system->playSound(sound, music_group, true, &music_channel);
 		}
 	}
+
+	musicVolumeSetpoint = 1.f;
+	void* userData = nullptr;
+	if ( sound )
+	{
+		sound->getUserData(&userData);
+		if ( userData )
+		{
+			const int* value = (const int*)userData;
+			if ( value && *value == SOUND_DATA_VOLUME_LOWER )
+			{
+				musicVolumeSetpoint = *cvar_music_low_volume;
+			}
+		}
+	}
+
 	//FMOD_Channel_SetChannelGroup(music_channel, music_group);
 	if (crossfade == true)
 	{
@@ -150,7 +167,7 @@ void playMusic(FMOD::Sound* sound, bool loop, bool crossfade, bool resume)
 	}
 	else
 	{
-		music_channel->setVolume(1.0f); // start at max volume
+		music_channel->setVolume(musicVolumeSetpoint); // start at max volume
 		music_channel2->stop();
 	}
 	if (loop == true)

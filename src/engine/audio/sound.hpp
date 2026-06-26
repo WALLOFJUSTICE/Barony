@@ -12,7 +12,8 @@
 #pragma once
 
 #define FMOD_AUDIO_GUID_FMT "%.8x%.16llx"
-
+static const int SOUND_DATA_VOLUME_LOWER = 1;
+extern real_t musicVolumeSetpoint;
 #include <stdio.h>
 #ifdef USE_FMOD
 #include <fmod.hpp>

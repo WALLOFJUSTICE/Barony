@@ -43,6 +43,10 @@ FMOD::ChannelGroup* getChannelGroupForSoundIndex(Uint32 snd)
 	{
 		return soundAmbient_group;
 	}
+	if ( snd == 488 || snd == 489 || snd == 490 || snd == 491 )
+	{
+		return soundNotification_group; // tutorial sounds
+	}
 	if ( SkillUpAnimation_t::soundIndexUsedForNotification(snd) )
 	{
 		return soundNotification_group;
@@ -342,6 +346,11 @@ FMOD::Channel* playSound(Uint16 snd, Uint8 vol)
         position.x = 0.f;
         position.y = 0.f;
         position.z = 0.f;
+
+		if ( snd == 488 || snd == 489 || snd == 490 || snd == 491 )
+		{
+			vol = std::min((Uint8)100, vol); // tutorial sounds
+		}
         
         channel->setVolume(vol / 255.f);
         channel->set3DAttributes(&position, nullptr);

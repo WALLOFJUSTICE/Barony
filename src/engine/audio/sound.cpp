@@ -17,6 +17,8 @@
 #include "../../player.hpp"
 #endif
 
+real_t musicVolumeSetpoint = 1.f;
+
 #ifdef USE_FMOD
 #include "fmod_errors.h"
 #elif defined USE_OPENAL
@@ -311,12 +313,21 @@ void sound_update(int player, int index, int numplayers)
 					}
 					music_channel->setVolume(volume);
 				}
-				else if (volume < 1.0f)
+				else if (volume < musicVolumeSetpoint )
 				{
 					volume += fadein_increment * 2;
-					if (volume > 1.0f)
+					if (volume > musicVolumeSetpoint )
 					{
-						volume = 1.0f;
+						volume = musicVolumeSetpoint;
+					}
+					music_channel->setVolume(volume);
+				}
+				else if ( volume > musicVolumeSetpoint )
+				{
+					volume -= fadein_increment * 2;
+					if ( volume < musicVolumeSetpoint )
+					{
+						volume = musicVolumeSetpoint;
 					}
 					music_channel->setVolume(volume);
 				}
@@ -1228,44 +1239,44 @@ bool physfsSearchMusicToUpdate_helper_findModifiedMusic(uint32_t numMusic, const
 	return false;
 }
 
-const std::vector<std::string> themeMusic = {
-	"music/introduction.ogg",
-	"music/intermission.ogg",
-	"music/minetown.ogg",
-	"music/splash.ogg",
-	"music/library.ogg",
-	"music/shop.ogg",
-	"music/herxboss.ogg",
-	"music/temple.ogg",
-	"music/endgame.ogg",
-	"music/escape.ogg",
-	"music/devil.ogg",
-	"music/sanctum.ogg",
-	"music/gnomishmines.ogg",
-	"music/greatcastle.ogg",
-	"music/sokoban.ogg",
-	"music/caveslair.ogg",
-	"music/bramscastle.ogg",
-	"music/hamlet.ogg",
-	"music/tutorial.ogg",
-	"sound/Death.ogg",
-	"sound/ui/StoryMusicV3.ogg",
-	"sound/ensemble/ensemble1_drumV1.ogg",
-	"sound/ensemble/ensemble1_fluteV1.ogg",
-	"sound/ensemble/ensemble1_hornV1.ogg",
-	"sound/ensemble/ensemble1_luteV1.ogg",
-	"sound/ensemble/ensemble1_lyreV1.ogg",
-	"sound/ensemble/ensemble1_tamboV1.ogg",
-	"sound/ensemble/ensemble1_BEB_tier1_V1.ogg",
-	"sound/ensemble/ensemble1_BEB_tier2_V1.ogg",
-	"sound/ensemble/ensemble1_drum_combatV1.ogg",
-	"sound/ensemble/ensemble1_flute_combatV1.ogg",
-	"sound/ensemble/ensemble1_horn_combatV1.ogg",
-	"sound/ensemble/ensemble1_lute_combatV1.ogg",
-	"sound/ensemble/ensemble1_lyre_combatV1.ogg",
-	"sound/ensemble/ensemble1_tambo_combatV1.ogg",
-	"sound/ensemble/ensemble1_BEB_tier1_combatV1.ogg",
-	"sound/ensemble/ensemble1_BEB_tier2_combatV1.ogg",
+const std::vector<std::pair<std::string, int>> themeMusic = {
+	{ "music/introduction.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/intermission.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/minetown.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/splash.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/library.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/shop.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/herxboss.ogg", 0 },
+	{ "music/temple.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/endgame.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/escape.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "music/devil.ogg", 0 },
+	{ "music/sanctum.ogg", 0 },
+	{ "music/gnomishmines.ogg", 0 },
+	{ "music/greatcastle.ogg", 0 },
+	{ "music/sokoban.ogg", 0 },
+	{ "music/caveslair.ogg",0 },
+	{ "music/bramscastle.ogg",0 },
+	{ "music/hamlet.ogg", 0 },
+	{ "music/tutorial.ogg",0 },
+	{ "sound/Death.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "sound/ui/StoryMusicV3.ogg", SOUND_DATA_VOLUME_LOWER },
+	{ "sound/ensemble/ensemble1_drumV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_fluteV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_hornV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_luteV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_lyreV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_tamboV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_BEB_tier1_V1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_BEB_tier2_V1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_drum_combatV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_flute_combatV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_horn_combatV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_lute_combatV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_lyre_combatV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_tambo_combatV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_BEB_tier1_combatV1.ogg", 0 },
+	{ "sound/ensemble/ensemble1_BEB_tier2_combatV1.ogg", 0 },
 	/*"sound/ensemble/Trans1/ensemble1_drum_Trans1_120_4-4_V1.ogg",
 	"sound/ensemble/Trans1/ensemble1_flute_Trans1_120_4-4_V1.ogg",
 	"sound/ensemble/Trans1/ensemble1_horn_Trans1_120_4-4_V1.ogg",
@@ -1290,22 +1301,22 @@ const std::vector<std::string> themeMusic = {
 	"sound/ensemble/Trans3/ensemble1_tambo_Trans3_120_4-4_V1.ogg",
 	"sound/ensemble/Trans3/ensemble1_tambo_Trans3_120_4-4_V1.ogg",
 	"sound/ensemble/Trans3/ensemble1_tambo_Trans3_120_4-4_V1.ogg",*/
-	"sound/ensemble/CombatEnd1/ensemble1_drum_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd1/ensemble1_flute_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd1/ensemble1_horn_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd1/ensemble1_lute_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd1/ensemble1_lyre_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd1/ensemble1_tambo_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd1/ensemble1_BEB_tier1_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd1/ensemble1_BEB_tier2_combat_End1_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_drum_combat_End2_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_flute_combat_End2_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_horn_combat_End2_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_lute_combat_End2_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_lyre_combat_End2_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_tambo_combat_End2_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_BEB_tier1_combat_End2_90_7-8.ogg",
-	"sound/ensemble/CombatEnd2/ensemble1_BEB_tier2_combat_End2_90_7-8.ogg",
+	{ "sound/ensemble/CombatEnd1/ensemble1_drum_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd1/ensemble1_flute_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd1/ensemble1_horn_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd1/ensemble1_lute_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd1/ensemble1_lyre_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd1/ensemble1_tambo_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd1/ensemble1_BEB_tier1_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd1/ensemble1_BEB_tier2_combat_End1_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_drum_combat_End2_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_flute_combat_End2_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_horn_combat_End2_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_lute_combat_End2_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_lyre_combat_End2_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_tambo_combat_End2_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_BEB_tier1_combat_End2_90_7-8.ogg", 0 },
+	{ "sound/ensemble/CombatEnd2/ensemble1_BEB_tier2_combat_End2_90_7-8.ogg", 0 },
 	/*"sound/ensemble/CombatEnd3/ensemble1_drum_combat_End3_90_7-8.ogg",
 	"sound/ensemble/CombatEnd3/ensemble1_flute_combat_End3_90_7-8.ogg",
 	"sound/ensemble/CombatEnd3/ensemble1_horn_combat_End3_90_7-8.ogg",
@@ -1322,23 +1333,23 @@ const std::vector<std::string> themeMusic = {
 	"sound/ensemble/CombatEnd4/ensemble1_tambo_combat_End4_90_7-8.ogg",
 	"sound/ensemble/CombatEnd4/ensemble1_tambo_combat_End4_90_7-8.ogg",
 	"sound/ensemble/CombatEnd4/ensemble1_tambo_combat_End4_90_7-8.ogg",*/
-	"sound/ensemble/Trans4/ensemble1_drum_Trans_120_4-4.ogg",
-	"sound/ensemble/Trans4/ensemble1_flute_Trans_120_4-4.ogg",
-	"sound/ensemble/Trans4/ensemble1_horn_Trans_120_4-4.ogg",
-	"sound/ensemble/Trans4/ensemble1_lute_Trans_120_4-4.ogg",
-	"sound/ensemble/Trans4/ensemble1_lyre_Trans_120_4-4.ogg",
-	"sound/ensemble/Trans4/ensemble1_tambo_Trans_120_4-4.ogg",
-	"sound/ensemble/Trans4/ensemble1_BEB_tier1_Trans_120_4-4.ogg",
-	"sound/ensemble/Trans4/ensemble1_BEB_tier2_Trans_120_4-4.ogg",
-	"music/bastille01.ogg",
-	"music/warren01.ogg",
-	"music/fraternity01.ogg",
-	"music/penitentiary01.ogg",
-	"music/automat01.ogg",
-	"music/gatehouse01.ogg",
-	"music/credits01.ogg",
-	"music/throneroom01.ogg",
-	"music/voidvault01.ogg"
+	{ "sound/ensemble/Trans4/ensemble1_drum_Trans_120_4-4.ogg", 0 },
+	{ "sound/ensemble/Trans4/ensemble1_flute_Trans_120_4-4.ogg", 0 },
+	{ "sound/ensemble/Trans4/ensemble1_horn_Trans_120_4-4.ogg", 0 },
+	{ "sound/ensemble/Trans4/ensemble1_lute_Trans_120_4-4.ogg", 0 },
+	{ "sound/ensemble/Trans4/ensemble1_lyre_Trans_120_4-4.ogg", 0 },
+	{ "sound/ensemble/Trans4/ensemble1_tambo_Trans_120_4-4.ogg", 0 },
+	{ "sound/ensemble/Trans4/ensemble1_BEB_tier1_Trans_120_4-4.ogg", 0 },
+	{ "sound/ensemble/Trans4/ensemble1_BEB_tier2_Trans_120_4-4.ogg", 0 },
+	{ "music/bastille01.ogg", 0 },
+	{ "music/warren01.ogg", 0 },
+	{ "music/fraternity01.ogg", 0 },
+	{ "music/penitentiary01.ogg", 0 },
+	{ "music/automat01.ogg", 0 },
+	{ "music/gatehouse01.ogg", 0 },
+	{ "music/credits01.ogg", 0 },
+	{ "music/throneroom01.ogg", 0 },
+	{ "music/voidvault01.ogg", 0 }
 };
 
 bool physfsSearchMusicToUpdate()
@@ -1351,7 +1362,7 @@ bool physfsSearchMusicToUpdate()
 
 	for ( auto it = themeMusic.begin(); it != themeMusic.end(); ++it )
 	{
-		std::string filename = *it;
+		std::string filename = (*it).first;
 		if ( PHYSFS_getRealDir(filename.c_str()) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(filename.c_str());
@@ -1434,6 +1445,23 @@ FMOD_RESULT physfsReloadMusic_helper_reloadMusicArray(uint32_t numMusic, const c
 					{
 						fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &musicArray[c]); //TODO: Any other FMOD_MODEs should be used here? FMOD_SOFTWARE -> what now? FMOD_2D? LOOP?
 					}
+					if ( musicArray[c] && filenameTemplate )
+					{
+						musicArray[c]->setUserData(nullptr);
+						if ( strstr(filenameTemplate, "mines")
+							|| strstr(filenameTemplate, "swamp")
+							|| strstr(filenameTemplate, "labyrinth")
+							|| strstr(filenameTemplate, "ruins")
+							|| strstr(filenameTemplate, "underworld")
+							|| strstr(filenameTemplate, "hell")
+							|| strstr(filenameTemplate, "minotaur")
+							|| strstr(filenameTemplate, "caves") 
+							|| strstr(filenameTemplate, "citadel")
+							|| (strstr(filenameTemplate, "fortress") && c == 2) )
+						{
+							musicArray[c]->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+						}
+					}
 				}
                 if (fmod_result != FMOD_OK)
                 {
@@ -1467,7 +1495,7 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 	bool ensembleNeedsUpdate = false;
 	for ( auto it = themeMusic.begin(); it != themeMusic.end(); ++it )
 	{
-		std::string filename = *it;
+		std::string filename = (*it).first;
 		if ( PHYSFS_getRealDir(filename.c_str()) != nullptr )
 		{
 			std::string musicDir = PHYSFS_getRealDir(filename.c_str());
@@ -1490,6 +1518,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &introductionmusic); //TODO: FMOD_SOFTWARE -> what now? FMOD_2D? FMOD_LOOP_NORMAL? More things? Something else?
                         }
+						if ( introductionmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								introductionmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								introductionmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 1:
 						if ( intermissionmusic )
@@ -1504,6 +1543,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &intermissionmusic);
                         }
+						if ( intermissionmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								intermissionmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								intermissionmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 2:
 						if ( minetownmusic )
@@ -1518,6 +1568,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &minetownmusic);
                         }
+						if ( minetownmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								minetownmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								minetownmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 3:
 						if ( splashmusic )
@@ -1532,6 +1593,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &splashmusic);
                         }
+						if ( splashmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								splashmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								splashmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 4:
 						if ( librarymusic )
@@ -1546,6 +1618,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &librarymusic);
                         }
+						if ( librarymusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								librarymusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								librarymusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 5:
 						if ( shopmusic )
@@ -1560,6 +1643,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &shopmusic);
                         }
+						if ( shopmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								shopmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								shopmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 6:
 						if ( herxmusic )
@@ -1574,6 +1668,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &herxmusic);
                         }
+						if ( herxmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								herxmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								herxmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 7:
 						if ( templemusic )
@@ -1588,6 +1693,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &templemusic);
                         }
+						if ( templemusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								templemusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								templemusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 8:
 						if ( endgamemusic )
@@ -1602,6 +1718,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &endgamemusic);
                         }
+						if ( endgamemusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								endgamemusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								endgamemusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 9:
 						if ( escapemusic )
@@ -1616,6 +1743,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &escapemusic);
                         }
+						if ( escapemusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								escapemusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								escapemusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 10:
 						if ( devilmusic )
@@ -1630,6 +1768,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &devilmusic);
                         }
+						if ( devilmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								devilmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								devilmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 11:
 						if ( sanctummusic )
@@ -1644,6 +1793,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
                         {
                             fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &sanctummusic);
                         }
+						if ( sanctummusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								sanctummusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								sanctummusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 12:
 						if ( gnomishminesmusic )
@@ -1657,6 +1817,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &gnomishminesmusic);
+						}
+						if ( gnomishminesmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								gnomishminesmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								gnomishminesmusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 13:
@@ -1672,6 +1843,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &greatcastlemusic);
 						}
+						if ( greatcastlemusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								greatcastlemusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								greatcastlemusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 14:
 						if ( sokobanmusic )
@@ -1685,6 +1867,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &sokobanmusic);
+						}
+						if ( sokobanmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								sokobanmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								sokobanmusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 15:
@@ -1700,6 +1893,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &caveslairmusic);
 						}
+						if ( caveslairmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								caveslairmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								caveslairmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 16:
 						if ( bramscastlemusic )
@@ -1713,6 +1917,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &bramscastlemusic);
+						}
+						if ( bramscastlemusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								bramscastlemusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								bramscastlemusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 17:
@@ -1728,6 +1943,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &hamletmusic);
 						}
+						if ( hamletmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								hamletmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								hamletmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 18:
 						if ( tutorialmusic )
@@ -1741,6 +1967,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_2D, nullptr, &tutorialmusic);
+						}
+						if ( tutorialmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								tutorialmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								tutorialmusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 19:
@@ -1756,6 +1993,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &gameovermusic);
 						}
+						if ( gameovermusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								gameovermusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								gameovermusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 20:
 						if ( introstorymusic )
@@ -1769,6 +2017,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &introstorymusic);
+						}
+						if ( introstorymusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								introstorymusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								introstorymusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 61:
@@ -1784,6 +2043,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &bastillemusic);
 						}
+						if ( bastillemusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								bastillemusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								bastillemusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 62:
 						if ( warrenmusic )
@@ -1797,6 +2067,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &warrenmusic);
+						}
+						if ( warrenmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								warrenmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								warrenmusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 63:
@@ -1812,6 +2093,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &fraternitymusic);
 						}
+						if ( fraternitymusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								fraternitymusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								fraternitymusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 64:
 						if ( penitentiarymusic )
@@ -1825,6 +2117,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &penitentiarymusic);
+						}
+						if ( penitentiarymusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								penitentiarymusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								penitentiarymusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 65:
@@ -1840,6 +2143,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &automatmusic);
 						}
+						if ( automatmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								automatmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								automatmusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 66:
 						if ( gatehousemusic )
@@ -1853,6 +2167,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &gatehousemusic);
+						}
+						if ( gatehousemusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								gatehousemusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								gatehousemusic->setUserData(nullptr);
+							}
 						}
 						break;
 					case 67:
@@ -1868,6 +2193,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &credits_expansion_music);
 						}
+						if ( credits_expansion_music )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								credits_expansion_music->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								credits_expansion_music->setUserData(nullptr);
+							}
+						}
 						break;
 					case 68:
 						if ( throneroommusic )
@@ -1882,6 +2218,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &throneroommusic);
 						}
+						if ( throneroommusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								throneroommusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								throneroommusic->setUserData(nullptr);
+							}
+						}
 						break;
 					case 69:
 						if ( voidvaultmusic )
@@ -1895,6 +2242,17 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 						else
 						{
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &voidvaultmusic);
+						}
+						if ( voidvaultmusic )
+						{
+							if ( (*it).second == SOUND_DATA_VOLUME_LOWER )
+							{
+								voidvaultmusic->setUserData((void*)&SOUND_DATA_VOLUME_LOWER);
+							}
+							else
+							{
+								voidvaultmusic->setUserData(nullptr);
+							}
 						}
 						break;
 					default:
