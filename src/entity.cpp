@@ -13974,6 +13974,10 @@ fireagain:
 								// bone weapons chance to not degrade 66% chance on 0 dmg, else 96.3%
 								degradeOnZeroDMG = 3 + (myStats->type == GOBLIN ? 3 : 0);
 								degradeOnNormalDMG = 30 + (myStats->type == GOBLIN ? 20 : 0);
+								if ( chargeMult > 1.0 )
+								{
+									degradeOnNormalDMG /= 2;
+								}
 								/*if ( (*weaponToBreak)->beatitude < 0 && !shouldInvertEquipmentBeatitude(myStats) )
 								{
 									degradeOnNormalDMG = std::max(5, degradeOnNormalDMG + (*weaponToBreak)->beatitude * 20);
