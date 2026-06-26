@@ -107,7 +107,20 @@ void initMonsterS(Entity* my, Stat* myStats)
 
 			if ( myStats->getAttribute("salamander_type") == "" )
 			{
-				if ( rng.rand() % 4 == 0 )
+				if ( strstr(myStats->name, "priest")
+					|| strstr(myStats->name, "acolyte")
+					|| strstr(myStats->name, "scout")
+					|| strstr(myStats->name, "regent") )
+				{
+					myStats->setAttribute("salamander_type", "radiant");
+				}
+				else if ( strstr(myStats->name, "guard")
+					|| strstr(myStats->name, "sergeant")
+					|| strstr(myStats->name, "squire") )
+				{
+					myStats->setAttribute("salamander_type", "zealot");
+				}
+				else if ( rng.rand() % 4 == 0 )
 				{
 					myStats->setAttribute("salamander_type", "radiant");
 				}
@@ -115,7 +128,8 @@ void initMonsterS(Entity* my, Stat* myStats)
 				{
 					myStats->setAttribute("salamander_type", "zealot");
 
-					if ( myStats->leader_uid == 0 && !my->flags[USERFLAG2] && rng.rand() % 2 == 0 )
+					if ( myStats->leader_uid == 0 && !my->flags[USERFLAG2] && !strcmp(myStats->name, "")
+						&& rng.rand() % 2 == 0 )
 					{
 						Entity* entity = summonMonster(SALAMANDER, my->x, my->y);
 						if ( entity )

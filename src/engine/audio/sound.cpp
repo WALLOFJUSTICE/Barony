@@ -110,10 +110,10 @@ void setGlobalVolume(real_t master, real_t music, real_t gameplay, real_t ambien
     music = std::min(std::max(0.0, music / 4.0), 1.0); // music volume cut in half because the music is loud...
     gameplay = std::min(std::max(0.0, gameplay), 1.0);
     ambient = std::min(std::max(0.0, ambient), 1.0);
-    environment = std::min(std::max(0.0, environment), 1.0);
+    environment = std::min(std::max(0.0, environment / 2.0), 1.0);
 	notification = std::min(std::max(0.0, notification), 1.0);
 
-	music_group->setVolume(master * music);
+	music_group->setVolume(master * music * 2);
 	sound_group->setVolume(master * gameplay);
 	soundAmbient_group->setVolume(master * ambient);
 	soundEnvironment_group->setVolume(master * environment);
@@ -1333,7 +1333,12 @@ const std::vector<std::string> themeMusic = {
 	"music/bastille01.ogg",
 	"music/warren01.ogg",
 	"music/fraternity01.ogg",
-	"music/penitentiary01.ogg"
+	"music/penitentiary01.ogg",
+	"music/automat01.ogg",
+	"music/gatehouse01.ogg",
+	"music/credits01.ogg",
+	"music/throneroom01.ogg",
+	"music/voidvault01.ogg"
 };
 
 bool physfsSearchMusicToUpdate()
@@ -1371,7 +1376,9 @@ bool physfsSearchMusicToUpdate()
 		|| physfsSearchMusicToUpdate_helper_findModifiedMusic(NUMCITADELMUSIC, "music/citadel%02d.ogg")
 		|| physfsSearchMusicToUpdate_helper_findModifiedMusic(fortressmusic.size(), "music/fortress%02d.ogg")
 		|| physfsSearchMusicToUpdate_helper_findModifiedMusic(keepmusic.size(), "music/keep%02d.ogg")
-		|| physfsSearchMusicToUpdate_helper_findModifiedMusic(backroomsmusic.size(), "music/backrooms%02d.ogg") )
+		|| physfsSearchMusicToUpdate_helper_findModifiedMusic(backroomsmusic.size(), "music/backrooms%02d.ogg")
+		|| physfsSearchMusicToUpdate_helper_findModifiedMusic(arenamusic.size(), "music/arena%02d.ogg")
+		|| physfsSearchMusicToUpdate_helper_findModifiedMusic(rooftopmusic.size(), "music/rooftop%02d.ogg") )
 	{
 		return true;
 	}
@@ -1820,6 +1827,76 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &penitentiarymusic);
 						}
 						break;
+					case 65:
+						if ( automatmusic )
+						{
+							automatmusic->release();
+						}
+						if ( musicPreload )
+						{
+							fmod_result = fmod_system->createSound(musicDir.c_str(), FMOD_DEFAULT, nullptr, &automatmusic);
+						}
+						else
+						{
+							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &automatmusic);
+						}
+						break;
+					case 66:
+						if ( gatehousemusic )
+						{
+							gatehousemusic->release();
+						}
+						if ( musicPreload )
+						{
+							fmod_result = fmod_system->createSound(musicDir.c_str(), FMOD_DEFAULT, nullptr, &gatehousemusic);
+						}
+						else
+						{
+							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &gatehousemusic);
+						}
+						break;
+					case 67:
+						if ( credits_expansion_music )
+						{
+							credits_expansion_music->release();
+						}
+						if ( musicPreload )
+						{
+							fmod_result = fmod_system->createSound(musicDir.c_str(), FMOD_DEFAULT, nullptr, &credits_expansion_music);
+						}
+						else
+						{
+							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &credits_expansion_music);
+						}
+						break;
+					case 68:
+						if ( throneroommusic )
+						{
+							throneroommusic->release();
+						}
+						if ( musicPreload )
+						{
+							fmod_result = fmod_system->createSound(musicDir.c_str(), FMOD_DEFAULT, nullptr, &throneroommusic);
+						}
+						else
+						{
+							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &throneroommusic);
+						}
+						break;
+					case 69:
+						if ( voidvaultmusic )
+						{
+							voidvaultmusic->release();
+						}
+						if ( musicPreload )
+						{
+							fmod_result = fmod_system->createSound(musicDir.c_str(), FMOD_DEFAULT, nullptr, &voidvaultmusic);
+						}
+						else
+						{
+							fmod_result = fmod_system->createStream(musicDir.c_str(), FMOD_DEFAULT, nullptr, &voidvaultmusic);
+						}
+						break;
 					default:
 #ifdef USE_FMOD
 #ifndef EDITOR
@@ -1982,6 +2059,29 @@ void physfsReloadMusic(bool &introMusicChanged, bool reloadAll) //TODO: This sho
 	if ( FMOD_OK != (fmod_result = physfsReloadMusic_helper_reloadMusicArray(backroomsmusic.size(), "music/backrooms%02d.ogg", backroomsmusic.data(), reloadAll)) )
 	{
 		printlog("[PhysFS]: Failed to reload backrooms music array.");
+	}
+	if ( FMOD_OK != (fmod_result = physfsReloadMusic_helper_reloadMusicArray(arenamusic.size(), "music/arena%02d.ogg", arenamusic.data(), reloadAll)) )
+	{
+		printlog("[PhysFS]: Failed to reload backrooms music array.");
+	}
+	if ( FMOD_OK != (fmod_result = physfsReloadMusic_helper_reloadMusicArray(rooftopmusic.size(), "music/rooftop%02d.ogg", rooftopmusic.data(), reloadAll)) )
+	{
+		printlog("[PhysFS]: Failed to reload backrooms music array.");
+	}
+
+	if ( rooftopmusic[0] )
+	{
+		FMOD_SOUND_TYPE type;
+		int chan = 0;
+		unsigned int len = 0;
+		rooftopmusic[0]->getLength(&len, FMOD_TIMEUNIT_PCM);
+		rooftopmusic[0]->getFormat(&type, nullptr, &chan, nullptr);
+		float freq = 0;
+		rooftopmusic[0]->getDefaults(&freq, nullptr);
+
+		int beatTime = freq * (60 / 157.0); // beats, 157bpm
+
+		rooftopmusic[0]->setLoopPoints(600736, FMOD_TIMEUNIT_PCM, len/*600736 + beatTime * 16*/, FMOD_TIMEUNIT_PCM);
 	}
 
 	bool introChanged = false;

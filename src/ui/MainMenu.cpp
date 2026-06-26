@@ -25887,7 +25887,7 @@ failed:
 				// return to title screen
 		        destroyMainMenu();
 #ifdef SOUND
-				const int music = RNG.uniform(0, NUMINTROMUSIC - 2);
+				const int music = RNG.uniform(0, NUMINTROMUSIC - 4);
 	            playMusic(intromusic[music], true, false, false);
 #endif
 				createTitleScreen();
@@ -25918,7 +25918,7 @@ failed:
 				// return to menu
 				destroyMainMenu();
 #ifdef SOUND
-				const int music = RNG.uniform(0, NUMINTROMUSIC - 2);
+				const int music = RNG.uniform(0, NUMINTROMUSIC - 4);
 				playMusic(intromusic[music], true, false, false);
 #endif
 				createMainMenu(false);
@@ -25957,7 +25957,7 @@ failed:
 				// return to menu
 				destroyMainMenu();
 #ifdef SOUND
-				const int music = RNG.uniform(0, NUMINTROMUSIC - 2);
+				const int music = RNG.uniform(0, NUMINTROMUSIC - 4);
 	            playMusic(intromusic[music], true, false, false);
 #endif
 				createMainMenu(false);
@@ -25992,7 +25992,7 @@ failed:
                     doEndgame(true, false);
                 }
 #ifdef SOUND
-                const int music = RNG.uniform(0, NUMINTROMUSIC - 2);
+                const int music = RNG.uniform(0, NUMINTROMUSIC - 4);
                 playMusic(intromusic[music], true, false, false);
 #endif
                 createMainMenu(false);

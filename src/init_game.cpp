@@ -742,6 +742,14 @@ void deinitGame()
 		{
 			mus->release();
 		}
+		for ( auto mus : arenamusic )
+		{
+			mus->release();
+		}
+		for ( auto mus : rooftopmusic )
+		{
+			mus->release();
+		}
 	}
 #ifdef USE_OPENAL
 #undef FMOD_Channel_Stop

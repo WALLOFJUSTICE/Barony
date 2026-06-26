@@ -104,12 +104,19 @@ extern FMOD::Sound* bastillemusic;
 extern FMOD::Sound* warrenmusic;
 extern FMOD::Sound* fraternitymusic;
 extern FMOD::Sound* penitentiarymusic;
+extern FMOD::Sound* automatmusic;
+extern FMOD::Sound* gatehousemusic;
+extern FMOD::Sound* credits_expansion_music;
+extern FMOD::Sound* throneroommusic;
+extern FMOD::Sound* voidvaultmusic;
 #define NUMCAVESMUSIC 3
 #define NUMCITADELMUSIC 3
-#define NUMINTROMUSIC 3
+#define NUMINTROMUSIC 5
 extern std::vector<FMOD::Sound*> fortressmusic;
 extern std::vector<FMOD::Sound*> keepmusic;
 extern std::vector<FMOD::Sound*> backroomsmusic;
+extern std::vector<FMOD::Sound*> arenamusic;
+extern std::vector<FMOD::Sound*> rooftopmusic;
 //TODO: Automatically scan the music folder for a mines subdirectory and use all the music for the mines or something like that. I'd prefer something neat like for that loading music for a level, anyway. And I can just reuse the code I had for ORR.
 
 extern FMOD::Channel* music_channel, *music_channel2, *music_resume; //TODO: List of music, play first one, fade out all the others? Eh, maybe some other day. //music_resume is the music to resume after, say, combat or shops. //TODO: Clear music_resume every biome change. Or otherwise validate it for that level set.
@@ -547,7 +554,7 @@ extern OPENAL_BUFFER* bramscastlemusic;
 extern OPENAL_BUFFER* hamletmusic;
 #define NUMCAVESMUSIC 3
 #define NUMCITADELMUSIC 3
-#define NUMINTROMUSIC 3
+#define NUMINTROMUSIC 5
 //TODO: Automatically scan the music folder for a mines subdirectory and use all the music for the mines or something like that. I'd prefer something neat like for that loading music for a level, anyway. And I can just reuse the code I had for ORR.
 
 extern OPENAL_SOUND* music_channel, *music_channel2, *music_resume; //TODO: List of music, play first one, fade out all the others? Eh, maybe some other day. //music_resume is the music to resume after, say, combat or shops. //TODO: Clear music_resume every biome change. Or otherwise validate it for that level set.

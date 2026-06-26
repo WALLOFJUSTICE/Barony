@@ -16707,7 +16707,7 @@ fireagain:
 
 							if ( attacker->behavior == &actPlayer )
 							{
-								messagePlayerMonsterEvent(defender->skill[2], makeColorRGB(255, 0, 0), *myStats, Language::get(7075), Language::get(7076), MSG_COMBAT);
+								messagePlayerMonsterEvent(attacker->skill[2], makeColorRGB(255, 0, 0), *myStats, Language::get(7075), Language::get(7076), MSG_COMBAT);
 							}
 							if ( defender->behavior == &actPlayer )
 							{
@@ -25467,6 +25467,14 @@ void Entity::monsterAcquireAttackTarget(const Entity& target, Sint32 state, bool
 		}
 	}
 
+	if ( target.getRace() == HAUNTED_ARMOR )
+	{
+		if ( checkFriend(const_cast<Entity*>(&target)) )
+		{
+			return;
+		}
+	}
+
 	if ( target.getRace() == DUCK_SMALL )
 	{
 		return;
@@ -29843,6 +29851,13 @@ bool monsterNameIsGeneric(Stat& monsterStats)
 		|| strstr(monsterStats.name, "Training")
 		|| strstr(monsterStats.name, "Mysterious")
 		|| strstr(monsterStats.name, "shaman")
+		|| strstr(monsterStats.name, "priest")
+		|| strstr(monsterStats.name, "acolyte")
+		|| strstr(monsterStats.name, "scout")
+		|| strstr(monsterStats.name, "regent")
+		|| strstr(monsterStats.name, "guard")
+		|| strstr(monsterStats.name, "sergeant")
+		|| strstr(monsterStats.name, "squire")
 		|| strstr(monsterStats.name, Language::get(7007))
 		|| !strcmp(monsterStats.name, Language::get(6807)) // revenant skeleton
 		|| !strcmp(monsterStats.name, Language::get(6302)) // gnome thief

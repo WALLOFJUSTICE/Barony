@@ -499,6 +499,10 @@ void handleLevelMusic()
 		{
 			playMusic(bastillemusic, true, true, true);
 		}
+		else if ( !strncmp(map.filename, "arena.lmp", 9) )
+		{
+			playMusic(arenamusic[1], true, true, true);
+		}
 		else if ( !strncmp(map.filename, "warren", 6) )
 		{
 			playMusic(warrenmusic, true, true, true);
@@ -513,6 +517,22 @@ void handleLevelMusic()
 			{
 				playMusic(minesmusic[4], true, true, true);
 			}
+		}
+		else if ( !strncmp(map.filename, "throneroom", 10) )
+		{
+			playMusic(throneroommusic, true, true, true);
+		}
+		else if ( !strncmp(map.filename, "automat", 7) )
+		{
+			playMusic(automatmusic, true, true, true);
+		}
+		else if ( !strncmp(map.filename, "gatehouse", 9) )
+		{
+			playMusic(gatehousemusic, true, true, true);
+		}
+		else if ( !strncmp(map.filename, "void.lmp", 8) )
+		{
+			playMusic(voidvaultmusic, true, true, true);
 		}
 		else if ( !strncmp(map.name, "Tutorial ", 9) )
 		{
@@ -630,6 +650,10 @@ void handleLevelMusic()
 		{
 			playMusic(backroomsmusic[0], true, true, true);
 		}
+		else if ( !strncmp(map.filename, "arena.lmp", 9) )
+		{
+			playMusic(arenamusic[0], true, true, true);
+		}
 		else if ( !strncmp(map.filename, "bastille", 8) )
 		{
 			playMusic(fortressmusic[0], true, true, true);
@@ -643,6 +667,22 @@ void handleLevelMusic()
 			playMusic(hellmusic[0], true, true, true);
 		}
 		else if ( !strncmp(map.filename, "penitentiary", 12) )
+		{
+			playMusic(underworldmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "throneroom", 10) )
+		{
+			playMusic(keepmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "automat", 7) )
+		{
+			playMusic(citadelmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "gatehouse", 9) )
+		{
+			playMusic(cavesmusic[0], true, true, true);
+		}
+		else if ( !strncmp(map.filename, "void.lmp", 8) )
 		{
 			playMusic(underworldmusic[0], true, true, true);
 		}

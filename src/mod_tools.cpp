@@ -12113,7 +12113,7 @@ void Mods::unloadMods(bool force)
 		if (reloadIntroMusic)
 		{
 #ifdef SOUND
-			playMusic(intromusic[local_rng.rand() % (NUMINTROMUSIC - 1)], false, true, true);
+			playMusic(intromusic[local_rng.rand() % (NUMINTROMUSIC - 3)], false, true, true);
 #endif			
 		}
 		Mods::musicRequireReloadUnmodded = false;
@@ -12228,7 +12228,7 @@ void Mods::loadMods()
 		if ( reloadIntroMusic )
 		{
 #ifdef SOUND
-			playMusic(intromusic[local_rng.rand() % (NUMINTROMUSIC - 1)], false, true, true);
+			playMusic(intromusic[local_rng.rand() % (NUMINTROMUSIC - 3)], false, true, true);
 #endif			
 		}
 		Mods::musicRequireReloadUnmodded = true;
@@ -12241,7 +12241,7 @@ void Mods::loadMods()
 		if ( reloadIntroMusic )
 		{
 #ifdef SOUND
-			playMusic(intromusic[local_rng.rand() % (NUMINTROMUSIC - 1)], false, true, true);
+			playMusic(intromusic[local_rng.rand() % (NUMINTROMUSIC - 3)], false, true, true);
 #endif			
 		}
 		Mods::musicRequireReloadUnmodded = false;
