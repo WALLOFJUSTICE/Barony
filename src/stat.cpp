@@ -1748,7 +1748,8 @@ int Stat::numShillelaghDebuffsActive(Entity* my)
 		EFF_DUSTED,
 		EFF_DISRUPTED,
 		EFF_FROST,
-		EFF_HOLY_FIRE
+		EFF_HOLY_FIRE,
+		EFF_MESMERIZED
 	};
 	int result = 0;
 	if ( my && my->flags[BURNING] )
@@ -1768,6 +1769,7 @@ int Stat::numShillelaghDebuffsActive(Entity* my)
 
 bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
 {
+	// make sure to update shillelagh debuffs
 	switch ( effect )
 	{
 		case EFF_ASLEEP:
@@ -1788,6 +1790,7 @@ bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
 		case EFF_WEAKNESS:
 		case EFF_INCOHERENCE:
 		case EFF_MINIMISE:
+		case EFF_MAGIC_GREASE:
 		case EFF_NUMBING_BOLT:
 		case EFF_CURSE_FLESH:
 		case EFF_TABOO:
