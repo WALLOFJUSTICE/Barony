@@ -5172,7 +5172,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							Stat* stats = entity->getStats();
 							if ( stats )
 							{
-								stats->setProficiency(i, result);
+								stats->setProficiency(i, stats->getProficiency(i) + result);
 							}
 						}
 					}
