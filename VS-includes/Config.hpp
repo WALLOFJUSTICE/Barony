@@ -14,6 +14,10 @@
 #define DEBUG_EVENT_TIMERS
 #endif
 
+#ifndef EDITOR
+#define USE_NVAPI // Video settings option for NVIDIA OpenGL compatibility stuttering fix
+#endif
+
 #ifdef BARONY_DRM_FREE
 
 #ifdef STEAMWORKS

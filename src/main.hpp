@@ -976,3 +976,89 @@ char* getTimeAndDateFormatted(time_t t, char* buf, size_t size);
 #endif
 
 #define VERTEX_ARRAYS_ENABLED
+
+#ifdef WINDOWS
+#ifdef USE_NVAPI
+#ifndef EDITOR
+#pragma comment(lib, "nvapi64.lib")
+#include <nvapi/nvapi.h>
+#endif
+#endif
+#endif
+
+struct NV_API_Funcs
+{
+	enum class NV_API_OGL_Setting
+	{
+		UNKNOWN = 0,
+		AUTO = 1,
+		PREFER_DISABLE = 2,
+		PREFER_ENABLE = 3,
+		ENUM_MAX
+	};
+	static NV_API_OGL_Setting openGLPresentMethod;
+	static bool isAvailable;
+	static bool isInit;
+	static bool firstLoad;
+
+#ifdef WINDOWS
+#ifdef USE_NVAPI
+#ifndef EDITOR
+
+	static bool init();
+	static bool createProfile(NvDRSSessionHandle hSession, NvDRSProfileHandle& hProfile);
+	static bool createApplication(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile, NVDRS_APPLICATION* app);
+	static std::string toString(NvAPI_UnicodeString input)
+	{
+		const int len = WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR)input, -1, nullptr, 0, nullptr, nullptr);
+		if ( len > 0 )
+		{
+			std::string str(len, 0);
+			WideCharToMultiByte(CP_UTF8, 0, (LPCWSTR)input, -1, &str[0],
+				len, nullptr, nullptr);
+			return str;
+		}
+
+		return "";
+	}
+	static void logError(NvAPI_Status status)
+	{
+		NvAPI_ShortString buf = { 0 };
+		NvAPI_GetErrorMessage(status, buf);
+		printlog("[NVAPI Error]: %s", buf);
+	}
+	static void logError(const char* str, ...)
+	{
+		char newstr[1024] = { 0 };
+		va_list argptr;
+
+		// format the content
+		va_start(argptr, str);
+		vsnprintf(newstr, 1023, str, argptr);
+		va_end(argptr);
+		printlog("[NVAPI Error]: %s", newstr);
+	}
+	static void logInfo(const char* str, ...)
+	{
+		char newstr[1024] = { 0 };
+		va_list argptr;
+
+		// format the content
+		va_start(argptr, str);
+		vsnprintf(newstr, 1023, str, argptr);
+		va_end(argptr);
+		printlog("[NVAPI Info]: %s", newstr);
+	}
+	static void cleanup(NvDRSSessionHandle hSession)
+	{
+		auto result = NvAPI_DRS_DestroySession(hSession);
+		if ( result != NVAPI_OK )
+		{
+			logError(result);
+		}
+	}
+	static void displayProfileContents(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile);
+#endif
+#endif
+#endif
+};

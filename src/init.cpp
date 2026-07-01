@@ -154,6 +154,422 @@ bool remountBaseDataFolders() {
 #endif
 }
 
+bool NV_API_Funcs::isAvailable = false;
+bool NV_API_Funcs::isInit = false;
+bool NV_API_Funcs::firstLoad = true;
+NV_API_Funcs::NV_API_OGL_Setting NV_API_Funcs::openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::UNKNOWN;
+#ifdef WINDOWS
+#ifdef USE_NVAPI
+#ifndef EDITOR
+void NV_API_Funcs::displayProfileContents(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile)
+{
+	if ( !isAvailable ) { return; }
+	if ( hSession == 0 || hProfile == 0 ) { return; }
+
+	NVDRS_PROFILE profileInformation = { 0 };
+	profileInformation.version = NVDRS_PROFILE_VER;
+	auto status = NvAPI_DRS_GetProfileInfo(hSession,
+		hProfile,
+		&profileInformation);
+
+	logInfo("Profile Name: %s | Applications: %d | Settings: %d | Predefined: %d", toString(profileInformation.profileName).c_str(),
+		profileInformation.numOfApps, profileInformation.numOfSettings, profileInformation.isPredefined);
+
+	if ( profileInformation.numOfApps > 0 ) {
+		NVDRS_APPLICATION* appArray = new NVDRS_APPLICATION[profileInformation.numOfApps];
+		NvU32 numAppsRead = profileInformation.numOfApps, i;
+		appArray[0].version = NVDRS_APPLICATION_VER;
+		status = NvAPI_DRS_EnumApplications(hSession,
+			hProfile,
+			0,
+			&numAppsRead,
+			appArray);
+		if ( status != NVAPI_OK ) {
+			logError(status);
+			delete[] appArray;
+			return;
+		}
+		for ( i = 0; i < numAppsRead; i++ ) {
+			logInfo("Application Name: %s | Predefined: '%d'", /*toString(appArray[i].appName).c_str()*/
+				toString(appArray[i].userFriendlyName).c_str(), appArray[i].isPredefined);
+		}
+		delete[] appArray;
+	}
+
+	if ( profileInformation.numOfSettings > 0 ) 
+	{
+		NVDRS_SETTING* setArray = new NVDRS_SETTING[profileInformation.numOfSettings];
+		memset(setArray, 0, sizeof(*setArray) * profileInformation.numOfSettings);
+		NvU32 numSetRead = profileInformation.numOfSettings, i;
+		setArray[0].version = NVDRS_SETTING_VER;
+		status = NvAPI_DRS_EnumSettings(hSession,
+			hProfile,
+			0,
+			&numSetRead,
+			setArray);
+
+		if ( status != NVAPI_OK )
+		{
+			logError(status);
+			return;
+		}
+
+		for ( i = 0; i < numSetRead; i++ )
+		{
+			if ( setArray[i].settingLocation != NVDRS_CURRENT_PROFILE_LOCATION ) 
+			{
+				continue;
+			}
+			switch ( setArray[i].settingType ) 
+			{
+			case NVDRS_DWORD_TYPE:
+				printlog("Setting: '%s' | ID: '%X' | Value: '%X' | Predefined: '%d'", toString(setArray[i].settingName).c_str(), 
+					setArray[i].settingId, setArray[i].u32CurrentValue, setArray[i].isCurrentPredefined);
+				break;
+			case NVDRS_BINARY_TYPE:
+			{
+				std::string str = "";
+				for ( unsigned int len = 0; len < setArray[i].binaryCurrentValue.valueLength; len++ )
+				{
+					char buf[16];
+					snprintf(buf, sizeof(buf), "%02x", setArray[i].binaryCurrentValue.valueData[len]);
+					if ( str != "" )
+					{
+						str += ' ';
+					}
+					str += buf;
+				}
+				printlog("Setting: '%s' | ID: '%X' | Binary: '%s' | Predefined: '%d'", toString(setArray[i].settingName).c_str(),
+					setArray[i].settingId, str.c_str(), setArray[i].isCurrentPredefined);
+				break;
+			}
+			case NVDRS_WSTRING_TYPE:
+				printlog("Setting: '%s' | ID: '%X' | Value: '%s' | Predefined: '%d'", toString(setArray[i].settingName).c_str(),
+					setArray[i].settingId, toString(setArray[i].wszCurrentValue).c_str(), setArray[i].isCurrentPredefined);
+				break;
+			default:
+				break;
+			}
+		}
+
+		delete[] setArray;
+	}
+}
+
+bool NV_API_Funcs::createProfile(NvDRSSessionHandle hSession, NvDRSProfileHandle& hProfile)
+{
+	if ( !isAvailable ) { return false; }
+
+	NVDRS_PROFILE drsProfile = { 0 };
+	drsProfile.version = NVDRS_PROFILE_VER;
+	drsProfile.isPredefined = 0;
+	memcpy_s(drsProfile.profileName, sizeof(drsProfile.profileName), L"Barony", (wcslen(L"Barony") + 1) * sizeof(wchar_t));
+	auto status = NvAPI_DRS_CreateProfile(hSession, &drsProfile, &hProfile);
+	if ( status != NVAPI_OK )
+	{
+		logError(status);
+		cleanup(hSession);
+		return false;
+	}
+
+	return true;
+}
+
+bool NV_API_Funcs::createApplication(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile, NVDRS_APPLICATION* app)
+{
+	if ( !isAvailable || !app ) { return false; }
+
+	auto status = NvAPI_DRS_CreateApplication(hSession, hProfile, app);
+	if ( status != NVAPI_OK )
+	{
+		logError(status);
+		return false;
+	}
+	return true;
+}
+
+bool NV_API_Funcs::init()
+{
+	logInfo("Initializing...");
+
+	bool wasFirstLoad = firstLoad;
+	firstLoad = false;
+	isAvailable = false;
+	isInit = false;
+#include <nvapi/NvApiDriverSettings.h>
+	NvAPI_Status status = NvAPI_Initialize();
+	if ( status != NVAPI_OK )
+	{
+		NvAPI_ShortString buf = { 0 };
+		NvAPI_GetErrorMessage(status, buf);
+		printlog("[NVAPI Info]: Not in use, initialize result was '%s'", buf);
+		return false;
+	}
+
+	isAvailable = true;
+
+	NvDRSSessionHandle hSession = 0;
+	status = NvAPI_DRS_CreateSession(&hSession);
+	if ( status != NVAPI_OK )
+	{
+		logError(status);
+		return false;
+	}
+
+	status = NvAPI_DRS_LoadSettings(hSession);
+	if ( status != NVAPI_OK )
+	{
+		logError(status);
+		cleanup(hSession);
+		return false;
+	}
+
+	NvDRSProfileHandle hProfile = 0;
+	NvAPI_UnicodeString profile_name;
+	memcpy_s(profile_name, sizeof(profile_name), L"Barony", (wcslen(L"Barony") + 1) * sizeof(wchar_t));
+
+	status = NvAPI_DRS_FindProfileByName(hSession, profile_name, &hProfile);
+	if ( status == NVAPI_OK )
+	{
+		logInfo("Found existing profile");
+		//displayProfileContents(hSession, hProfile);
+		//return false;
+	}
+	else
+	{
+		// try create a new profile named 'Barony'
+		if ( !createProfile(hSession, hProfile) )
+		{
+			logError("Unable to create profile!");
+			cleanup(hSession);
+			return false;
+		}
+		logInfo("Created new profile");
+	}
+
+	NVDRS_APPLICATION app = { 0 };
+	app.version = NVDRS_APPLICATION_VER;
+	app.isPredefined = 0;
+	// if need fully qualified name...
+	/*wchar_t current_app[2048];
+	if ( GetModuleFileNameW(0, current_app, 2048) ) 
+	{
+		memcpy_s(app.appName, sizeof(app.appName), current_app, 2048 * sizeof(wchar_t));
+	}*/
+	memcpy_s(app.appName, sizeof(app.appName), L"barony.exe", (wcslen(L"barony.exe") + 1) * sizeof(wchar_t));
+	memcpy_s(app.userFriendlyName, sizeof(app.userFriendlyName), L"barony.exe", (wcslen(L"barony.exe") + 1) * sizeof(wchar_t));
+
+	// check for existing application path
+	NvDRSProfileHandle hProfileRet = 0;
+	status = NvAPI_DRS_FindApplicationByName(hSession, app.appName, &hProfileRet, &app);
+	if ( status == NVAPI_OK )
+	{
+		logInfo("Found existing application");
+	}
+	else
+	{
+		NVDRS_APPLICATION app = { 0 };
+		app.version = NVDRS_APPLICATION_VER;
+		app.isPredefined = 0;
+		// if need fully qualified name...
+		/*wchar_t current_app[2048];
+		if ( GetModuleFileNameW(0, current_app, 2048) )
+		{
+			memcpy_s(app.appName, sizeof(app.appName), current_app, 2048 * sizeof(wchar_t));
+		}*/
+		memcpy_s(app.appName, sizeof(app.appName), L"barony.exe", (wcslen(L"barony.exe") + 1) * sizeof(wchar_t));
+		memcpy_s(app.userFriendlyName, sizeof(app.userFriendlyName), L"barony.exe", (wcslen(L"barony.exe") + 1) * sizeof(wchar_t));
+
+		// try create a new application matching the .exe path
+		if ( !createApplication(hSession, hProfile, &app) )
+		{
+			logError("Unable to create application!");
+			cleanup(hSession);
+			return false;
+		}
+		logInfo("Created new application");
+	}
+	
+	isInit = true;
+
+	{
+		NVDRS_SETTING drsSetting = { 0 };
+		drsSetting.version = NVDRS_SETTING_VER;
+		status = NvAPI_DRS_GetSetting(hSession, hProfile, ESetting::OGL_CPL_PREFER_DXPRESENT_ID, &drsSetting);
+		if ( status == NVAPI_SETTING_NOT_FOUND )
+		{
+			logInfo("Setting OpenGL present method to '%d'...", (int)EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_AUTO);
+			NVDRS_SETTING drsSetting = { 0 };
+			drsSetting.version = NVDRS_SETTING_VER;
+			drsSetting.settingId = ESetting::OGL_CPL_PREFER_DXPRESENT_ID;
+			drsSetting.settingType = NVDRS_DWORD_TYPE;
+			drsSetting.u32CurrentValue = EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_AUTO;
+			status = NvAPI_DRS_SetSetting(hSession, hProfile, &drsSetting);
+
+			if ( status != NVAPI_OK )
+			{
+				logError(status);
+				cleanup(hSession);
+				return false;
+			}
+
+			status = NvAPI_DRS_SaveSettings(hSession);
+			if ( status != NVAPI_OK )
+			{
+				logError(status);
+				cleanup(hSession);
+				return false;
+			}
+
+			openGLPresentMethod = NV_API_OGL_Setting::AUTO;
+
+			logInfo("Successfully applied profile settings");
+		}
+		else if ( status != NVAPI_OK )
+		{
+			logInfo("Failed reading OpenGL present method!");
+			logError(status);
+			cleanup(hSession);
+			return false;
+		}
+		else
+		{
+			if ( wasFirstLoad )
+			{
+				if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_DISABLED )
+				{
+					openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE;
+				}
+				else if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_ENABLED )
+				{
+					openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE;
+				}
+				else if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_AUTO )
+				{
+					openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::AUTO;
+				}
+				const char* newMode = "unknown";
+				if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE )
+				{
+					newMode = "disabled";
+				}
+				else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE )
+				{
+					newMode = "enabled";
+				}
+				else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::AUTO )
+				{
+					newMode = "auto";
+				}
+
+				logInfo("Loaded system OpenGL present method '%s'", newMode);
+			}
+			else if ( openGLPresentMethod != NV_API_Funcs::NV_API_OGL_Setting::UNKNOWN )
+			{
+				const char* currentMode = "auto";
+				const char* newMode = "unknown";
+				if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_DISABLED )
+				{
+					currentMode = "disabled";
+				}
+				else if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_ENABLED )
+				{
+					currentMode = "enabled";
+				}
+				else if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_AUTO )
+				{
+					currentMode = "auto";
+				}
+
+				if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE )
+				{
+					newMode = "disabled";
+				}
+				else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE )
+				{
+					newMode = "enabled";
+				}
+				else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::AUTO )
+				{
+					newMode = "auto";
+				}
+
+				logInfo("Setting OpenGL present method to '%s' from '%s'...", newMode, currentMode);
+				NVDRS_SETTING drsSetting = { 0 };
+				drsSetting.version = NVDRS_SETTING_VER;
+				drsSetting.settingId = ESetting::OGL_CPL_PREFER_DXPRESENT_ID;
+				drsSetting.settingType = NVDRS_DWORD_TYPE;
+				if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE )
+				{
+					drsSetting.u32CurrentValue = EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_DISABLED;
+				}
+				else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE )
+				{
+					drsSetting.u32CurrentValue = EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_ENABLED;
+				}
+				else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::AUTO )
+				{
+					drsSetting.u32CurrentValue = EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_AUTO;
+				}
+				status = NvAPI_DRS_SetSetting(hSession, hProfile, &drsSetting);
+				if ( status != NVAPI_OK )
+				{
+					logError(status);
+					cleanup(hSession);
+					return false;
+				}
+
+				status = NvAPI_DRS_SaveSettings(hSession);
+				if ( status != NVAPI_OK )
+				{
+					logError(status);
+					cleanup(hSession);
+					return false;
+				}
+
+				logInfo("Successfully applied profile settings");
+			}
+
+			/*openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::UNKNOWN;
+			if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_DISABLED )
+			{
+				openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE;
+			}
+			else if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_PREFER_ENABLED )
+			{
+				openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE;
+			}
+			else if ( drsSetting.u32CurrentValue == EValues_OGL_CPL_PREFER_DXPRESENT::OGL_CPL_PREFER_DXPRESENT_AUTO )
+			{
+				openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::AUTO;
+			}*/
+
+			const char* newMode = "auto";
+			if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE )
+			{
+				newMode = "disabled";
+			}
+			else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE )
+			{
+				newMode = "enabled";
+			}
+			else if ( openGLPresentMethod == NV_API_Funcs::NV_API_OGL_Setting::AUTO )
+			{
+				newMode = "auto";
+			}
+			logInfo("Current OpenGL present method is '%s'", newMode);
+		}
+	}
+
+	cleanup(hSession);
+	hSession = 0;
+	logInfo("Finished");
+	return true;
+}
+#endif
+#endif
+#endif
+
 /*-------------------------------------------------------------------------------
 
 	initApp
@@ -1555,6 +1971,14 @@ static void positionAndLimitWindow(int& x, int& y, int& w, int& h)
 
 bool initVideo()
 {
+#ifdef WINDOWS
+#ifdef USE_NVAPI
+#ifndef EDITOR
+	NV_API_Funcs::init();
+#endif
+#endif
+#endif
+
     if (!renderer) {
         // On Apple:
         // * the highest supported compatibility-profile version is 2.1

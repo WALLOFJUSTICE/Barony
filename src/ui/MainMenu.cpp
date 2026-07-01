@@ -552,6 +552,7 @@ namespace MainMenu {
 		int resolution_x = 1280;
 		int resolution_y = 720;
 		bool vsync_enabled = true;
+		int nvidia_opengl_present_mode = 0;
 		float gamma = 100.f;
 		inline bool save();
 		static inline Video load();
@@ -2743,7 +2744,8 @@ namespace MainMenu {
 		    ::display_id != display_id ||
 		    verticalSync != vsync_enabled ||
 		    new_fullscreen != fullscreen ||
-		    new_borderless != borderless) {
+		    new_borderless != borderless ||
+			(NV_API_Funcs::isAvailable && ((int)NV_API_Funcs::openGLPresentMethod != nvidia_opengl_present_mode))) {
 		    result = true;
 		}
 
@@ -2757,6 +2759,11 @@ namespace MainMenu {
 			xres = std::max(resolution_x, 1024);
 			yres = std::max(resolution_y, 720);
 			verticalSync = vsync_enabled;
+			NV_API_Funcs::openGLPresentMethod = NV_API_Funcs::NV_API_OGL_Setting::UNKNOWN;
+			if ( nvidia_opengl_present_mode >= 0 && nvidia_opengl_present_mode < (int)NV_API_Funcs::NV_API_OGL_Setting::ENUM_MAX )
+			{
+				NV_API_Funcs::openGLPresentMethod = (NV_API_Funcs::NV_API_OGL_Setting)nvidia_opengl_present_mode;
+			}
 		}
 
 		*cvar_displayHz = hz;
@@ -2774,6 +2781,7 @@ namespace MainMenu {
         settings.hz = *cvar_displayHz;
 		settings.vsync_enabled = verticalSync;
 		settings.gamma = vidgamma * 100.f;
+		settings.nvidia_opengl_present_mode = (int)NV_API_Funcs::openGLPresentMethod;
 		return settings;
 	}
 
@@ -2782,7 +2790,7 @@ namespace MainMenu {
 	}
 
 	bool Video::serialize(FileInterface* file) {
-	    int version = 1;
+	    int version = 2;
 	    file->property("version", version);
 	    file->property("window_mode", window_mode);
 	    file->property("display_id", display_id);
@@ -2791,6 +2799,10 @@ namespace MainMenu {
 	    file->property("resolution_y", resolution_y);
 	    file->property("vsync_enabled", vsync_enabled);
 	    file->property("gamma", gamma);
+		if ( !file->isReading() || version >= 2 )
+		{
+			file->property("nvidia_opengl_present_mode", nvidia_opengl_present_mode);
+		}
 		return true;
 	}
 
@@ -3134,7 +3146,7 @@ namespace MainMenu {
 	}
 
 	bool AllSettings::serialize(FileInterface* file) {
-	    int version = 25;
+	    int version = 26;
 	    file->property("version", version);
 	    file->property("mods", mods);
 		file->property("crossplay_enabled", crossplay_enabled);
@@ -4588,6 +4600,37 @@ namespace MainMenu {
 
     static void settingsResolutionBig(Button& button) {
 		settingsOpenDropdown(button, "resolution", DropdownType::Wide, settingsResolutionEntry);
+	}
+
+	static void settingsNvidiaOpenGLModes(Button& button) {
+		settingsOpenDropdown(button, "opengl_mode", DropdownType::Short, [](Frame::entry_t& entry) {
+			soundActivate();
+			do {
+				if ( entry.name == Language::get(7077) ) {
+					allSettings.video.nvidia_opengl_present_mode = (int)NV_API_Funcs::NV_API_OGL_Setting::UNKNOWN;
+					break;
+				}
+				if ( entry.name == Language::get(7078) ) {
+					allSettings.video.nvidia_opengl_present_mode = (int)NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE;
+					break;
+				}
+				if ( entry.name == Language::get(7079) ) {
+					allSettings.video.nvidia_opengl_present_mode = (int)NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE;
+					break;
+				}
+				if ( entry.name == Language::get(7080) ) {
+					allSettings.video.nvidia_opengl_present_mode = (int)NV_API_Funcs::NV_API_OGL_Setting::AUTO;
+					break;
+				}
+			} while ( 0 );
+			auto settings = main_menu_frame->findFrame("settings"); assert(settings);
+			auto settings_subwindow = settings->findFrame("settings_subwindow"); assert(settings_subwindow);
+			auto button = settings_subwindow->findButton("setting_opengl_mode_dropdown_button"); assert(button);
+			auto dropdown = settings_subwindow->findFrame("setting_opengl_mode_dropdown"); assert(dropdown);
+			button->setText(entry.name.c_str());
+			dropdown->removeSelf();
+			button->select();
+		});
 	}
 
 	static void settingsDisplayDevice(Button& button) {
@@ -6480,6 +6523,18 @@ bind_failed:
 		const char* selected_mode = borderless ? Language::get(5039):
             (fullscreen ? Language::get(5040) : Language::get(5037));
 
+		std::vector<const char*> nvidia_opengl_modes;
+		if ( allSettings.video.nvidia_opengl_present_mode == (int)NV_API_Funcs::NV_API_OGL_Setting::UNKNOWN )
+		{
+			nvidia_opengl_modes.push_back(Language::get(7077)); // unknown
+		}
+		else
+		{
+			nvidia_opengl_modes.push_back(Language::get(7080)); // auto
+			nvidia_opengl_modes.push_back(Language::get(7079)); // enable
+			nvidia_opengl_modes.push_back(Language::get(7078)); // disable
+		}
+
 		y += settingsAddSubHeader(*settings_subwindow, y, "display", Language::get(5155));
         y += settingsAddDropdown(*settings_subwindow, y, "resolution", Language::get(5156), Language::get(5157),
             true, resolutions_formatted_ptrs, resolutions_formatted_ptrs[selected_res],
@@ -6514,6 +6569,26 @@ bind_failed:
 			allSettings.hdr_enabled, [](Button& button) {soundToggleSetting(button); allSettings.hdr_enabled = button.isPressed(); });
 		y += settingsAddBooleanOption(*settings_subwindow, y, "use_frame_interpolation", Language::get(5173), Language::get(5174),
 			allSettings.use_frame_interpolation, [](Button& button) {soundToggleSetting(button); allSettings.use_frame_interpolation = button.isPressed();});
+		if ( NV_API_Funcs::isAvailable )
+		{
+			int index = 0;
+			if ( allSettings.video.nvidia_opengl_present_mode == (int)NV_API_Funcs::NV_API_OGL_Setting::AUTO
+				|| allSettings.video.nvidia_opengl_present_mode == (int)NV_API_Funcs::NV_API_OGL_Setting::UNKNOWN )
+			{
+				index = 0;
+			}
+			else if ( allSettings.video.nvidia_opengl_present_mode == (int)NV_API_Funcs::NV_API_OGL_Setting::PREFER_ENABLE )
+			{
+				index = 1;
+			}
+			else if ( allSettings.video.nvidia_opengl_present_mode == (int)NV_API_Funcs::NV_API_OGL_Setting::PREFER_DISABLE )
+			{
+				index = 2;
+			}
+			y += settingsAddDropdown(*settings_subwindow, y, "opengl_mode", Language::get(7081), Language::get(7082),
+				false, nvidia_opengl_modes, nvidia_opengl_modes[index],
+				settingsNvidiaOpenGLModes);
+		}
 #endif
 		y += settingsAddBooleanOption(*settings_subwindow, y, "vertical_split", Language::get(5175), Language::get(5176),
 			allSettings.vertical_split_enabled, [](Button& button){soundToggleSetting(button); allSettings.vertical_split_enabled = button.isPressed();});
@@ -6523,21 +6598,41 @@ bind_failed:
 			allSettings.staggered_split_enabled, [](Button& button){soundToggleSetting(button); allSettings.staggered_split_enabled = button.isPressed();});
 
 #ifndef NINTENDO
-		hookSettings(*settings_subwindow,{
-            {Setting::Type::Dropdown, "resolution"},
-			{Setting::Type::Dropdown, "device"},
-			{Setting::Type::Dropdown, "window_mode"},
-			{Setting::Type::Boolean, "vsync"},
-			{Setting::Type::Slider, "gamma"},
-			{Setting::Type::Slider, "fov"},
-			{Setting::Type::Slider, "fps"},
-			{Setting::Type::Boolean, "hdr_enabled"},
-			{Setting::Type::Boolean, "use_frame_interpolation"},
-			{Setting::Type::Boolean, "vertical_split"},
-			{Setting::Type::Boolean, "clipped_split"},
-			{Setting::Type::Boolean, "staggered_split"},
-
+		if ( NV_API_Funcs::isAvailable )
+		{
+			hookSettings(*settings_subwindow, {
+				{Setting::Type::Dropdown, "resolution"},
+				{Setting::Type::Dropdown, "device"},
+				{Setting::Type::Dropdown, "window_mode"},
+				{Setting::Type::Boolean, "vsync"},
+				{Setting::Type::Slider, "gamma"},
+				{Setting::Type::Slider, "fov"},
+				{Setting::Type::Slider, "fps"},
+				{Setting::Type::Boolean, "hdr_enabled"},
+				{Setting::Type::Boolean, "use_frame_interpolation"},
+				{Setting::Type::Dropdown, "opengl_mode"},
+				{Setting::Type::Boolean, "vertical_split"},
+				{Setting::Type::Boolean, "clipped_split"},
+				{Setting::Type::Boolean, "staggered_split"},
+				});
+		}
+		else
+		{
+			hookSettings(*settings_subwindow,{
+				{Setting::Type::Dropdown, "resolution"},
+				{Setting::Type::Dropdown, "device"},
+				{Setting::Type::Dropdown, "window_mode"},
+				{Setting::Type::Boolean, "vsync"},
+				{Setting::Type::Slider, "gamma"},
+				{Setting::Type::Slider, "fov"},
+				{Setting::Type::Slider, "fps"},
+				{Setting::Type::Boolean, "hdr_enabled"},
+				{Setting::Type::Boolean, "use_frame_interpolation"},
+				{Setting::Type::Boolean, "vertical_split"},
+				{Setting::Type::Boolean, "clipped_split"},
+				{Setting::Type::Boolean, "staggered_split"},
 			});
+		}
 
 		settingsSubwindowFinalize(*settings_subwindow, y, {Setting::Type::Dropdown, "resolution"});
 		settingsSelect(*settings_subwindow, {Setting::Type::Dropdown, "resolution"});
