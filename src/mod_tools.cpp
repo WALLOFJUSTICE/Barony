@@ -8464,8 +8464,25 @@ void VideoManager_t::drawTexturedQuad(unsigned int texID, int tw, int th, const 
 {
     Uint32 color = makeColor(255, 255, 255, (uint8_t)(alpha * 255.f));
     const SDL_Rect viewport{0, 0, Frame::virtualScreenX, Frame::virtualScreenY};
+	GLboolean blendEnabled = GL_FALSE;
+
+#ifdef LINUX // fix for blank video output, alpha channel isn't working as other platforms
+	GL_CHECK_ERR(glGetBooleanv, &blendEnabled);
+	if ( blendEnabled != GL_FALSE )
+	{
+		GL_CHECK_ERR(glDisable(GL_BLEND));
+	}
+#endif
+
 	Image::draw(texID, tw, th,
         &src, dest, viewport, color);
+
+#ifdef LINUX
+	if ( blendEnabled != GL_FALSE )
+	{
+		GL_CHECK_ERR(glEnable(GL_BLEND));
+	}
+#endif
 }
 
 #ifndef EDITOR
