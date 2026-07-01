@@ -20,6 +20,7 @@ public:
 	std::string text = "";
 	std::string default_name = "";
 	std::vector<std::string> formattedPages;
+	unsigned long book_hash = 0;
 };
 extern std::vector<Book_t> allBooks;
 
@@ -34,7 +35,7 @@ public:
 	void createBooks(bool forceCacheRebuild);
 	void createBook(std::string filename); //Take a book filename and generate all of its pages.
 	void deleteBooks();
-	std::unordered_map<std::string, std::string> tempBookData;
+	std::unordered_map<std::string, std::pair<std::string, unsigned long>> tempBookData;
 	void readBooksIntoTemp();
 	std::list<std::string> getListOfBooksAfterFiltering();
 };
