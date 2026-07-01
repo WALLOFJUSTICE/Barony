@@ -113,6 +113,7 @@ void BookParser_t::deleteBooks()
 
 bool BookParser_t::readCompiledBooks()
 {
+	auto t1 = std::chrono::high_resolution_clock::now();
 	std::string compiledBooksPath = "books/compiled_books.json";
 	if ( PHYSFS_getRealDir(compiledBooksPath.c_str()) != NULL )
 	{
@@ -123,13 +124,16 @@ bool BookParser_t::readCompiledBooks()
 		if ( fp )
 		{
 			static char buf[MAX_FILE_LENGTH];
-			int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
-			buf[count] = '\0';
-			rapidjson::StringStream is(buf);
-			FileIO::close(fp);
+			//int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
+			//buf[count] = '\0';
+
+			FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+			//rapidjson::StringStream is(buf);
 
 			rapidjson::Document d;
 			d.ParseStream(is);
+			FileIO::close(fp);
+
 			if ( !d.HasMember("version") || !d.HasMember("books") )
 			{
 				printlog("[JSON]: Could not read member 'version' or 'books', possible invalid syntax.");
@@ -143,6 +147,10 @@ bool BookParser_t::readCompiledBooks()
 				allBooks.push_back(Book_t());
 				auto& newBook = allBooks[allBooks.size() - 1];
 				newBook.default_name = book_itr->name.GetString();
+				if ( book_itr->value.HasMember("hash") )
+				{
+					newBook.book_hash = book_itr->value["hash"].GetUint64();
+				}
 				for ( rapidjson::Value::ConstValueIterator page_itr = book_itr->value["pages"].Begin();
 					page_itr != book_itr->value["pages"].End(); ++page_itr )
 				{
@@ -150,7 +158,9 @@ bool BookParser_t::readCompiledBooks()
 				}
 				++numBooksRead;
 			}
-			printlog("[Books]: Read %d precompiled books successfully.", numBooksRead);
+			auto t2 = std::chrono::high_resolution_clock::now();
+			double timediff = 1000 * std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
+			printlog("[Books]: Read %d precompiled books successfully in time: %4.3fms", numBooksRead, timediff);
 			return true;
 		}
 	}
@@ -159,6 +169,7 @@ bool BookParser_t::readCompiledBooks()
 
 bool BookParser_t::booksRequireCompiling()
 {
+	auto t1 = std::chrono::high_resolution_clock::now();
 	readBooksIntoTemp();
 
 	std::string compiledBooksPath = "books/compiled_books.json";
@@ -171,13 +182,15 @@ bool BookParser_t::booksRequireCompiling()
 		if ( fp )
 		{
 			static char buf[MAX_FILE_LENGTH];
-			int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
-			buf[count] = '\0';
-			rapidjson::StringStream is(buf);
-			FileIO::close(fp);
+			//int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
+			//buf[count] = '\0';
+
+			FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+			//rapidjson::StringStream is(buf);
 
 			rapidjson::Document d;
 			d.ParseStream(is);
+			FileIO::close(fp);
 			if ( !d.HasMember("version") || !d.HasMember("books") )
 			{
 				printlog("[JSON]: Could not read member 'version' or 'books', possible invalid syntax.");
@@ -195,6 +208,13 @@ bool BookParser_t::booksRequireCompiling()
 			{
 				std::string bookName = book_itr->name.GetString();
 				std::string rawText = book_itr->value["raw_text"].GetString();
+				unsigned long hash = 0;
+				bool hasHash = false;
+				if ( book_itr->value.HasMember("hash") )
+				{
+					hasHash = true;
+					hash = book_itr->value["hash"].GetUint64();
+				}
 
 				if ( tempBookData.find(bookName) == tempBookData.end() )
 				{
@@ -203,7 +223,19 @@ bool BookParser_t::booksRequireCompiling()
 				}
 				else
 				{
-					if ( tempBookData[bookName] != rawText )
+					if ( tempBookData[bookName].first.size() != rawText.size() )
+					{
+						printlog("[Books]: Compiled Books Check - Book text: \"%s\" does not match size in compiled books, recompiling...", bookName.c_str());
+						return true;
+					}
+
+					if ( hasHash && tempBookData[bookName].second != hash )
+					{
+						printlog("[Books]: Compiled Books Check - Book text: \"%s\" does not match hash in compiled books, recompiling...", bookName.c_str());
+						return true;
+					}
+
+					if ( tempBookData[bookName].first != rawText )
 					{
 						printlog("[Books]: Compiled Books Check - Book text: \"%s\" does not match in compiled books, recompiling...", bookName.c_str());
 						return true;
@@ -212,6 +244,10 @@ bool BookParser_t::booksRequireCompiling()
 			}
 		}
 	}
+
+	auto t2 = std::chrono::high_resolution_clock::now();
+	double timediff = 1000 * std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
+	printlog("[Books]: No compiling required in time: %4.3fms", timediff);
 	return false;
 }
 
@@ -320,7 +356,7 @@ void BookParser_t::readBooksIntoTemp()
 			{
 				filenameNoExtension = filename.substr(0, findExtension);
 			}
-			tempBookData.insert(std::make_pair(filenameNoExtension, ""));
+			tempBookData.insert(std::make_pair(filenameNoExtension, std::make_pair("", 0)));
 			auto& entry = tempBookData[filenameNoExtension];
 
 			//Load in the text from a file.
@@ -338,7 +374,8 @@ void BookParser_t::readBooksIntoTemp()
 			char* tmp = readFile(bookChar);
 			if ( tmp )
 			{
-				entry = tmp;
+				entry.first = tmp;
+				entry.second = djb2Hash(tmp);
 			}
 			free(tmp);
 		}
@@ -383,6 +420,7 @@ void BookParser_t::createBooks(bool forceCacheRebuild)
 
 void BookParser_t::writeCompiledBooks()
 {
+	auto t1 = std::chrono::high_resolution_clock::now();
 	std::string inputPath = outputdir;
 	inputPath.append(PHYSFS_getDirSeparator());
 	std::string fileName = "books/compiled_books.json";
@@ -398,12 +436,16 @@ void BookParser_t::writeCompiledBooks()
 	}
 	else
 	{
-		char buf[MAX_FILE_LENGTH];
-		int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
-		buf[count] = '\0';
-		rapidjson::StringStream is(buf);
-		FileIO::close(fp);
+		static char buf[MAX_FILE_LENGTH];
+		//int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
+		//buf[count] = '\0';
+
+		FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+		//rapidjson::StringStream is(buf);
+
 		d.ParseStream(is);
+		FileIO::close(fp);
+
 
 		if ( !d.HasMember("version") )
 		{
@@ -431,6 +473,11 @@ void BookParser_t::writeCompiledBooks()
 			rapidjson::Value rawTextVal(book.text.c_str(), d.GetAllocator());
 			d["books"][book.default_name.c_str()].AddMember(rawTextKey, rawTextVal, d.GetAllocator());
 
+			rapidjson::Value hashKey("hash", d.GetAllocator());
+			unsigned long hash = djb2Hash(const_cast<char*>(book.text.c_str()));
+			rapidjson::Value hashVal(rapidjson::Value().SetUint64(hash), d.GetAllocator());
+			d["books"][book.default_name.c_str()].AddMember(hashKey, hashVal, d.GetAllocator());
+
 			rapidjson::Value pagesKey("pages", d.GetAllocator());
 			rapidjson::Value pagesArrayVal(rapidjson::kArrayType);
 			d["books"][book.default_name.c_str()].AddMember(pagesKey, pagesArrayVal, d.GetAllocator());
@@ -444,6 +491,17 @@ void BookParser_t::writeCompiledBooks()
 		else
 		{
 			d["books"][book.default_name.c_str()]["raw_text"].SetString(book.text.c_str(), d.GetAllocator());
+			rapidjson::Value hashKey("hash", d.GetAllocator());
+			unsigned long hash = djb2Hash(const_cast<char*>(book.text.c_str()));
+			if ( !d["books"][book.default_name.c_str()].HasMember("hash") )
+			{
+				rapidjson::Value hashVal(rapidjson::Value().SetUint64(hash), d.GetAllocator());
+				d["books"][book.default_name.c_str()].AddMember(hashKey, hashVal, d.GetAllocator());
+			}
+			else
+			{
+				d["books"][book.default_name.c_str()]["hash"].SetUint64(hash);
+			}
 			d["books"][book.default_name.c_str()]["pages"].Clear();
 			for ( auto& page : book.formattedPages )
 			{
@@ -466,7 +524,9 @@ void BookParser_t::writeCompiledBooks()
 	fp->write(os.GetString(), sizeof(char), os.GetSize());
 	FileIO::close(fp);
 	
-	printlog("[Books]: Successfully compiled books into file: '%s'", inputPath.c_str());
+	auto t2 = std::chrono::high_resolution_clock::now();
+	double timediff = 1000 * std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
+	printlog("[Books]: Successfully compiled books into file: '%s' in time: %4.3fms", inputPath.c_str(), timediff);
 }
 
 /*****createBook() helper functions******/
