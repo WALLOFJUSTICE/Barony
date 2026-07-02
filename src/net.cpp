@@ -1199,7 +1199,7 @@ void serverUpdatePlayerGameplayStats(int player, int gameplayStat, int changeval
 				gameStatistics[gameplayStat] |= (fears << 16);
 			}
 		}
-		else if ( gameplayStat == STATISTICS_POP_QUIZ_1 || gameplayStat == STATISTICS_POP_QUIZ_2 )
+		/*else if ( gameplayStat == STATISTICS_POP_QUIZ_1 || gameplayStat == STATISTICS_POP_QUIZ_2 )
 		{
 			int spellID = changeval;
 			if ( spellID >= 30 )
@@ -1213,6 +1213,10 @@ void serverUpdatePlayerGameplayStats(int player, int gameplayStat, int changeval
 				int shifted = (1 << spellID);
 				gameStatistics[gameplayStat] |= shifted;
 			}
+		}*/
+		else if ( gameplayStat == STATISTICS_POP_QUIZ_NEW )
+		{
+			gameStatistics[gameplayStat] = changeval;
 		}
 		else if ( gameplayStat == STATISTICS_FLAVORTOWN )
 		{
@@ -5343,7 +5347,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				gameStatistics[gameplayStat] |= (fears << 16);
 			}
 		}
-		else if ( gameplayStat == STATISTICS_POP_QUIZ_1 || gameplayStat == STATISTICS_POP_QUIZ_2 )
+		/*else if ( gameplayStat == STATISTICS_POP_QUIZ_1 || gameplayStat == STATISTICS_POP_QUIZ_2 )
 		{
 			int spellID = changeval;
 			if ( spellID >= 32 )
@@ -5357,6 +5361,10 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				int shifted = (1 << spellID);
 				gameStatistics[gameplayStat] |= shifted;
 			}
+		}*/
+		else if ( gameplayStat == STATISTICS_POP_QUIZ_NEW )
+		{
+			gameStatistics[gameplayStat] = changeval;
 		}
 		else if ( gameplayStat == STATISTICS_FLAVORTOWN )
 		{

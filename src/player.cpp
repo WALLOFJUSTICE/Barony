@@ -3261,6 +3261,7 @@ void Player::init() // for use on new/restart game, UI related
 	mechanics.escalatingRngRolls.clear();
 	mechanics.escalatingSpellRngRolls.clear();
 	mechanics.favoriteBooksAchievement.clear();
+	mechanics.popQuizAchievement.clear();
 
 	mechanics.fociDarkChargeTime = 0;
 	mechanics.fociHolyChargeTime = 0;

@@ -71,6 +71,7 @@ static const int STATISTICS_THATS_CHEATING = 29;
 static const int STATISTICS_DISCIPLINE = 30;
 static const int STATISTICS_DISABLE_UPLOAD = 31;
 static const int STATISTICS_FIRE_FIGHTER = 32;
+static const int STATISTICS_POP_QUIZ_NEW = 33;
 
 enum SteamStatIndexes : int
 {
@@ -561,6 +562,7 @@ struct SaveGameInfo {
 		std::vector<std::pair<int, int>> sustainedSpellIDCounter;
 		std::vector<std::pair<int, int>> ducksInARow;
 		std::vector<std::pair<int, int>> favoriteBooksAchievement;
+		std::vector<int> popQuizAchievement;
 		int sustainedSpellMPUsedSorcery = 0;
 		int sustainedSpellMPUsedMysticism = 0;
 		int sustainedSpellMPUsedThaumaturgy = 0;
@@ -763,6 +765,7 @@ struct SaveGameInfo {
 			fp->property("learned_spells", learnedSpells);
 			fp->property("ducks_in_a_row", ducksInARow);
 			fp->property("favorite_books_achievement", favoriteBooksAchievement);
+			fp->property("pop_quiz_achievement", popQuizAchievement);
 			fp->property("sustained_spell_id_counters", sustainedSpellIDCounter);
 			fp->property("escalating_rng_rolls", escalatingRngRolls);
 			fp->property("escalating_spell_rng_rolls", escalatingSpellRngRolls);
