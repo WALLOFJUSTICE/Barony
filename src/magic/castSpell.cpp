@@ -9471,13 +9471,21 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 			if ( caster && caster->behavior == &actPlayer && stat->playerRace == RACE_GOBLIN && stat->stat_appearance == 0 )
 			{
-				if ( spell->ID >= 30 && spell->ID < 60 )
+				/*if ( spell->ID >= 30 && spell->ID < 60 )
 				{
 					serverUpdatePlayerGameplayStats(caster->skill[2], STATISTICS_POP_QUIZ_2, spell->ID);
 				}
 				else
 				{
 					serverUpdatePlayerGameplayStats(caster->skill[2], STATISTICS_POP_QUIZ_1, spell->ID);
+				}*/
+				if ( spell->ID > SPELL_NONE && spell->ID < NUM_SPELLS )
+				{
+					players[caster->skill[2]]->mechanics.popQuizAchievement.insert(spell->ID);
+					if ( players[caster->skill[2]]->mechanics.popQuizAchievement.size() >= 20 )
+					{
+						serverUpdatePlayerGameplayStats(caster->skill[2], STATISTICS_POP_QUIZ_NEW, players[caster->skill[2]]->mechanics.popQuizAchievement.size());
+					}
 				}
 			}
 		}

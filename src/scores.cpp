@@ -2967,23 +2967,27 @@ void updateGameplayStatisticsInMainLoop()
 			}
 		}
 
-		if ( (gameStatistics[STATISTICS_POP_QUIZ_1] != 0 || gameStatistics[STATISTICS_POP_QUIZ_2] != 0) )
+		//if ( (gameStatistics[STATISTICS_POP_QUIZ_1] != 0 || gameStatistics[STATISTICS_POP_QUIZ_2] != 0) )
+		//{
+		//	int numSpellsCast = 0;
+		//	int stat1 = gameStatistics[STATISTICS_POP_QUIZ_1];
+		//	int stat2 = gameStatistics[STATISTICS_POP_QUIZ_2];
+		//	for ( int i = 0; i < 30; ++i )
+		//	{
+		//		// count the bits set.
+		//		numSpellsCast += (stat1 & 1);
+		//		numSpellsCast += (stat2 & 1);
+		//		stat1 = stat1 >> 1;
+		//		stat2 = stat2 >> 1;
+		//	}
+		//	if ( numSpellsCast >= 20 )
+		//	{
+		//		steamAchievement("BARONY_ACH_POP_QUIZ");
+		//	}
+		//}
+		if ( gameStatistics[STATISTICS_POP_QUIZ_NEW] >= 20 )
 		{
-			int numSpellsCast = 0;
-			int stat1 = gameStatistics[STATISTICS_POP_QUIZ_1];
-			int stat2 = gameStatistics[STATISTICS_POP_QUIZ_2];
-			for ( int i = 0; i < 30; ++i )
-			{
-				// count the bits set.
-				numSpellsCast += (stat1 & 1);
-				numSpellsCast += (stat2 & 1);
-				stat1 = stat1 >> 1;
-				stat2 = stat2 >> 1;
-			}
-			if ( numSpellsCast >= 20 )
-			{
-				steamAchievement("BARONY_ACH_POP_QUIZ");
-			}
+			steamAchievement("BARONY_ACH_POP_QUIZ");
 		}
 	}
 
@@ -5474,6 +5478,10 @@ void SaveGameInfo::computeHash(const int playernum, Uint32& hash)
 		hash += (Uint32)((Uint32)val.first << (shift % 32)); ++shift;
 		hash += (Uint32)((Uint32)val.second << (shift % 32)); ++shift;
 	}
+	for ( auto& val : players[playernum].popQuizAchievement )
+	{
+		hash += (Uint32)((Uint32)val << (shift % 32)); ++shift;
+	}
 	hash += (Uint32)((Uint32)players[playernum].sustainedSpellMPUsedSorcery << (shift % 32)); ++shift;
 	hash += (Uint32)((Uint32)players[playernum].sustainedSpellMPUsedMysticism << (shift % 32)); ++shift;
 	hash += (Uint32)((Uint32)players[playernum].sustainedSpellMPUsedThaumaturgy << (shift % 32)); ++shift;
@@ -5743,6 +5751,10 @@ int SaveGameInfo::populateFromSession(const int playernum)
 			for ( auto& pair : ::players[c]->mechanics.favoriteBooksAchievement )
 			{
 				player.favoriteBooksAchievement.push_back(pair);
+			}
+			for ( auto& val : ::players[c]->mechanics.popQuizAchievement )
+			{
+				player.popQuizAchievement.push_back(val);
 			}
 			for ( auto& pair : ::players[c]->mechanics.escalatingRngRolls )
 			{
@@ -6738,6 +6750,7 @@ int loadGame(int player, const SaveGameInfo& info) {
 		mechanics.learnedSpells.clear();
 		mechanics.ducksInARow.clear();
 		mechanics.favoriteBooksAchievement.clear();
+		mechanics.popQuizAchievement.clear();
 		mechanics.sustainedSpellIDCounter.clear();
 		hamletShopkeeperSkillLimit[statsPlayer].clear();
 		mechanics.baseSpellLevelUpProcs.clear();
@@ -6758,6 +6771,10 @@ int loadGame(int player, const SaveGameInfo& info) {
 		for ( auto& pair : info.players[player].favoriteBooksAchievement )
 		{
 			mechanics.favoriteBooksAchievement[pair.first] = pair.second;
+		}
+		for ( auto& val : info.players[player].popQuizAchievement )
+		{
+			mechanics.popQuizAchievement.insert(val);
 		}
 		for ( auto& pair : info.players[player].sustainedSpellIDCounter )
 		{

@@ -2401,6 +2401,7 @@ public:
 		std::vector<std::pair<int, int>> ducksInARow;
 		std::vector<std::pair<int, Uint32>> pendingDucks;
 		std::map<int, int> favoriteBooksAchievement;
+		std::set<int> popQuizAchievement;
 		int numFishingCaught = 0;
 		bool itemDegradeRoll(Item* item, int skillID = -1, int* checkInterval = nullptr);
 		void onItemDegrade(Item* item);
