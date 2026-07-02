@@ -390,6 +390,16 @@ void BookParser_t::createBooks(bool forceCacheRebuild)
 {
 	deleteBooks(); // empty the old books array
 
+	if ( forceCacheRebuild && !booksRequireCompiling() )
+	{
+		printlog("[Books]: Forcing cache rebuild");
+		if ( readCompiledBooks() )
+		{
+			numbooks = allBooks.size();
+			return;
+		}
+		printlog("[Books]: Error - Failed to read pre-compiled books... recompiling.");
+	}
 	if ( !forceCacheRebuild && !booksRequireCompiling() )
 	{
 		if ( readCompiledBooks() )
