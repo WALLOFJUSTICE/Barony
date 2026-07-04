@@ -18758,10 +18758,11 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 	if ( src->behavior == &actMonster 
 		&& (src->monsterAllySummonRank != 0
 			|| srcStats->type == REVENANT_SKULL
-			|| srcStats->type == MONSTER_ADORCISED_WEAPON
+			|| (srcStats->type == MONSTER_ADORCISED_WEAPON && (src->monsterAllyGetPlayerLeader() 
+				|| achievementObserver.checkUidIsFromPlayer(srcStats->leader_uid) >= 0))
 			|| (srcStats->type == MOTH_SMALL && srcStats->getAttribute("fire_sprite") != "")
 			|| (srcStats->type == SKELETON && srcStats->getAttribute("revenant_skeleton") != "")
-			|| srcStats->type == FLAME_ELEMENTAL
+			|| (srcStats->type == FLAME_ELEMENTAL && src->monsterAllyGetPlayerLeader())
 			|| srcStats->type == DUCK_SMALL
 			|| (srcStats->type == WATER_ELEMENTAL && src->monsterAllyGetPlayerLeader())
 			|| (srcStats->type == EARTH_ELEMENTAL && src->monsterAllyGetPlayerLeader())
@@ -18847,7 +18848,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 	int baseXpTop = baseXp;
 
 	static ConsoleVariable<bool> cvar_level_curve("/levelcurve", true);
-	if ( svFlags & SV_FLAG_CHEATS && !*cvar_level_curve )
+	if ( (svFlags & SV_FLAG_CHEATS) && !*cvar_level_curve )
 	{
 		// disabled curve
 	}
