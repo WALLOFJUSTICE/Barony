@@ -15456,6 +15456,10 @@ void actParticleSapCenter(Entity* my)
 
 							monster->monsterAllySummonRank = magicLevel;
 							monsterStats->setAttribute("special_npc", "skeleton knight");
+							if ( my->skill[10] != 0 )
+							{
+								monsterStats->setAttribute("summon_overcharge", "1");
+							}
 							strcpy(monsterStats->name, MonsterData_t::getSpecialNPCName(*monsterStats).c_str());
 							forceFollower(*caster, *monster);
 
@@ -15515,6 +15519,10 @@ void actParticleSapCenter(Entity* my)
 									if ( monsterStats )
 									{
 										monsterStats->setAttribute("special_npc", "skeleton sentinel");
+										if ( my->skill[10] != 0 )
+										{
+											monsterStats->setAttribute("summon_overcharge", "1");
+										}
 										strcpy(monsterStats->name, MonsterData_t::getSpecialNPCName(*monsterStats).c_str());
 										magicLevel = 1;
 										if ( stats[caster->skill[2]] )

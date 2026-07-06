@@ -7769,6 +7769,10 @@ void Entity::handleEffects(Stat* myStats)
 						{
 							mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
 							firstManaToRefund += std::min(spellCost, static_cast<int>((mySummonStats->MP / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
+							if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+							{
+								firstManaToRefund /= 2;
+							}
 							mySummon->setHP(0); // sacrifice!
 							++numSummonedAllies;
 						}
@@ -7776,6 +7780,10 @@ void Entity::handleEffects(Stat* myStats)
 						{
 							mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
 							secondManaToRefund += std::min(spellCost, static_cast<int>((mySummonStats->MP / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
+							if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+							{
+								secondManaToRefund /= 2;
+							}
 							mySummon->setHP(0); // for glorious leader!
 							++numSummonedAllies;
 							break;

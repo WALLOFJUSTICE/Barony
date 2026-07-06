@@ -522,12 +522,20 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 										if ( numSummonedAllies == 0 )
 										{
 											firstManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
+											if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+											{
+												firstManaToRefund /= 2;
+											}
 											++numSummonedAllies;
 										}
 										else if ( numSummonedAllies == 1 )
 										{
 											mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
 											secondManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
+											if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+											{
+												secondManaToRefund /= 2;
+											}
 											++numSummonedAllies;
 											break;
 										}

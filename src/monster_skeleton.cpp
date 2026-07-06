@@ -684,6 +684,10 @@ void skeletonDie(Entity* my)
 				//	}
 				//}
 				int manaToRefund = std::min(spellCost, static_cast<int>(myStats->MP / static_cast<float>(myStats->MAXMP) * spellCost)); // MP to restore
+				if ( myStats && myStats->getAttribute("summon_overcharge") == "1" )
+				{
+					manaToRefund /= 2;
+				}
 				if ( manaToRefund > 0 )
 				{
 					manaToRefund -= local_rng.rand() % (std::max(1, manaToRefund / 3));

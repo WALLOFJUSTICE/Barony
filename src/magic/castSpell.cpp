@@ -7615,6 +7615,12 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				sapParticle->skill[7] = caster->getUID();
 				sapParticle->skill[8] = timer->x;
 				sapParticle->skill[9] = timer->y;
+				sapParticle->skill[10] = 0;
+				if ( castSpellProps && castSpellProps->overcharge > 0 && !usingSpellbook )
+				{
+					sapParticle->skill[10] = 1; // overcharged
+				}
+
 				serverSpawnMiscParticlesAtLocation(previousx / 16, previousy / 16, 0, PARTICLE_EFFECT_SPELL_SUMMON, 791);
 			}
 		}
