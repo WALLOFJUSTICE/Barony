@@ -11600,9 +11600,34 @@ void actPlayer(Entity* my)
 				{
 					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LIGHTEN_LOAD, dist, 0.1, nullptr);
 				}
-				if ( stats[PLAYER_NUM]->getEffectActive(EFF_DASH) )
+				if ( Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) )
 				{
-					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_DASH, dist, 0.4, nullptr);
+					int playerSource = PLAYER_NUM;
+					int spellID = SPELL_DASH;
+					if ( effectStrength >= 2 )
+					{
+						int effect = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) - 2;
+						int type = effect / (MAXPLAYERS + 1);
+						if ( type == 0 )
+						{
+							spellID = SPELL_DASH;
+						}
+						else if ( type == 1 )
+						{
+							spellID = SPELL_KINETIC_FIELD;
+						}
+						if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
+						{
+							playerSource = effect % (MAXPLAYERS + 1);
+						}
+					}
+					if ( spellID == SPELL_DASH )
+					{
+						if ( playerSource >= 0 && playerSource < MAXPLAYERS )
+						{
+							players[playerSource]->mechanics.updateSustainedSpellEvent(spellID, dist, 0.4, nullptr);
+						}
+					}
 				}
 				if ( Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_FAST) )
 				{
@@ -11700,8 +11725,36 @@ void actPlayer(Entity* my)
 							{
 								hit.entity->doorHealth = 0;
 								players[PLAYER_NUM]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, hit.entity);
-								magicOnSpellCastEvent(my, my, nullptr,
-									SPELL_DASH, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+
+								Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_DASH);
+								int playerSource = PLAYER_NUM;
+								int spellID = SPELL_DASH;
+								if ( effectStrength >= 2 )
+								{
+									int effect = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) - 2;
+									int type = effect / (MAXPLAYERS + 1);
+									if ( type == 0 )
+									{
+										spellID = SPELL_DASH;
+									}
+									else if ( type == 1 )
+									{
+										spellID = SPELL_KINETIC_FIELD;
+									}
+									if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
+									{
+										playerSource = effect % (MAXPLAYERS + 1);
+									}
+								}
+
+								if ( playerSource >= 0 && playerSource < MAXPLAYERS )
+								{
+									if ( players[playerSource]->entity )
+									{
+										magicOnSpellCastEvent(players[playerSource]->entity, players[playerSource]->entity, nullptr,
+											spellID, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+									}
+								}
 							}
 						}
 					}
@@ -11922,9 +11975,34 @@ void actPlayer(Entity* my)
 				{
 					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LIGHTEN_LOAD, dist, 0.1, nullptr);
 				}
-				if ( stats[PLAYER_NUM]->getEffectActive(EFF_DASH) )
+				if ( Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) )
 				{
-					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_DASH, dist, 0.4, nullptr);
+					int playerSource = PLAYER_NUM;
+					int spellID = SPELL_DASH;
+					if ( effectStrength >= 2 )
+					{
+						int effect = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) - 2;
+						int type = effect / (MAXPLAYERS + 1);
+						if ( type == 0 )
+						{
+							spellID = SPELL_DASH;
+						}
+						else if ( type == 1 )
+						{
+							spellID = SPELL_KINETIC_FIELD;
+						}
+						if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
+						{
+							playerSource = effect % (MAXPLAYERS + 1);
+						}
+					}
+					if ( spellID == SPELL_DASH )
+					{
+						if ( playerSource >= 0 && playerSource < MAXPLAYERS )
+						{
+							players[playerSource]->mechanics.updateSustainedSpellEvent(spellID, dist, 0.4, nullptr);
+						}
+					}
 				}
 				if ( Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_FAST) )
 				{
@@ -12003,8 +12081,36 @@ void actPlayer(Entity* my)
 					{
 						hit.entity->doorHealth = 0;
 						players[PLAYER_NUM]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_COMMON, hit.entity);
-						magicOnSpellCastEvent(my, my, nullptr,
-							SPELL_DASH, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+
+						Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_DASH);
+						int playerSource = PLAYER_NUM;
+						int spellID = SPELL_DASH;
+						if ( effectStrength >= 2 )
+						{
+							int effect = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) - 2;
+							int type = effect / (MAXPLAYERS + 1);
+							if ( type == 0 )
+							{
+								spellID = SPELL_DASH;
+							}
+							else if ( type == 1 )
+							{
+								spellID = SPELL_KINETIC_FIELD;
+							}
+							if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
+							{
+								playerSource = effect % (MAXPLAYERS + 1);
+							}
+						}
+
+						if ( playerSource >= 0 && playerSource < MAXPLAYERS )
+						{
+							if ( players[playerSource]->entity )
+							{
+								magicOnSpellCastEvent(players[playerSource]->entity, players[playerSource]->entity, nullptr,
+									spellID, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+							}
+						}
 					}
 				}
 			}
