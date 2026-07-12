@@ -32,8 +32,6 @@
 int startfloor = 0;
 BaronyRNG map_rng;
 BaronyRNG map_server_rng;
-int numChests = 0;
-int numMimics = 0;
 TreasureRoomGenerator treasure_room_generator;
 void TreasureRoomGenerator::init()
 {
@@ -7478,6 +7476,9 @@ void assignActions(map_t* map)
 	map_rng.seedBytes(&mapseed, sizeof(mapseed));
 	map_server_rng.seedBytes(&mapseed, sizeof(mapseed));
 
+	BaronyRNG player_rng;
+	player_rng.seedBytes(&mapseed, sizeof(mapseed));
+
 	int balance = 0;
 	for ( int i = 0; i < MAXPLAYERS; i++ )
 	{
@@ -7639,7 +7640,7 @@ void assignActions(map_t* map)
 					players[numplayers]->entity = entity;
 					if ( entity->playerStartDir == -1 )
 					{
-						entity->yaw = (map_rng.rand() % 8) * 45 * (PI / 180.f);
+						entity->yaw = (player_rng.rand() % 8) * 45 * (PI / 180.f);
 					}
 					else
 					{
@@ -7648,9 +7649,13 @@ void assignActions(map_t* map)
 					entity->playerStartDir = 0;
 					if ( multiplayer != CLIENT )
 					{
-						if ( numplayers == 0 && minotaurlevel )
+						if ( numplayers == 0 )
 						{
-							createMinotaurTimer(entity, map, map_server_rng.getU32());
+							Uint32 minoSeed = map_server_rng.getU32();
+							if ( minotaurlevel )
+							{
+								createMinotaurTimer(entity, map, minoSeed);
+							}
 						}
 					}
 
@@ -11516,21 +11521,23 @@ void assignActions(map_t* map)
 
 	debugMap(map);
 
-	if ( true /*currentlevel == 0*/ )
-	{
-		numChests = 0;
-		numMimics = 0;
-	}
+	int numChests = 0;
+	int numMimics = 0;
 
-	if ( ceilingTilesLiquidTraps.size() )
 	{
-		int numTraps = 5 + map_rng.rand() % 4;
-		while ( ceilingTilesLiquidTraps.size() && numTraps > 0 )
+		BaronyRNG trap_rng;
+		Uint32 trap_rng_seed = map_rng.getU32();
+		trap_rng.seedBytes(&trap_rng_seed, sizeof(trap_rng_seed));
+		if ( ceilingTilesLiquidTraps.size() )
 		{
-			int pick = map_rng.rand() % ceilingTilesLiquidTraps.size();
-			ceilingTilesLiquidTraps[pick]->ceilingTileLiquidTrap = 1;
-			ceilingTilesLiquidTraps.erase(ceilingTilesLiquidTraps.begin() + pick);
-			--numTraps;
+			int numTraps = 5 + trap_rng.rand() % 4;
+			while ( ceilingTilesLiquidTraps.size() && numTraps > 0 )
+			{
+				int pick = trap_rng.rand() % ceilingTilesLiquidTraps.size();
+				ceilingTilesLiquidTraps[pick]->ceilingTileLiquidTrap = 1;
+				ceilingTilesLiquidTraps.erase(ceilingTilesLiquidTraps.begin() + pick);
+				--numTraps;
+			}
 		}
 	}
 
@@ -11540,9 +11547,13 @@ void assignActions(map_t* map)
 	std::vector<Entity*> mimics;
 	if ( chests.size() > 0 )
 	{
+		BaronyRNG trap_rng;
+		Uint32 trap_rng_seed = map_rng.getU32();
+		trap_rng.seedBytes(&trap_rng_seed, sizeof(trap_rng_seed));
+
 		if ( mimic_generator.bForceSpawnForCurrentFloor() )
 		{
-			auto chosen = map_rng.rand() % chests.size();
+			auto chosen = trap_rng.rand() % chests.size();
 			if ( allowedGenerateMimicOnChest(chests[chosen]->x / 16, chests[chosen]->y / 16, *map) )
 			{
 				if ( chests[chosen]->chestMimicChance != 0 )
