@@ -31994,7 +31994,10 @@ void Entity::handleKnockbackDamage(Stat& myStats, Entity* knockedInto)
 			{
 				if ( whoKnockedMe && whoKnockedMe->behavior == &actPlayer )
 				{
-					steamStatisticUpdateClient(whoKnockedMe->skill[2], STEAM_STAT_TAKE_THIS_OUTSIDE, STEAM_STAT_INT, 1);
+					if ( behavior == &actMonster )
+					{
+						steamStatisticUpdateClient(whoKnockedMe->skill[2], STEAM_STAT_TAKE_THIS_OUTSIDE, STEAM_STAT_INT, 1);
+					}
 					Compendium_t::Events_t::eventUpdateWorld(whoKnockedMe->skill[2], Compendium_t::CPDM_DOOR_BROKEN, "door", 1);
 				}
 				playSoundEntity(knockedInto, 28, 64);
