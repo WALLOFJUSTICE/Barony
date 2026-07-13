@@ -1173,10 +1173,15 @@ void gameLogic(void)
 		fadealpha = std::max(0, fadealpha - 10);
 	}
 
+	static ConsoleVariable<int> cvar_net_packet_tick("/net_packet_tick", 4);
+	static ConsoleVariable<int> cvar_net_packet_retry("/net_packet_retry", MAXTRIES);
+	static ConsoleVariable<int> cvar_net_packet_delete("/net_packet_delete", MAXDELETES);
+	static ConsoleVariable<bool> cvar_net_packet_debug("/net_packet_debug", false);
+
 	// handle safe packets
-	if ( !(ticks % 4) )
+	if ( (ticks % std::max(1, *cvar_net_packet_tick) == 0) )
 	{
-		j = 0;
+		int j = 0;
 		for ( node = safePacketsSent.first; node != nullptr; node = nextnode )
 		{
 			nextnode = node->next;
@@ -1185,12 +1190,23 @@ void gameLogic(void)
 			//printlog("Packet resend: %d", packet->hostnum);
 			sendPacket(packet->sock, packet->channel, packet->packet, packet->hostnum, true);
 			packet->tries++;
-			if ( packet->tries >= MAXTRIES )
+
+			if ( *cvar_net_packet_debug )
+			{
+				Uint8 bytedata[NET_PACKET_SIZE];
+				memcpy(&bytedata, packet->packet->data + 9, packet->packet->len);
+				char chr[5];
+				chr[0] = '\0';
+				strncpy(chr, (char*)bytedata, 4);
+				chr[4] = '\0';
+				messagePlayer(clientnum, MESSAGE_HINT, "Packet resend '%s' tries: %d", chr, packet->tries);
+			}
+			if ( packet->tries >= *cvar_net_packet_retry )
 			{
 				list_RemoveNode(node);
 			}
 			j++;
-			if ( j >= MAXDELETES )
+			if ( j >= *cvar_net_packet_delete )
 			{
 				break;
 			}

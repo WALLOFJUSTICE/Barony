@@ -223,6 +223,7 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 				{
 					continue;
 				}
+				if ( client_disconnected[p] ) { continue; }
 				strcpy((char*)net_packet->data, "ENHP");
 				SDLNet_Write16(static_cast<Sint16>(hp), &net_packet->data[4]);
 				SDLNet_Write16(static_cast<Sint16>(maxhp), &net_packet->data[6]);
