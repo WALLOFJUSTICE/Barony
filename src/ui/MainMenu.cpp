@@ -13707,7 +13707,7 @@ failed:
 			details_text_buf += '\n';
 			details_text->addColorToLine(line, color_traits);
 			details_text_buf += raceDescriptionData.traitsBasedOnMonsterType;
-			if ( race != modified_race )
+			if ( race != modified_race || race == INSECTOID /* special fix for insectoid since EN isn't polymorphable into */ )
 			{
 				if ( raceDescriptionDataBase.traitsBasedOnPlayerRace != "" )
 				{
