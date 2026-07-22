@@ -7349,4 +7349,12 @@ has been unlocked!#
 7075 The %s shield disrupts you!#
 7076 %s's shield disrupts you!#
 
+# NVIDIA OpenGL present modes
+7077 Unknown#
+7078 Disabled#
+7079 Enabled#
+7080 Auto#
+7081 OpenGL Compatibility Mode#
+7082 Enabling this may improve OpenGL performance and fullscreen behavior with modern systems. Requires restart.#
+
 7999 END#

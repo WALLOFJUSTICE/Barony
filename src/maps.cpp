@@ -11577,7 +11577,14 @@ void assignActions(map_t* map)
 				}
 				if ( chest->chestMimicChance >= 0 )
 				{
-					doMimic = chest->entity_rng->rand() % 100 < chest->chestMimicChance;
+					if ( (svFlags & SV_FLAG_CHEATS) && chance == 100 )
+					{
+						doMimic = true;
+					}
+					else
+					{
+						doMimic = chest->entity_rng->rand() % 100 < chest->chestMimicChance;
+					}
 				}
 				else
 				{
@@ -12005,6 +12012,10 @@ int loadMainMenuMap(bool blessedAdditionMaps, bool forceVictoryMap, int forcemap
 
 bool map_t::tileHasAttribute(int x, int y, int layer, Uint32 attribute)
 {
+	if ( x < 0 || x >= map.width || y < 0 || y >= map.height )
+	{
+		return false;
+	}
 	auto find = tileAttributes.find(layer + y * MAPLAYERS + x * MAPLAYERS * height);
 	if ( find != tileAttributes.end() )
 	{

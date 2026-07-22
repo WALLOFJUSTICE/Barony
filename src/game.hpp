@@ -369,6 +369,7 @@ void drawAllPlayerCameras();
 #define TOUCHRANGE 32
 #define STRIKERANGE 24
 #define XPSHARERANGE 99999
+#define MAGICSTAFFS_USE_CHARGE 1
 
 // function prototypes for charclass.c:
 void initClass(int player);

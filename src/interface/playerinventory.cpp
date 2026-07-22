@@ -2408,6 +2408,7 @@ std::string getItemSpritePath(const int player, Item& item)
 		}
 		else if ( item.type == MAGICSTAFF_SCEPTER )
 		{
+			//MAGICSTAFFS_USE_CHARGE todo
 			if ( item.appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX == 0 )
 			{
 				imagePathsNode = list_Node(&items[item.type].images, 1);
@@ -5001,6 +5002,11 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
 					snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
 						item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
 				}
+				else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF )
+				{
+					snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+						item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
+				}
                 else if ( itemCategory(item) == BOOK )
                 {
                     snprintf(buf, sizeof(buf), "%s %s\n%s (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
@@ -5387,6 +5393,24 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
                             }
                             icon.iconPath = ItemTooltips.getSpellIconPath(player, *item, -1);
                         }
+						else if ( icon.conditionalAttribute == "EFF_SKILL_MAGICSTAFF" )
+						{
+							int spellID = getSpellIDFromMagicstaff(item->type);
+							if ( spellID != SPELL_NONE )
+							{
+								if ( auto spell = getSpellFromID(spellID) )
+								{
+									if ( spell->skillID == PRO_THAUMATURGY )
+									{
+										icon.iconPath = "#*images/ui/SkillSheet/Icons/Thaumaturgy01.png";
+									}
+									else if ( spell->skillID == PRO_MYSTICISM )
+									{
+										icon.iconPath = "#*images/ui/SkillSheet/Icons/Mysticism01.png";
+									}
+								}
+							}
+						}
                     }
                     else if ( itemCategory(item) == SCROLL )
                     {
@@ -6173,30 +6197,54 @@ void Player::HUD_t::updateFrameTooltip(Item* item, const int x, const int y, int
                 {
                     if ( tag.compare("magicstaff_degrade_chance") == 0 )
                     {
+						continue;
                         if ( item->type == MAGICSTAFF_CHARM )
                         {
                             continue;
                         }
                     }
+					else if ( tag.compare("template_magicstaff_charge_use") == 0 && !MAGICSTAFFS_USE_CHARGE )
+					{
+						continue;
+					}
                     else if ( tag.compare("magicstaff_charm_degrade_chance") == 0 )
                     {
+						continue;
                         if ( item->type != MAGICSTAFF_CHARM )
                         {
                             continue;
                         }
                     }
+					else if ( tag.compare("equipment_on_cursed_sideeffect") == 0 && item->beatitude >= 0 )
+					{
+						continue;
+					}
+					else if ( tag.compare("spell_damage_bonus") == 0 )
+					{
+						int spellID = getSpellIDFromMagicstaff(item->type);
+						if ( spellID != SPELL_SCEPTER_BLAST )
+						{
+							//MAGICSTAFFS_USE_CHARGE todo
+							continue;
+						}
+						if ( spellID == SPELL_NONE ) { continue; }
+						spell_t* spell = getSpellFromID(spellID);
+						if ( !spell || spell->ID == SPELL_NONE ) { continue; }
+						if ( !ItemTooltips.bIsSpellDamageOrHealingType(spell) )
+						{
+							if ( ItemTooltips.spellItems[spell->ID].spellTags.find(ItemTooltips_t::SPELL_TAG_BONUS_AS_EFFECT_POWER)
+								== ItemTooltips.spellItems[spell->ID].spellTags.end() )
+							{
+								continue;
+							}
+						}
+					}
                     else if ( tag.find("attribute_spell_") != std::string::npos )
                     {
-                        spell_t* spell = nullptr;
-                        for ( auto& s : ItemTooltips.spellItems )
-                        {
-                            if ( s.second.magicstaffId == item->type )
-                            {
-                                spell = getSpellFromID(s.first);
-                                break;
-                            }
-                        }
-                        if ( !spell ) { continue; }
+						int spellID = getSpellIDFromMagicstaff(item->type);
+						if ( spellID == SPELL_NONE ) { continue; }
+						spell_t* spell = getSpellFromID(spellID);
+						if ( !spell || spell->ID == SPELL_NONE ) { continue; }
                         std::string subs = tag.substr(10, std::string::npos);
                         if ( !spell || ItemTooltips.spellItems[spell->ID].internalName != subs )
                         {

@@ -17494,6 +17494,45 @@ bool getAttackTooltipLines(int playernum, AttackHoverText_t& attackHoverTextInfo
 				return false;
 		}
 	}
+	else if ( attackHoverTextInfo.hoverType == AttackHoverText_t::ATK_HOVER_TYPE_MAGICSTAFF_CHARGE )
+	{
+		switch ( lineNumber )
+		{
+		case 1:
+			snprintf(titleBuf, 127, "%s", Player::CharacterSheet_t::getHoverTextString("attributes_atk_avg").c_str());
+			snprintf(valueBuf, 127,
+				Player::CharacterSheet_t::getHoverTextString("attributes_atk_nobonus_format").c_str(),
+				attackHoverTextInfo.totalAttack);
+			return true;
+		case 2:
+			snprintf(titleBuf, 127, Player::CharacterSheet_t::getHoverTextString("attributes_atk_range").c_str(),
+				skillName.c_str(), skillLVL);
+			snprintf(valueBuf, 127,
+				Player::CharacterSheet_t::getHoverTextString("attributes_atk_range_format").c_str(),
+				attackHoverTextInfo.attackMinRange, attackHoverTextInfo.attackMaxRange);
+			return true;
+		case 3:
+			snprintf(titleBuf, 127, "%s", Player::CharacterSheet_t::getHoverTextString("attributes_atk_entry_attr_bonus_magicstaff").c_str());
+			snprintf(valueBuf, 127,
+				Player::CharacterSheet_t::getHoverTextString("attributes_atk_bonus_format").c_str(),
+				attackHoverTextInfo.mainAttributeBonus);
+			return true;
+		case 4:
+			snprintf(titleBuf, 127, "%s", Player::CharacterSheet_t::getHoverTextString("attributes_atk_entry_weapon_bonus").c_str());
+			snprintf(valueBuf, 127,
+				Player::CharacterSheet_t::getHoverTextString("attributes_atk_bonus_format").c_str(),
+				attackHoverTextInfo.weaponBonus);
+			return true;
+		case 5:
+			snprintf(titleBuf, 127, "%s", Player::CharacterSheet_t::getHoverTextString("attributes_atk_entry_melee_weapon_base").c_str());
+			snprintf(valueBuf, 127,
+				Player::CharacterSheet_t::getHoverTextString("attributes_atk_bonus_format").c_str(),
+				BASE_MELEE_DAMAGE);
+			return true;
+		default:
+			return false;
+		}
+	}
 	else
 	{
 		switch ( lineNumber )
@@ -19049,7 +19088,8 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 				}
 				if ( attackHoverTextInfo.hoverType == AttackHoverText_t::ATK_HOVER_TYPE_MELEE_WEAPON
 					|| attackHoverTextInfo.hoverType == AttackHoverText_t::ATK_HOVER_TYPE_RAPIER
-					|| attackHoverTextInfo.hoverType == AttackHoverText_t::ATK_HOVER_TYPE_WHIP )
+					|| attackHoverTextInfo.hoverType == AttackHoverText_t::ATK_HOVER_TYPE_WHIP
+					|| attackHoverTextInfo.hoverType == AttackHoverText_t::ATK_HOVER_TYPE_MAGICSTAFF_CHARGE )
 				{
 					snprintf(descBuf, sizeof(descBuf), getHoverTextString("attributes_atk_melee_desc").c_str(), skillName.c_str());
 					descText = descBuf;
@@ -24649,6 +24689,38 @@ void drawSpritesPreview(std::string name, std::string modelsPath, SDL_Rect pos, 
 	::fov = ofov;
 }
 
+//#define COMPENDIUM_CHUNKS
+
+#ifdef COMPENDIUM_CHUNKS
+std::vector<Chunk> compendium_chunks;
+
+void compendium_clearChunks() {
+	compendium_chunks.clear();
+}
+
+void compendium_createChunks(map_t& map) {
+	constexpr int chunkSize = 4;
+	compendium_chunks.reserve((map.width / chunkSize + 1) * (map.height / chunkSize + 1));
+	for ( int x = 0; x < map.width; x += chunkSize ) {
+		for ( int y = 0; y < map.height; y += chunkSize ) {
+			compendium_chunks.emplace_back();
+			auto& chunk = compendium_chunks.back();
+			chunk.build(map, map.flags[MAP_FLAG_CEILINGTILE] > 0, x, y, chunkSize, chunkSize);
+		}
+	}
+}
+
+void compendium_updateChunks(map_t& map) {
+	static int cachedW = -1;
+	static int cachedH = -1;
+	if ( cachedW != map.width || cachedH != map.height ) {
+		cachedW = map.width;
+		cachedH = map.height;
+		compendium_clearChunks();
+		compendium_createChunks(map);
+	}
+}
+#endif
 void glDrawWorldTile(view_t* camera, int mode, map_t& map)
 {
 	if ( !camera )
@@ -24671,6 +24743,63 @@ void glDrawWorldTile(view_t* camera, int mode, map_t& map)
 		GL_CHECK_ERR(glUniform4fv(shader.uniform("uCameraPos"), 1, cameraPos));
 	}
 
+#ifdef COMPENDIUM_CHUNKS
+	// update chunk dithering & mark chunks for rebuilding
+	std::set<std::pair<int, Chunk*>> chunksToBuild;
+	for ( int index = 0; index < compendium_chunks.size(); ++index ) {
+		auto& chunk = compendium_chunks[index];
+		if ( chunk.isDirty(map) ) {
+			chunksToBuild.emplace(0, &chunk);
+		}
+	}
+
+	// mark chunk neighbors for building (in-case of shared walls)
+	const int dim = 4; // size of chunk in tiles
+	const int yoff = 1;
+	const int xoff = (map.height / dim) + ((map.height % dim) ? 1 : 0);
+	for ( auto it = chunksToBuild.begin(); it != chunksToBuild.end();) {
+		const int index = it->first;
+		bool foundDirtyNeighbor = false; // call the police
+		for ( int x = -xoff; x <= xoff; x += xoff ) {
+			for ( int y = -yoff; y <= yoff; y += yoff ) {
+				if ( (x && y) || (!x && !y) ) {
+					continue;
+				}
+				const int off = index + x + y;
+				if ( off < 0 || off >= compendium_chunks.size() ) {
+					continue;
+				}
+				auto& neighbor = compendium_chunks[off];
+				if ( chunksToBuild.emplace(off, &neighbor).second ) {
+					if ( neighbor.isDirty(map) ) {
+						// if this neighbor chunk needs rebuilding,
+						// it's possible _its_ neighbors need rebuilding too.
+						// therefore, restart the search for adjacent chunks.
+						it = chunksToBuild.begin();
+						foundDirtyNeighbor = true;
+					}
+				}
+			}
+		}
+		if ( !foundDirtyNeighbor ) {
+			++it;
+		}
+	}
+
+	if ( chunksToBuild.size() > 0 )
+	{
+		for ( auto& pair : chunksToBuild ) {
+			auto& chunk = *pair.second;
+			chunk.build(map, map.flags[MAP_FLAG_CEILINGTILE] > 0, chunk.x, chunk.y, chunk.w, chunk.h);
+		}
+	}
+
+	for ( auto& chunk : compendium_chunks )
+	{
+		worldShader.bind();
+		chunk.draw();
+	}
+#else
 	std::vector<Chunk> chunks;
 	chunks.emplace_back();
 	auto& chunk = chunks.back();
@@ -24680,6 +24809,7 @@ void glDrawWorldTile(view_t* camera, int mode, map_t& map)
 		worldShader.bind();
 		chunk.draw();
 	}
+#endif
 }
 
 void actObjectPreviewFlame(Entity* my)
@@ -24947,6 +25077,8 @@ void drawObjectPreview(std::string modelsPath, Entity* object, SDL_Rect pos, rea
 {
 	static int fov = 50;
 	std::vector<Entity>* limbsArray = nullptr;
+	static std::string modelsPathPrev = "";
+	bool dirtyPath = false;
 	Compendium_t::CompendiumView_t* camera = &CompendiumEntries.defaultCamera;
 	if ( CompendiumEntries.compendiumObjectLimbs.find(modelsPath) != CompendiumEntries.compendiumObjectLimbs.end() )
 	{
@@ -24958,6 +25090,12 @@ void drawObjectPreview(std::string modelsPath, Entity* object, SDL_Rect pos, rea
 		}
 		object = &(limbsArray->at(0));
 		camera = &entry.currentCamera;
+
+		if ( modelsPathPrev != modelsPath )
+		{
+			dirtyPath = true;
+			modelsPathPrev = modelsPath;
+		}
 	}
 
 
@@ -25061,6 +25199,14 @@ void drawObjectPreview(std::string modelsPath, Entity* object, SDL_Rect pos, rea
 	GL_CHECK_ERR(glClear(GL_DEPTH_BUFFER_BIT));
 	glBeginCamera(&view, false, tmpMap);
 
+#ifdef COMPENDIUM_CHUNKS
+	if ( dirtyPath )
+	{
+		compendium_clearChunks();
+		compendium_createChunks(tmpMap);
+	}
+#endif
+
 	auto findMap = CompendiumEntries.compendiumObjectMapTiles.find(modelsPath);
 	if ( findMap != CompendiumEntries.compendiumObjectMapTiles.end() )
 	{
@@ -25103,6 +25249,9 @@ void drawObjectPreview(std::string modelsPath, Entity* object, SDL_Rect pos, rea
 				}
 			}
 		}
+#ifdef COMPENDIUM_CHUNKS
+		compendium_updateChunks(tmpMap);
+#endif
 		glDrawWorldTile(&view, REALCOLORS, tmpMap);
 	}
 
@@ -41291,6 +41440,11 @@ SDL_Surface* Player::WorldUI_t::WorldTooltipItem_t::blitItemWorldTooltip(Item* i
 					item->getName(), item->appearance % ENCHANTED_FEATHER_MAX_DURABILITY, item->beatitude);
 			}
 			else if ( item->type == MAGICSTAFF_SCEPTER && item->identified )
+			{
+				snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+					item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
+			}
+			else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF && item->identified )
 			{
 				snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
 					item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);

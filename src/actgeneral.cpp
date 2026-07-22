@@ -4734,7 +4734,9 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 					for ( node_t* node = map.entities->first; node; node = node->next )
 					{
 						Entity* entity = (Entity*)node->element;
-						if ( entity && entity->behavior == &actChest )
+						if ( entity && (entity->behavior == &actChest 
+							|| (entity->behavior == &actMonster 
+								&& (entity->getRace() == MIMIC || entity->getRace() == MINIMIMIC))) )
 						{
 							int findx = static_cast<int>(entity->x) >> 4;
 							int findy = static_cast<int>(entity->y) >> 4;
@@ -4751,7 +4753,14 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 							Item* item = newItemFromEntity(entity);
 							if ( item )
 							{
-								chest->addItemToChest(item, true, nullptr);
+								if ( chest->behavior == &actMonster )
+								{
+									chest->addItemToMonsterInventory(item);
+								}
+								else
+								{
+									chest->addItemToChest(item, true, nullptr);
+								}
 							}
 							list_RemoveNode(entity->mynode);
 							entity = nullptr;

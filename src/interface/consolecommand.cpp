@@ -5157,6 +5157,113 @@ namespace ConsoleCommands {
 #endif
 	});
 
+	static ConsoleCommand ccmd_map_compendium_export("/map_compendium_export", "", []CCMD{
+#ifndef NINTENDO
+		const char* filename = nullptr;
+		if ( argc > 1 ) {
+			filename = argv[1];
+		}
+		if ( filename )
+		{
+			std::string path = "maps/";
+			path += filename;
+			if ( path.find(".lmp") == std::string::npos )
+			{
+				path += ".lmp";
+			}
+
+			if ( PHYSFS_getRealDir(path.c_str()) && loadMap(path.c_str(), &map, map.entities, map.creatures, nullptr) != -1 )
+			{
+				rapidjson::Document d;
+				d.SetObject();
+				d.AddMember("version", rapidjson::Value(1), d.GetAllocator());
+				d.AddMember("height_offset", rapidjson::Value(0), d.GetAllocator());
+
+				d.AddMember("camera", rapidjson::kObjectType, d.GetAllocator());
+				d["camera"].AddMember("ang_degrees", rapidjson::Value(0), d.GetAllocator());
+				d["camera"].AddMember("vang_degrees", rapidjson::Value(10), d.GetAllocator());
+				d["camera"].AddMember("zoom", rapidjson::Value(0.0), d.GetAllocator());
+				d["camera"].AddMember("height", rapidjson::Value(0.0), d.GetAllocator());
+				d["camera"].AddMember("rotate_limit_degrees_min", rapidjson::Value(0), d.GetAllocator());
+				d["camera"].AddMember("rotate_limit_degrees_max", rapidjson::Value(0), d.GetAllocator());
+				d["camera"].AddMember("rotate_speed", rapidjson::Value(0.0), d.GetAllocator());
+
+				d.AddMember("map_tiles", rapidjson::kObjectType, d.GetAllocator());
+				d["map_tiles"].AddMember("ceiling", rapidjson::Value(map.flags[MAP_FLAG_CEILINGTILE]), d.GetAllocator());
+				d["map_tiles"].AddMember("width", rapidjson::Value((int)map.width), d.GetAllocator());
+				d["map_tiles"].AddMember("height", rapidjson::Value((int)map.height), d.GetAllocator());
+				d["map_tiles"].AddMember("floor", rapidjson::kArrayType, d.GetAllocator());
+				d["map_tiles"].AddMember("mid", rapidjson::kArrayType, d.GetAllocator());
+				d["map_tiles"].AddMember("top", rapidjson::kArrayType, d.GetAllocator());
+
+				rapidjson::Value arr(rapidjson::kArrayType);
+				rapidjson::Value obj(rapidjson::kObjectType);
+				obj.AddMember("x", rapidjson::Value(0), d.GetAllocator());
+				obj.AddMember("y", rapidjson::Value(0), d.GetAllocator());
+				obj.AddMember("z", rapidjson::Value(0), d.GetAllocator());
+				obj.AddMember("pitch", rapidjson::Value(0.0), d.GetAllocator());
+				obj.AddMember("roll", rapidjson::Value(0.0), d.GetAllocator());
+				obj.AddMember("yaw", rapidjson::Value(0.0), d.GetAllocator());
+				obj.AddMember("yaw_degrees", rapidjson::Value(0), d.GetAllocator());
+				obj.AddMember("focalx", rapidjson::Value(0.0), d.GetAllocator());
+				obj.AddMember("focaly", rapidjson::Value(0.0), d.GetAllocator());
+				obj.AddMember("focalz", rapidjson::Value(0.0), d.GetAllocator());
+				obj.AddMember("sprite", rapidjson::Value(0), d.GetAllocator());
+
+				arr.PushBack(obj, d.GetAllocator());
+				d.AddMember("limbs", arr, d.GetAllocator());
+
+				for ( int z = 0; z < MAPLAYERS; ++z )
+				{
+					for ( int y = 0; y < map.height; ++y )
+					{
+						for ( int x = 0; x < map.width; ++x )
+						{
+							if ( z == 0 )
+							{
+								d["map_tiles"]["floor"].PushBack(rapidjson::Value(map.tiles[z + y * MAPLAYERS + x * MAPLAYERS * map.height]), d.GetAllocator());
+							}
+							else if ( z == 1 )
+							{
+								d["map_tiles"]["mid"].PushBack(rapidjson::Value(map.tiles[z + y * MAPLAYERS + x * MAPLAYERS * map.height]), d.GetAllocator());
+							}
+							else if ( z == 2 )
+							{
+								d["map_tiles"]["top"].PushBack(rapidjson::Value(map.tiles[z + y * MAPLAYERS + x * MAPLAYERS * map.height]), d.GetAllocator());
+							}
+						}
+					}
+				}
+
+				int filenum = 0;
+				std::string testPath = "/data/compendium_map_export" + std::to_string(filenum) + ".json";
+				while ( PHYSFS_getRealDir(testPath.c_str()) != nullptr && filenum < 1000 )
+				{
+					++filenum;
+					testPath = "/data/compendium_map_export" + std::to_string(filenum) + ".json";
+				}
+				std::string outputPath = PHYSFS_getRealDir("/data/");
+				outputPath.append(PHYSFS_getDirSeparator());
+				std::string fileName = "data/compendium_map_export" + std::to_string(filenum) + ".json";
+				outputPath.append(fileName.c_str());
+
+				File* fp = FileIO::open(outputPath.c_str(), "wb");
+				if ( !fp )
+				{
+					return;
+				}
+				rapidjson::StringBuffer os;
+				rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(os);
+				d.Accept(writer);
+				fp->write(os.GetString(), sizeof(char), os.GetSize());
+
+				FileIO::close(fp);
+				messagePlayer(clientnum, MESSAGE_HINT, "Exported map '%s' as '%s'", filename, outputPath.c_str());
+			}
+		}
+#endif
+	});
+
 	static ConsoleCommand ccmd_mapwirecheck("/mapwirecheck", "", []CCMD{
 #ifndef NINTENDO
 		for ( auto f : directoryContents(".\\maps\\", false, true) )

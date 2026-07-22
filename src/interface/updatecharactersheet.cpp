@@ -326,21 +326,64 @@ Sint32 displayAttackPower(const int player, AttackHoverText_t& output)
 						output.totalAttack = output.attackMaxRange - ((output.attackMaxRange - output.attackMinRange) / 2.0);
 					}
 				}
-				else if ( itemCategory(stats[player]->weapon) == MAGICSTAFF
-					&& !(stats[player]->weapon->type == MAGICSTAFF_SCEPTER) ) // staffs.
+				else if ( stats[player]->weapon->type == MAGICSTAFF_SCEPTER
+					|| (MAGICSTAFFS_USE_CHARGE && itemCategory(stats[player]->weapon) == MAGICSTAFF) )
 				{
-					attack = 0;
-					output.hoverType = AttackHoverText_t::ATK_HOVER_TYPE_MAGICSTAFF; // staffs
+					attack += Entity::getAttack(players[player]->entity, stats[player], true);
+					output.hoverType = AttackHoverText_t::ATK_HOVER_TYPE_MAGICSTAFF_CHARGE; // ranged
 					output.totalAttack = attack;
-					output.attackMaxRange = output.totalAttack;
-					output.attackMinRange = output.totalAttack;
-					output.proficiency = PRO_LEGACY_MAGIC;
+					output.weaponBonus = stats[player]->weapon->weaponGetAttack(stats[player]); // bonus from weapon
+					Sint32 STR = statGetSTR(stats[player], entity);
+					Sint32 INT = statGetINT(stats[player], entity);
+
+					Sint32 prevStatSTR = stats[player]->STR;
+					Sint32 prevStatINT = stats[player]->INT;
+					stats[player]->STR += -STR;
+					stats[player]->INT += -INT;
+					output.mainAttributeBonus = output.totalAttack - Entity::getAttack(players[player]->entity, stats[player], true);
+					stats[player]->STR = prevStatSTR;
+					stats[player]->INT = prevStatINT;
+
+					//Sint32 totalAttributeBonus = (STR + DEX);
+					//totalAttributeBonus = std::min(totalAttributeBonus / 2, totalAttributeBonus);
+					//output.mainAttributeBonus = totalAttributeBonus - STRComponent; // bonus from main attribute (DEX)
+					//output.secondaryAttributeBonus = totalAttributeBonus - DEXComponent; // secondary (STR)
+					//output.mainAttributeBonus = totalAttributeBonus;
+					//output.equipmentAndEffectBonus += attack - totalAttributeBonus
+					//	- BASE_MELEE_DAMAGE - output.weaponBonus; // bonus from equipment
+
+					{
+						real_t variance = 20;
+						real_t baseSkillModifier = 50.0; // 40-60 base
+						Entity::setMeleeDamageSkillModifiers(players[player]->entity, stats[player], weaponskill, baseSkillModifier, variance, nullptr);
+						real_t skillModifierMin = baseSkillModifier - (variance / 2) + (stats[player]->getModifiedProficiency(weaponskill) / 2.0);
+						real_t skillModifierMax = skillModifierMin + variance;
+						skillModifierMin /= 100.0;
+						skillModifierMin = std::min(skillModifierMin, 1.0);
+						skillModifierMax /= 100.0;
+						skillModifierMax = std::min(skillModifierMax, 1.0);
+						output.proficiencyVariance = variance;
+						output.attackMaxRange = attack - static_cast<int>((1.0 - skillModifierMax) * attack);
+						output.attackMinRange = attack - static_cast<int>((1.0 - skillModifierMin) * attack);
+						output.proficiency = weaponskill;
+						output.totalAttack = output.attackMaxRange - ((output.attackMaxRange - output.attackMinRange) / 2.0);
+					}
 				}
+				//else if ( itemCategory(stats[player]->weapon) == MAGICSTAFF && !MAGICSTAFFS_USE_CHARGE
+				//	&& !(stats[player]->weapon->type == MAGICSTAFF_SCEPTER) ) // staffs.
+				//{
+				//	attack = 0;
+				//	output.hoverType = AttackHoverText_t::ATK_HOVER_TYPE_MAGICSTAFF; // staffs
+				//	output.totalAttack = attack;
+				//	output.attackMaxRange = output.totalAttack;
+				//	output.attackMinRange = output.totalAttack;
+				//	output.proficiency = PRO_LEGACY_MAGIC;
+				//}
 				else // tools etc.
 				{
 					attack += Entity::getAttack(players[player]->entity, stats[player], true);
 					output.hoverType = AttackHoverText_t::ATK_HOVER_TYPE_TOOL; // tools
-					if ( stats[player]->weapon->type == TOOL_PICKAXE || stats[player]->weapon->type == MAGICSTAFF_SCEPTER )
+					if ( stats[player]->weapon->type == TOOL_PICKAXE )
 					{
 						output.hoverType = AttackHoverText_t::ATK_HOVER_TYPE_PICKAXE;
 					}
@@ -351,16 +394,10 @@ Sint32 displayAttackPower(const int player, AttackHoverText_t& output)
 					output.totalAttack = attack;
 					output.weaponBonus = 0; // bonus from weapon
 
-					if ( stats[player]->weapon->type == TOOL_PICKAXE || stats[player]->weapon->type == MAGICSTAFF_SCEPTER )
+					if ( stats[player]->weapon->type == TOOL_PICKAXE )
 					{
 						output.weaponBonus = stats[player]->weapon->weaponGetAttack(stats[player]); // bonus from weapon
 					}
-
-					//output.mainAttributeBonus = statGetSTR(stats[player], entity); // bonus from main attribute
-					//if ( stats[player]->weapon->type == MAGICSTAFF_SCEPTER )
-					//{
-					//	output.mainAttributeBonus /= 2;
-					//}
 
 					Sint32 attr = statGetSTR(stats[player], entity); // bonus from main attribute
 					Sint32 prevStat = stats[player]->STR;
@@ -372,10 +409,6 @@ Sint32 displayAttackPower(const int player, AttackHoverText_t& output)
 					//output.equipmentAndEffectBonus = attack - output.mainAttributeBonus - BASE_MELEE_DAMAGE; // bonus from equipment
 					output.attackMaxRange = output.totalAttack;
 					output.attackMinRange = output.totalAttack;
-					if ( stats[player]->weapon->type == MAGICSTAFF_SCEPTER )
-					{
-						output.proficiency = PRO_LEGACY_MAGIC;
-					}
 					output.totalAttack = output.attackMaxRange - ((output.attackMaxRange - output.attackMinRange) / 2.0);
 				}
 			}

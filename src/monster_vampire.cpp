@@ -152,7 +152,7 @@ void initVampire(Entity* my, Stat* myStats)
 				case 2:
 					if ( rng.rand() % 4 == 0 ) // 1 in 4
 					{
-						newItem(MAGICSTAFF_BLEED, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
+						newItem(MAGICSTAFF_BLEED, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, &myStats->inventory);
 					}
 				case 1:
 					if ( rng.rand() % 10 == 0 ) // 1 in 10

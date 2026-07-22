@@ -384,7 +384,7 @@ void initGnome(Entity* my, Stat* myStats)
 						case 7:
 						case 8:
 						case 9:
-							myStats->weapon = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 20, 35, rng), false, nullptr);
 							break;
 					}
 				}

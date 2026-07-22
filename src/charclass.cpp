@@ -1025,7 +1025,7 @@ void initClass(const int player)
 			free(item);
 
 			// magicstaff of slow
-			item = newItem(MAGICSTAFF_SLOW, SERVICABLE, 0, 1, 3, true, nullptr);
+			item = newItem(MAGICSTAFF_SLOW, SERVICABLE, 0, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 			item2 = itemPickup(player, item);
 			hotbar[1].item = item2->uid;
 			free(item);
@@ -1571,7 +1571,7 @@ void initClass(const int player)
 		if ( isLocalPlayer )
 		{
 			// magicstaff of light
-			item = newItem(MAGICSTAFF_LIGHT, EXCELLENT, 0, 1, 3, true, nullptr);
+			item = newItem(MAGICSTAFF_LIGHT, EXCELLENT, 0, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 			item2 = itemPickup(player, item);
 			hotbar[1].item = item2->uid;
 			free(item);
@@ -1707,7 +1707,7 @@ void initClass(const int player)
 			free(item);
 
 			// magicstaff of opening
-			item = newItem(MAGICSTAFF_OPENING, SERVICABLE, 0, 1, 0, true, nullptr);
+			item = newItem(MAGICSTAFF_OPENING, SERVICABLE, 0, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 			item2 = itemPickup(player, item);
 			hotbar[2].item = item2->uid;
 			free(item);
@@ -1719,7 +1719,7 @@ void initClass(const int player)
 			free(item);
 
 			// fire staff
-			item = newItem(MAGICSTAFF_FIRE, SERVICABLE, 0, 1, 0, true, nullptr);
+			item = newItem(MAGICSTAFF_FIRE, SERVICABLE, 0, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 			item2 = itemPickup(player, item);
 			hotbar[4].item = item2->uid;
 			free(item);
@@ -2169,7 +2169,7 @@ void initClass(const int player)
 		}
 
 		// weapon
-		item = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, 0, 1, 0, true, nullptr);
+		item = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, 0, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 		if ( isLocalPlayer )
 		{
 			item2 = itemPickup(player, item);
@@ -2354,7 +2354,7 @@ void initClass(const int player)
 		}
 
 		// weapon
-		item = newItem(MAGICSTAFF_CHARM, EXCELLENT, curseItems ? -1 : 1, 1, 0, true, nullptr);
+		item = newItem(MAGICSTAFF_CHARM, EXCELLENT, curseItems ? -1 : 1, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 		if ( isLocalPlayer )
 		{
 			item2 = itemPickup(player, item);
@@ -2370,7 +2370,7 @@ void initClass(const int player)
 		if ( isLocalPlayer )
 		{
 			// spear
-			item = newItem(MAGICSTAFF_COLD, SERVICABLE, 0, 1, 1, true, nullptr);
+			item = newItem(MAGICSTAFF_COLD, SERVICABLE, 0, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 			item2 = itemPickup(player, item);
 			hotbar[1].item = item2->uid;
 			free(item);
@@ -2529,7 +2529,7 @@ void initClass(const int player)
 			return;
 		}
 
-		item = newItem(MAGICSTAFF_POISON, EXCELLENT, 0, 1, 0, true, nullptr);
+		item = newItem(MAGICSTAFF_POISON, EXCELLENT, 0, 1, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1, true, nullptr);
 		if ( isLocalPlayer )
 		{
 			item2 = itemPickup(player, item);

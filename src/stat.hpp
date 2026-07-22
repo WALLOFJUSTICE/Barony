@@ -551,6 +551,7 @@ extern Stat* stats[MAXPLAYERS];
 
 inline bool skillCapstoneUnlocked(int player, int proficiency)
 {
+	if ( proficiency < 0 || proficiency >= NUMPROFICIENCIES ) { return false; }
 	return (stats[player]->getModifiedProficiency(proficiency) >= CAPSTONE_UNLOCK_LEVEL[proficiency]);
 }
 static const int MAX_PLAYER_STAT_VALUE = 248;

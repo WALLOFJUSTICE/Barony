@@ -337,7 +337,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 							break;
 						case 8:
 						case 9:
-							myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -1 + rng.rand() % 2, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 							break;
 					}
 				}

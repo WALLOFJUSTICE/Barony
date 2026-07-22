@@ -904,10 +904,8 @@ void ItemTooltips_t::readItemsFromFile()
 
 	const int bufSize = 600000;
 	static char buf[bufSize];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	//rapidjson::FileReadStream is(fp, buf, sizeof(buf)); - use this for large chunks.
-	rapidjson::StringStream is(buf);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
@@ -1016,7 +1014,9 @@ void ItemTooltips_t::readItemsFromFile()
 		"EFF_STAMINA_MOD",
 		"EFF_WALK_MOD",
 		"EFF_SHIELD_THORNS",
-		"EFF_SHIELD_THORNS_MOD"
+		"EFF_SHIELD_THORNS_MOD",
+		"MAGICSTAFF_CHARGE",
+		"EFF_SKILL_MAGICSTAFF"
 	};
 
 	for ( int i = 0; i < NUMITEMS && i < itemsRead; ++i )
@@ -1578,10 +1578,8 @@ void ItemTooltips_t::readItemLocalizationsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	static char buf[buffer_size];
-	const int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	//rapidjson::FileReadStream is(fp, buf, sizeof(buf)); - use this for large chunks.
-	rapidjson::StringStream is(buf);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
@@ -1732,10 +1730,8 @@ void ItemTooltips_t::readBookLocalizationsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	static char buf[buffer_size];
-	const int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	//rapidjson::FileReadStream is(fp, buf, sizeof(buf)); - use this for large chunks.
-	rapidjson::StringStream is(buf);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
@@ -1814,10 +1810,8 @@ void ItemTooltips_t::readTooltipsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	static char buf[buffer_size];
-	const int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	//rapidjson::FileReadStream is(fp, buf, sizeof(buf)); - use this for large chunks.
-	rapidjson::StringStream is(buf);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
@@ -2447,8 +2441,9 @@ int ItemTooltips_t::getSpellDamageOrHealAmount(const int player, spell_t* spell,
 		if ( player >= 0 && players[player] )
 		{
 			int bonus = 0;
-			if ( spellbook && itemCategory(spellbook) == MAGICSTAFF && spellbook->type != MAGICSTAFF_SCEPTER )
+			if ( (spellbook && itemCategory(spellbook) == MAGICSTAFF && spellbook->type != MAGICSTAFF_SCEPTER) )
 			{
+				//MAGICSTAFFS_USE_CHARGE todo
 				// no modifier.
 			}
 			else
@@ -2831,14 +2826,7 @@ std::string ItemTooltips_t::getSpellIconText(const int player, Item& item, const
 	}
 	else if ( itemCategory(&item) == MAGICSTAFF )
 	{
-		for ( auto& s : spellItems )
-		{
-			if ( s.second.magicstaffId == item.type )
-			{
-				spell = getSpellFromID(s.first);
-				break;
-			}
-		}
+		spell = getSpellFromID(getSpellIDFromMagicstaff(item.type));
 	}
 	else
 	{
@@ -3156,15 +3144,7 @@ std::string ItemTooltips_t::getSpellIconPath(const int player, Item& item, int s
 	node_t* spellImageNode = nullptr;
 	if ( itemCategory(&item) == MAGICSTAFF )
 	{
-		spell_t* spell = nullptr;
-		for ( auto& s : spellItems )
-		{
-			if ( s.second.magicstaffId == item.type )
-			{
-				spell = getSpellFromID(s.first);
-				break;
-			}
-		}
+		spell_t* spell = getSpellFromID(getSpellIDFromMagicstaff(item.type));
 		if ( spell )
 		{
 			spellImageNode = list_Node(&items[SPELL_ITEM].images, spell->ID);
@@ -3291,7 +3271,11 @@ std::string& ItemTooltips_t::getItemProficiencyName(int proficiency)
 		case PRO_RANGED:
 			return adjectives["proficiency_types"]["ranged"];
 		case PRO_SORCERY:
-			return adjectives["proficiency_types"]["magic"];
+			return adjectives["proficiency_types"]["sorcery"];
+		case PRO_MYSTICISM:
+			return adjectives["proficiency_types"]["mysticism"];
+		case PRO_THAUMATURGY:
+			return adjectives["proficiency_types"]["thaumaturgy"];
 		default:
 			return defaultString;
 	}
@@ -4273,6 +4257,29 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 				}
 				snprintf(buf, sizeof(buf), str.c_str(), -equipmentBonus);
 			}
+			else if ( conditionalAttribute == "EFF_SKILL_MAGICSTAFF" )
+			{
+				int equipmentBonus = 0;
+				if ( item.beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[player]) )
+				{
+					equipmentBonus = 10;
+					equipmentBonus += 5 * std::min(10, abs(item.beatitude));
+				}
+				else
+				{
+					equipmentBonus = 10;
+				}
+
+				int spellID = getSpellIDFromMagicstaff(item.type);
+				if ( spellID != SPELL_NONE )
+				{
+					if ( auto spell = getSpellFromID(spellID) )
+					{
+						std::string skillName = Player::SkillSheet_t::getSkillNameFromID(spell->skillID);
+						snprintf(buf, sizeof(buf), str.c_str(), equipmentBonus, skillName.c_str());
+					}
+				}
+			}
 			else if ( conditionalAttribute.find("EFF_SKILL_") != std::string::npos )
 			{
 				int skill = std::stoi(conditionalAttribute.substr(strlen("EFF_SKILL_"), std::string::npos));
@@ -5013,8 +5020,10 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 		|| tooltipType.find("tooltip_quiver") != std::string::npos
 		|| tooltipType.compare("tooltip_tool_pickaxe") == 0 
 		|| tooltipType.compare("tooltip_magicstaff_scepter") == 0
+		|| (MAGICSTAFFS_USE_CHARGE && tooltipType == "tooltip_magicstaff")
 		)
 	{
+		//MAGICSTAFFS_USE_CHARGE todo
 		Sint32 atk = item.weaponGetAttack(stats[player]);
 		snprintf(buf, sizeof(buf), str.c_str(), atk);
 	}
@@ -5941,9 +5950,11 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		|| tooltipType.find("tooltip_whip") != std::string::npos
 		|| tooltipType.compare("tooltip_tool_pickaxe") == 0
 		|| tooltipType.compare("tooltip_magicstaff_scepter") == 0
+		|| (MAGICSTAFFS_USE_CHARGE && tooltipType == "tooltip_magicstaff")
 		|| tooltipType.find("tooltip_ranged") != std::string::npos
 		|| tooltipType.find("tooltip_quiver") != std::string::npos )
 	{
+		//MAGICSTAFFS_USE_CHARGE todo
 		int proficiency = PRO_SWORD;
 		if ( tooltipType.find("tooltip_mace") != std::string::npos )
 		{
@@ -5965,6 +5976,13 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 			|| tooltipType.compare("tooltip_whip") == 0 )
 		{
 			proficiency = PRO_RANGED;
+		}
+		else if ( MAGICSTAFFS_USE_CHARGE && tooltipType.find("tooltip_magicstaff") != std::string::npos )
+		{
+			if ( item.type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && itemCategory(&item) == MAGICSTAFF) )
+			{
+				proficiency = getWeaponSkill(&item);
+			}
 		}
 
 		if ( detailTag.compare("weapon_base_atk") == 0 )
@@ -6027,7 +6045,6 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 
 			lowest = std::min(100.0, std::max(0.0, lowest));
 			real_t highest = std::min(highestMax, lowest + variance);
-
 			snprintf(buf, sizeof(buf), str.c_str(), (int)lowest, (int)highest, getItemProficiencyName(proficiency).c_str());
 		}
 		else if ( detailTag.compare("weapon_atk_from_player_stat") == 0 )
@@ -6043,10 +6060,11 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 				}
 				snprintf(buf, sizeof(buf), str.c_str(), (int)(atk * 100 * Entity::PlayerAttackMeleeStatFactor));
 			}
-			else if ( item.type == MAGICSTAFF_SCEPTER )
+			else if ( item.type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && itemCategory(&item) == MAGICSTAFF) )
 			{
-				int atk = (stats[player] ? statGetSTR(stats[player], players[player]->entity) : 0);
-				atk = std::min(atk / 2, atk);
+				int atk1 = std::round((stats[player] ? statGetSTR(stats[player], players[player]->entity) : 0) * 0.25);
+				int atk2 = std::round((stats[player] ? statGetINT(stats[player], players[player]->entity) : 0) * 0.75);
+				int atk = atk1 + atk2;
 				snprintf(buf, sizeof(buf), str.c_str(), (int)(atk * 100 * Entity::PlayerAttackMeleeStatFactor));
 			}
 			else if ( item.type == RAPIER )
@@ -6121,10 +6139,11 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		{
 			if ( item.type == MAGICSTAFF_SCEPTER )
 			{
+				//MAGICSTAFFS_USE_CHARGE todo
 				if ( detailTag.compare("spell_damage_bonus") == 0 )
 				{
-					spell_t* spell = getSpellFromID(SPELL_SCEPTER_BLAST);
-					if ( !spell ) { return; }
+					spell_t* spell = getSpellFromID(getSpellIDFromMagicstaff(item.type));
+					if ( !spell || spell->ID == SPELL_NONE ) { return; }
 
 					int baseDamage = getSpellDamageOrHealAmount(-1, spell, nullptr, compendiumTooltipIntro);
 
@@ -6167,6 +6186,45 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		else if ( detailTag.compare("weapon_on_cursed_sideeffect") == 0 )
 		{
 			snprintf(buf, sizeof(buf), str.c_str(), getItemBeatitudeAdjective(item.beatitude).c_str());
+		}
+		else if ( tooltipType.compare("tooltip_magicstaff") == 0 )
+		{
+			if ( detailTag.compare("magicstaff_charge_use") == 0 )
+			{
+				int chargeDegrade = item.magicstaffGetChargeDepletion(
+					compendiumTooltipIntro ? nullptr : players[player]->entity,
+					compendiumTooltipIntro ? nullptr : stats[player],
+					true);
+				snprintf(buf, sizeof(buf), str.c_str(), chargeDegrade);
+			}
+			else if ( detailTag.compare("magicstaff_charm_degrade_chance") == 0 )
+			{
+				int degradeChance = 100;
+				if ( item.status > WORN )
+				{
+					degradeChance = 33;
+				}
+				snprintf(buf, sizeof(buf), str.c_str(), degradeChance, getItemStatusAdjective(item.type, item.status).c_str());
+			}
+			else if ( detailTag.compare("magicstaff_degrade_chance") == 0 )
+			{
+				int degradeChance = 33;
+				snprintf(buf, sizeof(buf), str.c_str(), degradeChance);
+			}
+			else if ( detailTag.compare("attribute_spell_charm") == 0 )
+			{
+				int leaderChance = ((statGetCHR(stats[player], players[player]->entity) +
+					stats[player]->getModifiedProficiency(PRO_LEADERSHIP)) / 20) * 10;
+				if ( compendiumTooltipIntro )
+				{
+					leaderChance = 0;
+				}
+				snprintf(buf, sizeof(buf), str.c_str(), leaderChance);
+			}
+			else
+			{
+				return;
+			}
 		}
 		else
 		{
@@ -6710,37 +6768,6 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 				intChance = 0;
 			}
 			snprintf(buf, sizeof(buf), str.c_str(), intChance, leaderChance);
-		}
-		else
-		{
-			return;
-		}
-	}
-	else if ( tooltipType.compare("tooltip_magicstaff") == 0 )
-	{
-		if ( detailTag.compare("magicstaff_charm_degrade_chance") == 0 )
-		{
-			int degradeChance = 100;
-			if ( item.status > WORN )
-			{
-				degradeChance = 33;
-			}
-			snprintf(buf, sizeof(buf), str.c_str(), degradeChance, getItemStatusAdjective(item.type, item.status).c_str());
-		}
-		else if ( detailTag.compare("magicstaff_degrade_chance") == 0 )
-		{
-			int degradeChance = 33;
-			snprintf(buf, sizeof(buf), str.c_str(), degradeChance);
-		}
-		else if ( detailTag.compare("attribute_spell_charm") == 0 )
-		{
-			int leaderChance = ((statGetCHR(stats[player], players[player]->entity) +
-				stats[player]->getModifiedProficiency(PRO_LEADERSHIP)) / 20) * 10;
-			if ( compendiumTooltipIntro )
-			{
-				leaderChance = 0;
-			}
-			snprintf(buf, sizeof(buf), str.c_str(), leaderChance);
 		}
 		else
 		{
@@ -8759,13 +8786,12 @@ void MonsterData_t::loadMonsterDataJSON()
 			return;
 		}
 		char buf[65536];
-		int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-		buf[count] = '\0';
-		rapidjson::StringStream is(buf);
-		FileIO::close(fp);
+		FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+		//rapidjson::StringStream is(buf);
 
 		rapidjson::Document d;
 		d.ParseStream(is);
+		FileIO::close(fp);
 		if ( !d.HasMember("version") || !d.HasMember("monsters") )
 		{
 			printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -10485,14 +10511,13 @@ void LocalAchievements_t::readFromFile()
 		return;
 	}
 
-	static char buf[65536 * 2];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	static char buf[65536];
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.HasMember("version") || !d.HasMember("achievements") || !d.HasMember("statistics") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", path);
@@ -11208,13 +11233,12 @@ void EditorEntityData_t::readFromFile()
 	}
 
 	char buf[65536];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.HasMember("version") || !d.HasMember("entities") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -12652,13 +12676,12 @@ void EquipmentModelOffsets_t::readBaseItemsFromFile()
 	}
 
 	static char buf[32000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() )
 	{
 		return;
@@ -12782,13 +12805,12 @@ void EquipmentModelOffsets_t::readFromFile(std::string monsterName, int monsterT
 	}
 
 	static char buf[32000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() )
 	{
 		return;
@@ -13613,13 +13635,12 @@ void Compendium_t::readContentsLang(std::string name, std::map<std::string, std:
 	}
 
 	char buf[65536];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("version") || !d.HasMember("contents") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -13779,13 +13800,12 @@ void Compendium_t::readItemsTranslationsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -13844,13 +13864,12 @@ void Compendium_t::readItemsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("version") || !d.HasMember("items") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -14105,13 +14124,12 @@ void Compendium_t::readMagicTranslationsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -14170,13 +14188,12 @@ void Compendium_t::readMagicFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("version") || !d.HasMember("items") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -14615,13 +14632,12 @@ void Compendium_t::readCodexTranslationsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -14740,13 +14756,12 @@ void Compendium_t::readCodexFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("version") || !d.HasMember("codex") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -14965,13 +14980,12 @@ void Compendium_t::readWorldTranslationsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -15090,13 +15104,12 @@ void Compendium_t::readWorldFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("version") || !d.HasMember("world") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -15379,13 +15392,12 @@ void Compendium_t::readMonstersTranslationsFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -15454,13 +15466,12 @@ void Compendium_t::readMonstersFromFile(bool forceLoadBaseDirectory)
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("version") || !d.HasMember("monsters") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -15738,13 +15749,12 @@ void Compendium_t::Events_t::readEventsTranslations()
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("tags") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -16677,13 +16687,12 @@ void Compendium_t::Events_t::readEventsFromFile()
 	}
 
 	char buf[120000];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("tags") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -16828,13 +16837,12 @@ void Compendium_t::Events_t::loadItemsSaveData()
 
 	const int bufSize = 360000;
 	char buf[bufSize];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("items") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -17108,13 +17116,12 @@ void Compendium_t::readUnlocksSaveData()
 
 	const int bufSize = 200000;
 	char buf[bufSize];
-	int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-	buf[count] = '\0';
-	rapidjson::StringStream is(buf);
-	FileIO::close(fp);
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
 
 	rapidjson::Document d;
 	d.ParseStream(is);
+	FileIO::close(fp);
 	if ( !d.IsObject() || !d.HasMember("version") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
@@ -19116,14 +19123,13 @@ void Compendium_t::readModelLimbsFromFile(std::string section)
 				printlog("[JSON]: Error: Could not locate json file %s", inputPath.c_str());
 				return;
 			}
-			static char buf[65536];
-			int count = fp->read(buf, sizeof(buf[0]), sizeof(buf) - 1);
-			buf[count] = '\0';
-			rapidjson::StringStream is(buf);
-			FileIO::close(fp);
+			static char buf[192000];
+			FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+			//rapidjson::StringStream is(buf);
 
 			rapidjson::Document d;
 			d.ParseStream(is);
+			FileIO::close(fp);
 			if ( !d.IsObject() || !d.HasMember("version") || !d.HasMember("limbs") )
 			{
 				printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());

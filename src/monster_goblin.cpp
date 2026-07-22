@@ -158,7 +158,7 @@ void initGoblin(Entity* my, Stat* myStats)
 						    myStats->weapon = newItem(IRON_AXE, WORN, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						    break;
 					    case 9:
-						    myStats->weapon = newItem(MAGICSTAFF_FIRE, EXCELLENT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						    myStats->weapon = newItem(MAGICSTAFF_FIRE, EXCELLENT, -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 						    break;
 				    }
 			    }

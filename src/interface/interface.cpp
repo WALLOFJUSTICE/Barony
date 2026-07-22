@@ -5647,17 +5647,17 @@ bool GenericGUIMenu::isItemRepairable(const Item* item, int repairScroll)
 			}
 			return false;
 		}
-		else if(item->type == MAGICSTAFF_SCEPTER)
+		else if (item->type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && cat == MAGICSTAFF) )
 		{
 			if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX < 100 )
 			{
 				return true;
 			}
-			if ( item->status == EXCELLENT )
+			if ( item->status < EXCELLENT )
 			{
-				return false;
+				return true;
 			}
-			return true;
+			return false;
 		}
 		else if ( cat == MAGICSTAFF )
 		{
@@ -5684,7 +5684,13 @@ bool GenericGUIMenu::isItemRepairable(const Item* item, int repairScroll)
 		case ARMOR:
 			return true;
 		case MAGICSTAFF:
+		{
+			if ( (item->type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && cat == MAGICSTAFF)) )
+			{
+				return true;
+			}
 			return false;
+		}
 		case THROWN:
 			if ( item->type == BOOMERANG )
 			{
@@ -7281,7 +7287,7 @@ void GenericGUIMenu::repairItem(Item* item)
 		if ( itemCategory(item) == MAGICSTAFF )
 		{
 			Compendium_t::Events_t::eventUpdate(gui_player, Compendium_t::CPDM_MAGICSTAFF_RECHARGED, item->type, 1);
-			if ( item->type == MAGICSTAFF_SCEPTER )
+			if ( item->type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF) )
 			{
 				int durability = item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
 				int repairAmount = ((MAGICSTAFF_SCEPTER_CHARGE_MAX - 1) - durability);
@@ -7292,7 +7298,8 @@ void GenericGUIMenu::repairItem(Item* item)
 						repairAmount = MAGICSTAFF_SCEPTER_CHARGE_MAX / 2;
 					}
 				}
-				item->status = EXCELLENT;
+				//item->status = EXCELLENT;
+				item->status = static_cast<Status>(std::min(item->status + 1, static_cast<int>(EXCELLENT)));
 				item->appearance += repairAmount;
 				messagePlayer(gui_player, MESSAGE_MISC, Language::get(3730), item->getName());
 				closeGUI();
@@ -16523,6 +16530,11 @@ GenericGUIMenu::TinkerGUI_t::TinkerActions_t GenericGUIMenu::TinkerGUI_t::setIte
 				snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
 					item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
 			}
+			else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF )
+			{
+				snprintf(buf, sizeof(buf), "%s %s (%d%%) (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+					item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
+			}
 			else
 			{
 				snprintf(buf, sizeof(buf), "%s %s (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), item->getName(), item->beatitude);
@@ -24733,7 +24745,8 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 					result = ITEMFX_ACTION_ITEM_FULLY_CHARGED;
 				}
 			}
-			else if ( item->type == MAGICSTAFF_SCEPTER )
+			else if ( item->type == MAGICSTAFF_SCEPTER
+				|| (MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF) )
 			{
 				if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX < (MAGICSTAFF_SCEPTER_CHARGE_MAX - 1) )
 				{
@@ -25224,6 +25237,11 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 				{
 					snprintf(buf, sizeof(buf), "%s %s %d%% (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
 						item->getName(), item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
+				}
+				else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF && item->identified )
+				{
+					snprintf(buf, sizeof(buf), "%s %s %d%% (%+d)", ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(),
+						item->getName(), item->appearance% MAGICSTAFF_SCEPTER_CHARGE_MAX, item->beatitude);
 				}
 				else
 				{
@@ -25776,6 +25794,10 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 				{
 					snprintf(buf, sizeof(buf), "%s", Language::get(6833));
 				}
+				else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF )
+				{
+					snprintf(buf, sizeof(buf), "%s", Language::get(6833));
+				}
 				else if ( !item->identified )
 				{
 					std::string prefix = ItemTooltips.adjectives["scroll_prefixes"]["unknown_scroll"].c_str();
@@ -25812,6 +25834,11 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 					if ( item->type == MAGICSTAFF_SCEPTER )
 					{
 						snprintf(buf, sizeof(buf), "%s (%d%%)", scrollShortName.c_str(), 
+							item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX);
+					}
+					else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF )
+					{
+						snprintf(buf, sizeof(buf), "%s (%d%%)", scrollShortName.c_str(),
 							item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX);
 					}
 					else

@@ -8509,7 +8509,7 @@ Sint32 Entity::getAttack(Entity* my, Stat* myStats, bool isPlayer, int chargeMod
 	else if ( !shapeshifted && myStats->weapon && myStats->weapon->type == TOOL_WHIP )
 	{
 		int atk = statGetSTR(myStats, my) + statGetDEX(myStats, my);
-		atk = std::min(atk / 2, atk);
+		atk = std::min((atk + 1) / 2, atk);
 		if ( isPlayer )
 		{
 			attack *= (1.0 + atk * Entity::PlayerAttackMeleeStatFactor);
@@ -8519,10 +8519,13 @@ Sint32 Entity::getAttack(Entity* my, Stat* myStats, bool isPlayer, int chargeMod
 			attack += atk;
 		}
 	}
-	else if ( !shapeshifted && myStats->weapon && myStats->weapon->type == MAGICSTAFF_SCEPTER )
+	else if ( !shapeshifted && myStats->weapon 
+		&& (myStats->weapon->type == MAGICSTAFF_SCEPTER
+			|| (MAGICSTAFFS_USE_CHARGE && isPlayer && itemCategory(myStats->weapon) == MAGICSTAFF)) )
 	{
-		int atk = statGetSTR(myStats, my);
-		atk = std::min(atk / 2, atk);
+		int atk1 = std::round(statGetSTR(myStats, my) * 0.25);
+		int atk2 = std::round(statGetINT(myStats, my) * 0.75);
+		int atk = atk1 + atk2;
 		if ( isPlayer )
 		{
 			attack *= (1.0 + atk * Entity::PlayerAttackMeleeStatFactor);
@@ -10798,8 +10801,29 @@ void Entity::attack(int pose, int charge, Entity* target)
 				if ( itemCategory(myStats->weapon) == MAGICSTAFF )
 				{
 					Entity* castSpellResult = nullptr;
-					switch ( myStats->weapon->type )
+					if ( myStats->weapon->type == MAGICSTAFF_SCEPTER
+						|| (MAGICSTAFFS_USE_CHARGE && behavior == &actPlayer) )
 					{
+						if ( charge == 100 )
+						{
+							// normal cast
+						}
+						else
+						{
+							magicstaffStrike = true;
+							if ( charge == 99 )
+							{
+								charge = Stat::getMaxAttackCharge(myStats);
+								messagePlayer(isEntityPlayer(), MESSAGE_EQUIPMENT, Language::get(6839), items[myStats->weapon->type].getIdentifiedName());
+								playSoundEntity(this, 163, 128);
+							}
+						}
+					}
+
+					if ( !magicstaffStrike )
+					{
+						switch ( myStats->weapon->type )
+						{
 						case MAGICSTAFF_LIGHT:
 						{
 							castSpellResult = castSpell(uid, &spell_light, true, false);
@@ -10851,24 +10875,22 @@ void Entity::attack(int pose, int charge, Entity* target)
 							castSpell(uid, &spell_poison, true, false);
 							break;
 						case MAGICSTAFF_SCEPTER:
-							if ( charge == 100 )
+							castSpell(uid, getSpellFromID(SPELL_SCEPTER_BLAST), true, false);
+							break;
+						default:
+						{
+							int spellID = getSpellIDFromMagicstaff(myStats->weapon->type);
+							if ( spellID != SPELL_NONE )
 							{
-								castSpell(uid, getSpellFromID(SPELL_SCEPTER_BLAST), true, false);
+								castSpell(uid, getSpellFromID(spellID), true, false);
 							}
 							else
 							{
-								magicstaffStrike = true;
-								if ( charge == 99 )
-								{
-									charge = Stat::getMaxAttackCharge(myStats);
-									messagePlayer(isEntityPlayer(), MESSAGE_EQUIPMENT, Language::get(6839), items[myStats->weapon->type].getIdentifiedName());
-									playSoundEntity(this, 163, 128);
-								}
+								messagePlayer(player, MESSAGE_DEBUG | MESSAGE_MISC, "This is my wish stick! Wishy wishy wish!");
 							}
 							break;
-						default:
-							messagePlayer(player, MESSAGE_DEBUG | MESSAGE_MISC, "This is my wish stick! Wishy wishy wish!");
-							break;
+						}
+						}
 					}
 
 					if ( behavior == &actPlayer && !magicstaffStrike )
@@ -10882,7 +10904,8 @@ void Entity::attack(int pose, int charge, Entity* target)
 					{
 						degradeWeapon = false; //certain monster's weapons don't degrade.
 					}
-					if ( myStats->weapon->type == MAGICSTAFF_SCEPTER )
+					if ( myStats->weapon->type == MAGICSTAFF_SCEPTER 
+						|| (MAGICSTAFFS_USE_CHARGE && itemCategory(myStats->weapon) == MAGICSTAFF && behavior == &actPlayer) )
 					{
 						degradeWeapon = false;
 					}
@@ -10893,16 +10916,17 @@ void Entity::attack(int pose, int charge, Entity* target)
 						degradeWeapon = false;
 					}
 					bool forceDegrade = false;
-					if ( degradeWeapon )
-					{
-						if ( myStats->weapon->type == MAGICSTAFF_CHARM )
-						{
-							if ( myStats->weapon->status <= WORN )
-							{
-								forceDegrade = true;
-							}
-						}
-					}
+					//if ( degradeWeapon )
+					//{
+					//	if ( myStats->weapon->type == MAGICSTAFF_CHARM )
+					//	{
+					//		//MAGICSTAFFS_USE_CHARGE todo
+					//		if ( myStats->weapon->status <= WORN )
+					//		{
+					//			forceDegrade = true;
+					//		}
+					//	}
+					//}
 
 					if ( ((local_rng.rand() % 3 == 0 && degradeWeapon && !(svFlags & SV_FLAG_HARDCORE)) || forceDegrade
 						|| ((svFlags & SV_FLAG_HARDCORE) && local_rng.rand() % 6 == 0 && degradeWeapon))
@@ -10929,6 +10953,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 						{
 							if ( itemCategory(myStats->weapon) == MAGICSTAFF && myStats->weapon->beatitude < 0 )
 							{
+								//MAGICSTAFFS_USE_CHARGE todo
 								steamAchievementClient(player, "BARONY_ACH_ONE_MANS_TRASH");
 							}
 							if ( behavior == &actPlayer )
@@ -10940,6 +10965,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 							{
 								if ( myStats->weapon->type == MAGICSTAFF_CHARM )
 								{
+									//MAGICSTAFFS_USE_CHARGE todo
 									bool foundCharmSpell = false;
 									for ( node_t* spellnode = stats[player]->inventory.first; spellnode != nullptr; spellnode = spellnode->next )
 									{
@@ -12590,7 +12616,8 @@ fireagain:
 					{
 						if ( behavior == &actPlayer )
 						{
-							if ( weaponskill >= 0 && (weaponskill != PRO_RANGED || whip) )
+							if ( weaponskill >= 0 && (weaponskill != PRO_RANGED || whip)
+								&& !(weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY) )
 							{
 								if ( myStats->getProficiency(weaponskill) < SKILL_LEVEL_BASIC
 									&& local_rng.rand() % 20 == 0 )
@@ -12990,10 +13017,14 @@ fireagain:
 					dmgType = DAMAGE_TABLE_RANGED;
 					weaponMultipliers = Entity::getDamageTableMultiplier(hit.entity, *hitstats, DAMAGE_TABLE_RANGED);
 				}
-				else if ( weaponskill >= 0 )
+				else if ( weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM )
 				{
 					dmgType = static_cast<DamageTableType>(weaponskill - PRO_SWORD);
 					weaponMultipliers = Entity::getDamageTableMultiplier(hit.entity, *hitstats, dmgType);
+				}
+				else if ( weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY )
+				{
+					weaponMultipliers = Entity::getDamageTableMultiplier(hit.entity, *hitstats, DAMAGE_TABLE_MAGIC);
 				}
 
 				int thornsEffect = 0;
@@ -13524,7 +13555,9 @@ fireagain:
 					}
 
 					static ConsoleVariable<bool> cvar_atkonhit("/enemy_debugatkonhit", false);
-					if ( (weaponskill >= PRO_SWORD && weaponskill < PRO_SHIELD) || (weaponskill == PRO_UNARMED && behavior != &actMonster) || weaponskill == PRO_RANGED )
+					if ( (weaponskill >= PRO_SWORD && weaponskill < PRO_SHIELD) || (weaponskill == PRO_UNARMED && behavior != &actMonster) 
+						|| weaponskill == PRO_RANGED
+						|| (weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY) )
 					{
 						if ( *cvar_atkonhit )
 						{
@@ -13997,12 +14030,24 @@ fireagain:
 								degradeOnZeroDMG = 3;
 								degradeOnNormalDMG = 40;
 							}
+							else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(*weaponToBreak) == MAGICSTAFF
+								&& weaponType != MAGICSTAFF_SCEPTER )
+							{
+								degradeOnZeroDMG = 3 + (myStats->type == GOBLIN ? 3 : 0);
+								degradeOnNormalDMG = 5 + (myStats->type == GOBLIN ? 5 : 0);
+							}
 
 							if ( behavior == &actPlayer && ((weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM) 
-								|| weaponskill == PRO_UNARMED || weaponskill == PRO_RANGED) )
+								|| weaponskill == PRO_UNARMED || weaponskill == PRO_RANGED
+								|| weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY) )
 							{
 								int skillLVL = myStats->getModifiedProficiency(weaponskill) / 20;
-								if ( !isBoneWeapon )
+								if ( itemCategory(*weaponToBreak) == MAGICSTAFF )
+								{
+									degradeOnZeroDMG += skillLVL; // increase by 1-5
+									degradeOnNormalDMG += skillLVL; // increase by 1-5
+								}
+								else if ( !isBoneWeapon )
 								{
 									degradeOnZeroDMG += skillLVL; // increase by 1-5
 									degradeOnNormalDMG += (skillLVL * 10); // increase by 10-50
@@ -14040,7 +14085,8 @@ fireagain:
 									degradeWeapon = false;
 								}
 							}
-							if ( behavior == &actPlayer && skillCapstoneUnlocked(skill[2], weaponskill) )
+							if ( behavior == &actPlayer 
+								&& (skillCapstoneUnlocked(skill[2], weaponskill) && items[weaponType].category != MAGICSTAFF) )
 							{
 								// don't degrade on capstone skill.
 								degradeWeapon = false;
@@ -14149,6 +14195,37 @@ fireagain:
 									if ( behavior == &actPlayer )
 									{
 										Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_BROKEN, (*weaponToBreak)->type, 1);
+									}
+
+									if ( itemCategory((*weaponToBreak)) == MAGICSTAFF && (*weaponToBreak)->beatitude < 0 )
+									{
+										//MAGICSTAFFS_USE_CHARGE todo
+										steamAchievementClient(player, "BARONY_ACH_ONE_MANS_TRASH");
+									}
+									if ( player >= 0 && players[player]->isLocalPlayer() && client_classes[player] == CLASS_MESMER )
+									{
+										if ( (*weaponToBreak)->type == MAGICSTAFF_CHARM )
+										{
+											//MAGICSTAFFS_USE_CHARGE todo
+											bool foundCharmSpell = false;
+											for ( node_t* spellnode = stats[player]->inventory.first; spellnode != nullptr; spellnode = spellnode->next )
+											{
+												Item* item = (Item*)spellnode->element;
+												if ( item && itemCategory(item) == SPELL_CAT )
+												{
+													spell_t* spell = getSpellFromItem(player, item, false);
+													if ( spell && spell->ID == SPELL_CHARM_MONSTER )
+													{
+														foundCharmSpell = true;
+														break;
+													}
+												}
+											}
+											if ( !foundCharmSpell )
+											{
+												steamAchievement("BARONY_ACH_WHAT_NOW");
+											}
+										}
 									}
 								}
 								if ( player > 0 && multiplayer == SERVER && !players[player]->isLocalPlayer() )
@@ -14578,6 +14655,26 @@ fireagain:
 								spawnMagicEffectParticles(hit.entity->x, hit.entity->y, hit.entity->z, 171);
 							}
 						}
+
+						if ( myStats->weapon->type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && itemCategory(myStats->weapon) == MAGICSTAFF) )
+						{
+							if ( weaponskill == PRO_SORCERY )
+							{
+								spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+							else if ( weaponskill == PRO_MYSTICISM )
+							{
+								spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+							else if ( weaponskill == PRO_THAUMATURGY )
+							{
+								spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+							}
+						}
+
 						if ( !shapeshifted && weaponskill == PRO_MACE && myStats->weapon && myStats->weapon->type == SHILLELAGH_MACE )
 						{
 							int numDebuffs = hitstats->numShillelaghDebuffsActive(hit.entity);
@@ -16384,7 +16481,7 @@ fireagain:
 						{
 							parriedWeaponMultipliers = Entity::getDamageTableMultiplier(this, *myStats, DAMAGE_TABLE_RANGED);
 						}
-						else if ( parriedSkill >= 0 )
+						else if ( parriedSkill >= PRO_SWORD && parriedSkill <= PRO_POLEARM )
 						{
 							DamageTableType dmgType = static_cast<DamageTableType>(parriedSkill - PRO_SWORD);
 							parriedWeaponMultipliers = Entity::getDamageTableMultiplier(this, *myStats, dmgType);
@@ -21942,6 +22039,17 @@ int getWeaponSkill(const Item* weapon)
 	{
 		return PRO_RANGED;
 	}
+	if ( itemCategory(weapon) == MAGICSTAFF && MAGICSTAFFS_USE_CHARGE )
+	{
+		int spellID = getSpellIDFromMagicstaff(weapon->type);
+		if ( spellID != SPELL_NONE )
+		{
+			if ( auto spell = getSpellFromID(spellID) )
+			{
+				return spell->skillID;
+			}
+		}
+	}
 	return -1;
 }
 
@@ -22685,7 +22793,7 @@ bool Entity::hasRangedWeapon(bool ignoreMonsterNPCType) const
 	{
 		return true;
 	}
-	else if ( itemCategory(myStats->weapon) == MAGICSTAFF )
+	else if ( itemCategory(myStats->weapon) == MAGICSTAFF && myStats->weapon->type != MAGICSTAFF_SCEPTER )
 	{
 		return true;
 	}

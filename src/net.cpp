@@ -4363,6 +4363,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 							}
 							if ( !foundCharmSpell )
 							{
+								//MAGICSTAFFS_USE_CHARGE todo
 								steamAchievement("BARONY_ACH_WHAT_NOW");
 							}
 						}
@@ -7107,6 +7108,11 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 			{
 				appearance = entity->skill[14] % MAGICSTAFF_SCEPTER_CHARGE_MAX;
 			}
+			else if ( MAGICSTAFFS_USE_CHARGE && entity->skill[10] >= 0 && entity->skill[10] < NUMITEMS
+				&& items[entity->skill[10]].category == MAGICSTAFF )
+			{
+				appearance = entity->skill[14] % MAGICSTAFF_SCEPTER_CHARGE_MAX;
+			}
 			statusBeatitudeQuantityAppearance |= (static_cast<Uint8>(appearance) & 0xFF); // appearance
 			SDLNet_Write32(statusBeatitudeQuantityAppearance, &net_packet->data[12]);
 
@@ -8591,11 +8597,41 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		{
 			ItemType type = static_cast<ItemType>(SDLNet_Read32(&net_packet->data[7]));
 			Uint32 appearance = static_cast<ItemType>(SDLNet_Read32(&net_packet->data[11]));
+			int pose = net_packet->data[5];
+			int charge = net_packet->data[6];
 			if ( stats[player]->weapon && stats[player]->weapon->type == type )
 			{
 				if ( type == MAGICSTAFF_SCEPTER )
 				{
 					stats[player]->weapon->appearance = appearance;
+					if ( charge == 100 ) // charge amount, notify depleted
+					{
+						if ( !players[player]->isLocalPlayer() )
+						{
+							if ( stats[player]->weapon->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX == 0 )
+							{
+								messagePlayer(player,
+									MESSAGE_EQUIPMENT, Language::get(6839), items[type].getIdentifiedName());
+								playSoundEntity(players[player]->entity, 163, 128);
+							}
+						}
+					}
+				}
+				else if ( MAGICSTAFFS_USE_CHARGE && items[type].category == MAGICSTAFF )
+				{
+					stats[player]->weapon->appearance = appearance;
+					if ( charge == 100 ) // charge amount, notify depleted
+					{
+						if ( !players[player]->isLocalPlayer() )
+						{
+							if ( stats[player]->weapon->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX == 0 )
+							{
+								messagePlayer(player,
+									MESSAGE_EQUIPMENT, Language::get(6839), items[type].getIdentifiedName());
+								playSoundEntity(players[player]->entity, 163, 128);
+							}
+						}
+					}
 				}
 			}
 			if ( type == TOOL_DUCK )
@@ -8612,17 +8648,16 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 					return;
 				}
 			}
-			int pose = net_packet->data[5];
 			if ( pose == PLAYER_POSE_GOLEM_SMASH )
 			{
 				Item* tmp = stats[player]->weapon;
 				stats[player]->weapon = nullptr;
-				players[player]->entity->attack(pose, net_packet->data[6], nullptr);
+				players[player]->entity->attack(pose, charge, nullptr);
 				stats[player]->weapon = tmp;
 			}
 			else
 			{
-				players[player]->entity->attack(pose, net_packet->data[6], nullptr);
+				players[player]->entity->attack(pose, charge, nullptr);
 			}
 		}
 	}},

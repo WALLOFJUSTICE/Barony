@@ -159,7 +159,7 @@ void initIncubus(Entity* my, Stat* myStats)
 					case 3:
 						if ( rng.rand() % 2 == 0 && !lesserMonster ) // 1 in 2
 						{
-							newItem(MAGICSTAFF_COLD, SERVICABLE, 0, 1, rng.rand(), false, &myStats->inventory);
+							newItem(MAGICSTAFF_COLD, SERVICABLE, 0, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, &myStats->inventory);
 						}
 					case 2:
 						if ( rng.rand() % 5 == 0 ) // 1 in 5
@@ -204,7 +204,7 @@ void initIncubus(Entity* my, Stat* myStats)
 								myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 							case 9:
-								myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 								break;
 						}
 					}
@@ -229,7 +229,7 @@ void initIncubus(Entity* my, Stat* myStats)
 							myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 9:
-							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 							break;
 					}
 				}

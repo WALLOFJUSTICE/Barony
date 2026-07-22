@@ -2743,7 +2743,9 @@ void actHudWeapon(Entity* my)
 						{
 							players[HUDWEAPON_PLAYERNUM]->entity->attack(1, HUDWEAPON_CHARGE, nullptr);
 						}
-						else if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon && stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER )
+						else if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon 
+							&& (stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER
+								|| (MAGICSTAFFS_USE_CHARGE && itemCategory(stats[HUDWEAPON_PLAYERNUM]->weapon) == MAGICSTAFF)))
 						{
 							int chargeAmount = HUDWEAPON_CHARGE;
 							if ( HUDWEAPON_OVERCHARGE >= (Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) - 3) )
@@ -2751,8 +2753,19 @@ void actHudWeapon(Entity* my)
 								int staffCharge = stats[HUDWEAPON_PLAYERNUM]->weapon->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
 								if ( staffCharge > 0 )
 								{
-									int decrement = std::min(staffCharge, 5);
+									int decrement = stats[HUDWEAPON_PLAYERNUM]->weapon->magicstaffGetChargeDepletion(
+										players[HUDWEAPON_PLAYERNUM]->entity, stats[HUDWEAPON_PLAYERNUM], true);
+									decrement = std::min(staffCharge, decrement);
 									stats[HUDWEAPON_PLAYERNUM]->weapon->appearance -= decrement;
+									if ( multiplayer != CLIENT )
+									{
+										if ( stats[HUDWEAPON_PLAYERNUM]->weapon->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX == 0 )
+										{
+											messagePlayer(HUDWEAPON_PLAYERNUM, 
+												MESSAGE_EQUIPMENT, Language::get(6839), items[stats[HUDWEAPON_PLAYERNUM]->weapon->type].getIdentifiedName());
+											playSoundEntity(players[HUDWEAPON_PLAYERNUM]->entity, 163, 128);
+										}
+									}
 									chargeAmount = 100;
 								}
 								else

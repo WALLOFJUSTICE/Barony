@@ -110,7 +110,7 @@ void initLichIce(Entity* my, Stat* myStats)
 			//give weapon
 			if ( myStats->weapon == NULL && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 			{
-				myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -5, 1, rng.rand(), false, NULL);
+				myStats->weapon = newItem(MAGICSTAFF_COLD, EXCELLENT, -5, 1, generateMagicstaffAppearance(my, myStats, 50, 100, rng), false, NULL);
 			}
 		}
 	}

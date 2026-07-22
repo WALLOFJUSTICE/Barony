@@ -355,13 +355,13 @@ void initGoatman(Entity* my, Stat* myStats)
 						case 2:
 						case 3:
 						case 4:
-							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 							break;
 						case 5:
 						case 6:
 						case 7:
 						case 8:
-							myStats->weapon = newItem(MAGICSTAFF_FIRE, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_FIRE, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 							break;
 						case 9:
 							switch ( rng.rand() % 4 )
@@ -381,7 +381,7 @@ void initGoatman(Entity* my, Stat* myStats)
 							}
 							break;
 						default:
-							myStats->weapon = newItem(MAGICSTAFF_SLOW, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_SLOW, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 							break;
 					}
 				}

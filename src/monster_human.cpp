@@ -154,8 +154,8 @@ void initHuman(Entity* my, Stat* myStats)
 							myStats->helmet = newItem(HAT_WIZARD, EXCELLENT, 2, 1, 2, false, nullptr);
 							myStats->shoes = newItem(LEATHER_BOOTS_SPEED, EXCELLENT, 2, 1, 2, false, nullptr);
 							myStats->cloak = newItem(CLOAK_PROTECTION, EXCELLENT, 5, 1, 3, false, nullptr);
-							myStats->weapon = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, 2, 1, 2, false, nullptr);
-							myStats->amulet = newItem(AMULET_MAGICREFLECTION, EXCELLENT, 2, 1, 2, false, nullptr);
+							myStats->weapon = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, 2, 1, generateMagicstaffAppearance(my, myStats, 50, 100, rng), false, nullptr);
+							myStats->amulet = newItem(AMULET_MAGICREFLECTION, EXCELLENT, 2, 1, rng.rand(), false, nullptr);
 							myStats->mask = newItem(MASK_PIPE, EXCELLENT, rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 3:
@@ -361,7 +361,7 @@ void initHuman(Entity* my, Stat* myStats)
 				myStats->shoes = newItem(LEATHER_BOOTS_SPEED, EXCELLENT, 0, 1, 2, false, nullptr);
 				myStats->breastplate = newItem(LEATHER_BREASTPIECE, EXCELLENT, 0, 1, 2, false, nullptr);
 				myStats->cloak = newItem(CLOAK_PROTECTION, EXCELLENT, 2, 1, 3, false, nullptr);
-				myStats->weapon = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, 1, 1, 2, false, nullptr);
+				myStats->weapon = newItem(MAGICSTAFF_LIGHTNING, EXCELLENT, 1, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
 				myStats->amulet = newItem(AMULET_MAGICREFLECTION, EXCELLENT, 1, 1, 2, false, nullptr);
 			}
 

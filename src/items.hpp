@@ -771,6 +771,7 @@ public:
 	bool unableToEquipDueToSwapWeaponTimer(const int player) const;
 	bool tinkeringBotIsMaxHealth() const;
 	bool isTinkeringItemWithThrownLimit() const;
+	int magicstaffGetChargeDepletion(Entity* my, Stat* myStats, bool isPlayer) const;
 	static void onItemIdentified(int player, Item* tempItem);
 	static void itemFindUniqueAppearance(Item* tempItem, std::unordered_set<Uint32>& appearancesOfSimilarItems);
 };
@@ -1020,6 +1021,7 @@ real_t getArtifactWeaponEffectChance(ItemType type, Stat& wielder, real_t* effec
 void updateHungerMessages(Entity* my, Stat* myStats, Item* eaten);
 bool playerCanSpawnMoreTinkeringBots(const Stat* myStats);
 int maximumTinkeringBotsCanBeDeployed(const Stat* myStats);
+Uint32 generateMagicstaffAppearance(Entity* my, Stat* myStats, int chargemin, int chargemax, BaronyRNG& rng);
 extern bool overrideTinkeringLimit;
 extern int decoyBoxRange;
 

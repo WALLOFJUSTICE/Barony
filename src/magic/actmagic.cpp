@@ -1283,6 +1283,7 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 	{
 		if ( magicstaff )
 		{
+			// MAGICSTAFFS_USE_CHARGE todo
 			real_t percentChance = 100.0 / (real_t)((eventType & spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE) ? 12 : 8);
 			if ( players[player]->mechanics.rollRngProc(Player::PlayerMechanics_t::RngRollTypes::RNG_ROLL_SPELL_LEVELS, 
 				std::max(1, std::min(100, (int)percentChance)), spellID) ) //16.67%
@@ -3739,6 +3740,30 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 									if ( parent )
 									{
 										hitstats->bleedInflictedBy = parent->getUID();
+									}
+
+									Stat* casterStats = nullptr;
+									if ( parent )
+									{
+										casterStats = parent->getStats();
+									}
+
+									if ( prevDuration == 0 && parent && casterStats )
+									{
+										// energize if wearing punisher hood!
+										if ( casterStats->helmet && casterStats->helmet->type == PUNISHER_HOOD )
+										{
+											int mpAmount = parent->modMP(1 + local_rng.rand() % 2);
+											parent->playerInsectoidIncrementHungerToMP(mpAmount);
+											Uint32 color = makeColorRGB(0, 255, 0);
+											parent->setEffect(EFF_MP_REGEN, true, std::max(casterStats->EFFECTS_TIMERS[EFF_MP_REGEN], 10 * TICKS_PER_SECOND), false);
+											if ( parent->behavior == &actPlayer )
+											{
+												messagePlayerColor(parent->skill[2], MESSAGE_HINT, color, Language::get(3753));
+												steamStatisticUpdateClient(parent->skill[2], STEAM_STAT_ITS_A_LIVING, STEAM_STAT_INT, 1);
+											}
+											playSoundEntity(parent, 168, 128);
+										}
 									}
 								}
 							}
@@ -6586,11 +6611,35 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 
 							if ( hitstats )
 							{
+								Stat* casterStats = nullptr;
+								if ( parent )
+								{
+									casterStats = parent->getStats();
+								}
+
+								bool wasBleeding = hitstats->getEffectActive(EFF_BLEEDING);
 								if ( hit.entity->setEffect(EFF_BLEEDING, true, element->duration, false) )
 								{
 									if ( parent )
 									{
 										hitstats->bleedInflictedBy = parent->getUID();
+									}
+									if ( !wasBleeding && parent && casterStats )
+									{
+										// energize if wearing punisher hood!
+										if ( casterStats->helmet && casterStats->helmet->type == PUNISHER_HOOD )
+										{
+											int mpAmount = parent->modMP(1 + local_rng.rand() % 2);
+											parent->playerInsectoidIncrementHungerToMP(mpAmount);
+											Uint32 color = makeColorRGB(0, 255, 0);
+											parent->setEffect(EFF_MP_REGEN, true, std::max(casterStats->EFFECTS_TIMERS[EFF_MP_REGEN], 10 * TICKS_PER_SECOND), false);
+											if ( parent->behavior == &actPlayer )
+											{
+												messagePlayerColor(parent->skill[2], MESSAGE_HINT, color, Language::get(3753));
+												steamStatisticUpdateClient(parent->skill[2], STEAM_STAT_ITS_A_LIVING, STEAM_STAT_INT, 1);
+											}
+											playSoundEntity(parent, 168, 128);
+										}
 									}
 								}
 								hit.entity->setEffect(EFF_SLOW, true, element->duration, false);
@@ -19078,30 +19127,34 @@ void actParticleFloorMagic(Entity* my)
 								continue;
 							}
 
-							if ( caster && caster->behavior == &actMonster )
+							Stat* stats = entity->getStats();
+
+							if ( stats )
 							{
-								if ( caster == entity || caster->checkFriend(entity) )
+								if ( caster && caster->behavior == &actMonster )
 								{
-									continue;
-								}
-							}
-							if ( caster && caster->behavior == &actPlayer )
-							{
-								if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
-								{
-									if ( caster->checkFriend(entity) && caster->friendlyFireProtection(entity) )
+									if ( caster == entity || caster->checkFriend(entity) )
 									{
 										continue;
 									}
 								}
+								if ( caster && caster->behavior == &actPlayer )
+								{
+									if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
+									{
+										if ( caster->checkFriend(entity) && caster->friendlyFireProtection(entity) )
+										{
+											continue;
+										}
+									}
+								}
 							}
 
-							Stat* stats = entity->getStats();
-							if ( stats && entityDist(my, entity) <= 16.0 )
+							if ( entityDist(my, entity) <= 16.0 )
 							{
-								if ( !entity->monsterIsTargetable(true) && !entity->isUntargetableBat() ) { continue; }
+								if ( stats && !entity->monsterIsTargetable(true) && !entity->isUntargetableBat() ) { continue; }
 								int damage = getSpellDamageFromID(SPELL_LIGHTNING_BOLT, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0);
-								if ( stats->getEffectActive(EFF_STATIC) )
+								if ( stats && stats->getEffectActive(EFF_STATIC) )
 								{
 									int extraDamage = getSpellDamageSecondaryFromID(SPELL_LIGHTNING_BOLT, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0);
 									if ( extraDamage > 0 )
@@ -19110,21 +19163,24 @@ void actParticleFloorMagic(Entity* my)
 										damage += std::max(1, extraDamage);
 									}
 								}
-								if ( applyGenericMagicDamage(caster, entity, *my, SPELL_LIGHTNING_BOLT, damage, true, true) )
+								if ( applyGenericMagicDamage(caster, entity, *my, SPELL_LIGHTNING_BOLT, damage, true) )
 								{
-									Uint8 effectStrength = stats->getEffectActive(EFF_STATIC);
-									if ( effectStrength < getSpellEffectDurationSecondaryFromID(SPELL_LIGHTNING_BOLT, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0) )
+									if ( stats )
 									{
-										effectStrength += 1;
-									}
-									if ( entity->setEffect(EFF_STATIC, effectStrength,
-										getSpellEffectDurationFromID(SPELL_LIGHTNING_BOLT, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0), true, true, false, false) )
-									{
-										Entity* fx = createParticleAestheticOrbit(entity, 1758, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_STATIC_ORBIT);
-										fx->z = 7.5;
-										fx->actmagicOrbitDist = 20;
-										fx->actmagicNoLight = 1;
-										serverSpawnMiscParticles(entity, PARTICLE_EFFECT_STATIC_ORBIT, 1758);
+										Uint8 effectStrength = stats->getEffectActive(EFF_STATIC);
+										if ( effectStrength < getSpellEffectDurationSecondaryFromID(SPELL_LIGHTNING_BOLT, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0) )
+										{
+											effectStrength += 1;
+										}
+										if ( entity->setEffect(EFF_STATIC, effectStrength,
+											getSpellEffectDurationFromID(SPELL_LIGHTNING_BOLT, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0), true, true, false, false) )
+										{
+											Entity* fx = createParticleAestheticOrbit(entity, 1758, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_STATIC_ORBIT);
+											fx->z = 7.5;
+											fx->actmagicOrbitDist = 20;
+											fx->actmagicNoLight = 1;
+											serverSpawnMiscParticles(entity, PARTICLE_EFFECT_STATIC_ORBIT, 1758);
+										}
 									}
 								}
 
@@ -19406,6 +19462,24 @@ void actParticleFloorMagic(Entity* my)
 														{
 															Entity* gib = spawnGib(entity);
 															serverSpawnGibForClient(gib);
+														}
+
+														if ( caster && caster->getStats() )
+														{
+															// energize if wearing punisher hood!
+															if ( caster->getStats()->helmet && caster->getStats()->helmet->type == PUNISHER_HOOD )
+															{
+																int mpAmount = caster->modMP(1 + local_rng.rand() % 2);
+																caster->playerInsectoidIncrementHungerToMP(mpAmount);
+																Uint32 color = makeColorRGB(0, 255, 0);
+																caster->setEffect(EFF_MP_REGEN, true, std::max(caster->getStats()->EFFECTS_TIMERS[EFF_MP_REGEN], 10 * TICKS_PER_SECOND), false);
+																if ( caster->behavior == &actPlayer )
+																{
+																	messagePlayerColor(caster->skill[2], MESSAGE_HINT, color, Language::get(3753));
+																	steamStatisticUpdateClient(caster->skill[2], STEAM_STAT_ITS_A_LIVING, STEAM_STAT_INT, 1);
+																}
+																playSoundEntity(caster, 168, 128);
+															}
 														}
 													}
 												}

@@ -115,7 +115,7 @@ void initCockatrice(Entity* my, Stat* myStats)
 				case 2:
 					if ( rng.rand() % 10 < 3 ) // 30% drop stoneblood magicstaff
 					{
-						newItem(static_cast<ItemType>(MAGICSTAFF_STONEBLOOD), static_cast<Status>(1 + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
+						newItem(static_cast<ItemType>(MAGICSTAFF_STONEBLOOD), static_cast<Status>(1 + rng.rand() % 4), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 75, rng), false, &myStats->inventory);
 					}
 				case 1:
 					for ( int i = 0; i < numRolls; ++i )

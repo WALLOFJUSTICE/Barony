@@ -119,11 +119,11 @@ void initSuccubus(Entity* my, Stat* myStats)
 				case 1:
 					if ( myStats->getAttribute("special_npc") == "lilith" && rng.rand() % 4 > 0 )
 					{
-						newItem(MAGICSTAFF_CHARM, EXCELLENT, -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory); // 75% chance
+						newItem(MAGICSTAFF_CHARM, EXCELLENT, -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 100, 100, rng), false, &myStats->inventory); // 75% chance
 					}
 					else if ( rng.rand() % 10 == 0 )
 					{
-						newItem(MAGICSTAFF_CHARM, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory); // 10% chance
+						newItem(MAGICSTAFF_CHARM, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 50, 75, rng), false, &myStats->inventory); // 10% chance
 					}
 					else if ( rng.rand() % 10 == 0 )
 					{

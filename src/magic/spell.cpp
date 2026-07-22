@@ -1106,6 +1106,28 @@ real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spell
 				}
 			}
 		}
+		if ( casterStats->weapon && items[casterStats->weapon->type].category == MAGICSTAFF )
+		{
+			if ( items[casterStats->weapon->type].hasAttribute("EFF_SKILL_MAGICSTAFF") )
+			{
+				if ( auto spell = getSpellFromID(getSpellIDFromMagicstaff(casterStats->weapon->type)) )
+				{
+					if ( spell->skillID == spellSkillID )
+					{
+						real_t staffBonus = 0.0;
+						if ( casterStats->weapon->beatitude >= 0 || shouldInvertEquipmentBeatitude(casterStats) )
+						{
+							staffBonus += (0.10 + (0.05 * std::min(10, abs(casterStats->weapon->beatitude))));
+						}
+						else
+						{
+							staffBonus -= ((0.10 * std::min(10, abs(casterStats->weapon->beatitude))));
+						}
+						bonus += staffBonus;
+					}
+				}
+			}
+		}
 		if ( casterStats->helmet )
 		{
 			if ( casterStats->helmet->type == HAT_MITER )
@@ -1670,6 +1692,22 @@ int getSpellIDFromFoci(int fociType)
 		if ( items[fociType].hasAttribute("foci_spell") )
 		{
 			auto& spellID = items[fociType].attributes["foci_spell"];
+			if ( spellID >= SPELL_NONE && spellID < NUM_SPELLS )
+			{
+				return spellID;
+			}
+		}
+	}
+	return SPELL_NONE;
+}
+
+int getSpellIDFromMagicstaff(int magicstaffType)
+{
+	if ( magicstaffType >= 0 && magicstaffType < NUMITEMS )
+	{
+		if ( items[magicstaffType].hasAttribute("magicstaff_spell") )
+		{
+			auto& spellID = items[magicstaffType].attributes["magicstaff_spell"];
 			if ( spellID >= SPELL_NONE && spellID < NUM_SPELLS )
 			{
 				return spellID;

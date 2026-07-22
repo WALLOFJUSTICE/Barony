@@ -421,8 +421,44 @@ bool itemLevelCurvePostProcess(Entity* my, Item* item, BaronyRNG& rng, int itemL
 			item->status = static_cast<Status>(itemStatus);
 		}
 	}
+
 	if ( itemType >= 0 && itemType < NUMITEMS )
 	{
+		if ( MAGICSTAFFS_USE_CHARGE && items[itemType].category == MAGICSTAFF )
+		{
+			//MAGICSTAFFS_USE_CHARGE todo
+
+			Uint32 appearance = (my && my->behavior == &actItem) ? my->skill[14] : item->appearance;
+			if ( itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_SHOP )
+			{
+				appearance = generateMagicstaffAppearance(my, nullptr, 50, 100, rng);
+			}
+			else if ( itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_CHEST )
+			{
+				if ( my && map.tileHasAttribute(my->x / 16, my->y / 16, 0, map_t::TILE_ATTRIBUTE_TREASURE_ROOM) )
+				{
+					appearance = generateMagicstaffAppearance(my, nullptr, 75, 100, rng);
+				}
+				else
+				{
+					appearance = generateMagicstaffAppearance(my, nullptr, 40, 100, rng);
+				}
+			}
+			else
+			{
+				appearance = generateMagicstaffAppearance(my, nullptr, 25, 80, rng);
+			}
+
+			if ( my && my->behavior == &actItem )
+			{
+				my->skill[14] = appearance;
+			}
+			else
+			{
+				item->appearance = appearance;
+			}
+		}
+
 		if ( items[itemType].category == SPELLBOOK )
 		{
 			//if ( itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_DEFAULT )
@@ -1393,6 +1429,7 @@ Sint32 itemModel(const Item* const item, bool shortModel, Entity* creature)
 	{
 		if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX == 0 )
 		{
+			// MAGICSTAFFS_USE_CHARGE todo
 			return index + 2;
 		}
 		else
@@ -1434,6 +1471,7 @@ Sint32 itemModelFirstperson(const Item* const item)
 	{
 		if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX == 0 )
 		{
+			// MAGICSTAFFS_USE_CHARGE todo
 			return items[item->type].fpindex + 2;
 		}
 		else
@@ -7258,6 +7296,10 @@ void Item::itemFindUniqueAppearance(Item* tempItem, std::unordered_set<Uint32>& 
 		{
 			tempItem->appearance = ((local_rng.rand() % 10000) * (MAGICSTAFF_SCEPTER_CHARGE_MAX)) + (originalAppearance % MAGICSTAFF_SCEPTER_CHARGE_MAX);
 		}
+		else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(tempItem) == MAGICSTAFF )
+		{
+			tempItem->appearance = ((local_rng.rand() % 10000) * (MAGICSTAFF_SCEPTER_CHARGE_MAX)) + (originalAppearance % MAGICSTAFF_SCEPTER_CHARGE_MAX);
+		}
 		else if ( itemCategory(tempItem) == TOME_SPELL )
 		{
 			tempItem->appearance = ((local_rng.rand() % 10000) * (TOME_APPEARANCE_MAX)) + (originalAppearance % TOME_APPEARANCE_MAX);
@@ -7286,6 +7328,10 @@ void Item::itemFindUniqueAppearance(Item* tempItem, std::unordered_set<Uint32>& 
 				tempItem->appearance += (local_rng.rand() % 100000) * 10;
 			}
 			else if ( tempItem->type == MAGICSTAFF_SCEPTER )
+			{
+				tempItem->appearance = ((local_rng.rand() % 10000) * (MAGICSTAFF_SCEPTER_CHARGE_MAX)) + (originalAppearance % MAGICSTAFF_SCEPTER_CHARGE_MAX);
+			}
+			else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(tempItem) == MAGICSTAFF )
 			{
 				tempItem->appearance = ((local_rng.rand() % 10000) * (MAGICSTAFF_SCEPTER_CHARGE_MAX)) + (originalAppearance % MAGICSTAFF_SCEPTER_CHARGE_MAX);
 			}
@@ -7338,4 +7384,43 @@ void Item::onItemIdentified(int player, Item* tempItem)
 			clientSendAppearanceUpdateToServer(player, tempItem, true);
 		}
 	}
+}
+
+int Item::magicstaffGetChargeDepletion(Entity* my, Stat* myStats, bool isPlayer) const
+{
+	int result = 0;
+	if ( type >= WOODEN_SHIELD && type < NUMITEMS )
+	{
+		if ( items[type].category == MAGICSTAFF )
+		{
+			result = 5;
+			if ( items[type].hasAttribute("MAGICSTAFF_CHARGE") )
+			{
+				result = items[type].attributes["MAGICSTAFF_CHARGE"];
+			}
+			if ( myStats && myStats->type == GOBLIN )
+			{
+				result = (result + 1) / 2; // round up
+			}
+		}
+	}
+
+	return result;
+}
+
+Uint32 generateMagicstaffAppearance(Entity* my, Stat* myStats, int chargemin, int chargemax, BaronyRNG& rng)
+{
+	if ( MAGICSTAFFS_USE_CHARGE )
+	{
+		int lower = std::max(5, std::min(chargemin, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1));
+		int upper = std::max(chargemin, std::min(chargemax, MAGICSTAFF_SCEPTER_CHARGE_MAX - 1));
+
+		if ( lower == upper ) { return lower; }
+		
+		Uint32 charge = rng.uniform(lower, upper);
+		charge -= (charge % 5); // round out even 5 multiples
+		return std::max((Uint32)5, charge);
+	}
+
+	return rng.rand();
 }

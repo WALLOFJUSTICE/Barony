@@ -36699,6 +36699,11 @@ failed:
 					{
 						Compendium_t::compendiumItem.appearance = 0;
 					}
+					/*else if ( MAGICSTAFFS_USE_CHARGE && itemCategory(&Compendium_t::compendiumItem) == MAGICSTAFF )
+					{
+						//MAGICSTAFFS_USE_CHARGE todo
+						Compendium_t::compendiumItem.appearance = 0;
+					}*/
 					else if ( id == TOOL_PLAYER_LOOT_BAG )
 					{
 						Compendium_t::compendiumItem.appearance = (modelRNGCycle + Compendium_t::compendiumEntityCurrent.modelRNG) % 4;
