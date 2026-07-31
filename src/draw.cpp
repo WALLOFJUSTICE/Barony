@@ -18,8 +18,8 @@
 #include "ui/Frame.hpp"
 #ifdef EDITOR
 #include "editor.hpp"
-#include "mod_tools.hpp"
 #endif
+#include "mod_tools.hpp"
 #include "items.hpp"
 #include "ui/Image.hpp"
 #include "interface/consolecommand.hpp"
@@ -2316,6 +2316,12 @@ void drawEntities3D(view_t* camera, int mode)
 					+ pow(camera->y * 16.0 - entity->y, 2));
 				spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
 			}
+			else if ( entity->behavior == &actEternalShrineOffering )
+			{
+				real_t camDist = (pow(camera->x * 16.0 - entity->x, 2)
+					+ pow(camera->y * 16.0 - entity->y, 2));
+				spritesToDraw.push_back(std::make_tuple(camDist, entity, SPRITE_ENTITY));
+			}
 			else if ( entity->behavior == &actDamageGib )
 			{
 				if ( currentPlayerViewport != entity->skill[1] ) // skill[1] is player num, don't draw gibs on me
@@ -2513,6 +2519,63 @@ void drawEntities3D(view_t* camera, int mode)
 			{
 				if ( intro ) { continue; } // don't draw on main menu
 				glDrawWorldUISprite(camera, entity, mode);
+			}
+			else if ( entity->behavior == &actEternalShrineOffering )
+			{
+				const char* buf = nullptr;
+				if ( entity->sprite > 0 && entity->sprite < NUM_SPELLS )
+				{
+					if ( auto spell = getSpellFromID(entity->sprite) )
+					{
+						if ( spell->ID > SPELL_NONE )
+						{
+							if ( auto node = ItemTooltips.getSpellNodeFromSpellID(spell->ID) )
+							{
+								if ( string_t* string = (string_t*)node->element )
+								{
+									buf = string->data;
+								}
+							}
+						}
+					}
+				}
+				else if ( entity->sprite == NUM_SPELLS )
+				{
+					for ( auto& skill : Player::SkillSheet_t::skillSheetData.skillEntries )
+					{
+						if ( skill.skillId == PRO_SORCERY)
+						{
+							buf = skill.skillIconPath32px.c_str();
+							break;
+						}
+					}
+				}
+				else if ( entity->sprite == NUM_SPELLS + 1 )
+				{
+					for ( auto& skill : Player::SkillSheet_t::skillSheetData.skillEntries )
+					{
+						if ( skill.skillId == PRO_MYSTICISM )
+						{
+							buf = skill.skillIconPath32px.c_str();
+							break;
+						}
+					}
+				}
+				else if ( entity->sprite == NUM_SPELLS + 2 )
+				{
+					for ( auto& skill : Player::SkillSheet_t::skillSheetData.skillEntries )
+					{
+						if ( skill.skillId == PRO_THAUMATURGY )
+						{
+							buf = skill.skillIconPath32px.c_str();
+							break;
+						}
+					}
+				}
+				if ( buf )
+				{
+					glDrawSpriteFromImage(camera, entity, buf, mode, true);
+				}
 			}
 			else if ( entity->behavior == &actDamageGib )
 			{
@@ -2811,7 +2874,7 @@ void drawEntities2D(long camx, long camy)
 						case 1: //monsters
 							pady += 10;
 							if ( entity->getStats() != nullptr ) {
-								strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+								strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 								ttfPrintText(ttf8, padx, pady - 10, tmpStr);
 								snprintf(tmpStr, sizeof(entity->getStats()->name), "Name: %s", entity->getStats()->name);
 								ttfPrintText(ttf8, padx, pady, tmpStr);
@@ -2823,7 +2886,7 @@ void drawEntities2D(long camx, long camy)
 							break;
 						case 15: // light source
 							pady += 15;
-							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 							ttfPrintText(ttf8, padx, pady, tmpStr);
 
 							snprintf(tmpStr, sizeof(tmpStr), "R: %d G: %d B: %d",
@@ -2834,7 +2897,7 @@ void drawEntities2D(long camx, long camy)
 							break;
 						case 2: //chest
 							pady += 5;
-							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 							ttfPrintText(ttf8, padx, pady, tmpStr);
 							switch ( (int)entity->yaw )
 							{
@@ -2895,7 +2958,7 @@ void drawEntities2D(long camx, long camy)
 						case 27: // collider
 						{
 							pady += 5;
-							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 							ttfPrintText(ttf8, padx, pady - 10, tmpStr);
 							int model = selectedEntity[0]->colliderDecorationModel;
 							if ( EditorEntityData_t::colliderData.find(selectedEntity[0]->colliderDamageTypes)
@@ -3013,7 +3076,7 @@ void drawEntities2D(long camx, long camy)
 						case 4: //summoning trap
 							pady += 5;
 							offsety = -40;
-							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 							ttfPrintText(ttf8, padx, pady + offsety, tmpStr);
 
 							offsety += 10;
@@ -3068,7 +3131,7 @@ void drawEntities2D(long camx, long camy)
 						case 5: //power crystal
 							pady += 5;
 							offsety = -20;
-							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 							ttfPrintText(ttf8, padx, pady + offsety, tmpStr);
 
 							offsety += 10;
@@ -3170,7 +3233,7 @@ void drawEntities2D(long camx, long camy)
 								buf[totalChars] = '\0';
 							}
 							std::vector<std::string> lines;
-							lines.push_back(spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							lines.push_back(spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 
 							strncpy(tmpStr, buf, 48);
 							if ( strcmp(tmpStr, "") )
@@ -3258,7 +3321,7 @@ void drawEntities2D(long camx, long camy)
 						}
 							break;
 						default:
-							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+							strcpy(tmpStr, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 							ttfPrintText(ttf8, padx, pady + 20, tmpStr);
 							break;
 
@@ -3287,7 +3350,7 @@ void drawEntities2D(long camx, long camy)
 								ttfPrintText(ttf8, padx, pady - offsety, tmpStats->name);
 								offsety += 10;
 							}
-							ttfPrintText(ttf8, padx, pady - offsety, spriteEditorNameStrings[entity->sprite]);
+							ttfPrintText(ttf8, padx, pady - offsety, spriteEditorNameStrings[entity->sprite].first);
 							offsety += 10;
 						}
 					}
@@ -3298,7 +3361,7 @@ void drawEntities2D(long camx, long camy)
 					}
 					else
 					{
-						ttfPrintText(ttf8, padx, pady - offsety, spriteEditorNameStrings[entity->sprite]);
+						ttfPrintText(ttf8, padx, pady - offsety, spriteEditorNameStrings[entity->sprite].first);
 						offsety += 10;
 					}
 				}

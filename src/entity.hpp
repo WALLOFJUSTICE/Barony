@@ -17,6 +17,7 @@
 #include "light.hpp"
 #include "monster.hpp"
 #include "interface/consolecommand.hpp"
+#include <set>
 
 // entity flags
 #define BRIGHT 1
@@ -588,6 +589,7 @@ public:
 	Sint32& itemFollowUID = skill[30];
 	Sint32& itemReturnUID = skill[31];
 	Sint32& itemGerminateResult = skill[32];
+	Sint32& itemEternalShrineResult = skill[33];
 	real_t& itemWaterBob; //fskill[2]
 	real_t& itemLevitate = fskill[3];
 	real_t& itemLevitateStartZ = fskill[4];
@@ -727,6 +729,30 @@ public:
 	//--SUMMON TRAP
 	Sint32& summonTrapSetHostility = skill[12];
 	Sint32& summonTrapFindTargetRange = skill[13]; // x1/x2/y1/y2 in 8 bits order low to high
+
+	//--ETERNAL SHRINES
+	Sint32& eternalShrineDir = skill[0];
+	Sint32& eternalShrineInit = skill[1];
+	Sint32& eternalShrineType = skill[3];
+	Sint32& eternalShrineState = skill[4];
+	Sint32& eternalShrineTarget = skill[5];
+	Sint32& eternalShrineInteracting = skill[6];
+	Sint32& eternalShrineViewingMode = skill[7];
+	Sint32& eternalShrineLighting = skill[8];
+	Sint32& eternalShrineAmbience = skill[9];
+	Sint32& eternalShrineItemType = skill[10];
+	Sint32& eternalShrineItemStatus = skill[11];
+	Sint32& eternalShrineItemBeatitude = skill[12];
+	Sint32& eternalShrineItemCount = skill[13];
+	Sint32& eternalShrineItemAppearance = skill[14];
+	Sint32& eternalShrineItemIdentified = skill[15];
+	Sint32& eternalShrineOfferingItemTypeModel = skill[16];
+	Sint32& eternalShrinePlayerStates = skill[17];
+	Sint32& eternalShrineOfferingItemVisible = skill[18];
+	Sint32& eternalShrineAscensionItemColor = skill[19];
+	Sint32& eternalShrineOrchestrionTimer = skill[20];
+	Sint32& eternalShrinePlayersCompleted = skill[21];
+	Sint32& eternalShrineOrchestrionInstruments = skill[22];
 
 	enum PressurePlateTriggerTypes : int
 	{
@@ -1539,7 +1565,7 @@ static const int FURNITURE_PODIUM = 4;
 
 int checkSpriteType(Sint32 sprite);
 Monster editorSpriteTypeToMonster(Sint32 sprite);
-extern std::vector<const char*>spriteEditorNameStrings;
+extern std::vector<std::pair<const char*, const char*> >spriteEditorNameStrings;
 extern char tileEditorNameStrings[NUM_EDITOR_TILES][44];
 extern char monsterEditorNameStrings[NUMMONSTERS][32];
 extern char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32];
@@ -1599,6 +1625,11 @@ void spawnBloodVialOnMonsterDeath(Entity* entity, Stat* hitstats, Entity* killer
 
 void shrineDaedalusRevealMap(Entity& my);
 void daedalusShrineInteract(Entity* my, Entity* touched);
+bool eternalShrineProcessOfferingItem(const int player, Uint32 shrineUid, int shrineType, Item* item);
+bool eternalShrineProcessAnvilItem(const int player, Uint32 shrineUid, int shrineType, Item* item);
+bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int shrineType, Item* item, std::set<int>& learnedSpells);
+bool eternalShrineProcessSupplication(const int player, Uint32 shrineUid, int shrineType);
+bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineType);
 
 enum EntityHungerIntervals : int
 {

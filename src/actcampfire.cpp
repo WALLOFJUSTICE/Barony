@@ -377,98 +377,6 @@ void actWorkbench(Entity* my)
 		my->createWorldUITooltip();
 	}
 
-//	// crackling sounds
-//	if ( CAMPFIRE_HEALTH > 0 )
-//	{
-//#ifdef USE_FMOD
-//		if ( CAMPFIRE_SOUNDTIME == 0 )
-//		{
-//			CAMPFIRE_SOUNDTIME--;
-//			my->stopEntitySound();
-//			my->entity_sound = playSoundEntityLocal(my, 133, 32);
-//		}
-//		if ( my->entity_sound )
-//		{
-//			bool playing = false;
-//			my->entity_sound->isPlaying(&playing);
-//			if ( !playing )
-//			{
-//				my->entity_sound = nullptr;
-//			}
-//		}
-//#else
-//		CAMPFIRE_SOUNDTIME--;
-//		if ( CAMPFIRE_SOUNDTIME <= 0 )
-//		{
-//			CAMPFIRE_SOUNDTIME = 480;
-//			playSoundEntityLocal(my, 133, 128);
-//		}
-//#endif
-//
-//		// spew flame particles
-//		if ( flickerLights )
-//		{
-//			for ( int i = 0; i < 3; i++ )
-//			{
-//				if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
-//				{
-//					entity->x += ((local_rng.rand() % 30) - 10) / 10.f;
-//					entity->y += ((local_rng.rand() % 30) - 10) / 10.f;
-//					entity->z -= 1;
-//				}
-//			}
-//			if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
-//			{
-//				entity->z -= 2;
-//			}
-//		}
-//		else
-//		{
-//			if ( ticks % TICKS_PER_SECOND == 0 )
-//			{
-//				if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
-//				{
-//					entity->z -= 2;
-//				}
-//			}
-//		}
-//
-//		// light environment
-//		if ( !CAMPFIRE_LIGHTING )
-//		{
-//			my->light = addLight(my->x / 16, my->y / 16, "campfire");
-//			CAMPFIRE_LIGHTING = 1;
-//		}
-//		if ( flickerLights )
-//		{
-//			//Campfires will never flicker if this setting is disabled.
-//			CAMPFIRE_FLICKER--;
-//		}
-//		if ( CAMPFIRE_FLICKER <= 0 )
-//		{
-//			CAMPFIRE_LIGHTING = (CAMPFIRE_LIGHTING == 1) + 1;
-//
-//			if ( CAMPFIRE_LIGHTING == 1 )
-//			{
-//				my->removeLightField();
-//				my->light = addLight(my->x / 16, my->y / 16, "campfire");
-//			}
-//			else
-//			{
-//				my->removeLightField();
-//				my->light = addLight(my->x / 16, my->y / 16, "campfire_flicker");
-//			}
-//			CAMPFIRE_FLICKER = 2 + local_rng.rand() % 7;
-//		}
-//	}
-//	else
-//	{
-//		my->removeLightField();
-//		my->light = NULL;
-//
-//		my->stopEntitySound();
-//	}
-
 	if ( multiplayer == CLIENT )
 	{
 		return;
@@ -568,7 +476,6 @@ void actMailbox(Entity* my)
 	if ( !CAMPFIRE_INIT )
 	{
 		CAMPFIRE_INIT = 1;
-		CAMPFIRE_HEALTH = MAXPLAYERS;
 		my->createWorldUITooltip();
 	}
 
@@ -648,8 +555,7 @@ void actMailbox(Entity* my)
 					}
 					if ( players[i]->isLocalPlayer() )
 					{
-						//GenericGUI[i].openGUI(GUI_TYPE_MAILBOX, my);
-						GenericGUI[i].openGUI(GUI_TYPE_ETERNALSHRINE_ANVIL + local_rng.rand() % 4, my);
+						GenericGUI[i].openGUI(GUI_TYPE_MAILBOX, my);
 					}
 					else if ( multiplayer == SERVER && i > 0 )
 					{

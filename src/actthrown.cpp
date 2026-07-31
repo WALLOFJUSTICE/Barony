@@ -1274,7 +1274,7 @@ void actThrown(Entity* my)
 								}
 								for ( int i = 0; i < 5; ++i )
 								{
-									spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+									spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 								}
 							}
 							else if ( item->type == BONE_THROWING && hit.entity->isBeastMonster() )
@@ -1283,7 +1283,7 @@ void actThrown(Entity* my)
 								weaponMult += items[item->type].attributes["BONE_DAMAGE_BASE"] / 100.0;
 								for ( int i = 0; i < 5; ++i )
 								{
-									spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+									spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 								}
 							}
 							else if ( item->type == SILVER_PLUMBATA && hit.entity->isSmiteWeakMonster() )
@@ -1300,7 +1300,7 @@ void actThrown(Entity* my)
 								}
 								for ( int i = 0; i < 5; ++i )
 								{
-									spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+									spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 								}
 							}
 						}
@@ -1517,7 +1517,6 @@ void actThrown(Entity* my)
 							case POTION_HEALING:
 							case POTION_BOOZE:
 							case POTION_JUICE:
-							case POTION_CONFUSION:
 							case POTION_CUREAILMENT:
 							case POTION_BLINDNESS:
 							case POTION_RESTOREMAGIC:
@@ -1528,6 +1527,16 @@ void actThrown(Entity* my)
 							case FOOD_CREAMPIE:
 							case TOOL_DUCK:
 								ignorePotion = true;
+								break;
+							case POTION_CONFUSION:
+								if ( hitstats->type == SHOPKEEPER )
+								{
+									ignorePotion = false;
+								}
+								else
+								{
+									ignorePotion = true;
+								}
 								break;
 							default:
 								break;
@@ -1810,7 +1819,7 @@ void actThrown(Entity* my)
 									{
 										for ( int i = 0; i < 5; ++i )
 										{
-											spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+											spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 										}
 									}
 								}

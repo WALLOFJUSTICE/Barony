@@ -34,12 +34,22 @@ static const char VERSION[] = "v5.1.0";
 class Entity;
 
 #define DEBUG 1
-#define ENTITY_PACKET_LENGTH 47
+#define ENTITY_PACKET_LENGTH 48
 #define NET_PACKET_SIZE 512
 
 // impulses (bound keystrokes, mousestrokes, and joystick/game controller strokes) //TODO: Player-by-player basis.
 extern Uint32 impulses[NUMIMPULSES];
 extern Uint32 joyimpulses[NUM_JOY_IMPULSES]; //Joystick/gamepad only impulses.
+
+enum SoundChannelGroupIndex
+{
+	SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK,
+	SOUND_CHANNEL_GROUP_DEFAULT,
+	SOUND_CHANNEL_GROUP_ENVIRONMENT,
+	SOUND_CHANNEL_GROUP_AMBIENT,
+	SOUND_CHANNEL_GROUP_NOTIFICATION,
+	SOUND_CHANNEL_GROUP_TRAP
+};
 
 bool handleEvents(void);
 
@@ -300,6 +310,9 @@ void actCampfire(Entity* my);
 void actCauldron(Entity* my);
 void actWorkbench(Entity* my);
 void actMailbox(Entity* my);
+void actEternalShrine(Entity* my);
+void actEternalShrineLimb(Entity* my);
+void actEternalShrineOffering(Entity* my);
 void actForcefield(Entity* my);
 Entity* spawnFlame(Entity* parentent, Sint32 sprite);
 Entity* spawnFlameSprites(Entity* parentent, Sint32 sprite);
@@ -309,7 +322,7 @@ void actSpriteNametag(Entity* my);
 void actSpriteWorldTooltip(Entity* my);
 void actSleepZ(Entity* my);
 Entity* spawnBang(Sint16 x, Sint16 y, Sint16 z);
-Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z);
+Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z, SoundChannelGroupIndex channelIndex = SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 Entity* spawnExplosionFromSprite(Uint16 sprite, Sint16 x, Sint16 y, Sint16 z);
 Entity* spawnPoof(Sint16 x, Sint16 y, Sint16 z, real_t scale, bool updateClients = false);
 Entity* spawnSleepZ(Sint16 x, Sint16 y, Sint16 z);

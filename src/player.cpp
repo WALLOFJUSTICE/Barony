@@ -3315,6 +3315,8 @@ void Player::init() // for use on new/restart game, UI related
 	mechanics.donationRevealedOnFloor = 0;
 	mechanics.donationClaimed = false;
 
+	mechanics.divine_favor = 0;
+
 	inventoryUI.appraisal.appraisalProgressionItems.clear();
 	inventoryUI.appraisal.manual_appraised_item = 0;
 }
@@ -3664,6 +3666,10 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 			{
 				return 0.0;
 			}
+			else if ( parent->behavior == &actEternalShrine && parent->eternalShrineState > GenericGUIMenu::EternalShrineGUI_t::ETERNAL_SHRINE_STATE_NONE )
+			{
+				return 0.0;
+			}
 			else if ( parent->behavior == &actTeleportShrine && parent->shrineActivateDelay > 0 )
 			{
 				return 0.0;
@@ -3779,6 +3785,10 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 			else if ( parent->behavior == &actItem && parent->sprite == items[GEM_ROCK].index )
 			{
 				dist += 8.0; // distance penalty for rocks from digging etc
+			}
+			else if ( parent->behavior == &actItem && parent->itemEternalShrineResult > 0 )
+			{
+				dist = std::max(0.02, dist - 4.0); // bonus priority for eternal shrine item
 			}
 			else if ( parent->behavior == &actBell )
 			{
@@ -4325,6 +4335,25 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 		{
 			interactText = Language::get(6984); // "Use mailbox"
 		}
+		else if ( parent->behavior == &actEternalShrine )
+		{
+			if ( parent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				interactText = Language::get(7089);
+			}
+			else if ( parent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				interactText = Language::get(7092);
+			}
+			else if ( parent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+			{
+				interactText = Language::get(7095);
+			}
+			else if ( parent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				interactText = Language::get(7098);
+			}
+		}
 		else if ( parent->behavior == &actFurniture || parent->behavior == &actMCaxe )
 		{
 			interactText = Language::get(4023); // "Inspect" 
@@ -4653,6 +4682,10 @@ bool entityBlocksTooltipInteraction(const int player, Entity& entity)
 		return false;
 	}
 	else if ( entity.behavior == &actMailbox )
+	{
+		return false;
+	}
+	else if ( entity.behavior == &actEternalShrine )
 	{
 		return false;
 	}

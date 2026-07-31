@@ -1385,12 +1385,12 @@ void gameLogic(void)
 											if ( lavatiles[map.tiles[index]] )
 											{
 												// bubbling lava
-												playSoundPosLocal( x * 16 + 8, y * 16 + 8, 155, 100 );
+												playSoundPosLocal( x * 16 + 8, y * 16 + 8, 155, 100, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_ENVIRONMENT);
 											}
 											else if ( swimmingtiles[map.tiles[index]] )
 											{
 												// running water
-												playSoundPosLocal( x * 16 + 8, y * 16 + 8, 135, 32 );
+												playSoundPosLocal( x * 16 + 8, y * 16 + 8, 135, 32, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_ENVIRONMENT);
 											}
 											map.liquidSfxPlayedTiles.insert(coord);
 										}
@@ -1985,6 +1985,10 @@ void gameLogic(void)
 					if ( soundEnvironment_group )
 					{
 						soundEnvironment_group->stop();
+					}
+					if ( soundTrap_group )
+					{
+						soundTrap_group->stop();
 					}
 					if ( soundNotification_group )
 					{
@@ -3332,12 +3336,12 @@ void gameLogic(void)
 											if ( lavatiles[map.tiles[index]] )
 											{
 												// bubbling lava
-												playSoundPosLocal(x * 16 + 8, y * 16 + 8, 155, 100);
+												playSoundPosLocal(x * 16 + 8, y * 16 + 8, 155, 100, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_ENVIRONMENT);
 											}
 											else if ( swimmingtiles[map.tiles[index]] )
 											{
 												// running water
-												playSoundPosLocal(x * 16 + 8, y * 16 + 8, 135, 32);
+												playSoundPosLocal(x * 16 + 8, y * 16 + 8, 135, 32, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_ENVIRONMENT);
 											}
 											map.liquidSfxPlayedTiles.insert(coord);
 										}
@@ -6223,17 +6227,24 @@ void ingameHud()
 			{
 				if ( inputs.bPlayerUsingKeyboardControl(player) )
 				{
+					static ConsoleVariable<bool> cvar_mouse_relative_centering("/mouse_relative_centering", true);
                     // fix for macOS: put mouse back in window before recapturing mouse
                     if (EnableMouseCapture) {
-                        int mouse_x, mouse_y;
-                        SDL_GetGlobalMouseState(&mouse_x, &mouse_y);
-                        int x, y, w, h;
-                        SDL_GetWindowPosition(screen, &x, &y);
-                        SDL_GetWindowSize(screen, &w, &h);
-                        if (mouse_x < x || mouse_x >= x + w ||
-                            mouse_y < y || mouse_y >= y + h) {
-                            SDL_WarpMouseInWindow(screen, w/2, h/2);
-                        }
+						if ( *cvar_mouse_relative_centering )
+						{
+							// to investigate wayland
+							// https://github.com/libsdl-org/SDL/blob/main/docs/README-wayland.md
+
+							int mouse_x, mouse_y;
+							SDL_GetGlobalMouseState(&mouse_x, &mouse_y);
+							int x, y, w, h;
+							SDL_GetWindowPosition(screen, &x, &y);
+							SDL_GetWindowSize(screen, &w, &h);
+							if (mouse_x < x || mouse_x >= x + w ||
+								mouse_y < y || mouse_y >= y + h) {
+								SDL_WarpMouseInWindow(screen, w/2, h/2);
+							}
+						}
                     }
 				    SDL_SetRelativeMouseMode(EnableMouseCapture);
 				}

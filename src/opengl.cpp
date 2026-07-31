@@ -2176,7 +2176,7 @@ void glDrawSpriteFromImage(view_t* camera, Entity* entity, std::string text, int
             GL_CHECK_ERR(glDepthRange(0.f, *cvar_dmgSpriteDepthRange));
 #endif // !EDITOR
 		}
-		else if (entity->behavior != &actSpriteNametag) {
+		else if (entity->behavior != &actSpriteNametag && entity->behavior != &actEternalShrineOffering) {
             GL_CHECK_ERR(glDepthRange(0.f, 0.98f));
 		}
 		else if (entity->behavior == &actSpriteNametag) {

@@ -2591,6 +2591,58 @@ void buttonSpriteProperties(button_t* my)
 				suby2 = yres / 2 + 100;
 				strcpy(subtext, "Wide Gate Properties:");
 				break;
+			case 36:
+				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->eternalShrineDir));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 40;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				strcpy(subtext, "Supplication Shrine Properties:");
+				break;
+			case 37:
+				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->eternalShrineDir));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 41;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				strcpy(subtext, "Anvil Shrine Properties:");
+				break;
+			case 38:
+				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->eternalShrineDir));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 42;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				strcpy(subtext, "Chorale Shrine Properties:");
+				break;
+			case 39:
+				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->eternalShrineDir));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 43;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				strcpy(subtext, "Ascension Shrine Properties:");
+				break;
 			default:
 				strcpy(message, "No properties available for current sprite.");
 				messagetime = 60;
@@ -3746,6 +3798,18 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				selectedEntity[0]->gateDisableOpening = (Sint32)atoi(spriteProperties[2]);
 				selectedEntity[0]->gateInverted = (Sint32)atoi(spriteProperties[3]);
 				break;
+			case 36: //supplication shrine
+				selectedEntity[0]->eternalShrineDir = (Sint32)atoi(spriteProperties[0]);
+				break;
+			case 37: //anvil shrine
+				selectedEntity[0]->eternalShrineDir = (Sint32)atoi(spriteProperties[0]);
+				break;
+			case 38: //chorale shrine
+				selectedEntity[0]->eternalShrineDir = (Sint32)atoi(spriteProperties[0]);
+				break;
+			case 39: //ascension shrine
+				selectedEntity[0]->eternalShrineDir = (Sint32)atoi(spriteProperties[0]);
+				break;
 			default:
 				break;
 		}
@@ -4051,7 +4115,7 @@ void initMonsterPropertiesWindow() {
 	suby1 = yres / 2 - 190;
 	suby2 = yres / 2 + 190;
 	strcpy(subtext, "Sprite properties: ");
-	strcat(subtext, spriteEditorNameStrings[selectedEntity[0]->sprite]);
+	strcat(subtext, spriteEditorNameStrings[selectedEntity[0]->sprite].first);
 }
 
 void copyMonsterStatToPropertyStrings(Stat* tmpSpriteStats)

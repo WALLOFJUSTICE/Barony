@@ -994,7 +994,7 @@ void actArrow(Entity* my)
 							}
 							for ( int i = 0; i < numParticles; ++i )
 							{
-								spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 						}
 					}
@@ -1047,7 +1047,7 @@ void actArrow(Entity* my)
 							}
 							for ( int i = 0; i < numParticles; ++i )
 							{
-								spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 						}
 					}

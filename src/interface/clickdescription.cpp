@@ -211,6 +211,34 @@ void clickDescription(int player, Entity* entity)
 				{
 					messagePlayer(player, MESSAGE_INSPECTION, Language::get(6352));
 				}
+				else if ( entity->behavior == &actEternalShrine
+					|| entity->behavior == &actEternalShrineLimb )
+				{
+					Entity* ent = entity;
+					if ( entity->behavior == &actEternalShrineLimb )
+					{
+						ent = uidToEntity(entity->parent);
+					}
+					if ( ent )
+					{
+						if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+						{
+							messagePlayer(player, MESSAGE_INSPECTION, Language::get(7090));
+						}
+						else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+						{
+							messagePlayer(player, MESSAGE_INSPECTION, Language::get(7093));
+						}
+						else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+						{
+							messagePlayer(player, MESSAGE_INSPECTION, Language::get(7096));
+						}
+						else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+						{
+							messagePlayer(player, MESSAGE_INSPECTION, Language::get(7099));
+						}
+					}
+				}
 				else if ( entity->behavior == &actStatue )
 				{
 					messagePlayer(player, MESSAGE_INSPECTION, Language::get(4308));

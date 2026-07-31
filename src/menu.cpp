@@ -8911,6 +8911,10 @@ void doNewGame(bool makeHighscore) {
 		{
 			soundEnvironment_group->stop();
 		}
+		if ( soundTrap_group )
+		{
+			soundTrap_group->stop();
+		}
 		if ( soundNotification_group )
 		{
 			soundNotification_group->stop();
@@ -9390,6 +9394,10 @@ void doNewGame(bool makeHighscore) {
 		if ( soundEnvironment_group )
 		{
 			soundEnvironment_group->stop();
+		}
+		if ( soundTrap_group )
+		{
+			soundTrap_group->stop();
 		}
 		if ( soundNotification_group )
 		{
@@ -9906,6 +9914,10 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 	if ( soundEnvironment_group )
 	{
 		soundEnvironment_group->stop();
+	}
+	if ( soundTrap_group )
+	{
+		soundTrap_group->stop();
 	}
 	if ( soundNotification_group )
 	{

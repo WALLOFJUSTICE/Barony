@@ -233,6 +233,11 @@ char shrineTeleportPropertyNames[4][48] =
 	"Destination Y Offset"
 };
 
+char eternalShrinePropertyNames[1][19] =
+{
+	"Direction (-1 - 3)"
+};
+
 char furniturePropertyNames[1][19] =
 {
 	"Direction (-1 - 7)"
@@ -2676,6 +2681,12 @@ int main(int argc, char** argv)
 						{
 							selectedTile = recentUsedTiles[recentUsedTilePalette][recentIndex];
 							lastPaletteTileSelected = recentIndex;
+
+							if ( selectedTool != 0 && selectedTool != 2 )
+							{
+								selectedTool = 0;
+								selectedarea = false;
+							}
 						}
 					}
 					if ( mousestatus[SDL_BUTTON_RIGHT] )
@@ -9505,6 +9516,101 @@ int main(int argc, char** argv)
 						}
 					}
 				}
+				else if ( newwindow >= 40 && newwindow <= 43 )
+				{
+					if ( selectedEntity[0] != nullptr )
+					{
+						int numProperties = sizeof(eternalShrinePropertyNames) / sizeof(eternalShrinePropertyNames[0]); //find number of entries in property list
+						const int lenProperties = sizeof(eternalShrinePropertyNames[0]) / sizeof(char); //find length of entry in property list
+						int spacing = 36; // 36 px between each item in the list.
+						int inputFieldHeader_y = suby1 + 28; // 28 px spacing from subwindow start.
+						int inputField_x = subx1 + 8; // 8px spacing from subwindow start.
+						int inputField_y = inputFieldHeader_y + 16;
+						int inputFieldWidth = 64; // width of the text field
+						int inputFieldFeedback_x = inputField_x + inputFieldWidth + 8;
+						char tmpPropertyName[lenProperties] = "";
+						Uint32 color = makeColorRGB(0, 255, 0);
+						Uint32 colorRandom = makeColorRGB(0, 168, 255);
+						Uint32 colorError = makeColorRGB(255, 0, 0);
+
+						for ( int i = 0; i < numProperties; i++ )
+						{
+							int propertyInt = atoi(spriteProperties[i]);
+
+							strcpy(tmpPropertyName, eternalShrinePropertyNames[i]);
+							inputFieldHeader_y = suby1 + 28 + i * spacing;
+							inputField_y = inputFieldHeader_y + 16;
+							// box outlines then text
+							drawDepressed(inputField_x - 4, inputField_y - 4, inputField_x - 4 + inputFieldWidth, inputField_y + 16 - 4);
+							// print values on top of boxes
+							printText(font8x8_bmp, inputField_x, suby1 + 44 + i * spacing, spriteProperties[i]);
+							printText(font8x8_bmp, inputField_x, inputFieldHeader_y, tmpPropertyName);
+
+							if ( errorArr[i] != 1 )
+							{
+								if ( i == 0 )
+								{
+									if ( propertyInt > 3 || propertyInt < -1 )
+									{
+										propertyPageError(i, 0); // reset to default 0.
+									}
+									else
+									{
+										char tmpStr[32] = "";
+										switch ( propertyInt )
+										{
+										case -1:
+											strcpy(tmpStr, "random");
+											break;
+										case 0:
+											strcpy(tmpStr, "East");
+											break;
+										case 1:
+											strcpy(tmpStr, "South");
+											break;
+										case 2:
+											strcpy(tmpStr, "West");
+											break;
+										case 3:
+											strcpy(tmpStr, "North");
+											break;
+										default:
+											break;
+										}
+										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
+									}
+								}
+								else
+								{
+									// enter other row entries here
+								}
+							}
+
+							if ( errorMessage )
+							{
+								if ( errorArr[i] == 1 )
+								{
+									printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, colorError, "Invalid ID!");
+								}
+							}
+						}
+
+						propertyPageTextAndInput(numProperties, inputFieldWidth);
+
+						if ( editproperty < numProperties )   // edit
+						{
+							if ( !SDL_IsTextInputActive() )
+							{
+								SDL_StartTextInput();
+								inputstr = spriteProperties[0];
+							}
+
+							// set the maximum length allowed for user input
+							inputlen = 3;
+							propertyPageCursorFlash(spacing);
+						}
+					}
+				}
 				else if ( newwindow == 16 || newwindow == 17 )
 				{
 					int textColumnLeft = subx1 + 16;
@@ -10193,46 +10299,91 @@ int main(int argc, char** argv)
 				{
 					keystatus[SDLK_KP_7] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][0];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_8] )
 				{
 					keystatus[SDLK_KP_8] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][1];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_9] )
 				{
 					keystatus[SDLK_KP_9] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][2];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_4] )
 				{
 					keystatus[SDLK_KP_4] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][3];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_5] )
 				{
 					keystatus[SDLK_KP_5] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][4];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_6] )
 				{
 					keystatus[SDLK_KP_6] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][5];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_1] )
 				{
 					keystatus[SDLK_KP_1] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][6];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_2] )
 				{
 					keystatus[SDLK_KP_2] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][7];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_3] )
 				{
 					keystatus[SDLK_KP_3] = 0;
 					selectedTile = recentUsedTiles[recentUsedTilePalette][8];
+					if ( selectedTool != 0 && selectedTool != 2 )
+					{
+						selectedTool = 0;
+						selectedarea = false;
+					}
 				}
 				if ( keystatus[SDLK_KP_PLUS] )
 				{
@@ -10282,86 +10433,170 @@ int main(int argc, char** argv)
 			{
 				palette[c] = -1;
 			}
-			for ( c = 0; c < numsprites; c++ )
-			{
-				if ( sprites[c] != NULL )
-				{
-					pos.x = x;
-					pos.y = y;
-					pos.w = sprites[c]->w;
-					pos.h = sprites[c]->h;
-					int scale = 1;
-					if ( pos.w < 16 && pos.h < 16 )
-					{
-						scale = 4;
-						pos.w *= scale;
-						pos.h *= scale;
-					}
-					else if ( pos.w < 32 && pos.h < 32 )
-					{
-						scale = 2;
-						pos.w *= scale;
-						pos.h *= scale;
-					}
 
-					drawImageScaled(sprites[c], NULL, &pos);
-					for ( x2 = x; x2 < x + sprites[c]->w * scale; x2++ )
+			static std::map<std::string, std::vector<int>> sorted;
+			static bool sortedList = true;
+			bool updateSort = false;
+			if ( keystatus[SDLK_r] )
+			{
+				keystatus[SDLK_r] = 0;
+				sortedList = !sortedList;
+				sorted.clear();
+			}
+			if ( sorted.size() == 0 )
+			{
+				if ( sortedList )
+				{
+					for ( c = 0; c < numsprites; c++ )
 					{
-						for ( y2 = y; y2 < y + sprites[c]->h * scale; y2++ )
+						if ( c < spriteEditorNameStrings.size() )
 						{
-							if ( x2 < xres && y2 < yres )
-							{
-								palette[y2 + x2 * yres] = c;
-							}
-						}
-					}
-					x += sprites[c]->w * scale;
-					z = std::max(z, sprites[c]->h * scale);
-					if ( c < numsprites - 1 )
-					{
-						if ( sprites[c + 1] != NULL )
-						{
-							if ( x + sprites[c + 1]->w * scale > xres )
-							{
-								x = 0;
-								y += z;
-							}
-						}
-						else
-						{
-							if ( x + sprites[0]->w * scale > xres )
-							{
-								x = 0;
-								y += z;
-							}
+							sorted[spriteEditorNameStrings[c].second].push_back(c);
 						}
 					}
 				}
 				else
 				{
-					pos.x = x;
-					pos.y = y;
-					pos.w = TEXTURESIZE;
-					pos.h = TEXTURESIZE;
-					drawImageScaled(sprites[0], NULL, &pos);
-					x += sprites[0]->w;
-					z = std::max(z, sprites[0]->h);
-					if ( c < numsprites - 1 )
+					for ( c = 0; c < numsprites; c++ )
 					{
-						if ( sprites[c + 1] != NULL )
+						sorted["all"].push_back(c);
+					}
+				}
+			}
+
+			std::vector<std::pair<std::string, std::string>> ordering =
+			{
+				{"map", "Map Markers & Exits" },
+				{"npcs", "Monsters & NPCs" },
+				{"doors", "Doors & Gates" },
+				{"mech", "Mechanisms, Traps & Scripting" },
+				{"interactables", "Interactables, Loot & Stations" },
+				{"objects", "Other Objects & Decoration" },
+				{"misc", "Miscellaneous" },
+				{"all", "All Sprites (Unsorted)"},
+				{"", "Unused"}
+			};
+
+			int prevLowest = 0;
+			for ( auto& order : ordering )
+			{
+				if ( sorted.find(order.first) == sorted.end() )
+				{
+					continue;
+				}
+				auto& list = sorted.find(order.first);
+				if ( list->first == "" ) { continue; }
+
+				x = 0;
+				y = prevLowest;
+				z = 0;
+				y += 8;
+				ttfPrintText(ttf8, x + 4, y, order.second.c_str());
+				y += 20;
+
+				int index = -1;
+				for ( auto c : list->second )
+				{
+					++index;
+					if ( sprites[c] != NULL )
+					{
+						pos.x = x;
+						pos.y = y;
+						pos.w = sprites[c]->w;
+						pos.h = sprites[c]->h;
+						int scale = 1;
+						if ( pos.w < 16 && pos.h < 16 )
 						{
-							if ( x + sprites[c + 1]->w > xres )
+							scale = 4;
+							pos.w *= scale;
+							pos.h *= scale;
+						}
+						else if ( pos.w < 32 && pos.h < 32 )
+						{
+							scale = 2;
+							pos.w *= scale;
+							pos.h *= scale;
+						}
+
+						if ( (mousex <= xres && mousey <= yres) 
+							&& mousex >= x 
+							&& mousex <= x + sprites[c]->w * scale
+							&& mousey >= y
+							&& mousey <= y + sprites[c]->h * scale )
+						{
+							SDL_Rect box{ x, y, sprites[c]->w * scale, sprites[c]->h * scale };
+							// draws a box around the sprite
+							drawRect(&box, makeColorRGB(255, 0, 0), 255);
+							box.w = std::max(0, box.w - 2);
+							box.h = std::max(0, box.h - 2);
+							box.x += 1;
+							box.y += 1;
+							drawRect(&box, makeColorRGB(0, 0, 255), 255);
+						}
+
+						drawImageScaled(sprites[c], NULL, &pos);
+						for ( x2 = x; x2 < x + sprites[c]->w * scale; x2++ )
+						{
+							for ( y2 = y; y2 < y + sprites[c]->h * scale; y2++ )
 							{
-								x = 0;
-								y += z;
+								if ( x2 < xres && y2 < yres )
+								{
+									palette[y2 + x2 * yres] = c;
+								}
 							}
 						}
-						else
+						x += sprites[c]->w * scale;
+						z = std::max(z, sprites[c]->h * scale);
+
+						// peek next
+						if ( index < (list->second.size() - 1) )
 						{
-							if ( x + sprites[0]->w > xres )
+							if ( sprites[list->second[index + 1]] != NULL )
 							{
-								x = 0;
-								y += z;
+								if ( x + sprites[list->second[index + 1]]->w * scale > xres )
+								{
+									x = 0;
+									y += z;
+								}
+							}
+							else
+							{
+								if ( x + sprites[0]->w * scale > xres )
+								{
+									x = 0;
+									y += z;
+								}
+							}
+						}
+
+						prevLowest = std::max(y + z, prevLowest);
+					}
+					else
+					{
+						pos.x = x;
+						pos.y = y;
+						pos.w = TEXTURESIZE;
+						pos.h = TEXTURESIZE;
+						drawImageScaled(sprites[0], NULL, &pos);
+						x += sprites[0]->w;
+						z = std::max(z, sprites[0]->h);
+						if ( c < numsprites - 1 )
+						{
+							if ( sprites[c + 1] != NULL )
+							{
+								if ( x + sprites[c + 1]->w > xres )
+								{
+									x = 0;
+									y += z;
+								}
+							}
+							else
+							{
+								if ( x + sprites[0]->w > xres )
+								{
+									x = 0;
+									y += z;
+								}
 							}
 						}
 					}
@@ -10380,6 +10615,8 @@ int main(int argc, char** argv)
 					selectedEntity[0] = entity;
 					lastSelectedEntity[0] = selectedEntity[0];
 					setSpriteAttributes(selectedEntity[0], nullptr, nullptr);
+					selectedTool = 1;
+					selectedarea = false;
 				}
 
 				mclick = 0;
@@ -10403,12 +10640,56 @@ int main(int argc, char** argv)
 
 			if ( (mousex <= xres && mousey <= yres) && palette[mousey + mousex * yres] >= 0 && palette[mousey + mousex * yres] < numsprites )
 			{
-				printTextFormatted(font8x8_bmp, 0, yres - 8, "Sprite index:%5d", palette[mousey + mousex * yres]);
-				printTextFormatted(font8x8_bmp, 0, yres - 16, "%s", spriteEditorNameStrings[palette[mousey + mousex * yres]]);
+				int spriteIndex = palette[mousey + mousex * yres];
+				{
+					/*SDL_Rect box;
+					box.x = mousex;
+					box.y = mousey;
+					box.w = 0;
+					box.h = 0;
+					while ( box.x > 0 )
+					{
+						if ( palette[box.y + (box.x - 1) * yres] != spriteIndex )
+						{
+							break;
+						}
+						--box.x;
+						++box.w;
+					}
+					while ( box.y > 0 )
+					{
+						if ( palette[box.y - 1 + (box.x) * yres] != spriteIndex )
+						{
+							break;
+						}
+						--box.y;
+						++box.h;
+					}
+					while ( box.x + box.w < xres )
+					{
+						if ( palette[box.y + (box.x + box.w + 1) * yres] != spriteIndex )
+						{
+							break;
+						}
+						++box.w;
+					}
+					while ( box.y + box.h < xres )
+					{
+						if ( palette[(box.y + box.h + 1) + (box.x) * yres] != spriteIndex )
+						{
+							break;
+						}
+						++box.h;
+					}*/
+				}
+
+				printText(font8x8_bmp, 0, yres - 8, "Press R to change sorting");
+				printTextFormatted(font8x8_bmp, 0, yres - 16, "Sprite index:%5d", spriteIndex);
+				printTextFormatted(font8x8_bmp, 0, yres - 24, "%s", spriteEditorNameStrings[spriteIndex].first);
 
 				char hoverTextString[1024] = "";
-				snprintf(hoverTextString, 5, "%d: ", palette[mousey + mousex * yres]);
-				strcat(hoverTextString, spriteEditorNameStrings[palette[mousey + mousex * yres]]);
+				snprintf(hoverTextString, 5, "%d: ", spriteIndex);
+				strcat(hoverTextString, spriteEditorNameStrings[spriteIndex].first);
 				int hoverTextWidth = strlen(hoverTextString);
 
 				if ( mousey - 20 <= 0 )
@@ -10443,7 +10724,8 @@ int main(int argc, char** argv)
 			}
 			else
 			{
-				printText(font8x8_bmp, 0, yres - 8, "Click to cancel");
+				printText(font8x8_bmp, 0, yres - 16, "Click to cancel");
+				printText(font8x8_bmp, 0, yres - 8, "Press R to change sorting");
 			}
 		}
 		if ( tilepalette )
@@ -10510,6 +10792,12 @@ int main(int argc, char** argv)
 				}
 				mclick = 0;
 				tilepalette = 0;
+
+				if ( selectedTool != 0 && selectedTool != 2 )
+				{
+					selectedTool = 0;
+					selectedarea = false;
+				}
 			}
 			if (keystatus[SDLK_ESCAPE])
 			{

@@ -349,6 +349,12 @@ bool rangefinderTargetEnemyType(spell_t& spell, Entity& entity)
 			|| entity.behavior == &actMailbox
 			|| entity.behavior == &actWorkbench;
 	}
+	else if ( spell.ID == SPELL_SUNDER_MONUMENT )
+	{
+		return (entity.behavior == &actFountain
+			|| entity.behavior == &actEternalShrine
+			|| entity.behavior == &actStatue);
+	}
 	else if ( spell.ID == SPELL_DEMESNE_DOOR )
 	{
 		return (entity.behavior == &actDoorFrame && !entity.flags[INVISIBLE]) /*|| entity.behavior == &actDoor*/;

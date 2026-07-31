@@ -2755,6 +2755,36 @@ void actHudWeapon(Entity* my)
 								{
 									int decrement = stats[HUDWEAPON_PLAYERNUM]->weapon->magicstaffGetChargeDepletion(
 										players[HUDWEAPON_PLAYERNUM]->entity, stats[HUDWEAPON_PLAYERNUM], true);
+
+									if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_LIGHT
+										|| stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_DEEP_SHADE )
+									{
+										for ( auto node = map.entities->first; node != nullptr; node = node->next ) 
+										{
+											if ( auto entity = (Entity*)node->element )
+											{
+												if ( entity->behavior == &actMagiclightBall )
+												{
+													if ( (entity->sprite == 174 && stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_LIGHT)
+														|| (entity->sprite == 1800 && stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_DEEP_SHADE) )
+													{
+														if ( static_cast<Uint8>(entity->skill[2] & 0xFF) == 10 ) // is lightball
+														{
+															if ( ((entity->skill[2] >> 8) & 0xFF) == 1 ) // is magicstaff
+															{
+																if ( ((entity->skill[2] >> 16) & 0xFF) == HUDWEAPON_PLAYERNUM ) // my ball
+																{
+																	decrement = 0;
+																	break;
+																}
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+
 									decrement = std::min(staffCharge, decrement);
 									stats[HUDWEAPON_PLAYERNUM]->weapon->appearance -= decrement;
 									if ( multiplayer != CLIENT )
@@ -4174,6 +4204,68 @@ void actHudWeapon(Entity* my)
 	//particle->yaw = my->yaw;
 	//particle->pitch = my->pitch;
 	//particle->roll = my->roll;
+
+	if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon
+		&& (stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER
+			|| (MAGICSTAFFS_USE_CHARGE && itemCategory(stats[HUDWEAPON_PLAYERNUM]->weapon) == MAGICSTAFF)) )
+	{
+		if ( HUDWEAPON_OVERCHARGE >= (Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) - 3) )
+		{
+			int numparticles = 0;
+			if ( HUDWEAPON_OVERCHARGE == (Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) - 3) )
+			{
+				numparticles = 3;
+			}
+			else if ( ticks % 5 == 0 )
+			{
+				numparticles = 1;
+			}
+			for ( int i = 0; i < numparticles; ++i )
+			{
+				Entity* particle = spawnGib(my, 16);
+				particle->flags[INVISIBLE] = false;
+				particle->flags[SPRITE] = true;
+				particle->flags[NOUPDATE] = true;
+				particle->flags[UPDATENEEDED] = false;
+				particle->flags[OVERDRAW] = true;
+				particle->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
+				particle->scaley = 0.25f;
+				particle->scalez = 0.25f;
+				particle->x = my->x;
+				particle->y = my->y;
+				particle->z = my->z;
+				particle->sprite = 16;
+
+				particle->yaw = ((local_rng.rand() % 6) * 60) * PI / 180.0;
+				particle->pitch = (local_rng.rand() % 360) * PI / 180.0;
+				particle->roll = (local_rng.rand() % 360) * PI / 180.0;
+				particle->vel_x = cos(particle->yaw) * .1;
+				particle->vel_y = sin(particle->yaw) * .1;
+				particle->vel_z = -.05;
+				particle->fskill[3] = 0.01;
+				particle->skill[11] = HUDWEAPON_PLAYERNUM;
+
+				real_t focalx = my->focalx;
+				real_t focaly = my->focaly;
+				real_t focalz = (my->focalz - 6);
+
+				// magic code to translate focals into pure coords (doesn't include focaly)
+				real_t xoffset = focalz * sin(my->pitch + PI) * cos(my->roll) * cos(my->yaw);
+				real_t yoffset = focalz * sin(my->pitch + PI) * cos(my->roll) * sin(my->yaw);
+				xoffset += focalz * sin(my->roll + PI) * cos(my->yaw + PI / 2);
+				yoffset += focalz * sin(my->roll + PI) * sin(my->yaw + PI / 2);
+
+				xoffset += focalx * cos(my->yaw) * sin(my->pitch + PI / 2) + focaly * cos(my->yaw + PI / 2);
+				yoffset += focalx * sin(my->yaw) * sin(my->pitch + PI / 2) + focaly * sin(my->yaw + PI / 2);
+
+				real_t zoffset = focalz * cos(my->pitch) * cos(my->roll);
+				zoffset += focalx * sin(my->pitch);
+				particle->x += xoffset;
+				particle->y += yoffset;
+				particle->z += zoffset;
+			}
+		}
+	}
 }
 
 #define HUDSHIELD_DEFEND my->skill[0]

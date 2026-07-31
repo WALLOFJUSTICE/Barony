@@ -3147,6 +3147,24 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 					fp->read(&dummy, sizeof(Sint32), 1);
 					break;
 				}
+				// eternal shrines
+				case 36:
+				case 37:
+				case 38:
+				case 39:
+				{
+					fp->read(&entity->eternalShrineDir, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					break;
+				}
 				default:
 					break;
 			}
@@ -3719,6 +3737,24 @@ int saveMap(const char* filename2)
 					fp->write(&entity->gateDisableOpening, sizeof(Sint32), 1);
 					fp->write(&entity->gateInverted, sizeof(Sint32), 1);
 					Sint32 dummy = 0;
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					break;
+				}
+				// eternal shrines
+				case 36:
+				case 37:
+				case 38:
+				case 39:
+				{
+					fp->write(&entity->eternalShrineDir, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
 					fp->write(&dummy, sizeof(Sint32), 1);
 					fp->write(&dummy, sizeof(Sint32), 1);
 					fp->write(&dummy, sizeof(Sint32), 1);

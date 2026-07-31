@@ -11364,6 +11364,61 @@ void assignActions(map_t* map)
 				entity->sprite = 2467;
 				entity->seedEntityRNG(map_rng.getU32());
 				break;
+			case 312: // supplication shrine
+			case 313: // anvil shrine
+			case 314: // chorale shrine
+			case 315: // ascension shrine
+			{
+				entity->sizex = 4;
+				entity->sizey = 4;
+				entity->x += 8;
+				entity->y += 8;
+				entity->z = 7.5;
+				entity->flags[PASSABLE] = false;
+				entity->behavior = &actEternalShrine;
+				if ( entity->eternalShrineDir == -1 )
+				{
+					entity->eternalShrineDir = (map_rng.rand() % 4);
+					entity->yaw = entity->eternalShrineDir * 90 * (PI / 180.f);
+				}
+				else
+				{
+					entity->yaw = entity->eternalShrineDir * 90 * (PI / 180.f);
+				}
+				/*if ( ((entity->yaw > -PI / 4 && entity->yaw < 1 * PI / 4) || entity->yaw >= 7 * PI / 4)
+					|| (entity->yaw >= 3 * PI / 4 && entity->yaw < 5 * PI / 4) )
+				{
+					entity->sizex = 1;
+					entity->sizey = 8;
+				}
+				else
+				{
+					entity->sizex = 8;
+					entity->sizey = 1;
+				}*/
+				if ( entity->sprite == 312 )
+				{
+					entity->sprite = 2533;
+					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_SUPPLICATION;
+				}
+				else if ( entity->sprite == 313 )
+				{
+					entity->sprite = 2534;
+					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_ANVIL;
+				}
+				else if ( entity->sprite == 314 )
+				{
+					entity->sprite = 2535;
+					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_MUSIC;
+				}
+				else if ( entity->sprite == 315 )
+				{
+					entity->sprite = 2536;
+					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_ASCENSION;
+				}
+				entity->seedEntityRNG(map_rng.getU32());
+				break;
+			}
             default:
                 break;
 		}

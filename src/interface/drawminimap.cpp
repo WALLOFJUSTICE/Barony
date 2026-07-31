@@ -211,7 +211,7 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 				entityPointsOfInterest.push_back(entity);
 			}
 			else if ( entity->behavior == &actWorkbench || entity->behavior == &actCauldron
-				|| entity->behavior == &actMailbox )
+				|| entity->behavior == &actMailbox || entity->behavior == &actEternalShrine )
 			{
 				entityPointsOfInterest.push_back(entity);
 			}
@@ -793,7 +793,7 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 				}
 			}
 			else if ( entity->behavior == &actWorkbench || entity->behavior == &actCauldron
-				|| entity->behavior == &actMailbox )
+				|| entity->behavior == &actMailbox || entity->behavior == &actEternalShrine )
 			{
 				int x = std::min<int>(std::max<int>(0, entity->x / 16), map.width - 1);
 				int y = std::min<int>(std::max<int>(0, entity->y / 16), map.height - 1);

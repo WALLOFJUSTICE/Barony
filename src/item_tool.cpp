@@ -1952,7 +1952,7 @@ void Item::applyDuck(Uint32 parentUid, real_t x, real_t y, Entity* hitentity, bo
 			//summon->yaw = thrown->yaw;
 			summon->monsterSpecialState = DUCK_INERT;
 			serverUpdateEntitySkill(summon, 33);
-			playSoundPos(summon->x, summon->y, 794 + local_rng.rand() % 2, 128);
+			playSoundPos(summon->x, summon->y, 794 + local_rng.rand() % 2, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 			//if ( forceFollower(*parent, *summon) )
 			//{
 			//	if ( parent->behavior == &actPlayer )
@@ -1981,11 +1981,11 @@ void Item::applyDuck(Uint32 parentUid, real_t x, real_t y, Entity* hitentity, bo
 				{
 					summon->monsterTarget = hitentity->getUID();
 				}
-				playSoundPos(summon->x, summon->y, 786 + local_rng.rand() % 3, 128);
+				playSoundPos(summon->x, summon->y, 786 + local_rng.rand() % 3, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 			}
 			else
 			{
-				playSoundPos(summon->x, summon->y, 789 + local_rng.rand() % 5, 128);
+				playSoundPos(summon->x, summon->y, 789 + local_rng.rand() % 5, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 			}
 			int appearance = std::max(0, static_cast<int>(this->appearance % items[TOOL_DUCK].variations));
 			summonedStats->setAttribute("duck_type", std::to_string(appearance));
@@ -2090,7 +2090,7 @@ void Item::applyTinkeringCreation(Entity* parent, Entity* thrown)
 					summon->yaw = thrown->yaw;
 					summon->monsterSpecialState = GYRO_START_FLYING;
 					serverUpdateEntitySkill(summon, 33);
-					playSoundPos(summon->x, summon->y, 415, 128);
+					playSoundPos(summon->x, summon->y, 415, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 				}
 				else if ( summonedStats->type == SENTRYBOT || summonedStats->type == SPELLBOT )
 				{

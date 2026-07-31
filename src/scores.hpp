@@ -569,6 +569,7 @@ struct SaveGameInfo {
 		int baseSpellMPUsedSorcery = 0;
 		int baseSpellMPUsedMysticism = 0;
 		int baseSpellMPUsedThaumaturgy = 0;
+		int divine_favor = 0;
 
 		struct stat_t {
 			struct item_t {
@@ -770,6 +771,7 @@ struct SaveGameInfo {
 			fp->property("escalating_rng_rolls", escalatingRngRolls);
 			fp->property("escalating_spell_rng_rolls", escalatingSpellRngRolls);
 			fp->property("appraisal_time_progress", appraisal_item_progress);
+			fp->property("divine_favor", divine_favor);
 			return true;
 		}
 

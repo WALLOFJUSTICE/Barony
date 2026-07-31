@@ -277,6 +277,14 @@ void actSpriteWorldTooltip(Entity* my)
 		my->z = -.75 + std::max(0.0, parent->z - 7.75) - my->worldTooltipZ + Player::WorldUI_t::tooltipHeightOffsetZ;
 		if ( parent->behavior == &actItem && parent->z < 4.0 )
 		{
+			if ( (parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_ASCENSION || parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_MUSIC)
+				&& (multiplayer != CLIENT && !parent->itemNotMoving)
+				|| (multiplayer == CLIENT && !parent->itemNotMovingClient) )
+			{
+				// floating, raise a bit
+				my->z -= 3;
+			}
+
 			if ( (multiplayer != CLIENT && parent->itemNotMoving)
 				|| (multiplayer == CLIENT && parent->itemNotMovingClient) )
 			{
@@ -361,7 +369,7 @@ Entity* spawnBang(Sint16 x, Sint16 y, Sint16 z)
 	return entity;
 }
 
-Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z)
+Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z, SoundChannelGroupIndex channelIndex)
 {
 	int c, i;
 	if ( multiplayer == SERVER )
@@ -376,9 +384,10 @@ Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z)
 			SDLNet_Write16(x, &net_packet->data[4]);
 			SDLNet_Write16(y, &net_packet->data[6]);
 			SDLNet_Write16(z, &net_packet->data[8]);
+			net_packet->data[10] = (Uint8)channelIndex;
 			net_packet->address.host = net_clients[c - 1].host;
 			net_packet->address.port = net_clients[c - 1].port;
-			net_packet->len = 10;
+			net_packet->len = 11;
 			sendPacketSafe(net_sock, -1, net_packet, c - 1);
 		}
 	}
@@ -401,7 +410,7 @@ Entity* spawnExplosion(Sint16 x, Sint16 y, Sint16 z)
 	SPRITE_FRAMES = 10;
 	SPRITE_ANIMSPEED = 2;
 	SPRITE_LIT = 1;
-	playSoundEntityLocal(entity, 153, 128);
+	playSoundEntityLocal(entity, 153, 128, channelIndex);
 	Entity* explosion = entity;
 	for (i = 0; i < 10; ++i)
 	{

@@ -5719,6 +5719,14 @@ bool GenericGUIMenu::isItemRepairable(const Item* item, int repairScroll)
 				case TOOL_DUMMYBOT:
 				case ENCHANTED_FEATHER:
 				case TOOL_DUCK:
+				case KEY_STONE:
+				case KEY_BONE:
+				case KEY_BRONZE:
+				case KEY_IRON:
+				case KEY_SILVER:
+				case KEY_GOLD:
+				case KEY_CRYSTAL:
+				case KEY_MACHINE:
 					return false;
 					break;
 				default:
@@ -7936,43 +7944,45 @@ void stationOpenSound(int player, int type)
 void GenericGUIMenu::openGUI(int type, Entity* shrine)
 {
 	// close existing guis
+
+	// UNSURE IF oldUID needed to avoid closing the previous GUI??
 	if ( guiType == GUI_TYPE_ASSIST )
 	{
-		Uint32 oldUID = assistShrineGUI.shrineUID;
-		assistShrineGUI.shrineUID = 0;
+		//Uint32 oldUID = assistShrineGUI.shrineUID;
+		//assistShrineGUI.shrineUID = 0;
 		this->closeGUI();
-		assistShrineGUI.shrineUID = oldUID;
+		//assistShrineGUI.shrineUID = oldUID;
 	}
 	else if ( guiType == GUI_TYPE_ALCHEMY )
 	{
-		Uint32 oldUID = alembicEntityUid;
-		alembicEntityUid = 0;
+		//Uint32 oldUID = alembicEntityUid;
+		//alembicEntityUid = 0;
 		this->closeGUI();
-		alembicEntityUid = oldUID;
+		//alembicEntityUid = oldUID;
 	}
 	else if ( guiType == GUI_TYPE_TINKERING )
 	{
-		Uint32 oldUID = workstationEntityUid;
-		workstationEntityUid = 0;
+		//Uint32 oldUID = workstationEntityUid;
+		//workstationEntityUid = 0;
 		this->closeGUI();
-		workstationEntityUid = oldUID;
+		//workstationEntityUid = oldUID;
 	}
 	else if ( guiType == GUI_TYPE_MAILBOX )
 	{
-		Uint32 oldUID = mailboxEntityUid;
-		mailboxEntityUid = 0;
+		//Uint32 oldUID = mailboxEntityUid;
+		//mailboxEntityUid = 0;
 		this->closeGUI();
-		mailboxEntityUid = oldUID;
+		//mailboxEntityUid = oldUID;
 	}
 	else if ( guiType == GUI_TYPE_ETERNALSHRINE_ANVIL
 		|| guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION
 		|| guiType == GUI_TYPE_ETERNALSHRINE_MUSIC
 		|| guiType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
 	{
-		Uint32 oldUID = eternalShrineEntityUid;
-		eternalShrineEntityUid = 0;
+		//Uint32 oldUID = eternalShrineEntityUid;
+		//eternalShrineEntityUid = 0;
 		this->closeGUI();
-		eternalShrineEntityUid = oldUID;
+		//eternalShrineEntityUid = oldUID;
 	}
 
 	if ( players[gui_player] && players[gui_player]->entity )
@@ -8027,11 +8037,11 @@ void GenericGUIMenu::openGUI(int type, Entity* shrine)
 		|| guiType == GUI_TYPE_ETERNALSHRINE_MUSIC
 		|| guiType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
 	{
-		eternalShrineGUI.openEternalShrine();
-		if ( shrine )
+		eternalShrineGUI.openEternalShrine(shrine);
+		/*if ( shrine )
 		{
 			eternalShrineEntityUid = shrine->getUID();
-		}
+		}*/
 	}
 	else if ( guiType == GUI_TYPE_TINKERING )
 	{
@@ -28845,6 +28855,34 @@ std::string CalloutRadialMenu::setCalloutText(Field* field, const char* iconName
 			{
 				objectName = Language::get(6986);
 			}
+			else if ( entity->behavior == &actEternalShrine
+				|| entity->behavior == &actEternalShrineLimb )
+			{
+				Entity* ent = entity;
+				if ( entity->behavior == &actEternalShrineLimb )
+				{
+					ent = uidToEntity(entity->parent);
+				}
+				if ( ent )
+				{
+					if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+					{
+						objectName = Language::get(7091);
+					}
+					else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+					{
+						objectName = Language::get(7094);
+					}
+					else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+					{
+						objectName = Language::get(7097);
+					}
+					else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+					{
+						objectName = Language::get(7100);
+					}
+				}
+			}
 			else if ( entity->behavior == &actPowerCrystal )
 			{
 				objectName = Language::get(4356);
@@ -29389,7 +29427,9 @@ CalloutRadialMenu::CalloutType CalloutRadialMenu::getCalloutTypeForEntity(const 
 	}
 	else if ( parent->behavior == &actCauldron
 		|| parent->behavior == &actWorkbench
-		|| parent->behavior == &actMailbox )
+		|| parent->behavior == &actMailbox
+		|| parent->behavior == &actEternalShrine
+		|| parent->behavior == &actEternalShrineLimb )
 	{
 		type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
 	}
@@ -31960,6 +32000,36 @@ bool CalloutRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool updat
 		if ( updateInteractText )
 		{
 			strcat(interactText, Language::get(6986)); // "mailbox"
+		}
+	}
+	else if ( selectedEntity.behavior == &actEternalShrine || selectedEntity.behavior == &actEternalShrineLimb )
+	{
+		Entity* ent = &selectedEntity;
+		if ( selectedEntity.behavior == &actEternalShrineLimb )
+		{
+			ent = uidToEntity(selectedEntity.parent);
+		}
+		if ( ent )
+		{
+			if ( updateInteractText )
+			{
+				if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+				{
+					strcat(interactText, Language::get(7091));
+				}
+				else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+				{
+					strcat(interactText, Language::get(7094));
+				}
+				else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+				{
+					strcat(interactText, Language::get(7097));
+				}
+				else if ( ent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+				{
+					strcat(interactText, Language::get(7100));
+				}
+			}
 		}
 	}
 	else if ( selectedEntity.behavior == &actPowerCrystal || selectedEntity.behavior == &actPowerCrystalBase )

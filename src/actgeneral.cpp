@@ -6753,7 +6753,7 @@ void actBell(Entity* my)
 								{
 									vol = 64;
 								}
-								playSoundEntity(my, 690, vol);
+								playSoundEntityLocal(my, 690, vol);
 								playSoundPlayer(clientnum, 690, vol / 4);
 								spawnDamageGib(child, NOTE_EIGHTH, DamageGib::DMG_STRONGEST, DamageGibDisplayType::DMG_GIB_SPRITE);
 							}

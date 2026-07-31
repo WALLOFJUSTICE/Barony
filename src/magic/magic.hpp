@@ -448,6 +448,7 @@ static const int PARTICLE_TIMER_ACTION_WATER_VFX = 42;
 static const int PARTICLE_TIMER_ACTION_STARE_GAZE = 43;
 static const int PARTICLE_TIMER_ACTION_STAREMASTER_PUSH = 44;
 static const int PARTICLE_TIMER_ACTION_STAREMASTER_MESMERIZE = 45;
+static const int PARTICLE_TIMER_ACTION_LIGHTNING_INSTANT = 46; // so client create their own lightning instantly
 
 struct ParticleEmitterHit_t
 {
@@ -1268,7 +1269,8 @@ struct AOEIndicators_t
 		CACHE_REVENANT_PUSH2,
 		CACHE_STAREMASTER_STARE,
 		CACHE_STAREMASTER_SWIPE,
-		CACHE_STARE_BEAM
+		CACHE_STARE_BEAM,
+		CACHE_ETERNAL_SHRINE
 	};
 	struct Indicator_t
 	{

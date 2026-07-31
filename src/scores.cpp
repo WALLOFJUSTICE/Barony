@@ -5772,6 +5772,8 @@ int SaveGameInfo::populateFromSession(const int playernum)
 			player.baseSpellMPUsedMysticism = ::players[c]->mechanics.baseSpellMPUsedMysticism;
 			player.baseSpellMPUsedThaumaturgy = ::players[c]->mechanics.baseSpellMPUsedThaumaturgy;
 
+			player.divine_favor = ::players[c]->mechanics.divine_favor;
+
 			for ( auto& pair : ::players[c]->compendiumProgress.itemEvents )
 			{
 				player.compendium_item_events.push_back(std::make_pair(pair.first, std::vector<int>()));
@@ -6800,6 +6802,7 @@ int loadGame(int player, const SaveGameInfo& info) {
 		mechanics.baseSpellMPUsedSorcery = info.players[player].baseSpellMPUsedSorcery;
 		mechanics.baseSpellMPUsedMysticism = info.players[player].baseSpellMPUsedMysticism;
 		mechanics.baseSpellMPUsedThaumaturgy = info.players[player].baseSpellMPUsedThaumaturgy;
+		mechanics.divine_favor = info.players[player].divine_favor;
 	}
 
 	Player::Minimap_t::mapDetails = info.map_messages;

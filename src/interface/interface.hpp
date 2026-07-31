@@ -986,15 +986,20 @@ public:
 	struct EternalShrineGUI_t
 	{
 		GenericGUIMenu& parentGUI;
-		EternalShrineGUI_t(GenericGUIMenu & g) :
-			parentGUI(g)
-		{
-		}
 
 		enum EternalShrineView_t : int
 		{
 			ASSIST_SHRINE_VIEW_OFFERING,
-			ASSIST_SHRINE_VIEW_ACTION
+			ASSIST_SHRINE_VIEW_ACTION,
+			ASSIST_SHRINE_VIEW_WAITING
+		};
+		enum EternalShrineState : int
+		{
+			ETERNAL_SHRINE_STATE_NONE,
+			ETERNAL_SHRINE_STATE_CLIENT_WAITING_RESULT,
+			ETERNAL_SHRINE_STATE_ACTIVE,
+			ETERNAL_SHRINE_STATE_ACTIVE2,
+			ETERNAL_SHRINE_STATE_END
 		};
 
 		static const int ETERNALSHRINE_SLOT_SEND = -1;
@@ -1041,8 +1046,8 @@ public:
 		bool bOpen = false;
 		bool bFirstTimeSnapCursor = false;
 		bool bSendItemAllowed = true;
+		bool bSkipOfferingPrompt = false;
 		Frame* eternalShrineFrame = nullptr;
-		Uint32 eternalShrineUID = 0;
 
 		real_t animSendItem1 = 0.0;
 		int animSendItem1StartX = 0;
@@ -1051,7 +1056,11 @@ public:
 		int animSendItem1DestY = 0;
 		Uint32 sendItem1Uid = 0;
 
-		void openEternalShrine(/*Entity * shrine*/);
+		Item clientOfferingItemToSend;
+		Uint32 clientOfferingShrineUid = 0;
+		int clientOfferingShrineType = 0;
+
+		void openEternalShrine(Entity* shrineEntity);
 		void closeEternalShrine();
 		void updateEternalShrine();
 		void createEternalShrine();
@@ -1124,6 +1133,14 @@ public:
 		bool itemRequiresTitleReflow = true;
 		EternalItemActions_t setItemDisplayNameAndPrice(Item * item, bool checkResultOnly = false);
 		void clearItemDisplayed();
+
+		EternalShrineGUI_t(GenericGUIMenu& g) :
+			parentGUI(g)
+		{
+			clientOfferingItemToSend.node = nullptr;
+			clientOfferingItemToSend.uid = 0;
+			clientOfferingItemToSend.count = 0;
+		}
 	};
 	EternalShrineGUI_t eternalShrineGUI;
 

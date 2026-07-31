@@ -540,6 +540,11 @@ void sendEntityUDP(Entity* entity, int c, bool guarantee)
 			net_packet->data[46 + j / 8] |= power(2, j - (j / 8) * 8);
 		}
 	}
+	net_packet->data[47] = 0; // custom payload
+	if ( entity->behavior == &actItem && entity->itemEternalShrineResult > 0 )
+	{
+		net_packet->data[47] = (entity->itemEternalShrineResult & 0xFF);
+	}
 	net_packet->address.host = net_clients[c - 1].host;
 	net_packet->address.port = net_clients[c - 1].port;
 	net_packet->len = ENTITY_PACKET_LENGTH;
@@ -1948,12 +1953,12 @@ void clientActions(Entity* entity)
 			entity->skill[2] = (int)SDLNet_Read32(&net_packet->data[30]);
 			entity->behavior = &actFountain;
 			break;
-		case 174:
-			if (SDLNet_Read32(&net_packet->data[30]) != 0)
-			{
-				entity->behavior = &actMagiclightBall; //TODO: Finish this here. I think this gets reassigned every time the entity is recieved? Make sure.
-			}
-			break;
+		//case 174:
+		//	if (SDLNet_Read32(&net_packet->data[30]) != 0)
+		//	{
+		//		entity->behavior = &actMagiclightBall; //TODO: Finish this here. I think this gets reassigned every time the entity is recieved? Make sure.
+		//	}
+		//	break;
 		case 185:
 			entity->behavior = &actSwitch;
 			break;
@@ -2036,6 +2041,22 @@ void clientActions(Entity* entity)
 		case 1619:
 		case 1620:
 			entity->behavior = &actMailbox;
+			break;
+		case 2533:
+			entity->behavior = &actEternalShrine;
+			entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_SUPPLICATION;
+			break;
+		case 2534:
+			entity->behavior = &actEternalShrine;
+			entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_ANVIL;
+			break;
+		case 2535:
+			entity->behavior = &actEternalShrine;
+			entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_MUSIC;
+			break;
+		case 2536:
+			entity->behavior = &actEternalShrine;
+			entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_ASCENSION;
 			break;
 		case 1585:
 		case 1586:
@@ -2138,6 +2159,10 @@ void clientActions(Entity* entity)
 					break;
 				case -5:
 					entity->behavior = &actItem;
+					if ( net_packet->data[47] )
+					{
+						entity->itemEternalShrineResult = net_packet->data[47];
+					}
 					break;
 				case -6:
 					entity->behavior = &actGib;
@@ -2155,9 +2180,9 @@ void clientActions(Entity* entity)
 				case -9:
 					entity->behavior = &actLiquid;
 					break;
-				case -10:
+				/*case -10:
 					entity->behavior = &actMagiclightBall;
-					break;
+					break;*/
 				case -11:
 					entity->behavior = &actMagicClient;
 					break;
@@ -2184,7 +2209,12 @@ void clientActions(Entity* entity)
 					entity->behavior = &actGate;
 					break;
 				default:
-					if ( static_cast<Uint8>(c & 0xFF) == 17 )
+					if ( static_cast<Uint8>(c & 0xFF) == 10 )
+					{
+						entity->behavior = &actMagiclightBall;
+						entity->skill[2] = c;
+					}
+					else if ( static_cast<Uint8>(c & 0xFF) == 17 )
 					{
 						entity->arrowShotByWeapon = (c >> 8) & 0xFFF;
 						int dropOffModifier = (c >> 20) & 0xF;
@@ -2306,6 +2336,10 @@ static void changeLevel() {
 	if ( soundEnvironment_group )
 	{
 		soundEnvironment_group->stop();
+	}
+	if ( soundTrap_group )
+	{
+		soundTrap_group->stop();
 	}
 	if ( soundNotification_group )
 	{
@@ -3146,7 +3180,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		Sint16 x = (Sint16)SDLNet_Read16(&net_packet->data[4]);
 		Sint16 y = (Sint16)SDLNet_Read16(&net_packet->data[6]);
 		Sint16 z = (Sint16)SDLNet_Read16(&net_packet->data[8]);
-		spawnExplosion(x, y, z);
+		spawnExplosion(x, y, z, (SoundChannelGroupIndex)net_packet->data[10]);
 	}},
 
 	// spawn an explosion, custom sprite
@@ -4557,14 +4591,16 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		    SDLNet_Read32(&net_packet->data[4]),
 		    SDLNet_Read32(&net_packet->data[8]),
 		    SDLNet_Read16(&net_packet->data[12]),
-		    (Uint8)net_packet->data[14]);
+		    (Uint8)net_packet->data[14],
+			(SoundChannelGroupIndex)net_packet->data[15]);
 	}},
 
 		// play sound global
 	{'SNDG', [](){
 		playSound(
 		    SDLNet_Read16(&net_packet->data[4]),
-		    (Uint8)net_packet->data[6]);
+		    (Uint8)net_packet->data[6],
+			(SoundChannelGroupIndex)net_packet->data[7]);
 	}},
 
 	// play sound notification global
@@ -6692,6 +6728,56 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			if ( Entity* cauldron = uidToEntity(uid) )
 			{
 				GenericGUI[clientnum].mailboxGUI.closeMailMenu();
+			}
+		}
+	} },
+
+	{ 'ESHO', []() {
+		// server order to open eternal shrine gui
+		Uint32 uid = SDLNet_Read32(&net_packet->data[4]);
+		players[clientnum]->mechanics.divine_favor = std::min(Player::DIVINE_FAVOR_MAX, (int)SDLNet_Read16(&net_packet->data[8]));
+		if ( auto entity = uidToEntity(uid) )
+		{
+			if ( entity->behavior == &::actEternalShrine )
+			{
+				entity->eternalShrinePlayerStates = SDLNet_Read32(&net_packet->data[10]);
+				if ( entity->eternalShrineType >= GUI_TYPE_ETERNALSHRINE_ANVIL && entity->eternalShrineType <= GUI_TYPE_ETERNALSHRINE_ASCENSION )
+				{
+					GenericGUI[clientnum].openGUI(entity->eternalShrineType, entity);
+				}
+			}
+		}
+	} },
+
+	// server order to close eternal shrine
+	{ 'ESHC', []() {
+		int player = net_packet->data[4];
+		if ( player == clientnum )
+		{
+			Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+			if ( Entity* shrine = uidToEntity(uid) )
+			{
+				GenericGUI[clientnum].eternalShrineGUI.closeEternalShrine();
+			}
+		}
+	} },
+
+	// server order to receive eternal shrine favor
+	{ 'ESHF', []() {
+		int player = net_packet->data[4];
+		if ( player == clientnum )
+		{
+			Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+			players[clientnum]->mechanics.divine_favor = std::min(Player::DIVINE_FAVOR_MAX, (int)SDLNet_Read16(&net_packet->data[9]));
+			Uint32 shrinePlayerStates = SDLNet_Read32(&net_packet->data[11]);
+			if ( uid > 0 )
+			{
+				if ( Entity* shrine = uidToEntity(uid) )
+				{
+					shrine->eternalShrinePlayerStates = shrinePlayerStates;
+					int playerProgress = (shrine->eternalShrinePlayerStates >> (player * 2)) & 0b11;
+					GenericGUI[player].eternalShrineGUI.submittedItem = (GenericGUIMenu::EternalShrineGUI_t::EternalShrineSubmitStatus)playerProgress;
+				}
 			}
 		}
 	} },
@@ -9262,7 +9348,7 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 				entity->parent = 0;
 				entity->itemOriginalOwner = 0;
 
-				playSoundPos(players[player]->player_last_x, players[player]->player_last_y, 47 + local_rng.rand() % 3, 64);
+				playSoundPos(players[player]->player_last_x, players[player]->player_last_y, 47 + local_rng.rand() % 3, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 			}
 			messagePlayer(player, MESSAGE_MISC, Language::get(6621), item->getName());
 		}
@@ -9411,6 +9497,141 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 					mailbox->skill[6] = 0;
 					serverUpdateEntitySkill(mailbox, 6);
 				}
+			}
+		}
+	} },
+
+	// client closed eternal shrine
+	{ 'ESHC', []() {
+		int player = net_packet->data[4];
+		if ( player >= 0 && player < MAXPLAYERS )
+		{
+			Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+			if ( Entity* shrine = uidToEntity(uid) )
+			{
+				if ( achievementObserver.playerUids[player] == (Uint32)shrine->eternalShrineInteracting )
+				{
+					shrine->eternalShrineInteracting = 0;
+					serverUpdateEntitySkill(shrine, 6);
+				}
+				serverUpdateEntitySkill(shrine, 17); // update player states
+			}
+		}
+	} },
+
+	// client updated eternal shrine view
+	{ 'ESHU', []() {
+		int player = net_packet->data[4];
+		Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+		if ( Entity* shrine = uidToEntity(uid) )
+		{
+			Uint8 skillID = net_packet->data[9];
+			Sint32 value = SDLNet_Read32(&net_packet->data[10]);
+			if ( skillID >= 0 && skillID < NUMENTITYSKILLS )
+			{
+				shrine->skill[skillID] = value;
+				for ( int c = 1; c < MAXPLAYERS; c++ )
+				{
+					if ( client_disconnected[c] || players[c]->isLocalPlayer() )
+					{
+						continue;
+					}
+					if ( net_packet->data[14] && c == player )
+					{
+						continue; // dont respond to original sender
+					}
+					strcpy((char*)net_packet->data, "ENTS");
+					SDLNet_Write32(uid, &net_packet->data[4]);
+					net_packet->data[8] = skillID;
+					SDLNet_Write32(shrine->skill[skillID], &net_packet->data[9]);
+					net_packet->address.host = net_clients[c - 1].host;
+					net_packet->address.port = net_clients[c - 1].port;
+					net_packet->len = 13;
+					sendPacketSafe(net_sock, -1, net_packet, c - 1);
+				}
+			}
+		}
+	} },
+
+	// client submitted offering
+	{ 'ESHI', []() {
+		int player = net_packet->data[4];
+		int shrineType = net_packet->data[5];
+		Uint32 uid = SDLNet_Read32(&net_packet->data[6]);
+
+		int type = std::min(NUMITEMS, std::max(0, (Sint32)SDLNet_Read16(&net_packet->data[10])));
+		int status = std::min((int)EXCELLENT, std::max((int)BROKEN, (int)net_packet->data[12]));
+		int beatitude = SDLNet_Read16(&net_packet->data[13]);
+		int qty = std::max(1, (int)SDLNet_Read16(&net_packet->data[15]));
+		Uint32 appearance = (Uint32)SDLNet_Read32(&net_packet->data[17]);
+		bool identified = net_packet->data[21] ? true : false;
+		Item* item = newItem((ItemType)type, (Status)status, beatitude, qty, appearance, identified, nullptr);
+		eternalShrineProcessOfferingItem(player, uid, shrineType, item);
+		if ( item )
+		{
+			if ( item->node )
+			{
+				list_RemoveNode(item->node);
+			}
+			else
+			{
+				free(item);
+			}
+		}
+	} },
+
+	// client interacted with supplication / orchestrion
+	{ 'ESHT', []() {
+		int player = net_packet->data[4];
+		int shrineType = net_packet->data[5];
+		Uint32 uid = SDLNet_Read32(&net_packet->data[6]);
+
+		if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+		{
+			eternalShrineProcessSupplication(player, uid, shrineType);
+		}
+		else if ( shrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+		{
+			eternalShrineProcessMusic(player, uid, shrineType);
+		}
+	} },
+
+	// client submitted divine anvil/ascension item
+	{ 'ESHA', []() {
+		int player = net_packet->data[4];
+		int shrineType = net_packet->data[5];
+		Uint32 uid = SDLNet_Read32(&net_packet->data[6]);
+
+		int type = std::min(NUMITEMS, std::max(0, (Sint32)SDLNet_Read16(&net_packet->data[10])));
+		int status = std::min((int)EXCELLENT, std::max((int)BROKEN, (int)net_packet->data[12]));
+		int beatitude = SDLNet_Read16(&net_packet->data[13]);
+		int qty = std::max(1, (int)SDLNet_Read16(&net_packet->data[15]));
+		Uint32 appearance = (Uint32)SDLNet_Read32(&net_packet->data[17]);
+		bool identified = net_packet->data[21] ? true : false;
+		Item* item = newItem((ItemType)type, (Status)status, beatitude, qty, appearance, identified, nullptr);
+		if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+		{
+			eternalShrineProcessAnvilItem(player, uid, shrineType, item);
+		}
+		else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+		{
+			int numSpells = std::min((int)net_packet->data[22], 220);
+			std::set<int> learnedSpells;
+			for ( int i = 0; i < numSpells; ++i )
+			{
+				learnedSpells.insert((int)SDLNet_Read16(&net_packet->data[23 + i * 2]));
+			}
+			eternalShrineProcessAscensionItem(player, uid, shrineType, item, learnedSpells);
+		}
+		if ( item )
+		{
+			if ( item->node )
+			{
+				list_RemoveNode(item->node);
+			}
+			else
+			{
+				free(item);
 			}
 		}
 	} },

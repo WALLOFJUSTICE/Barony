@@ -2392,6 +2392,7 @@ public:
 		void updateFloorEvents();
 	} compendiumProgress;
 
+	static const int DIVINE_FAVOR_MAX = 10;
 	class PlayerMechanics_t
 	{
 		Player& player;
@@ -2402,6 +2403,7 @@ public:
 		std::vector<std::pair<int, Uint32>> pendingDucks;
 		std::map<int, int> favoriteBooksAchievement;
 		std::set<int> popQuizAchievement;
+		int divine_favor = 0;
 		int numFishingCaught = 0;
 		bool itemDegradeRoll(Item* item, int skillID = -1, int* checkInterval = nullptr);
 		void onItemDegrade(Item* item);

@@ -8745,7 +8745,12 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			}
 			if ( volume > 0 && sound > 0 )
 			{
-				playSoundEntity(missileEntity, sound, volume);
+				SoundChannelGroupIndex channelIndex = SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK;
+				if ( caster && (caster->behavior == &actMagicTrap || caster->behavior == &actMagicTrapCeiling) )
+				{
+					channelIndex = SOUND_CHANNEL_GROUP_TRAP;
+				}
+				playSoundEntity(missileEntity, sound, volume, channelIndex);
 			}
 			result = missileEntity;
 

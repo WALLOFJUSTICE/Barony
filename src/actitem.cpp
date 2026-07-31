@@ -929,9 +929,80 @@ void actItem(Entity* my)
 		break;
 	}
 
+	Entity* eternalShrineStation = nullptr;
+	if ( my->itemEternalShrineResult > 0 )
+	{
+		std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 2);
+		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+		{
+			list_t* currentList = *it;
+			node_t* node;
+			for ( node = currentList->first; node != nullptr; node = node->next )
+			{
+				Entity* entity = (Entity*)node->element;
+				if ( entity && entity->behavior == &actEternalShrine && entity->eternalShrineType == my->itemEternalShrineResult )
+				{
+					if ( (int)(my->x / 16) == (int)(entity->x / 16)
+						&& (int)(my->y / 16) == (int)(entity->y / 16) )
+					{
+						eternalShrineStation = entity;
+						break;
+					}
+				}
+			}
+		}
+
+		if ( my->ticks == 1 && eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+		{
+			createParticleFociLight(my, SPELL_NONE, false);
+		}
+	}
+
 	bool levitating = false;
 	Entity* leader = nullptr;
-	if ( my->itemFollowUID != 0 )
+	if ( eternalShrineStation 
+		&& (eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION
+			|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC) )
+	{
+		if ( !my->light )
+		{
+			if ( my->sprite >= items[TOME_SORCERY].index + 3 && my->sprite <= items[TOME_SORCERY].index + 5 )
+			{
+				// sorc
+				my->light = addLight(my->x / 16, my->y / 16, "ascension_shrine_sorcery_flicker");
+			}
+			else if ( my->sprite >= items[TOME_SORCERY].index + 6 && my->sprite <= items[TOME_SORCERY].index + 8 )
+			{
+				// myst
+				my->light = addLight(my->x / 16, my->y / 16, "ascension_shrine_mysticism_flicker");
+			}
+			else if ( my->sprite >= items[TOME_SORCERY].index && my->sprite <= items[TOME_SORCERY].index + 2 )
+			{
+				// thaum
+				my->light = addLight(my->x / 16, my->y / 16, "ascension_shrine_thaumaturgy_flicker");
+			}
+			else
+			{
+				my->light = addLight(my->x / 16, my->y / 16, "ascension_shrine_flicker");
+			}
+		}
+
+		if ( multiplayer != CLIENT )
+		{
+			levitating = true;
+			my->flags[UPDATENEEDED] = true;
+			my->flags[NOUPDATE] = false;
+		}
+		else
+		{
+			levitating = true;
+			my->itemNotMoving = 0;
+			my->itemNotMovingClient = 0;
+			my->flags[UPDATENEEDED] = true;
+			my->flags[NOUPDATE] = false;
+		}
+	}
+	else if ( my->itemFollowUID != 0 )
 	{
 		if ( multiplayer != CLIENT )
 		{
@@ -1038,7 +1109,7 @@ void actItem(Entity* my)
 	if (overWater) {
 		groundheight = 8.0;
 	} else {
-		if (my->sprite == 569)
+		if (my->sprite == items[CRYSTAL_SHURIKEN].index )
 		{
 			groundheight = 8.5 - models[my->sprite]->sizey * .25;
 		}
@@ -1048,7 +1119,7 @@ void actItem(Entity* my)
 		{
 			groundheight = 7.5 - models[my->sprite]->sizey * .25;
 		}
-		else if (my->sprite == 567)
+		else if (my->sprite == items[STEEL_CHAKRAM].index )
 		{
 			groundheight = 8.75 - models[my->sprite]->sizey * .25;
 		}
@@ -1062,6 +1133,23 @@ void actItem(Entity* my)
 		}
 	}
 
+	if ( eternalShrineStation )
+	{
+		if ( eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+		{
+			groundheight -= 8.0;
+		}
+		else if ( eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+		{
+			groundheight -= 6.0;
+		}
+		else if ( eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION
+			|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+		{
+			groundheight -= 6.5;
+		}
+	}
+
 	my->flags[BURNING] = false;
 
 	if ( levitating )
@@ -1072,6 +1160,16 @@ void actItem(Entity* my)
 		my->z = my->itemLevitateStartZ * my->itemLevitate;
 		my->z = std::min(groundheight - 0.1, my->z);
 		my->z = std::max(my->z, -7.5);
+
+		real_t floatScale = 1.0;
+		if ( eternalShrineStation && 
+			(eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION
+				|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC) )
+		{
+			floatScale = 0.5;
+			my->pitch = 0.0;
+			my->roll = 0.0;
+		}
 		my->vel_z = 0.0;
 		
 		real_t diff = std::max(0.025, my->itemLevitate / 10.0);
@@ -1080,7 +1178,7 @@ void actItem(Entity* my)
 		my->yaw += PI / (TICKS_PER_SECOND * 10);
 		my->new_yaw = my->yaw;
 		ITEM_WATERBOB = sin(((ticks % (TICKS_PER_SECOND * 2)) / ((real_t)TICKS_PER_SECOND * 2.0)) * (2.0 * PI)) * 0.5;
-		my->z += ITEM_WATERBOB;
+		my->z += ITEM_WATERBOB * floatScale;
 		my->new_z = my->z;
 	}
 	else if ( my->z < groundheight )
@@ -1169,7 +1267,7 @@ void actItem(Entity* my)
 					{
 						// velocity too low, land on ground.
 						// chakram and shuriken lie flat, needs to use sprites for client
-						if ( my->sprite == 567 || my->sprite == 569 || my->sprite == items[BOOMERANG].index )
+						if ( my->sprite == items[STEEL_CHAKRAM].index || my->sprite == items[CRYSTAL_SHURIKEN].index || my->sprite == items[BOOMERANG].index )
 						{
 							if ( my->sprite == items[BOOMERANG].index )
 							{
@@ -1180,7 +1278,7 @@ void actItem(Entity* my)
 								my->roll = PI;
 							}
 							my->pitch = 0;
-							if ( my->sprite == 569 )
+							if ( my->sprite == items[CRYSTAL_SHURIKEN].index )
 							{
 								my->z = groundheight;
 							}

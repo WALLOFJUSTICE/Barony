@@ -12272,7 +12272,7 @@ fireagain:
 				else
 				{
 					//spawnBang(hit.x - cos(my->yaw)*2,hit.y - sin(my->yaw)*2,0);
-					playSoundPos(hit.x, hit.y, 183, 64);
+					playSoundPos(hit.x, hit.y, 183, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 				}
 			}
 			else if ( hit.entity->behavior == &actMonster && !mimic )
@@ -12942,7 +12942,7 @@ fireagain:
 				}
 				else
 				{
-					playSoundPos(hit.x, hit.y, 183, 64);
+					playSoundPos(hit.x, hit.y, 183, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 				}
 			}
 
@@ -13106,7 +13106,7 @@ fireagain:
 								beastDamage = true;
 								for ( int i = 0; i < 5; ++i )
 								{
-									spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+									spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 								}
 							}
 							weaponMultipliers = std::max(0.1, weaponMultipliers + mult);
@@ -13139,7 +13139,7 @@ fireagain:
 								constructDamage = true;
 								for ( int i = 0; i < 5; ++i )
 								{
-									spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+									spawnDamageGib(hit.entity, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 								}
 							}
 							weaponMultipliers = std::max(0.1, weaponMultipliers + mult);
@@ -13175,7 +13175,7 @@ fireagain:
 							{
 								for ( int i = 0; i < 5; ++i )
 								{
-									spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+									spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 								}
 							}
 						}
@@ -14163,7 +14163,7 @@ fireagain:
 														gib->flags[SPRITE] = true;
 														serverSpawnGibForClient(gib);
 													}*/
-													spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+													spawnDamageGib(hit.entity, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 												}
 											}
 										}
@@ -14660,18 +14660,18 @@ fireagain:
 						{
 							if ( weaponskill == PRO_SORCERY )
 							{
-								spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
-								spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+								spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 							else if ( weaponskill == PRO_MYSTICISM )
 							{
-								spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
-								spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+								spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 							else if ( weaponskill == PRO_THAUMATURGY )
 							{
-								spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
-								spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+								spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 						}
 
@@ -14704,8 +14704,8 @@ fireagain:
 									if ( newHP < prevHP )
 									{
 										//spawnDamageGib(hit.entity, shillelaghDamage, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_NUMBER);
-										spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
-										spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+										spawnDamageGib(hit.entity, 225, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+										spawnDamageGib(hit.entity, 261, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 									}
 								}
 							}
@@ -16706,7 +16706,7 @@ fireagain:
 
 							for ( int i = 0; i < 5; ++i )
 							{
-								spawnDamageGib(this, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(this, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 							playSoundEntity(this, 881, 64);
 
@@ -16764,7 +16764,7 @@ fireagain:
 
 							for ( int i = 0; i < 5; ++i )
 							{
-								spawnDamageGib(attacker, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(attacker, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 							playSoundEntity(this, 881, 64);
 
@@ -16810,7 +16810,7 @@ fireagain:
 						{
 							for ( int i = 0; i < 5; ++i )
 							{
-								spawnDamageGib(attacker, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE);
+								spawnDamageGib(attacker, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 							playSoundEntity(this, 881, 64);
 
@@ -17668,7 +17668,7 @@ fireagain:
 					{
 						if ( magicDig(this, nullptr, 0, 0) )
 						{
-							playSoundPos(hit.x, hit.y, 67, 128); // bust wall
+							playSoundPos(hit.x, hit.y, 67, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK); // bust wall
 							if ( player >= 0 && myStats->type == TROLL )
 							{
 								serverUpdatePlayerGameplayStats(player, STATISTICS_FORUM_TROLL, AchievementObserver::FORUM_TROLL_BREAK_WALL);
@@ -17722,7 +17722,7 @@ fireagain:
 								{
 									messagePlayerColor(this->skill[2], MESSAGE_HINT, color, Language::get(2380)); // disabled digging.
 								}
-								playSoundPos(hit.x, hit.y, 66, 128); // strike wall
+								playSoundPos(hit.x, hit.y, 66, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK); // strike wall
 								// bang
 								spawnBang(hit.x - cos(yaw) * 2, hit.y - sin(yaw) * 2, 0);
 								degradePickaxe = false;
@@ -17741,7 +17741,7 @@ fireagain:
 							}
 							else
 							{
-								playSoundPos(hit.x, hit.y, 67, 128); // bust wall
+								playSoundPos(hit.x, hit.y, 67, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK); // bust wall
 								// spawn several rock items
 								i = 8 + local_rng.rand() % 4;
 								for ( c = 0; c < i; c++ )
@@ -17869,7 +17869,7 @@ fireagain:
 				{
 					// bang
 					//spawnBang(hit.x - cos(my->yaw)*2,hit.y - sin(my->yaw)*2,0);
-					playSoundPos(hit.x, hit.y, 183, 64);
+					playSoundPos(hit.x, hit.y, 183, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 
 					if ( !myStats->weapon && !shapeshifted )
 					{
@@ -18196,11 +18196,11 @@ bool Entity::teleport(int tele_x, int tele_y)
 		{
 			sfx = 608 + local_rng.rand() % 3;
 		}
-		playSoundPos(oldx, oldy, sfx, 128);
+		playSoundPos(oldx, oldy, sfx, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 	}
 	else
 	{
-		playSoundPos(oldx, oldy, sfx, 64);
+		playSoundPos(oldx, oldy, sfx, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 	}
 	spawnPoof(oldx, oldy, 0, 1.0, true);
 
@@ -25436,7 +25436,7 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_COMMAND:
 				if ( myStats->type == LICH || myStats->type == DEVIL
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
-					|| myStats->type == DRAGON
+					|| myStats->type == DRAGON || myStats->type == MINOTAUR
 					|| myStats->type == SHADOW || myStats->type == SHOPKEEPER 
 					|| myStats->type == GRYPHON )
 				{

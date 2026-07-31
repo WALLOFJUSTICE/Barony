@@ -379,6 +379,10 @@ int pathCheckObstacle(int x, int y, Entity* my, Entity* target, GeneratePathType
 			|| entity->sprite == 301	// workbench
 			|| entity->sprite == 302	// mailbox
 			|| entity->sprite == 303	// mailbox
+			|| entity->sprite == 312	// supplication shrine
+			|| entity->sprite == 313	// anvil shrine
+			|| entity->sprite == 314	// chorale shrine
+			|| entity->sprite == 315	// ascension shrine
 			)
 		{
 			if ( (int)floor(entity->x / 16) == u && (int)floor(entity->y / 16) == v )
@@ -1322,15 +1326,19 @@ bool isPathObstacle(Entity* entity)
 	}
 	else if ( entity->behavior == &actCauldron )
 	{
-		return false;
+		return true;
 	}
 	else if ( entity->behavior == &actWorkbench )
 	{
-		return false;
+		return true;
 	}
 	else if ( entity->behavior == &actMailbox )
 	{
-		return false;
+		return true;
+	}
+	else if ( entity->behavior == &actEternalShrine )
+	{
+		return true;
 	}
 	return false;
 }

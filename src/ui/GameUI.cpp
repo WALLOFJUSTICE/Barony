@@ -419,6 +419,10 @@ std::string EnemyBarSettings_t::getEnemyBarSpriteName(Entity* entity)
 	{
 		return "assist_shrine";
 	}
+	else if ( entity->behavior == &::actEternalShrine )
+	{
+		return "eternal_shrine";
+	}
 	else if ( entity->behavior == &actFurniture )
 	{
 		switch ( entity->furnitureType )

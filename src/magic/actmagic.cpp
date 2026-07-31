@@ -428,7 +428,6 @@ void actMagiclightBall(Entity* my)
 		return;
 	}
 
-	my->skill[2] = -10; // so the client sets the behavior of this entity
 	const char* light = (my->sprite == 1800 || my->sprite == 1801) ? "magic_shade" : "magic_light";
 	const char* light_flicker = (my->sprite == 1800 || my->sprite == 1801) ? "magic_shade_flicker" : "magic_light_flicker";
 	auto& lightball_travelled_distance = my->fskill[3];
@@ -540,6 +539,26 @@ void actMagiclightBall(Entity* my)
 		my->removeLightField();
 		list_RemoveNode(my->mynode);
 		return;
+	}
+
+	if ( multiplayer != CLIENT )
+	{
+		Sint32 val = (1 << 31);
+		val |= (Uint8)(10);
+		val |= (spell->magicstaff ? 1 : 0) << 8;
+		int casternum = MAXPLAYERS;
+		if ( caster )
+		{
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				if ( players[i]->entity == caster )
+				{
+					casternum = i;
+				}
+			}
+		}
+		val |= (casternum) << 16;
+		my->skill[2] = val; // so the client sets the behavior of this entity
 	}
 
 	// if the spell has been unsustained, remove it
@@ -2387,6 +2406,12 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 				Stat* hitstats = nullptr;
 				int player = -1;
 
+				SoundChannelGroupIndex sfxChannelGroupIndex = SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK;
+				if ( parent && (parent->behavior == &actMagicTrap || parent->behavior == &actMagicTrapCeiling) )
+				{
+					sfxChannelGroupIndex = SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP;
+				}
+
 				if ( hit.entity )
 				{
 					hitstats = hit.entity->getStats();
@@ -4017,7 +4042,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 					}
 					else
 					{
-						spawnExplosion(my->x, my->y, my->z);
+						spawnExplosion(my->x, my->y, my->z, sfxChannelGroupIndex);
 					}
 					if (hit.entity)
 					{
@@ -4119,7 +4144,15 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							}
 							else
 							{
-								playSoundEntity(hit.entity, 28, 128);
+								if ( my->actmagicIsOrbiting == 2 )
+								{
+									//quieter
+									playSoundEntity(hit.entity, 28, 64);
+								}
+								else
+								{
+									playSoundEntity(hit.entity, 28, 128);
+								}
 
 								Sint32 oldHP = hitstats->HP;
 								hit.entity->modHP(-damage);
@@ -4302,7 +4335,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 					{
 						if ( explode )
 						{
-							spawnExplosion(my->x, my->y, my->z);
+							spawnExplosion(my->x, my->y, my->z, sfxChannelGroupIndex);
 						}
 					}
 					if (hit.entity)
@@ -4325,6 +4358,12 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 							{
 								lastMagicSoundPlayed[spell->ID] = ticks;
 							}
+						}
+
+						if ( my->actmagicIsOrbiting == 2 )
+						{
+							doSound = false;
+							customSoundVolume = 64;
 						}
 
 						// Attempt to set the Entity on fire
@@ -4783,7 +4822,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 				}
 				else if (!strcmp(element->element_internal_name, spellElement_cold.element_internal_name))
 				{
-					playSoundEntity(my, 197, 128);
+					playSoundEntity(my, 197, 128, sfxChannelGroupIndex);
 					if (hit.entity)
 					{
 						if ( (!mimic && hit.entity->behavior == &actMonster) || hit.entity->behavior == &actPlayer)
@@ -5247,7 +5286,15 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 				}
 				else if (!strcmp(element->element_internal_name, spellElement_lightning.element_internal_name))
 				{
-					playSoundEntity(my, 173, 128);
+					if ( my->actmagicIsOrbiting == 2 )
+					{
+						//quieter
+						playSoundEntity(my, 173, 64, sfxChannelGroupIndex);
+					}
+					else
+					{
+						playSoundEntity(my, 173, 128, sfxChannelGroupIndex);
+					}
 					if (hit.entity)
 					{
 						if ( mimic )
@@ -7491,7 +7538,7 @@ void actMagicParticle(Entity* my)
 		//	}
 		//}
 	}
-	else if ( my->sprite == 1866 || my->sprite == 2374 )
+	else if ( my->sprite == 1866 || my->sprite == 2374 || my->sprite == 2543 )
 	{
 		my->scalex -= 0.01;
 		my->scaley -= 0.01;
@@ -8708,6 +8755,13 @@ void actParticleAestheticOrbit(Entity* my)
 					{
 						my->x += parent->focalx * cos(parent->yaw) + parent->focaly * cos(parent->yaw + PI / 2);
 						my->y += parent->focalx * sin(parent->yaw) + parent->focaly * sin(parent->yaw + PI / 2);
+					}
+					else if ( parent->behavior == &actEternalShrine && parent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+					{
+						my->z = parent->z - 6.0;
+						my->z += (local_rng.rand() % 3) * 0.1;
+						sizex = 1;
+						sizey = 1;
 					}
 					else if ( parent->behavior == &actDoor )
 					{
@@ -13580,10 +13634,16 @@ void actParticleTimer(Entity* my)
 					}
 				}
 			}
-			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_LIGHTNING )
+			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_LIGHTNING
+				|| my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_LIGHTNING_INSTANT )
 			{
 				if ( my->ticks == 1 )
 				{
+					if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_LIGHTNING_INSTANT )
+					{
+						floorMagicCreateLightningSequence(my, 1);
+					}
+
 					//createParticleCastingIndicator(my, my->x, my->y, my->z, PARTICLE_LIFE, my->getUID());
 					for ( int i = 0; i < 3; ++i )
 					{
@@ -16160,7 +16220,7 @@ Entity* castStationaryOrbitingMagicMissile(Entity* parent, int spellID, real_t c
 		entity->actmagicOrbitStationaryX = centerx;
 		entity->actmagicOrbitStationaryY = centery;
 		entity->vel_z = -0.1;
-		playSoundEntity(entity, spellGetCastSound(spell), 128);
+		playSoundEntity(entity, spellGetCastSound(spell), 64);
 
 		//spawnMagicEffectParticles(entity->x, entity->y, 0, 174);
 	}
@@ -17124,7 +17184,7 @@ bool magicDig(Entity* parent, Entity* projectile, int numRocks, int randRocks)
 					Uint32 color = makeColorRGB(255, 0, 255);
 					messagePlayerColor(parent->skill[2], MESSAGE_HINT, color, Language::get(2380)); // disabled digging.
 				}
-				playSoundPos(hit.x, hit.y, 66, 128); // strike wall
+				playSoundPos(hit.x, hit.y, 66, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK); // strike wall
 			}
 			else if ( swimmingtiles[map.tiles[OBSTACLELAYER + hit.mapy * MAPLAYERS + hit.mapx * MAPLAYERS * map.height]]
 				|| lavatiles[map.tiles[OBSTACLELAYER + hit.mapy * MAPLAYERS + hit.mapx * MAPLAYERS * map.height]] )
@@ -17137,7 +17197,7 @@ bool magicDig(Entity* parent, Entity* projectile, int numRocks, int randRocks)
 				{
 					messagePlayer(parent->skill[2], MESSAGE_HINT, Language::get(706));
 				}
-				playSoundPos(hit.x, hit.y, 66, 128); // strike wall
+				playSoundPos(hit.x, hit.y, 66, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK); // strike wall
 			}
 			else
 			{
@@ -18055,8 +18115,8 @@ void createMushroomSpellEffect(Entity* caster, real_t x, real_t y)
 			indicator->expireAlphaRate = 0.95;
 		}
 	}
-	playSoundPosLocal(x, y, 169, 128);
-	playSoundPosLocal(x, y, 717 + local_rng.rand() % 3, 128);
+	playSoundPosLocal(x, y, 169, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
+	playSoundPosLocal(x, y, 717 + local_rng.rand() % 3, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 }
 
 Entity* createVortexMagic(int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime)
@@ -22624,7 +22684,7 @@ Entity* createSpellExplosionArea(int spellID, Entity* caster, real_t x, real_t y
 
 	if ( spellID == SPELL_METEOR || spellID == SPELL_METEOR_SHOWER || spellID == SPELL_FIREBALL )
 	{
-		playSoundPosLocal(x, y, 819, 128);
+		playSoundPosLocal(x, y, 819, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 		for ( int i = 0; i < 8; ++i )
 		{
 			if ( Entity* fx = createParticleAestheticOrbit(nullptr, 233, 25 + (10 * (local_rng.rand() % 6)), PARTICLE_EFFECT_IGNITE_ORBIT) )
@@ -22935,8 +22995,8 @@ void actParticleShatterEarth(Entity* my)
 					entity->flags[UPDATENEEDED] = true;
 					entity->flags[PASSABLE] = true;
 
-					playSoundEntity(entity, 150, 128);
-					playSoundPlayer(clientnum, 150, 64);
+					playSoundEntity(entity, 150, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+					playSoundPlayer(clientnum, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 					for ( int c = 0; c < MAXPLAYERS; c++ )
 					{
 						if ( players[c]->isLocalPlayer() )
@@ -22945,7 +23005,7 @@ void actParticleShatterEarth(Entity* my)
 						}
 						else
 						{
-							playSoundPlayer(c, 150, 64);
+							playSoundPlayer(c, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 							inputs.addRumbleRemotePlayer(c, Inputs::HAPTIC_SFX_BOULDER_LAUNCH_VOL, entity->getUID());
 						}
 					}

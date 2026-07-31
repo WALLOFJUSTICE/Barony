@@ -1840,7 +1840,7 @@ Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStac
 				entity->parent = 0;
 				entity->itemOriginalOwner = 0;
 
-				playSoundPos(players[player]->player_last_x, players[player]->player_last_y, 47 + local_rng.rand() % 3, 64);
+				playSoundPos(players[player]->player_last_x, players[player]->player_last_y, 47 + local_rng.rand() % 3, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 			}
 		}
 		messagePlayer(player, MESSAGE_INVENTORY, Language::get(6565));
@@ -1939,7 +1939,7 @@ Item* Entity::addItemToVoidChestServer(int player, Item* item, bool forceNewStac
 				entity->parent = 0;
 				entity->itemOriginalOwner = 0;
 
-				playSoundPos(players[player]->player_last_x, players[player]->player_last_y, 47 + local_rng.rand() % 3, 64);
+				playSoundPos(players[player]->player_last_x, players[player]->player_last_y, 47 + local_rng.rand() % 3, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 			}
 		}
 
