@@ -2286,8 +2286,8 @@ void buttonSpriteProperties(button_t* my)
 				menuVisible = 0;
 				subwindow = 1;
 				newwindow = 22;
-				subx1 = xres / 2 - 220;
-				subx2 = xres / 2 + 220;
+				subx1 = xres / 2 - 260;
+				subx2 = xres / 2 + 260;
 				suby1 = yres / 2 - 140;
 				suby2 = yres / 2 + 140;
 				strcpy(subtext, "Custom Exit Properties:");

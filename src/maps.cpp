@@ -5441,6 +5441,10 @@ int generateDungeon(char* levelset, Uint32 seed)
 	}
 
 	int numBreakables = std::min(15, numpossiblelocations / 10);
+	if ( levelData.id.find("backrooms") != std::string::npos )
+	{
+		numBreakables = std::min(25, numpossiblelocations / 10);
+	}
 	struct BreakableNode_t
 	{
 		BreakableNode_t(int _walls, int _x, int _y, int _dir, int _id = -1)
@@ -10624,6 +10628,13 @@ void assignActions(map_t* map)
 				if ( entity->portalCustomRequiresPower )
 				{
 					entity->flags[INVISIBLE] = true;
+				}
+				else
+				{
+					if ( entity->sprite == 1594 ) // backrooms doorway
+					{
+						entity->flags[PASSABLE] = false;
+					}
 				}
 				entity->z = 7.5 - entity->portalCustomZOffset * 0.25;
 				if ( entity->portalCustomRequiresPower == 1 )

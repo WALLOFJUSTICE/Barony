@@ -7375,5 +7375,9 @@ has been unlocked!#
 7098 Approach ascension shrine#
 7099 You see a shrine of ascension.#
 7100 ascension shrine#
+7101 receptacle#
+7102 locker#
+7103 pot plant#
+7104 Enter doorway#
 
 7999 END#

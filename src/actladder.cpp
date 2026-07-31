@@ -1101,7 +1101,17 @@ int customPortalLookForMapWithName(char* mapToSearch, bool isSecretLevel, int le
 	if ( mapToSearch[0] == '@' )
 	{
 		std::string map_id = mapToSearch;
-		map_id = map_id.substr(1);
+
+		if ( map_id == "@auto" )
+		{
+			auto levelData = gameLevels.getNextMap(Compendium_t::Events_t::previousCurrentLevel,
+				Compendium_t::Events_t::previousSecretleveltype, Compendium_t::Events_t::previousSecretleveltype);
+			map_id = levelData.id;
+		}
+		else
+		{
+			map_id = map_id.substr(1);
+		}
 		auto find1 = gameLevels.levelData.find(map_id);
 		if ( find1 != gameLevels.levelData.end() )
 		{

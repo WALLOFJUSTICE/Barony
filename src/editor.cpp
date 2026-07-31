@@ -319,13 +319,13 @@ char textSourcePropertyNames[10][45] =
 	"Send message once only (0 - 1)"
 };
 
-char customPortalPropertyNames[7][54] =
+char customPortalPropertyNames[7][64] =
 {
 	"Model texture to use (0-9999)",
 	"Animation frames (0-9)",
 	"Model Height Offset (Qtrs of a voxel, +ive is higher)",
 	"Levels to advance (-99 - 99)",
-	"Levels.json ID or filename, e.g @hamlet or hamlet.lmp",
+	"Levels.json ID or filename, e.g @hamlet, hamlet.lmp or @auto",
 	"Requires power to be visible (0-1)",
 	"Exit toggle between secret levels file (0-1)"
 };
@@ -7316,7 +7316,14 @@ int main(int argc, char** argv)
 									{
 										if ( spriteProperties[4][0] == '@' )
 										{
-											printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+											if ( !strcmp(spriteProperties[4], "@auto") )
+											{
+												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, calculating levels.json next logical map");
+											}
+											else
+											{
+												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+											}
 										}
 										else if ( spriteProperties[4][0] != 0 && propertyInt != 0 )
 										{
@@ -7378,7 +7385,14 @@ int main(int argc, char** argv)
 										{
 											if ( spriteProperties[4][0] == '@' )
 											{
-												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+												if ( !strcmp(spriteProperties[4], "@auto") )
+												{
+													printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, calculating levels.json next logical map");
+												}
+												else
+												{
+													printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+												}
 											}
 											else if ( spriteProperties[4][0] != 0 )
 											{
@@ -7393,7 +7407,14 @@ int main(int argc, char** argv)
 										{
 											if ( spriteProperties[4][0] == '@' )
 											{
-												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+												if ( !strcmp(spriteProperties[4], "@auto") )
+												{
+													printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, calculating levels.json next logical map");
+												}
+												else
+												{
+													printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, makeColorRGB(255, 255, 0), "n/a, using levels.json \"id\"");
+												}
 											}
 											else if ( spriteProperties[4][0] != 0 )
 											{

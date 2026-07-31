@@ -4451,7 +4451,14 @@ void Player::WorldUI_t::setTooltipActive(Entity& tooltip)
 				}
 				else
 				{
-					interactText += Language::get(4036); // "Enter trapdoor";
+					if ( parent->sprite == 1594 )
+					{
+						interactText += Language::get(7104); // "Enter doorway";
+					}
+					else
+					{
+						interactText += Language::get(4036); // "Enter trapdoor";
+					}
 				}
 			}
 		}
@@ -4666,6 +4673,10 @@ bool entityBlocksTooltipInteraction(const int player, Entity& entity)
 		return false;
 	}
 	else if ( entity.behavior == &::actDaedalusShrine )
+	{
+		return false;
+	}
+	else if ( entity.behavior == &::actCustomPortal )
 	{
 		return false;
 	}
