@@ -406,6 +406,7 @@
         "abilities": [],
         "inventory": [
             "- Pickaxes",
+			"- Shields",
             "- Magicstaffs of Lightning",
             "- Fish",
             "- Pipes",
@@ -610,6 +611,7 @@
             "- Command Darkness",
             "- Levitation",
             "- Indominable",
+			"- Telepathy",
             "- Dash"
         ],
         "inventory": [
@@ -1113,18 +1115,21 @@
         "abilities": [
             "- Breathe Fire",
             "- Radiant Form",
-			"- Stone Form"
+			"- Stone Form",
+			"- Divine Zeal",
+			"- Divine Fortress",
+			"- Sigil",
+			"- Indominable"
         ],
         "inventory": [
             "- Silver Weapons and Armor",
-			"- Claymores",
-            "- Holy Symbols"
+			"- Chain Armor"
         ]
     },
     "revenant_skull": {
         "blurb": [
             "A product of dark mysticism, the",
-            "REVENANT SKULL is summoned by piercing",
+            "REVENANT SKULL is summoned by piercing the",
             "void just as a cursed soul crosses over.",
             "Though useful, it's considered by the",
             "cult of sorcerers to be an",
@@ -1191,5 +1196,134 @@
         "inventory": [
             
         ]
-    }	
+    },
+    "monster_adorcised_weapon": {
+        "blurb": [
+            "Mystics use spells to invite",
+            "guardian spirits into items,",
+            "resulting in ADORCIZED WEAPONS.",
+            "The vigilant ghosts of some",
+            "slain soldiers possess the will",
+            "to persist without a mystic host."
+        ],
+        "abilities": [
+			"- Lunge",
+			"- Levitation"
+        ],
+        "inventory": [
+            "- One Weapon"
+        ]
+    },
+    "haunted_armor": {
+        "blurb": [
+            "The armor of venerated soldiers",
+            "may be put on display to inspire",
+            "heroism among future generations.",
+            "Some soldiers' spirits vigilantly",
+            "remain at their posts, possessing",
+            "armor as guardians, even in death."
+        ],
+        "abilities": [
+			"- Reach",
+			"- Levitation",
+			"- Healing Pulse",
+			"- Envenom Weapon",
+			"- Guard Body",
+			"- Arcane Mark",
+			"- Maximize",
+			"- Minimize"
+        ],
+        "inventory": [
+            "- Silver or Blackiron Armor",
+			"- Silver or Blackiron Weapons"
+        ]
+    },
+    "flame_elemental": {
+        "blurb": [
+            "Sorcerers have pursued the evocation of",
+            "FLAME ELEMENTALS for obvious reasons.",
+            "",
+            "However, they are hard to control, and",
+            "conflagrate indiscriminately when",
+            "detonating in a blaze of glory."
+        ],
+        "abilities": [
+			"- Fireblast",
+			"- Detonate",
+			"- Levitation"
+        ],
+        "inventory": [
+        ]
+    },
+    "moth": {
+        "blurb": [
+            "It'd be easy to underestimate",
+            "the dusty blue MOTHS who inhabit",
+            "wild shrubberies. They travel in",
+            "small swarms, and individually are",
+            "easily slain. But the group uses",
+            "clever magic in their defense."
+        ],
+        "abilities": [
+			"- Mist Form",
+			"- Levitation"
+        ],
+        "inventory": [
+        ]
+    },
+    "staremaster": {
+        "blurb": [
+            "The STAREMASTER is as smart as it is",
+            "mysterious. Its giant eyeball watches",
+            "protectively over the territory it guards,",
+            "and changes color depending on the magic",
+            "it conjures. It uses magic both to sense",
+            "and rapidly destroy intruders."
+        ],
+        "abilities": [
+			"- Captivate",
+			"- Magic Missile",
+			"- Holy Beam",
+			"- Eternals' Gaze",
+			"- Levitation"
+        ],
+        "inventory": [
+        ]
+    },
+    "void_mimic": {
+        "blurb": [
+            "Using mysticism to access the",
+            "the void can be practical, but",
+			"not without risk. A mimic changed",
+			"by this magic is insatiable. The",
+            "infinite emptiness of the void",
+            "is a curse of endless hunger."
+        ],
+        "abilities": [
+            "- Devour Equipment",
+            "- Indominable"
+        ],
+        "inventory": [
+            "- Chest contents",
+            "- Gold"
+        ]
+    },
+    "water_elemental": {
+        "blurb": [
+            "Most sorcerers give up on the prospect",
+            "of trying to tame the wild WATER ELEMENTAL",
+            "",
+            "Though lacking in destructive potential,",
+            "it flows swiftly wherever water pools.",
+            "Elusive and mischievous."
+        ],
+        "abilities": [
+			"- Water Volley",
+			"- Water Field",
+			"- Water Portal"
+        ],
+        "inventory": [
+
+        ]
+    }		
 }

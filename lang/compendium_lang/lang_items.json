@@ -688,18 +688,18 @@
             "metal armors, tightly stitched layers",
             "of fine cloth make for good protection",
             "on their own.",
-            "Stacks of fabric can reduce the",
-            "penetration of arrows and spearheads."
+            "Stacks of fabric can disperse the",
+            "impact of magic and mundane projectiles."
         ]
     },
     "chain armor": {
         "blurb": [
             "Fashioned by the finest smiths, chain armor",
-            "is a rare commodity.",
+            "is a rare commodity outside of warfare.",
             "While its flexibility makes it less protective",
             "than other metal armors, it is particularly",
-            "adept at deflecting the cutting edges of ",
-            "swords and axes."
+            "useful for reducing the deadliness",
+            "of conventional melee weaponry."
         ]
     },
     "frypan": {
@@ -800,6 +800,66 @@
             "Hermits hollow and fill the clubbed",
             "end with dense magically-reactive metal,",
             "empowering strikes against hindered foes."
+        ]
+    },
+    "bone armor": {
+        "blurb": [
+            "Fashioned by the finest smiths, chain armor",
+            "is a rare commodity outside of warfare.",
+            "While its flexibility makes it less protective",
+            "than other metal armors, it is particularly",
+            "useful for reducing the deadliness",
+            "of conventional melee weaponry."
+        ]
+    },
+    "blackiron armor": {
+        "blurb": [
+            "Fashioned by the finest smiths, chain armor",
+            "is a rare commodity outside of warfare.",
+            "While its flexibility makes it less protective",
+            "than other metal armors, it is particularly",
+            "useful for reducing the deadliness",
+            "of conventional melee weaponry."
+        ]
+    },
+    "silver armor": {
+        "blurb": [
+            "Fashioned by the finest smiths, chain armor",
+            "is a rare commodity outside of warfare.",
+            "While its flexibility makes it less protective",
+            "than other metal armors, it is particularly",
+            "useful for reducing the deadliness",
+            "of conventional melee weaponry."
+        ]
+    },
+    "darts & plumbata": {
+        "blurb": [
+            "Salamander soldiers practiced throwing",
+            "projectiles at their foes while",
+            "charging in for assault.",
+            "The tips are treated with lasting effects:",
+            "Darts soften the enemy to attack, while",
+            "plumbata suppress the victim's magic."
+        ]
+    },
+    "bone and blackiron ammo": {
+        "blurb": [
+            "Archers in warfare sometimes choose",
+            "between quantity or quality in ammo.",
+            "BLACKIRON AMMO has fine fletching that",
+            "carries it far, and the tip is deadly.",
+            "Though BONE AMMO is crude, it splits in",
+			"twain, so targets to take more wounds."
+        ]
+    },
+    "gryphon egg": {
+        "blurb": [
+            "Containing as much rich and tasty",
+            "nutrition as 17 duck eggs, nest-robbers",
+            "are the Gryphon's only known predators.",
+			"",
+            "The parents are fiercely protective of",
+            "their eggs, and unforgiving of egg thieves."
         ]
     }
 }

@@ -568,9 +568,9 @@
         "blurb": [
             "Casting memorized spells, or spells from",
             "books, requires MAGIC POINTS (MP),",
-            "ENERGY (EN), or STEAM (ST). Casters usually",
-            "must have a quantity equal to or greater",
-            "than the cost of the spell in order to cast."
+            "ENERGY (EN), STEAM (ST), or FERVOR (FR).",
+            "A quantity equal to or greater than the",
+            "cost of the spell is required to cast."
         ],
         "details": [
             "If MP seems too scarce, finish off foes",
@@ -600,7 +600,15 @@
             "all foods to rapidly regain energy",
             "used in casting.",
             "Magic potions and fruit juice also",
-            "restore lots of energy."
+            "restore lots of energy.",
+			"",
+            "SALAMANDER FERVOR:",
+            "Fervor only restores to 50% passively,",
+            "and it slowly wanes on its own if higher",
+			"than that. However, practice keeps",
+			"the salamander's passions high.",
+            "Quest aggresively to generate XP",
+            "and fill fervor to higher quantities."			
         ],
         "details_line_highlights": [
             {},
@@ -727,6 +735,70 @@
                     "r": 157,
                     "g": 129,
                     "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },			
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
                     "a": 255
                 }
             },

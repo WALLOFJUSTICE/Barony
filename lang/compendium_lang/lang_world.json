@@ -111,7 +111,7 @@
             "SPAWN POSSIBILITIES:",
             "- 25% Spellbook hidden inside",
             "- 25% Gold hidden inside",
-            "- 25% Bats hidden inside",
+            "- 12.5% Bats hidden inside",
             "",
             "It's usually a good idea to ring a bell,",
             "if you're not afraid of a fight!",
@@ -466,7 +466,9 @@
             "- Confuse",
             "",
             "Though simliar to magic traps, the",
-            "ceiling trap can't be destroyed.",
+            "ceiling trap can't be destroyed by",
+			"digging, requiring the specialized",
+			"sabotage spell to eliminate fully.",
             "",
             "Dropped items can fool the trap, but it",
             "will fire continuously. Time between",
@@ -1188,10 +1190,11 @@
         "details": [
             "Friendly heroes have unparalleled",
             "access to these kinds of Hamlet shops:",
-            "- 2x Arms & Armor",
+            "- Arms & Armor",
+			"- Hunting",
             "- General Store",
             "- Jeweler",
-            "- Magicstaff",
+            "- Magicstaffs",
             "- Bookstore",
             "- Alchemist",
             "- Delicatessen",
@@ -1262,6 +1265,14 @@
                     "a": 255
                 }
             },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },			
             {
                 "color": {
                     "r": 157,
@@ -1517,7 +1528,50 @@
             "   Our duty is to choose the",
             "   right recipients for each."
         ],
-        "details_line_highlights": []
+        "details_line_highlights": [
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+			{},
+		    {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+		]
     },
     "labyrinth": {
         "blurb": [
@@ -1636,7 +1690,7 @@
             "can be confusing but may also provide",
             "emergent behaviors to exploit.",
             "",
-            "Player ghosts can pull levers, allowing",
+            "Ghosts can pull levers, allowing",
             "some challenges to be cheated."
         ],
         "details_line_highlights": []
@@ -3005,5 +3059,1273 @@
             "There is no shame in doing so!"
         ],
         "details_line_highlights": []
-    }
+    },
+    "bog": {
+        "blurb": [
+            "The presence of fungus in the foggy wilds",
+			"can lead to the rapid decay of organic",
+            "material, resulting in BOGS where",
+			"clearer waters once flowed.",
+            "Shallow and harmless on their own, avoid",
+			"them when threatened to stay swift."
+        ],
+        "details": [
+			"Bogs may present a quiet threat",
+			"to those who are dependent on",
+			"speed, and they should take care",
+			"when fighting foes near to them.",
+			"",
+			"The mud is shallow, allowing continued",
+			"combat while moving through the muck.",
+			"If prepared for a stand-up fight",
+			"the bog may serve as a hindrance to",
+			"foes rather than adventurers.",
+			"",
+			"In any case, levitation will prevent",
+			"any creature's feet from being",
+			"snared by the mucky mire."
+        ],
+        "details_line_highlights": []
+    },
+    "palace rooftop": {
+        "blurb": [
+            "The bell towers here have not rung",
+			"in the centuries since the Eternals",
+            "abandoned their palace. Salamanders",
+			"occupying the Keep have guaranteed it.",
+            "The Eternal Guardian awaits the chime",
+			"which heralds the end of its vigil."
+        ],
+        "details": [
+            "The three bell towers are symbolic of",
+			"virtues which the Eternals hold in",
+			"balance, each essential in their way.",
+			"",
+			"The Eternal Guardian was created to",
+			"be in-tune with these, and will answer",
+			"each bell's chime with respect to them.",
+			"Upon hearing a chime, it dutifully tests",
+			"those who summoned it, in the manner",
+			"required by each bell's toll.",
+			"",
+			"In passing a trial phase, another",
+			"bell must ring, and so on, until the",
+			"Eternal Guardian's trial is concluded.",
+			"Breaking the barriers placed by the",
+			"Guardian on each tower forces a change.",
+			"If ill-equipped for a certain phase,",
+			"use this knowledge wisely to succeed.",
+			"",
+			"When challengers fail its test, the",
+			"Guardian refuses the end of the age." 
+        ],
+        "details_line_highlights": []
+    },
+    "ancient fortress": {
+        "blurb": [
+            "Built to protect the Eternals' Keep",
+			"from the forces of Hell, the once-",
+            "highly-organized ANCIENT FORTRESS",
+			"has since been left to quietly decay",
+            "while both sides abandoned the war.",
+			"The wilds now lay claim to its bricks."
+        ],
+        "details": [
+            "INHABITANTS:",
+            "Gremlins, Dryads, Myconids,",
+            "Moths, Gryphons",
+            "",
+            "NEW TRAPS:",
+            "Toxic Mushrooms, Adorcized Weapons",
+            "",
+			"While travel between the mortal",
+			"realm and the realm of the Eternals",
+			"is normally impossible, secret paths",
+			"within the Devils' Bastion provide",
+			"limited opportunity for mortals to",
+			"enter this alternate dimension.",
+			"",
+            "The Fortress can be accessed from",
+            "two mutually exclusive points:",
+            "The Labyrinth or the Crystal Caves.",
+			"Both entrances require the use of",
+            "the Spirit Key, which is only found",
+            "in the Underworld's Penitentiary.",
+			"",
+			"Note that visiting the Fortress",
+			"later in your adventure will be",
+			"more dangerous. While Gremlins shy",
+			"from its surface, deadly Gryphons",
+			"hunt there. Dryads and Myconids",
+			"are more mature and deadly."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {},
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    },
+    "eternals' keep": {
+        "blurb": [
+            "Left to the Salamanders and sealed",
+			"long ago, few are permitted passage",
+            "to and from the ETERNALS' KEEP.",
+			"Myth tells that this place is their",
+            "seat of power, from which they once",
+			"held influence over mortal affairs."
+        ],
+        "details": [
+            "INHABITANTS:",
+            "Salamanders, Water & Flame Elementals,",
+            "Adorcized Weapons, Staremasters",
+            "",
+            "NEW TRAPS:",
+            "Haunted Armors, Security Beams",
+            "",
+			"The keep's inhabitants are the most",
+			"elite among all realms, with the",
+			"gifts and talents of the Eternals",
+			"empowering them with mighty magic",
+			"and physical might. Those who seek",
+			"to invade this place should expect",
+			"to face serious resistance.",
+			"",
+            "While lacking in traditional kinds",
+            "of traps, vigilant entities are on",
+            "watch for intruders. The deadliest",
+			"among them are the Staremasters,",
+			"whose magic capability is unmatched.",
+			"Observant though they are, they rely",
+			"on magic tripwires to alert them to",
+			"intruders. Steer clear to avoid these",
+			"difficult fights!",
+            "",
+            "Those seeking to explore the lavish",
+			"suites and well-stocked larders will",
+            "find that doors here are mostly made",
+            "of sturdy iron, so without a method",
+			"of opening locks, adventurers may",
+			"need to find the long way around."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {},
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    },
+    "pillar box": {
+        "blurb": [
+            "You know that people have been trapped",
+            "underground for a long time when they",
+            "put together a mail service!",
+            "The PILLAR BOX dispenses rewards to",
+            "those who ferry mail for others;",
+            "An efficient system!"
+        ],
+        "details": [
+            "PARCEL REWARDS:",
+			"50% - Gold Payment",
+			"35% - Rations, Potions",
+			"15% - Magic Scrolls",
+			"",
+			"A diligent adventurer need only",
+			"carry a mail scroll to a pillar box",
+			"where it can be dropped. The postal",
+			"fee will be paid in kind to the",
+			"courier the next time they find",
+			"a pillar box after delivery.",
+			"",
+			"Blessed mail will usually be",
+			"rewarded with finer gifts, but",
+			"cursed mail may bring ill-events",
+			"to the next floor, so be wary of",
+			"being the bearer of bad news.",
+			"",
+			"Shop Fliers beckon a traveling",
+			"merchant to the next floor,",
+			"where they will await",
+			"customers near the exit."
+        ],
+        "details_line_highlights": []
+    },
+    "chorale shrine": {
+        "blurb": [
+            "When a Bard and Mechanist couple were",
+            "wed, they joined the Church, seeking to",
+            "use shared skills to bring joyful purpose",
+            "to others. With the help of their local",
+            "Sexton, they devised the CHORALE SHRINES",
+            "to spread encouragement."
+        ],
+        "details": [
+            "SHRINE REBUKES:",
+			"Deafening, Silence, Knockback",
+			"",
+			"SHRINE BOONS:",
+			"Music Buffs, Minstrel Scrolls,",
+			"Bard Instruments, Alter Instrument",
+			"",
+			"When in high-standing with the",
+			"Eternals, it's a good idea to gather",
+			"your party around a Chorale Shrine",
+			"so everyone can enjoy the benefits of",
+			"the songs it provides. Those highly",
+			"favored may be given an instrument!"
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+			{},
+           {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }			
+        ]
+    },
+    "divine anvil": {
+        "blurb": [
+            "The smith's humble trade is celebrated",
+            "by the Eternals at the DIVINE ANVIL.",
+			"",
+            "Calling on the enchanted hammer results",
+            "in judgment upon objects presented.",
+            "The faithful are rewarded well here."
+        ],
+        "details": [
+            "SHRINE REBUKES:",
+			"Destroy, Wrathful Embers, Shatter",
+			"",
+			"SHRINE BOONS:",
+			"Repair, Uncurse, Improve Material",
+			"Bless, Enchant",
+			"",
+			"When in good standing with the",
+			"Eternals, the Divine Anvil will show",
+			"favor to adventurers by enhancing",
+			"the equipment placed upon it. This",
+			"can be totally transformative to",
+			"align the item with heroic purpose.",
+			"Foocubi who prefer cursed items may",
+			"not get the result they hope for.",
+			"",
+			"Some item enchantments are only",
+			"possible to obtain by seeking the",
+			"favor of the Eternals here."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+			{},
+           {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }			
+        ]
+    },
+    "shrine of supplication": {
+        "blurb": [
+            "The power and will of the Eternals can",
+            "be a frightful thing when called upon.",
+            "The SHRINE OF SUPPLICATION permits the",
+            "faithful to submit themselves to their",
+            "judgment, and be granted provisions by",
+            "reaching their hands into the fires."
+        ],
+        "details": [
+            "SHRINE REBUKES:",
+			"Burning, Alter Form, Harm",
+			"",
+			"SHRINE BOONS:",
+			"Restore MP, Heal, Cure, Satiate,",
+			"Providence of Items and Spells",
+			"",
+			"Submitting to the flames of the",
+			"Eternals borne by the Shrine of",
+			"Supplication is an act of faith,",
+			"moreso than other shrines.",
+			"Acknowledging this, even those",
+			"in poor standing may recieve what",
+			"they need most, though an ironic",
+			"punishment may wait in pairing.",
+			"",
+			"All devout adventurers benefit",
+			"by approaching this shrine when",
+			"their needs are dire. But those",
+			"who walk in good fortune may be",
+			"provided with heroic tools,",
+			"tailored to their talents."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+			{},
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }					
+        ]
+    },
+    "shrine of ascension": {
+        "blurb": [
+            "The Eternals honor the sacrifices of",
+            "dedicated spellcasters at this altar.",
+			"They know which magic disciplines are",
+			"practiced with most dedication, but",
+			"the faithful may also select a spell",
+			"from which to inspire ascended wisdom."
+        ],
+        "details": [
+            "SHRINE REBUKES:",
+			"Obliviate Spell, Drain MP",
+			"",
+			"SHRINE BOONS:",
+			"Grant Spell Tablet, Ascend Spell",
+			"",
+			"The Eternals reward devotees with",
+			"magical inspiration at the coveted",
+			"Shrine of Ascension by inscribing",
+			"magic runes onto a stone tablet",
+			"as an expression of their favor.",
+			"",
+			"A memorized spell can inspire the",
+			"Eternals to grant ascended twists,",
+			"providing adventurers with rare new",
+			"magic that can't be learned from",
+			"any known book.",
+			"",
+			"However, if a spellcaster",
+			"is in a rut with their training in",
+			"a certain discipline, it can be",
+			"wise to beg the Eternals for an",
+			"unknown spell to study instead.",
+			"The spell provided will be a more",
+			"common one, but it won't depend on",
+			"their current knowledge of spells.",
+			"",
+			"Both options provide similar paths",
+			"for continued arcane practice."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+			{},
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }					
+        ]
+    },
+    "toxic fungus": {
+        "blurb": [
+            "Simultaneously spreading its spores for",
+            "germination, and protecting itself from",
+            "parasites, the TOXIC FUNGUS seems",
+            "highly perceptive for a mushroom.",
+            "Networks of underground mycelium are",
+            "said to enable sensory communications."
+        ],
+        "details": [
+			"Toxic Fungus effect variety:",
+			"- Knockback, Damage, Slow, Poison",
+			"",
+            "Particularly obnoxious for skilled-",
+			"melee combatants, toxic mushrooms",
+			"blast nearby threats with spores.",			
+			"Rare varieties are capable of",
+			"hurling spores at great distance!",
+			"",
+			"It is wise to keep a ranged weapon",
+			"on hand to test mushrooms for hostile",
+			"reactions, and then decide how or if",
+			"to clear it out with minimal risk."
+        ],
+        "details_line_highlights": [
+             {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+{
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }			
+        ]
+    },
+    "wind sprite": {
+        "blurb": [
+            "The mischievous WIND SPRITE likes to",
+			"follow air currents, looking for places",
+            "to play where its impact can be",
+			"seen among the leaves.",
+            "Those who disrupt its playground will",
+			"experience the power of the wind."
+        ],
+        "details": [
+            "Though they typically soar among",
+			"the clouds, more daring wind sprites",
+			"like to surf at ground level.",
+			"",
+			"A spell of Scry Traps can detect",
+			"danger before one stumbles into",
+			"the path of a bored wind sprite.",
+			"",
+			"Its victims can only wait while they",
+			"are lifted and then thrown down, a",
+			"punishment for heavier targets!",
+			"Young Salamanders are taught to",
+			"simply avoid rustling leaves."
+        ],
+        "details_line_highlights": []
+    },
+    "penitentiary": {
+        "blurb": [
+            "While the Underworld serves as",
+			"a liminal space for most spirits,",
+            "some are held in the PENITENTIARY",
+			"for hands-on rehabilitation at",
+            "the hands of an unknown entity.",
+			"Souls here are desperate for escape."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- The Spirit Key",
+            "- A few treasure chests",
+            "",
+			"The unique spirit key is kept in",
+			"the bowels of the penitentiary,",
+			"which only the warden is intended",
+			"to access. This key is the only",
+			"known way to access the realm of",
+			"the Eternals from the mortal realm.",
+			"",
+			"Two silver keys are required to",
+			"access the more protected parts",
+			"of the penitentiary. Raiding the",
+			"offices of the cell-block guards",
+			"can yield these keys, but speed-",
+			"minded adventurers may bring their",
+			"own keys and proceed with haste.",
+			"",
+			"Alternatively, if you don't care",
+			"about the spirit key, simply take",
+			"the silver keys and abandon the",
+			"penitentiary, saving them for",
+			"later treasure rooms or secrets."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }			
+        ]
+    },
+    "bastille": {
+        "blurb": [
+            "Once a great bastion of salamander",
+			"defense against the forces of Hell,",
+            "the BASTILLE was then turned into",
+			"a prison for war criminals whose",
+            "spirits haunt the labyrinthine",
+			"courtyards to this very day."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- A Crystal Key",
+			"- Blackiron and Silver Armor",
+            "- A few treasure chests",
+            "",		
+			"It is easy to get lost in the haunted",
+			"Bastille, where spirits play tricks",
+			"on the minds of intruders. Willingly",
+			"or otherwise, they keep the hidden",
+			"crystal key here safe.",
+			"",
+			"You will have to master the maze",
+			"opposite the exit of the Bastille",
+			"which leads to five essential rooms.",
+			"Do not neglect the two portculli",
+			"in the entry courtyard which open",
+			"when the silver locks are activated."
+
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    },
+    "void vault": {
+        "blurb": [
+            "More boogieman than paragon, the",
+			"enigmatic warden entity forged deep",
+			"into the void of the underworld.",
+			"He did so with great sacrifice to",
+			"seal away items from discovery,",
+			"but ironically left a trail."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- Spellbook of Void Chest",
+			"- BACKER ITEM #1",
+            "- BACKER ITEM #2",
+            "- BACKER ITEM #3",
+			"- BACKER ITEM #3",
+			"- Minimimic Follower",
+			"",
+			"While at first, this shadowy realm",
+			"seems empty and impermeable, pools",
+			"of blood mark where its keeper once",
+			"kept his route. Follow the path",
+			"slowly and carefully, and bring a",
+			"light source to find footing.",
+			"",
+			"Prepare to battle with spirits who",
+			"have been twisted by eons of",
+			"endless wandering."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    },
+    "fraternity": {
+        "blurb": [
+            "While demonic beings take joy in chaos,",
+			"they still organize themselves into",
+            "hierarchies of perverse order.",
+			"The FRATERNITIES of Hell compete",
+            "among themselves for Baphomet's favor,",
+			"each with a destructive specialty."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- A few treasure chests",
+			"- Lots of booze",
+            "- Various cursed equipment",
+			"",
+			"The three surviving fraternities of",
+			"this quarter of hell keep symbols of",
+			"superstitious devotion, reflecting",
+			"values of hellish excellence. Each",
+			"is guarded with a silver lock.",
+			"",
+			"Adventurers should be prepared for",
+			"a passionate fight if they choose",
+			"to invade each of the fraternity",
+			"house sanctums.",
+			"",
+			"Intel describes a previously dominant",
+			"house that was wiped out by the unity",
+			"of the current fraternity regimes.",
+			"The method of their destruction",
+			"was so disruptive that Baphomet",
+			"forbade it being used ever again."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    },
+    "? ? ?": {
+        "blurb": [
+            "UNKNOWN REALM",
+			"",
+			"PLEASE CONTACT",
+			"THE CULT OF KNOWLEDGE",
+			"IMMEDIATELY"
+        ],
+        "details": [
+            "Cultists have hypothesized the",
+			"potential existence of such a place",
+			"where other realms may intersect",
+			"with Hell, similar to how Hell",
+			"intersects with the Underworld.",
+			"",
+			"Each attempt to explore this",
+			"mystery resulted in the resignation",
+			"of the cultist assigned to research."
+        ],
+        "details_line_highlights": []
+    },
+    "warrens": {
+        "blurb": [
+            "Gremlins are known for their fetid",
+			"tunnels where, when not skirmishing or",
+            "scavenging, they spend all of their time.",
+			"",
+            "Those with a mind for war busy themselves",
+			"with innovations to undermine their foes."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- A few treasure chests",
+			"- Blackiron equipment",
+            "- A Crystal Key",
+			"",
+			"The captains in these warrens have",
+			"barred themselves behind iron locks",
+			"to keep the rabble out while they",
+			"strategize. Matching keys are held by",
+			"chief mycologists whose fungal labs",
+			"are spread through the tunnels.",
+			"",
+			"This is necessary to access the",
+			"crystal key, which is stored in the",
+			"gremlins' treasure room, secured by",
+			"a lever in the captains' war room.",
+			"",
+			"A capable lockpick can bypass the",
+			"the locks to confront the captains",
+			"and unlock the treasure room. But,",
+			"given the apparent intentions of the",
+			"gremlins against their captives, those",
+			"with heroic intent may prefer to earn",
+			"the keys the old fashioned way."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+			{
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },			
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }			
+        ]
+    },
+    "gatehouse": {
+        "blurb": [
+           "Great beings once used this place to cross",
+			"between the mortal and eternal realms.", 
+			"Though the GATEHOUSE structures must be",
+			"ancient, most of the bridge must have been",
+            "constructed more recently by automatons",
+			"under the instruction of their masters."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- A few treasure chests",
+			"- Crystal equipment",
+            "- Silver weapons",
+			"",
+			"While Orpheus and Erudyce have spent",
+			"great effort to claim the gatehouse",
+			"as their own, the final seal remains",
+			"true to the Eternals' original design.",
+			"",
+			"The final magical gate leads to the",
+			"to the keep of the Eternals, and may",
+			"only be opened by carrying the black",
+			"or white orbs to its threshold."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    },	
+    "automat": {
+        "blurb": [
+            "Once constructed, the factory which",
+			"births automatons was left to manage",
+			"itself with minimal oversight.",
+			"It remains as a place where the",
+			"robotic slaves are born to serve",
+			"their undead masters."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- High amounts of scrap",
+			"- 3 automaton-operated shops",
+			"",
+			"The general neutrality of automata",
+			"allows their factory to serve as an",
+			"automat, providing a few shops which",
+			"will serve most intelligent peoples",
+			"without prejudice.",
+			"",
+			"Keys which permanently disable the",
+			"factory can be found here, though",
+			"automatons may take offense to",
+			"the end of their production.",
+			"",
+			"A kobold mechanist oversees the",
+			"factory, and will join anyone who",
+			"can help him get out from under",
+			"the archmagisters' rule."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    },
+    "arena": {
+        "blurb": [
+            "Salamander soldiers use the ARENA to",
+			"stay fit for battle while they await",
+			"the Eternals' return.",
+			"",
+			"As such violence is forbidden, their",
+			"commander feigns ignorance of the place."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- 4 escalating combat rewards",
+			"- Blessed blackiron equipment",
+			"",
+			"Besides the qualifying bout, arena",
+			"contestants may approach the three",
+			"remaining fights in any order they",
+			"prefer. Those who are confident in",
+			"their ability can skip to the most",
+			"challenging fight with the greatest",
+			"reward, and save some time.",
+			"",
+			"Completing all four will alert the",
+			"commander (who carries fine gear)."
+			
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+	            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }		
+        ]
+    },
+    "throne room": {
+        "blurb": [
+            "In the absence of the Eternals, the",
+			"royal wing of the keep has not been",
+			"nearly as busy as it once was.",
+			"The salamander servants here remain",
+			"faithful to their minimal duties and",
+			"will take exception to disruptions."
+        ],
+        "details": [
+            "SECRET LEVEL TREASURES:",
+            "- Several treasure chests",
+			"- Silver equipment",
+            "- A blessed crown",
+			"",
+			"Though filled with the salamanders'",
+			"most valuable treasures, one must be",
+			"wary of the stalwart royal guard who",
+			"occupy this place",
+			"",
+			"Gaining access to the Eternal council's",
+			"throne room will require scouring the",
+			"many rooms for at least two silver keys,",
+			"unless one comes prepared with extra.",
+			"Echoes of the Eternals' virtues wait",
+			"to test any who think themselves",
+			"worthy of a seat.",
+			"",
+			"Prepare to fight durable foes."
+        ],
+        "details_line_highlights": [
+            {
+                "color": {
+                    "r": 198,
+                    "g": 190,
+                    "b": 179,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            },
+            {
+                "color": {
+                    "r": 157,
+                    "g": 129,
+                    "b": 93,
+                    "a": 255
+                }
+            }
+        ]
+    }	
 }

@@ -227,5 +227,124 @@
 			"in gold, enhancing their beauty",
 			"in addition to their value."
         ]
-    }	
+    },
+    "asc_evocation": {
+        "blurb": [
+            "Through ambition, sorcerors may be",
+            "inspired by evocation spells, gaining",
+            "access to entirely new powers.",
+            "ASCENDED EVOCATION spells open up new",
+            "possibilities to skilled evokers."
+        ]
+    },
+    "asc_contravention": {
+        "blurb": [
+            "Sorcerers who practice contravention",
+            "aren't shy about breaking the rules.",
+            "It's second-nature, then, to find the",
+            "barriers which prevent access to",
+            "ASCENDED CONTRAVENTION spells and",
+            "shatter them to discover new magic."
+        ]
+    },
+    "asc_kinesis": {
+        "blurb": [
+            "In sorcery, mind-over-matter is perhaps",
+            "best expressed through kinesis, wielding",
+            "direct control over the physical realm",
+            "with the will alone. Those who set their",
+            "minds to it are inspired with ASCENDED",
+            "KINESIS spells to practice."
+        ]
+    },
+    "asc_temulturgy": {
+        "blurb": [
+            "The art of deconstruction is under-",
+            "appreciated, except by dedicated",
+            "thaumaturgists. By shattering the",
+            "fundamental principles of spellcasting",
+            "itself, sorcerers can break new ground",
+            "uncovering ASCENDED TEMULTURGY spells."
+        ]
+    },
+    "asc_blessings": {
+        "blurb": [
+            "Those who provide blessings hunger to be",
+            "of even greater help. Thaumaturgists",
+            "seeking for greater ways to give, with",
+            "devotion, may be blessed with",
+            "ASCENDED BLESSINGS, where they may",
+            "continue their benevolent practice."
+        ]
+    },
+    "asc_divinations": {
+        "blurb": [
+            "Thaumaturgists who practice divination",
+            "know that seeking knowledge is a sacred",
+            "calling. With sincere pursuit,",
+            "one can access greater wisdom",
+            "with ASCENDED DIVINATION spells,",
+            "leading to greater knowledge."
+        ]
+    },
+    "asc_miraculous_feats": {
+        "blurb": [
+            "Using thaumaturgy to perform wonders",
+            "is a practice that can improve with",
+            "faithful pursuit. Those who are wholly",
+            "committed may be trusted with even",
+            "more powerful ASCENDED MIRACULOUS FEATS",
+            "to exercise as they perform their work."
+        ]
+    },
+    "asc_meditations": {
+        "blurb": [
+            "Meditations provide acess to great",
+            "power to thaumaturgists through",
+            "concentration and dedication.",
+            "With greater focus, the devout",
+            "may reveal ASCENDED MEDITATIONS,",
+            "which further elevates them."
+        ]
+    },
+    "asc_sarkomancy": {
+        "blurb": [
+            "The strengths and weaknesses of the",
+            "flesh are known better to none than",
+            "sarkomancers. These mystics may pursue",
+            "their grim ideas with dedication and",
+            "discover an ASCENDED SARKOMANCY spell",
+            "to wield, often with grotesque results."
+        ]
+    },
+    "asc_psianimus": {
+        "blurb": [
+            "The paradox of free will, and magic",
+            "that can be used to control it, is the.",
+            "specialty of psianimus-practicing mystics.",
+            "Those who enjoy this conundrum may",
+            "obsess their way into uncovering",
+            "ASCENDED PSIANIMUS spells to ponder."
+        ]
+    },
+    "asc_daimonia": {
+        "blurb": [
+            "Wise mystics know that greater",
+            "intelligence can be found in the spirit",
+            "realm, coaxed forth with daimonia magic.",
+            "In pursuit of these minds,",
+            "ASCENDED DAIMONIA spells give them even",
+            "greater links to these personalities."
+        ]
+    },
+    "asc_impeturia": {
+        "blurb": [
+            "The most academic of the mystic arts,",
+            "practitioners of impeturia are nothing",
+            "if not practical. Through creative",
+            "pursuit, ASCENDED IMPETURIAL spells",
+            "may be revealed, granting even more tools",
+            "to wield in pursuit of magic advancement."
+        ]
+    }		
 }
