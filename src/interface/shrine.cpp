@@ -3252,6 +3252,11 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 		}
 	}
 
+	if ( player->mechanics.divine_favor < pipsTotal )
+	{
+		pipsTotal = player->mechanics.divine_favor;
+	}
+
 	bool viewActionReady = false;
 	if ( currentView == ASSIST_SHRINE_VIEW_OFFERING )
 	{
@@ -3432,63 +3437,63 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 	if ( animx >= .9999 )
 	{
 		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
-		if ( keystatus[SDLK_g] )
-		{
-			keystatus[SDLK_g] = 0;
-			if ( currentView == ASSIST_SHRINE_VIEW_OFFERING )
-			{
-				currentView = ASSIST_SHRINE_VIEW_ACTION;
-				submittedItem = EternalShrineSubmitStatus::SUBMIT_DONE;
-			}
-			else if ( currentView == ASSIST_SHRINE_VIEW_ACTION )
-			{
-				currentView = ASSIST_SHRINE_VIEW_WAITING;
-				submittedItem = EternalShrineSubmitStatus::SUBMIT_NONE;
-			}
-			else
-			{
-				currentView = ASSIST_SHRINE_VIEW_OFFERING;
-				submittedItem = EternalShrineSubmitStatus::SUBMIT_NONE;
-			}
+		//if ( keystatus[SDLK_g] )
+		//{
+		//	keystatus[SDLK_g] = 0;
+		//	if ( currentView == ASSIST_SHRINE_VIEW_OFFERING )
+		//	{
+		//		currentView = ASSIST_SHRINE_VIEW_ACTION;
+		//		submittedItem = EternalShrineSubmitStatus::SUBMIT_DONE;
+		//	}
+		//	else if ( currentView == ASSIST_SHRINE_VIEW_ACTION )
+		//	{
+		//		currentView = ASSIST_SHRINE_VIEW_WAITING;
+		//		submittedItem = EternalShrineSubmitStatus::SUBMIT_NONE;
+		//	}
+		//	else
+		//	{
+		//		currentView = ASSIST_SHRINE_VIEW_OFFERING;
+		//		submittedItem = EternalShrineSubmitStatus::SUBMIT_NONE;
+		//	}
 
-			Uint32 newvalue = submittedItem << (playernum * 2);
-			Uint32 mask = (0b11) << (playernum * 2);
-			if ( eternalShrineStation )
-			{
-				eternalShrineStation->eternalShrinePlayerStates &= ~(mask); // zero out the player slot
-				eternalShrineStation->eternalShrinePlayerStates |= newvalue; // apply new value
-				if ( multiplayer == SERVER )
-				{
-					serverUpdateEntitySkill(eternalShrineStation, 17);
-				}
-			}
-		}
+		//	Uint32 newvalue = submittedItem << (playernum * 2);
+		//	Uint32 mask = (0b11) << (playernum * 2);
+		//	if ( eternalShrineStation )
+		//	{
+		//		eternalShrineStation->eternalShrinePlayerStates &= ~(mask); // zero out the player slot
+		//		eternalShrineStation->eternalShrinePlayerStates |= newvalue; // apply new value
+		//		if ( multiplayer == SERVER )
+		//		{
+		//			serverUpdateEntitySkill(eternalShrineStation, 17);
+		//		}
+		//	}
+		//}
 
-		if ( keystatus[SDLK_h] )
-		{
-			keystatus[SDLK_h] = 0;
-			if ( keystatus[SDLK_LSHIFT] )
-			{
-				//pipsTotal -= 1;
-				//pipsTotal = std::max(0, pipsTotal);
-				player->mechanics.divine_favor -= 1;
-				player->mechanics.divine_favor = std::max(0, player->mechanics.divine_favor);
-			}
-			else
-			{
-				player->mechanics.divine_favor += 1;
-				if ( player->mechanics.divine_favor > 10 )
-				{
-					player->mechanics.divine_favor = 0;
-				}
-				/*pipsTotal += 1;
-				if ( pipsTotal > 10 )
-				{
-					pipsTotal = 0;
-				}*/
-			}
-		}
-		if ( keystatus[SDLK_j] )
+		//if ( keystatus[SDLK_h] )
+		//{
+		//	keystatus[SDLK_h] = 0;
+		//	if ( keystatus[SDLK_LSHIFT] )
+		//	{
+		//		//pipsTotal -= 1;
+		//		//pipsTotal = std::max(0, pipsTotal);
+		//		player->mechanics.divine_favor -= 1;
+		//		player->mechanics.divine_favor = std::max(0, player->mechanics.divine_favor);
+		//	}
+		//	else
+		//	{
+		//		player->mechanics.divine_favor += 1;
+		//		if ( player->mechanics.divine_favor > 10 )
+		//		{
+		//			player->mechanics.divine_favor = 0;
+		//		}
+		//		/*pipsTotal += 1;
+		//		if ( pipsTotal > 10 )
+		//		{
+		//			pipsTotal = 0;
+		//		}*/
+		//	}
+		//}
+		/*if ( keystatus[SDLK_j] )
 		{
 			keystatus[SDLK_j] = 0;
 			if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ANVIL )
@@ -3507,7 +3512,7 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 			{
 				parentGUI.guiType = GUICurrentType::GUI_TYPE_ETERNALSHRINE_ANVIL;
 			}
-		}
+		}*/
 
 		real_t filterMinSpeed = bSkipOfferingPrompt ? *cvar_eternal_shrine_skip_prompt_speed : 0.01;
 		if ( currentView == ASSIST_SHRINE_VIEW_WAITING )

@@ -885,6 +885,32 @@ namespace ConsoleCommands {
 		showfirst = !(showfirst);
 		});
 
+	static ConsoleCommand ccmd_divine_favor("/divine_favor", "modify divine favor (cheat)", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+		if ( multiplayer == CLIENT )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(284));
+			return;
+		}
+
+		if ( argc < 2 ) {
+			return;
+		}
+
+		int amount = atoi(argv[1]);
+		int player = clientnum;
+		if ( argc >= 3 )
+		{
+			player = atoi(argv[2]);
+		}
+		players[player]->mechanics.divine_favor = std::min(Player::DIVINE_FAVOR_MAX, std::max(0, amount));
+		});
+
 	static ConsoleCommand ccmd_buddha("/buddha", "toggle buddha mode (cheat)", []CCMD{
 		if (!(svFlags & SV_FLAG_CHEATS))
 		{
