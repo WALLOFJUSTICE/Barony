@@ -5044,7 +5044,7 @@ The next input you activate will be bound to this action.#
 5190 Ambient Volume#
 5191 Adjust the volume of ominous subterranean sound cues.#
 5192 Environment Volume#
-5193 Adjust the volume of flowing water and lava.#
+5193 Adjust the volume of environment traps, flowing water, and lava.#
 5194 Notification Volume#
 5195 Adjust the volume of callouts, chat messages, skill increases, and level up notifications.#
 5196 Music Volume#
@@ -7356,5 +7356,24 @@ has been unlocked!#
 7080 Auto#
 7081 OpenGL Compatibility Mode#
 7082 Enabling this may improve OpenGL performance and fullscreen behavior with modern systems. Requires restart.#
+
+7083 Reach#
+7084 Listen#
+7085 Inspire#
+7086 Ascend#
+7087 You reach into the flames...#
+7088 The shrine is currently in use by someone else.#
+7089 Approach supplication shrine#
+7090 You see a shrine of supplication.#
+7091 supplication shrine#
+7092 Approach divine anvil#
+7093 You see a divine anvil.#
+7094 divine anvil#
+7095 Approach orchestrion#
+7096 You see an orchestrion.#
+7097 orchestrion#
+7098 Approach ascension shrine#
+7099 You see a shrine of ascension.#
+7100 ascension shrine#
 
 7999 END#
