@@ -8491,7 +8491,7 @@ timeToGoAgain:
 									}
 								}
 								my->monsterAllyState = ALLY_STATE_DEFEND;
-								my->createPathBoundariesNPC(5);
+								my->createPathBoundariesNPC(2);
 								if ( myStats->type == GYROBOT && my->monsterSpecialState == GYRO_RETURN_PATHING )
 								{
 									my->monsterSpecialState = GYRO_RETURN_LANDING;
@@ -8654,7 +8654,7 @@ timeToGoAgain:
 								}
 							}
 							my->monsterAllyState = ALLY_STATE_DEFEND;
-							my->createPathBoundariesNPC(5);
+							my->createPathBoundariesNPC(2);
 						}
 
 						if ( my->monsterAllyState != ALLY_STATE_MOVETO )
@@ -13129,7 +13129,7 @@ void Entity::monsterAllySendCommand(int command, int destX, int destY, Uint32 ui
 			}
 			else
 			{
-				createPathBoundariesNPC(5);
+				createPathBoundariesNPC(2);
 				// stop in your tracks!
 				handleNPCInteractDialogue(*myStats, ALLY_EVENT_WAIT);
 				monsterState = MONSTER_STATE_WAIT; // wait state
