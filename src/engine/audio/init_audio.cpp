@@ -127,6 +127,21 @@ bool initSoundEngine()
 			printlog("F[FMOD]: ailed to create sound ambient channel group.\n");
 			no_sound = true;
 		}
+		fmod_result = fmod_system->createChannelGroup(nullptr, &soundTrap_group);
+		if ( FMODErrorCheck() )
+		{
+			printlog("F[FMOD]: ailed to create sound trap channel group.\n");
+			no_sound = true;
+		}
+		if ( soundTrap_group )
+		{
+			FMOD::DSP* limiter = nullptr;
+			fmod_result = fmod_system->createDSPByType(FMOD_DSP_TYPE_LIMITER, &limiter);
+			fmod_result = soundTrap_group->addDSP(1, limiter);
+			fmod_result = limiter->setParameterFloat(FMOD_DSP_LIMITER_MAXIMIZERGAIN, 0.f);
+			fmod_result = limiter->setParameterFloat(FMOD_DSP_LIMITER_CEILING, 0.f);
+			fmod_result = limiter->setParameterFloat(FMOD_DSP_LIMITER_RELEASETIME, 1000.f);
+		}
 		fmod_result = fmod_system->createChannelGroup(nullptr, &soundEnvironment_group);
 		if ( FMODErrorCheck() )
 		{

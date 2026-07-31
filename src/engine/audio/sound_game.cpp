@@ -54,7 +54,7 @@ FMOD::ChannelGroup* getChannelGroupForSoundIndex(Uint32 snd)
 	return sound_group;
 }
 
-FMOD::Channel* playSoundPlayer(int player, Uint16 snd, Uint8 vol)
+FMOD::Channel* playSoundPlayer(int player, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex)
 {
 	if (no_sound)
 	{
@@ -68,7 +68,7 @@ FMOD::Channel* playSoundPlayer(int player, Uint16 snd, Uint8 vol)
 	}
 	if ( players[player]->isLocalPlayer() )
 	{
-		return playSound(snd, vol);
+		return playSound(snd, vol, channelIndex);
 	}
 	else if ( multiplayer == SERVER && vol > 0 )
 	{
@@ -79,9 +79,10 @@ FMOD::Channel* playSoundPlayer(int player, Uint16 snd, Uint8 vol)
 		memcpy(net_packet->data, "SNDG", 4);
 		SDLNet_Write16(snd, &net_packet->data[4]);
 		net_packet->data[6] = vol;
+		net_packet->data[7] = (Uint8)channelIndex;
 		net_packet->address.host = net_clients[player - 1].host;
 		net_packet->address.port = net_clients[player - 1].port;
-		net_packet->len = 7;
+		net_packet->len = 8;
 		sendPacketSafe(net_sock, -1, net_packet, player - 1);
 		return nullptr;
 	}
@@ -133,9 +134,9 @@ FMOD::Channel* playSoundNotificationPlayer(int player, Uint16 snd, Uint8 vol)
 
 -------------------------------------------------------------------------------*/
 
-FMOD::Channel* playSoundPos(real_t x, real_t y, Uint16 snd, Uint8 vol)
+FMOD::Channel* playSoundPos(real_t x, real_t y, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex)
 {
-	auto result = playSoundPosLocal(x, y, snd, vol);
+	auto result = playSoundPosLocal(x, y, snd, vol, channelIndex);
 
 	if (multiplayer == SERVER && vol > 0)
 	{
@@ -150,9 +151,10 @@ FMOD::Channel* playSoundPos(real_t x, real_t y, Uint16 snd, Uint8 vol)
 			SDLNet_Write32(y, &net_packet->data[8]);
 			SDLNet_Write16(snd, &net_packet->data[12]);
 			net_packet->data[14] = vol;
+			net_packet->data[15] = (Uint8)channelIndex;
 			net_packet->address.host = net_clients[c - 1].host;
 			net_packet->address.port = net_clients[c - 1].port;
-			net_packet->len = 15;
+			net_packet->len = 16;
 			sendPacketSafe(net_sock, -1, net_packet, c - 1);
 		}
 	}
@@ -160,7 +162,11 @@ FMOD::Channel* playSoundPos(real_t x, real_t y, Uint16 snd, Uint8 vol)
 	return result;
 }
 
-FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
+static ConsoleVariable<float> cvar_sfx_environment_distmin("/sfx_environment_distmin", 0.0);
+static ConsoleVariable<float> cvar_sfx_ambient_distmin("/sfx_ambient_distmin", 0.0);
+static ConsoleVariable<float> cvar_sfx_trap_distmin("/sfx_trap_distmin", 0.0);
+
+FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex)
 {
 	if (no_sound)
 	{
@@ -196,7 +202,21 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 	position.y = (float)(0.0);
 	position.z = (float)(y / (real_t)16.0);
 
-	if ( soundAmbient_group && getChannelGroupForSoundIndex(snd) == soundAmbient_group )
+	FMOD::ChannelGroup* channelGroupOverride = getChannelGroupForSoundIndex(snd);
+	if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_AMBIENT )
+	{
+		channelGroupOverride = soundAmbient_group;
+	}
+	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_ENVIRONMENT )
+	{
+		channelGroupOverride = soundEnvironment_group;
+	}
+	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP )
+	{
+		channelGroupOverride = soundTrap_group;
+	}
+
+	if ( soundAmbient_group && (channelGroupOverride == soundAmbient_group) )
 	{
 		int numChannels = 0;
 		soundAmbient_group->getNumChannels(&numChannels);
@@ -224,7 +244,7 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 		}
 	}
 
-	if ( soundEnvironment_group && getChannelGroupForSoundIndex(snd) == soundEnvironment_group )
+	if ( soundEnvironment_group && (channelGroupOverride == soundEnvironment_group) )
 	{
 		int numChannels = 0;
 		soundEnvironment_group->getNumChannels(&numChannels);
@@ -252,13 +272,46 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 		}
 	}
 
+	if ( soundTrap_group && (channelGroupOverride == soundTrap_group) )
+	{
+		int numChannels = 0;
+		soundTrap_group->getNumChannels(&numChannels);
+		for ( int i = 0; i < numChannels; ++i )
+		{
+			FMOD::Channel* c;
+			if ( soundTrap_group->getChannel(i, &c) == FMOD_RESULT::FMOD_OK )
+			{
+				float audibility = 0.f;
+				c->getAudibility(&audibility);
+				float volume = 0.f;
+				c->getVolume(&volume);
+				FMOD::Sound* soundGet = nullptr;
+				c->getCurrentSound(&soundGet);
+				if ( sounds[snd] == soundGet )
+				{
+					FMOD_VECTOR playingPosition;
+					c->get3DAttributes(&playingPosition, nullptr);
+					//printlog("Channel index: %d, audibility: %f, vol: %f, pos x: %.2f | y: %.2f", i, audibility, volume, playingPosition.z, playingPosition.x);
+					if ( abs(volume - (vol / 255.f)) < 0.05 )
+					{
+						if ( (pow(playingPosition.x - position.x, 2) + pow(playingPosition.z - position.z, 2)) <= 2.0 )
+						{
+							//printlog("Culling sound due to proximity, pos x: %.2f | y: %.2f", position.z, position.x);
+							vol *= 0.8;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	/*FMOD_OPENSTATE openState;
 	unsigned int percentBuffered = 0;
 	bool starving = false;
 	bool diskbusy = false;
 	sounds[snd]->getOpenState(&openState, &percentBuffered, &starving, &diskbusy);
 	printlog("Sound: %d state: %d pc: %d starving: %d diskbusy: %d", snd, openState, percentBuffered, starving, diskbusy);*/
-	fmod_result = fmod_system->playSound(sounds[snd], getChannelGroupForSoundIndex(snd), true, &channel);
+	fmod_result = fmod_system->playSound(sounds[snd], channelGroupOverride ? channelGroupOverride : getChannelGroupForSoundIndex(snd), true, &channel);
 	if (FMODErrorCheck())
 	{
 		return nullptr;
@@ -273,8 +326,38 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 	{
 		float f1, f2;
 		channel->get3DMinMaxDistance(&f1, &f2);
-		static ConsoleVariable<float> cvar_portal_mindist("/portal_distmin", 0.75);
-		channel->set3DMinMaxDistance(*cvar_portal_mindist, f2);
+		static ConsoleVariable<float> cvar_sfx_portal_mindist("/sfx_portal_distmin", 0.75);
+		channel->set3DMinMaxDistance(*cvar_sfx_portal_mindist, f2);
+	}
+	else
+	{
+		if ( channelGroupOverride == soundEnvironment_group )
+		{
+			if ( *cvar_sfx_environment_distmin > 0.01 )
+			{
+				float f1, f2;
+				channel->get3DMinMaxDistance(&f1, &f2);
+				channel->set3DMinMaxDistance(*cvar_sfx_environment_distmin, f2);
+			}
+		}
+		else if ( channelGroupOverride == soundAmbient_group )
+		{
+			if ( *cvar_sfx_ambient_distmin > 0.01 )
+			{
+				float f1, f2;
+				channel->get3DMinMaxDistance(&f1, &f2);
+				channel->set3DMinMaxDistance(*cvar_sfx_ambient_distmin, f2);
+			}
+		}
+		else if ( channelGroupOverride == soundTrap_group )
+		{
+			if ( *cvar_sfx_trap_distmin > 0.01 )
+			{
+				float f1, f2;
+				channel->get3DMinMaxDistance(&f1, &f2);
+				channel->set3DMinMaxDistance(*cvar_sfx_trap_distmin, f2);
+			}
+		}
 	}
 
 	return channel;
@@ -289,7 +372,7 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol)
 
 -------------------------------------------------------------------------------*/
 
-FMOD::Channel* playSoundEntity(Entity* entity, Uint16 snd, Uint8 vol)
+FMOD::Channel* playSoundEntity(Entity* entity, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex)
 {
 	if (no_sound)
 	{
@@ -300,16 +383,16 @@ FMOD::Channel* playSoundEntity(Entity* entity, Uint16 snd, Uint8 vol)
 	{
 		return nullptr;
 	}
-	return playSoundPos(entity->x, entity->y, snd, vol);
+	return playSoundPos(entity->x, entity->y, snd, vol, channelIndex);
 }
 
-FMOD::Channel* playSoundEntityLocal(Entity* entity, Uint16 snd, Uint8 vol)
+FMOD::Channel* playSoundEntityLocal(Entity* entity, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex)
 {
 	if ( entity == nullptr )
 	{
 		return nullptr;
 	}
-	return playSoundPosLocal(entity->x, entity->y, snd, vol);
+	return playSoundPosLocal(entity->x, entity->y, snd, vol, channelIndex);
 }
 
 /*-------------------------------------------------------------------------------
@@ -321,7 +404,7 @@ FMOD::Channel* playSoundEntityLocal(Entity* entity, Uint16 snd, Uint8 vol)
 
 -------------------------------------------------------------------------------*/
 
-FMOD::Channel* playSound(Uint16 snd, Uint8 vol)
+FMOD::Channel* playSound(Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex)
 {
 	if (no_sound)
 	{
@@ -338,8 +421,56 @@ FMOD::Channel* playSound(Uint16 snd, Uint8 vol)
 	{
 		return nullptr;
 	}
+
+	FMOD::ChannelGroup* channelGroupOverride = getChannelGroupForSoundIndex(snd);
+	if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_AMBIENT )
+	{
+		channelGroupOverride = soundAmbient_group;
+	}
+	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_ENVIRONMENT )
+	{
+		channelGroupOverride = soundEnvironment_group;
+	}
+	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP )
+	{
+		channelGroupOverride = soundTrap_group;
+	}
+
+	if ( soundTrap_group && (channelGroupOverride == soundTrap_group) )
+	{
+		int numChannels = 0;
+		soundTrap_group->getNumChannels(&numChannels);
+		for ( int i = 0; i < numChannels; ++i )
+		{
+			FMOD::Channel* c;
+			if ( soundTrap_group->getChannel(i, &c) == FMOD_RESULT::FMOD_OK )
+			{
+				float audibility = 0.f;
+				c->getAudibility(&audibility);
+				float volume = 0.f;
+				c->getVolume(&volume);
+				FMOD::Sound* soundGet = nullptr;
+				c->getCurrentSound(&soundGet);
+				if ( sounds[snd] == soundGet )
+				{
+					FMOD_VECTOR playingPosition;
+					c->get3DAttributes(&playingPosition, nullptr);
+					//printlog("Channel index: %d, audibility: %f, vol: %f, pos x: %.2f | y: %.2f", i, audibility, volume, playingPosition.z, playingPosition.x);
+					if ( abs(volume - (vol / 255.f)) < 0.05 )
+					{
+						if ( (pow(playingPosition.x - 0.0, 2) + pow(playingPosition.z - 0.0, 2)) <= 2.0 )
+						{
+							//printlog("Culling sound due to proximity, pos x: %.2f | y: %.2f", position.z, position.x);
+							vol *= 0.8;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	FMOD::Channel* channel = nullptr;
-	fmod_result = fmod_system->playSound(sounds[snd], getChannelGroupForSoundIndex(snd), true, &channel);
+	fmod_result = fmod_system->playSound(sounds[snd], channelGroupOverride, true, &channel);
     if (fmod_result == FMOD_OK && channel) {
         //Faux 3D. Set to 0 and then set the channel's mode to be relative  to the player's head to achieve global sound.
         FMOD_VECTOR position;
@@ -355,7 +486,7 @@ FMOD::Channel* playSound(Uint16 snd, Uint8 vol)
         channel->setVolume(vol / 255.f);
         channel->set3DAttributes(&position, nullptr);
         channel->setMode(FMOD_3D_HEADRELATIVE);
-        
+
         if (FMODErrorCheck())
         {
             return nullptr;

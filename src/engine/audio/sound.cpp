@@ -112,6 +112,9 @@ void setGlobalVolume(real_t master, real_t music, real_t gameplay, real_t ambien
     music = std::min(std::max(0.0, music / 4.0), 1.0); // music volume cut in half because the music is loud...
     gameplay = std::min(std::max(0.0, gameplay), 1.0);
     ambient = std::min(std::max(0.0, ambient), 1.0);
+
+	soundTrap_group->setVolume(master * std::min(std::max(0.0, environment), 1.0));
+
     environment = std::min(std::max(0.0, environment / 2.0), 1.0);
 	notification = std::min(std::max(0.0, notification), 1.0);
 

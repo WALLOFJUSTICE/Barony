@@ -83,7 +83,7 @@ void actSpearTrap(Entity* my)
 			{
 				SPEARTRAP_STATUS = 1;
 				SPEARTRAP_OUTTIME = 0;
-				playSoundEntity(my, 82, 64);
+				playSoundEntity(my, 82, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				serverUpdateEntitySkill(my, 3);
 				serverUpdateEntitySkill(my, 4);
 			}
@@ -96,7 +96,7 @@ void actSpearTrap(Entity* my)
 				SPEARTRAP_STATUS = 0;
 				if ( SPEARTRAP_OUTTIME <= 60 )
 				{
-					playSoundEntity(my, 82, 64);
+					playSoundEntity(my, 82, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				}
 				SPEARTRAP_OUTTIME = 0;
 				serverUpdateEntitySkill(my, 3);
@@ -136,7 +136,7 @@ void actSpearTrap(Entity* my)
 			SPEARTRAP_OUTTIME++;
 			if ( SPEARTRAP_OUTTIME > 60 )
 			{
-				playSoundEntity(my, 82, 64);
+				playSoundEntity(my, 82, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				serverUpdateEntitySkill(my, 4);
 			}
 			else if ( SPEARTRAP_OUTTIME == 1 )

@@ -123,7 +123,7 @@ extern std::vector<FMOD::Sound*> rooftopmusic;
 extern FMOD::Channel* music_channel, *music_channel2, *music_resume; //TODO: List of music, play first one, fade out all the others? Eh, maybe some other day. //music_resume is the music to resume after, say, combat or shops. //TODO: Clear music_resume every biome change. Or otherwise validate it for that level set.
 
 extern FMOD::ChannelGroup* sound_group, *music_group;
-extern FMOD::ChannelGroup* soundAmbient_group, *soundEnvironment_group, *music_notification_group, *soundNotification_group;
+extern FMOD::ChannelGroup* soundAmbient_group, *soundTrap_group, *soundEnvironment_group, *music_notification_group, *soundNotification_group;
 
 #define NUMENSEMBLEMUSIC 8
 extern FMOD::ChannelGroup* music_ensemble_global_send_group;
@@ -203,13 +203,13 @@ bool FMODErrorCheck();
 
 void sound_update(int player, int index, int numplayers);
 
-FMOD::Channel* playSoundPlayer(int player, Uint16 snd, Uint8 vol);
+FMOD::Channel* playSoundPlayer(int player, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex = SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 FMOD::Channel* playSoundNotificationPlayer(int player, Uint16 snd, Uint8 vol);
-FMOD::Channel* playSoundPos(real_t x, real_t y, Uint16 snd, Uint8 vol);
-FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol);
-FMOD::Channel* playSoundEntity(Entity* entity, Uint16 snd, Uint8 vol);
-FMOD::Channel* playSoundEntityLocal(Entity* entity, Uint16 snd, Uint8 vol);
-FMOD::Channel* playSound(Uint16 snd, Uint8 vol);
+FMOD::Channel* playSoundPos(real_t x, real_t y, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex);
+FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex);
+FMOD::Channel* playSoundEntity(Entity* entity, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex = SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
+FMOD::Channel* playSoundEntityLocal(Entity* entity, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex = SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
+FMOD::Channel* playSound(Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex = SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK);
 FMOD::Channel* playSoundNotification(Uint16 snd, Uint8 vol);
 FMOD::Channel* playSoundVelocity();
 

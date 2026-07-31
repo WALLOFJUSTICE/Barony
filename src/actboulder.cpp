@@ -207,6 +207,10 @@ bool doesEntityStopBoulder(Entity* entity)
 	{
 		return true;
 	}
+	else if ( entity->behavior == &actEternalShrine )
+	{
+		return true;
+	}
 	return false;
 }
 
@@ -716,7 +720,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 				my->vel_x = 0.0; // TODOR: Anywhere this is could possible be changed to be a static 'if( BOULDER_ROLLING == 0 ) { vel = 0 }' instead of duplicating code everywhere
 				my->vel_y = 0.0;
 				BOULDER_ROLLING = 0;
-				playSoundEntity(my, 181, 128);
+				playSoundEntity(my, 181, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				if ( my->flags[PASSABLE] )
 				{
 					my->flags[PASSABLE] = false;
@@ -742,7 +746,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 			{
 				entity->doorSmacked = (my->y < entity->y);
 			}
-			playSoundEntity(my, 181, 128);
+			playSoundEntity(my, 181, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 		}
 	}
 	else if ( entity->behavior == &actFurniture )
@@ -751,7 +755,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 		{
 			playSoundEntity(entity, 28, 64);
 			entity->furnitureHealth = 0;
-			playSoundEntity(my, 181, 128);
+			playSoundEntity(my, 181, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 		}
 	}
 	else if ( entity->isDamageableCollider() && entity->isColliderWeakToBoulders() )
@@ -761,7 +765,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 			playSoundEntity(entity, 28, 64);
 			entity->colliderCurrentHP = 0;
 			entity->colliderKillerUid = 0;
-			playSoundEntity(my, 181, 128);
+			playSoundEntity(my, 181, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 		}
 	}
 	return 0;
@@ -950,7 +954,7 @@ void actBoulder(Entity* my)
 	{
 		if ( fabs(my->vel_z) > 1 )
 		{
-			playSoundEntity(my, 182, 128);
+			playSoundEntity(my, 182, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			my->vel_z = -(my->vel_z / 2) * (1 / boulderModifier);
 			for ( int i = 0; i < MAXPLAYERS; ++i )
 			{
@@ -969,7 +973,7 @@ void actBoulder(Entity* my)
 		{
 			if ( my->vel_z )
 			{
-				playSoundEntity(my, 182, 128);
+				playSoundEntity(my, 182, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				for ( int i = 0; i < MAXPLAYERS; ++i )
 				{
 					if ( players[i]->isLocalPlayer() )
@@ -1053,7 +1057,7 @@ void actBoulder(Entity* my)
 		double dist = sqrt(pow(my->vel_x, 2) + pow(my->vel_y, 2));
 		if ( clipDist != dist && !hit.entity/*map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height]*/ )
 		{
-			playSoundEntity(my, 181, 128);
+			playSoundEntity(my, 181, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			BOULDER_STOPPED = 1;
 			TileEntityList.updateEntity(*my);
 			bool foundPathToExit = boulderCheckIfBlockedExit(my);
@@ -1477,7 +1481,7 @@ void actBoulder(Entity* my)
 						{
 							if ( clipDist > 0.001 )
 							{
-								playSoundEntity(my, 151, 128);
+								playSoundEntity(my, 151, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 							}
 							else
 							{
@@ -1512,7 +1516,7 @@ void actBoulder(Entity* my)
 
 				if ( BOULDER_SOUND_ON_PUSH > 0 )
 				{
-					playSoundEntity(my, 151, 128);
+					playSoundEntity(my, 151, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 					for ( int i = 0; i < MAXPLAYERS; ++i )
 					{
 						if ( players[i]->isLocalPlayer() )
@@ -1566,13 +1570,13 @@ void actBoulder(Entity* my)
 			if ( BOULDER_AMBIENCE >= TICKS_PER_SECOND / 2)
 			{
 				BOULDER_AMBIENCE = 0;
-				playSoundEntity(my, 151, 64);
+				playSoundEntity(my, 151, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			}
 		}
 		else if ( BOULDER_AMBIENCE >= TICKS_PER_SECOND / 3 )
 		{
 			BOULDER_AMBIENCE = 0;
-			playSoundEntity(my, 151, 128);
+			playSoundEntity(my, 151, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			for ( int i = 0; i < MAXPLAYERS; ++i )
 			{
 				if ( players[i]->isLocalPlayer() )
@@ -1810,8 +1814,8 @@ void actBoulderTrap(Entity* my)
 			}
 			if ( foundTrapdoor >= 0 )
 			{
-				playSoundEntity(my, 150, 128);
-				playSoundPlayer(clientnum, 150, 64);
+				playSoundEntity(my, 150, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+				playSoundPlayer(clientnum, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				for ( c = 0; c < MAXPLAYERS; c++ )
 				{
 					if ( players[c]->isLocalPlayer() )
@@ -1820,7 +1824,7 @@ void actBoulderTrap(Entity* my)
 					}
 					else
 					{
-						playSoundPlayer(c, 150, 64);
+						playSoundPlayer(c, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 						inputs.addRumbleRemotePlayer(c, Inputs::HAPTIC_SFX_BOULDER_LAUNCH_VOL, my->getUID());
 					}
 				}
@@ -1894,13 +1898,13 @@ void actBoulderTrapEast(Entity* my)
 				--my->boulderTrapPreDelay;
 				return;
 			}
-			playSoundEntity(my, 150, 128);
-			playSoundPlayer(clientnum, 150, 64);
+			playSoundEntity(my, 150, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+			playSoundPlayer(clientnum, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			for ( c = 0; c < MAXPLAYERS; c++ )
 			{
 				if ( !players[c]->isLocalPlayer() )
 				{
-					playSoundPlayer(c, 150, 64);
+					playSoundPlayer(c, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				}
 			}
 			my->boulderTrapFired = 1;
@@ -2014,13 +2018,13 @@ void actBoulderTrapSouth(Entity* my)
 				--my->boulderTrapPreDelay;
 				return;
 			}
-			playSoundEntity(my, 150, 128);
-			playSoundPlayer(clientnum, 150, 64);
+			playSoundEntity(my, 150, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+			playSoundPlayer(clientnum, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			for ( c = 0; c < MAXPLAYERS; c++ )
 			{
 				if ( !players[c]->isLocalPlayer() )
 				{
-					playSoundPlayer(c, 150, 64);
+					playSoundPlayer(c, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				}
 			}
 			my->boulderTrapFired = 1;
@@ -2134,13 +2138,13 @@ void actBoulderTrapWest(Entity* my)
 				--my->boulderTrapPreDelay;
 				return;
 			}
-			playSoundEntity(my, 150, 128);
-			playSoundPlayer(clientnum, 150, 64);
+			playSoundEntity(my, 150, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+			playSoundPlayer(clientnum, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			for ( c = 0; c < MAXPLAYERS; c++ )
 			{
 				if ( !players[c]->isLocalPlayer() )
 				{
-					playSoundPlayer(c, 150, 64);
+					playSoundPlayer(c, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				}
 			}
 			my->boulderTrapFired = 1;
@@ -2254,13 +2258,13 @@ void actBoulderTrapNorth(Entity* my)
 				--my->boulderTrapPreDelay;
 				return;
 			}
-			playSoundEntity(my, 150, 128);
-			playSoundPlayer(clientnum, 150, 64);
+			playSoundEntity(my, 150, 128, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+			playSoundPlayer(clientnum, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 			for ( c = 0; c < MAXPLAYERS; c++ )
 			{
 				if ( !players[c]->isLocalPlayer() )
 				{
-					playSoundPlayer(c, 150, 64);
+					playSoundPlayer(c, 150, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 				}
 			}
 			my->boulderTrapFired = 1;
