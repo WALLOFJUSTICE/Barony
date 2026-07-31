@@ -550,6 +550,12 @@ void actSpriteWorldTooltip(Entity* my)
 	return;
 }
 
+void actEternalShrineOffering(Entity* my)
+{
+	// dummy function
+	return;
+}
+
 void actDamageGib(Entity* my)
 {
 	// dummy function

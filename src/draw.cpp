@@ -2522,6 +2522,7 @@ void drawEntities3D(view_t* camera, int mode)
 			}
 			else if ( entity->behavior == &actEternalShrineOffering )
 			{
+#ifndef EDITOR
 				const char* buf = nullptr;
 				if ( entity->sprite > 0 && entity->sprite < NUM_SPELLS )
 				{
@@ -2576,6 +2577,7 @@ void drawEntities3D(view_t* camera, int mode)
 				{
 					glDrawSpriteFromImage(camera, entity, buf, mode, true);
 				}
+#endif
 			}
 			else if ( entity->behavior == &actDamageGib )
 			{
