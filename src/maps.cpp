@@ -3847,7 +3847,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 	}
 
 	std::vector<std::pair<ItemType, int>> generateKeyItems;
-	bool ceilingTilesAllowed = !strncmp(map.filename, "fortress", 8);
+	bool ceilingTilesAllowed = !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "backrooms", 9);
 	bool wallDecorationTilesAllowed = !strncmp(map.filename, "keep", 4);
 	for ( node = map.entities->first; node != nullptr; node = node->next )
 	{
@@ -4563,6 +4563,11 @@ int generateDungeon(char* levelset, Uint32 seed)
 		//}
 		else
 		{
+			if ( levelData.id.find("backrooms") != std::string::npos )
+			{
+				break;
+			}
+
 			int x2, y2;
 			bool nodecoration = false;
 			int obstacles = 0;
