@@ -3803,7 +3803,7 @@ namespace MainMenu {
 		auto font = Font::get(bigfont_outline); assert(font);
 
 		static float credits_scroll = 0.f;
-		constexpr int num_credits_lines = 90;
+		constexpr int num_credits_lines = 97;
 
 		auto credits = main_menu_frame->addFrame("credits");
 		credits->setSize(SDL_Rect{0, 0, Frame::virtualScreenX, Frame::virtualScreenY});
@@ -3848,6 +3848,9 @@ namespace MainMenu {
 			u8" \n"
 			u8" \n \n \n \n \n"
 			u8"Programming and design\n"
+			u8" \n"
+			u8" \n \n \n \n \n"
+			u8"Production, marketing, and writing\n"
 			u8" \n"
 			u8" \n \n \n \n \n"
 			u8"Additional art\n"
@@ -3899,6 +3902,9 @@ namespace MainMenu {
 			u8" \n \n \n \n \n"
 			u8" \n"
 			u8"Ben Potter\n"
+			u8" \n \n \n \n \n"
+			u8" \n"
+			u8"Eric Studer\n"
 			u8" \n \n \n \n \n"
 			u8" \n"
 			u8"Matthew Griebner\n"
