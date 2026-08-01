@@ -522,6 +522,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* weaponarm = nullptr;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: isInvisible()?
 	if ( multiplayer != CLIENT )
@@ -898,14 +899,52 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			// torso
 			case LIMB_HUMANOID_TORSO:
-				entity->focalx = limbs[INCUBUS][1][0];
-				entity->focaly = limbs[INCUBUS][1][1];
-				entity->focalz = limbs[INCUBUS][1][2];
-				entity->sprite = my->sprite == 445 ? 446 : 1827;
-				my->setHumanoidLimbOffset(entity, INCUBUS, LIMB_HUMANOID_TORSO);
 				entity->scalex = 0.975;
 				entity->scaley = 0.975;
 				entity->scalez = 0.975;
+				entity->focalx = limbs[INCUBUS][1][0];
+				entity->focaly = limbs[INCUBUS][1][1];
+				entity->focalz = limbs[INCUBUS][1][2];
+				//entity->sprite = my->sprite == 445 ? 446 : 1827;
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->breastplate == nullptr || !itemModel(myStats->breastplate, false, my) )
+					{
+						entity->sprite = my->sprite == 445 ? 446 : 1827;
+					}
+					else
+					{
+						entity->sprite = itemModel(myStats->breastplate, false, my);
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+				my->setHumanoidLimbOffset(entity, INCUBUS, LIMB_HUMANOID_TORSO);
+				if ( entity->sprite == 446 || entity->sprite == 1827 )
+				{
+					entity->scalex = 0.975;
+					entity->scaley = 0.975;
+					entity->scalez = 0.975;
+				}
 				break;
 			// right leg
 			case LIMB_HUMANOID_RIGHTLEG:
@@ -982,6 +1021,68 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// right arm
 			case LIMB_HUMANOID_RIGHTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 445 ? 448 : 1829;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_RIGHT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 448 || entity->sprite == 1829 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 445 ? 448 : 1829;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				node_t* weaponNode = list_Node(&my->children, LIMB_HUMANOID_WEAPON);
 				if ( weaponNode )
 				{
@@ -992,7 +1093,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][4][0] - 0.25; // 0
 						entity->focaly = limbs[INCUBUS][4][1] - 0.25; // 0
 						entity->focalz = limbs[INCUBUS][4][2]; // 2
-						entity->sprite = my->sprite == 445 ? 448 : 1829;
+						//entity->sprite = my->sprite == 445 ? 448 : 1829;
 						if ( my->monsterAttack == 0 )
 						{
 							entity->roll = -PI / 32;
@@ -1004,7 +1105,19 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][4][0];
 						entity->focaly = limbs[INCUBUS][4][1];
 						entity->focalz = limbs[INCUBUS][4][2];
-						entity->sprite = my->sprite == 445 ? 595 : 1833;
+						//entity->sprite = my->sprite == 445 ? 595 : 1833;
+						if ( entity->sprite == 448 )
+						{
+							entity->sprite = 595;
+						}
+						else if ( entity->sprite == 1829 )
+						{
+							entity->sprite = 1833;
+						}
+						else if ( entity->sprite != 595 && entity->sprite != 1833 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, INCUBUS, LIMB_HUMANOID_RIGHTARM);
@@ -1014,6 +1127,68 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// left arm
 			case LIMB_HUMANOID_LEFTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 445 ? 447 : 1828;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_LEFT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 447 || entity->sprite == 1828 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 445 ? 447 : 1828;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				shieldarm = entity;
 				node_t* shieldNode = list_Node(&my->children, 8);
 				if ( shieldNode )
@@ -1025,7 +1200,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][5][0] - 0.25; // 0
 						entity->focaly = limbs[INCUBUS][5][1] + 0.25; // 0
 						entity->focalz = limbs[INCUBUS][5][2]; // 2
-						entity->sprite = my->sprite == 445 ? 447 : 1828;
+						//entity->sprite = my->sprite == 445 ? 447 : 1828;
 						if ( my->monsterAttack == 0 )
 						{
 							entity->roll = PI / 32;
@@ -1037,7 +1212,19 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INCUBUS][5][0];
 						entity->focaly = limbs[INCUBUS][5][1];
 						entity->focalz = limbs[INCUBUS][5][2];
-						entity->sprite = my->sprite == 445 ? 594 : 1832;
+						//entity->sprite = my->sprite == 445 ? 594 : 1832;
+						if ( entity->sprite == 447 )
+						{
+							entity->sprite = 594;
+						}
+						else if ( entity->sprite == 1828 )
+						{
+							entity->sprite = 1832;
+						}
+						else if ( entity->sprite != 594 && entity->sprite != 1832 )
+						{
+							entity->sprite += 2;
+						}
 						if ( my->monsterSpecialState == INCUBUS_STEAL )
 						{
 							entity->yaw -= MONSTER_WEAPONYAW;

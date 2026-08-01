@@ -609,12 +609,6 @@ typedef enum EquipmentType
 	TYPE_RING,
 	TYPE_AMULET,
 	TYPE_MASK,
-	TYPE_SWORD,
-	TYPE_AXE,
-	TYPE_SPEAR,
-	TYPE_MACE,
-	TYPE_BOW,
-	TYPE_PROJECTILE,
 	TYPE_OFFHAND
 } EquipmentType;
 
@@ -713,8 +707,8 @@ public:
 	/*
 	 * Returns which weapon hits harder.
 	 */
-	static bool isThisABetterWeapon(const Item& newWeapon, const Item* weaponAlreadyHave);
-	static bool isThisABetterArmor(const Item& newArmor, const Item* armorAlreadyHave); //Also checks shields.
+	static bool isThisABetterWeapon(const Item& newWeapon, const Item* weaponAlreadyHave, Stat& wielder);
+	static bool isThisABetterArmor(const Item& newArmor, const Item* armorAlreadyHave, Stat& wielder); //Also checks shields.
 	bool shouldItemStack(int player, bool ignoreStackLimit = false) const;
 	bool shouldItemStackInShop(bool ignoreStackLimit = false);
 	int getMaxStackLimit(int player) const;

@@ -4888,6 +4888,10 @@ bool FollowerRadialMenu::allowedInteractFood(int monsterType)
 		case TROLL:
 		case COCKATRICE:
 		case SCARAB:
+		case GREMLIN:
+		case MYCONID:
+		case DRYAD:
+		case SALAMANDER:
 			return true;
 			break;
 		default:
@@ -4908,6 +4912,10 @@ bool FollowerRadialMenu::allowedInteractWorld(int monsterType)
 		case GOATMAN:
 		case SKELETON:
 		case GYROBOT:
+		case GREMLIN:
+		case MYCONID:
+		case DRYAD:
+		case SALAMANDER:
 			return true;
 			break;
 		default:
@@ -4927,11 +4935,16 @@ bool FollowerRadialMenu::allowedInteractItems(int monsterType)
 		case KOBOLD:
 		case GOATMAN:
 		case INCUBUS:
+		case SUCCUBUS:
 		case INSECTOID:
 		case SKELETON:
 		case VAMPIRE:
 		case SLIME:
 		case GYROBOT:
+		case GREMLIN:
+		case MYCONID:
+		case DRYAD:
+		case SALAMANDER:
 			if ( followerToCommand && followerToCommand->monsterAllySummonRank != 0 )
 			{
 				return false;

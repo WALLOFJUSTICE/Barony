@@ -2375,58 +2375,6 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 //	return;
 //}
 //
-//bool Entity::goatmanCanWieldItem(const Item& item) const
-//{
-//	Stat* myStats = getStats();
-//	if ( !myStats )
-//	{
-//		return false;
-//	}
-//
-//	if ( monsterAllyIndex >= 0 && (monsterAllyClass != ALLY_CLASS_MIXED || item.interactNPCUid == getUID()) )
-//	{
-//		return monsterAllyEquipmentInClass(item);
-//	}
-//
-//	switch ( itemCategory(&item) )
-//	{
-//		case WEAPON:
-//			return true;
-//		case POTION:
-//			switch ( item.type )
-//			{
-//				case POTION_BOOZE:
-//					return true;
-//				case POTION_HEALING:
-//					return true;
-//				default:
-//					return false;
-//			}
-//			break;
-//		case TOOL:
-//			if ( itemTypeIsQuiver(item.type) )
-//			{
-//				return true;
-//			}
-//			break;
-//		case THROWN:
-//			return true;
-//		case ARMOR:
-//			{ //Little baby compiler stop whining, wah wah.
-//				int equipType = checkEquipType(&item);
-//				if ( equipType == TYPE_HAT || equipType == TYPE_HELM )
-//				{
-//					return false; //No can wear hats, because horns.
-//				}
-//				return true; //Can wear all other armor.
-//			}
-//		default:
-//			return false;
-//	}
-//
-//	return false;
-//}
-//
 
 
 

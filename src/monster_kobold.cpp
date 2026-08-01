@@ -22,6 +22,7 @@
 #include "player.hpp"
 #include "magic/magic.hpp"
 #include "prng.hpp"
+#include "mod_tools.hpp"
 
 void initKobold(Entity* my, Stat* myStats)
 {
@@ -486,6 +487,26 @@ void initKobold(Entity* my, Stat* myStats)
 	node->size = sizeof(Entity*);
 	my->bodyparts.push_back(entity);
 
+	// mask
+	entity = newEntity(-1, 1, map.entities, nullptr); //Limb entity.
+	entity->sizex = 4;
+	entity->sizey = 4;
+	entity->skill[2] = my->getUID();
+	entity->flags[PASSABLE] = true;
+	entity->flags[NOUPDATE] = true;
+	entity->flags[USERFLAG2] = my->flags[USERFLAG2];
+	entity->noColorChangeAllyLimb = 1.0;
+	entity->focalx = limbs[KOBOLD][10][0]; // 0
+	entity->focaly = limbs[KOBOLD][10][1]; // 0
+	entity->focalz = limbs[KOBOLD][10][2]; // .25
+	entity->behavior = &actKoboldLimb;
+	entity->parent = my->getUID();
+	node = list_AddNodeLast(&my->children);
+	node->element = entity;
+	node->deconstructor = &emptyDeconstructor;
+	node->size = sizeof(Entity*);
+	my->bodyparts.push_back(entity);
+
 	if ( multiplayer == CLIENT || MONSTER_INIT )
 	{
 		return;
@@ -527,8 +548,11 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* entity = nullptr, *entity2 = nullptr;
 	Entity* rightbody = nullptr;
 	Entity* weaponarm = nullptr;
+	Entity* helmet = nullptr;
+	Entity* torso = nullptr;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: isInvisible()?
 	if ( multiplayer != CLIENT )
@@ -664,9 +688,49 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		{
 			// torso
 			case LIMB_HUMANOID_TORSO:
-				entity->x -= .25 * cos(my->yaw);
-				entity->y -= .25 * sin(my->yaw);
-				entity->z += 1.25;
+				torso = entity;
+				//entity->x -= .25 * cos(my->yaw);
+				//entity->y -= .25 * sin(my->yaw);
+				//entity->z += 1.25;
+				entity->scalex = 1.0;
+				entity->scaley = 1.0;
+				entity->scalez = 1.0;
+				entity->focalx = limbs[KOBOLD][1][0];
+				entity->focaly = limbs[KOBOLD][1][1];
+				entity->focalz = limbs[KOBOLD][1][2];
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->breastplate == nullptr || !itemModel(myStats->breastplate, true, my) )
+					{
+						entity->sprite = 422;
+					}
+					else
+					{
+						entity->sprite = itemModel(myStats->breastplate, true, my);
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+				my->setHumanoidLimbOffset(entity, KOBOLD, LIMB_HUMANOID_TORSO);
 				break;
 			// right leg
 			case LIMB_HUMANOID_RIGHTLEG:
@@ -757,6 +821,68 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// right arm
 			case LIMB_HUMANOID_RIGHTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = 425;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_RIGHT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 425 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = 425;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				node_t* weaponNode = list_Node(&my->children, 7);
 				if ( weaponNode )
 				{
@@ -767,20 +893,33 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[KOBOLD][4][0]; // 0
 						entity->focaly = limbs[KOBOLD][4][1]; // 0
 						entity->focalz = limbs[KOBOLD][4][2]; // 2
-						entity->sprite = 425;
+						//entity->sprite = 425;
 					}
 					else
 					{
 						// else flex arm.
-						entity->focalx = limbs[KOBOLD][4][0] + 1; // 1
+						entity->focalx = limbs[KOBOLD][4][0] + 1.25; // 1
 						entity->focaly = limbs[KOBOLD][4][1]; // 0
-						entity->focalz = limbs[KOBOLD][4][2] - 1; // 1
-						entity->sprite = 426;
+						entity->focalz = limbs[KOBOLD][4][2] - 1.5; // 1
+						//entity->sprite = 426;
+						if ( entity->sprite == 425 )
+						{
+							entity->sprite = 426;
+						}
+						else if ( entity->sprite != 426 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				entity->x += 2.5 * cos(my->yaw + PI / 2) - .75 * cos(my->yaw);
 				entity->y += 2.5 * sin(my->yaw + PI / 2) - .75 * sin(my->yaw);
 				entity->z -= .25;
+				if ( torso && torso->sprite != 422 )
+				{
+					entity->x += 0.5 * cos(my->yaw);
+					entity->y += 0.5 * sin(my->yaw);
+				}
 				entity->yaw += MONSTER_WEAPONYAW;
 				if ( my->z >= 3.9 && my->z <= 4.1 )
 				{
@@ -791,6 +930,68 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// left arm
 			case LIMB_HUMANOID_LEFTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = 427;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_LEFT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 427 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = 427;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				shieldarm = entity;
 				node_t* shieldNode = list_Node(&my->children, 8);
 				if ( shieldNode )
@@ -802,20 +1003,33 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[KOBOLD][5][0]; // 0
 						entity->focaly = limbs[KOBOLD][5][1]; // 0
 						entity->focalz = limbs[KOBOLD][5][2]; // 2
-						entity->sprite = 427;
+						//entity->sprite = 427;
 					}
 					else
 					{
 						// else flex arm.
-						entity->focalx = limbs[KOBOLD][5][0] + 1; // 1
+						entity->focalx = limbs[KOBOLD][5][0] + 1.25; // 1
 						entity->focaly = limbs[KOBOLD][5][1]; // 0
-						entity->focalz = limbs[KOBOLD][5][2] - 1; // 1
-						entity->sprite = 428;
+						entity->focalz = limbs[KOBOLD][5][2] - 1.5; // 1
+						//entity->sprite = 428;
+						if ( entity->sprite == 427 )
+						{
+							entity->sprite = 428;
+						}
+						else if ( entity->sprite != 428 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				entity->x -= 2.5 * cos(my->yaw + PI / 2) + .75 * cos(my->yaw);
 				entity->y -= 2.5 * sin(my->yaw + PI / 2) + .75 * sin(my->yaw);
 				entity->z -= .25;
+				if ( torso && torso->sprite != 422 )
+				{
+					entity->x += 0.5 * cos(my->yaw);
+					entity->y += 0.5 * sin(my->yaw);
+				}
 				if ( my->z >= 3.9 && my->z <= 4.1 )
 				{
 					entity->pitch = 0;
@@ -946,77 +1160,86 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->flags[INVISIBLE] = true;
 					}
 				}
-				entity->x -= 2.5 * cos(my->yaw + PI / 2) + .20 * cos(my->yaw);
-				entity->y -= 2.5 * sin(my->yaw + PI / 2) + .20 * sin(my->yaw);
-				entity->z += 1;
-				entity->yaw = shieldarm->yaw;
-				entity->roll = 0;
-				entity->pitch = 0;
-				if ( entity->sprite == items[TOOL_LANTERN].index )
+				my->handleHumanoidShieldLimb(entity, shieldarm);
+				if ( torso && torso->sprite != 422 )
 				{
-				    entity->z += 2;
+					entity->x += 0.5 * cos(my->yaw);
+					entity->y += 0.5 * sin(my->yaw);
 				}
-	            if ( flickerLights || my->ticks % TICKS_PER_SECOND == 1 )
-	            {
-				    if ( entity->sprite == items[TOOL_TORCH].index )
-				    {
-						if ( entity2 = spawnFlame(entity, SPRITE_FLAME) )
-						{
-							entity2->x += 2 * cos(entity->yaw);
-							entity2->y += 2 * sin(entity->yaw);
-							entity2->z -= 2;
-						}
-				    }
-				    else if ( entity->sprite == items[TOOL_CRYSTALSHARD].index )
-				    {
-					    /*entity2 = spawnFlame(entity, SPRITE_CRYSTALFLAME);
-					    entity2->x += 2 * cos(entity->yaw);
-					    entity2->y += 2 * sin(entity->yaw);
-					    entity2->z -= 2;*/
-				    }
-				    else if ( entity->sprite == items[TOOL_LANTERN].index )
-				    {
-						if ( entity2 = spawnFlame(entity, SPRITE_FLAME) )
-						{
-							entity2->x += 2 * cos(entity->yaw);
-							entity2->y += 2 * sin(entity->yaw);
-							entity2->z += 1;
-						}
-				    }
-				}
-				if ( MONSTER_SHIELDYAW > PI / 32 )
-				{
-					if ( entity->sprite != items[TOOL_TORCH].index && entity->sprite != items[TOOL_LANTERN].index && entity->sprite != items[TOOL_CRYSTALSHARD].index )
-					{
-						// shield, so rotate a little.
-						entity->roll += PI / 64;
-						entity->x += 2 * cos(my->yaw); // stick out shield a bit when defending to minimise model clipping
-						entity->y += 2 * sin(my->yaw);
-					}
-					else
-					{
-						entity->x += 0.25 * cos(my->yaw);
-						entity->y += 0.25 * sin(my->yaw);
-						entity->pitch += PI / 16;
-						if ( entity2 )
-						{
-							entity2->x += 0.75 * cos(shieldarm->yaw);
-							entity2->y += 0.75 * sin(shieldarm->yaw);
-						}
-					}
-				}
-				if ( itemSpriteIsQuiverThirdPersonModel(entity->sprite) )
-				{
-					/*shieldLimb->x -= -0.25 * cos(this->yaw + PI / 2) + 1.25 * cos(this->yaw);
-					shieldLimb->y -= -0.25 * sin(this->yaw + PI / 2) + 1.25 * sin(this->yaw);*/
-					entity->x -= 0.25 * cos(my->yaw + PI / 2);
-					entity->y -= 0.25 * sin(my->yaw + PI / 2);
-					entity->z += 1;
-					entity->yaw += PI / 6;
-				}
+				//entity->x -= 2.5 * cos(my->yaw + PI / 2) + .20 * cos(my->yaw);
+				//entity->y -= 2.5 * sin(my->yaw + PI / 2) + .20 * sin(my->yaw);
+				//entity->z += 1;
+				//entity->yaw = shieldarm->yaw;
+				//entity->roll = 0;
+				//entity->pitch = 0;
+				//if ( entity->sprite == items[TOOL_LANTERN].index )
+				//{
+				//    entity->z += 2;
+				//}
+	   //         if ( flickerLights || my->ticks % TICKS_PER_SECOND == 1 )
+	   //         {
+				//    if ( entity->sprite == items[TOOL_TORCH].index )
+				//    {
+				//		if ( entity2 = spawnFlame(entity, SPRITE_FLAME) )
+				//		{
+				//			entity2->x += 1.5 * cos(entity->yaw);
+				//			entity2->y += 1.5 * sin(entity->yaw);
+				//			entity2->z -= 3;
+				//		}
+				//    }
+				//    else if ( entity->sprite == items[TOOL_CRYSTALSHARD].index )
+				//    {
+				//	    /*entity2 = spawnFlame(entity, SPRITE_CRYSTALFLAME);
+				//	    entity2->x += 2 * cos(entity->yaw);
+				//	    entity2->y += 2 * sin(entity->yaw);
+				//	    entity2->z -= 2;*/
+				//    }
+				//    else if ( entity->sprite == items[TOOL_LANTERN].index )
+				//    {
+				//		if ( entity2 = spawnFlame(entity, SPRITE_FLAME) )
+				//		{
+				//			entity2->x += 2 * cos(entity->yaw);
+				//			entity2->y += 2 * sin(entity->yaw);
+				//			entity2->z += 1;
+				//		}
+				//    }
+				//}
+				//if ( MONSTER_SHIELDYAW > PI / 32 )
+				//{
+				//	if ( entity->sprite != items[TOOL_TORCH].index && entity->sprite != items[TOOL_LANTERN].index && entity->sprite != items[TOOL_CRYSTALSHARD].index )
+				//	{
+				//		// shield, so rotate a little.
+				//		entity->roll += PI / 64;
+				//		entity->x += 2 * cos(my->yaw); // stick out shield a bit when defending to minimise model clipping
+				//		entity->y += 2 * sin(my->yaw);
+				//	}
+				//	else
+				//	{
+				//		entity->x += 0.25 * cos(my->yaw);
+				//		entity->y += 0.25 * sin(my->yaw);
+				//		entity->pitch += PI / 16;
+				//		if ( entity2 )
+				//		{
+				//			entity2->x += 0.75 * cos(shieldarm->yaw);
+				//			entity2->y += 0.75 * sin(shieldarm->yaw);
+				//		}
+				//	}
+				//}
+				//if ( itemSpriteIsQuiverThirdPersonModel(entity->sprite) )
+				//{
+				//	/*shieldLimb->x -= -0.25 * cos(this->yaw + PI / 2) + 1.25 * cos(this->yaw);
+				//	shieldLimb->y -= -0.25 * sin(this->yaw + PI / 2) + 1.25 * sin(this->yaw);*/
+				//	entity->x -= 0.25 * cos(my->yaw + PI / 2);
+				//	entity->y -= 0.25 * sin(my->yaw + PI / 2);
+				//	entity->z += 1;
+				//	entity->yaw += PI / 6;
+				//}
 				break;
 			// cloak
 			case LIMB_HUMANOID_CLOAK:
+				entity->focalx = limbs[KOBOLD][8][0];
+				entity->focaly = limbs[KOBOLD][8][1];
+				entity->focalz = limbs[KOBOLD][8][2];
 				if ( multiplayer != CLIENT )
 				{
 					if ( myStats->cloak == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
@@ -1062,12 +1285,17 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->flags[INVISIBLE] = true;
 					}
 				}
-				entity->x -= cos(my->yaw) * 1.5;
-				entity->y -= sin(my->yaw) * 1.5;
+				entity->x -= cos(my->yaw) * 1.0;
+				entity->y -= sin(my->yaw) * 1.0;
+				entity->z -= 1.0;
 				entity->yaw += PI / 2;
+				entity->scalex = 1.05;
+				entity->scaley = 1.05;
+				entity->scalez = 1.05;
 				break;
 			// helmet
 			case LIMB_HUMANOID_HELMET:
+				helmet = entity;
 				entity->focalx = limbs[KOBOLD][9][0]; // 0
 				entity->focaly = limbs[KOBOLD][9][1]; // 0
 				entity->focalz = limbs[KOBOLD][9][2]; // -2
@@ -1119,10 +1347,90 @@ void koboldMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					}
 				}
 				my->setHelmetLimbOffset(entity);
-				// override above function to 1.1x scales
-				entity->scalex = 1.1;
-				entity->scaley = 1.1;
-				entity->scalez = 1.1;
+				break;
+			case LIMB_HUMANOID_MASK:
+				entity->focalx = limbs[KOBOLD][10][0]; // 0
+				entity->focaly = limbs[KOBOLD][10][1]; // 0
+				entity->focalz = limbs[KOBOLD][10][2]; // .25
+				entity->pitch = my->pitch;
+				entity->roll = PI / 2;
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->mask == nullptr || myStats->getEffectActive(EFF_INVISIBLE) || wearingring ) //TODO: isInvisible()?
+					{
+						entity->flags[INVISIBLE] = true;
+					}
+					else
+					{
+						entity->flags[INVISIBLE] = false;
+					}
+					if ( myStats->mask != nullptr )
+					{
+						if ( myStats->mask->type == TOOL_GLASSES )
+						{
+							entity->sprite = 165; // GlassesWorn.vox
+						}
+						else if ( myStats->mask->type == MONOCLE )
+						{
+							entity->sprite = 1196; // monocleWorn.vox
+						}
+						else
+						{
+							entity->sprite = itemModel(myStats->mask);
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->skill[11] != entity->flags[INVISIBLE] )
+							{
+								entity->skill[11] = entity->flags[INVISIBLE];
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+				else
+				{
+					if ( entity->sprite <= 0 )
+					{
+						entity->flags[INVISIBLE] = true;
+					}
+				}
+
+				if ( entity->sprite == items[MASK_SHAMAN].index )
+				{
+					entity->roll = 0;
+					my->setHelmetLimbOffset(entity);
+					my->setHelmetLimbOffsetWithMask(helmet, entity);
+				}
+				else if ( EquipmentModelOffsets.modelOffsetExists(KOBOLD, entity->sprite, my->sprite) )
+				{
+					my->setHelmetLimbOffset(entity);
+					my->setHelmetLimbOffsetWithMask(helmet, entity);
+				}
+				else
+				{
+					entity->focalx = limbs[KOBOLD][10][0] + .35; // .35
+					entity->focaly = limbs[KOBOLD][10][1] - 2; // -2
+					entity->focalz = limbs[KOBOLD][10][2]; // .25
+				}
 				break;
 		}
 	}

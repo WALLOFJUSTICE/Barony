@@ -759,6 +759,7 @@ void goatmanMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* weaponarm = nullptr;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: isInvisible()?
 	if ( multiplayer != CLIENT )
@@ -1068,6 +1069,68 @@ void goatmanMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// right arm
 			case LIMB_HUMANOID_RIGHTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 1025 ? 1023 : 461;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_RIGHT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 1023 || entity->sprite == 461 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 1025 ? 1023 : 461;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				node_t* weaponNode = list_Node(&my->children, 7);
 				if ( weaponNode )
 				{
@@ -1078,7 +1141,7 @@ void goatmanMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[GOATMAN][4][0]; // 0
 						entity->focaly = limbs[GOATMAN][4][1]; // 0
 						entity->focalz = limbs[GOATMAN][4][2]; // 2
-						entity->sprite = my->sprite == 1025 ? 1023 : 461;
+						//entity->sprite = my->sprite == 1025 ? 1023 : 461;
 					}
 					else
 					{
@@ -1086,7 +1149,19 @@ void goatmanMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[GOATMAN][4][0] + 0.75;
 						entity->focaly = limbs[GOATMAN][4][1];
 						entity->focalz = limbs[GOATMAN][4][2] - 0.75;
-						entity->sprite = my->sprite == 1025 ? 1024 : 462;
+						//entity->sprite = my->sprite == 1025 ? 1024 : 462;
+						if ( entity->sprite == 1023 )
+						{
+							entity->sprite = 1024;
+						}
+						else if ( entity->sprite == 461 )
+						{
+							entity->sprite = 462;
+						}
+						else if ( entity->sprite != 1024 && entity->sprite != 462 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, GOATMAN, LIMB_HUMANOID_RIGHTARM);
@@ -1096,6 +1171,68 @@ void goatmanMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			}
 			case LIMB_HUMANOID_LEFTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 1025 ? 1021 : 459;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_LEFT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 1021 || entity->sprite == 459 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 1025 ? 1021 : 459;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				shieldarm = entity;
 				node_t* shieldNode = list_Node(&my->children, 8);
 				if ( shieldNode )
@@ -1106,14 +1243,26 @@ void goatmanMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[GOATMAN][5][0]; // 0
 						entity->focaly = limbs[GOATMAN][5][1]; // 0
 						entity->focalz = limbs[GOATMAN][5][2]; // 2
-						entity->sprite = my->sprite == 1025 ? 1021 : 459;
+						//entity->sprite = my->sprite == 1025 ? 1021 : 459;
 					}
 					else
 					{
 						entity->focalx = limbs[GOATMAN][5][0] + 0.75;
 						entity->focaly = limbs[GOATMAN][5][1];
 						entity->focalz = limbs[GOATMAN][5][2] - 0.75;
-						entity->sprite = my->sprite == 1025 ? 1022 : 460;
+						//entity->sprite = my->sprite == 1025 ? 1022 : 460;
+						if ( entity->sprite == 1021 )
+						{
+							entity->sprite = 1022;
+						}
+						else if ( entity->sprite == 459 )
+						{
+							entity->sprite = 460;
+						}
+						else if ( entity->sprite != 1022 && entity->sprite != 460 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, GOATMAN, LIMB_HUMANOID_LEFTARM);
@@ -1726,14 +1875,7 @@ bool Entity::goatmanCanWieldItem(const Item& item) const
 		case THROWN:
 			return true;
 		case ARMOR:
-			{ //Little baby compiler stop whining, wah wah.
-				int equipType = checkEquipType(&item);
-				if ( equipType == TYPE_HAT || equipType == TYPE_HELM )
-				{
-					return false; //No can wear hats, because horns.
-				}
-				return true; //Can wear all other armor.
-			}
+			return true;
 		default:
 			return false;
 	}

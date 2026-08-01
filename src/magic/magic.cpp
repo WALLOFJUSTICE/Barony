@@ -1882,6 +1882,10 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			case SHADOW:
 			case COCKATRICE:
 			case BUGBEAR:
+			case REVENANT_SKULL:
+			case MONSTER_ADORCISED_WEAPON:
+			case MOTH_SMALL:
+			case HAUNTED_ARMOR:
 				summonCanEquipItems = false;
 				break;
 			default:
@@ -1904,6 +1908,10 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			case SHADOW:
 			case COCKATRICE:
 			case BUGBEAR:
+			case REVENANT_SKULL:
+			case MONSTER_ADORCISED_WEAPON:
+			case MOTH_SMALL:
+			case HAUNTED_ARMOR:
 				hitMonsterCanTransferEquipment = false;
 				break;
 			default:
@@ -2205,20 +2213,8 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			slot = itemSlot(targetStats, targetStats->breastplate);
 			if ( slot )
 			{
-				if ( monsterSummonType == KOBOLD || monsterSummonType == GNOME )
-				{
-					// kobold/gnomes can't equip breastplate, drop it!
-					Entity* dropped = dropItemMonster(targetStats->breastplate, target, targetStats);
-					if ( dropped )
-					{
-						dropped->flags[USERFLAG1] = true;
-					}
-				}
-				else
-				{
-					summonedStats->breastplate = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
-				}
+				summonedStats->breastplate = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
 			}
 
 			// shoes
@@ -2233,26 +2229,13 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			slot = itemSlot(targetStats, targetStats->helmet);
 			if ( slot )
 			{
-				if ( monsterSummonType == KOBOLD || monsterSummonType == GNOME )
+				if ( monsterSummonType == GNOME )
 				{
-					// kobold/gnomes can't equip non-hoods, drop the rest
-					if ( (*slot)->type == HAT_HOOD
-						|| (*slot)->type == HAT_HOOD_SILVER
-						|| (*slot)->type == HAT_HOOD_RED
-						|| (*slot)->type == HAT_HOOD_APPRENTICE
-						|| (*slot)->type == HAT_HOOD_WHISPERS
-						|| (*slot)->type == HAT_HOOD_ASSASSIN )
+					// gnome can't equip helmet (with the default hat), drop it!
+					Entity* dropped = dropItemMonster(targetStats->breastplate, target, targetStats);
+					if ( dropped )
 					{
-						summonedStats->helmet = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-							(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
-					}
-					else
-					{
-						Entity* dropped = dropItemMonster(targetStats->helmet, target, targetStats);
-						if ( dropped )
-						{
-							dropped->flags[USERFLAG1] = true;
-						}
+						dropped->flags[USERFLAG1] = true;
 					}
 				}
 				else
@@ -2260,6 +2243,14 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 					summonedStats->helmet = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
 						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
 				}
+			}
+
+			// mask
+			slot = itemSlot(targetStats, targetStats->mask);
+			if ( slot )
+			{
+				summonedStats->mask = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
 			}
 
 			// amulet
@@ -2290,20 +2281,8 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			slot = itemSlot(targetStats, targetStats->gloves);
 			if ( slot )
 			{
-				if ( monsterSummonType == KOBOLD || monsterSummonType == GNOME )
-				{
-					// kobold/gnomes can't equip gloves, drop it!
-					Entity* dropped = dropItemMonster(targetStats->gloves, target, targetStats);
-					if ( dropped )
-					{
-						dropped->flags[USERFLAG1] = true;
-					}
-				}
-				else
-				{
-					summonedStats->gloves = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
-				}
+				summonedStats->gloves = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
 			}
 		}
 		else if ( hitMonsterCanTransferEquipment && !summonCanEquipItems )
@@ -2366,6 +2345,11 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 				dropped->flags[USERFLAG1] = true;
 			}
 			dropped = dropItemMonster(targetStats->helmet, target, targetStats);
+			if ( dropped )
+			{
+				dropped->flags[USERFLAG1] = true;
+			}
+			dropped = dropItemMonster(targetStats->mask, target, targetStats);
 			if ( dropped )
 			{
 				dropped->flags[USERFLAG1] = true;

@@ -3458,7 +3458,7 @@ last of your magic is drained!#
 3109 hat is#
 3110 breastpiece is#
 3111 boots are#
-3112 shield is#
+3112 off-hand is#
 3113 gloves are#
 3114 cloak is#
 3115 ring is#
@@ -7379,5 +7379,11 @@ has been unlocked!#
 7102 locker#
 7103 pot plant#
 7104 Enter doorway#
+# NPC comments on mask being unequippable
+7105 mask is#
+# NPC foocubi comments on equipped item being blessed
+7106 %s blessed!#
+# NPC Human can't drop equipment cursed
+7107 Some of my items seem a little stuck on.#
 
 7999 END#

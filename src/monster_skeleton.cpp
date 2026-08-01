@@ -783,6 +783,7 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* weaponarm = nullptr;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: isInvisible()?
 	if ( multiplayer != CLIENT )
@@ -902,6 +903,12 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 		entity->x = my->x;
 		entity->y = my->y;
 		entity->z = my->z;
+
+		if ( bodypart < LIMB_HUMANOID_HELMET )
+		{
+			entity->z += 0.25;
+		}
+
 		if ( (MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP1) && bodypart == LIMB_HUMANOID_RIGHTARM )
 		{
 			// don't let the creatures's yaw move the casting arm
@@ -1135,9 +1142,9 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					else
 					{
 						// else flex arm.
-						entity->focalx = limbs[SKELETON][4][0] + 1; // 1
+						entity->focalx = limbs[SKELETON][4][0] + 0.75; // 1
 						entity->focaly = limbs[SKELETON][4][1]; // 0
-						entity->focalz = limbs[SKELETON][4][2] - 1; // 1
+						entity->focalz = limbs[SKELETON][4][2] - 0.75; // 1
 						if ( entity->sprite == 233 || entity->sprite == 1101 )
 						{
 							entity->sprite = my->sprite == 1103 ? 1102 : 234;
@@ -1233,9 +1240,9 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					else
 					{
 						// else flex arm.
-						entity->focalx = limbs[SKELETON][5][0] + 1; // 1
+						entity->focalx = limbs[SKELETON][5][0] + 0.75; // 1
 						entity->focaly = limbs[SKELETON][5][1]; // 0
-						entity->focalz = limbs[SKELETON][5][2] - 1; // 1
+						entity->focalz = limbs[SKELETON][5][2] - 0.75; // 1
 						if ( entity->sprite == 231 || entity->sprite == 1099 )
 						{
 							entity->sprite = my->sprite == 1103 ? 1100 : 232;

@@ -481,6 +481,7 @@ void vampireMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* weaponarm = nullptr;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: isInvisible()?
 	if ( multiplayer != CLIENT )

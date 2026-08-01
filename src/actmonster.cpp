@@ -13321,6 +13321,22 @@ void Entity::monsterAllySendCommand(int command, int destX, int destY, Uint32 ui
 						confirmDropped = true;
 						dropped->itemOriginalOwner = owner;
 					}
+					if ( myStats->mask )
+					{
+						if ( myStats->mask->canUnequip(myStats) )
+						{
+							dropped = dropItemMonster(myStats->mask, this, myStats);
+						}
+						else
+						{
+							unableToDrop = true;
+						}
+					}
+					if ( dropped )
+					{
+						confirmDropped = true;
+						dropped->itemOriginalOwner = owner;
+					}
 					if ( myStats->breastplate )
 					{
 						if ( myStats->breastplate->canUnequip(myStats) )
@@ -13430,6 +13446,10 @@ void Entity::monsterAllySendCommand(int command, int destX, int destY, Uint32 ui
 						if ( confirmDropped )
 						{
 							handleNPCInteractDialogue(*myStats, ALLY_EVENT_DROP_EQUIP);
+						}
+						else if ( myStats->ring || myStats->amulet )
+						{
+							unableToDrop = true;
 						}
 					}
 				}
@@ -13919,6 +13939,9 @@ void Entity::handleNPCInteractDialogue(Stat& myStats, AllyNPCChatter event)
 									case TYPE_OFFHAND:
 										snprintf(fullmsg, sizeof(fullmsg), Language::get(3071), Language::get(3112));
 										break;
+									case TYPE_MASK:
+										snprintf(fullmsg, sizeof(fullmsg), Language::get(3071), Language::get(7105));
+										break;
 									case TYPE_HELM:
 									case TYPE_HAT:
 									case TYPE_BREASTPIECE:
@@ -14030,6 +14053,9 @@ void Entity::handleNPCInteractDialogue(Stat& myStats, AllyNPCChatter event)
 			case ALLY_EVENT_FOLLOW:
 				message = Language::get(526 + local_rng.rand() % 3);
 				break;
+			case ALLY_EVENT_DROP_FAILED:
+				message = Language::get(7107);
+				break;
 			case ALLY_EVENT_MOVETO_REPATH:
 				if ( local_rng.rand() % 20 == 0 )
 				{
@@ -14091,24 +14117,34 @@ void Entity::handleNPCInteractDialogue(Stat& myStats, AllyNPCChatter event)
 				}
 				break;
 			case ALLY_EVENT_INTERACT_ITEM_CURSED:
+			case ALLY_EVENT_INTERACT_ITEM_BLESSED:
 				if ( FollowerMenu[playerLeader].entityToInteractWith && FollowerMenu[playerLeader].entityToInteractWith->behavior == &actItem )
 				{
 					Item* item = newItemFromEntity(FollowerMenu[playerLeader].entityToInteractWith);
 					if ( item )
 					{
+						int beatitudeLangIndex = 3118;
+						if ( event == ALLY_EVENT_INTERACT_ITEM_BLESSED )
+						{
+							beatitudeLangIndex = 7106;
+						}
+
 						char fullmsg[256] = "";
 						switch ( itemCategory(item) )
 						{
 							case WEAPON:
 							case MAGICSTAFF:
-								snprintf(fullmsg, sizeof(fullmsg), Language::get(3118), Language::get(3107));
+								snprintf(fullmsg, sizeof(fullmsg), Language::get(beatitudeLangIndex), Language::get(3107));
 								break;
 							case ARMOR:
 							case TOOL:
 								switch ( checkEquipType(item) )
 								{
 									case TYPE_OFFHAND:
-										snprintf(fullmsg, sizeof(fullmsg), Language::get(3118), Language::get(3112));
+										snprintf(fullmsg, sizeof(fullmsg), Language::get(beatitudeLangIndex), Language::get(3112));
+										break;
+									case TYPE_MASK:
+										snprintf(fullmsg, sizeof(fullmsg), Language::get(beatitudeLangIndex), Language::get(7105));
 										break;
 									case TYPE_HELM:
 									case TYPE_HAT:
@@ -14117,18 +14153,18 @@ void Entity::handleNPCInteractDialogue(Stat& myStats, AllyNPCChatter event)
 									case TYPE_SHIELD:
 									case TYPE_GLOVES:
 									case TYPE_CLOAK:
-										snprintf(fullmsg, sizeof(fullmsg), Language::get(3118), Language::get(3107 + checkEquipType(item)));
+										snprintf(fullmsg, sizeof(fullmsg), Language::get(beatitudeLangIndex), Language::get(3107 + checkEquipType(item)));
 										break;
 									default:
-										snprintf(fullmsg, sizeof(fullmsg), Language::get(3118), Language::get(3117));
+										snprintf(fullmsg, sizeof(fullmsg), Language::get(beatitudeLangIndex), Language::get(3117));
 										break;
 								}
 								break;
 							case RING:
-								snprintf(fullmsg, sizeof(fullmsg), Language::get(3118), Language::get(3107 + TYPE_RING));
+								snprintf(fullmsg, sizeof(fullmsg), Language::get(beatitudeLangIndex), Language::get(3107 + TYPE_RING));
 								break;
 							case AMULET:
-								snprintf(fullmsg, sizeof(fullmsg), Language::get(3118), Language::get(3107 + TYPE_AMULET));
+								snprintf(fullmsg, sizeof(fullmsg), Language::get(beatitudeLangIndex), Language::get(3107 + TYPE_AMULET));
 								break;
 							default:
 								break;
@@ -14510,6 +14546,7 @@ bool Entity::monsterConsumeFoodEntity(Entity* food, Stat* myStats)
 	}
 
 	int heal = 0;
+	int satiation = 0;
 	switch ( item->type )
 	{
 		case FOOD_APPLE:
@@ -14524,35 +14561,35 @@ bool Entity::monsterConsumeFoodEntity(Entity* food, Stat* myStats)
 		case FOOD_RATION_SWEET:
 			heal = 5 + item->beatitude;
 			buffDuration = std::min(buffDuration, 2 * TICKS_PER_SECOND);
-			myStats->HUNGER += 200;
+			satiation = 200;
 			break;
 		case FOOD_BREAD:
 			heal = 7 + item->beatitude;
 			buffDuration = std::min(buffDuration, 6 * TICKS_PER_SECOND);
-			myStats->HUNGER += 400;
+			satiation = 400;
 			break;
 		case FOOD_CHEESE:
 			heal = 3 + item->beatitude;
 			buffDuration = std::min(buffDuration, 2 * TICKS_PER_SECOND);
-			myStats->HUNGER += 100;
+			satiation = 100;
 			break;
 		case FOOD_CREAMPIE:
 			heal = 7 + item->beatitude;
 			buffDuration = std::min(buffDuration, 6 * TICKS_PER_SECOND);
-			myStats->HUNGER += 200;
+			satiation = 200;
 			break;
 		case FOOD_FISH:
 			heal = 7 + item->beatitude;
-			myStats->HUNGER += 500;
+			satiation = 500;
 			break;
 		case FOOD_MEAT:
 			heal = 9 + item->beatitude;
-			myStats->HUNGER += 600;
+			satiation = 600;
 			break;
 		case FOOD_TOMALLEY:
 			heal = 7 + item->beatitude;
 			buffDuration = std::min(buffDuration, 4 * TICKS_PER_SECOND);
-			myStats->HUNGER += 400;
+			satiation = 400;
 			break;
 		default:
 			free(item);
@@ -14560,7 +14597,7 @@ bool Entity::monsterConsumeFoodEntity(Entity* food, Stat* myStats)
 			return false;
 			break;
 	}
-
+	myStats->HUNGER += satiation;
 	myStats->HUNGER = std::min(myStats->HUNGER, 1500); // range checking max of 1500 hunger points.
 
 	Entity* leader = monsterAllyGetPlayerLeader();
@@ -14578,9 +14615,17 @@ bool Entity::monsterConsumeFoodEntity(Entity* food, Stat* myStats)
 	}
 	this->modHP(heal);
 
-	if ( !puking && leader && local_rng.rand() % 2 == 0 )
+	if ( !puking && leader )
 	{
-		leader->increaseSkill(PRO_LEADERSHIP);
+		int skillChance = 2;
+		if ( satiation < 400 )
+		{
+			skillChance = 4;
+		}
+		if ( local_rng.rand() % skillChance == 0 )
+		{
+			leader->increaseSkill(PRO_LEADERSHIP);
+		}
 	}
 
 	if ( buffDuration > 0 )
@@ -14643,27 +14688,42 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 		// player ally.
 		bool hats = true;
 		bool helm = true;
-		bool gloves = false;
+		bool gloves = true;
 		bool breastplate = true;
-		if ( myStats->type == HUMAN || myStats->type == VAMPIRE )
-		{
-			gloves = true;
-		}
-		if ( myStats->type == GOATMAN || myStats->type == GNOME || myStats->type == INCUBUS 
-			|| myStats->type == SUCCUBUS || myStats->type == INSECTOID || myStats->type == VAMPIRE
-			|| myStats->type == KOBOLD )
+		bool mask = true;
+		/*if ( myStats->type == GOATMAN 
+			|| myStats->type == GNOME 
+			|| myStats->type == INCUBUS 
+			|| myStats->type == SUCCUBUS 
+			|| myStats->type == INSECTOID 
+			|| myStats->type == VAMPIRE
+			|| myStats->type == KOBOLD 
+			|| myStats->type == AUTOMATON )
 		{
 			hats = false;
 			helm = false;
-		}
+		}*/
 		if ( myStats->type == VAMPIRE )
 		{
 			breastplate = false;
 		}
-		if ( myStats->type == AUTOMATON )
+		if ( myStats->type == KOBOLD )
+		{
+			//gloves = false;
+			//breastplate = false;
+		}
+		if ( myStats->type == GNOME )
+		{
+			if ( this->sprite == 295 ) // default felt hat
+			{
+				hats = false;
+				helm = false;
+			}
+		}
+		/*if ( myStats->type == AUTOMATON )
 		{
 			hats = false;
-		}
+		}*/
 
 		if ( item.interactNPCUid == getUID() )
 		{
@@ -14673,16 +14733,6 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 				case ARMOR:
 					if ( checkEquipType(&item) == TYPE_HAT )
 					{
-						if ( myStats->type == KOBOLD && 
-							(item.type == HAT_HOOD
-								|| item.type == HAT_HOOD_SILVER
-								|| item.type == HAT_HOOD_RED
-								|| item.type == HAT_HOOD_APPRENTICE
-								|| item.type == HAT_HOOD_WHISPERS
-								|| item.type == HAT_HOOD_ASSASSIN) )
-						{
-							return true;
-						}
 						return hats;
 					}
 					else if ( checkEquipType(&item) == TYPE_HELM )
@@ -14697,6 +14747,10 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 					{
 						return gloves;
 					}
+					else if ( checkEquipType(&item) == TYPE_MASK )
+					{
+						return mask;
+					}
 					return true;
 					break;
 				case WEAPON:
@@ -14706,11 +14760,7 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 					return true;
 					break;
 				case TOOL:
-					if ( item.type == TOOL_TORCH || item.type == TOOL_LANTERN || item.type == TOOL_CRYSTALSHARD )
-					{
-						return true;
-					}
-					else if ( itemTypeIsQuiver(item.type) )
+					if ( checkEquipType(&item) == TYPE_OFFHAND )
 					{
 						return true;
 					}
@@ -14739,7 +14789,7 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 				case WEAPON:
 					return isRangedWeapon(item);
 				case ARMOR:
-					switch ( item.type )
+					/*switch ( item.type )
 					{
 						case CRYSTAL_BREASTPIECE:
 						case CRYSTAL_HELM:
@@ -14763,7 +14813,7 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 							break;
 						default:
 							break;
-					}
+					}*/
 					if ( checkEquipType(&item) == TYPE_HAT )
 					{
 						return hats;
@@ -14772,6 +14822,7 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 					{
 						return helm;
 					}
+					return true;
 					break;
 				case MAGICSTAFF:
 					return false;
@@ -15910,7 +15961,16 @@ bool monsterDebugModels(Entity* my, real_t* dist)
 					type++;
 					if ( type >= NUMITEMS )
 					{
-						type = 0;
+						if ( myStats->mask->node )
+						{
+							list_RemoveNode(myStats->mask->node);
+						}
+						else
+						{
+							free(myStats->mask);
+						}
+						myStats->mask = nullptr;
+						break;
 					}
 					myStats->mask->type = (ItemType)type;
 					if ( items[myStats->mask->type].item_slot == ItemEquippableSlot::EQUIPPABLE_IN_SLOT_MASK )

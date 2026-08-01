@@ -1374,6 +1374,7 @@ Sint32 itemModel(const Item* const item, bool shortModel, Entity* creature)
 				|| item->type == ROBE_CULTIST
 				|| item->type == ROBE_HEALER) )
 		{
+			return items[item->type].index + item->appearance % items[item->type].variations;
 			if ( item->type == ROBE_WIZARD )
 			{
 				return 2148;
@@ -6137,12 +6138,12 @@ bool isMeleeWeapon(const Item& item)
 
 bool Item::isShield() const
 {
-	if ( itemCategory(this) != ARMOR || checkEquipType(this) != TYPE_SHIELD )
+	if ( itemCategory(this) == ARMOR && items[this->type].item_slot == EQUIPPABLE_IN_SLOT_SHIELD )
 	{
-		return false;
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 bool swapMonsterWeaponWithInventoryItem(Entity* const my, Stat* const myStats, node_t* const inventoryNode, const bool moveStack,  const bool overrideCursed)
@@ -6363,12 +6364,23 @@ ItemType itemTypeWithinGoldValue(const int cat, const int minValue, const int ma
 	return GEM_ROCK;
 }
 
-bool Item::isThisABetterWeapon(const Item& newWeapon, const Item* const weaponAlreadyHave)
+bool Item::isThisABetterWeapon(const Item& newWeapon, const Item* const weaponAlreadyHave, Stat& wielder)
 {
 	if ( !weaponAlreadyHave )
 	{
 		//Any thing is better than no thing!
-		return true;
+		if ( wielder.type == AUTOMATON )
+		{
+			return true; // fine with robots
+		}
+		if ( newWeapon.beatitude < 0 && wielder.type == HUMAN )
+		{
+			return false; // no cursed for humans thx
+		}
+		else
+		{
+			return true;
+		}
 	}
 
 	if ( newWeapon.weaponGetAttack() > weaponAlreadyHave->weaponGetAttack() )
@@ -6379,14 +6391,8 @@ bool Item::isThisABetterWeapon(const Item& newWeapon, const Item* const weaponAl
 	return false;
 }
 
-bool Item::isThisABetterArmor(const Item& newArmor, const Item* const armorAlreadyHave )
+bool Item::isThisABetterArmor(const Item& newArmor, const Item* const armorAlreadyHave, Stat& wielder)
 {
-	if ( !armorAlreadyHave )
-	{
-		//Some thing is better than no thing!
-		return true;
-	}
-
 	for ( int i = 0; i < MAXPLAYERS; ++i )
 	{
 		if ( FollowerMenu[i].entityToInteractWith )
@@ -6398,12 +6404,34 @@ bool Item::isThisABetterArmor(const Item& newArmor, const Item* const armorAlrea
 		}
 	}
 
+	if ( !armorAlreadyHave )
+	{
+		//Some thing is better than no thing!
+		if ( wielder.type == AUTOMATON )
+		{
+			return true; // fine with robots
+		}
+		if ( newArmor.beatitude < 0 && wielder.type == HUMAN )
+		{
+			return false; // no cursed for humans thx
+		}
+		else
+		{
+			return true;
+		}
+	}
+
 	if ( armorAlreadyHave->forcedPickupByPlayer == true )
 	{
 		return false;
 	}
 
 	if ( itemTypeIsQuiver(armorAlreadyHave->type) )
+	{
+		return false;
+	}
+
+	if ( items[armorAlreadyHave->type].item_slot == EQUIPPABLE_IN_SLOT_MASK )
 	{
 		return false;
 	}

@@ -946,8 +946,6 @@ public:
 	//void entityAwardXP(Entity *dest, Entity *src, bool share, bool root);
 	void awardXP(Entity* src, bool share, bool root);
 
-	//--*CheckBetterEquipment functions--
-	void checkBetterEquipment(Stat* myStats);
 	void checkGroundForItems();
 	bool canWieldItem(const Item& item) const;
 	bool goblinCanWieldItem(const Item& item) const;
@@ -955,7 +953,6 @@ public:
 	bool goatmanCanWieldItem(const Item& item) const;
 	bool automatonCanWieldItem(const Item& item) const;
 	bool shadowCanWieldItem(const Item& item) const;
-	bool insectoidCanWieldItem(const Item& item) const;
 
 	bool monsterWantsItem(const Item& item, Item**& shouldEquip, node_t*& replaceInventoryItem) const;
 

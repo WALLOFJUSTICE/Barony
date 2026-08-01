@@ -550,6 +550,7 @@ void goblinMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* weaponarm = nullptr;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: isInvisible()?
 	if ( multiplayer != CLIENT )
@@ -810,6 +811,68 @@ void goblinMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// right arm
 			case LIMB_HUMANOID_RIGHTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 1035 ? 1033 : 178;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_RIGHT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 1033 || entity->sprite == 178 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 1035 ? 1033 : 178;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				node_t* weaponNode = list_Node(&my->children, 7);
 				if ( weaponNode )
 				{
@@ -820,7 +883,7 @@ void goblinMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[GOBLIN][4][0]; // 0
 						entity->focaly = limbs[GOBLIN][4][1]; // 0
 						entity->focalz = limbs[GOBLIN][4][2]; // 2
-						entity->sprite = my->sprite == 1035 ? 1033 : 178;
+						//entity->sprite = my->sprite == 1035 ? 1033 : 178;
 					}
 					else
 					{
@@ -828,7 +891,19 @@ void goblinMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[GOBLIN][4][0] + 0.75;
 						entity->focaly = limbs[GOBLIN][4][1];
 						entity->focalz = limbs[GOBLIN][4][2] - 0.75;
-						entity->sprite = my->sprite == 1035 ? 1034 : 179;
+						//entity->sprite = my->sprite == 1035 ? 1034 : 179;
+						if ( entity->sprite == 1033 )
+						{
+							entity->sprite = 1034;
+						}
+						else if ( entity->sprite == 178 )
+						{
+							entity->sprite = 179;
+						}
+						else if ( entity->sprite != 1034 && entity->sprite != 179 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, GOBLIN, LIMB_HUMANOID_RIGHTARM);
@@ -838,6 +913,68 @@ void goblinMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			}
 			case LIMB_HUMANOID_LEFTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 1035 ? 1031 : 176;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_LEFT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 1031 || entity->sprite == 176 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 1035 ? 1031 : 176;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				shieldarm = entity;
 				node_t* shieldNode = list_Node(&my->children, 8);
 				if ( shieldNode )
@@ -848,14 +985,26 @@ void goblinMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[GOBLIN][5][0]; // 0
 						entity->focaly = limbs[GOBLIN][5][1]; // 0
 						entity->focalz = limbs[GOBLIN][5][2]; // 2
-						entity->sprite = my->sprite == 1035 ? 1031 : 176;
+						//entity->sprite = my->sprite == 1035 ? 1031 : 176;
 					}
 					else
 					{
 						entity->focalx = limbs[GOBLIN][5][0] + 0.75;
 						entity->focaly = limbs[GOBLIN][5][1];
 						entity->focalz = limbs[GOBLIN][5][2] - 0.75;
-						entity->sprite = my->sprite == 1035 ? 1032 : 177;
+						//entity->sprite = my->sprite == 1035 ? 1032 : 177;
+						if ( entity->sprite == 1031 )
+						{
+							entity->sprite = 1032;
+						}
+						else if ( entity->sprite == 176 )
+						{
+							entity->sprite = 177;
+						}
+						else if ( entity->sprite != 1032 && entity->sprite != 177 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, GOBLIN, LIMB_HUMANOID_LEFTARM);
@@ -1239,7 +1388,7 @@ bool Entity::goblinCanWieldItem(const Item& item) const
 		case ARMOR:
 			return true;
 		case MAGICSTAFF:
-			return true;
+			return false;
 		case THROWN:
 			return true;
 		case TOOL:

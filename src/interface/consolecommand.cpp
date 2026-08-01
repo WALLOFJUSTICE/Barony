@@ -4879,7 +4879,24 @@ namespace ConsoleCommands {
 
 		if (players[clientnum]->entity)
 		{
-			if (Entity* monster = summonMonster(HUMAN, players[clientnum]->entity->x, players[clientnum]->entity->y))
+			int creature = HUMAN;
+			if ( argc >= 2 )
+			{
+				std::string name = argv[1];
+				bool found = false;
+
+				for ( int i = 1; i < NUMMONSTERS; ++i )   //Start at 1 because 0 is a nothing.
+				{
+					if ( strstr(monstertypename[i], name.c_str()) )
+					{
+						creature = i;
+						found = true;
+						break;
+					}
+				}
+			}
+
+			if (Entity* monster = summonMonster((Monster)creature, players[clientnum]->entity->x, players[clientnum]->entity->y))
 			{
 				if (forceFollower(*players[clientnum]->entity, *monster))
 				{

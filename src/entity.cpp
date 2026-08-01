@@ -2869,346 +2869,6 @@ Stat* Entity::getStats() const
 
 /*-------------------------------------------------------------------------------
 
-Entity::checkBetterEquipment
-
-Checks the tiles immediately surrounding the given entity for items and
-replaces the entity's equipment with those items if they are better
-
--------------------------------------------------------------------------------*/
-
-void Entity::checkBetterEquipment(Stat* myStats)
-{
-	if ( !myStats )
-	{
-		return; //Can't continue without these.
-	}
-
-	list_t* items = nullptr;
-	//X and Y in terms of tiles.
-	int tx = x / 16;
-	int ty = y / 16;
-	getItemsOnTile(tx, ty, &items); //Check the tile the goblin is on for items.
-	getItemsOnTile(tx - 1, ty, &items); //Check tile to the left.
-	getItemsOnTile(tx + 1, ty, &items); //Check tile to the right.
-	getItemsOnTile(tx, ty - 1, &items); //Check tile up.
-	getItemsOnTile(tx, ty + 1, &items); //Check tile down.
-	getItemsOnTile(tx - 1, ty - 1, &items); //Check tile diagonal up left.
-	getItemsOnTile(tx + 1, ty - 1, &items); //Check tile diagonal up right.
-	getItemsOnTile(tx - 1, ty + 1, &items); //Check tile diagonal down left.
-	getItemsOnTile(tx + 1, ty + 1, &items); //Check tile diagonal down right.
-	int currentAC, newAC;
-	Item* oldarmor = nullptr;
-
-	node_t* node = nullptr;
-
-	bool glovesandshoes = false;
-	if ( myStats->type == HUMAN )
-	{
-		glovesandshoes = true;
-	}
-
-	if ( items )
-	{
-		/*
-		* Rundown of the function:
-		* Loop through all items.
-		* Check the monster's item. Compare and grab the best item.
-		*/
-
-		for ( node = items->first; node != nullptr; node = node->next )
-		{
-			//Turn the entity into an item.
-			if ( node->element )
-			{
-				Entity* entity = (Entity*)node->element;
-				Item* item = nullptr;
-				if ( entity != nullptr )
-				{
-					item = newItemFromEntity(entity);
-				}
-				if ( !item )
-				{
-					continue;
-				}
-				if ( !canWieldItem(*item) )
-				{
-					free(item);
-					continue;
-				}
-
-				//If weapon.
-				if ( itemCategory(item) == WEAPON )
-				{
-					if ( myStats->weapon == nullptr ) //Not currently holding a weapon.
-					{
-						myStats->weapon = item; //Assign the monster's weapon.
-						item = nullptr;
-						list_RemoveNode(entity->mynode);
-					}
-					else
-					{
-						//Ok, the monster has a weapon already. First check if the monster's weapon is cursed. Can't drop it if it is.
-						if ( myStats->weapon->beatitude >= 0 && itemCategory(myStats->weapon) != MAGICSTAFF && itemCategory(myStats->weapon) != POTION && itemCategory(myStats->weapon) != THROWN && itemCategory(myStats->weapon) != GEM )
-						{
-							//Next compare the two weapons. If the item on the ground is better, drop the weapon it's carrying and equip that one.
-							int weapon_tohit = myStats->weapon->weaponGetAttack();
-							int new_weapon_tohit = item->weaponGetAttack();
-
-							//If the new weapon does more damage than the current weapon.
-							if ( new_weapon_tohit > weapon_tohit )
-							{
-								dropItemMonster(myStats->weapon, this, myStats);
-								myStats->weapon = item;
-								item = nullptr;
-								list_RemoveNode(entity->mynode);
-							}
-						}
-					}
-				}
-				else if ( itemCategory(item) == ARMOR )
-				{
-					if ( checkEquipType(item) == TYPE_HAT ) // hats
-					{
-						if ( myStats->helmet == nullptr ) // nothing on head currently
-						{
-							// goblins love hats.
-							myStats->helmet = item; // pick up the hat.
-							item = nullptr;
-							list_RemoveNode(entity->mynode);
-						}
-					}
-					else if ( checkEquipType(item) == TYPE_HELM ) // helmets
-					{
-						if ( myStats->helmet == nullptr ) // nothing on head currently
-						{
-							myStats->helmet = item; // pick up the helmet.
-							item = nullptr;
-							list_RemoveNode(entity->mynode);
-						}
-						else
-						{
-							if ( myStats->helmet->beatitude >= 0 ) // if the armor is not cursed, proceed. Won't do anything if the armor is cursed.
-							{
-								// to compare the armors, we use the AC function to check the Armor Class of the equipment the goblin
-								// is currently wearing versus the Armor Class that the goblin would have if it had the new armor.
-								currentAC = AC(myStats);
-								oldarmor = myStats->helmet;
-								myStats->helmet = item;
-								newAC = AC(myStats);
-								myStats->helmet = oldarmor;
-
-								//If the new armor is better than the current armor.
-								if ( newAC > currentAC )
-								{
-									dropItemMonster(myStats->helmet, this, myStats);
-									myStats->helmet = item;
-									item = nullptr;
-									list_RemoveNode(entity->mynode);
-								}
-							}
-						}
-					}
-					else if ( checkEquipType(item) == TYPE_SHIELD )     // shields
-					{
-						if ( myStats->shield == nullptr ) // nothing in left hand currently
-						{
-							myStats->shield = item; // pick up the shield.
-							item = nullptr;
-							list_RemoveNode(entity->mynode);
-						}
-						else
-						{
-							if ( myStats->shield->beatitude >= 0 )   // if the armor is not cursed, proceed. Won't do anything if the armor is cursed.
-							{
-								// to compare the armors, we use the AC function to check the Armor Class of the equipment the goblin
-								// is currently wearing versus the Armor Class that the goblin would have if it had the new armor.
-								currentAC = AC(myStats);
-								oldarmor = myStats->shield;
-								myStats->shield = item;
-								newAC = AC(myStats);
-								myStats->shield = oldarmor;
-
-								//If the new armor is better than the current armor (OR we're not carrying anything)
-								if ( newAC > currentAC || !myStats->shield )
-								{
-									dropItemMonster(myStats->shield, this, myStats);
-									myStats->shield = item;
-									item = nullptr;
-									list_RemoveNode(entity->mynode);
-								}
-							}
-						}
-					}
-					else if ( checkEquipType(item) == TYPE_BREASTPIECE ) // breastpieces
-					{
-						if ( myStats->breastplate == nullptr ) // nothing on torso currently
-						{
-							myStats->breastplate = item; // pick up the armor.
-							item = nullptr;
-							list_RemoveNode(entity->mynode);
-						}
-						else
-						{
-							if ( myStats->breastplate->beatitude >= 0 ) // if the armor is not cursed, proceed. Won't do anything if the armor is cursed.
-							{
-								// to compare the armors, we use the AC function to check the Armor Class of the equipment the goblin
-								// is currently wearing versus the Armor Class that the goblin would have if it had the new armor.
-								currentAC = AC(myStats);
-								oldarmor = myStats->breastplate;
-								myStats->breastplate = item;
-								newAC = AC(myStats);
-								myStats->breastplate = oldarmor;
-
-								//If the new armor is better than the current armor.
-								if ( newAC > currentAC )
-								{
-									dropItemMonster(myStats->breastplate, this, myStats);
-									myStats->breastplate = item;
-									item = nullptr;
-									list_RemoveNode(entity->mynode);
-								}
-							}
-						}
-					}
-					else if ( checkEquipType(item) == TYPE_CLOAK ) // cloaks
-					{
-						if ( myStats->cloak == nullptr ) // nothing on back currently
-						{
-							myStats->cloak = item; // pick up the armor.
-							item = nullptr;
-							list_RemoveNode(entity->mynode);
-						}
-						else
-						{
-							if ( myStats->cloak->beatitude >= 0 )   // if the armor is not cursed, proceed. Won't do anything if the armor is cursed.
-							{
-								// to compare the armors, we use the AC function to check the Armor Class of the equipment the goblin
-								// is currently wearing versus the Armor Class that the goblin would have if it had the new armor.
-								currentAC = AC(myStats);
-								oldarmor = myStats->cloak;
-								myStats->cloak = item;
-								newAC = AC(myStats);
-								myStats->cloak = oldarmor;
-
-								//If the new armor is better than the current armor.
-								if ( newAC > currentAC )
-								{
-									dropItemMonster(myStats->cloak, this, myStats);
-									myStats->cloak = item;
-									item = nullptr;
-									list_RemoveNode(entity->mynode);
-								}
-							}
-						}
-					}
-					if ( glovesandshoes && item != nullptr )
-					{
-						if ( checkEquipType(item) == TYPE_BOOTS ) // boots
-						{
-							if ( myStats->shoes == nullptr )
-							{
-								myStats->shoes = item; // pick up the armor
-								item = nullptr;
-								list_RemoveNode(entity->mynode);
-							}
-							else
-							{
-								if ( myStats->shoes->beatitude >= 0 ) // if the armor is not cursed, proceed. Won't do anything if the armor is cursed.
-								{
-									// to compare the armors, we use the AC function to check the Armor Class of the equipment the goblin
-									// is currently wearing versus the Armor Class that the goblin would have if it had the new armor.
-									currentAC = AC(myStats);
-									oldarmor = myStats->shoes;
-									myStats->shoes = item;
-									newAC = AC(myStats);
-									myStats->shoes = oldarmor;
-
-									//If the new armor is better than the current armor.
-									if ( newAC > currentAC )
-									{
-										dropItemMonster(myStats->shoes, this, myStats);
-										myStats->shoes = item;
-										item = nullptr;
-										list_RemoveNode(entity->mynode);
-									}
-								}
-							}
-						}
-						else if ( checkEquipType(item) == TYPE_GLOVES )
-						{
-							if ( myStats->gloves == nullptr )
-							{
-								myStats->gloves = item; // pick up the armor
-								item = nullptr;
-								list_RemoveNode(entity->mynode);
-							}
-							else
-							{
-								if ( myStats->gloves->beatitude >= 0 ) // if the armor is not cursed, proceed. Won't do anything if the armor is cursed.
-								{
-									// to compare the armors, we use the AC function to check the Armor Class of the equipment the goblin
-									// is currently wearing versus the Armor Class that the goblin would have if it had the new armor.
-									currentAC = AC(myStats);
-									oldarmor = myStats->gloves;
-									myStats->gloves = item;
-									newAC = AC(myStats);
-									myStats->gloves = oldarmor;
-
-									//If the new armor is better than the current armor.
-									if ( newAC > currentAC )
-									{
-										dropItemMonster(myStats->gloves, this, myStats);
-										myStats->gloves = item;
-										item = nullptr;
-										list_RemoveNode(entity->mynode);
-									}
-								}
-							}
-						}
-					}
-				}
-				else if ( itemCategory(item) == POTION )
-				{
-					if ( myStats->weapon == nullptr ) //Not currently holding a weapon.
-					{
-						myStats->weapon = item; //Assign the monster's weapon.
-						item = nullptr;
-						list_RemoveNode(entity->mynode);
-					}
-					//Don't pick up if already wielding something.
-				}
-				else if ( itemCategory(item) == THROWN )
-				{
-					if ( myStats->weapon == nullptr ) //Not currently holding a weapon.
-					{
-						if ( !entity->itemNotMoving && entity->parent && entity->parent != uid )
-						{
-							//Don't pick up the item.
-						}
-						else
-						{
-							myStats->weapon = item; //Assign the monster's weapon.
-							item = nullptr;
-							list_RemoveNode(entity->mynode);
-						}
-					}
-					//Don't pick up if already wielding something.
-				}
-
-				if ( item != nullptr )
-				{
-					free(item);
-				}
-			}
-		}
-
-		list_FreeAll(items);
-		free(items);
-	}
-}
-
-/*-------------------------------------------------------------------------------
-
 uidToEntity
 
 Returns an entity pointer from the given entity UID, provided one exists.
@@ -21341,158 +21001,78 @@ int checkEquipType(const Item *item)
 	{
 		return TYPE_OFFHAND;
 	}
-	switch ( item->type ) {
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_BOOTS )
+	{
+		return TYPE_BOOTS;
+	}
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_BREASTPLATE )
+	{
+		return TYPE_BREASTPIECE;
+	}
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_CLOAK )
+	{
+		return TYPE_CLOAK;
+	}
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_GLOVES )
+	{
+		return TYPE_GLOVES;
+	}
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_MASK )
+	{
+		return TYPE_MASK;
+	}
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_AMULET )
+	{
+		return TYPE_AMULET;
+	}
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_RING )
+	{
+		return TYPE_RING;
+	}
 
-		case LEATHER_BOOTS:
-		case LEATHER_BOOTS_SPEED:
-		case IRON_BOOTS:
-		case IRON_BOOTS_WATERWALKING:
-		case STEEL_BOOTS:
-		case STEEL_BOOTS_LEVITATION:
-		case STEEL_BOOTS_FEATHER:
-		case CRYSTAL_BOOTS:
-		case ARTIFACT_BOOTS:
-		case SUEDE_BOOTS:
-		case BONE_BOOTS:
-		case BLACKIRON_BOOTS:
-		case SILVER_BOOTS:
-		case QUILTED_BOOTS:
-		case LOAFERS:
-		case CHAIN_BOOTS:
-			return TYPE_BOOTS;
-			break;
+	//EQUIPPABLE_IN_SLOT_WEAPON,
 
-		case LEATHER_HELM:
-		case IRON_HELM:
-		case STEEL_HELM:
-		case CRYSTAL_HELM:
-		case ARTIFACT_HELM:
-		case HAT_BEAR_HOOD:
-		case HAT_STAG_HOOD:
-		case HAT_WOLF_HOOD:
-		case BONE_HELM:
-		case BLACKIRON_HELM:
-		case SILVER_HELM:
-		case QUILTED_CAP:
-		case CHAIN_COIF:
-		case HAT_CROWNED_HELM:
-			return TYPE_HELM;
-			break;
-
-		case LEATHER_BREASTPIECE:
-		case IRON_BREASTPIECE:
-		case STEEL_BREASTPIECE:
-		case CRYSTAL_BREASTPIECE:
-		case WIZARD_DOUBLET:
-		case HEALER_DOUBLET:
-		case VAMPIRE_DOUBLET:
-		case ARTIFACT_BREASTPIECE:
-		case BANDIT_BREASTPIECE:
-		case TUNIC_BLOUSE:
-		case BONE_BREASTPIECE:
-		case BLACKIRON_BREASTPIECE:
-		case SILVER_BREASTPIECE:
-		case IRON_PAULDRONS:
-		case QUILTED_GAMBESON:
-		case ROBE_CULTIST:
-		case ROBE_HEALER:
-		case ROBE_MONK:
-		case ROBE_WIZARD:
-		case SHAWL:
-		case CHAIN_HAUBERK:
-			return TYPE_BREASTPIECE;
-			break;
-
-		case CRYSTAL_SHIELD:
-		case WOODEN_SHIELD:
-		case BRONZE_SHIELD:
-		case IRON_SHIELD:
-		case STEEL_SHIELD:
-		case STEEL_SHIELD_RESISTANCE:
-		case MIRROR_SHIELD:
-		case SCUTUM:
-		case BONE_SHIELD:
-		case BLACKIRON_SHIELD:
-		case SILVER_SHIELD:
-			return TYPE_SHIELD;
-			break;
-
-		case TOOL_TORCH:
-		case TOOL_LANTERN:
-		case TOOL_CRYSTALSHARD:
-			return TYPE_OFFHAND;
-			break;
-
-		case CLOAK:
-		case CLOAK_MAGICREFLECTION:
-		case CLOAK_INVISIBILITY:
-		case CLOAK_PROTECTION:
-		case ARTIFACT_CLOAK:
-		case CLOAK_BLACK:
-		case CLOAK_BACKPACK:
-		case CLOAK_SILVER:
-		case CLOAK_DENDRITE:
-			return TYPE_CLOAK;
-			break;
-
-		case GLOVES:
-		case GLOVES_DEXTERITY:
-		case GAUNTLETS:
-		case GAUNTLETS_STRENGTH:
-		case BRACERS:
-		case BRACERS_CONSTITUTION:
-		case CRYSTAL_GLOVES:
-		case ARTIFACT_GLOVES:
-		case SPIKED_GAUNTLETS:
-		case IRON_KNUCKLES:
-		case BRASS_KNUCKLES:
-		case SUEDE_GLOVES:
-		case BONE_BRACERS:
-		case BLACKIRON_GAUNTLETS:
-		case SILVER_GAUNTLETS:
-		case QUILTED_GLOVES:
-		case CHAIN_GLOVES:
-			return TYPE_GLOVES;
-			break;
-
-		case HAT_HOOD:
-		case HAT_JESTER:
-		case HAT_PHRYGIAN:
-		case HAT_WIZARD:
-		case HAT_FEZ:
-		case HAT_HOOD_RED:
-		case MASK_SHAMAN:
-		case PUNISHER_HOOD:
-		case HAT_HOOD_SILVER:
-		case HAT_SILKEN_BOW:
-		case HAT_PLUMED_CAP:
-		case HAT_BYCOCKET:
-		case HAT_TOPHAT:
-		case HAT_BANDANA:
-		case HAT_CIRCLET:
-		case HAT_CIRCLET_SORCERY:
-		case HAT_CIRCLET_THAUMATURGY:
-		case HAT_CROWN:
-		case HAT_LAURELS:
-		case HAT_TURBAN:
-		case HAT_WARM:
-		case HAT_BOUNTYHUNTER:
-		case HAT_MITER:
-		case HAT_HEADDRESS:
-		case HAT_CHEF:
-		case HELM_MINING:
-		case HAT_CIRCLET_WISDOM:
-		case HAT_BUNNY_HOOD:
-		case HAT_HOOD_APPRENTICE:
-		case HAT_HOOD_ASSASSIN:
-		case HAT_HOOD_WHISPERS:
-		case HAT_FELT:
-		case HOOD_TEAL:
-			return TYPE_HAT;
-			break;
-
-		default:
-			break;
+	if ( item->isShield() )
+	{
+		return TYPE_SHIELD;
+	}
+	else if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_SHIELD )
+	{
+		switch ( item->type ) 
+		{
+			case TOOL_TORCH:
+			case TOOL_LANTERN:
+			case TOOL_CRYSTALSHARD:
+				return TYPE_OFFHAND;
+				break;
+			default:
+				break;
+		}
+	}
+	if ( items[item->type].item_slot == EQUIPPABLE_IN_SLOT_HELM )
+	{
+		switch ( item->type ) 
+		{
+			case LEATHER_HELM:
+			case IRON_HELM:
+			case STEEL_HELM:
+			case CRYSTAL_HELM:
+			case ARTIFACT_HELM:
+			case HAT_BEAR_HOOD:
+			case HAT_STAG_HOOD:
+			case HAT_WOLF_HOOD:
+			case BONE_HELM:
+			case BLACKIRON_HELM:
+			case SILVER_HELM:
+			case QUILTED_CAP:
+			case CHAIN_COIF:
+			case HAT_CROWNED_HELM:
+				return TYPE_HELM;
+				break;
+			default:
+				return TYPE_HAT;
+				break;
+		}
 	}
 
 	return TYPE_NONE;
@@ -21728,7 +21308,6 @@ bool Entity::setBootSprite(Entity* leg, int spriteOffset, bool forceShort)
 		case AUTOMATON:
 		case GOATMAN:
 		case INSECTOID:
-		case KOBOLD:
 		case GOBLIN:
 		case SKELETON:
 		case SHADOW:
@@ -21751,6 +21330,7 @@ bool Entity::setBootSprite(Entity* leg, int spriteOffset, bool forceShort)
 			break;
 		case GNOME:
 		case GREMLIN:
+		case KOBOLD:
 			shortSprite = true;
 			break;
 		default:
@@ -24211,7 +23791,7 @@ void Entity::handleHumanoidWeaponLimb(Entity* weaponLimb, Entity* weaponArmLimb)
 			}
 
 			if ( monsterType == DRYAD || monsterType == MYCONID || monsterType == SALAMANDER || monsterType == GREMLIN
-				|| monsterType == GNOME )
+				|| monsterType == GNOME || monsterType == KOBOLD )
 			{
 				weaponLimb->x += limbs[monsterType][17][0] * cos(weaponArmLimb->yaw + PI / 2) + limbs[monsterType][17][1] * cos(weaponArmLimb->yaw);
 				weaponLimb->y += limbs[monsterType][17][0] * sin(weaponArmLimb->yaw + PI / 2) + limbs[monsterType][17][1] * sin(weaponArmLimb->yaw);
@@ -25970,14 +25550,12 @@ void Entity::checkGroundForItems()
 				case HUMAN:
 					if ( myStats->getAttribute("special_npc") == "" )
 					{
-						//checkBetterEquipment(myStats);
 						monsterAddNearbyItemToInventory(myStats, 16, 9);
 					}
 					break;
 				case GOATMAN:
 					//Goatman boss picks up items too.
 					monsterAddNearbyItemToInventory(myStats, 16, 9); //Replaces checkBetterEquipment(), because more better. Adds items to inventory, and swaps out current equipped with better stuff on the ground.
-																	 //checkBetterEquipment(myStats);
 					break;
 				case AUTOMATON:
 					monsterAddNearbyItemToInventory(myStats, 16, 5);
@@ -26298,12 +25876,27 @@ bool Entity::monsterAddNearbyItemToInventory(Stat* myStats, int rangeToFind, int
 				}
 				else if ( shouldWield )
 				{
-					if ( (*shouldWield) && (*shouldWield)->beatitude < 0 && myStats->type != AUTOMATON )
+					if ( (*shouldWield) && (*shouldWield)->beatitude < 0 
+						&& myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats) )
 					{
 						if ( item && item->interactNPCUid == getUID() && forcePickupItem )
 						{
 							// held item is cursed!
 							handleNPCInteractDialogue(*myStats, ALLY_EVENT_INTERACT_ITEM_CURSED);
+						}
+						if ( item != nullptr )
+						{
+							free(item);
+						}
+						continue;
+					}
+					else if ( (*shouldWield) && (*shouldWield)->beatitude > 0 
+						&& myStats->type != AUTOMATON && (shouldInvertEquipmentBeatitude(myStats)) )
+					{
+						if ( item && item->interactNPCUid == getUID() && forcePickupItem )
+						{
+							// held item is blessed!
+							handleNPCInteractDialogue(*myStats, ALLY_EVENT_INTERACT_ITEM_BLESSED);
 						}
 						if ( item != nullptr )
 						{
@@ -26515,19 +26108,31 @@ bool Entity::shouldMonsterEquipThisWeapon(const Item& itemToEquip) const
 		return false;
 	}
 
-	if ( myStats->weapon == nullptr )
-	{
-		return true; //Something is better than nothing.
-	}
-
 	if ( itemToEquip.interactNPCUid == getUID() )
 	{
 		return true;
 	}
 
-	if ( myStats->weapon->beatitude < 0 )
+	if ( myStats->weapon == nullptr )
+	{
+		if ( itemToEquip.isThisABetterWeapon(itemToEquip, nullptr, *myStats) )
+		{
+			return true; //Something is better than nothing.
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	if ( myStats->weapon->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats) )
 	{
 		//If monster already holding an item, can't swap it out if it's cursed.
+		return false;
+	}
+	if ( myStats->weapon->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats) )
+	{
+		//If monster already holding an item, can't swap it out if it's blessed for foocubi.
 		return false;
 	}
 
@@ -26553,7 +26158,7 @@ bool Entity::shouldMonsterEquipThisWeapon(const Item& itemToEquip) const
 		}
 	}
 
-	if ( !Item::isThisABetterWeapon(itemToEquip, myStats->weapon) )
+	if ( !Item::isThisABetterWeapon(itemToEquip, myStats->weapon, *myStats) )
 	{
 		return false; //Don't want junk.
 	}
@@ -26599,6 +26204,14 @@ bool Entity::monsterWantsItem(const Item& item, Item**& shouldEquip, node_t*& re
 			}
 		}
 		else
+		{
+			return false;
+		}
+	}
+
+	if ( item.type == IRON_PAULDRONS || item.type == SHAWL )
+	{
+		if ( myStats->type != GREMLIN && myStats->type != SLIME ) // gremlin has special model for these
 		{
 			return false;
 		}
@@ -26653,6 +26266,11 @@ bool Entity::monsterWantsItem(const Item& item, Item**& shouldEquip, node_t*& re
 		case INSECTOID:
 		case SKELETON:
 		case VAMPIRE:
+		case SUCCUBUS:
+		case DRYAD:
+		case MYCONID:
+		case GREMLIN:
+		case SALAMANDER:
 			if ( !monsterAllyEquipmentInClass(item) )
 			{
 				return false;
@@ -26662,7 +26280,9 @@ bool Entity::monsterWantsItem(const Item& item, Item**& shouldEquip, node_t*& re
 			if ( item.type == ARTIFACT_ORB_BLUE
 				|| item.type == ARTIFACT_ORB_GREEN
 				|| item.type == ARTIFACT_ORB_RED
-				|| item.type == ARTIFACT_ORB_PURPLE )
+				|| item.type == ARTIFACT_ORB_PURPLE
+				|| items[item.type].hasAttribute("UNBURNABLE")
+				|| items[item.type].hasAttribute("UNVOIDABLE") )
 			{
 				return false;
 			}
@@ -26728,11 +26348,26 @@ bool Entity::monsterWantsItem(const Item& item, Item**& shouldEquip, node_t*& re
 				if ( !weaponNode )
 				{
 					//If no weapons found in inventory, then yes, the goatman wants it, and it should be added to the inventory.
-					return true; //Want this item.
+					if ( Item::isThisABetterWeapon(item, nullptr, *myStats) )
+					{
+						return true; //Want this item.
+					}
+					else
+					{
+						// cursed item for humans, no thanks
+						if ( monsterAllyIndex >= 0 && monsterAllyIndex < MAXPLAYERS )
+						{
+							if ( item.interactNPCUid == getUID() ) // well I'm being told to
+							{
+								return true;
+							}
+						}
+						return false;
+					}
 				}
 
 				//Search inventory and replace weapon if this one is better.
-				if ( Item::isThisABetterWeapon(item, static_cast<Item*>(weaponNode->element)) )
+				if ( Item::isThisABetterWeapon(item, static_cast<Item*>(weaponNode->element), *myStats) )
 				{
 					replaceInventoryItem = weaponNode;
 					return true;
@@ -26814,19 +26449,25 @@ Item** Entity::shouldMonsterEquipThisArmor(const Item& item) const
 			{
 				return &myStats->helmet;
 			}
-			if ( myStats->helmet && (myStats->helmet->beatitude < 0 || myStats->helmet->forcedPickupByPlayer == true) )
+			if ( myStats->helmet 
+				&& ( ((myStats->helmet->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+						|| (myStats->helmet->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->helmet->forcedPickupByPlayer == true) )
 			{
 				return nullptr; //No can has hats : (
 			}
 
-			return Item::isThisABetterArmor(item, myStats->helmet) ? &myStats->helmet : nullptr;
+			return Item::isThisABetterArmor(item, myStats->helmet, *myStats) ? &myStats->helmet : nullptr;
 		case TYPE_HELM:
 			if ( item.interactNPCUid == getUID() && myStats->helmet )
 			{
 				return &myStats->helmet;
 			}
 
-			if ( myStats->helmet && (myStats->helmet->beatitude < 0 || myStats->helmet->forcedPickupByPlayer == true) )
+			if ( myStats->helmet 
+				&& (((myStats->helmet->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+					|| (myStats->helmet->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->helmet->forcedPickupByPlayer == true) )
 			{
 				return nullptr; //Can't swap out armor piece if current one is cursed!
 			}
@@ -26836,7 +26477,7 @@ Item** Entity::shouldMonsterEquipThisArmor(const Item& item) const
 				return nullptr; //Goblins love hats.
 			}
 
-			return Item::isThisABetterArmor(item, myStats->helmet) ? &myStats->helmet : nullptr;
+			return Item::isThisABetterArmor(item, myStats->helmet, *myStats) ? &myStats->helmet : nullptr;
 			break;
 		case TYPE_SHIELD:
 		case TYPE_OFFHAND:
@@ -26845,60 +26486,90 @@ Item** Entity::shouldMonsterEquipThisArmor(const Item& item) const
 				return &myStats->shield;
 			}
 
-			if ( myStats->shield && (myStats->shield->beatitude < 0 || myStats->shield->forcedPickupByPlayer == true) )
+			if ( myStats->shield 
+				&& (((myStats->shield->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+					|| (myStats->shield->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->shield->forcedPickupByPlayer == true) )
 			{
 				return nullptr; //Can't swap out armor piece if current one is cursed!
 			}
 
-			return Item::isThisABetterArmor(item, myStats->shield) ? &myStats->shield : nullptr;
+			return Item::isThisABetterArmor(item, myStats->shield, *myStats) ? &myStats->shield : nullptr;
 		case TYPE_BREASTPIECE:
 			if ( item.interactNPCUid == getUID() && myStats->breastplate )
 			{
 				return &myStats->breastplate;
 			}
 
-			if ( myStats->breastplate && (myStats->breastplate->beatitude < 0 || myStats->breastplate->forcedPickupByPlayer == true) )
+			if ( myStats->breastplate 
+				&& (((myStats->breastplate->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+					|| (myStats->breastplate->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->breastplate->forcedPickupByPlayer == true) )
 			{
 				return nullptr; //Can't swap out armor piece if current one is cursed!
 			}
 
-			return Item::isThisABetterArmor(item, myStats->breastplate) ? &myStats->breastplate : nullptr;
+			return Item::isThisABetterArmor(item, myStats->breastplate, *myStats) ? &myStats->breastplate : nullptr;
 		case TYPE_CLOAK:
 			if ( item.interactNPCUid == getUID() && myStats->cloak )
 			{
 				return &myStats->cloak;
 			}
 
-			if ( myStats->cloak && (myStats->cloak->beatitude < 0 || myStats->cloak->forcedPickupByPlayer == true) )
+			if ( myStats->cloak 
+				&& (((myStats->cloak->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+					|| (myStats->cloak->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->cloak->forcedPickupByPlayer == true) )
 			{
 				return nullptr; //Can't swap out armor piece if current one is cursed!
 			}
 
-			return Item::isThisABetterArmor(item, myStats->cloak) ? &myStats->cloak : nullptr;
+			return Item::isThisABetterArmor(item, myStats->cloak, *myStats) ? &myStats->cloak : nullptr;
 		case TYPE_BOOTS:
 			if ( item.interactNPCUid == getUID() && myStats->shoes )
 			{
 				return &myStats->shoes;
 			}
 
-			if ( myStats->shoes && (myStats->shoes->beatitude < 0 || myStats->shoes->forcedPickupByPlayer == true) )
+			if ( myStats->shoes 
+				&& (((myStats->shoes->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+					|| (myStats->shoes->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->shoes->forcedPickupByPlayer == true) )
 			{
 				return nullptr; //Can't swap out armor piece if current one is cursed!
 			}
 
-			return Item::isThisABetterArmor(item, myStats->shoes) ? &myStats->shoes : nullptr;
+			return Item::isThisABetterArmor(item, myStats->shoes, *myStats) ? &myStats->shoes : nullptr;
 		case TYPE_GLOVES:
 			if ( item.interactNPCUid == getUID() && myStats->gloves )
 			{
 				return &myStats->gloves;
 			}
 
-			if ( myStats->gloves && (myStats->gloves->beatitude < 0 || myStats->gloves->forcedPickupByPlayer == true) )
+			if ( myStats->gloves 
+				&& (((myStats->gloves->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+					|| (myStats->gloves->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->gloves->forcedPickupByPlayer == true) )
 			{
 				return nullptr; //Can't swap out armor piece if current one is cursed!
 			}
 
-			return Item::isThisABetterArmor(item, myStats->gloves) ? &myStats->gloves : nullptr;
+			return Item::isThisABetterArmor(item, myStats->gloves, *myStats) ? &myStats->gloves : nullptr;
+			break;
+		case TYPE_MASK:
+			if ( item.interactNPCUid == getUID() && myStats->mask )
+			{
+				return &myStats->mask;
+			}
+
+			if ( myStats->mask 
+				&& (((myStats->mask->beatitude < 0 && myStats->type != AUTOMATON && !shouldInvertEquipmentBeatitude(myStats))
+					|| (myStats->mask->beatitude > 0 && myStats->type != AUTOMATON && shouldInvertEquipmentBeatitude(myStats)))
+					|| myStats->mask->forcedPickupByPlayer == true) )
+			{
+				return nullptr; //Can't swap out armor piece if current one is cursed!
+			}
+			return Item::isThisABetterArmor(item, myStats->mask, *myStats) ? &myStats->mask : nullptr;
 			break;
 		default:
 			return nullptr;
@@ -27006,7 +26677,7 @@ Item* Entity::getBestMeleeWeaponIHave() const
 		Item* item = static_cast<Item*>(node->element);
 		if ( item )
 		{
-			if ( isMeleeWeapon(*item) && Item::isThisABetterWeapon(*item, currentBest) )
+			if ( isMeleeWeapon(*item) && Item::isThisABetterWeapon(*item, currentBest, *myStats) )
 			{
 				currentBest = item;
 			}
@@ -27045,7 +26716,7 @@ Item* Entity::getBestShieldIHave() const
 		Item* item = static_cast<Item*>(node->element);
 		if ( item )
 		{
-			if ( item->isShield() && Item::isThisABetterArmor(*item, currentBest) )
+			if ( item->isShield() && Item::isThisABetterArmor(*item, currentBest, *myStats) )
 			{
 				currentBest = item;
 			}
@@ -29981,6 +29652,7 @@ bool monsterNameIsGeneric(Stat& monsterStats)
 		|| strstr(monsterStats.name, "squire")
 		|| strstr(monsterStats.name, Language::get(7007))
 		|| !strcmp(monsterStats.name, Language::get(6807)) // revenant skeleton
+		|| MonsterData_t::nameMatchesSpecialNPCName(monsterStats, "the entity")
 		|| !strcmp(monsterStats.name, Language::get(6302)) // gnome thief
 		|| !strcmp(monsterStats.name, Language::get(6303)) // gnome thief leader
 		|| !strcmp(monsterStats.name, Language::get(7002)) // adorcised instrument
@@ -30106,6 +29778,28 @@ void Entity::setHumanoidLimbOffset(Entity* limb, Monster race, int limbType)
 	{
 		limb->scalez = 1.f; // reset this scale incase something modifies this.
 	}
+
+	Entity* torso = nullptr;
+	if ( race == SKELETON || race == AUTOMATON )
+	{
+		if ( this->behavior == &actPlayer )
+		{
+			node_t* node = list_Node(&this->children, 1);
+			if ( node )
+			{
+				torso = (Entity*)node->element;
+			}
+		}
+		else if ( this->behavior == &actMonster )
+		{
+			node_t* node = list_Node(&this->children, LIMB_HUMANOID_TORSO);
+			if ( node )
+			{
+				torso = (Entity*)node->element;
+			}
+		}
+	}
+
 	switch ( race )
 	{
 		case GREMLIN:
@@ -30293,6 +29987,34 @@ void Entity::setHumanoidLimbOffset(Entity* limb, Monster race, int limbType)
 				{
 					limb->focalz -= 0.25;
 				}*/
+			}
+			break;
+		case KOBOLD:
+			if ( limbType == LIMB_HUMANOID_TORSO )
+			{
+				limb->x -= .25 * cos(this->yaw);
+				limb->y -= .25 * sin(this->yaw);
+				limb->z += 1.25;
+
+				if ( limb->sprite != 422 ) // default torso
+				{
+					limb->focalx += 1.0;
+					limb->focalz -= 0.5;
+				}
+				if ( limb->sprite == items[MACHINIST_APRON].indexShort )
+				{
+					limb->focalx -= 0.5;
+					limb->focalz += 0.25;
+				}
+
+				limb->scalex = 1.01;
+				limb->scaley = 1.01;
+				limb->scalez = 1.01;
+				//limb->scalex = limbs[GNOME][11][0];
+				//limb->scaley = limbs[GNOME][11][1];
+				//limb->scalez = limbs[GNOME][11][2];
+
+				this->setTorsoLimbOffset(limb);
 			}
 			break;
 		case GNOME:
@@ -30626,11 +30348,12 @@ void Entity::setHumanoidLimbOffset(Entity* limb, Monster race, int limbType)
 			}
 			else if ( limbType == LIMB_HUMANOID_RIGHTARM )
 			{
-				if ( limb->sprite != 689 && limb->sprite != 691
-				    && limb->sprite != 1046 && limb->sprite != 1048
-					&& limb->sprite != 233 && limb->sprite != 234
-					&& limb->sprite != 745 && limb->sprite != 747
-					&& limb->sprite != 471 && limb->sprite != 472 )
+				if ( limb->sprite != 689 && limb->sprite != 691 /* skel player armright / armrightbent */
+				    && limb->sprite != 1046 && limb->sprite != 1048 /* skel player mouldy armright / armrightbent */
+					&& limb->sprite != 233 && limb->sprite != 234 /* skel npc armright / armrightbent */
+					&& limb->sprite != 1101 && limb->sprite != 1102 /* skel mouldy npc armright / armrightbent */
+					&& limb->sprite != 745 && limb->sprite != 747 /* automaton player armright / armrightbent */
+					&& limb->sprite != 471 && limb->sprite != 472 ) /* automaton npc armright / armrightbent */
 				{
 					// wearing gloves (not default arms), position tighter to body.
 					limb->x += 1.75 * cos(this->yaw + PI / 2) + (-.20) * cos(this->yaw);
@@ -30646,14 +30369,29 @@ void Entity::setHumanoidLimbOffset(Entity* limb, Monster race, int limbType)
 				{
 					limb->pitch = 0;
 				}
+
+				if ( torso )
+				{
+					if ( torso->sprite == 468 || torso->sprite == 743 /* automaton npc / player torso*/
+						|| torso->sprite == 230 || torso->sprite == 1106 || torso->sprite == 687 || torso->sprite == 1052 ) /* skeleton npc / player torso */
+					{
+						// default torsos
+					}
+					else
+					{
+						limb->x += 0.5 * cos(this->yaw + PI / 2);
+						limb->y += 0.5 * sin(this->yaw + PI / 2);
+					}
+				}
 			}
 			else if ( limbType == LIMB_HUMANOID_LEFTARM )
 			{
-				if ( limb->sprite != 688 && limb->sprite != 690
-				    && limb->sprite != 1045 && limb->sprite != 1047
-					&& limb->sprite != 231 && limb->sprite != 232
-					&& limb->sprite != 744 && limb->sprite != 746
-					&& limb->sprite != 469 && limb->sprite != 470 )
+				if ( limb->sprite != 688 && limb->sprite != 690 /* skel player armleft / armleftbent */
+				    && limb->sprite != 1045 && limb->sprite != 1047 /* skel player mouldy armleft / armleftbent */
+					&& limb->sprite != 231 && limb->sprite != 232 /* skel npc armleft / armleftbent */
+					&& limb->sprite != 1099 && limb->sprite != 1100 /* skel mouldy npc armleft / armleftbent */
+					&& limb->sprite != 744 && limb->sprite != 746 /* automaton player armleft / armleftbent */
+					&& limb->sprite != 469 && limb->sprite != 470 ) /* automaton npc armleft / armleftbent */
 				{
 					// wearing gloves (not default arms), position tighter to body.
 					limb->x -= 1.75 * cos(this->yaw + PI / 2) + .20 * cos(this->yaw);
@@ -30668,6 +30406,20 @@ void Entity::setHumanoidLimbOffset(Entity* limb, Monster race, int limbType)
 				if ( this->z >= 1.9 && this->z <= 2.1 )
 				{
 					limb->pitch = 0;
+				}
+
+				if ( torso )
+				{
+					if ( torso->sprite == 468 || torso->sprite == 743 /* automaton npc / player torso*/
+						|| torso->sprite == 230 || torso->sprite == 1106 || torso->sprite == 687 || torso->sprite == 1052 ) /* skeleton npc / player torso */
+					{
+						// default torsos
+					}
+					else
+					{
+						limb->x -= 0.5 * cos(this->yaw + PI / 2);
+						limb->y -= 0.5 * sin(this->yaw + PI / 2);
+					}
 				}
 			}
 			break;
@@ -30871,6 +30623,12 @@ void Entity::setHumanoidLimbOffset(Entity* limb, Monster race, int limbType)
 						limb->focalz += 0.75;
 					}
 				}
+				else if ( race == GOBLIN )
+				{
+					limb->scalex = 1.01;
+					limb->scaley = 1.01;
+					limb->scalez = 1.01;
+				}
 
 				/*if ( limb->sprite == items[WIZARD_DOUBLET].index
 					|| limb->sprite == items[HEALER_DOUBLET].index
@@ -31063,6 +30821,27 @@ void Entity::handleHumanoidShieldLimb(Entity* shieldLimb, Entity* shieldArmLimb)
 	auto& shieldLimbFociAnimRotate = shieldLimb->fskill[0];
 	auto& shieldLimbFociRotateSpin = shieldLimb->fskill[1];
 
+	Entity* torso = nullptr;
+	if ( race == SKELETON || race == AUTOMATON )
+	{
+		if ( this->behavior == &actPlayer )
+		{
+			node_t* node = list_Node(&this->children, 1);
+			if ( node )
+			{
+				torso = (Entity*)node->element;
+			}
+		}
+		else if ( this->behavior == &actMonster )
+		{
+			node_t* node = list_Node(&this->children, LIMB_HUMANOID_TORSO);
+			if ( node )
+			{
+				torso = (Entity*)node->element;
+			}
+		}
+	}
+
 	shieldLimb->focalx = limbs[race][7][0];
 	shieldLimb->focaly = limbs[race][7][1];
 	shieldLimb->focalz = limbs[race][7][2];
@@ -31128,6 +30907,7 @@ void Entity::handleHumanoidShieldLimb(Entity* shieldLimb, Entity* shieldArmLimb)
 			break;
 		case GNOME:
 		case GREMLIN:
+		case KOBOLD:
 			shieldLimb->x -= 2.5 * cos(this->yaw + PI / 2) + .20 * cos(this->yaw);
 			shieldLimb->y -= 2.5 * sin(this->yaw + PI / 2) + .20 * sin(this->yaw);
 			shieldLimb->z += 1;
@@ -31193,6 +30973,10 @@ void Entity::handleHumanoidShieldLimb(Entity* shieldLimb, Entity* shieldArmLimb)
 				if ( race == GREMLIN )
 				{
 					shieldLimb->focalz -= 2.25;
+				}
+				if ( race == KOBOLD )
+				{
+					shieldLimb->focalx += 0.5;
 				}
 				if ( race == GNOME )
 				{
@@ -31325,11 +31109,29 @@ void Entity::handleHumanoidShieldLimb(Entity* shieldLimb, Entity* shieldArmLimb)
 			shieldLimb->roll = 0;
 			shieldLimb->pitch = 0;
 
+			if ( torso )
+			{
+				if ( torso->sprite == 468 || torso->sprite == 743 /* automaton npc / player torso*/
+					|| torso->sprite == 230 || torso->sprite == 1106 || torso->sprite == 687 || torso->sprite == 1052 ) /* skeleton npc / player torso */
+				{
+					// default torsos
+				}
+				else
+				{
+					shieldLimb->x -= 0.5 * cos(this->yaw + PI / 2);
+					shieldLimb->y -= 0.5 * sin(this->yaw + PI / 2);
+				}
+			}
+
 			if ( shieldLimb->sprite != items[TOOL_TORCH].index && shieldLimb->sprite != items[TOOL_LANTERN].index && shieldLimb->sprite != items[TOOL_CRYSTALSHARD].index )
 			{
 				shieldLimb->focalx = limbs[race][7][0] - 0.65;
 				shieldLimb->focaly = limbs[race][7][1];
 				shieldLimb->focalz = limbs[race][7][2];
+			}
+			if ( race == SKELETON && shieldLimb->sprite == items[TOOL_TORCH].index )
+			{
+				shieldLimb->focalx -= 0.5;
 			}
 			if ( itemSpriteIsQuiverThirdPersonModel(shieldLimb->sprite) )
 			{
@@ -31372,7 +31174,14 @@ void Entity::handleHumanoidShieldLimb(Entity* shieldLimb, Entity* shieldArmLimb)
 					{
 						flameEntity->x += 2.5 * cos(shieldLimb->yaw + PI / 16);
 						flameEntity->y += 2.5 * sin(shieldLimb->yaw + PI / 16);
-						flameEntity->z -= 2;
+						if ( race == AUTOMATON )
+						{
+							flameEntity->z -= 2.5;
+						}
+						else
+						{
+							flameEntity->z -= 2;
+						}
 					}
 			    }
 			    else if ( shieldLimb->sprite == items[TOOL_CRYSTALSHARD].index )
@@ -32362,7 +32171,24 @@ void Entity::setHelmetLimbOffsetWithMask(Entity* helm, Entity* mask)
 			if ( helm->sprite == items[LEATHER_HELM].index
 				|| helm->sprite == items[IRON_HELM].index )
 			{
-				mask->focalx -= 0.2;
+				//mask->focalx -= 0.2;
+				helm->focalz -= 0.2;
+				if ( helm->sprite == items[LEATHER_HELM].index )
+				{
+					if ( mask->sprite == items[MASK_SPOOKY].index )
+					{
+						mask->focalx += 0.25;
+					}
+				}
+				else if ( helm->sprite == items[IRON_HELM].index )
+				{
+					if ( mask->sprite == items[MASK_SPOOKY].index )
+					{
+						mask->scalex -= 0.005;
+						mask->scaley -= 0.005;
+						mask->scalez -= 0.005;
+					}
+				}
 			}
 			else if ( helm->sprite == items[PUNISHER_HOOD].index )
 			{
@@ -32387,6 +32213,20 @@ void Entity::setHelmetLimbOffsetWithMask(Entity* helm, Entity* mask)
 			}
 			break;
 		case SKELETON:
+			if ( helm->sprite == items[LEATHER_HELM].index )
+			{
+				helm->focalz -= 0.25;
+			}
+			if ( helm->sprite == items[LEATHER_HELM].index
+				|| helm->sprite == items[IRON_HELM].index )
+			{
+				if ( mask->sprite == items[MASK_SPOOKY].index )
+				{
+					mask->scalex -= 0.005;
+					mask->scaley -= 0.005;
+					mask->scalez -= 0.005;
+				}
+			}
 			break;
 		default:
 			break;

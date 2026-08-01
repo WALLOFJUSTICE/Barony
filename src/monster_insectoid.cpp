@@ -730,6 +730,7 @@ void insectoidMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* torso = nullptr;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: isInvisible()?
 	if ( multiplayer != CLIENT )
@@ -1149,6 +1150,68 @@ void insectoidMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// right arm
 			case LIMB_HUMANOID_RIGHTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 1057 ? 1055 : 453;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_RIGHT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 1055 || entity->sprite == 453 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 1057 ? 1055 : 453;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				node_t* weaponNode = list_Node(&my->children, LIMB_HUMANOID_WEAPON);
 				if ( weaponNode )
 				{
@@ -1159,7 +1222,7 @@ void insectoidMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INSECTOID][4][0]; // 0
 						entity->focaly = limbs[INSECTOID][4][1]; // 0
 						entity->focalz = limbs[INSECTOID][4][2]; // 2
-						entity->sprite = my->sprite == 1057 ? 1055 : 453;
+						//entity->sprite = my->sprite == 1057 ? 1055 : 453;
 					}
 					else
 					{
@@ -1167,7 +1230,19 @@ void insectoidMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INSECTOID][4][0] + 0.75;
 						entity->focaly = limbs[INSECTOID][4][1];
 						entity->focalz = limbs[INSECTOID][4][2] - 0.75;
-						entity->sprite = my->sprite == 1057 ? 1056 : 454;
+						//entity->sprite = my->sprite == 1057 ? 1056 : 454;
+						if ( entity->sprite == 1055 )
+						{
+							entity->sprite = 1056;
+						}
+						else if ( entity->sprite == 453 )
+						{
+							entity->sprite = 454;
+						}
+						else if ( entity->sprite != 1056 && entity->sprite != 454 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, INSECTOID, LIMB_HUMANOID_RIGHTARM);
@@ -1177,6 +1252,68 @@ void insectoidMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// left arm
 			case LIMB_HUMANOID_LEFTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = my->sprite == 1057 ? 1053 : 451;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_LEFT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 1053 || entity->sprite == 451 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = my->sprite == 1057 ? 1053 : 451;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				shieldarm = entity;
 				node_t* shieldNode = list_Node(&my->children, LIMB_HUMANOID_SHIELD);
 				if ( shieldNode )
@@ -1187,14 +1324,26 @@ void insectoidMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[INSECTOID][5][0]; // 0
 						entity->focaly = limbs[INSECTOID][5][1]; // 0
 						entity->focalz = limbs[INSECTOID][5][2]; // 2
-						entity->sprite = my->sprite == 1057 ? 1053 : 451;
+						//entity->sprite = my->sprite == 1057 ? 1053 : 451;
 					}
 					else
 					{
 						entity->focalx = limbs[INSECTOID][5][0] + 0.75;
 						entity->focaly = limbs[INSECTOID][5][1];
 						entity->focalz = limbs[INSECTOID][5][2] - 0.75;
-						entity->sprite = my->sprite == 1057 ? 1054 : 452;
+						//entity->sprite = my->sprite == 1057 ? 1054 : 452;
+						if ( entity->sprite == 1053 )
+						{
+							entity->sprite = 1054;
+						}
+						else if ( entity->sprite == 451 )
+						{
+							entity->sprite = 452;
+						}
+						else if ( entity->sprite != 1054 && entity->sprite != 452 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, INSECTOID, LIMB_HUMANOID_LEFTARM);
@@ -1645,38 +1794,6 @@ void insectoidMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	{
 		// do nothing, don't reset attacktime or increment it.
 	}
-}
-
-bool Entity::insectoidCanWieldItem(const Item& item) const
-{
-	Stat* myStats = getStats();
-	if ( !myStats )
-	{
-		return false;
-	}
-
-	switch ( itemCategory(&item) )
-	{
-		case WEAPON:
-			return true;
-		case POTION:
-			return false;
-		case THROWN:
-			return true;
-		case ARMOR:
-		{ //Little baby compiler stop whining, wah wah.
-			int equipType = checkEquipType(&item);
-			if ( equipType == TYPE_HAT || equipType == TYPE_HELM )
-			{
-				return false; //No can wear hats, because antennae.
-			}
-			return true; //Can wear all other armor.
-		}
-		default:
-			return false;
-	}
-
-	return false;
 }
 
 void Entity::insectoidChooseWeapon(const Entity* target, double dist)

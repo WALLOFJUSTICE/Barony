@@ -574,6 +574,7 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 	Entity* weaponarm = NULL;
 	int bodypart;
 	bool wearingring = false;
+	bool debugModel = monsterDebugModels(my, &dist);
 
 	// set invisibility //TODO: use isInvisible()?
 	if ( multiplayer != CLIENT )
@@ -947,9 +948,9 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					else
 					{
 						entity->sprite = itemModel(myStats->breastplate, false, my);
-						entity->scalex = 1;
+						//entity->scalex = 1;
 						// shrink the width of the breastplate
-						entity->scaley = 0.8;
+						//entity->scaley = 0.8;
 					}
 					if ( multiplayer == SERVER )
 					{
@@ -973,20 +974,20 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						}
 					}
 				}
-				else if ( multiplayer == CLIENT )
-				{
-					if ( entity->sprite != 468 )
-					{
-						entity->scalex = 1;
-						// shrink the width of the breastplate
-						entity->scaley = 0.8;
-					}
-					else
-					{
-						entity->scalex = 1;
-						entity->scaley = 1;
-					}
-				}
+				//else if ( multiplayer == CLIENT )
+				//{
+				//	if ( entity->sprite != 468 )
+				//	{
+				//		entity->scalex = 1;
+				//		// shrink the width of the breastplate
+				//		entity->scaley = 0.8;
+				//	}
+				//	else
+				//	{
+				//		entity->scalex = 1;
+				//		entity->scaley = 1;
+				//	}
+				//}
 				my->setHumanoidLimbOffset(entity, AUTOMATON, LIMB_HUMANOID_TORSO);
 				break;
 			// right leg
@@ -1064,6 +1065,68 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			// right arm
 			case LIMB_HUMANOID_RIGHTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = 471;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_RIGHT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 471 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = 471;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				node_t* weaponNode = list_Node(&my->children, 7);
 				if ( weaponNode )
 				{
@@ -1074,7 +1137,7 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[AUTOMATON][4][0]; // 0
 						entity->focaly = limbs[AUTOMATON][4][1]; // 0
 						entity->focalz = limbs[AUTOMATON][4][2]; // 2
-						entity->sprite = 471;
+						//entity->sprite = 471;
 					}
 					else
 					{
@@ -1082,7 +1145,15 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						entity->focalx = limbs[AUTOMATON][4][0] + 1.5; // 1
 						entity->focaly = limbs[AUTOMATON][4][1] + 0.25; // 0
 						entity->focalz = limbs[AUTOMATON][4][2] - 1; // 1
-						entity->sprite = 472;
+						//entity->sprite = 472;
+						if ( entity->sprite == 471 )
+						{
+							entity->sprite = 472;
+						}
+						else if ( entity->sprite != 472 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, AUTOMATON, LIMB_HUMANOID_RIGHTARM);
@@ -1092,6 +1163,68 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			}
 			case LIMB_HUMANOID_LEFTARM:
 			{
+				if ( multiplayer != CLIENT )
+				{
+					if ( myStats->gloves == nullptr )
+					{
+						entity->sprite = 469;
+					}
+					else
+					{
+						if ( setGloveSprite(myStats, entity, SPRITE_GLOVE_LEFT_OFFSET) != 0 )
+						{
+							// successfully set sprite for the human model
+						}
+					}
+					if ( multiplayer == SERVER )
+					{
+						// update sprites for clients
+						if ( entity->ticks >= *cvar_entity_bodypart_sync_tick )
+						{
+							bool updateBodypart = false;
+							if ( entity->skill[10] != entity->sprite )
+							{
+								entity->skill[10] = entity->sprite;
+								updateBodypart = true;
+							}
+							if ( entity->getUID() % (TICKS_PER_SECOND * 10) == ticks % (TICKS_PER_SECOND * 10) )
+							{
+								updateBodypart = true;
+							}
+							if ( updateBodypart )
+							{
+								serverUpdateEntityBodypart(my, bodypart);
+							}
+						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 469 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = 469;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				shieldarm = entity;
 				node_t* shieldNode = list_Node(&my->children, 8);
 				if ( shieldNode )
@@ -1100,18 +1233,26 @@ void automatonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					if ( shield->flags[INVISIBLE] )
 					{
 						// if shield invisible, relax arm.
-						entity->sprite = 469;
 						entity->focalx = limbs[AUTOMATON][5][0]; // 0
 						entity->focaly = limbs[AUTOMATON][5][1]; // 0
 						entity->focalz = limbs[AUTOMATON][5][2]; // 2
+						//entity->sprite = 469;
 					}
 					else
 					{
 						// else flex arm.
-						entity->sprite = 470;
 						entity->focalx = limbs[AUTOMATON][5][0] + 1.5; // 1
 						entity->focaly = limbs[AUTOMATON][5][1] - 0.25; // 0
 						entity->focalz = limbs[AUTOMATON][5][2] - 1; // 1
+						//entity->sprite = 470;
+						if ( entity->sprite == 469 )
+						{
+							entity->sprite = 470;
+						}
+						else if ( entity->sprite != 470 )
+						{
+							entity->sprite += 2;
+						}
 					}
 				}
 				my->setHumanoidLimbOffset(entity, AUTOMATON, LIMB_HUMANOID_LEFTARM);
@@ -1486,14 +1627,11 @@ bool Entity::automatonCanWieldItem(const Item& item) const
 		case WEAPON:
 			return true;
 		case ARMOR:
+			if ( item.type == IRON_PAULDRONS || item.type == SHAWL )
 			{
-				int equipType = checkEquipType(&item);
-				if ( equipType == TYPE_HAT )
-				{
-					return false; //No can wear hats, beep boop
-				}
-				return true;
+				return false;
 			}
+			return true;
 		case THROWN:
 			return true;
 		case TOOL:
