@@ -165,6 +165,7 @@ FMOD::Channel* playSoundPos(real_t x, real_t y, Uint16 snd, Uint8 vol, SoundChan
 static ConsoleVariable<float> cvar_sfx_environment_distmin("/sfx_environment_distmin", 0.0);
 static ConsoleVariable<float> cvar_sfx_ambient_distmin("/sfx_ambient_distmin", 0.0);
 static ConsoleVariable<float> cvar_sfx_trap_distmin("/sfx_trap_distmin", 0.0);
+static ConsoleVariable<float> cvar_sfx_trap_magic_distmin("/sfx_trap_magic_distmin", 1.0);
 
 FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIndex)
 {
@@ -211,7 +212,8 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, Soun
 	{
 		channelGroupOverride = soundEnvironment_group;
 	}
-	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP )
+	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP
+		|| channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP_MAGIC )
 	{
 		channelGroupOverride = soundTrap_group;
 	}
@@ -351,6 +353,12 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, Soun
 		}
 		else if ( channelGroupOverride == soundTrap_group )
 		{
+			if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP_MAGIC )
+			{
+				float f1, f2;
+				channel->get3DMinMaxDistance(&f1, &f2);
+				channel->set3DMinMaxDistance(*cvar_sfx_trap_magic_distmin, f2);
+			}
 			if ( *cvar_sfx_trap_distmin > 0.01 )
 			{
 				float f1, f2;
@@ -431,7 +439,8 @@ FMOD::Channel* playSound(Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIn
 	{
 		channelGroupOverride = soundEnvironment_group;
 	}
-	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP )
+	else if ( channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP
+		|| channelIndex == SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP_MAGIC )
 	{
 		channelGroupOverride = soundTrap_group;
 	}

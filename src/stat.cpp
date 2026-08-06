@@ -219,6 +219,17 @@ Sint32 Stat::getModifiedProficiency(int skill) const
 	{
 		result *= 0.3;
 	}
+
+	if ( skill == PRO_SHIELD && getEffectActive(EFF_ENFEEBLE) )
+	{
+		if ( Uint8 effectStrength = getEffectActive(EFF_ENFEEBLE) )
+		{
+			real_t mult = std::min(0.9, (effectStrength) * 0.1);
+			result *= 1.0 - mult;
+			//result *= 0.5;
+		}
+	}
+
 	return result;
 }
 

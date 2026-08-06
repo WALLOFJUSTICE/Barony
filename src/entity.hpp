@@ -1362,6 +1362,8 @@ public:
 	static bool isPlayerHeadSprite(const int sprite);
 	void setDefaultPlayerModel(int playernum, Monster playerRace, int limbType, int headSprite); // sets correct base color/model of limbs for player characters.
 	Monster getMonsterFromPlayerRace(int playerRace); // convert playerRace into the relevant monster type
+	Monster playerGetMonsterRaceFromPolymorph();
+	static PlayerRaces getPlayerRaceFromMonsterType(int monsterType);
 	void setHardcoreStats(Stat& stats); // set monster stats for hardcore mode.
 	void handleNPCInteractDialogue(Stat& myStats, AllyNPCChatter event); // monster text for interactions.
 	void playerStatIncrease(int playerClass, int chosenStats[3]);

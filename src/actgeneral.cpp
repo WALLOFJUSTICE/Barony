@@ -5552,6 +5552,7 @@ void TextSourceScript::playerClearInventory(bool clearStats)
 	{
 		players[clientnum]->hotbar.hotbarShapeshiftInit[c] = false;
 	}
+	players[clientnum]->hotbar.defaultHotbarLoadoutIndex = Player::Hotbar_t::HOTBAR_DEFAULT;
 	players[clientnum]->magic.clearSelectedSpells(); //So you don't start off with a spell when the game restarts.
 	spellcastingAnimationManager_deactivate(&cast_animation[clientnum]);
 	stats[clientnum]->freePlayerEquipment();

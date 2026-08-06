@@ -6379,6 +6379,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_SIGIL)
 				|| stats[player]->getEffectActive(EFF_SIGIL_NPC)
 				|| stats[player]->getEffectActive(EFF_SANCTUARY)
+				|| stats[player]->getEffectActive(EFF_LEVEL_DRAIN)
 				|| (cast_animation[player].overcharge > 0 || cast_animation[player].overcharge_init > 0)
 				|| (players[player]->mechanics.gremlinBreakableCounter > 0 && stats[player]->type == GREMLIN)
 				|| players[player]->mechanics.getWealthTier() > 0 )
@@ -7096,6 +7097,37 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 									val = "III";
 								}
 								else if ( effectStrength >= 3 )
+								{
+									val = "II";
+								}
+								if ( auto text = Text::get(val.c_str(),
+									"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+								{
+									text->drawColor(SDL_Rect{ 0,0,0,0 },
+										SDL_Rect{ pos.x + img->pos.x + (alignRight ? (img->pos.w - (int)text->getWidth()) : (img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x)),
+										pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+										0, 0 },
+										SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+										makeColor(255, 255, 255, 255));
+								}
+							}
+						}
+						else if ( img->path.find("level_drain.png") != std::string::npos )
+						{
+							alignRight = true;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_LEVEL_DRAIN);
+							if ( effectStrength >= 1 )
+							{
+								std::string val = "I";
+								if ( effectStrength >= 4 )
+								{
+									val = "IV";
+								}
+								else if ( effectStrength >= 3 )
+								{
+									val = "III";
+								}
+								else if ( effectStrength >= 2 )
 								{
 									val = "II";
 								}
@@ -7896,6 +7928,10 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 				{
 					variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
 				}
+				else if ( effectID == EFF_SMOKE_HPMP_RGN )
+				{
+					variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
+				}
 				else if ( effectID == EFF_GROWTH )
 				{
 					variation = std::min(2, std::max(0, (int)entry.customVariable - 2));
@@ -8168,6 +8204,16 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 					if ( !(svFlags & SV_FLAG_HUNGER) )
 					{
 						variation = 1;
+					}
+					else
+					{
+						if ( !(stats[player]->breastplate && stats[player]->breastplate->type == VAMPIRE_DOUBLET) )
+						{
+							if ( stats[player]->getEffectActive(EFF_DEGENERATION) )
+							{
+								variation = 2;
+							}
+						}
 					}
 
 					std::string newHeader = definition.getName(-1).c_str();
@@ -8799,6 +8845,20 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					}
 				}
 			}
+			else if ( i == EFF_SMOKE_HPMP_RGN )
+			{
+				for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); ++it )
+				{
+					if ( (*it).effect == EFF_SMOKE_HPMP_RGN )
+					{
+						if ( (*it).customVariable != stats[player]->getEffectActive(i) )
+						{
+							deleteEffect(EFF_SMOKE_HPMP_RGN);
+							break;
+						}
+					}
+				}
+			}
 			else if ( i == EFF_SALAMANDER_HEART )
 			{
 				if ( !(stats[player]->type == SALAMANDER) )
@@ -8849,6 +8909,14 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 			{
 				effectActive = false;
 			}
+			else if ( i == EFF_DEGENERATION || i == EFF_SLOW_DIGEST )
+			{
+				effectActive = false;
+			}
+			else if ( i == EFF_STASIS && stats[player]->getEffectActive(EFF_STASIS) >= 2 )
+			{
+				effectActive = false;
+			}
 			
 			if ( !players[player]->entity )
 			{
@@ -8880,6 +8948,14 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 						{
 							effectQueue.back().customVariable = stats[player]->getEffectActive(EFF_SALAMANDER_HEART);
 							notificationQueue.back().customVariable = stats[player]->getEffectActive(EFF_SALAMANDER_HEART);
+						}
+					}
+					else if ( i == EFF_SMOKE_HPMP_RGN )
+					{
+						if ( insertEffect(i, -1) )
+						{
+							effectQueue.back().customVariable = stats[player]->getEffectActive(EFF_SMOKE_HPMP_RGN);
+							notificationQueue.back().customVariable = stats[player]->getEffectActive(EFF_SMOKE_HPMP_RGN);
 						}
 					}
 					else
@@ -9014,6 +9090,10 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					miscEffects[kEffectDisabledHPRegen] = true;
 				}
 			}
+			if ( (svFlags & SV_FLAG_HUNGER) && stats[player]->getEffectActive(EFF_DEGENERATION) )
+			{
+				miscEffects[kEffectDisabledHPRegen] = true;
+			}
 			if ( stats[player]->breastplate && stats[player]->breastplate->type == MACHINIST_APRON )
 			{
 				miscEffects[kEffectResistBurning] = true;
@@ -9028,6 +9108,13 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 			}
 			if ( stats[player]->ring && stats[player]->ring->type == RING_SLOWDIGESTION
 				&& (stats[player]->ring->beatitude >= 0 || cursedItemIsBuff) )
+			{
+				if ( (svFlags & SV_FLAG_HUNGER) )
+				{
+					miscEffects[kEffectSlowDigestion] = true;
+				}
+			}
+			if ( stats[player]->getEffectActive(EFF_SLOW_DIGEST) )
 			{
 				if ( (svFlags & SV_FLAG_HUNGER) )
 				{
@@ -9405,6 +9492,10 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 							variation = 0;
 						}
 						else if ( effectID == EFF_SALAMANDER_HEART )
+						{
+							variation = std::min(3, std::max(0, (int)notif.customVariable - 1));
+						}
+						else if ( effectID == EFF_SMOKE_HPMP_RGN )
 						{
 							variation = std::min(3, std::max(0, (int)notif.customVariable - 1));
 						}
@@ -9921,6 +10012,11 @@ void StatusEffectQueue_t::updateEntryImage(StatusEffectQueueEntry_t& entry, Fram
 						}
 					}
 					else if ( effectID == EFF_SALAMANDER_HEART )
+					{
+						variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
+						img->path = StatusEffectDefinitions_t::getEffectImgPath(StatusEffectDefinitions_t::getEffect(effectID), variation);
+					}
+					else if ( effectID == EFF_SMOKE_HPMP_RGN )
 					{
 						variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
 						img->path = StatusEffectDefinitions_t::getEffectImgPath(StatusEffectDefinitions_t::getEffect(effectID), variation);
@@ -32664,11 +32760,15 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 							}
 						}
 					}
+					else if ( effectID == EFF_SMOKE_HPMP_RGN )
+					{
+						variation = 4;
+					}
 					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(effectID);
 					if ( !definition.neverDisplay )
 					{
 						std::string imgPath;
-						if ( effectID == EFF_SALAMANDER_HEART && variation == -1 )
+						if ( (effectID == EFF_SALAMANDER_HEART || effectID == EFF_SMOKE_HPMP_RGN) && variation == -1 )
 						{
 							imgPath = "";
 						}

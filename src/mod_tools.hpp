@@ -4418,7 +4418,7 @@ struct TreasureRoomGenerator
 	BaronyRNG treasure_rng;
 	std::map<int, std::unordered_set<unsigned int>> treasure_floors;
 	std::map<int, std::map<unsigned int, std::string>> orb_floors;
-	std::map<int, std::map<unsigned int, std::string>> station_floors;
+	std::map<int, std::map<unsigned int, std::vector<std::string>>> station_floors;
 	void init();
 	bool bForceSpawnForCurrentFloor(int secretlevelexit, bool minotaur, BaronyRNG& mapRNG);
 	bool bForceStationSpawnForCurrentFloor(int secretlevelexit);
@@ -4537,4 +4537,41 @@ private:
 	size_t readCount_;
 	size_t count_;  //!< Number of characters read
 	bool eof_;
+};
+
+class ShrineEffects_t
+{
+public:
+	static std::set<std::string> shrineEffects;
+	static const Uint32 kShrineJsonHash = 11111;
+	static Uint32 shrineJsonHashRead;
+	static void buildShrineEffects();
+	enum class ShrineEffectsPools {
+		EFFECT_EMPTY,
+		BODY_1,
+		BODY_2,
+		BODY_3,
+		MIND_1,
+		MIND_2,
+		MIND_3,
+		BODY_CHALLENGE_1,
+		BODY_CHALLENGE_2,
+		BODY_CHALLENGE_3,
+		MIND_CHALLENGE_1,
+		MIND_CHALLENGE_2,
+		MIND_CHALLENGE_3,
+		REWARD_ITEM_1,
+		REWARD_ITEM_2,
+		REWARD_ITEM_3,
+		REWARD_BUFF_1,
+		REWARD_BUFF_2,
+		REWARD_BUFF_3,
+		SHRINE_EFFECTS_ENUM_END
+	};
+	static std::string getTierStringFromEffect(const int player, Entity& my, BaronyRNG& rng);
+	static std::pair<std::string, int> rollReward(int shrineType, std::string tierString, BaronyRNG& rng);
+private:
+	static std::map<int, std::map<ShrineEffectsPools, std::vector<std::string>>> shrineEffectPools;
+	static std::vector<std::pair<std::string, ShrineEffectsPools>> shrineEffectsTable;
+	static std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffectsPools, int>>>> shrineOutcomes;
 };

@@ -3276,8 +3276,22 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					createParticleRock(entity, sprite);
 					break;
 				case PARTICLE_EFFECT_SPIN:
+				{
 					createParticleSpin(entity);
+					Sint32 playernum = SDLNet_Read32(&net_packet->data[19]);
+					if ( playernum > 0 )
+					{
+						if ( clientnum + 1 == playernum )
+						{
+							if ( entity == players[clientnum]->entity )
+							{
+								// this is for me, me spin
+								players[clientnum]->movement.startQuickTurn(true);
+							}
+						}
+					}
 					break;
+				}
 				case PARTICLE_EFFECT_SHATTERED_GEM:
 					createParticleShatteredGem(entity->x, entity->y, 7.5, sprite, entity);
 					break;
@@ -4230,6 +4244,27 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		{
 			players[clientnum]->magic.flashNoMana();
 		}
+		if ( net_packet->len >= 8 )
+		{
+			if ( stats[clientnum]->defending && stats[clientnum]->shield )
+			{
+				ItemType itemType = static_cast<ItemType>(SDLNet_Read32(&net_packet->data[4]));
+				if ( stats[clientnum]->shield->type == itemType )
+				{
+					Input& input = Input::inputs[clientnum];
+					if ( input.binaryToggle("Defend") )
+					{
+						input.consumeBinaryToggle("Defend");
+					}
+				}
+			}
+		}
+	} },
+
+	// instrument cast silenced
+	{ 'SILI', []() {
+		messagePlayer(clientnum, MESSAGE_MISC, Language::get(7112));
+		playSound(563, 64);
 		if ( net_packet->len >= 8 )
 		{
 			if ( stats[clientnum]->defending && stats[clientnum]->shield )

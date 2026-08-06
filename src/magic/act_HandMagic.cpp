@@ -24,6 +24,7 @@
 #include "../prng.hpp"
 #include "../mod_tools.hpp"
 #include "../collision.hpp"
+#include "../classdescriptions.hpp"
 
 //The spellcasting animation stages:
 #define ANIM_SPELL_CIRCLE 0 //One circle
@@ -1291,14 +1292,20 @@ void actLeftHandMagic(Entity* my)
 	}
 	else if ( players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph != NOTHING )
 	{
+		playerRace = players[HANDMAGIC_PLAYERNUM]->entity->playerGetMonsterRaceFromPolymorph();
 		if ( players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph > NUMMONSTERS )
 		{
-			playerRace = HUMAN;
-			playerAppearance = players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph - 100;
-		}
-		else
-		{
-			playerRace = static_cast<Monster>(players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph);
+			if ( players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph >= 100 + NUMAPPEARANCES )
+			{
+				if ( playerRace == HUMAN )
+				{
+					playerAppearance = 0;
+				}
+			}
+			else
+			{
+				playerAppearance = players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph - 100;
+			}
 		}
 	}
 
@@ -2098,14 +2105,20 @@ void actRightHandMagic(Entity* my)
 	}
 	else if ( players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph != NOTHING )
 	{
+		playerRace = players[HANDMAGIC_PLAYERNUM]->entity->playerGetMonsterRaceFromPolymorph();
 		if ( players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph > NUMMONSTERS )
 		{
-			playerRace = HUMAN;
-			playerAppearance = players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph - 100;
-		}
-		else
-		{
-			playerRace = static_cast<Monster>(players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph);
+			if ( players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph >= 100 + NUMAPPEARANCES )
+			{
+				if ( playerRace == HUMAN )
+				{
+					playerAppearance = 0;
+				}
+			}
+			else
+			{
+				playerAppearance = players[HANDMAGIC_PLAYERNUM]->entity->effectPolymorph - 100;
+			}
 		}
 	}
 

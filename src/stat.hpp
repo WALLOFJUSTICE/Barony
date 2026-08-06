@@ -160,6 +160,14 @@ static const int EFF_MESMERIZED = 135;
 static const int EFF_SIGIL_NPC = 136;
 static const int EFF_CONFLICTED = 137;
 static const int EFF_MOMENTUM = 138;
+static const int EFF_SILENCED = 139;
+static const int EFF_SMOKE_HPMP_RGN = 140;
+static const int EFF_SLOW_DIGEST = 141;
+static const int EFF_LEVEL_DRAIN = 142;
+static const int EFF_DEGENERATION = 143;
+static const int EFF_DISPIRITED = 144;
+static const int EFF_ENFEEBLE = 145;
+static const int EFF_BURDENED = 146;
 static const int NUMEFFECTS = 160;
 
 // stats

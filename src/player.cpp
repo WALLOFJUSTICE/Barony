@@ -8063,6 +8063,11 @@ void Player::PlayerMechanics_t::ensembleMusicUpdateServer()
 				}
 				if ( effectData )
 				{
+					if ( ::ticks - players[i]->mechanics.eternalShrineEnsembleTicks < 2 * TICKS_PER_SECOND )
+					{
+						effectData |= (1 << 7); // beb 2
+						effectData |= (1 << 6); // beb 1
+					}
 					effectData |= (1 << 5); // tambo
 				}
 				data |= (0xFF & effectData) << 16;

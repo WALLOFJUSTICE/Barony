@@ -646,7 +646,7 @@ extern Inputs inputs;
 void initGameControllers();
 
 static const unsigned NUM_HOTBAR_SLOTS = 10; //NOTE: If you change this, you must dive into drawstatus.c and update the hotbar code. It expects 10.
-static const unsigned NUM_HOTBAR_ALTERNATES = 5;
+static const unsigned NUM_HOTBAR_ALTERNATES = 8;
 
 class Player
 {
@@ -1769,7 +1769,7 @@ public:
 		spell_t* quick_cast_spell = nullptr; //Spell ready for quick-casting
 		Uint32 quick_cast_tome = 0; // Tome read for quick-casting
 	public:
-		spell_t* selected_spell_alternate[NUM_HOTBAR_ALTERNATES] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+		spell_t* selected_spell_alternate[NUM_HOTBAR_ALTERNATES] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 		int selected_spell_last_appearance = -1;
 		list_t spellList; //All of the player's spells are stored here.
 		bool bHasUnreadNewSpell = false;
@@ -1839,7 +1839,7 @@ public:
 		static real_t minimiseMaximiseCameraZ;
 
 		bool handleQuickTurn(bool useRefreshRateDelta);
-		void startQuickTurn();
+		void startQuickTurn(bool force);
 		bool isPlayerSwimming();
 		void handlePlayerCameraUpdate(bool useRefreshRateDelta);
 		void handlePlayerCameraBobbing(bool useRefreshRateDelta);
@@ -2232,8 +2232,10 @@ public:
 	public:
 		std::array<Frame*, NUM_HOTBAR_SLOTS> hotbarSlotFrames;
 		int current_hotbar = 0;
-		bool hotbarShapeshiftInit[NUM_HOTBAR_ALTERNATES] = { false, false, false, false, false };
+		bool hotbarShapeshiftInit[NUM_HOTBAR_ALTERNATES] = { false, false, false, false, false, false, false, false };
 		int swapHotbarOnShapeshift = 0;
+		int defaultHotbarLoadoutIndex = 0;
+		void switchDefaultHotbar(int pickNext = -1);
 		bool hotbarHasFocus = false;
 		int magicBoomerangHotbarSlot = -1;
 		int magicDuckHotbarSlot = -1;
@@ -2299,7 +2301,10 @@ public:
 			HOTBAR_RAT,
 			HOTBAR_SPIDER,
 			HOTBAR_TROLL,
-			HOTBAR_IMP
+			HOTBAR_IMP,
+			HOTBAR_LOADOUT1,
+			HOTBAR_LOADOUT2,
+			HOTBAR_LOADOUT3
 		};
 
 		void clear()
@@ -2307,6 +2312,7 @@ public:
 			faceButtonTopYPosition = yres;
 			swapHotbarOnShapeshift = 0;
 			current_hotbar = 0;
+			defaultHotbarLoadoutIndex = Player::Hotbar_t::HOTBAR_DEFAULT;
 			//hotbarHasFocus = false;
 			magicBoomerangHotbarSlot = -1;
 			magicDuckHotbarSlot = -1;
@@ -2448,6 +2454,7 @@ public:
 		bool ensembleRequireRecast = false;
 		bool ensembleTakenInitialMP = false;
 		bool previouslyLevitating = false;
+		Uint32 eternalShrineEnsembleTicks = 0; // adds beb 1/2 to instrument tracks
 		Uint32 donationRevealedOnFloor = 0;
 		bool donationClaimed = false;
 		std::map<Uint32, std::map<Uint32, Uint32>> targetsCompelled;

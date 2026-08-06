@@ -243,7 +243,8 @@ bool buyItemFromShop(const int player, Item* item, bool& bOutConsumedEntireStack
 			Compendium_t::Events_t::eventUpdateWorld(player, Compendium_t::CPDM_SHOP_SPENT, "shop", item->buyValue(player));
 		}
 
-		if ( stats[player]->playerRace > 0 && players[player] && players[player]->entity->effectPolymorph > NUMMONSTERS )
+		if ( stats[player]->playerRace > 0 && players[player] && players[player]->entity->effectPolymorph > 0
+			&& players[player]->entity->playerGetMonsterRaceFromPolymorph() == HUMAN )
 		{
 			steamStatisticUpdate(STEAM_STAT_ALTER_EGO, STEAM_STAT_INT, item->buyValue(player));
 		}
@@ -675,7 +676,8 @@ bool sellItemToShop(const int player, Item* item)
 		}
 	}
 
-	if ( stats[player]->playerRace > 0 && players[player] && players[player]->entity->effectPolymorph > NUMMONSTERS )
+	if ( stats[player]->playerRace > 0 && players[player] && players[player]->entity->effectPolymorph > 0
+		&& players[player]->entity->playerGetMonsterRaceFromPolymorph() == HUMAN )
 	{
 		steamStatisticUpdate(STEAM_STAT_ALTER_EGO, STEAM_STAT_INT, item->sellValue(player));
 	}

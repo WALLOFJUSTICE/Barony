@@ -2748,6 +2748,11 @@ void updatePlayerConductsInMainLoop()
 		conductGameChallenges[CONDUCT_MODDED] = 1;
 		Mods::disableSteamAchievements = true;
 	}
+	if ( ShrineEffects_t::shrineJsonHashRead != ShrineEffects_t::kShrineJsonHash )
+	{
+		conductGameChallenges[CONDUCT_MODDED] = 1;
+		Mods::disableSteamAchievements = true;
+	}
 	if ( !conductGameChallenges[CONDUCT_MODDED_NO_ACHIEVEMENTS] )
 	{
 		if ( Mods::disableSteamAchievements
@@ -5600,6 +5605,9 @@ int SaveGameInfo::populateFromSession(const int playernum)
 					reinitShapeshiftHotbar = true;
 					deinitShapeshiftHotbar(c);
 				}
+				int previousHotbarLoadout = ::players[c]->hotbar.defaultHotbarLoadoutIndex;
+				::players[c]->hotbar.switchDefaultHotbar(::Player::Hotbar_t::HOTBAR_DEFAULT);
+
 				for ( int i = 0; i < NUM_HOTBAR_SLOTS; ++i ) {
 					auto item = uidToItem(::players[c]->hotbar.slots()[i].item);
 					if ( item ) {
@@ -5648,7 +5656,10 @@ int SaveGameInfo::populateFromSession(const int playernum)
 						}
 					}
 				}
-
+				if ( previousHotbarLoadout != ::Player::Hotbar_t::HOTBAR_DEFAULT )
+				{
+					::players[c]->hotbar.switchDefaultHotbar(previousHotbarLoadout);
+				}
 				if ( reinitShapeshiftHotbar )
 				{
 					initShapeshiftHotbar(c);

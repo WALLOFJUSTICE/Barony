@@ -2452,6 +2452,68 @@ void Entity::effectTimes()
 						messagePlayer(player, MESSAGE_STATUS, Language::get(6751));
 						updateClient = true;
 						break;
+					case EFF_SMOKE_HPMP_RGN:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7114));
+						break;
+					case EFF_DEGENERATION:
+						if ( svFlags & SV_FLAG_HUNGER )
+						{
+							messagePlayer(player, MESSAGE_STATUS, Language::get(7117));
+						}
+						break;
+					case EFF_DISPIRITED:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7119));
+						break;
+					case EFF_SILENCED:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7120));
+						break;
+					case EFF_SLOW_DIGEST:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7121));
+						break;
+					case EFF_ENFEEBLE:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7126));
+						break;
+					case EFF_BURDENED:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7128));
+						break;
+					case EFF_LEVEL_DRAIN:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7122));
+						break;
+					case EFF_SPIN:
+						if ( myStats->EFFECTS_ACCRETION_TIME[EFF_SPIN] > TICKS_PER_SECOND )
+						{
+							int strength = effectStrength & 0xF;
+							int whoInflicted = (effectStrength >> 4) & 0xF;
+							bool doVomit = false;
+							int duration = 30 * TICKS_PER_SECOND;
+							if ( whoInflicted > 0 )
+							{
+								if ( (whoInflicted - 1) >= 0 && (whoInflicted - 1) < MAXPLAYERS )
+								{
+									// player inflicted
+								}
+							}
+							else
+							{
+								duration = 2.5 * 60 * TICKS_PER_SECOND; // 2.5 minutes
+								if ( myStats->EFFECTS_ACCRETION_TIME[EFF_SPIN] > 2 * TICKS_PER_SECOND )
+								{
+									duration *= 2;
+								}
+							}
+
+							messagePlayer(player, MESSAGE_STATUS, Language::get(634));
+							if ( !myStats->getEffectActive(EFF_VOMITING)
+								&& this->entityCanVomit() )
+							{
+								this->char_gonnavomit = 50 + local_rng.rand() % 60;
+							}
+							if ( strength >= 5 )
+							{
+								this->setEffect(EFF_WEAKNESS, (Uint8)(std::min(7, strength)), duration, false);
+							}
+						}
+						break;
 					case EFF_DISORIENTED:
 						if ( behavior == &actMonster && monsterState == MONSTER_STATE_WAIT )
 						{
@@ -3535,6 +3597,11 @@ int Entity::getHungerTickRate(Stat* myStats, bool isPlayer, bool checkItemsEffec
 			int tier = std::max(0, (myStats->getEffectActive(EFF_FOCI_LIGHT_PROVIDENCE) - 1));
 			mult += tier * getSpellDamageSecondaryFromID(SPELL_FOCI_LIGHT_PROVIDENCE, nullptr, nullptr, nullptr) / 100.0;
 			hungerTickRate *= mult;
+		}
+
+		if ( myStats->getEffectActive(EFF_SLOW_DIGEST) )
+		{
+			hungerTickRate *= (1.0 + 0.1 * myStats->getEffectActive(EFF_SLOW_DIGEST));
 		}
 	}
 
@@ -4715,7 +4782,70 @@ void Entity::handleEffects(Stat* myStats)
 		}
 	}
 
-	if ( myStats->mask && myStats->mask->type == MASK_PIPE )
+	if ( myStats->getEffectActive(EFF_SMOKE_HPMP_RGN) == 1
+		&& getHealthRegenInterval(this, *myStats, behavior == &actPlayer) == -1 ) // hp penalized, gain mp instead
+	{
+		if ( ticks % (HEAL_TIME) == 0 )
+		{
+			int damage = 1;
+			if ( damage > 0 && myStats->HP > 5 )
+			{
+				this->modHP(-damage);
+					
+				if ( damage > 0 && myStats->HP < 10 )
+				{
+					// Give the Player feedback on being hurt
+					playSoundEntity(this, 28, 32); // "Damage.ogg"
+
+					if ( myStats->HP > 0 )
+					{
+						messagePlayer(player, MESSAGE_STATUS, Language::get(6091));
+
+						// Shake the Host's screen
+						if ( myStats->HP <= 10 )
+						{
+							if ( player >= 0 && players[player]->isLocalPlayer() )
+							{
+								camera_shakex += .1;
+								camera_shakey += 10;
+							}
+							else if ( player > 0 && multiplayer == SERVER && !players[player]->isLocalPlayer() )
+							{
+								// Shake the Client's screen
+								strcpy((char*)net_packet->data, "SHAK");
+								net_packet->data[4] = 10; // turns into .1
+								net_packet->data[5] = 10;
+								net_packet->address.host = net_clients[player - 1].host;
+								net_packet->address.port = net_clients[player - 1].port;
+								net_packet->len = 6;
+								sendPacketSafe(net_sock, -1, net_packet, player - 1);
+							}
+						}
+						else
+						{
+							if ( player >= 0 && players[player]->isLocalPlayer() )
+							{
+								camera_shakex += .04;
+								camera_shakey += 5;
+							}
+							else if ( player > 0 && multiplayer == SERVER && !players[player]->isLocalPlayer() )
+							{
+								// Shake the Client's screen
+								strcpy((char*)net_packet->data, "SHAK");
+								net_packet->data[4] = 4; // turns into .1
+								net_packet->data[5] = 5;
+								net_packet->address.host = net_clients[player - 1].host;
+								net_packet->address.port = net_clients[player - 1].port;
+								net_packet->len = 6;
+								sendPacketSafe(net_sock, -1, net_packet, player - 1);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	else if ( myStats->mask && myStats->mask->type == MASK_PIPE )
 	{
 		if ( !(behavior == &actPlayer && effectShapeshift != NOTHING)
 			&& ((getHealthRegenInterval(this, *myStats, behavior == &actPlayer) == -1)
@@ -4919,7 +5049,44 @@ void Entity::handleEffects(Stat* myStats)
 
 	int hpMod = 1;
 	int mpMod = 1;
-	if ( myStats->mask && myStats->mask->type == MASK_PIPE )
+	if ( myStats->getEffectActive(EFF_SMOKE_HPMP_RGN) )
+	{
+		if ( myStats->getEffectActive(EFF_SMOKE_HPMP_RGN) == 1 ) // HP penalised, MP grow
+		{
+			int chance = 25;
+			if ( local_rng.rand() % 100 < chance )
+			{
+				mpMod += 1;
+				hpMod -= 1;
+			}
+		}
+		else if ( myStats->getEffectActive(EFF_SMOKE_HPMP_RGN) == 2 ) // MP penalised, HP grow
+		{
+			int chance = 25;
+			if ( local_rng.rand() % 100 < chance )
+			{
+				mpMod -= 1;
+				hpMod += 1;
+			}
+		}
+		else if ( myStats->getEffectActive(EFF_SMOKE_HPMP_RGN) == 3 ) // just MP
+		{
+			int chance = 25;
+			if ( local_rng.rand() % 100 < chance )
+			{
+				mpMod += 1;
+			}
+		}
+		else if ( myStats->getEffectActive(EFF_SMOKE_HPMP_RGN) == 4 ) // just HP
+		{
+			int chance = 25;
+			if ( local_rng.rand() % 100 < chance )
+			{
+				hpMod += 1;
+			}
+		}
+	}
+	else if ( myStats->mask && myStats->mask->type == MASK_PIPE )
 	{
 		if ( !(behavior == &actPlayer && effectShapeshift != NOTHING)
 			&& !(behavior == &actPlayer && myStats->playerRace == RACE_INSECTOID && myStats->stat_appearance == 0) )
@@ -5468,6 +5635,20 @@ void Entity::handleEffects(Stat* myStats)
 		}
 	}
 
+	if ( myStats->getEffectActive(EFF_SILENCED) )
+	{
+		for ( int i = EFF_ENSEMBLE_FLUTE; i <= EFF_ENSEMBLE_HORN; ++i )
+		{
+			if ( myStats->getEffectActive(i) )
+			{
+				if ( myStats->EFFECTS_TIMERS[i] > 1 )
+				{
+					myStats->EFFECTS_TIMERS[i] = 1;
+				}
+			}
+		}
+	}
+
 	int previousEnsemblePlaying = -1;
 	bool holySymbolCharging = false;
 	bool darkIconCharging = false;
@@ -5799,6 +5980,10 @@ void Entity::handleEffects(Stat* myStats)
 							{
 								failedCast = true;
 							}
+							if ( stats[player]->getEffectActive(EFF_SILENCED) )
+							{
+								failedCast = true;
+							}
 							effect = -1;
 						}
 						else if ( defendTime == chargeTimeInit || (effect >= 0 && previousEnsemblePlaying >= 0 && previousEnsemblePlaying != effect) )
@@ -5814,6 +5999,12 @@ void Entity::handleEffects(Stat* myStats)
 							}*/
 
 							if ( takeMP && !this->safeConsumeMP(mpcost) )
+							{
+								effect = -1;
+								players[player]->mechanics.ensembleRequireRecast = true;
+								failedCast = true;
+							}
+							else if ( takeMP && stats[player]->getEffectActive(EFF_SILENCED) )
 							{
 								effect = -1;
 								players[player]->mechanics.ensembleRequireRecast = true;
@@ -5844,6 +6035,12 @@ void Entity::handleEffects(Stat* myStats)
 								players[player]->mechanics.ensembleRequireRecast = true;
 								failedCast = true;
 							}
+							else if ( stats[player]->getEffectActive(EFF_SILENCED) )
+							{
+								effect = -1;
+								players[player]->mechanics.ensembleRequireRecast = true;
+								failedCast = true;
+							}
 							else
 							{
 								players[player]->mechanics.ensembleTakenInitialMP = true;
@@ -5864,11 +6061,18 @@ void Entity::handleEffects(Stat* myStats)
 						{
 							if ( players[player]->isLocalPlayer() )
 							{
-								messagePlayer(player, MESSAGE_MISC, Language::get(375));
 								playSound(563, 64);
-								if ( players[player]->magic.noManaProcessedOnTick == 0 )
+								if ( stats[player]->getEffectActive(EFF_SILENCED) )
 								{
-									players[player]->magic.flashNoMana();
+									messagePlayer(player, MESSAGE_MISC, Language::get(7112));
+								}
+								else
+								{
+									messagePlayer(player, MESSAGE_MISC, Language::get(375));
+									if ( players[player]->magic.noManaProcessedOnTick == 0 )
+									{
+										players[player]->magic.flashNoMana();
+									}
 								}
 
 								Input& input = Input::inputs[player];
@@ -5879,7 +6083,14 @@ void Entity::handleEffects(Stat* myStats)
 							}
 							else if ( multiplayer == SERVER && !players[player]->isLocalPlayer() )
 							{
-								strcpy((char*)net_packet->data, "NOMP");
+								if ( stats[player]->getEffectActive(EFF_SILENCED) )
+								{
+									strcpy((char*)net_packet->data, "SILI");
+								}
+								else
+								{
+									strcpy((char*)net_packet->data, "NOMP");
+								}
 								SDLNet_Write32((Uint32)myStats->shield->type, &net_packet->data[4]); // force stop defending with shield
 								net_packet->address.host = net_clients[player - 1].host;
 								net_packet->address.port = net_clients[player - 1].port;
@@ -5915,14 +6126,7 @@ void Entity::handleEffects(Stat* myStats)
 								}
 							}
 
-							if ( !myStats->getEffectActive(effect) )
-							{
-								createEnsembleHUDParticleCircling(this);
-								if ( behavior == &actPlayer && !players[skill[2]]->isLocalPlayer() )
-								{
-									serverSpawnMiscParticles(this, PARTICLE_EFFECT_ENSEMBLE_SELF_CAST, 0);
-								}
-							}
+							bool previousActive = myStats->getEffectActive(effect);
 
 							static ConsoleVariable<bool> cvar_ensemble_debug_length("/ensemble_debug_length", false);
 
@@ -5983,23 +6187,25 @@ void Entity::handleEffects(Stat* myStats)
 												}
 											}
 
-
-											if ( entity->behavior == &actPlayer )
+											if ( !entitystats->getEffectActive(EFF_SILENCED) )
 											{
-												if ( guarantee || !wasActive || effectIncrease )
+												if ( entity->behavior == &actPlayer )
 												{
-													entity->setEffect(effect, effectStrength, durationTotal, false);
+													if ( guarantee || !wasActive || effectIncrease )
+													{
+														entity->setEffect(effect, effectStrength, durationTotal, false);
+													}
+													else
+													{
+														// don't update clients all the time with setEffect
+														entitystats->setEffectActive(effect, effectStrength);
+														entitystats->EFFECTS_TIMERS[effect] = durationTotal;
+													}
 												}
 												else
 												{
-													// don't update clients all the time with setEffect
-													entitystats->setEffectActive(effect, effectStrength);
-													entitystats->EFFECTS_TIMERS[effect] = durationTotal;
+													entity->setEffect(effect, effectStrength, durationTotal, false);
 												}
-											}
-											else
-											{
-												entity->setEffect(effect, effectStrength, durationTotal, false);
 											}
 
 											if ( entitystats->getEffectActive(effect) )
@@ -6028,6 +6234,15 @@ void Entity::handleEffects(Stat* myStats)
 											}
 										}
 									}
+								}
+							}
+
+							if ( !previousActive && myStats->getEffectActive(effect) )
+							{
+								createEnsembleHUDParticleCircling(this);
+								if ( behavior == &actPlayer && !players[skill[2]]->isLocalPlayer() )
+								{
+									serverSpawnMiscParticles(this, PARTICLE_EFFECT_ENSEMBLE_SELF_CAST, 0);
 								}
 							}
 						}
@@ -6648,6 +6863,35 @@ void Entity::handleEffects(Stat* myStats)
 				particle->flags[INVISIBLE] = true;
 			}
 		}
+		Uint8 effectStrength = myStats->getEffectActive(EFF_STASIS);
+		if ( effectStrength >= 3 ) // MP drain
+		{
+			if ( myStats->EFFECTS_ACCRETION_TIME[EFF_STASIS] % TICKS_PER_SECOND == 1 )
+			{
+				real_t ratio = std::max(0.025, 0.025 * (effectStrength - 2)); // 2.5% per tick
+
+				myStats->clearEffect(EFF_STASIS); // clear to allow HP drain
+				this->drainMP(std::max(1, (int)(myStats->MAXMP * ratio)), false);
+				playSoundEntity(this, 28, 64);
+				myStats->setEffectActive(EFF_STASIS, effectStrength);
+				createParticleFociDark(this, 0, true);
+				if ( player >= 0 && players[player]->isLocalPlayer() )
+				{
+					camera_shakex -= .03;
+					camera_shakey += 3;
+				}
+				else if ( player > 0 && multiplayer == SERVER && !players[player]->isLocalPlayer() )
+				{
+					strcpy((char*)net_packet->data, "SHAK");
+					net_packet->data[4] = -3; // turns into -.03
+					net_packet->data[5] = 3;
+					net_packet->address.host = net_clients[player - 1].host;
+					net_packet->address.port = net_clients[player - 1].port;
+					net_packet->len = 6;
+					sendPacketSafe(net_sock, -1, net_packet, player - 1);
+				}
+			}
+		}
 		flags[STASIS_DITHER] = true;
 	}
 	else
@@ -7085,6 +7329,11 @@ void Entity::handleEffects(Stat* myStats)
 	if ( myStats->getEffectActive(EFF_TROLLS_BLOOD) )
 	{
 		spawnAmbientParticles(80, 169, 20 + local_rng.rand() % 10, 0.5, true);
+	}
+
+	if ( myStats->getEffectActive(EFF_SILENCED) )
+	{
+		spawnAmbientParticles(80, 1818, 20 + local_rng.rand() % 10, 0.5, true);
 	}
 
 	if ( myStats->getEffectActive(EFF_PACIFY) )
@@ -8429,6 +8678,51 @@ Sint32 Entity::getSTR()
 	return statGetSTR(entitystats, this);
 }
 
+Sint32 statModifyLevelDrain(int statType, Sint32 currentValue, Stat* entitystats, Entity* my)
+{
+	Sint32 returnVal = currentValue;
+	if ( !(statType >= STAT_STR && statType <= STAT_CHR) )
+	{
+		return returnVal;
+	}
+
+	Uint8 effectStrength = entitystats->getEffectActive(EFF_LEVEL_DRAIN);
+	if ( currentValue > 0 && effectStrength > 0 )
+	{
+		real_t statRatio = 1.0;
+		if ( my && my->behavior == &actPlayer )
+		{
+			int classnum = client_classes[my->skill[2]];
+			if ( classnum >= 0 && classnum < NUMCLASSES )
+			{
+				int maxStat = 0;
+				for ( int i = 0; i < NUMSTATS; ++i )
+				{
+					maxStat = std::max(maxStat, (int)classStatGrowth[classnum][i]);
+				}
+				statRatio = classStatGrowth[classnum][statType] / (real_t)maxStat;
+			}
+		}
+		real_t drainMult = 0.1;
+		if ( effectStrength == 1 )
+		{
+			drainMult = 0.2;
+		}
+		else if ( effectStrength == 2 )
+		{
+			drainMult = 0.3;
+		}
+		else if ( effectStrength == 3 )
+		{
+			drainMult = 0.4;
+		}
+		real_t factor = std::max(0.5, 1.0 - drainMult * statRatio); // 5% per strength
+		returnVal *= factor;
+	}
+
+	return returnVal;
+}
+
 Sint32 statGetSTR(Stat* entitystats, Entity* my)
 {
 	Sint32 STR;
@@ -8630,6 +8924,11 @@ Sint32 statGetSTR(Stat* entitystats, Entity* my)
 		{
 			STR += 15;
 		}
+	}
+
+	if ( entitystats->getEffectActive(EFF_LEVEL_DRAIN) )
+	{
+		STR = statModifyLevelDrain(STAT_STR, STR, entitystats, my);
 	}
 
 	return STR;
@@ -8959,6 +9258,19 @@ Sint32 statGetDEX(Stat* entitystats, Entity* my)
 			DEX += 3;
 		}
 	}
+
+	if ( entitystats->getEffectActive(EFF_LEVEL_DRAIN) )
+	{
+		DEX = statModifyLevelDrain(STAT_DEX, DEX, entitystats, my);
+	}
+	if ( entitystats->getEffectActive(EFF_BURDENED) )
+	{
+		if ( DEX > 0 )
+		{
+			DEX *= std::max(0.5, 1.0 - (entitystats->getEffectActive(EFF_BURDENED) * 0.05));
+		}
+	}
+
 	return DEX;
 }
 
@@ -9153,6 +9465,11 @@ Sint32 statGetCON(Stat* entitystats, Entity* my)
 		}
 	}
 
+	if ( entitystats->getEffectActive(EFF_LEVEL_DRAIN) )
+	{
+		CON = statModifyLevelDrain(STAT_CON, CON, entitystats, my);
+	}
+
 	return CON;
 }
 
@@ -9272,6 +9589,12 @@ Sint32 statGetINT(Stat* entitystats, Entity* my)
 	{
 		INT -= std::max(8, static_cast<int>(INT * 0.25));
 	}
+
+	if ( entitystats->getEffectActive(EFF_LEVEL_DRAIN) )
+	{
+		INT = statModifyLevelDrain(STAT_INT, INT, entitystats, my);
+	}
+
 	return INT;
 }
 
@@ -9449,6 +9772,12 @@ Sint32 statGetPER(Stat* entitystats, Entity* my)
 	{
 		PER = 0;
 	}
+
+	if ( entitystats->getEffectActive(EFF_LEVEL_DRAIN) )
+	{
+		PER = statModifyLevelDrain(STAT_PER, PER, entitystats, my);
+	}
+
 	return PER;
 }
 
@@ -9546,6 +9875,12 @@ Sint32 statGetCHR(Stat* entitystats, Entity* my)
 	{
 		CHR += std::max(4, static_cast<int>(CHR * .25));
 	}
+
+	if ( entitystats->getEffectActive(EFF_LEVEL_DRAIN) )
+	{
+		CHR = statModifyLevelDrain(STAT_CHR, CHR, entitystats, my);
+	}
+
 	return CHR;
 }
 
@@ -10359,9 +10694,12 @@ void Entity::attack(int pose, int charge, Entity* target)
 			Entity* myTarget = uidToEntity(monsterTarget);
 			if ( myTarget )
 			{
+				Stat* myTargetStats = myTarget->getStats();
 				if ( myTarget->monsterAllyIndex != -1 || myTarget->behavior == &actPlayer )
 				{
-					if ( !myStats->getEffectActive(EFF_CONFLICTED) && !myStats->getEffectActive(EFF_CONFUSED) )
+					if ( !myStats->getEffectActive(EFF_CONFLICTED) 
+						&& !myStats->getEffectActive(EFF_CONFUSED) 
+						&& !((myTargetStats && myTargetStats->getEffectActive(EFF_TABOO)) || myStats->getEffectActive(EFF_TABOO)) )
 					{
 						this->monsterReleaseAttackTarget(true); // stop attacking player allies or players after this hit executes.
 					}
@@ -10572,6 +10910,10 @@ void Entity::attack(int pose, int charge, Entity* target)
 					if ( (myStats->weapon->type == MAGICSTAFF_LIGHT 
 						|| myStats->weapon->type == MAGICSTAFF_DEEP_SHADE)
 						&& !castSpellResult )
+					{
+						degradeWeapon = false;
+					}
+					if ( myStats->type == MONSTER_ADORCISED_WEAPON && myStats->getAttribute("SHRINE_SPAWN") == "1" )
 					{
 						degradeWeapon = false;
 					}
@@ -13754,6 +14096,10 @@ fireagain:
 							else if ( myStats->type == SHADOW || myStats->type == LICH_FIRE || myStats->type == LICH_ICE || myStats->type == HAUNTED_ARMOR )
 							{
 								degradeWeapon = false; //certain monster's weapons don't degrade.
+							}
+							else if ( myStats->type == MONSTER_ADORCISED_WEAPON && myStats->getAttribute("SHRINE_SPAWN") == "1" )
+							{
+								degradeWeapon = false;
 							}
 							else if ( myStats->type == SKELETON && behavior == &actMonster && monsterAllySummonRank != 0 )
 							{
@@ -17777,6 +18123,15 @@ int AC(Stat* stat)
 		armor *= 2;
 	}
 
+	if ( Uint8 effectStrength = stat->getEffectActive(EFF_ENFEEBLE) )
+	{
+		if ( armor > 0 )
+		{
+			real_t mult = std::min(0.9, (effectStrength) * 0.1);
+			armor *= 1.0 - mult;
+		}
+	}
+
 	return armor;
 }
 
@@ -19725,6 +20080,12 @@ bool Entity::checkEnemy(Entity* your)
 		}
 	}
 
+	// first find out if I have a leader
+	Entity* myLeader = NULL;
+	if ( myStats->leader_uid )
+	{
+		myLeader = uidToEntity(myStats->leader_uid);
+	}
 	// if you have a leader, check whether we are enemies instead
 	Entity* yourLeader = NULL;
 	if ( yourStats->leader_uid )
@@ -19742,17 +20103,15 @@ bool Entity::checkEnemy(Entity* your)
 			}
 			else
 			{
+				// look into this more, two player allies hate each other by virtue of leader taboo'd
+				/*if ( yourLeader == myLeader
+					&& yourLeader->behavior == &actPlayer
+					&& yourLeaderStats->getEffectActive(EFF_TABOO) >= MAXPLAYERS + 1 )*/
 				return checkEnemy(yourLeader);
 			}
 		}
 	}
-
-	// first find out if I have a leader
-	Entity* myLeader = NULL;
-	if ( myStats->leader_uid )
-	{
-		myLeader = uidToEntity(myStats->leader_uid);
-	}
+	
 	if ( myLeader )
 	{
 		Stat* myLeaderStats = myLeader->getStats();
@@ -20158,9 +20517,15 @@ bool Entity::friendlyFireProtection(Entity* your)
 			&& achievementObserver.checkUidIsFromPlayer(your->getStats()->leader_uid) >= 0)) )
 	{
 		if ( your->behavior == &actMonster && your->getStats() 
-			&& (your->getStats()->getEffectActive(EFF_CONFUSED) || your->getStats()->getEffectActive(EFF_CONFLICTED)) )
+			&& (your->getStats()->getEffectActive(EFF_CONFUSED) 
+				|| your->getStats()->getEffectActive(EFF_CONFLICTED)) )
 		{
 			return false; // confused allies can be targeted by player
+		}
+		if ( (getStats() && getStats()->getEffectActive(EFF_TABOO))
+			|| (your->getStats() && your->getStats()->getEffectActive(EFF_TABOO)) )
+		{
+			return false; // if either of us a taboo, then can hit each other since everyone hates us
 		}
 		return true;
 	}
@@ -21227,14 +21592,7 @@ bool Entity::setBootSprite(Entity* leg, int spriteOffset, bool forceShort)
 			monsterType = getMonsterFromPlayerRace(myStats->playerRace);
 			if ( effectPolymorph != NOTHING )
 			{
-				if ( effectPolymorph > NUMMONSTERS )
-				{
-					monsterType = HUMAN;
-				}
-				else
-				{
-					monsterType = static_cast<Monster>(effectPolymorph);
-				}
+				monsterType = playerGetMonsterRaceFromPolymorph();
 			}
 		}
 	}
@@ -24370,6 +24728,11 @@ void Entity::handleEffectsClient()
 		spawnAmbientParticles(30, 600, 20 + local_rng.rand() % 30, 0.5, true);
 	}
 
+	if ( myStats->getEffectActive(EFF_SILENCED) )
+	{
+		spawnAmbientParticles(80, 1818, 20 + local_rng.rand() % 10, 0.5, true);
+	}
+
 	if ( myStats->getEffectActive(EFF_PACIFY) )
 	{
 		spawnAmbientParticles(30, 685, 20 + local_rng.rand() % 30, 0.5, true);
@@ -24908,6 +25271,24 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 
 		switch ( effect )
 		{
+			case EFF_DEGENERATION:
+				if ( !(svFlags & SV_FLAG_HUNGER) )
+				{
+					return false;
+				}
+				break;
+			case EFF_SLOW_DIGEST:
+				if ( myStats->type == SKELETON || !(svFlags & SV_FLAG_HUNGER) )
+				{
+					return false;
+				}
+				break;
+			case EFF_DISPIRITED:
+				if ( myStats->type == AUTOMATON )
+				{
+					return false;
+				}
+				break;
 			case EFF_MESSY:
 				if ( myStats->mask && myStats->mask->type == MASK_HAZARD_GOGGLES )
 				{
@@ -25014,6 +25395,8 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_ROOTED:
 			case EFF_PENANCE:
 			case EFF_COMMAND:
+			case EFF_SPIN:
+			case EFF_NUMBING_BOLT:
 				if ( myStats->type == LICH || myStats->type == DEVIL
 					|| myStats->type == LICH_FIRE || myStats->type == LICH_ICE
 					|| myStats->type == DRAGON || myStats->type == MINOTAUR
@@ -27889,6 +28272,13 @@ int Entity::getManaRegenInterval(Entity* my, Stat& myStats, bool isPlayer, bool 
 					}
 					regenPerMinute *= 1.0 + std::max(0, (bonus)) * 0.1;
 				}
+				if ( myStats.type != AUTOMATON )
+				{
+					if ( myStats.getEffectActive(EFF_DISPIRITED) )
+					{
+						regenPerMinute *= (std::max(0.1, 1.0 - 0.1 * myStats.getEffectActive(EFF_DISPIRITED)));
+					}
+				}
 			}
 
 			if ( manaring > 0 )
@@ -28166,6 +28556,18 @@ int Entity::getHealthRegenInterval(Entity* my, Stat& myStats, bool isPlayer, boo
 					regenPerMinute += statVal * ClassBaseGrowths::statRegenHP[i];
 				}
 			}
+
+			if ( !excludeItemsEffectsBonus )
+			{
+				if ( svFlags & SV_FLAG_HUNGER )
+				{
+					if ( myStats.getEffectActive(EFF_DEGENERATION) )
+					{
+						regenPerMinute *= (std::max(0.1, 1.0 - 0.1 * myStats.getEffectActive(EFF_DEGENERATION)));
+					}
+				}
+			}
+
 			if ( healring > 0 )
 			{
 				regenPerMinute *= (abs(healring) + 1);
@@ -32356,14 +32758,7 @@ void Entity::handleQuiverThirdPersonModel(Stat& myStats, int mySprite)
 			monsterType = getMonsterFromPlayerRace(myStats.playerRace);
 			if ( effectPolymorph != NOTHING )
 			{
-				if ( effectPolymorph > NUMMONSTERS )
-				{
-					monsterType = HUMAN;
-				}
-				else
-				{
-					monsterType = static_cast<Monster>(effectPolymorph);
-				}
+				monsterType = playerGetMonsterRaceFromPolymorph();
 			}
 		}
 	}

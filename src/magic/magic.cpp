@@ -2474,35 +2474,50 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 				};
 				int roll = chances[local_rng.rand() % chances.size()];
 				
-				if ( target->effectPolymorph == 0 )
+				if ( customMonster != NOTHING )
 				{
-					target->effectPolymorph = target->getMonsterFromPlayerRace(roll);
+					int race = Entity::getPlayerRaceFromMonsterType(customMonster);
+					target->effectPolymorph = target->getMonsterFromPlayerRace(race);
 				}
 				else
 				{
-					while ( target->effectPolymorph == target->getMonsterFromPlayerRace(roll) )
+					if ( target->effectPolymorph == 0 )
 					{
-						roll = chances[local_rng.rand() % chances.size()]; // re roll to not polymorph into the same thing
+						target->effectPolymorph = target->getMonsterFromPlayerRace(roll);
 					}
-					target->effectPolymorph = target->getMonsterFromPlayerRace(roll);
+					else
+					{
+						while ( target->effectPolymorph == target->getMonsterFromPlayerRace(roll) )
+						{
+							roll = chances[local_rng.rand() % chances.size()]; // re roll to not polymorph into the same thing
+						}
+						target->effectPolymorph = target->getMonsterFromPlayerRace(roll);
+					}
 				}
 			}
 			else if ( (targetStats->playerRace != RACE_HUMAN && targetStats->stat_appearance == 0) )
 			{
-				target->effectPolymorph = 100 + local_rng.rand() % NUMAPPEARANCES;
+				if ( customMonster != NOTHING )
+				{
+					int race = Entity::getPlayerRaceFromMonsterType(customMonster);
+					if ( race != RACE_HUMAN )
+					{
+						target->effectPolymorph = 100 + NUMAPPEARANCES + race;
+					}
+					else
+					{
+						target->effectPolymorph = 100 + local_rng.rand() % NUMAPPEARANCES;
+					}
+				}
+				else
+				{
+					target->effectPolymorph = 100 + local_rng.rand() % NUMAPPEARANCES;
+				}
 			}
 			serverUpdateEntitySkill(target, 50);
 
 			Uint32 color = makeColorRGB(0, 255, 0);
-			Monster race = NOTHING;
-			if ( target->effectPolymorph > NUMMONSTERS )
-			{
-				race = HUMAN;
-			}
-			else
-			{
-				race = static_cast<Monster>(target->effectPolymorph);
-			}
+			Monster race = target->playerGetMonsterRaceFromPolymorph();
 			messagePlayerColor(target->skill[2], MESSAGE_COMBAT, color, Language::get(3186), getMonsterLocalizedName(race).c_str());
 
 			// change player's type here, don't like this.. will get auto reset in actPlayer() though
@@ -3150,10 +3165,11 @@ Entity* spellEffectAdorcise(Entity& caster, spellElement_t& element, real_t x, r
 
 			if ( monster )
 			{
-				playSoundEntity(monster, 171, 128);
+				playSoundEntity(monster, 896, 128);
 				//playSoundEntity(&my, 178, 128);
-				createParticleErupt(monster, 983);
-				serverSpawnMiscParticles(monster, PARTICLE_EFFECT_ERUPT, 983);
+				 spawnMagicEffectParticles(monster->x, monster->y, monster->z, 171);
+				//createParticleErupt(monster, 2343);
+				//serverSpawnMiscParticles(monster, PARTICLE_EFFECT_ERUPT, 2343);
 
 
 				Stat* monsterStats = monster->getStats();
@@ -3233,8 +3249,25 @@ Entity* spellEffectAdorcise(Entity& caster, spellElement_t& element, real_t x, r
 					else if ( &element == &spellElementMap[SPELL_ADORCISM] )
 					{
 						int duration = getSpellEffectDurationFromID(SPELL_ADORCISM, &caster, nullptr, &caster);
-						monsterStats->setAttribute("adorcised_weapon", std::to_string(duration));
-						monsterStats->MISC_FLAGS[STAT_FLAG_MONSTER_DISABLE_HC_SCALING] = 1;
+						if ( caster.behavior == &actEternalShrine )
+						{
+							monsterStats->setAttribute("SHRINE_SPAWN", "1");
+							if ( uidToEntity(caster.eternalShrineTarget) )
+							{
+								monsterStats->setAttribute("FIND_ENEMY", std::to_string((Uint32)caster.eternalShrineTarget));
+							}
+							else
+							{
+								monsterStats->setAttribute("FIND_ENEMY", "1");
+							}
+							monsterStats->MISC_FLAGS[STAT_FLAG_FORCE_ALLEGIANCE_TO_PLAYER] = Stat::MonsterForceAllegiance::MONSTER_FORCE_PLAYER_ENEMY;
+							monster->parent = caster.getUID();
+						}
+						else
+						{
+							monsterStats->setAttribute("adorcised_weapon", std::to_string(duration));
+							monsterStats->MISC_FLAGS[STAT_FLAG_MONSTER_DISABLE_HC_SCALING] = 1;
+						}
 						if ( itemToAdorcise )
 						{
 							monsterStats->weapon = newItem(itemToAdorcise->type, itemToAdorcise->status,
@@ -3275,15 +3308,19 @@ Entity* spellEffectAdorcise(Entity& caster, spellElement_t& element, real_t x, r
 							}
 							monsterStats->monsterNoDropItems = 1;
 						}
-						if ( forceFollower(caster, *monster) )
+
+						if ( caster.getStats() )
 						{
-							if ( caster.behavior == &actPlayer )
+							if ( forceFollower(caster, *monster) )
 							{
-								Compendium_t::Events_t::eventUpdateMonster(caster.skill[2], Compendium_t::CPDM_RECRUITED, monster, 1);
-								monster->monsterAllyIndex = caster.skill[2];
-								if ( multiplayer == SERVER )
+								if ( caster.behavior == &actPlayer )
 								{
-									serverUpdateEntitySkill(monster, 42); // update monsterAllyIndex for clients.
+									Compendium_t::Events_t::eventUpdateMonster(caster.skill[2], Compendium_t::CPDM_RECRUITED, monster, 1);
+									monster->monsterAllyIndex = caster.skill[2];
+									if ( multiplayer == SERVER )
+									{
+										serverUpdateEntitySkill(monster, 42); // update monsterAllyIndex for clients.
+									}
 								}
 							}
 						}

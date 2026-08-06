@@ -2409,7 +2409,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 				SoundChannelGroupIndex sfxChannelGroupIndex = SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK;
 				if ( parent && (parent->behavior == &actMagicTrap || parent->behavior == &actMagicTrapCeiling) )
 				{
-					sfxChannelGroupIndex = SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP;
+					sfxChannelGroupIndex = SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP_MAGIC;
 				}
 
 				if ( hit.entity )
@@ -4981,7 +4981,7 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 					{
 						if ( (!mimic && hit.entity->behavior == &actMonster) || hit.entity->behavior == &actPlayer )
 						{
-							if ( hit.entity->setEffect(EFF_NUMBING_BOLT, true, element->duration, false) )
+							if ( hit.entity->behavior == &actMonster && hit.entity->setEffect(EFF_NUMBING_BOLT, true, element->duration, false) )
 							{
 								spawnFloatingSpriteMisc(134, hit.entity->x + (-4 + local_rng.rand() % 9) + cos(hit.entity->yaw) * 2,
 									hit.entity->y + (-4 + local_rng.rand() % 9) + sin(hit.entity->yaw) * 2, hit.entity->z + local_rng.rand() % 4);
@@ -5969,81 +5969,140 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 				{
 					if ( hit.entity )
 					{
-						if ( (!mimic && hit.entity->behavior == &actMonster) )
+						if ( (!mimic && (hit.entity->behavior == &actMonster || hit.entity->behavior == &actPlayer)) )
 						{
 							if ( hitstats )
 							{
 								bool effect = false;
 								Entity* caster = uidToEntity(spell->caster);
 								bool dizzy = !strcmp(element->element_internal_name, spellElementMap[SPELL_DIZZY].element_internal_name);
-								if ( !hitstats->getEffectActive(EFF_DISORIENTED) && hit.entity->isMobile() )
+								if ( hit.entity->behavior == &actPlayer || (!hitstats->getEffectActive(EFF_DISORIENTED) && hit.entity->isMobile()) )
 								{
 									int duration = element->duration;
 									if ( dizzy )
 									{
-										if ( hit.entity->setEffect(EFF_SPIN, true, duration, false) )
+										Uint8 effectStrength = 1;
+										if ( parent && parent->behavior == &actPlayer )
+										{
+											effectStrength = std::min(getSpellDamageSecondaryFromID(spell->ID, parent, parent ? parent->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.f),
+												getSpellDamageFromID(spell->ID, parent, parent ? parent->getStats() : nullptr, my, my->actmagicSpellbookBonus / 100.f));
+											effectStrength |= ((parent->skill[2] + 1) << 4) & 0xF;
+										}
+										else
+										{
+											effectStrength = 5;
+										}
+
+										if ( hit.entity->setEffect(EFF_SPIN, effectStrength, duration, false, true, true) )
 										{
 											effect = true;
 											if ( hit.entity->setEffect(EFF_KNOCKBACK, true, duration, false) )
 											{
-												real_t pushbackMultiplier = 1.0;
+												real_t tangent = atan2(hit.entity->y - my->y, hit.entity->x - my->x);
+												tangent -= PI / 2;
+												tangent += (local_rng.rand() % 5) * PI / 4;
+
 												if ( parent )
 												{
-													real_t tangent = atan2(hit.entity->y - parent->y, hit.entity->x - parent->x);
+													tangent = atan2(hit.entity->y - parent->y, hit.entity->x - parent->x);
 													tangent -= PI / 2;
 													tangent += (local_rng.rand() % 5) * PI / 4;
-													hit.entity->vel_x = cos(tangent) * pushbackMultiplier;
-													hit.entity->vel_y = sin(tangent) * pushbackMultiplier;
-													hit.entity->monsterKnockbackVelocity = 0.01;
-													hit.entity->monsterKnockbackUID = my->parent;
-													hit.entity->monsterKnockbackTangentDir = tangent;
-													//hit.entity->lookAtEntity(*parent);
+												}
+
+												if ( hit.entity->behavior == &actPlayer )
+												{
+													real_t pushbackMultiplier = 0.5;
+													if ( !players[hit.entity->skill[2]]->isLocalPlayer() )
+													{
+														hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+														hit.entity->monsterKnockbackTangentDir = tangent;
+														serverUpdateEntityFSkill(hit.entity, 11);
+														serverUpdateEntityFSkill(hit.entity, 9);
+													}
+													else
+													{
+														hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+														hit.entity->monsterKnockbackTangentDir = tangent;
+													}
 												}
 												else
 												{
-													real_t tangent = atan2(hit.entity->y - my->y, hit.entity->x - my->x);
-													tangent -= PI / 2;
-													tangent += (local_rng.rand() % 5) * PI / 4;
+													real_t pushbackMultiplier = 1.0;
 													hit.entity->vel_x = cos(tangent) * pushbackMultiplier;
 													hit.entity->vel_y = sin(tangent) * pushbackMultiplier;
 													hit.entity->monsterKnockbackVelocity = 0.01;
 													hit.entity->monsterKnockbackTangentDir = tangent;
-													hit.entity->monsterKnockbackUID = 0;
+													hit.entity->monsterKnockbackUID = parent ? parent->getUID() : 0;
 													//hit.entity->lookAtEntity(*my);
 												}
 											}
 											magicOnEntityHit(parent, my, hit.entity, hitstats, 0, 0, 0, spell ? spell->ID : SPELL_NONE);
 											createParticleSpin(hit.entity);
 											serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_SPIN, -1);
+
+											playSoundEntity(hit.entity, 758, 92);
 											if ( caster )
 											{
 												messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(0, 255, 0),
 													*hitstats, Language::get(6706), Language::get(6707), MSG_COMBAT);
 											}
+
+											messagePlayerColor(hit.entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7109));
 										}
 									}
 
-									if ( !dizzy && hit.entity->setEffect(EFF_DISORIENTED, (Uint8)2, duration, false) )
+									if ( !dizzy )
 									{
-										if ( hit.entity->monsterReleaseAttackTarget() )
+										if ( hit.entity->behavior == &actPlayer )
 										{
 											magicOnEntityHit(parent, my, hit.entity, hitstats, 0, 0, 0, spell ? spell->ID : SPELL_NONE);
 											effect = true;
-											/*if ( caster )
-											{
-												hit.entity->lookAtEntity(*caster);
-											}*/
-											hit.entity->monsterLookDir = hit.entity->yaw;
-											hit.entity->monsterLookDir += (PI - PI / 4 + (local_rng.rand() % 10) * PI / 40);
+
 											spawnFloatingSpriteMisc(134, hit.entity->x + (-4 + local_rng.rand() % 9) + cos(hit.entity->yaw) * 2,
 												hit.entity->y + (-4 + local_rng.rand() % 9) + sin(hit.entity->yaw) * 2, hit.entity->z + local_rng.rand() % 4);
+
 											createParticleSpin(hit.entity);
-											serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_SPIN, -1);
+											if ( players[hit.entity->skill[2]]->isLocalPlayer() )
+											{
+												players[hit.entity->skill[2]]->movement.startQuickTurn(true);
+											}
+
+											// will update clients on signal to quickturn with last optionalData
+											serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_SPIN, -1, 0, 0, hit.entity->skill[2]);
 
 											if ( caster )
 											{
 												messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(0, 255, 0),
 													*hitstats, Language::get(6704), Language::get(6705), MSG_COMBAT);
+											}
+
+											messagePlayerColor(hit.entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7108));
+										}
+										else if ( hit.entity->behavior == &actMonster )
+										{
+											if ( hit.entity->setEffect(EFF_DISORIENTED, (Uint8)2, duration, false) )
+											{
+												if ( hit.entity->monsterReleaseAttackTarget() )
+												{
+													magicOnEntityHit(parent, my, hit.entity, hitstats, 0, 0, 0, spell ? spell->ID : SPELL_NONE);
+													effect = true;
+													/*if ( caster )
+													{
+														hit.entity->lookAtEntity(*caster);
+													}*/
+													hit.entity->monsterLookDir = hit.entity->yaw;
+													hit.entity->monsterLookDir += (PI - PI / 4 + (local_rng.rand() % 10) * PI / 40);
+													spawnFloatingSpriteMisc(134, hit.entity->x + (-4 + local_rng.rand() % 9) + cos(hit.entity->yaw) * 2,
+														hit.entity->y + (-4 + local_rng.rand() % 9) + sin(hit.entity->yaw) * 2, hit.entity->z + local_rng.rand() % 4);
+													createParticleSpin(hit.entity);
+													serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_SPIN, -1);
+
+													if ( caster )
+													{
+														messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(0, 255, 0),
+															*hitstats, Language::get(6704), Language::get(6705), MSG_COMBAT);
+													}
+												}
 											}
 										}
 									}
@@ -7206,7 +7265,14 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 					((spell_t*)spellnode->element)->caster = spell->caster;
 					((spell_t*)spellnode->element)->magicstaff = true;
 					spellnode->deconstructor = &spellDeconstructor;
-					playSoundEntity(entity, 165, 128);
+					if ( spell->ID == SPELL_SHADE_BOLT )
+					{
+						playSoundEntity(entity, 893, 128);
+					}
+					else
+					{
+						playSoundEntity(entity, 165, 128);
+					}
 				}
 
 				if ( hitstats )
@@ -8714,6 +8780,26 @@ void actParticleAestheticOrbit(Entity* my)
 					Entity* caster = uidToEntity(my->skill[3]);
 					int burnDamage = getSpellDamageFromID(SPELL_HOLY_FIRE, caster, caster ? caster->getStats() : nullptr,
 						caster);
+					if ( caster && caster->behavior == &actEternalShrine )
+					{
+						if ( parent->getStats() )
+						{
+							real_t totalPercent = 20.0;
+							if ( stats->getEffectActive(EFF_HOLY_FIRE) == 2 )
+							{
+								totalPercent = 20.0;
+							}
+							else if ( stats->getEffectActive(EFF_HOLY_FIRE) == 3 )
+							{
+								totalPercent = 35.0;
+							}
+							if ( stats->getEffectActive(EFF_HOLY_FIRE) == 4 )
+							{
+								totalPercent = 50.0;
+							}
+							burnDamage = std::max(1.0, (parent->getStats()->MAXHP * totalPercent / 100.0) / 8.0);
+						}
+					}
 					applyGenericMagicDamage(caster, parent, *my, SPELL_HOLY_FIRE, burnDamage, true, true);
 				}
 			}
@@ -13664,7 +13750,10 @@ void actParticleTimer(Entity* my)
 
 					if ( multiplayer != CLIENT )
 					{
-						playSoundEntity(my, 806, 128);
+						if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_LIGHTNING_INSTANT )
+						{
+							playSoundEntity(my, 806, 92);
+						}
 					}
 				}
 
@@ -14254,7 +14343,7 @@ void actParticleTimer(Entity* my)
 			{
 				int x = static_cast<int>(my->x / 16);
 				int y = static_cast<int>(my->y / 16);
-				if ( x > 0 && x < map.width - 2 && y > 0 && y < map.height - 2 )
+				if ( x > 0 && x < map.width - 1 && y > 0 && y < map.height - 1 )
 				{
 					if ( my->ticks == 1 )
 					{
@@ -19208,6 +19297,13 @@ void actParticleFloorMagic(Entity* my)
 										}
 									}
 								}
+								if ( caster && caster->behavior == &actEternalShrine )
+								{
+									if ( stats->getAttribute("SHRINE_SPAWN") != "" )
+									{
+										continue;
+									}
+								}
 							}
 
 							if ( entityDist(my, entity) <= 16.0 )
@@ -23018,7 +23114,29 @@ void actParticleShatterEarth(Entity* my)
 					{
 						if ( caster )
 						{
-							if ( forceFollower(*caster, *monster) )
+							if ( caster->behavior == &actEternalShrine )
+							{
+								if ( Stat* monsterStats = monster->getStats() )
+								{
+									monsterStats->setAttribute("SHRINE_SPAWN", "1");
+									if ( uidToEntity(caster->eternalShrineTarget) )
+									{
+										monsterStats->setAttribute("FIND_ENEMY", std::to_string((Uint32)caster->eternalShrineTarget));
+									}
+									else
+									{
+										monsterStats->setAttribute("FIND_ENEMY", "1");
+									}
+									monsterStats->MISC_FLAGS[STAT_FLAG_FORCE_ALLEGIANCE_TO_PLAYER] = Stat::MonsterForceAllegiance::MONSTER_FORCE_PLAYER_ENEMY;
+									//monsterStats->MISC_FLAGS[STAT_FLAG_MONSTER_DISABLE_HC_SCALING] = 1;
+									//int lvl = getSpellDamageFromID(SPELL_EARTH_ELEMENTAL, caster, nullptr, caster);
+									//int maxlvl = getSpellDamageSecondaryFromID(SPELL_EARTH_ELEMENTAL, caster, nullptr, caster);
+									//lvl = std::min(lvl, maxlvl);
+									int lvl = 5 + currentlevel;
+									monsterStats->LVL = lvl;
+								}
+							}
+							else if ( forceFollower(*caster, *monster) )
 							{
 								if ( caster->behavior == &actPlayer )
 								{
@@ -23322,7 +23440,7 @@ void createParticleShatterEarth(Entity* my, Entity* caster, real_t _x, real_t _y
 	int x = static_cast<int>(_x / 16);
 	int y = static_cast<int>(_y / 16);
 
-	if ( !(x > 0 && x < map.width - 2 && y > 0 && y < map.height - 2) )
+	if ( !(x > 0 && x < map.width - 1 && y > 0 && y < map.height - 1) )
 	{
 		return;
 	}

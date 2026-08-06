@@ -170,6 +170,9 @@ namespace MainMenu {
 				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 1", "F1", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 2", "F2", hiddenBinding, hiddenBinding},
+				{"Hotbar Toggle Loadout", "F3", hiddenBinding, hiddenBinding},
             }
         },
         {
@@ -239,6 +242,9 @@ namespace MainMenu {
 				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 1", "F1", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 2", "F2", hiddenBinding, hiddenBinding},
+				{"Hotbar Toggle Loadout", "F3", hiddenBinding, hiddenBinding},
             }
         },
         {
@@ -300,6 +306,9 @@ namespace MainMenu {
 				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 1", "F1", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 2", "F2", hiddenBinding, hiddenBinding},
+				{"Hotbar Toggle Loadout", "F3", hiddenBinding, hiddenBinding},
             }
         },
         {
@@ -365,6 +374,9 @@ namespace MainMenu {
 				{"Hotbar Slot 8", "8", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 9", "9", hiddenBinding, hiddenBinding},
 				{"Hotbar Slot 10", "0", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 1", "F1", hiddenBinding, hiddenBinding},
+				{"Hotbar Loadout 2", "F2", hiddenBinding, hiddenBinding},
+				{"Hotbar Toggle Loadout", "F3", hiddenBinding, hiddenBinding},
             }
         },
     };
@@ -4891,6 +4903,18 @@ namespace MainMenu {
 		{
 			return Language::get(6044);
 		}
+		if ( !strcmp(binding, "Hotbar Toggle Loadout") )
+		{
+			return Language::get(7131);
+		}
+		if ( !strcmp(binding, "Hotbar Loadout 1") )
+		{
+			return Language::get(7132);
+		}
+		if ( !strcmp(binding, "Hotbar Loadout 2") )
+		{
+			return Language::get(7133);
+		}
 		else if ( !strcmp(binding, "Compendium") )
 		{
 			return Language::get(6251);
@@ -4909,6 +4933,18 @@ namespace MainMenu {
                 break;
             }
 			if ( b.action == "Call Out" )
+			{
+				continue; // don't increment c, not in the linear language entries
+			}
+			else if ( b.action == "Hotbar Toggle Loadout" )
+			{
+				continue; // don't increment c, not in the linear language entries
+			}
+			else if ( b.action == "Hotbar Loadout 1" )
+			{
+				continue; // don't increment c, not in the linear language entries
+			}
+			else if ( b.action == "Hotbar Loadout 2" )
 			{
 				continue; // don't increment c, not in the linear language entries
 			}

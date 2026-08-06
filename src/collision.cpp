@@ -559,7 +559,9 @@ bool useSmallCollision(Entity& my, Stat& myStats, Entity& your, Stat& yourStats)
 			if ( yourStats.getEffectActive(EFF_CONFLICTED) 
 				|| myStats.getEffectActive(EFF_CONFLICTED)
 				|| myStats.getEffectActive(EFF_CONFUSED)
-				|| yourStats.getEffectActive(EFF_CONFUSED) )
+				|| yourStats.getEffectActive(EFF_CONFUSED)
+				|| myStats.getEffectActive(EFF_TABOO)
+				|| yourStats.getEffectActive(EFF_TABOO) )
 			{
 				/*if ( (my.behavior == &actMonster && my.monsterTarget == your.getUID())
 					|| (your.behavior == &actMonster && your.monsterTarget == my.getUID()) )*/
@@ -2943,7 +2945,7 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 						entity = (Entity*)node->element;
 						//++entCheck;
 						if ( !entity ) { continue; }
-						if ( entity->flags[PASSABLE] || entity == my || entity == target 
+						if ( entity->flags[PASSABLE] || (entity == my && !(my && my->behavior == &actEternalShrine)) || entity == target 
 							|| entity->behavior == &actDoor
 							|| (entity->behavior == &actIronDoor && entity->doorLocked == 0) )
 						{

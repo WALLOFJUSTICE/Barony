@@ -2728,6 +2728,33 @@ void drawStatusNew(const int player)
 		&& !players[player]->ghost.isActive()
 		&& players[player]->bControlEnabled && !gamePaused )
 	{
+		if ( !inputs.getUIInteraction(player)->selectedItem
+			&& !players[player]->GUI.isDropdownActive()
+			&& players[player]->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_HOTBAR) )
+		{
+			if ( !stats[player]->getEffectActive(EFF_SHAPESHIFT) && players[player]->hotbar.swapHotbarOnShapeshift == 0)
+			{
+				if ( Input::inputs[player].consumeBinaryToggle("Hotbar Toggle Loadout") )
+				{
+					players[player]->hotbar.switchDefaultHotbar();
+					Player::soundMovement();
+					hotbar_t.hotbarTooltipLastGameTick = ticks;
+				}
+				if ( Input::inputs[player].consumeBinaryToggle("Hotbar Loadout 1") )
+				{
+					players[player]->hotbar.switchDefaultHotbar(Player::Hotbar_t::HOTBAR_DEFAULT);
+					Player::soundMovement();
+					hotbar_t.hotbarTooltipLastGameTick = ticks;
+				}
+				if ( Input::inputs[player].consumeBinaryToggle("Hotbar Loadout 2") )
+				{
+					players[player]->hotbar.switchDefaultHotbar(Player::Hotbar_t::HOTBAR_LOADOUT1);
+					Player::soundMovement();
+					hotbar_t.hotbarTooltipLastGameTick = ticks;
+				}
+			}
+		}
+
 		Item* item = NULL;
 		const auto& inventoryUI = players[player]->inventoryUI;
 		if ( inputs.bPlayerUsingKeyboardControl(player)

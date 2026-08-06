@@ -3704,16 +3704,28 @@ bool Player::PlayerMovement_t::handleQuickTurn(bool useRefreshRateDelta)
 	}
 }
 
-void Player::PlayerMovement_t::startQuickTurn()
+void Player::PlayerMovement_t::startQuickTurn(bool force)
 {
-	if ( !players[player.playernum]->entity || bDoingQuickTurn )
+	if ( !players[player.playernum]->entity )
 	{
 		return;
+	}
+	if ( !force )
+	{
+		if ( bDoingQuickTurn )
+		{
+			return;
+		}
 	}
 
 	Entity* my = players[player.playernum]->entity;
 
-	if ( gamePaused || !stats[PLAYER_NUM] || !my->isMobile() )
+	if ( gamePaused || !stats[PLAYER_NUM] )
+	{
+		return;
+	}
+
+	if ( !force && !my->isMobile() )
 	{
 		return;
 	}
@@ -3800,7 +3812,7 @@ void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta
 	{
 		if ( Input::inputs[playernum].consumeBinaryToggle("Quick Turn") )
 		{
-			startQuickTurn();
+			startQuickTurn(false);
 		}
 	}
 
@@ -3853,6 +3865,10 @@ void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta
 				my->yaw += PI * 2;
 			}
 		}
+	}
+	else if ( stats[player.playernum]->getEffectActive(EFF_SPIN) )
+	{
+		my->yaw += .15 * refreshRateDelta;
 	}
 	else if ( handleQuickTurn(useRefreshRateDelta) )
 	{
@@ -4421,6 +4437,10 @@ real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 	{
 		maxSpeed *= 0.75;
 	}
+	if ( int effectStrength = stats[player.playernum]->getEffectActive(EFF_BURDENED) )
+	{
+		maxSpeed *= std::max(0.5, 1.0 - (effectStrength * 0.05));
+	}
 
 	real_t speedFactor = std::min((((DEX) * .4) + 8.5 - slowSpeedPenalty) * weightratio, maxSpeed);
 	/*if ( DEX <= 5 )
@@ -4797,7 +4817,15 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 
 		if ( map.tileHasAttribute(static_cast<int>(my->x / 16), static_cast<int>(my->y / 16), 0, map_t::TILE_ATTRIBUTE_SLOW) )
 		{
-			if ( !isLevitating(stats[PLAYER_NUM]) )
+			bool waterwalkingboots = false;
+			if ( stats[PLAYER_NUM]->shoes != NULL )
+			{
+				if ( stats[PLAYER_NUM]->shoes->type == IRON_BOOTS_WATERWALKING )
+				{
+					waterwalkingboots = true;
+				}
+			}
+			if ( !isLevitating(stats[PLAYER_NUM]) && !waterwalkingboots )
 			{
 				speedFactor *= *cvar_map_tile_slow;
 			}
@@ -7249,14 +7277,20 @@ void actPlayer(Entity* my)
 		playerRace = my->getMonsterFromPlayerRace(stats[PLAYER_NUM]->playerRace);
 		if ( my->effectPolymorph != NOTHING )
 		{
+			playerRace = my->playerGetMonsterRaceFromPolymorph();
 			if ( my->effectPolymorph > NUMMONSTERS )
 			{
-				playerRace = HUMAN;
-				playerAppearance = my->effectPolymorph - 100;
-			}
-			else
-			{
-				playerRace = static_cast<Monster>(my->effectPolymorph);
+				if ( my->effectPolymorph >= 100 + NUMAPPEARANCES )
+				{
+					if ( playerRace == HUMAN )
+					{
+						playerAppearance = 0;
+					}
+				}
+				else
+				{
+					playerAppearance = std::max(0, my->effectPolymorph - 100);
+				}
 			}
 		}
 		if ( stats[PLAYER_NUM]->stat_appearance == 0 || my->effectPolymorph != NOTHING )
@@ -15478,9 +15512,99 @@ Monster getMonsterFromPlayerRace(int playerRace)
 	return HUMAN;
 }
 
+PlayerRaces Entity::getPlayerRaceFromMonsterType(int monsterType)
+{
+	switch ( monsterType )
+	{
+	case HUMAN:
+		return RACE_HUMAN;
+		break;
+	case SKELETON:
+		return RACE_SKELETON;
+		break;
+	case INCUBUS:
+		return RACE_INCUBUS;
+		break;
+	case GOBLIN:
+		return RACE_GOBLIN;
+		break;
+	case AUTOMATON:
+		return RACE_AUTOMATON;
+		break;
+	case INSECTOID:
+		return RACE_INSECTOID;
+		break;
+	case GOATMAN:
+		return RACE_GOATMAN;
+		break;
+	case VAMPIRE:
+		return RACE_VAMPIRE;
+		break;
+	case SUCCUBUS:
+		return RACE_SUCCUBUS;
+		break;
+	case RAT:
+		return RACE_RAT;
+		break;
+	case TROLL:
+		return RACE_TROLL;
+		break;
+	case SPIDER:
+		return RACE_SPIDER;
+		break;
+	case CREATURE_IMP:
+		return RACE_IMP;
+		break;
+	case DRYAD:
+		return RACE_DRYAD;
+		break;
+	case MYCONID:
+		return RACE_MYCONID;
+		break;
+	case GREMLIN:
+		return RACE_GREMLIN;
+		break;
+	case SALAMANDER:
+		return RACE_SALAMANDER;
+		break;
+	case GNOME:
+		return RACE_GNOME;
+		break;
+	default:
+		return RACE_HUMAN;
+		break;
+	}
+}
+
 Monster Entity::getMonsterFromPlayerRace(int playerRace)
 {
     return ::getMonsterFromPlayerRace(playerRace);
+}
+
+Monster Entity::playerGetMonsterRaceFromPolymorph()
+{
+	Stat* myStats = getStats();
+	if ( !myStats ) { return HUMAN; }
+	if ( behavior != &actPlayer ) { return myStats->type; }
+
+	if ( effectPolymorph == 0 )
+	{
+		return myStats->type;
+	}
+
+	if ( effectPolymorph >= 100 + NUMAPPEARANCES )
+	{
+		Monster race = getMonsterFromPlayerRace(effectPolymorph - (100 + NUMAPPEARANCES));
+		return race;
+	}
+	else if ( effectPolymorph > NUMMONSTERS )
+	{
+		return HUMAN;
+	}
+	else
+	{
+		return static_cast<Monster>(effectPolymorph);
+	}
 }
 
 void Entity::setDefaultPlayerModel(int playernum, Monster playerRace, int limbType, int headSprite)
@@ -15493,7 +15617,11 @@ void Entity::setDefaultPlayerModel(int playernum, Monster playerRace, int limbTy
 	int playerAppearance = stats[playernum]->stat_appearance;
 	if ( players[playernum] && players[playernum]->entity && players[playernum]->entity->effectPolymorph > NUMMONSTERS )
 	{
-		playerAppearance = players[playernum]->entity->effectPolymorph - 100;
+		if ( players[playernum]->entity->effectPolymorph >= 100 &&
+			players[playernum]->entity->effectPolymorph < 100 + NUMAPPEARANCES )
+		{
+			playerAppearance = players[playernum]->entity->effectPolymorph - 100;
+		}
 	}
 
 	if ( limbType == LIMB_HUMANOID_TORSO )

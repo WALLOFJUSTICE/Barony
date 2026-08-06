@@ -8675,6 +8675,7 @@ void doNewGame(bool makeHighscore) {
 		{
 			players[i]->hotbar.hotbarShapeshiftInit[c] = false;
 		}
+		players[i]->hotbar.defaultHotbarLoadoutIndex = Player::Hotbar_t::HOTBAR_DEFAULT;
 		players[i]->shootmode = true;
 		players[i]->magic.clearSelectedSpells();
 		spellcastingAnimationManager_deactivate(&cast_animation[i]);
@@ -10248,6 +10249,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 		{
 			players[i]->hotbar.hotbarShapeshiftInit[c] = false;
 		}
+		players[i]->hotbar.defaultHotbarLoadoutIndex = Player::Hotbar_t::HOTBAR_DEFAULT;
 		players[i]->shootmode = true;
 		players[i]->magic.clearSelectedSpells();
 		players[i]->paperDoll.resetPortrait(); // reset paper doll camera view.

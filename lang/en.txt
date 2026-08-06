@@ -7385,5 +7385,32 @@ has been unlocked!#
 7106 %s blessed!#
 # NPC Human can't drop equipment cursed
 7107 Some of my items seem a little stuck on.#
+7108 You get spun around!#
+7109 You feel dizzied!#
+7110 The earth tremors at your feet!#
+7111 A curse of silence afflicts you!#
+7112 Your instrument makes no sound under the curse of silence!#
+7113 The spell fizzles under the curse of silence!#
+7114 The fragrant smell of smoke fades.#
+7115 You are enveloped by fragrant smoke!#
+7116 Your mortal body feels distant...#
+7117 You regain your strength.#
+7118 Your resolve wanes...#
+7119 Your spirits return to you.#
+7120 You feel your inner voice return.#
+7121 Your metabolism returns to normal.#
+7122 You no longer feel drained.#
+7123 Your experience is drained!#
+7124 Your essence is being drained!#
+7125 Your defenses are lowered!#
+7126 You regain your defenses.#
+7127 You feel the weight of the world on your shoulders!#
+7128 Your burden lifts.#
+7129 Scorching fire envelops you!#
+7130 A voice booms inside your mind:
+ "ALL THINGS ARE TEMPORARY."#
+7131 Hotbar Toggle Loadout#
+7132 Hotbar Loadout 1#
+7133 Hotbar Loadout 2#
 
 7999 END#

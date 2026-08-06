@@ -2396,7 +2396,7 @@ void boulderSokobanOnDestroy(bool pushedOffLedge)
 			Uint32 color = makeColorRGB(255, 128, 0);
 			if ( goldCount >= 39 )
 			{
-				playSoundPlayer(c, 393, 128);
+				playSoundNotificationPlayer(c, 393, 80);
 				messagePlayerColor(c, MESSAGE_HINT, color, Language::get(2969));
 				if ( playerAliveTicks > 0 )
 				{
@@ -2405,7 +2405,7 @@ void boulderSokobanOnDestroy(bool pushedOffLedge)
 			}
 			else
 			{
-				playSoundPlayer(c, 395, 128);
+				playSoundNotificationPlayer(c, 395, 80);
 				if ( goldCount < 25 )
 				{
 					messagePlayerColor(c, MESSAGE_HINT, color, Language::get(2971)); // less than impressed.

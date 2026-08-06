@@ -718,6 +718,12 @@ struct SaveGameInfo {
 		std::vector<stat_t> followers;
 		
 		bool serialize(FileInterface* fp) {
+			int version = 1;
+			if ( !fp->isReading() )
+			{
+				version = 2;
+			}
+			fp->property("version", version);
 			fp->property("char_class", char_class);
 			fp->property("race", race);
 			fp->property("kills", kills);
@@ -744,9 +750,31 @@ struct SaveGameInfo {
 				}
 			}
 			fp->property("hotbar", hotbar);
-			fp->property("hotbar_alternate", hotbar_alternate);
+			if ( version < 2 )
+			{
+				Uint32 hotbar_alternate_tmp[5][NUM_HOTBAR_SLOTS];
+				fp->property("hotbar_alternate", hotbar_alternate_tmp);
+				for ( int i = 0; i < NUM_HOTBAR_SLOTS; ++i )
+				{
+					for ( int j = 0; j < 5; ++j )
+					{
+						hotbar_alternate[j][i] = hotbar_alternate_tmp[j][i];
+					}
+				}
+
+				Uint32 selected_spell_alternate_tmp[5];
+				fp->property("selected_spell_alternate", selected_spell_alternate_tmp);
+				for ( int j = 0; j < 5; ++j )
+				{
+					selected_spell_alternate[j] = selected_spell_alternate[j];
+				}
+			}
+			else
+			{
+				fp->property("hotbar_alternate", hotbar_alternate);
+				fp->property("selected_spell_alternate", selected_spell_alternate);
+			}
 			fp->property("selected_spell", selected_spell);
-			fp->property("selected_spell_alternate", selected_spell_alternate);
 			fp->property("selected_spell_last_appearance", selected_spell_last_appearance);
 			fp->property("spells", spells);
 			fp->property("recipes", known_recipes);

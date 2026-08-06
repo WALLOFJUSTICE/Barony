@@ -1711,7 +1711,8 @@ void initEarthElemental(Entity* my, Stat* myStats)
 	int sprite = 1871; // default sprite, summon anim
 	if ( multiplayer != CLIENT )
 	{
-		if ( MONSTER_INIT || (myStats && myStats->getAttribute("SUMMONED_CREATURE") == "") )
+		if ( MONSTER_INIT 
+			|| (myStats && myStats->getAttribute("SUMMONED_CREATURE") == "" && myStats->getAttribute("SHRINE_SPAWN") == ""))
 		{
 			sprite = 1876; // no summon anim
 		}
@@ -1757,9 +1758,8 @@ void initEarthElemental(Entity* my, Stat* myStats)
 			// count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
 
-			my->setHardcoreStats(*myStats);
-
-			if ( myStats->getAttribute("SUMMONED_CREATURE") == "1" )
+			if ( myStats->getAttribute("SUMMONED_CREATURE") == "1"
+				|| myStats->getAttribute("SHRINE_SPAWN") == "1" )
 			{
 				// min 5, max 20
 				myStats->HP = 40 + std::max(0, (myStats->LVL - 5)) * 5; //40 - 115
@@ -1775,6 +1775,8 @@ void initEarthElemental(Entity* my, Stat* myStats)
 					serverUpdateAllyStat(leader->skill[2], my->getUID(), myStats->LVL, myStats->HP, myStats->MAXHP, myStats->type);
 				}
 			}
+
+			my->setHardcoreStats(*myStats);
 		}
 	}
 

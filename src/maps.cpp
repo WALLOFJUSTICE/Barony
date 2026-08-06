@@ -49,9 +49,14 @@ void TreasureRoomGenerator::init()
 	treasure_rng.seedBytes(&seed, sizeof(seed));
 
 	std::string previous_station[(int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX];
+	std::string previous_shrine[(int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX];
 	for ( int j = 0; j < (int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX; ++j )
 	{
 		previous_station[j] = "";
+	}
+	for ( int j = 0; j < (int)SecretLevelType::SECRET_LEVEL_DEPTH_MAX; ++j )
+	{
+		previous_shrine[j] = "";
 	}
 	for ( int i = 0; i <= 35; i += 5 )
 	{
@@ -152,8 +157,133 @@ void TreasureRoomGenerator::init()
 							}
 						}
 						unsigned int station_name_pick = treasure_rng.discrete(chances_strs.data(), chances_strs.size());
-						floors_stations[i + (chosen_level == 0 ? res1 : res2)] = strs[station_name_pick];
+						floors_stations[i + (chosen_level == 0 ? res1 : res2)].push_back(strs[station_name_pick]);
 						previous_station[j] = strs[station_name_pick];
+
+						bool anyChances = false;
+						for ( auto val : chances_level )
+						{
+							if ( val > 0 )
+							{
+								anyChances = true;
+								break;
+							}
+						}
+
+						if ( !anyChances )
+						{
+							break;
+						}
+
+						chosen_level = treasure_rng.discrete(chances_level.data(), chances_level.size());
+						chances_level[chosen_level] = 0;
+					}
+				}
+			}
+
+			// shrine spawns
+			{
+				auto& floors = treasure_floors[j];
+				std::vector<unsigned int> chances = { 0, 7, 10, 10, 7 };
+				if ( i == 0 && j == 0 )
+				{
+					chances[0] = 0;
+					chances[1] = 0;
+				}
+				if ( j == 1 && i == 5 )
+				{
+					chances = { 0, 7, 10, 0, 0 }; // underworld
+				}
+
+				unsigned int res1 = treasure_rng.discrete(chances.data(), chances.size());
+				chances[res1] = 0;
+				unsigned int res2 = treasure_rng.discrete(chances.data(), chances.size());
+
+				//if ( treasure_rng.rand() % 3 == 0 )
+				{
+					// do both
+					floors.insert(i + res1);
+					floors.insert(i + res2);
+				}
+				//else
+				//{
+				//	// only 1
+				//	auto chosen = treasure_rng.rand() % 2 == 0 ? res1 : res2;
+				//	floors.insert(i + chosen);
+				//}
+			}
+
+			{
+				auto& floors_stations = station_floors[j];
+				std::vector<unsigned int> chances = { 0, 7, 10, 10, 7 };
+				if ( i == 0 && j == 0 )
+				{
+					chances[0] = 0;
+					chances[1] = 0;
+				}
+				if ( j == 1 && i == 5 )
+				{
+					chances = { 0, 7, 10, 0, 0 }; // underworld
+				}
+				unsigned int res1 = treasure_rng.discrete(chances.data(), chances.size());
+				chances[res1] = 0;
+				unsigned int res2 = treasure_rng.discrete(chances.data(), chances.size());
+
+				if ( true /*(treasure_rng.rand() % 4 > 0) || (i >= 5 && i <= 10) || i >= 15*/ )
+				{
+					std::vector<unsigned int> chances_level;
+					chances_level.push_back(1);
+					chances_level.push_back(1);
+					auto chosen_level = treasure_rng.discrete(chances_level.data(), chances_level.size());
+					chances_level[chosen_level] = 0;
+
+					std::vector<std::pair<std::string, int>> strs_weights = { 
+						{ "anvil", 10},
+						{ "supplication", 10},
+						{ "chorale", 10},
+						{ "ascension", 10} };
+
+					int numStations = 1;
+
+					//if ( abs((int)res1) - abs((int)res2) >= 1 ) // x level distance
+					{
+						//if ( treasure_rng.rand() % 3 == 0 )
+						{
+							numStations = 2;
+						}
+					}
+
+					bool doneSupplication = false;
+					int index = -1;
+					while ( numStations > 0 )
+					{
+						++index;
+						--numStations;
+
+						std::vector<unsigned int> chances_strs;
+						if ( index == 1 && !doneSupplication )
+						{
+							chances_strs.resize(strs_weights.size(), 0);
+							chances_strs[1] = 10;
+						}
+						else
+						{
+							for ( auto& str : strs_weights )
+							{
+								if ( str.first != previous_shrine[j] )
+								{
+									chances_strs.push_back(str.second);
+								}
+								else
+								{
+									chances_strs.push_back(0);
+								}
+							}
+						}
+						unsigned int station_name_pick = treasure_rng.discrete(chances_strs.data(), chances_strs.size());
+						floors_stations[i + (chosen_level == 0 ? res1 : res2)].push_back(strs_weights[station_name_pick].first);
+						previous_shrine[j] = strs_weights[station_name_pick].first;
+						doneSupplication = strs_weights[station_name_pick].first == "supplication";
 
 						bool anyChances = false;
 						for ( auto val : chances_level )
@@ -5767,71 +5897,159 @@ int generateDungeon(char* levelset, Uint32 seed)
 		free(possibleLocationsStations);
 		possibleLocationsStations = nullptr;
 
+		std::vector<unsigned int> posChances;
+		for ( auto& b : stationLocations )
+		{
+			posChances.push_back(b.walls);
+		}
+		auto& station = treasure_room_generator.station_floors[(int)secretleveltype];
+		auto station_it = station[currentlevel].begin();
 		while ( !stationLocations.empty() )
 		{
-			std::vector<unsigned int> posChances;
-			int pickedPos = 0;
-			for ( auto& b : stationLocations )
+			if ( station_it == station[currentlevel].end() )
 			{
-				posChances.push_back(b.walls);
+				break;
 			}
 
-			pickedPos = map_rng.discrete(posChances.data(), posChances.size());
+			int pickedPos = map_rng.discrete(posChances.data(), posChances.size());
+			posChances[pickedPos] = 0;
 
 			auto& top = stationLocations.at(pickedPos);
 			int x = top.x;
 			int y = top.y;
 
-			auto& station = treasure_room_generator.station_floors[(int)secretleveltype];
-			if ( station[currentlevel] == "cauldron" )
+			std::string stationSpawn = *station_it;
 			{
-				Entity* stationEntity = newEntity(300, 1, map.entities, nullptr); // cauldron
-				stationEntity->x = x * 16.0;
-				stationEntity->y = y * 16.0;
-				stationEntity->yaw = top.dir / 2;
-
-				stationLocations.erase(stationLocations.begin() + pickedPos);
-				possiblelocations[y + x * map.height] = false;
-				--numpossiblelocations;
-
-				if ( *cvar_debug_station_spawn )
+				if ( stationSpawn == "cauldron" )
 				{
-					if ( (svFlags & SV_FLAG_CHEATS) )
+					Entity* stationEntity = newEntity(300, 1, map.entities, nullptr); // cauldron
+					stationEntity->x = x * 16.0;
+					stationEntity->y = y * 16.0;
+					stationEntity->yaw = top.dir / 2;
+
+					stationLocations.erase(stationLocations.begin() + pickedPos);
+					possiblelocations[y + x * map.height] = false;
+					--numpossiblelocations;
+
+					if ( *cvar_debug_station_spawn )
 					{
-						messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", station[currentlevel].c_str(), x, y);
+						if ( (svFlags & SV_FLAG_CHEATS) )
+						{
+							messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", stationSpawn.c_str(), x, y);
+						}
+					}
+				}
+				else if ( stationSpawn == "workbench" )
+				{
+					Entity* stationEntity = newEntity(301, 1, map.entities, nullptr); // workbench
+					stationEntity->x = x * 16.0;
+					stationEntity->y = y * 16.0;
+					stationEntity->yaw = top.dir / 2;
+
+					stationLocations.erase(stationLocations.begin() + pickedPos);
+					possiblelocations[y + x * map.height] = false;
+					--numpossiblelocations;
+
+					if ( *cvar_debug_station_spawn )
+					{
+						if ( (svFlags & SV_FLAG_CHEATS) )
+						{
+							messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", stationSpawn.c_str(), x, y);
+						}
+					}
+				}
+				else if ( stationSpawn == "anvil" )
+				{
+					Entity* stationEntity = newEntity(313, 1, map.entities, nullptr); // workbench
+					setSpriteAttributes(stationEntity, nullptr, nullptr);
+					stationEntity->x = x * 16.0;
+					stationEntity->y = y * 16.0;
+					stationEntity->eternalShrineDir = top.dir / 2;
+
+					stationLocations.erase(stationLocations.begin() + pickedPos);
+					possiblelocations[y + x * map.height] = false;
+					--numpossiblelocations;
+
+					if ( *cvar_debug_station_spawn )
+					{
+						if ( (svFlags & SV_FLAG_CHEATS) )
+						{
+							messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", stationSpawn.c_str(), x, y);
+						}
+					}
+				}
+				else if ( stationSpawn == "supplication" )
+				{
+					Entity* stationEntity = newEntity(312, 1, map.entities, nullptr); // workbench
+					setSpriteAttributes(stationEntity, nullptr, nullptr);
+					stationEntity->x = x * 16.0;
+					stationEntity->y = y * 16.0;
+					stationEntity->eternalShrineDir = top.dir / 2;
+
+					stationLocations.erase(stationLocations.begin() + pickedPos);
+					possiblelocations[y + x * map.height] = false;
+					--numpossiblelocations;
+
+					if ( *cvar_debug_station_spawn )
+					{
+						if ( (svFlags & SV_FLAG_CHEATS) )
+						{
+							messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", stationSpawn.c_str(), x, y);
+						}
+					}
+				}
+				else if ( stationSpawn == "chorale" )
+				{
+					Entity* stationEntity = newEntity(314, 1, map.entities, nullptr); // workbench
+					setSpriteAttributes(stationEntity, nullptr, nullptr);
+					stationEntity->x = x * 16.0;
+					stationEntity->y = y * 16.0;
+					stationEntity->eternalShrineDir = top.dir / 2;
+
+					stationLocations.erase(stationLocations.begin() + pickedPos);
+					possiblelocations[y + x * map.height] = false;
+					--numpossiblelocations;
+
+					if ( *cvar_debug_station_spawn )
+					{
+						if ( (svFlags & SV_FLAG_CHEATS) )
+						{
+							messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", stationSpawn.c_str(), x, y);
+						}
+					}
+				}
+				else if ( stationSpawn == "ascension" )
+				{
+					Entity* stationEntity = newEntity(315, 1, map.entities, nullptr); // workbench
+					setSpriteAttributes(stationEntity, nullptr, nullptr);
+					stationEntity->x = x * 16.0;
+					stationEntity->y = y * 16.0;
+					stationEntity->eternalShrineDir = top.dir / 2;
+
+					stationLocations.erase(stationLocations.begin() + pickedPos);
+					possiblelocations[y + x * map.height] = false;
+					--numpossiblelocations;
+
+					if ( *cvar_debug_station_spawn )
+					{
+						if ( (svFlags & SV_FLAG_CHEATS) )
+						{
+							messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", stationSpawn.c_str(), x, y);
+						}
+					}
+				}
+				else
+				{
+					if ( *cvar_debug_station_spawn )
+					{
+						if ( (svFlags & SV_FLAG_CHEATS) )
+						{
+							messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: nothing generated at x:%d y:%d", x, y);
+						}
 					}
 				}
 			}
-			else if ( station[currentlevel] == "workbench" )
-			{
-				Entity* stationEntity = newEntity(301, 1, map.entities, nullptr); // workbench
-				stationEntity->x = x * 16.0;
-				stationEntity->y = y * 16.0;
-				stationEntity->yaw = top.dir / 2;
-
-				stationLocations.erase(stationLocations.begin() + pickedPos);
-				possiblelocations[y + x * map.height] = false;
-				--numpossiblelocations;
-
-				if ( *cvar_debug_station_spawn )
-				{
-					if ( (svFlags & SV_FLAG_CHEATS) )
-					{
-						messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", station[currentlevel].c_str(), x, y);
-					}
-				}
-			}
-			else
-			{
-				if ( *cvar_debug_station_spawn )
-				{
-					if ( (svFlags & SV_FLAG_CHEATS) )
-					{
-						messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: nothing generated at x:%d y:%d", x, y);
-					}
-				}
-			}
-			break;
+			++station_it;
 		}
 	}
 
@@ -11416,21 +11634,29 @@ void assignActions(map_t* map)
 				{
 					entity->sprite = 2533;
 					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_SUPPLICATION;
+					entity->x -= 3.0 * cos(entity->yaw);
+					entity->y -= 3.0 * sin(entity->yaw);
 				}
 				else if ( entity->sprite == 313 )
 				{
 					entity->sprite = 2534;
 					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_ANVIL;
+					entity->x -= 3.0 * cos(entity->yaw);
+					entity->y -= 3.0 * sin(entity->yaw);
 				}
 				else if ( entity->sprite == 314 )
 				{
 					entity->sprite = 2535;
 					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_MUSIC;
+					entity->x -= 4.0 * cos(entity->yaw);
+					entity->y -= 4.0 * sin(entity->yaw);
 				}
 				else if ( entity->sprite == 315 )
 				{
 					entity->sprite = 2536;
 					entity->eternalShrineType = GUI_TYPE_ETERNALSHRINE_ASCENSION;
+					entity->x -= 4.0 * cos(entity->yaw);
+					entity->y -= 4.0 * sin(entity->yaw);
 				}
 				entity->seedEntityRNG(map_rng.getU32());
 				break;

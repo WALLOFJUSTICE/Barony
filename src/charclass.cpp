@@ -3691,6 +3691,70 @@ void initClass(const int player)
 	//playerCharacterClassManager.readFromFile();
 }
 
+void Player::Hotbar_t::switchDefaultHotbar(int pickNext)
+{
+	Player::Hotbar_t::HotbarLoadouts nextLoadout = Player::Hotbar_t::HOTBAR_DEFAULT;
+	if ( pickNext >= 0 && pickNext == defaultHotbarLoadoutIndex )
+	{
+		return;
+	}
+	if ( pickNext >= 0 )
+	{
+		nextLoadout = (Player::Hotbar_t::HotbarLoadouts)pickNext;
+	}
+	else if ( defaultHotbarLoadoutIndex == Player::Hotbar_t::HOTBAR_DEFAULT )
+	{
+		nextLoadout = Player::Hotbar_t::HOTBAR_LOADOUT1;
+	}
+	else if ( defaultHotbarLoadoutIndex == Player::Hotbar_t::HOTBAR_LOADOUT1 )
+	{
+		nextLoadout = Player::Hotbar_t::HOTBAR_DEFAULT;
+	}
+	/*else if ( defaultHotbarLoadoutIndex == Player::Hotbar_t::HOTBAR_LOADOUT2 )
+	{
+		nextLoadout = Player::Hotbar_t::HOTBAR_LOADOUT3;
+	}
+	else if ( defaultHotbarLoadoutIndex == Player::Hotbar_t::HOTBAR_DEFAULT )
+	{
+		nextLoadout = Player::Hotbar_t::HOTBAR_DEFAULT;
+	}*/
+
+	auto& hotbar = slots();
+	auto& hotbar_alternate = slotsAlternate();
+
+	auto* newHotbar = &hotbar_alternate[nextLoadout]; // the monster's special hotbar.
+	spell_t* newSpell = players[player.playernum]->magic.selected_spell_alternate[nextLoadout];
+
+	for ( Uint32 slotIndex = 0; slotIndex < NUM_HOTBAR_SLOTS; ++slotIndex )
+	{
+		hotbar_alternate[defaultHotbarLoadoutIndex][slotIndex].item = hotbar[slotIndex].item; // store our current hotbar.
+		hotbar[slotIndex].item = newHotbar->at(slotIndex).item; // load from the monster's hotbar.
+	}
+
+	// find "shapeshift" only spells, add em to view.
+	//for ( node_t* node = stats[player.playernum]->inventory.first; node != nullptr; node = node->next )
+	//{
+	//	Item* item = static_cast<Item*>(node->element);
+	//	if ( item && item->type == SPELL_ITEM )
+	//	{
+	//		spell_t* spell = getSpellFromItem(player.playernum, item, true);
+	//		if ( spell )
+	//		{
+	//			if ( newSpell && newSpell == spell )
+	//			{
+	//				players[player.playernum]->magic.selected_spell_alternate[defaultHotbarLoadoutIndex] = players[player.playernum]->magic.selectedSpell();
+	//				players[player.playernum]->magic.equipSpell(newSpell);
+	//				messagePlayer(player.playernum, MESSAGE_MISC, Language::get(442), spell->getSpellName());
+	//				players[player.playernum]->magic.selected_spell_last_appearance = item->appearance;
+	//			}
+	//		}
+	//	}
+	//}
+
+
+	defaultHotbarLoadoutIndex = nextLoadout;
+}
+
 void initShapeshiftHotbar(int player)
 {
 	Uint32 spellRevertUid = 0;
@@ -3705,9 +3769,11 @@ void initShapeshiftHotbar(int player)
 	auto& hotbar = hotbar_t.slots();
 	auto& hotbar_alternate = hotbar_t.slotsAlternate();
 
+	//hotbar_t.defaultHotbarLoadoutIndex = Player::Hotbar_t::HOTBAR_DEFAULT;
+
 	hotbar_t.swapHotbarOnShapeshift = stats[player]->type;
-	auto* newHotbar = &hotbar_alternate[Player::Hotbar_t::HOTBAR_DEFAULT]; // the monster's special hotbar.
-	spell_t* newSpell = players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_DEFAULT];
+	auto* newHotbar = &hotbar_alternate[hotbar_t.defaultHotbarLoadoutIndex]; // the monster's special hotbar.
+	spell_t* newSpell = players[player]->magic.selected_spell_alternate[hotbar_t.defaultHotbarLoadoutIndex];
 	bool shapeshiftHotbarInit = false;
 	if ( hotbar_t.swapHotbarOnShapeshift > 0 )
 	{
@@ -3743,7 +3809,7 @@ void initShapeshiftHotbar(int player)
 
 	for ( Uint32 slotIndex = 0; slotIndex < NUM_HOTBAR_SLOTS; ++slotIndex )
 	{
-		hotbar_alternate[Player::Hotbar_t::HOTBAR_DEFAULT][slotIndex].item = hotbar[slotIndex].item; // store our current hotbar.
+		hotbar_alternate[hotbar_t.defaultHotbarLoadoutIndex][slotIndex].item = hotbar[slotIndex].item; // store our current hotbar.
 		hotbar[slotIndex].item = newHotbar->at(slotIndex).item; // load from the monster's hotbar.
 	}
 
@@ -3758,7 +3824,7 @@ void initShapeshiftHotbar(int player)
 			{
 				if ( newSpell && newSpell == spell )
 				{
-					players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_DEFAULT] = players[player]->magic.selectedSpell();
+					players[player]->magic.selected_spell_alternate[hotbar_t.defaultHotbarLoadoutIndex] = players[player]->magic.selectedSpell();
 					players[player]->magic.equipSpell(newSpell);
 					players[player]->magic.selected_spell_last_appearance = item->appearance;
 				}
@@ -3768,7 +3834,7 @@ void initShapeshiftHotbar(int player)
 					spellRevertUid = item->uid;
 					if ( !newSpell )
 					{
-						players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_DEFAULT] = players[player]->magic.selectedSpell();
+						players[player]->magic.selected_spell_alternate[hotbar_t.defaultHotbarLoadoutIndex] = players[player]->magic.selectedSpell();
 						players[player]->magic.equipSpell(spell); // revert form add to spell equipped.
 						players[player]->magic.selected_spell_last_appearance = players[player]->magic.selectedSpell()->ID;
 
@@ -3884,8 +3950,10 @@ void deinitShapeshiftHotbar(int player)
 	auto& hotbar = hotbar_t.slots();
 	auto& hotbar_alternate = hotbar_t.slotsAlternate();
 
-	auto* newHotbar = &hotbar_alternate[Player::Hotbar_t::HOTBAR_DEFAULT]; // the monster's special hotbar.
-	spell_t** newSpell = &players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_DEFAULT];
+	//hotbar_t.defaultHotbarLoadoutIndex = Player::Hotbar_t::HOTBAR_DEFAULT;
+
+	auto* newHotbar = &hotbar_alternate[hotbar_t.defaultHotbarLoadoutIndex]; // the monster's special hotbar.
+	spell_t** newSpell = &players[player]->magic.selected_spell_alternate[hotbar_t.defaultHotbarLoadoutIndex];
 	if ( hotbar_t.swapHotbarOnShapeshift > 0 )
 	{
 		if ( hotbar_t.swapHotbarOnShapeshift == RAT )
@@ -3912,7 +3980,7 @@ void deinitShapeshiftHotbar(int player)
 	for ( Uint32 slotIndex = 0; slotIndex < NUM_HOTBAR_SLOTS; ++slotIndex )
 	{
 		swapItem = hotbar[slotIndex].item;
-		hotbar[slotIndex].item = hotbar_alternate[Player::Hotbar_t::HOTBAR_DEFAULT][slotIndex].item; // swap back to default loadout
+		hotbar[slotIndex].item = hotbar_alternate[hotbar_t.defaultHotbarLoadoutIndex][slotIndex].item; // swap back to default loadout
 		newHotbar->at(slotIndex).item = swapItem;
 
 		// double check for shapeshift spells and remove them.
@@ -3924,12 +3992,15 @@ void deinitShapeshiftHotbar(int player)
 				hotbar[slotIndex].item = 0;
 				hotbar[slotIndex].resetLastItem();
 				hotbar_alternate[Player::Hotbar_t::HOTBAR_DEFAULT][slotIndex].item = 0;
+				hotbar_alternate[Player::Hotbar_t::HOTBAR_LOADOUT1][slotIndex].item = 0;
+				hotbar_alternate[Player::Hotbar_t::HOTBAR_LOADOUT2][slotIndex].item = 0;
+				hotbar_alternate[Player::Hotbar_t::HOTBAR_LOADOUT3][slotIndex].item = 0;
 			}
 		}
 	}
 	hotbar_t.swapHotbarOnShapeshift = 0;
 	*newSpell = players[player]->magic.selectedSpell();
-	players[player]->magic.equipSpell(players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_DEFAULT]);
+	players[player]->magic.equipSpell(players[player]->magic.selected_spell_alternate[hotbar_t.defaultHotbarLoadoutIndex]);
 	if ( players[player]->magic.selectedSpell() )
 	{
 		players[player]->magic.selected_spell_last_appearance = players[player]->magic.selectedSpell()->ID;
@@ -3975,6 +4046,18 @@ void deinitShapeshiftHotbar(int player)
 							if ( players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_DEFAULT] == spell )
 							{
 								players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_DEFAULT] = nullptr;
+							}
+							if ( players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_LOADOUT1] == spell )
+							{
+								players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_LOADOUT1] = nullptr;
+							}
+							if ( players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_LOADOUT2] == spell )
+							{
+								players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_LOADOUT2] = nullptr;
+							}
+							if ( players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_LOADOUT3] == spell )
+							{
+								players[player]->magic.selected_spell_alternate[Player::Hotbar_t::HOTBAR_LOADOUT3] = nullptr;
 							}
 							break;
 						default:

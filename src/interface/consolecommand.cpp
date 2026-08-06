@@ -4626,6 +4626,31 @@ namespace ConsoleCommands {
 #endif
 		});
 
+	static ConsoleCommand ccmd_poly2("/poly2", "polymorph the player (cheat)", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+#ifndef NDEBUG
+		if ( players[clientnum]->entity )
+		{
+			Monster customMonster = NOTHING;
+			if ( argc > 1 )
+			{
+				int type = std::min(NUMMONSTERS - 1, std::max((int)HUMAN, atoi(argv[1])));
+				customMonster = (Monster)type;
+			}
+			spellEffectPolymorph(players[clientnum]->entity, players[clientnum]->entity, true, TICKS_PER_SECOND * 60 * 5, customMonster);
+		}
+#else
+		if ( players[clientnum]->entity )
+		{
+			spellEffectPolymorph(players[clientnum]->entity, players[clientnum]->entity, true, TICKS_PER_SECOND * 60 * 1);
+		}
+#endif
+		});
+
 	static ConsoleCommand ccmd_sexchange("/sexchange", "fix yourself (cheat)", []CCMD{
 		if (!(svFlags & SV_FLAG_CHEATS))
 		{
@@ -4666,6 +4691,21 @@ namespace ConsoleCommands {
 		{
 			client_classes[clientnum] = local_rng.rand() % (CLASS_MONK + 1);
 		}
+		});
+
+	static ConsoleCommand ccmd_racedebug("/racedebug", "", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+#ifndef NDEBUG
+		if ( argc == 2 )
+		{
+			stats[clientnum]->playerRace = Entity::getPlayerRaceFromMonsterType(std::min(NUMMONSTERS - 1, std::max((int)HUMAN, atoi(argv[1]))));
+			stats[clientnum]->stat_appearance = 0;
+		}
+#endif
 		});
 
 	static ConsoleCommand ccmd_unpoly("/unpoly", "unpolymorph the player (cheat)", []CCMD{
@@ -5385,7 +5425,10 @@ namespace ConsoleCommands {
 		{
 			if ( floors_stations.find(i) != floors_stations.end() )
 			{
-				messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: [%d]: %s", i, floors_stations[i].c_str());
+				for ( auto str : floors_stations[i] )
+				{
+					messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: [%d]: %s", i, str.c_str());
+				}
 			}
 		}
 	}
@@ -7097,6 +7140,42 @@ namespace ConsoleCommands {
 	static ConsoleCommand ccmd_reloadappraisal("/reloadappraisal", "reloads appraisal entries", []CCMD{
 		Player::Inventory_t::Appraisal_t::readFromFile();
 	});
+
+	static ConsoleCommand ccmd_reloadshrines("/reloadshrines", "reloads shrine effects", []CCMD{
+		ShrineEffects_t::buildShrineEffects();
+		});
+
+	static ConsoleCommand ccmd_debug_shrine_result("/debug_shrine_result", "tests shrine results", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+		if ( argc >= 3 ) {
+			std::string shrine_type = argv[1];
+			std::vector<std::pair<std::string, int>> shrine_name_type = {
+				{ "anvil", GUI_TYPE_ETERNALSHRINE_ANVIL },
+				{ "ascension", GUI_TYPE_ETERNALSHRINE_ASCENSION },
+				{ "magic", GUI_TYPE_ETERNALSHRINE_ASCENSION },
+				{ "spell", GUI_TYPE_ETERNALSHRINE_ASCENSION },
+				{ "music", GUI_TYPE_ETERNALSHRINE_MUSIC },
+				{ "chorale", GUI_TYPE_ETERNALSHRINE_MUSIC },
+				{ "supplication", GUI_TYPE_ETERNALSHRINE_SUPPLICATION }
+			};
+			for ( auto& pair : shrine_name_type )
+			{
+				if ( strstr(pair.first.c_str(), shrine_type.c_str()) )
+				{
+					std::string tier_string = argv[2];
+					auto result = ShrineEffects_t::rollReward(pair.second, tier_string, local_rng);
+					messagePlayer(clientnum, MESSAGE_MISC, "%s | '%s' result: %s tier: %d", pair.first.c_str(), tier_string.c_str(), result.first.c_str(), result.second);
+					return;
+				}
+			}
+		}
+
+		messagePlayer(clientnum, MESSAGE_MISC, "No matching shrine type found");
+		});
 
 	static ConsoleCommand ccmd_debug_water("/debug_water", "debug water tiles", []CCMD{
 		if ( !(svFlags & SV_FLAG_CHEATS) )

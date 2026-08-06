@@ -41,6 +41,373 @@ enum InstrumentOrder {
 	HORN
 };
 
+bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier);
+
+std::vector<std::pair<std::string, ShrineEffects_t::ShrineEffectsPools>> ShrineEffects_t::shrineEffectsTable =
+{
+	{"BODY_1", ShrineEffects_t::ShrineEffectsPools::BODY_1},
+	{"BODY_2", ShrineEffects_t::ShrineEffectsPools::BODY_2},
+	{"BODY_3", ShrineEffects_t::ShrineEffectsPools::BODY_3},
+	{"MIND_1", ShrineEffects_t::ShrineEffectsPools::MIND_1},
+	{"MIND_2", ShrineEffects_t::ShrineEffectsPools::MIND_2},
+	{"MIND_3", ShrineEffects_t::ShrineEffectsPools::MIND_3},
+	{"BODY_CHALLENGE_1", ShrineEffects_t::ShrineEffectsPools::BODY_CHALLENGE_1},
+	{"BODY_CHALLENGE_2", ShrineEffects_t::ShrineEffectsPools::BODY_CHALLENGE_2},
+	{"BODY_CHALLENGE_3", ShrineEffects_t::ShrineEffectsPools::BODY_CHALLENGE_3},
+	{"MIND_CHALLENGE_1", ShrineEffects_t::ShrineEffectsPools::MIND_CHALLENGE_1},
+	{"MIND_CHALLENGE_2", ShrineEffects_t::ShrineEffectsPools::MIND_CHALLENGE_2},
+	{"MIND_CHALLENGE_3", ShrineEffects_t::ShrineEffectsPools::MIND_CHALLENGE_3},
+	{"REWARD_ITEM_1", ShrineEffects_t::ShrineEffectsPools::REWARD_ITEM_1},
+	{"REWARD_ITEM_2", ShrineEffects_t::ShrineEffectsPools::REWARD_ITEM_2},
+	{"REWARD_ITEM_3", ShrineEffects_t::ShrineEffectsPools::REWARD_ITEM_3},
+	{"REWARD_BUFF_1", ShrineEffects_t::ShrineEffectsPools::REWARD_BUFF_1},
+	{"REWARD_BUFF_2", ShrineEffects_t::ShrineEffectsPools::REWARD_BUFF_2},
+	{"REWARD_BUFF_3", ShrineEffects_t::ShrineEffectsPools::REWARD_BUFF_3}
+};
+
+std::set<std::string> ShrineEffects_t::shrineEffects = 
+{
+	"WEAKNESS",
+	"SHAPESHIFT",
+	"INCOHERENCE",
+	"ENFEEBLE",
+	"DIVINE_FIRE",
+	"SCAPEGOAT",
+	"DIZZY",
+	"EXORCISED",
+	"DUSTED",
+	"SILENCE",
+	"ADORCISED",
+	"PSYCHIC_SPEAR",
+	"LIGHTNING_BOLT",
+	"EARTH_SPRITE",
+	"LEVEL_DRAIN",
+	"VOID_MP_DRAIN",
+	"DEGENERATION",
+	"DISPIRITED",
+	"BURDENED"
+};
+
+struct ShrinePlayerMessageManager_t
+{
+	struct ShrinePlayerMessages_t
+	{
+		int player = 0;
+		std::string str = "";
+		Uint32 tick = 0;
+	
+		ShrinePlayerMessages_t(const int _player, const char* _str)
+		{
+			player = _player;
+			str = _str;
+			tick = ::ticks;
+		};
+	};
+	static int processed_on_floor;
+	static std::map<Uint32, std::vector<ShrinePlayerMessages_t>> shrines;
+	static void insert(Uint32 uid, const int player, const char* str)
+	{
+		if ( multiplayer != CLIENT )
+		{
+			shrines[uid].push_back(ShrinePlayerMessages_t(player, str));
+		}
+	}
+	static void update(Uint32 uid)
+	{
+		if ( processed_on_floor != currentlevel )
+		{
+			shrines.clear();
+		}
+		processed_on_floor = currentlevel;
+		if ( multiplayer != CLIENT )
+		{
+			if ( shrines.find(uid) != shrines.end() )
+			{
+				for ( auto it = shrines[uid].begin(); it != shrines[uid].end(); )
+				{
+					if ( ::ticks >= it->tick + 2 * TICKS_PER_SECOND )
+					{
+						playSoundNotificationPlayer(it->player, 919, 92);
+						messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->str.c_str());
+						it = shrines[uid].erase(it);
+					}
+					else
+					{
+						++it;
+					}
+				}
+			}
+		}
+	}
+};
+std::map<Uint32, std::vector<ShrinePlayerMessageManager_t::ShrinePlayerMessages_t>> ShrinePlayerMessageManager_t::shrines;
+int ShrinePlayerMessageManager_t::processed_on_floor = 0;
+
+std::map<int, std::map<ShrineEffects_t::ShrineEffectsPools, std::vector<std::string>>> ShrineEffects_t::shrineEffectPools;
+std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffects_t::ShrineEffectsPools, int>>>> ShrineEffects_t::shrineOutcomes;
+Uint32 ShrineEffects_t::shrineJsonHashRead = 0;
+void ShrineEffects_t::buildShrineEffects()
+{
+	std::string filename = "data/shrine_effects.json";
+
+	if ( !PHYSFS_getRealDir(filename.c_str()) )
+	{
+		//printlog("[JSON]: Error: Could not locate json file %s", filename.c_str());
+		return;
+	}
+
+	std::string inputPath = PHYSFS_getRealDir(filename.c_str());
+	inputPath.append(PHYSFS_getDirSeparator());
+	inputPath.append(filename.c_str());
+
+	File* fp = FileIO::open(inputPath.c_str(), "rb");
+	if ( !fp )
+	{
+		printlog("[JSON]: Error: Could not locate json file %s", inputPath.c_str());
+		return;
+	}
+
+	static char buf[32000];
+	FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+	//rapidjson::StringStream is(buf);
+
+	rapidjson::Document d;
+	d.ParseStream(is);
+	FileIO::close(fp);
+	if ( !d.IsObject() )
+	{
+		return;
+	}
+	if ( !d.HasMember("version") || !d.HasMember("effects") || !d.HasMember("outcomes") )
+	{
+		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
+		return;
+	}
+
+	int version = d["version"].GetInt();
+
+	shrineEffectPools[GUI_TYPE_ETERNALSHRINE_ANVIL].clear();
+	shrineEffectPools[GUI_TYPE_ETERNALSHRINE_SUPPLICATION].clear();
+	shrineEffectPools[GUI_TYPE_ETERNALSHRINE_MUSIC].clear();
+	shrineEffectPools[GUI_TYPE_ETERNALSHRINE_ASCENSION].clear();
+
+	Uint32 hash = 0;
+	Uint32 shift = 0;
+	auto& effects_all = d["effects"];
+	int poolIndex = -1;
+	if ( effects_all.HasMember("anvil") )
+	{
+		auto& effects = effects_all["anvil"];
+		for ( auto& pair : shrineEffectsTable )
+		{
+			auto& str = pair.first;
+			++poolIndex;
+			if ( effects.HasMember(str.c_str()) )
+			{
+				if ( effects[str.c_str()].IsArray() )
+				{
+					for ( auto arr_itr = effects[str.c_str()].Begin(); arr_itr != effects[str.c_str()].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsString() )
+						{
+							if ( shrineEffects.find(arr_itr->GetString()) != shrineEffects.end() )
+							{
+								hash += djb2Hash(const_cast<char*>(arr_itr->GetString()));
+								shrineEffectPools[GUI_TYPE_ETERNALSHRINE_ANVIL][pair.second].push_back(arr_itr->GetString());
+							}
+							else
+							{
+								printlog("[JSON]: shrine_effects.json warning: no effect key found for '%s'!", arr_itr->GetString());
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				hash += (Uint32)((Uint32)poolIndex << (shift % 32)); ++shift;
+			}
+		}
+	}
+
+	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_ANVIL].clear();
+	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_SUPPLICATION].clear();
+	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_MUSIC].clear();
+	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_ASCENSION].clear();
+
+	std::map<std::string, ShrineEffectsPools> effectsTableLookup;
+	for ( auto& entry : shrineEffectsTable )
+	{
+		effectsTableLookup[entry.first] = entry.second;
+	}
+
+	auto& outcomes_all = d["outcomes"];
+	if ( outcomes_all.HasMember("anvil") )
+	{
+		auto& shrineOutcome = shrineOutcomes[GUI_TYPE_ETERNALSHRINE_ANVIL];
+		char buf[32];
+		for ( int i = 0; i <= 4; ++i )
+		{
+			for ( int j = 0; j <= 3; ++j )
+			{
+				snprintf(buf, sizeof(buf), "%d-%d", i, j);
+				auto& outcome = outcomes_all["anvil"];
+				auto& entry = shrineOutcome[buf];
+				if ( outcome.HasMember(buf) )
+				{
+					if ( outcome[buf].IsArray() )
+					{
+						for ( auto arr_itr = outcome[buf].Begin(); arr_itr != outcome[buf].End(); ++arr_itr )
+						{
+							if ( arr_itr->IsObject() )
+							{
+								for ( auto itr = arr_itr->MemberBegin(); itr != arr_itr->MemberEnd(); ++itr )
+								{
+									if ( effectsTableLookup.find(itr->name.GetString()) == effectsTableLookup.end() )
+									{
+										printlog("[JSON]: shrine_effects.json warning: no effect pool found for '%s'!", itr->name.GetString());
+									}
+									else
+									{
+										entry.push_back(std::make_pair(effectsTableLookup[itr->name.GetString()], itr->value.GetInt()));
+
+										hash += (Uint32)((Uint32)entry.back().first << (shift % 32)); ++shift;
+										hash += (Uint32)((Uint32)entry.back().second << (shift % 32)); ++shift;
+									}
+								}
+							}
+						}
+					}
+				}
+				int sum = 0;
+				for ( auto& chance : entry )
+				{
+					sum += chance.second;
+				}
+				if ( sum < 100 )
+				{
+					entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 100 - sum));
+				}
+			}
+		}
+	}
+
+	//hash += djb2Hash(const_cast<char*>(t.internalName.c_str()));
+
+	printlog("[JSON]: Successfully read json file %s", inputPath.c_str());
+
+	shrineJsonHashRead = hash;
+	if ( shrineJsonHashRead != kShrineJsonHash )
+	{
+		printlog("[JSON]: Notice: shrine_effects.json unknown hash, achievements are disabled: %d", kShrineJsonHash);
+	}
+	else
+	{
+		printlog("[JSON]: shrine_effects.json hash verified successfully.");
+	}
+}
+
+std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& my, BaronyRNG& rng)
+{
+	if ( player < 0 || player >= MAXPLAYERS ) { return "0-0"; }
+	if ( players[player]->mechanics.divine_favor >= 9 )
+	{
+		std::string result = "4-";
+		result += std::to_string(rng.rand() % 4);
+		return result;
+	}
+	else if ( players[player]->mechanics.divine_favor >= 7 )
+	{
+		std::string result = "3-";
+		result += std::to_string(rng.rand() % 4);
+		return result;
+	}
+	else if ( players[player]->mechanics.divine_favor >= 5 )
+	{
+		std::string result = "2-";
+		result += std::to_string(rng.rand() % 4);
+		return result;
+	}
+	else if ( players[player]->mechanics.divine_favor >= 3 )
+	{
+		std::string result = "1-";
+		result += std::to_string(rng.rand() % 4);
+		return result;
+	}
+	else
+	{
+		std::string result = "0-";
+		result += std::to_string(rng.rand() % 4);
+		return result;
+	}
+}
+
+std::pair<std::string, int> ShrineEffects_t::rollReward(int shrineType, std::string tierString, BaronyRNG& rng)
+{
+	std::pair<std::string, int> result = { "", 1 };
+
+	if ( shrineOutcomes.find(shrineType) == shrineOutcomes.end() ) { return result; }
+	if ( shrineEffectPools.find(shrineType) == shrineEffectPools.end() ) { return result; }
+	auto& outcomes = shrineOutcomes[shrineType];
+	if ( outcomes.find(tierString) == outcomes.end() ) { return result; }
+
+	std::vector<unsigned int> chances;
+	for ( auto& pair : outcomes[tierString] )
+	{
+		chances.push_back(pair.second);
+	}
+
+	ShrineEffectsPools poolResult = ShrineEffectsPools::EFFECT_EMPTY;
+
+	if ( chances.size() > 0 )
+	{
+		int pick = rng.discrete(chances.data(), chances.size());
+		poolResult = outcomes[tierString][pick].first;
+	}
+
+	if ( poolResult == ShrineEffectsPools::EFFECT_EMPTY ) { return result; }
+
+	auto& effects = shrineEffectPools[shrineType];
+	if ( effects.find(poolResult) == effects.end() )
+	{
+		return result;
+	}
+
+	chances.clear();
+	for ( auto& str : effects[poolResult] )
+	{
+		chances.push_back(1);
+	}
+	if ( chances.size() > 0 )
+	{
+		int pick = rng.discrete(chances.data(), chances.size());
+		std::string effect_string = effects[poolResult][pick];
+		result.first = effect_string;
+		result.second = 1; // tier
+		if ( poolResult == ShrineEffectsPools::BODY_2
+			|| poolResult == ShrineEffectsPools::MIND_2
+			|| poolResult == ShrineEffectsPools::BODY_CHALLENGE_2
+			|| poolResult == ShrineEffectsPools::MIND_CHALLENGE_2
+			|| poolResult == ShrineEffectsPools::REWARD_ITEM_2
+			|| poolResult == ShrineEffectsPools::REWARD_BUFF_2 )
+		{
+			result.second = 2;
+		}
+		else if ( poolResult == ShrineEffectsPools::BODY_3
+			|| poolResult == ShrineEffectsPools::MIND_3
+			|| poolResult == ShrineEffectsPools::BODY_CHALLENGE_3
+			|| poolResult == ShrineEffectsPools::MIND_CHALLENGE_3
+			|| poolResult == ShrineEffectsPools::REWARD_ITEM_3
+			|| poolResult == ShrineEffectsPools::REWARD_BUFF_3 )
+		{
+			result.second = 3;
+		}
+		return result;
+	}
+
+	return result;
+}
+
 void shrineApplyMusic(Entity* shrine)
 {
 	if ( !shrine ) { return; }
@@ -979,7 +1346,26 @@ void actEternalShrineLimb(Entity* my)
 					parent->eternalShrineItemCount,
 					(Uint32)parent->eternalShrineItemAppearance,
 					parent->eternalShrineItemIdentified, nullptr);
-				if ( Entity* dropped = dropItemMonster(item, parent, nullptr, item->count) )
+
+				std::string tierString = ShrineEffects_t::getTierStringFromEffect(
+					achievementObserver.checkUidIsFromPlayer(parent->eternalShrineTarget), 
+					*parent, 
+					parent->entity_rng ? *parent->entity_rng : local_rng);
+				auto result = ShrineEffects_t::rollReward(parent->eternalShrineType, tierString, parent->entity_rng ? *parent->entity_rng : local_rng);
+
+				bool adorcise = result.first == "ADORCISED";
+				if ( adorcise && spellEffectAdorcise(*parent, spellElementMap[SPELL_ADORCISM], parent->x, parent->y, item) )
+				{
+					if ( item->node )
+					{
+						list_RemoveNode(item->node);
+					}
+					else
+					{
+						free(item);
+					}
+				}
+				else if ( Entity* dropped = dropItemMonster(item, parent, nullptr, item->count) )
 				{
 					dropped->x = parent->x;
 					dropped->y = parent->y;
@@ -988,6 +1374,8 @@ void actEternalShrineLimb(Entity* my)
 					dropped->x += 1.0 * cos(parent->yaw) - 1.0 * cos(parent->yaw + PI / 2);
 					dropped->y += 1.0 * sin(parent->yaw) - 1.0 * sin(parent->yaw + PI / 2);
 					dropped->itemEternalShrineResult = parent->eternalShrineType;
+
+					applyShrineEffect(result.first, uidToEntity(parent->eternalShrineTarget), parent, result.second);
 				}
 				else
 				{
@@ -999,6 +1387,8 @@ void actEternalShrineLimb(Entity* my)
 					{
 						free(item);
 					}
+
+					applyShrineEffect(result.first, uidToEntity(parent->eternalShrineTarget), parent, result.second);
 				}
 
 				parent->eternalShrineItemType = 0;
@@ -1124,6 +1514,29 @@ void actEternalShrineLimb(Entity* my)
 void actEternalShrine(Entity* my)
 {
 	my->removeLightField();
+
+	static ConsoleVariable<std::string> cvar_eternal_shrine_effect("/eternal_shrine_effect", "");
+	if ( *cvar_eternal_shrine_effect != "" )
+	{
+		uppercaseString(*cvar_eternal_shrine_effect);
+		if ( multiplayer != CLIENT )
+		{
+			if ( svFlags & SV_FLAG_CHEATS )
+			{
+				for ( auto& str : ShrineEffects_t::shrineEffects )
+				{
+					if ( strstr(str.c_str(), (*cvar_eternal_shrine_effect).c_str()) )
+					{
+						applyShrineEffect(str, players[0]->entity, my, 1);
+						break;
+					}
+				}
+			}
+		}
+		*cvar_eternal_shrine_effect = "";
+	}
+
+	ShrinePlayerMessageManager_t::update(my->getUID());
 
 	if ( !my->eternalShrineInit )
 	{
@@ -1311,7 +1724,18 @@ void actEternalShrine(Entity* my)
 							fx->z -= 10.0;
 						}
 					}
+					if ( my->eternalShrineOrchestrionInstruments > 0 )
+					{
+						if ( multiplayer != CLIENT )
+						{
+							for ( int i = 0; i < MAXPLAYERS; ++i )
+							{
+								players[i]->mechanics.eternalShrineEnsembleTicks = ::ticks; // add beb 1/2 to instrument tracks
+							}
+						}
+					}
 				}
+
 
 				mask = (0xFF0000);
 				my->eternalShrineOrchestrionTimer &= ~(mask); // zero out the timer
@@ -5648,4 +6072,585 @@ bool GenericGUIMenu::isItemEternalShrineUsable(const Item* item)
 	}
 
 	return true;
+}
+
+bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier)
+{
+	if ( !target ) { return false; }
+	if ( !shrine ) { return false; }
+	Stat* myStats = target->getStats();
+	if ( !myStats ) { return false; }
+
+	int player = target->isEntityPlayer();
+	bool result = false;
+
+	if ( effect_str == "DIVINE_FIRE" )
+	{
+		int damageTicks = 8;
+		int burnDuration = damageTicks * 40 + 20;
+		if ( target->setEffect(EFF_HOLY_FIRE, (Uint8)(1 + tier), burnDuration, true, true, true) )
+		{
+			if ( Entity* fx = createParticleAestheticOrbit(target, 288, burnDuration + 20, PARTICLE_EFFECT_HOLY_FIRE) )
+			{
+				fx->flags[SPRITE] = true;
+				fx->flags[INVISIBLE] = true;
+				fx->skill[3] = shrine->getUID();
+			}
+			serverSpawnMiscParticles(target, PARTICLE_EFFECT_HOLY_FIRE, 288, 0, burnDuration + 20);
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7129));
+			}
+
+			for ( int i = 0; i < 2; ++i )
+			{
+				if ( Entity* fx = createParticleAestheticOrbit(target, 288, TICKS_PER_SECOND / 2, PARTICLE_EFFECT_HEAT_ORBIT_SPIN) )
+				{
+					fx->flags[SPRITE] = true;
+					fx->x = target->x;
+					fx->y = target->y;
+					fx->z = 7.5;
+					fx->fskill[0] = fx->x;
+					fx->fskill[1] = fx->y;
+					fx->vel_z = -0.5;
+					fx->actmagicOrbitDist = 5;
+					fx->fskill[2] = target->yaw + PI / 4.0 + i * PI;
+					fx->yaw = fx->fskill[2];
+					fx->fskill[4] = 0.25;
+					/*if ( particle == 1 )
+					{
+						fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+						fx->actmagicNoLight = 1;
+					}*/
+
+					serverSpawnMiscParticles(target, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 288, 0, fx->skill[0]);
+				}
+			}
+			playSoundEntity(target, 164, 128);
+			result = true;
+		}
+	}
+	else if ( effect_str == "INCOHERENCE" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 3;
+		if ( tier == 2 )
+		{
+			effectStrength = 5;
+		}
+		if ( tier == 3 )
+		{
+			effectStrength = 7;
+		}
+		if ( target->setEffect(EFF_INCOHERENCE, effectStrength, duration, false) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(6911));
+			}
+			playSoundEntity(target, 825, 64);
+			spawnMagicEffectParticles(target->x, target->y, target->z, 2355);
+			result = true;
+		}
+	}
+	else if ( effect_str == "SILENCE" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 1;
+		target->setEffect(EFF_STASIS, (Uint8)2, 3 * TICKS_PER_SECOND, true, true, true); // aesthetic stasis
+		if ( target->setEffect(EFF_SILENCED, effectStrength, duration, true) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7111));
+			}
+			playSoundEntity(target, 166, 128);
+			playSoundEntity(target, 825, 64);
+			createParticleFociDark(target, 0, true);
+			spawnMagicEffectParticles(target->x, target->y, target->z, 1818);
+			result = true;
+		}
+	}
+	else if ( effect_str == "LEVEL_DRAIN" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 1; // -20%
+		if ( tier == 2 )
+		{
+			effectStrength = 2; // -30%
+		}
+		else if ( tier == 3 )
+		{
+			effectStrength = 3; // -40%
+		}
+		target->setEffect(EFF_STASIS, (Uint8)2, 3 * TICKS_PER_SECOND, true, true, true);  // aesthetic stasis
+		if ( target->setEffect(EFF_LEVEL_DRAIN, effectStrength, duration, true) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7123));
+			}
+			playSoundEntity(target, 166, 128);
+			createParticleFociDark(target, 0, true);
+			result = true;
+		}
+	}
+	else if ( effect_str == "BURDENED" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 2; // -10% max movespeed/DEX
+		if ( tier == 2 )
+		{
+			effectStrength = 3; // -15% max movespeed/DEX
+		}
+		else if ( tier == 3 )
+		{
+			effectStrength = 4; // -20% max movespeed/DEX
+		}
+		target->setEffect(EFF_STASIS, (Uint8)2, 3 * TICKS_PER_SECOND, true, true, true);  // aesthetic stasis
+		if ( target->setEffect(EFF_BURDENED, effectStrength, duration, true) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7127));
+			}
+			//playSoundEntity(target, 824, 64);
+			playSoundEntity(target, 166, 128);
+			createParticleFociDark(target, 0, true);
+			result = true;
+		}
+	}
+	else if ( effect_str == "VOID_MP_DRAIN" ) // drain MP
+	{
+		int duration = 5 * TICKS_PER_SECOND + 10; // drains once per second
+		Uint8 effectStrength = 4; // 5% for 25% total, 3 onwards is 2.5% per tick
+		if ( tier == 2 )
+		{
+			effectStrength = 5; // 7.5% for 37.5% total
+		}
+		else if ( tier == 3 )
+		{
+			effectStrength = 6; // 10% for 50% total
+		}
+		if ( target->setEffect(EFF_STASIS, (Uint8)3, duration, true, true, true) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7124));
+			}
+			playSoundEntity(target, 166, 128);
+			createParticleFociDark(target, 0, true);
+			result = true;
+		}
+	}
+	else if ( effect_str == "SMOKE_HP"
+		|| effect_str == "SMOKE_MP"
+		|| effect_str == "SMOKE_HP_NOMP"
+		|| effect_str == "SMOKE_MP_NOHP" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 1 + local_rng.rand() % 4;
+		if ( target->setEffect(EFF_SMOKE_HPMP_RGN, effectStrength, duration, true, true, true) )
+		{
+			Uint32 color = makeColorRGB(0, 255, 0);
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7115));
+		}
+
+		int particle = 1;
+		if ( particle )
+		{
+			for ( int i = 0; i < 2; ++i )
+			{
+				if ( Entity* fx = createParticleAestheticOrbit(target, 263, TICKS_PER_SECOND / 2, PARTICLE_EFFECT_HEAT_ORBIT_SPIN) )
+				{
+					fx->flags[SPRITE] = true;
+					fx->x = target->x;
+					fx->y = target->y;
+					fx->z = 7.5;
+					fx->fskill[0] = fx->x;
+					fx->fskill[1] = fx->y;
+					fx->vel_z = -0.5;
+					fx->actmagicOrbitDist = 5;
+					fx->fskill[2] = target->yaw + PI / 4.0 + i * PI;
+					fx->yaw = fx->fskill[2];
+					fx->fskill[4] = 0.25;
+					if ( particle == 1 )
+					{
+						fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+						fx->actmagicNoLight = 1;
+					}
+
+					serverSpawnMiscParticles(target, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, particle, fx->skill[0]);
+				}
+			}
+		}
+		playSoundEntity(target, 168, 128);
+		playSoundEntity(target, 827, 128);
+		result = true;
+	}
+	else if ( effect_str == "SLOW_DIGEST" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 3;
+		if ( tier == 2 )
+		{
+			effectStrength = 5;
+		}
+		else if ( tier == 3 )
+		{
+			effectStrength = 7;
+		}
+		if ( target->setEffect(EFF_SLOW_DIGEST, effectStrength, duration, true, true, true) )
+		{
+			Uint32 color = makeColorRGB(0, 255, 0);
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(2385));
+			playSoundEntity(target, 168, 128);
+			createParticleFociLight(target, 0, true);
+			result = true;
+		}
+	}
+	else if ( effect_str == "DEGENERATION" || effect_str == "DISPIRITED" )
+	{
+		int effectID = effect_str == "DEGENERATION" ? EFF_DEGENERATION : EFF_DISPIRITED;
+
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 3;
+		if ( tier == 2 )
+		{
+			effectStrength = 5;
+		}
+		else if ( tier == 3 )
+		{
+			effectStrength = 7;
+		}
+		target->setEffect(EFF_STASIS, (Uint8)2, 3 * TICKS_PER_SECOND, true, true, true);  // aesthetic stasis
+		if ( target->setEffect(effectID, effectStrength, duration, false) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				if ( effectID == EFF_DISPIRITED )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7118));
+					playSoundEntity(target, 825, 64);
+				}
+				else if ( effectID == EFF_DEGENERATION )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7116));
+					playSoundEntity(target, 824, 64);
+				}
+			}
+			if ( effectID == EFF_DISPIRITED )
+			{
+				spawnMagicEffectParticles(target->x, target->y, target->z, 2355);
+			}
+			else
+			{
+				spawnMagicEffectParticles(target->x, target->y, target->z, 2367);
+			}
+			playSoundEntity(target, 166, 128);
+			createParticleFociDark(target, 0, true);
+			result = true;
+		}
+	}
+	else if ( effect_str == "WEAKNESS" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 3;
+		if ( tier == 2 )
+		{
+			effectStrength = 5;
+		}
+		if ( tier == 3 )
+		{
+			effectStrength = 7;
+		}
+		if ( target->setEffect(EFF_WEAKNESS, effectStrength, duration, false) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(6528));
+			}
+			playSoundEntity(target, 824, 64);
+			spawnMagicEffectParticles(target->x, target->y, target->z, 2367);
+			result = true;
+		}
+	}
+	else if ( effect_str == "ENFEEBLE" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 1; // 10% per str
+		if ( tier == 2 )
+		{
+			effectStrength = 3;
+		}
+		if ( tier == 3 )
+		{
+			effectStrength = 5;
+		}
+		if ( target->setEffect(EFF_ENFEEBLE, effectStrength, duration, false) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7125));
+			}
+			playSoundEntity(target, 824, 64);
+			spawnMagicEffectParticles(target->x, target->y, target->z, 2367);
+			result = true;
+		}
+	}
+	else if ( effect_str == "POLYMORPH" )
+	{
+		spellEffectPolymorph(target, shrine, false, 0, SKELETON);
+		if ( target->getStats() && target->getStats()->getEffectActive(EFF_POLYMORPH)
+			&& target->playerGetMonsterRaceFromPolymorph() == SKELETON )
+		{
+			result = true;
+		}
+	}
+	else if ( effect_str == "SHAPESHIFT" )
+	{
+		Monster type = RAT;
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		if ( type != NOTHING && target->setEffect(EFF_SHAPESHIFT, true, duration, true) )
+		{
+			spawnExplosion(target->x, target->y, target->z);
+			playSoundEntity(target, 400, 92);
+			createParticleDropRising(target, 593, 1.f);
+			serverSpawnMiscParticles(target, PARTICLE_EFFECT_RISING_DROP, 593);
+
+			target->effectShapeshift = type;
+			serverUpdateEntitySkill(target, 53);
+
+			for ( node_t* node = map.creatures->first; node && myStats; node = node->next )
+			{
+				Entity* entity = (Entity*)(node->element);
+				if ( !entity || entity == target )
+				{
+					continue;
+				}
+				if ( entity->behavior != &actMonster )
+				{
+					continue;
+				}
+				if ( entity->monsterTarget == target->getUID() && entity->checkEnemy(target) )
+				{
+					Monster oldType = myStats->type;
+					myStats->type = type;
+					if ( !entity->checkEnemy(target) ) // we're now friendly.
+					{
+						entity->monsterReleaseAttackTarget();
+					}
+					myStats->type = oldType;
+				}
+			}
+
+			Uint32 color = makeColorRGB(0, 255, 0);
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3419), getMonsterLocalizedName((Monster)target->effectShapeshift).c_str());
+		}
+		result = true;
+	}
+	else if ( effect_str == "SCAPEGOAT" )
+	{
+		CastSpellProps_t props;
+		props.targetUID = target->getUID();
+
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_TABOO), false, true, false, &props);
+		result = true;
+	}
+	else if ( effect_str == "DIZZY" )
+	{
+		Uint8 effectStrength = 3;
+		int duration = 75;
+		if ( tier == 2 )
+		{
+			effectStrength = 5;
+		}
+		if ( tier == 3 )
+		{
+			effectStrength = 5;
+			duration = 125;
+		}
+		if ( target->setEffect(EFF_SPIN, effectStrength, duration, false, true, true) )
+		{
+			if ( target->setEffect(EFF_KNOCKBACK, true, duration, false) )
+			{
+				real_t tangent = atan2(target->y - shrine->y, target->x - shrine->x);
+				tangent -= PI / 2;
+				tangent += (local_rng.rand() % 5) * PI / 4;
+
+				if ( target->behavior == &actPlayer )
+				{
+					real_t pushbackMultiplier = 0.5;
+					if ( !players[target->skill[2]]->isLocalPlayer() )
+					{
+						target->monsterKnockbackVelocity = pushbackMultiplier;
+						target->monsterKnockbackTangentDir = tangent;
+						serverUpdateEntityFSkill(target, 11);
+						serverUpdateEntityFSkill(target, 9);
+					}
+					else
+					{
+						target->monsterKnockbackVelocity = pushbackMultiplier;
+						target->monsterKnockbackTangentDir = tangent;
+					}
+				}
+			}
+			createParticleSpin(target);
+			serverSpawnMiscParticles(target, PARTICLE_EFFECT_SPIN, -1);
+			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7109));
+			playSoundEntity(target, 758, 92);
+			result = true;
+		}
+	}
+	else if ( effect_str == "DUSTED" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		if ( target->setEffect(EFF_DUSTED, true, duration, true) )
+		{
+			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6752));
+			playSoundEntity(target, 825, 64);
+			result = true;
+		}
+	}
+	else if ( effect_str == "EARTH_SPRITE" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 effectStrength = 1;
+		if ( tier == 2 )
+		{
+			effectStrength = 1;
+		}
+		if ( tier == 3 )
+		{
+			effectStrength = 2;
+		}
+		//if ( target->setEffect(EFF_DISRUPTED, effectStrength, duration, true) )
+		//{
+		//	//playSoundEntity(target, 799, 64);
+		//}
+		messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7110));
+		CastSpellProps_t props;
+		props.caster_x = target->x;
+		props.caster_y = target->y;
+		props.target_x = target->x;
+		props.target_y = target->y;
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_DISRUPT_EARTH), false, true, false, &props);
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_EARTH_ELEMENTAL), false, true, false, &props);
+		result = true;
+	}
+	else if ( effect_str == "LIGHTNING_BOLT" ) // lightning bolt
+	{
+		Uint32 lifetime = 3 * TICKS_PER_SECOND;
+		target->setEffect(EFF_STATIC, (Uint8)5, lifetime + TICKS_PER_SECOND, true);
+
+		Entity* spellTimer = createParticleTimer(shrine, lifetime + TICKS_PER_SECOND, -1);
+		spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_LIGHTNING;
+		spellTimer->particleTimerCountdownSprite = 1757;
+		spellTimer->yaw = shrine->yaw;
+		spellTimer->x = target->x;
+		spellTimer->y = target->y;
+		spellTimer->flags[NOUPDATE] = false; // spawn for client
+		spellTimer->flags[UPDATENEEDED] = true;
+		Sint32 val = (1 << 31);
+		val |= (Uint8)(19);
+		val |= (((Uint16)(spellTimer->particleTimerDuration) & 0xFFF) << 8);
+		val |= (Uint8)(spellTimer->particleTimerCountdownAction & 0xFF) << 20;
+		spellTimer->skill[2] = val;
+		spellTimer->particleTimerEffectLifetime = lifetime;
+		spellTimer->actmagicSpellbookBonus = 0;
+		if ( tier == 2 )
+		{
+			spellTimer->actmagicSpellbookBonus = 50;
+		}
+		if ( tier == 3 )
+		{
+			spellTimer->actmagicSpellbookBonus = 100;
+		}
+		spellTimer->actmagicFromSpellbook = 0;
+		spellTimer->actmagicOrbitHitTargetUID1 = target->getUID();
+		floorMagicCreateLightningSequence(spellTimer, 0);
+		spawnMagicEffectParticles(shrine->x, shrine->y, shrine->z, 170);
+		playSoundEntity(target, 806, 128);
+		result = true;
+	}
+	else if ( effect_str == "EXORCISED" ) // exorcise
+	{
+		if ( Entity* fx1 = createParticleAestheticOrbit(target, 2401, 3 * TICKS_PER_SECOND, PARTICLE_EFFECT_TURN_UNDEAD) )
+		{
+			fx1->yaw = target->yaw;
+			fx1->fskill[4] = target->x;
+			fx1->fskill[5] = target->y;
+			fx1->x = target->x;
+			fx1->y = target->y;
+			fx1->fskill[6] = fx1->yaw;
+			fx1->skill[3] = shrine->getUID();
+			/*if ( effectStrength >= 3 )
+			{
+				fx1->skill[6] = EFF_HOLY_FIRE;
+			}*/
+			fx1->actmagicSpellbookBonus = 0;
+			if ( tier == 2 )
+			{
+				fx1->actmagicSpellbookBonus = 50;
+			}
+			if ( tier == 3 )
+			{
+				fx1->actmagicSpellbookBonus = 100;
+			}
+			fx1->actmagicFromSpellbook = 0;
+			result = true;
+		}
+	}
+	else if ( effect_str == "PSYCHIC_SPEAR" ) // psychic spear
+	{
+		spawnMagicEffectParticles(target->x, target->y, target->z, 2357);
+
+		//for ( int i = 0; i < 3; ++i )
+		{
+			Entity* fx = createParticleAestheticOrbit(target, 2362, 5 * TICKS_PER_SECOND, PARTICLE_EFFECT_PSYCHIC_SPEAR);
+			fx->yaw = target->yaw;
+			fx->skill[3] = shrine->getUID();
+			fx->pitch = 0;// PI / 4;
+			fx->fskill[0] = fx->yaw + PI / 2 + (local_rng.rand() % 6) * PI / 3;
+			fx->fskill[1] = PI / 4 + PI / 8;// +(i + 1) * 2 * PI / 3;
+			fx->x = target->x - 8.0 * cos(fx->yaw);
+			fx->y = target->y - 8.0 * sin(fx->yaw);
+			fx->z = target->z;// -8.0;
+			fx->scalex = 0.0;
+			fx->scaley = 0.0;
+			fx->scalez = 0.0;
+			fx->actmagicSpellbookBonus = 0;
+			if ( tier == 2 )
+			{
+				fx->actmagicSpellbookBonus = 50;
+			}
+			if ( tier == 3 )
+			{
+				fx->actmagicSpellbookBonus = 100;
+			}
+			fx->actmagicFromSpellbook = 0;
+
+			serverSpawnMiscParticles(target, PARTICLE_EFFECT_PSYCHIC_SPEAR, 2362, 0, 5 * TICKS_PER_SECOND, fx->yaw * 256.0);
+			result = true;
+		}
+	}
+	else
+	{
+		return false;
+	}
+
+	if ( result )
+	{
+		ShrinePlayerMessageManager_t::insert(shrine->getUID(), player, Language::get(7130));
+	}
+	return result;
 }

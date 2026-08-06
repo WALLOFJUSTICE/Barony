@@ -5030,6 +5030,56 @@ void actMonster(Entity* my)
 			}
 		}
 
+		if ( my->monsterState == MONSTER_STATE_WAIT )
+		{
+			// once-off look for target keyword
+			if ( myStats->attributes.find("FIND_ENEMY") != myStats->attributes.end() )
+			{
+				Uint32 targetUid = 0;
+				if ( myStats->getAttribute("FIND_ENEMY") == "1" )
+				{
+
+				}
+				else
+				{
+					targetUid = std::stoul(myStats->getAttribute("FIND_ENEMY"));
+				}
+
+				real_t dist = 10000.f;
+				real_t sightrange = 256.0;
+				Entity* toAttack = nullptr;
+				for ( node_t* node = map.creatures->first; node; node = node->next )
+				{
+					Entity* target = (Entity*)node->element;
+					if ( ((target->behavior == &actMonster && target->monsterAllyGetPlayerLeader()) || target->behavior == &actPlayer) && target != my
+						&& my->checkEnemy(target) && target->monsterIsTargetable() )
+					{
+						real_t oldDist = dist;
+						dist = sqrt(pow(my->x - target->x, 2) + pow(my->y - target->y, 2));
+						if ( dist < sightrange && dist <= oldDist )
+						{
+							double tangent = atan2(target->y - my->y, target->x - my->x);
+							my->monsterLookDir = tangent;
+							toAttack = target;
+							if ( target->getUID() == targetUid )
+							{
+								break;
+							}
+						}
+						else
+						{
+							dist = oldDist;
+						}
+					}
+				}
+				if ( toAttack )
+				{
+					my->monsterAcquireAttackTarget(*toAttack, MONSTER_STATE_PATH);
+				}
+				myStats->attributes.erase("FIND_ENEMY");
+			}
+		}
+
 		// being bumped by someone friendly
 		std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
 		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
@@ -11557,7 +11607,7 @@ bool forceFollower(Entity& leader, Entity& follower)
 	Stat* followerStats = follower.getStats();
 	if ( !leaderStats || !followerStats )
 	{
-		printlog("[forceFollower] Error: Either leader or follower did not have stats.");
+		//printlog("[forceFollower] Error: Either leader or follower did not have stats.");
 		return false;
 	}
 

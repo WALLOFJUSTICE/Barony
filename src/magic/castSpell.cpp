@@ -812,6 +812,38 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 		}
 	}
 
+	if ( stat && stat->getEffectActive(EFF_SILENCED) )
+	{
+		if ( !using_magicstaff && !trap && !usingFoci )
+		{
+			playSoundEntity(caster, 163, 128);
+			if ( player >= 0 )
+			{
+				messagePlayer(player, MESSAGE_COMBAT, Language::get(7113));
+			}
+			if ( player >= 0 )
+			{
+				if ( !using_magicstaff && !trap )
+				{
+					if ( !usingSpellbook )
+					{
+						Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_SPELL_FAILURES, SPELL_ITEM, 1, false, spell->ID);
+						Compendium_t::Events_t::eventUpdateCodex(player, Compendium_t::CPDM_CLASS_SPELL_FIZZLES_RUN, "memorized", 1);
+					}
+					else if ( usingSpellbook )
+					{
+						if ( items[spellbookType].category == SPELLBOOK )
+						{
+							Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_SPELL_FAILURES, spellbookType, 1);
+							Compendium_t::Events_t::eventUpdateCodex(player, Compendium_t::CPDM_CLASS_SPELLBOOK_FIZZLES_RUN, "spellbook casting", 1);
+						}
+					}
+				}
+			}
+			return NULL;
+		}
+	}
+
 	if ( newbie && stat )
 	{
 		//So This wizard is a newbie.
@@ -1203,7 +1235,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			((spell_t*)spellnode->element)->channel_duration = entity->skill[12];  //Tell the spell how long it's supposed to last so that it knows what to reset its timer to.
 			result = entity;
 
-			playSoundEntity(entity, 165, 128);
+			playSoundEntity(entity, 893, 128);
 		}
 		else if (!strcmp(element->element_internal_name, spellElement_invisible.element_internal_name))
 		{
@@ -3416,31 +3448,34 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 								{
 								}
 
-								for ( node_t* node = map.creatures->first; node; node = node->next )
+								if ( caster->behavior == &actPlayer )
 								{
-									if ( Entity* entity = getSpellTarget(node, 10000, caster, false, TARGET_ENEMY) )
+									for ( node_t* node = map.creatures->first; node; node = node->next )
 									{
-										if ( entity != target )
+										if ( Entity* entity = getSpellTarget(node, 10000, caster, false, TARGET_ENEMY) )
 										{
-											if ( entityDist(entity, target) < 16.0 * 4 )
+											if ( entity != target )
 											{
-												Entity* entityTarget = uidToEntity(entity->monsterTarget);
-												if ( !entityTarget || entityTarget == caster ||
-													caster->checkFriend(entityTarget) )
+												if ( entityDist(entity, target) < 16.0 * 4 )
 												{
-													// other nearby enemies locate the taboo target
-													// if target attacking caster / caster allies then it gets redirected too
-													Entity* ohit = hit.entity;
-													real_t tangent = atan2(target->y - entity->y, target->x - entity->x);
-													lineTraceTarget(entity, entity->x, entity->y, tangent, 16.0 * 4, 0, false, target);
-													if ( hit.entity == target )
+													Entity* entityTarget = uidToEntity(entity->monsterTarget);
+													if ( !entityTarget || entityTarget == caster ||
+														caster->checkFriend(entityTarget) )
 													{
-														if ( entity->checkEnemy(target) )
+														// other nearby enemies locate the taboo target
+														// if target attacking caster / caster allies then it gets redirected too
+														Entity* ohit = hit.entity;
+														real_t tangent = atan2(target->y - entity->y, target->x - entity->x);
+														lineTraceTarget(entity, entity->x, entity->y, tangent, 16.0 * 4, 0, false, target);
+														if ( hit.entity == target )
 														{
-															entity->monsterAcquireAttackTarget(*target, MONSTER_STATE_PATH);
+															if ( entity->checkEnemy(target) )
+															{
+																entity->monsterAcquireAttackTarget(*target, MONSTER_STATE_PATH);
+															}
 														}
+														hit.entity = ohit;
 													}
-													hit.entity = ohit;
 												}
 											}
 										}
@@ -3557,7 +3592,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					}
 				}
 				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
-				playSoundEntity(caster, 171, 128);
+				playSoundEntity(caster, 896, 128);
 			}
 		}
 		else if ( spell->ID == SPELL_FIRE_SPRITE )
@@ -3726,7 +3761,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					spellTimer->actmagicFromSpellbook = usingSpellbook ? 1 : 0;
 					floorMagicCreateLightningSequence(spellTimer, 0);
 				}
-				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 170);
 				playSoundEntity(caster, 806, 128);
 			}
 		}
@@ -3910,8 +3945,11 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				}
 				else
 				{
-					playSoundEntity(caster, 163, 128);
-					messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6736));
+					if ( caster->getStats() )
+					{
+						playSoundEntity(caster, 163, 128);
+						messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6736));
+					}
 				}
 			}
 		}
@@ -4171,6 +4209,11 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						+ pow(castSpellProps->target_y - castSpellProps->caster_y, 2));
 					dist = std::min(getSpellPropertyFromID(spell_t::SPELLPROP_MODIFIED_DISTANCE, spell->ID, caster, nullptr, caster) + 16.0, dist + 16.0);
 					real_t minDist = 20.0;
+					if ( caster->behavior == &actEternalShrine )
+					{
+						dist /= 4.0;
+						minDist = 0.0;
+					}
 					while ( lifetime_tick <= lifetime )
 					{
 						++index;
@@ -8748,7 +8791,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				SoundChannelGroupIndex channelIndex = SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK;
 				if ( caster && (caster->behavior == &actMagicTrap || caster->behavior == &actMagicTrapCeiling) )
 				{
-					channelIndex = SOUND_CHANNEL_GROUP_TRAP;
+					channelIndex = SOUND_CHANNEL_GROUP_TRAP_MAGIC;
 				}
 				playSoundEntity(missileEntity, sound, volume, channelIndex);
 			}

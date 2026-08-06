@@ -5187,7 +5187,8 @@ void item_Food(Item*& item, int player)
 			conductVegetarian = false;
 		}
 		if ( stats[player]->playerRace == RACE_SKELETON && stats[player]->stat_appearance == 0
-			&& players[player] && players[player]->entity->effectPolymorph > NUMMONSTERS )
+			&& players[player] && players[player]->entity->effectPolymorph > 0 
+			&& players[player]->entity->playerGetMonsterRaceFromPolymorph() == HUMAN )
 		{
 			steamAchievement("BARONY_ACH_MUSCLE_MEMORY");
 		}
@@ -5648,7 +5649,9 @@ void item_FoodTin(Item*& item, int player)
 		conductFoodless = false;
 		conductVegetarian = false;
 		if ( stats[player]->playerRace == RACE_SKELETON && stats[player]->stat_appearance == 0
-			&& players[player] && players[player]->entity && players[player]->entity->effectPolymorph > NUMMONSTERS )
+			&& players[player] && players[player]->entity 
+			&& players[player]->entity->effectPolymorph > 0
+			&& players[player]->entity->playerGetMonsterRaceFromPolymorph() == HUMAN )
 		{
 			steamAchievement("BARONY_ACH_MUSCLE_MEMORY");
 		}

@@ -23,6 +23,7 @@
 #include "ui/MainMenu.hpp"
 #include "prng.hpp"
 #include "mod_tools.hpp"
+#include "classdescriptions.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -139,14 +140,20 @@ void actHudArm(Entity* my)
 	}
 	else if ( players[HUDARM_PLAYERNUM]->entity->effectPolymorph != NOTHING )
 	{
+		playerRace = players[HUDARM_PLAYERNUM]->entity->playerGetMonsterRaceFromPolymorph();
 		if ( players[HUDARM_PLAYERNUM]->entity->effectPolymorph > NUMMONSTERS )
 		{
-			playerRace = HUMAN;
-			playerAppearance = players[HUDARM_PLAYERNUM]->entity->effectPolymorph - 100;
-		}
-		else
-		{
-			playerRace = static_cast<Monster>(players[HUDARM_PLAYERNUM]->entity->effectPolymorph);
+			if ( players[HUDARM_PLAYERNUM]->entity->effectPolymorph >= 100 + NUMAPPEARANCES )
+			{
+				if ( playerRace == HUMAN )
+				{
+					playerAppearance = 0;
+				}
+			}
+			else
+			{
+				playerAppearance = std::max(0, players[HUDARM_PLAYERNUM]->entity->effectPolymorph - 100);
+			}
 		}
 	}
 
@@ -565,14 +572,20 @@ void actHudWeapon(Entity* my)
 	}
 	else if ( players[HUDWEAPON_PLAYERNUM]->entity->effectPolymorph != NOTHING )
 	{
+		playerRace = players[HUDWEAPON_PLAYERNUM]->entity->playerGetMonsterRaceFromPolymorph();
 		if ( players[HUDWEAPON_PLAYERNUM]->entity->effectPolymorph > NUMMONSTERS )
 		{
-			playerRace = HUMAN;
-			playerAppearance = players[HUDWEAPON_PLAYERNUM]->entity->effectPolymorph - 100;
-		}
-		else
-		{
-			playerRace = static_cast<Monster>(players[HUDWEAPON_PLAYERNUM]->entity->effectPolymorph);
+			if ( players[HUDWEAPON_PLAYERNUM]->entity->effectPolymorph >= 100 + NUMAPPEARANCES )
+			{
+				if ( playerRace == HUMAN )
+				{
+					playerAppearance = 0;
+				}
+			}
+			else
+			{
+				playerAppearance = players[HUDWEAPON_PLAYERNUM]->entity->effectPolymorph - 100;
+			}
 		}
 	}
 
@@ -4331,14 +4344,7 @@ void actHudShield(Entity* my)
 	}
 	else if ( players[HUDSHIELD_PLAYERNUM]->entity->effectPolymorph != NOTHING )
 	{
-		if ( players[HUDSHIELD_PLAYERNUM]->entity->effectPolymorph > NUMMONSTERS )
-		{
-			playerRace = HUMAN;
-		}
-		else
-		{
-			playerRace = static_cast<Monster>(players[HUDSHIELD_PLAYERNUM]->entity->effectPolymorph);
-		}
+		playerRace = players[HUDSHIELD_PLAYERNUM]->entity->playerGetMonsterRaceFromPolymorph();
 	}
 
 	my->mistformGLRender = 0.0;
