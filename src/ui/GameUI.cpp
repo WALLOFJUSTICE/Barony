@@ -6615,7 +6615,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 						}
 						else if ( img->path.find("sacred_path.png") != std::string::npos )
 						{
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SACRED_PATH);
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SACRED_PATH) & 0xF;
 							if ( auto text = Text::get(std::to_string(effectStrength).c_str(),
 								"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
 							{
@@ -7932,6 +7932,10 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 				{
 					variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
 				}
+				else if ( effectID == EFF_RESOLVE )
+				{
+					variation = std::min(2, std::max(0, (int)entry.customVariable - 1));
+				}
 				else if ( effectID == EFF_GROWTH )
 				{
 					variation = std::min(2, std::max(0, (int)entry.customVariable - 2));
@@ -8859,6 +8863,23 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					}
 				}
 			}
+			else if ( i == EFF_RESOLVE )
+			{
+				for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); ++it )
+				{
+					if ( (*it).effect == EFF_RESOLVE )
+					{
+						bool hp = stats[player]->getEffectActive(EFF_RESOLVE) & 0xF;
+						bool mp = (stats[player]->getEffectActive(EFF_RESOLVE) >> 4) & 0xF;
+						int value = hp && mp ? 3 : (hp ? 1 : 2);
+						if ( (*it).customVariable != value )
+						{
+							deleteEffect(EFF_RESOLVE);
+							break;
+						}
+					}
+				}
+			}
 			else if ( i == EFF_SALAMANDER_HEART )
 			{
 				if ( !(stats[player]->type == SALAMANDER) )
@@ -8956,6 +8977,17 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 						{
 							effectQueue.back().customVariable = stats[player]->getEffectActive(EFF_SMOKE_HPMP_RGN);
 							notificationQueue.back().customVariable = stats[player]->getEffectActive(EFF_SMOKE_HPMP_RGN);
+						}
+					}
+					else if ( i == EFF_RESOLVE )
+					{
+						if ( insertEffect(i, -1) )
+						{
+							bool hp = stats[player]->getEffectActive(EFF_RESOLVE) & 0xF;
+							bool mp = (stats[player]->getEffectActive(EFF_RESOLVE) >> 4) & 0xF;
+							int value = hp && mp ? 3 : (hp ? 1 : 2);
+							effectQueue.back().customVariable = value;
+							notificationQueue.back().customVariable = value;
 						}
 					}
 					else
@@ -9499,6 +9531,10 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 						{
 							variation = std::min(3, std::max(0, (int)notif.customVariable - 1));
 						}
+						else if ( effectID == EFF_RESOLVE )
+						{
+							variation = std::min(2, std::max(0, (int)notif.customVariable - 1));
+						}
 						else if ( effectID == EFF_VAMPIRICAURA )
 						{
 							bool sustained = false;
@@ -10019,6 +10055,11 @@ void StatusEffectQueue_t::updateEntryImage(StatusEffectQueueEntry_t& entry, Fram
 					else if ( effectID == EFF_SMOKE_HPMP_RGN )
 					{
 						variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
+						img->path = StatusEffectDefinitions_t::getEffectImgPath(StatusEffectDefinitions_t::getEffect(effectID), variation);
+					}
+					else if ( effectID == EFF_RESOLVE )
+					{
+						variation = std::min(2, std::max(0, (int)entry.customVariable - 1));
 						img->path = StatusEffectDefinitions_t::getEffectImgPath(StatusEffectDefinitions_t::getEffect(effectID), variation);
 					}
 					else
@@ -23537,7 +23578,11 @@ void updateSlotFrameFromItem(Frame* slotFrame, void* itemPtr, bool forceUnusable
 				// shape shifted, disable some items
 				if ( !item->usableWhileShapeshifted(stats[player]) )
 				{
-					greyedOut = true;
+					if ( !(GenericGUI[player].eternalShrineGUI.bOpen
+						&& GenericGUI[player].isItemEternalShrineUsable(item)) )
+					{
+						greyedOut = true;
+					}
 				}
 			}
 			if ( !greyedOut && client_classes[player] == CLASS_SHAMAN
@@ -32764,11 +32809,15 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 					{
 						variation = 4;
 					}
+					else if ( effectID == EFF_RESOLVE )
+					{
+						variation = 2;
+					}
 					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(effectID);
 					if ( !definition.neverDisplay )
 					{
 						std::string imgPath;
-						if ( (effectID == EFF_SALAMANDER_HEART || effectID == EFF_SMOKE_HPMP_RGN) && variation == -1 )
+						if ( (effectID == EFF_SALAMANDER_HEART || effectID == EFF_SMOKE_HPMP_RGN || effectID == EFF_RESOLVE) && variation == -1 )
 						{
 							imgPath = "";
 						}

@@ -2398,10 +2398,12 @@ public:
 		void updateFloorEvents();
 	} compendiumProgress;
 
-	static const int DIVINE_FAVOR_MAX = 10;
+	static int DIVINE_FAVOR_MAX;
+	static const int DIVINE_FAVOR_PIPS_MAX = 10;
 	class PlayerMechanics_t
 	{
 		Player& player;
+		int divine_favor = 0;
 	public:
 		std::map<int, int> itemDegradeRng;
 		std::set<int> learnedSpells;
@@ -2409,7 +2411,38 @@ public:
 		std::vector<std::pair<int, Uint32>> pendingDucks;
 		std::map<int, int> favoriteBooksAchievement;
 		std::set<int> popQuizAchievement;
-		int divine_favor = 0;
+		int getDivineFavorFromItem(Item* item);
+		static std::vector<int> divineFavorPipBreakpoints;
+		enum class DivineEvent
+		{
+			DIVINE_NONE,
+			DIVINE_PLAYER_KILL,
+			DIVINE_TEAM_KILL,
+			DIVINE_FRIENDLY_KILL,
+			DIVINE_DEFACE,
+			DIVINE_SHOP_KILL,
+			DIVINE_KILL,
+			DIVINE_OFFERINGS,
+			DIVINE_POOR_OFFERINGS,
+			DIVINE_MISSED_OFFERING,
+			DIVINE_CLAIM_DONATION,
+			DIVINE_NO_FLOOR_INFRACTIONS,
+			DIVINE_ENUM_MAX
+		};
+		int client_divine_favor = 0;
+		int client_divine_penalty = 0;
+		std::vector<DivineEvent> divineOfferingsHistory;
+		int getDivinePenaltyModifier();
+		std::map<Uint32, DivineEvent> divineOfferingsMadeOnFloor;
+		std::vector<DivineEvent> divineEventsOnFloor;
+		void updateDivineEvent(Entity* entity, DivineEvent event);
+		void updateDivineEventOnFloorChange();
+		int getDivineFavorPips();
+		int getDivineFavorBase();
+		void setDivineFavor(int value) { divine_favor = std::min(DIVINE_FAVOR_MAX, std::max(0, value)); }
+		void divineFavorModPips(int mod);
+		void printDivineFavor();
+		void divineFavorModItem(int itemValue);
 		int numFishingCaught = 0;
 		bool itemDegradeRoll(Item* item, int skillID = -1, int* checkInterval = nullptr);
 		void onItemDegrade(Item* item);
@@ -2454,8 +2487,11 @@ public:
 		bool ensembleRequireRecast = false;
 		bool ensembleTakenInitialMP = false;
 		bool previouslyLevitating = false;
-		Uint32 eternalShrineEnsembleTicks = 0; // adds beb 1/2 to instrument tracks
+		bool eternalShrineEnsemble = false; // adds beb 1/2 to instrument tracks
 		Uint32 donationRevealedOnFloor = 0;
+		int bountiesClaimed = 0;
+		bool hungerFlagWasOn = false;
+		std::set<Uint32> eternalShrineDonationRevealedOnFloor;
 		bool donationClaimed = false;
 		std::map<Uint32, std::map<Uint32, Uint32>> targetsCompelled;
 		std::set<Uint32> targetsRefuseCompel;

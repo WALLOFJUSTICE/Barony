@@ -4461,6 +4461,7 @@ struct GameLevels_t
 		ShopRoom_t shop_room;
 		std::string save_img = "";
 		bool disable_gen_exits = false;
+		bool disable_gen_stations = false;
 	};
 	struct LevelData_t
 	{
@@ -4563,15 +4564,42 @@ public:
 		REWARD_ITEM_1,
 		REWARD_ITEM_2,
 		REWARD_ITEM_3,
-		REWARD_BUFF_1,
-		REWARD_BUFF_2,
-		REWARD_BUFF_3,
+		BODY_BUFF_1,
+		BODY_BUFF_2,
+		BODY_BUFF_3,
+		MIND_BUFF_1,
+		MIND_BUFF_2,
+		MIND_BUFF_3,
+		FOOD_BUFF_1,
+		FOOD_BUFF_2,
+		FOOD_BUFF_3,
+		STATUS_BUFF_HP_1,
+		STATUS_BUFF_HP_2,
+		STATUS_BUFF_HP_3,
+		STATUS_BUFF_MP_1,
+		STATUS_BUFF_MP_2,
+		STATUS_BUFF_MP_3,
+		MIRACLE_1,
+		MIRACLE_2,
+		MIRACLE_3,
+		SONG_1,
+		SONG_2,
+		SONG_3,
+		SONG_4,
+		SONG_5,
 		SHRINE_EFFECTS_ENUM_END
 	};
-	static std::string getTierStringFromEffect(const int player, Entity& my, BaronyRNG& rng);
-	static std::pair<std::string, int> rollReward(int shrineType, std::string tierString, BaronyRNG& rng);
+	static std::string getTierStringFromEffect(const int player, Entity& my, BaronyRNG& rng, Item* item = nullptr);
+	enum ShrineEffectResults
+	{
+		SHRINE_RESULT_REWARD,
+		SHRINE_RESULT_OUTCOME
+	};
+	static std::pair<std::string, int> rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng);
 private:
 	static std::map<int, std::map<ShrineEffectsPools, std::vector<std::string>>> shrineEffectPools;
 	static std::vector<std::pair<std::string, ShrineEffectsPools>> shrineEffectsTable;
 	static std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffectsPools, int>>>> shrineOutcomes;
+	static std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffectsPools, int>>>> shrineRewards;
+	static std::map<std::string, std::set<std::string>> supplicationExcludeStrings;
 };

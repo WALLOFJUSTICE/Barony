@@ -20277,6 +20277,10 @@ void GameLevels_t::readFromFile()
 			{
 				data.node.disable_gen_exits = (*arr_it)["disable_gen_exits"].GetBool();
 			}
+			if ( arr_it->HasMember("disable_gen_stations") && (*arr_it)["disable_gen_stations"].IsBool() )
+			{
+				data.node.disable_gen_stations = (*arr_it)["disable_gen_stations"].GetBool();
+			}
 			if ( arr_it->HasMember("secret_exit") && (*arr_it)["secret_exit"].IsObject() )
 			{
 				if ( (*arr_it)["secret_exit"].HasMember("chance") && (*arr_it)["secret_exit"]["chance"].IsInt()

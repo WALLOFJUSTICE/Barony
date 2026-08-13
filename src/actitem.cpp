@@ -125,7 +125,8 @@ void onItemPickedUp(Entity& who, Uint32 itemUid)
 {
 	for ( int player = 0; player < MAXPLAYERS; ++player )
 	{
-		if ( players[player]->mechanics.donationRevealedOnFloor == itemUid )
+		if ( players[player]->mechanics.donationRevealedOnFloor == itemUid
+			|| players[player]->mechanics.eternalShrineDonationRevealedOnFloor.find(itemUid) != players[player]->mechanics.eternalShrineDonationRevealedOnFloor.end() )
 		{
 			if ( who.behavior == &actPlayer )
 			{
@@ -158,7 +159,15 @@ void onItemPickedUp(Entity& who, Uint32 itemUid)
 				}
 			}
 
-			players[player]->mechanics.updateSustainedSpellEvent(SPELL_DONATION, 150.0, 1.0, nullptr);
+			if ( players[player]->mechanics.donationRevealedOnFloor == itemUid )
+			{
+				players[player]->mechanics.updateSustainedSpellEvent(SPELL_DONATION, 150.0, 1.0, nullptr);
+			}
+			else if ( players[player]->mechanics.eternalShrineDonationRevealedOnFloor.find(itemUid) != players[player]->mechanics.eternalShrineDonationRevealedOnFloor.end() )
+			{
+				players[player]->mechanics.updateDivineEvent(nullptr, Player::PlayerMechanics_t::DivineEvent::DIVINE_CLAIM_DONATION);
+			}
+			playSoundEntity(&who, 909, 128);
 			break;
 		}
 	}
@@ -952,7 +961,9 @@ void actItem(Entity* my)
 			}
 		}
 
-		if ( my->ticks == 1 && eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+		if ( my->ticks == 1 
+			&& (eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC
+				|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION) )
 		{
 			createParticleFociLight(my, SPELL_NONE, false);
 		}
@@ -962,7 +973,8 @@ void actItem(Entity* my)
 	Entity* leader = nullptr;
 	if ( eternalShrineStation 
 		&& (eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION
-			|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC) )
+			|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC
+			|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION) )
 	{
 		if ( !my->light )
 		{
@@ -1164,7 +1176,8 @@ void actItem(Entity* my)
 		real_t floatScale = 1.0;
 		if ( eternalShrineStation && 
 			(eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION
-				|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC) )
+				|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC
+				|| eternalShrineStation->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION) )
 		{
 			floatScale = 0.5;
 			my->pitch = 0.0;

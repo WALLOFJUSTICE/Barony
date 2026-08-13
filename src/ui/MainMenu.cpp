@@ -9462,6 +9462,9 @@ bind_failed:
 					case KilledBy::DEATH_KNOCKBACK:
 						cause_of_death = Language::get(6854);
 						break;
+					case KilledBy::ETERNAL_SMITE:
+						cause_of_death = Language::get(7158);
+						break;
 					default: 
 					{
 						cause_of_death = Language::get(5794 + (int)score->stats->killer);
@@ -27830,6 +27833,9 @@ failed:
 			break;
 		case KilledBy::DEATH_KNOCKBACK:
 			cause_of_death = Language::get(6854);
+			break;
+		case KilledBy::ETERNAL_SMITE:
+			cause_of_death = Language::get(7158);
 			break;
         default: {
             cause_of_death = Language::get(5794 + (int)stats[player]->killer);

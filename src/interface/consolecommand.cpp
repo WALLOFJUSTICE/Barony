@@ -899,6 +899,7 @@ namespace ConsoleCommands {
 		}
 
 		if ( argc < 2 ) {
+			messagePlayer(clientnum, MESSAGE_MISC, "Divine favor is: %d", players[clientnum]->mechanics.getDivineFavorBase());
 			return;
 		}
 
@@ -908,8 +909,54 @@ namespace ConsoleCommands {
 		{
 			player = atoi(argv[2]);
 		}
-		players[player]->mechanics.divine_favor = std::min(Player::DIVINE_FAVOR_MAX, std::max(0, amount));
+		players[player]->mechanics.setDivineFavor(std::max(0, amount));
+		messagePlayer(clientnum, MESSAGE_MISC, "Divine favor changed: %d", players[player]->mechanics.getDivineFavorBase());
 		});
+
+	static ConsoleCommand ccmd_divine_favor_penalty("/divine_favor_standing", "check divine favor penalty (cheat)", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+		if ( multiplayer == CLIENT )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(284));
+			return;
+		}
+
+		messagePlayer(clientnum, MESSAGE_MISC, "Divine favor standing: %d", players[clientnum]->mechanics.getDivinePenaltyModifier());
+		});
+
+	static ConsoleCommand ccmd_divine_favor_pip_mod("/divine_favor_pip_mod", "modify divine favor (cheat)", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+		if ( multiplayer == CLIENT )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(284));
+			return;
+		}
+
+		if ( argc < 2 ) {
+			return;
+		}
+
+		int pip = atoi(argv[1]);
+		int player = clientnum;
+		if ( argc >= 3 )
+		{
+			player = atoi(argv[2]);
+		}
+		int prev = players[player]->mechanics.getDivineFavorBase();
+		players[player]->mechanics.divineFavorModPips(pip);
+		messagePlayer(clientnum, MESSAGE_MISC, "Divine favor is: %d -> %d", 
+			prev, players[player]->mechanics.getDivineFavorBase());
+	});
 
 	static ConsoleCommand ccmd_buddha("/buddha", "toggle buddha mode (cheat)", []CCMD{
 		if (!(svFlags & SV_FLAG_CHEATS))
@@ -5427,7 +5474,14 @@ namespace ConsoleCommands {
 			{
 				for ( auto str : floors_stations[i] )
 				{
-					messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: [%d]: %s", i, str.c_str());
+					if ( str == "supplication" || str == "anvil" || str == "chorale" || str == "ascension" )
+					{
+						messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: [%d]: *%s*", i, str.c_str());
+					}
+					else
+					{
+						messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: [%d]: %s", i, str.c_str());
+					}
 				}
 			}
 		}
@@ -7167,7 +7221,7 @@ namespace ConsoleCommands {
 				if ( strstr(pair.first.c_str(), shrine_type.c_str()) )
 				{
 					std::string tier_string = argv[2];
-					auto result = ShrineEffects_t::rollReward(pair.second, tier_string, local_rng);
+					auto result = ShrineEffects_t::rollResult(pair.second, ShrineEffects_t::SHRINE_RESULT_OUTCOME, clientnum, tier_string, local_rng);
 					messagePlayer(clientnum, MESSAGE_MISC, "%s | '%s' result: %s tier: %d", pair.first.c_str(), tier_string.c_str(), result.first.c_str(), result.second);
 					return;
 				}

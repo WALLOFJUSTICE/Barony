@@ -11249,7 +11249,17 @@ void Player::Inventory_t::updateInventory()
 						}
 						else
 						{
-							updateSlotFrameFromItem(slotFrame, item);
+							bool greyBackground = false;
+							if ( eternalShrineGUI.bOpen )
+							{
+								if ( GenericGUI[player].getGuiType() == GUI_TYPE_ETERNALSHRINE_ASCENSION
+									&& eternalShrineGUI.currentView != GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_OFFERING
+									&& eternalShrineGUI.ascensionType != GenericGUIMenu::EternalShrineGUI_t::ASCENSION_SPELL )
+								{
+									greyBackground = true;
+								}
+							}
+							updateSlotFrameFromItem(slotFrame, item, greyBackground);
 						}
 					}
 				}
@@ -11372,7 +11382,7 @@ void Player::Inventory_t::updateInventory()
 						else if ( eternalShrineGUI.bOpen )
 						{
 							if ( !(eternalShrineGUI.inventoryItemAllowedInGUI(item)
-								&& item->identified && !itemIsEquipped(item, player)) )
+								&& !itemIsEquipped(item, player)) )
 							{
 								updateSlotFrameFromItem(slotFrame, item, true);
 							}

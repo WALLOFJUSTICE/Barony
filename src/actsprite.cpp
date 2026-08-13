@@ -277,7 +277,9 @@ void actSpriteWorldTooltip(Entity* my)
 		my->z = -.75 + std::max(0.0, parent->z - 7.75) - my->worldTooltipZ + Player::WorldUI_t::tooltipHeightOffsetZ;
 		if ( parent->behavior == &actItem && parent->z < 4.0 )
 		{
-			if ( (parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_ASCENSION || parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_MUSIC)
+			if ( (parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_ASCENSION 
+				|| parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_MUSIC
+				|| parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_SUPPLICATION)
 				&& (multiplayer != CLIENT && !parent->itemNotMoving)
 				|| (multiplayer == CLIENT && !parent->itemNotMovingClient) )
 			{

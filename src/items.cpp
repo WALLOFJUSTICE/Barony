@@ -1569,7 +1569,7 @@ int itemCompare(const Item* const item1, const Item* const item2, bool checkAppe
 
 	if ( !item1->identified && itemCategory(item1) == SCROLL && itemCategory(item2) == SCROLL )
 	{
-		if ( item1->getScrollLabel() != item2->getScrollLabel() )
+		if ( strcmp(item1->getScrollLabel(), item2->getScrollLabel()) )
 		{
 			return 1;
 		}
@@ -3178,6 +3178,21 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 			{
 				consumeItem(item, player);
 			}
+			break;
+		case SCROLL_LITURGY:
+			item_ScrollLiturgy(item, player);
+			break;
+		case SCROLL_MINSTRELS:
+			item_ScrollMinstrels(item, player);
+			break;
+		case SCROLL_STAMINA:
+			item_ScrollStamina(item, player);
+			break;
+		case SCROLL_MENTALITY:
+			item_ScrollMentality(item, player);
+			break;
+		case SCROLL_AGILITY:
+			item_ScrollAgility(item, player);
 			break;
 		case SCROLL_FOOD:
 			item_ScrollFood(item, player);
@@ -6680,8 +6695,7 @@ char* Item::getScrollLabel() const
 
 	if ( indices.empty() )
 	{
-		strcpy(tempstr, "");
-		return tempstr;
+		return const_cast<char*>(Language::get(7169));
 	}
 	int chosenLabel = 0;
 	if ( this->appearance >= indices.size() )

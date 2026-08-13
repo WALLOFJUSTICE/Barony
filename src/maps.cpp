@@ -223,24 +223,38 @@ void TreasureRoomGenerator::init()
 				}
 				if ( j == 1 && i == 5 )
 				{
-					chances = { 0, 7, 10, 0, 0 }; // underworld
+					chances = { 0, 7, 10, 7, 7 }; // underworld
 				}
-				unsigned int res1 = treasure_rng.discrete(chances.data(), chances.size());
+				int res1 = treasure_rng.discrete(chances.data(), chances.size());
 				chances[res1] = 0;
-				unsigned int res2 = treasure_rng.discrete(chances.data(), chances.size());
+				int res2 = treasure_rng.discrete(chances.data(), chances.size());
+				chances[res2] = 0;
+				int res3 = -1;
+				for ( auto chance : chances )
+				{
+					if ( chance )
+					{
+						res3 = treasure_rng.discrete(chances.data(), chances.size());
+						break;
+					}
+				}
 
 				if ( true /*(treasure_rng.rand() % 4 > 0) || (i >= 5 && i <= 10) || i >= 15*/ )
 				{
 					std::vector<unsigned int> chances_level;
-					chances_level.push_back(1);
-					chances_level.push_back(1);
+					chances_level.push_back(10);
+					chances_level.push_back(10);
+					if ( res3 >= 0 )
+					{
+						chances_level.push_back(10);
+					}
 					auto chosen_level = treasure_rng.discrete(chances_level.data(), chances_level.size());
-					chances_level[chosen_level] = 0;
+					chances_level[chosen_level] = 5;
 
 					std::vector<std::pair<std::string, int>> strs_weights = { 
 						{ "anvil", 10},
-						{ "supplication", 10},
-						{ "chorale", 10},
+						{ "supplication", i <= 1 ? 15 : 10},
+						{ "chorale", i <= 1 ? 5 : 10},
 						{ "ascension", 10} };
 
 					int numStations = 1;
@@ -249,11 +263,11 @@ void TreasureRoomGenerator::init()
 					{
 						//if ( treasure_rng.rand() % 3 == 0 )
 						{
-							numStations = 2;
+							numStations = 3;
 						}
 					}
 
-					bool doneSupplication = false;
+					std::set<std::string> doneStations;
 					int index = -1;
 					while ( numStations > 0 )
 					{
@@ -261,29 +275,22 @@ void TreasureRoomGenerator::init()
 						--numStations;
 
 						std::vector<unsigned int> chances_strs;
-						if ( index == 1 && !doneSupplication )
+						for ( auto& str : strs_weights )
 						{
-							chances_strs.resize(strs_weights.size(), 0);
-							chances_strs[1] = 10;
-						}
-						else
-						{
-							for ( auto& str : strs_weights )
+							if ( (str.first != previous_shrine[j] || str.first == "supplication") 
+								&& doneStations.find(str.first) == doneStations.end())
 							{
-								if ( str.first != previous_shrine[j] )
-								{
-									chances_strs.push_back(str.second);
-								}
-								else
-								{
-									chances_strs.push_back(0);
-								}
+								chances_strs.push_back(str.second);
+							}
+							else
+							{
+								chances_strs.push_back(0);
 							}
 						}
 						unsigned int station_name_pick = treasure_rng.discrete(chances_strs.data(), chances_strs.size());
-						floors_stations[i + (chosen_level == 0 ? res1 : res2)].push_back(strs_weights[station_name_pick].first);
+						floors_stations[i + (chosen_level == 0 ? res1 : chosen_level == 1 ? res2 : res3)].push_back(strs_weights[station_name_pick].first);
 						previous_shrine[j] = strs_weights[station_name_pick].first;
-						doneSupplication = strs_weights[station_name_pick].first == "supplication";
+						doneStations.insert(strs_weights[station_name_pick].first);
 
 						bool anyChances = false;
 						for ( auto val : chances_level )
@@ -5598,7 +5605,8 @@ int generateDungeon(char* levelset, Uint32 seed)
 	};
 
 	static ConsoleVariable<bool> cvar_debug_station_spawn("/debug_station_spawn", false);
-	if ( treasure_room_generator.bForceStationSpawnForCurrentFloor(secretlevelexit) )
+	if ( treasure_room_generator.bForceStationSpawnForCurrentFloor(secretlevelexit)
+		&& !levelData.node.disable_gen_stations )
 	{
 		bool* possibleLocationsStations = (bool*)malloc(sizeof(bool) * map.width * map.height);
 		memcpy(possibleLocationsStations, possiblelocations, map.width * map.height * sizeof(bool));
@@ -11661,6 +11669,19 @@ void assignActions(map_t* map)
 				entity->seedEntityRNG(map_rng.getU32());
 				break;
 			}
+			// floor builder:
+			case 316:
+				entity->sizex = 2;
+				entity->sizey = 2;
+				entity->x += 8;
+				entity->y += 8;
+				entity->behavior = &actFloorBuilder;
+				entity->flags[SPRITE] = true;
+				entity->flags[INVISIBLE] = true;
+				entity->flags[PASSABLE] = true;
+				entity->flags[NOUPDATE] = true;
+				entity->skill[28] = 1; // is a mechanism
+				break;
             default:
                 break;
 		}

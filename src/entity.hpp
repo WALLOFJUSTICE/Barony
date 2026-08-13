@@ -753,6 +753,7 @@ public:
 	Sint32& eternalShrineOrchestrionTimer = skill[20];
 	Sint32& eternalShrinePlayersCompleted = skill[21];
 	Sint32& eternalShrineOrchestrionInstruments = skill[22];
+	Sint32& eternalShrinePlayerLockout = skill[23];
 
 	enum PressurePlateTriggerTypes : int
 	{
@@ -863,6 +864,9 @@ public:
 	Sint32& actWindTileBonusLength = skill[5];
 
 	Sint32& actTrapSabotaged = skill[30];
+
+	// actFloorBuild
+	Sint32& actFloorBuilderTile = skill[0];
 
 	void pedestalOrbInit(); // init orb properties
 
@@ -1553,7 +1557,6 @@ void actTextSource(Entity* my);
 
 static const int NUM_ITEM_STRINGS = ITEM_ENUM_MAX + 3;
 static const int NUM_ITEM_STRINGS_BY_TYPE = 252;
-static const int NUM_EDITOR_TILES = 350;
 
 // furniture types.
 static const int FURNITURE_TABLE = 0;
@@ -1565,7 +1568,7 @@ static const int FURNITURE_PODIUM = 4;
 int checkSpriteType(Sint32 sprite);
 Monster editorSpriteTypeToMonster(Sint32 sprite);
 extern std::vector<std::pair<const char*, const char*> >spriteEditorNameStrings;
-extern char tileEditorNameStrings[NUM_EDITOR_TILES][44];
+extern std::vector<const char*> tileEditorNameStrings;
 extern char monsterEditorNameStrings[NUMMONSTERS][32];
 extern char itemStringsByType[10][NUM_ITEM_STRINGS_BY_TYPE][32];
 extern char itemNameStrings[NUM_ITEM_STRINGS][32];

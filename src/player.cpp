@@ -3292,6 +3292,8 @@ void Player::init() // for use on new/restart game, UI related
 	mechanics.ducksInARow.clear();
 	mechanics.pendingDucks.clear();
 	mechanics.numFishingCaught = 0;
+	mechanics.client_divine_favor = 0;
+	mechanics.client_divine_penalty = 0;
 	mechanics.sustainedSpellMPUsedSorcery = 0;
 	mechanics.sustainedSpellMPUsedMysticism = 0;
 	mechanics.sustainedSpellMPUsedThaumaturgy = 0;
@@ -3313,9 +3315,14 @@ void Player::init() // for use on new/restart game, UI related
 	mechanics.lastFociHeldType = 0;
 
 	mechanics.donationRevealedOnFloor = 0;
+	mechanics.eternalShrineDonationRevealedOnFloor.clear();
 	mechanics.donationClaimed = false;
+	mechanics.bountiesClaimed = 0;
 
-	mechanics.divine_favor = 0;
+	mechanics.setDivineFavor(0);
+	mechanics.divineOfferingsHistory.clear();
+	mechanics.divineEventsOnFloor.clear();
+	mechanics.divineOfferingsMadeOnFloor.clear();
 
 	inventoryUI.appraisal.appraisalProgressionItems.clear();
 	inventoryUI.appraisal.manual_appraised_item = 0;
@@ -3356,6 +3363,7 @@ void Player::cleanUpOnEntityRemoval()
 	mechanics.previouslyLevitating = false;
 
 	mechanics.donationRevealedOnFloor = 0;
+	mechanics.eternalShrineDonationRevealedOnFloor.clear();
 	mechanics.donationClaimed = false;
 }
 
@@ -7584,7 +7592,8 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 				if ( skillID >= 0 && !boneItem )
 				{
 					if ( skillID == PRO_SWORD || skillID == PRO_RANGED || skillID == PRO_AXE
-						|| skillID == PRO_MACE || skillID == PRO_POLEARM || skillID == PRO_UNARMED )
+						|| skillID == PRO_MACE || skillID == PRO_POLEARM || skillID == PRO_UNARMED
+						|| skillID == PRO_SORCERY || skillID == PRO_MYSTICISM || skillID == PRO_THAUMATURGY )
 					{
 						int bonus = (stats[player.playernum]->getModifiedProficiency(skillID) / 20);
 						interval += bonus;
@@ -8063,7 +8072,7 @@ void Player::PlayerMechanics_t::ensembleMusicUpdateServer()
 				}
 				if ( effectData )
 				{
-					if ( ::ticks - players[i]->mechanics.eternalShrineEnsembleTicks < 2 * TICKS_PER_SECOND )
+					if ( players[i]->mechanics.eternalShrineEnsemble )
 					{
 						effectData |= (1 << 7); // beb 2
 						effectData |= (1 << 6); // beb 1
@@ -8889,4 +8898,238 @@ int Player::PlayerMechanics_t::getWealthTier()
 		}
 	}
 	return 0;
+}
+
+static ConsoleVariable<bool> cvar_divine_favor_print("/divine_favor_print", false);
+
+void Player::PlayerMechanics_t::printDivineFavor()
+{
+	if ( *cvar_divine_favor_print && (svFlags & SV_FLAG_CHEATS) )
+	{
+		messagePlayer(player.playernum, MESSAGE_HINT, "[Divine Favor]: [%d] Pips: [%d] Penalty: [%d]",
+			divine_favor, getDivineFavorPips(), getDivinePenaltyModifier());
+	}
+}
+
+void Player::PlayerMechanics_t::divineFavorModPips(int mod)
+{
+	int currentPips = getDivineFavorPips();
+
+	if ( mod < 0 )
+	{
+		int prev = divine_favor;
+		for ( int i = currentPips; i > currentPips + mod; --i )
+		{
+			if ( i < divineFavorPipBreakpoints.size() )
+			{
+				divine_favor -= divineFavorPipBreakpoints[i];
+				divine_favor = std::max(0, divine_favor);
+				divine_favor = std::min(DIVINE_FAVOR_MAX, divine_favor);
+			}
+		}
+		if ( *cvar_divine_favor_print && (svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(player.playernum, MESSAGE_HINT, "[Divine Favor]: [%d -> %d] Pips: [%d -> %d]",
+				prev, divine_favor, currentPips, getDivineFavorPips());
+		}
+	}
+	else if ( mod > 0 )
+	{
+		int prev = divine_favor;
+		for ( int i = 1; i <= mod; ++i )
+		{
+			if ( currentPips >= 0 && currentPips < 10 )
+			{
+				if ( currentPips + i < divineFavorPipBreakpoints.size() )
+				{
+					divine_favor += divineFavorPipBreakpoints[currentPips + i];
+					divine_favor = std::max(0, divine_favor);
+					divine_favor = std::min(DIVINE_FAVOR_MAX, divine_favor);
+				}
+			}
+		}
+
+		if ( *cvar_divine_favor_print && (svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(player.playernum, MESSAGE_HINT, "[Divine Favor]: [%d -> %d] Pips: [%d -> %d]",
+				prev, divine_favor, currentPips, getDivineFavorPips());
+		}
+	}
+}
+
+void Player::PlayerMechanics_t::divineFavorModItem(int itemValue)
+{
+	int prev = divine_favor;
+	int currentPips = getDivineFavorPips();
+	divine_favor += itemValue;
+	divine_favor = std::max(0, divine_favor);
+	divine_favor = std::min(DIVINE_FAVOR_MAX, divine_favor);
+
+	if ( *cvar_divine_favor_print && (svFlags & SV_FLAG_CHEATS) )
+	{
+		messagePlayer(player.playernum, MESSAGE_HINT, "[Divine Favor]: Value: %d | [%d -> %d] Pips: [%d -> %d]",
+			itemValue, prev, divine_favor, currentPips, getDivineFavorPips());
+	}
+}
+
+int Player::PlayerMechanics_t::getDivineFavorFromItem(Item* item)
+{
+	if ( !item ) { return 0; }
+
+	int tmpQty = item->count;
+	item->count = 1;
+	int value = item->sellValue(-1);
+	item->count = tmpQty;
+	if ( !item->identified )
+	{
+		value /= 100;
+	}
+
+	return value;
+}
+
+int Player::PlayerMechanics_t::getDivineFavorPips()
+{
+	if ( divineFavorPipBreakpoints.size() == 0 )
+	{
+		return 0;
+	}
+
+	int accum = 0;
+	int lastPip = 0;
+	for ( int i = 0; i <= DIVINE_FAVOR_PIPS_MAX; ++i )
+	{
+		if ( i < divineFavorPipBreakpoints.size() )
+		{
+			accum += divineFavorPipBreakpoints[i];
+			if ( divine_favor >= accum )
+			{
+				lastPip = i;
+			}
+		}
+	}
+
+	return lastPip;
+}
+
+int Player::DIVINE_FAVOR_MAX = 11000;
+std::vector<int> Player::PlayerMechanics_t::divineFavorPipBreakpoints;
+int Player::PlayerMechanics_t::getDivineFavorBase()
+{
+	return std::max(0, std::min(divine_favor, DIVINE_FAVOR_MAX));
+}
+
+void Player::PlayerMechanics_t::updateDivineEvent(Entity* entity, Player::PlayerMechanics_t::DivineEvent event)
+{
+	if ( entity )
+	{
+		if ( entity->behavior == &actEternalShrine )
+		{
+			if ( event == DivineEvent::DIVINE_OFFERINGS || event == DivineEvent::DIVINE_POOR_OFFERINGS )
+			{
+				divineOfferingsMadeOnFloor[entity->getUID()] = event;
+			}
+		}
+		if ( event == DivineEvent::DIVINE_KILL )
+		{
+			if ( entity->behavior == &actPlayer )
+			{
+				divineOfferingsHistory.push_back(DivineEvent::DIVINE_PLAYER_KILL);
+				divineEventsOnFloor.push_back(event);
+			}
+			else if ( entity->behavior == &actMonster )
+			{
+				if ( Stat* entityStats = entity->getStats() )
+				{
+					if ( entityStats->type == SHOPKEEPER )
+					{
+						divineOfferingsHistory.push_back(DivineEvent::DIVINE_SHOP_KILL);
+						divineEventsOnFloor.push_back(event);
+					}
+					else if ( entity->monsterAllyGetPlayerLeader() )
+					{
+						divineOfferingsHistory.push_back(DivineEvent::DIVINE_TEAM_KILL);
+						divineEventsOnFloor.push_back(event);
+					}
+					else
+					{
+						if ( player.entity && !player.entity->checkEnemy(entity) )
+						{
+							divineOfferingsHistory.push_back(DivineEvent::DIVINE_FRIENDLY_KILL);
+							divineEventsOnFloor.push_back(event);
+						}
+					}
+				}
+			}
+			return;
+		}
+	}
+	divineEventsOnFloor.push_back(event);
+	divineOfferingsHistory.push_back(event);
+}
+
+void Player::PlayerMechanics_t::updateDivineEventOnFloorChange()
+{
+	bool infractions = false;
+	for ( auto event : divineEventsOnFloor )
+	{
+		switch ( event )
+		{
+			case DivineEvent::DIVINE_KILL:
+			case DivineEvent::DIVINE_MISSED_OFFERING:
+			case DivineEvent::DIVINE_PLAYER_KILL:
+			case DivineEvent::DIVINE_TEAM_KILL:
+			case DivineEvent::DIVINE_FRIENDLY_KILL:
+			case DivineEvent::DIVINE_DEFACE:
+			case DivineEvent::DIVINE_SHOP_KILL:
+				infractions = true;
+				break;
+			default:
+				break;
+		}
+	}
+
+	if ( !infractions )
+	{
+		divineOfferingsHistory.push_back(DivineEvent::DIVINE_NO_FLOOR_INFRACTIONS);
+	}
+
+	int penaltyModifier = getDivinePenaltyModifier();
+	real_t decay = 1.0;
+	if ( penaltyModifier < 0 )
+	{
+		decay = std::max(0.75, 1.0 + penaltyModifier / 100.0);
+	}
+	divine_favor *= decay;
+
+	divineEventsOnFloor.clear();
+}
+
+int Player::PlayerMechanics_t::getDivinePenaltyModifier()
+{
+	std::map<DivineEvent, int> eventWeights =
+	{ 
+		{ DivineEvent::DIVINE_PLAYER_KILL, -3 },
+		{ DivineEvent::DIVINE_TEAM_KILL, -3 },
+		{ DivineEvent::DIVINE_FRIENDLY_KILL, -3 },
+		{ DivineEvent::DIVINE_DEFACE, -10 },
+		{ DivineEvent::DIVINE_SHOP_KILL, -10 },
+		{ DivineEvent::DIVINE_OFFERINGS, 2 },
+		{ DivineEvent::DIVINE_POOR_OFFERINGS, 1 },
+		{ DivineEvent::DIVINE_CLAIM_DONATION, 1 },
+		{ DivineEvent::DIVINE_MISSED_OFFERING, -1 },
+		{ DivineEvent::DIVINE_NO_FLOOR_INFRACTIONS, 1 }
+	};
+
+	int sum = 0;
+	for ( auto val : divineOfferingsHistory )
+	{
+		auto find = eventWeights.find(val);
+		if ( find != eventWeights.end() )
+		{
+			sum += find->second;
+		}
+	}
+
+	return sum;
 }

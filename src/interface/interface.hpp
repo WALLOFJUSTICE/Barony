@@ -1037,6 +1037,14 @@ public:
 			SUBMIT_CONFIRMED,
 			SUBMIT_DONE
 		};
+
+		enum EternalShrineLockoutStatus
+		{
+			LOCKOUT_NONE,
+			LOCKOUT_COMPLETED,
+			LOCKOUT_OFFERING
+		};
+
 		EternalShrineSubmitStatus submittedItem = SUBMIT_NONE;
 		real_t animPrompt = 0.0;
 		real_t animTooltip = 0.0;

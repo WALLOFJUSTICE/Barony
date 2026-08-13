@@ -22,6 +22,7 @@
 #include "../ui/Button.hpp"
 #include "../ui/Slider.hpp"
 #include "../collision.hpp"
+#include "../colors.hpp"
 
 static void genericgui_deselect_fn(Widget& widget) {
 	if ( widget.isSelected() )
@@ -42,6 +43,8 @@ enum InstrumentOrder {
 };
 
 bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier);
+bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrine);
+void spawnHeatOrbitSpin(Entity* target, int sprite, bool light);
 
 std::vector<std::pair<std::string, ShrineEffects_t::ShrineEffectsPools>> ShrineEffects_t::shrineEffectsTable =
 {
@@ -60,9 +63,29 @@ std::vector<std::pair<std::string, ShrineEffects_t::ShrineEffectsPools>> ShrineE
 	{"REWARD_ITEM_1", ShrineEffects_t::ShrineEffectsPools::REWARD_ITEM_1},
 	{"REWARD_ITEM_2", ShrineEffects_t::ShrineEffectsPools::REWARD_ITEM_2},
 	{"REWARD_ITEM_3", ShrineEffects_t::ShrineEffectsPools::REWARD_ITEM_3},
-	{"REWARD_BUFF_1", ShrineEffects_t::ShrineEffectsPools::REWARD_BUFF_1},
-	{"REWARD_BUFF_2", ShrineEffects_t::ShrineEffectsPools::REWARD_BUFF_2},
-	{"REWARD_BUFF_3", ShrineEffects_t::ShrineEffectsPools::REWARD_BUFF_3}
+	{"BODY_BUFF_1", ShrineEffects_t::ShrineEffectsPools::BODY_BUFF_1},
+	{"BODY_BUFF_2", ShrineEffects_t::ShrineEffectsPools::BODY_BUFF_2},
+	{"BODY_BUFF_3", ShrineEffects_t::ShrineEffectsPools::BODY_BUFF_3},
+	{"MIND_BUFF_1", ShrineEffects_t::ShrineEffectsPools::MIND_BUFF_1},
+	{"MIND_BUFF_2", ShrineEffects_t::ShrineEffectsPools::MIND_BUFF_2},
+	{"MIND_BUFF_3", ShrineEffects_t::ShrineEffectsPools::MIND_BUFF_3},
+	{"FOOD_BUFF_1", ShrineEffects_t::ShrineEffectsPools::FOOD_BUFF_1},
+	{"FOOD_BUFF_2", ShrineEffects_t::ShrineEffectsPools::FOOD_BUFF_2},
+	{"FOOD_BUFF_3", ShrineEffects_t::ShrineEffectsPools::FOOD_BUFF_3},
+	{"STATUS_BUFF_HP_1", ShrineEffects_t::ShrineEffectsPools::STATUS_BUFF_HP_1},
+	{"STATUS_BUFF_HP_2", ShrineEffects_t::ShrineEffectsPools::STATUS_BUFF_HP_2},
+	{"STATUS_BUFF_HP_3", ShrineEffects_t::ShrineEffectsPools::STATUS_BUFF_HP_3},
+	{"STATUS_BUFF_MP_1", ShrineEffects_t::ShrineEffectsPools::STATUS_BUFF_MP_1},
+	{"STATUS_BUFF_MP_2", ShrineEffects_t::ShrineEffectsPools::STATUS_BUFF_MP_2},
+	{"STATUS_BUFF_MP_3", ShrineEffects_t::ShrineEffectsPools::STATUS_BUFF_MP_3},
+	{"MIRACLE_1", ShrineEffects_t::ShrineEffectsPools::MIRACLE_1},
+	{"MIRACLE_2", ShrineEffects_t::ShrineEffectsPools::MIRACLE_2},
+	{"MIRACLE_3", ShrineEffects_t::ShrineEffectsPools::MIRACLE_3},
+	{"SONG_1", ShrineEffects_t::ShrineEffectsPools::SONG_1},
+	{"SONG_2", ShrineEffects_t::ShrineEffectsPools::SONG_2},
+	{"SONG_3", ShrineEffects_t::ShrineEffectsPools::SONG_3},
+	{"SONG_4", ShrineEffects_t::ShrineEffectsPools::SONG_4},
+	{"SONG_5", ShrineEffects_t::ShrineEffectsPools::SONG_5}
 };
 
 std::set<std::string> ShrineEffects_t::shrineEffects = 
@@ -85,33 +108,81 @@ std::set<std::string> ShrineEffects_t::shrineEffects =
 	"VOID_MP_DRAIN",
 	"DEGENERATION",
 	"DISPIRITED",
-	"BURDENED"
+	"BURDENED",
+	"LIGHTEN_LOAD", "GREATER_MIGHT", "STURDINESS", 
+	"STAMINA", "AGILITY",
+	"NIMBLENESS", "COUNSEL", 
+	"MENTALITY", "AGILITY",
+	"SLOW_DIGESTION", "BLESSED_MEALS",
+	"SMOKE_HP", "RESOLVE_HP",
+	"SMOKE_MP", "RESOLVE_MP",
+	"DONATION", "SACRED_PATH",
+	"SCRY_TREASURES", "HIDDEN_KNOWLEDGE",
+	"HEALING_POTION",
+	"MANA_POTION",
+	"ENSEMBLE_1",
+	"ENSEMBLE_1_INSTRUMENT",
+	"ENSEMBLE_1_SCROLL",
+	"ENSEMBLE_2",
+	"ENSEMBLE_2_INSTRUMENT",
+	"ENSEMBLE_2_SCROLL",
+	"ENSEMBLE_3",
+	"ENSEMBLE_3_INSTRUMENT",
+	"ENSEMBLE_3_SCROLL",
+	"ENSEMBLE_4",
+	"ENSEMBLE_4_INSTRUMENT",
+	"ENSEMBLE_4_SCROLL",
+	"ENSEMBLE_5",
+	"ENSEMBLE_5_INSTRUMENT",
+	"ENSEMBLE_5_SCROLL"
 };
 
 struct ShrinePlayerMessageManager_t
 {
+	enum MessageType
+	{
+		SHRINE_MESSAGE_WARNING,
+		SHRINE_MESSAGE_GENERAL,
+		SHRINE_MESSAGE_REJECT
+	};
 	struct ShrinePlayerMessages_t
 	{
+		MessageType messageType = SHRINE_MESSAGE_WARNING;
 		int player = 0;
-		std::string str = "";
+		std::string lang_str = "";
 		Uint32 tick = 0;
+		std::string tier_string = "";
+		std::pair<std::string, int> result_pair;
 	
-		ShrinePlayerMessages_t(const int _player, const char* _str)
+		ShrinePlayerMessages_t(MessageType _messageType, const int _player, const char* _lang, std::string tierString, std::pair<std::string, int> resultString)
 		{
+			messageType = _messageType;
 			player = _player;
-			str = _str;
+			lang_str = _lang ? _lang : "";
 			tick = ::ticks;
+			tier_string = tierString;
+			result_pair = resultString;
 		};
 	};
 	static int processed_on_floor;
 	static std::map<Uint32, std::vector<ShrinePlayerMessages_t>> shrines;
-	static void insert(Uint32 uid, const int player, const char* str)
+	static void insert(Uint32 uid, const int player, const char* lang, std::string tierString, std::pair<std::string, int> resultString, int messageDelay)
 	{
 		if ( multiplayer != CLIENT )
 		{
-			shrines[uid].push_back(ShrinePlayerMessages_t(player, str));
+			shrines[uid].push_back(ShrinePlayerMessages_t(SHRINE_MESSAGE_WARNING, player, lang, tierString, resultString));
+			shrines[uid].back().tick += messageDelay;
 		}
 	}
+	static void insert(MessageType messageType, Uint32 uid, const int player, const char* lang, int messageDelay)
+	{
+		if ( multiplayer != CLIENT )
+		{
+			shrines[uid].push_back(ShrinePlayerMessages_t(messageType, player, lang, "", std::pair<std::string, int>("", 0)));
+			shrines[uid].back().tick += messageDelay;
+		}
+	}
+
 	static void update(Uint32 uid)
 	{
 		if ( processed_on_floor != currentlevel )
@@ -125,11 +196,74 @@ struct ShrinePlayerMessageManager_t
 			{
 				for ( auto it = shrines[uid].begin(); it != shrines[uid].end(); )
 				{
-					if ( ::ticks >= it->tick + 2 * TICKS_PER_SECOND )
+					if ( ::ticks >= it->tick + 3 * TICKS_PER_SECOND )
 					{
-						playSoundNotificationPlayer(it->player, 919, 92);
-						messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->str.c_str());
+						if ( it->lang_str != "" )
+						{
+							if ( Entity* shrine = uidToEntity(uid) )
+							{
+								if ( it->messageType == SHRINE_MESSAGE_REJECT )
+								{
+									messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
+									playSoundNotificationPlayer(it->player, 921, 92);
+								}
+								else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+								{
+									if ( it->messageType == SHRINE_MESSAGE_GENERAL )
+									{
+										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 255, 0), it->lang_str.c_str());
+									}
+									else
+									{
+										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
+										playSoundPlayer(it->player, 920, 92);
+									}
+								}
+								else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+								{
+									if ( it->messageType == SHRINE_MESSAGE_GENERAL )
+									{
+										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 255, 255), it->lang_str.c_str());
+									}
+									else
+									{
+										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
+										playSoundNotificationPlayer(it->player, 919, 92);
+									}
+								}
+								else
+								{
+									messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
+									playSoundNotificationPlayer(it->player, 919, 92);
+								}
+							}
+						}
 						it = shrines[uid].erase(it);
+					}
+					else if ( ::ticks == it->tick )
+					{
+						if ( it->tier_string != "" )
+						{
+							if ( Entity* shrine = uidToEntity(uid) )
+							{
+								if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+								{
+									bool supplication = applySupplicationEffect(it->tier_string, players[it->player]->entity, shrine);
+									bool effect = false;
+									if ( it->result_pair.first != "" )
+									{
+										effect = applyShrineEffect(it->result_pair.first, players[it->player]->entity, shrine, it->result_pair.second);
+									}
+									if ( supplication || effect )
+									{
+										spawnHeatOrbitSpin(players[it->player]->entity, 263, false);
+										playSoundEntity(players[it->player]->entity, 166, 128);
+										playSoundEntity(players[it->player]->entity, 827, 128);
+									}
+								}
+							}
+						}
+						++it;
 					}
 					else
 					{
@@ -143,8 +277,120 @@ struct ShrinePlayerMessageManager_t
 std::map<Uint32, std::vector<ShrinePlayerMessageManager_t::ShrinePlayerMessages_t>> ShrinePlayerMessageManager_t::shrines;
 int ShrinePlayerMessageManager_t::processed_on_floor = 0;
 
+bool processShrineLockoutOnEffect(Entity* shrine, Entity* target, std::string tierString, bool onInteract)
+{
+	if ( !shrine ) { return false; }
+	if ( !target ) { return false; }
+	auto lockoutStatus = (GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus)
+		(shrine->eternalShrinePlayerLockout >> (target->skill[2] * 2) & 0b11);
+
+	static ConsoleVariable<bool> cvar_eternal_shrine_lockout("/eternal_shrine_lockout", false);
+	if ( svFlags & SV_FLAG_CHEATS )
+	{
+		if ( *cvar_eternal_shrine_lockout )
+		{
+			if ( lockoutStatus > GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_NONE )
+			{
+				Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_NONE << (target->skill[2] * 2);
+				Uint32 mask = (0b11) << (target->skill[2] * 2);
+				shrine->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+				shrine->eternalShrinePlayerLockout |= newvalue; // apply new value
+				return false;
+			}
+		}
+	}
+
+	if ( lockoutStatus > GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_NONE )
+	{
+		if ( lockoutStatus == GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_OFFERING
+			&& !onInteract )
+		{
+			Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_COMPLETED << (target->skill[2] * 2);
+			Uint32 mask = (0b11) << (target->skill[2] * 2);
+			shrine->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+			shrine->eternalShrinePlayerLockout |= newvalue; // apply new value
+
+			int tier = 1 + std::min(2, currentlevel / 10);
+			if ( tierString != "" )
+			{
+				tier = std::max(tier, std::stoi(tierString.substr(0, 1)));
+			}
+			if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				playSoundEntity(shrine, 915, 156);
+				bool effect = applyShrineEffect("DIVINE_FIRE", target, shrine, tier);
+				if ( effect )
+				{
+					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
+						shrine->getUID(), target->skill[2], Language::get(7147), 0);
+					return true;
+				}
+			}
+			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				playSoundEntity(shrine, 886, 156);
+				bool effect = applyShrineEffect("LIGHTNING_BOLT", target, shrine, tier);
+				if ( effect )
+				{
+					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
+						shrine->getUID(), target->skill[2], Language::get(7147), 0);
+					return true;
+				}
+			}
+			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				playSoundEntity(shrine, 884, 156);
+				bool effect = applyShrineEffect("PSYCHIC_SPEAR", target, shrine, tier);
+				if ( effect )
+				{
+					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
+						shrine->getUID(), target->skill[2], Language::get(7147), 0);
+					return true;
+				}
+			}
+			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+			{
+				//playSoundEntity(shrine, 915, 156);
+				bool effect = applyShrineEffect("SILENCE", target, shrine, tier);
+				if ( effect )
+				{
+					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
+						shrine->getUID(), target->skill[2], Language::get(7147), 0);
+					return true;
+				}
+			}
+		}
+
+		if ( !onInteract || (onInteract && lockoutStatus != GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_OFFERING) )
+		{
+			if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				messagePlayer(target->skill[2], MESSAGE_INTERACTION, Language::get(7148));
+			}
+			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+			{
+				messagePlayer(target->skill[2], MESSAGE_INTERACTION, Language::get(7149));
+			}
+			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				messagePlayer(target->skill[2], MESSAGE_INTERACTION, Language::get(7150));
+			}
+			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				messagePlayer(target->skill[2], MESSAGE_INTERACTION, Language::get(7151));
+			}
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
 std::map<int, std::map<ShrineEffects_t::ShrineEffectsPools, std::vector<std::string>>> ShrineEffects_t::shrineEffectPools;
 std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffects_t::ShrineEffectsPools, int>>>> ShrineEffects_t::shrineOutcomes;
+std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffects_t::ShrineEffectsPools, int>>>> ShrineEffects_t::shrineRewards;
+std::map<std::string, std::set<std::string>> ShrineEffects_t::supplicationExcludeStrings;
 Uint32 ShrineEffects_t::shrineJsonHashRead = 0;
 void ShrineEffects_t::buildShrineEffects()
 {
@@ -178,7 +424,7 @@ void ShrineEffects_t::buildShrineEffects()
 	{
 		return;
 	}
-	if ( !d.HasMember("version") || !d.HasMember("effects") || !d.HasMember("outcomes") )
+	if ( !d.HasMember("version") || !d.HasMember("effects") || !d.HasMember("outcomes") || !d.HasMember("rewards") )
 	{
 		printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
 		return;
@@ -193,6 +439,27 @@ void ShrineEffects_t::buildShrineEffects()
 
 	Uint32 hash = 0;
 	Uint32 shift = 0;
+
+	Player::PlayerMechanics_t::divineFavorPipBreakpoints.clear();
+	Player::PlayerMechanics_t::divineFavorPipBreakpoints.resize(11, 1000);
+	Player::PlayerMechanics_t::divineFavorPipBreakpoints[0] = 0;
+	if ( d.HasMember("divine_favor_pip_points") )
+	{
+		for ( int i = 0; i <= Player::DIVINE_FAVOR_PIPS_MAX; ++i )
+		{
+			std::string str = std::to_string(i);
+			if ( d["divine_favor_pip_points"].HasMember(str.c_str()) )
+			{
+				if ( d["divine_favor_pip_points"][str.c_str()].IsInt() )
+				{
+					Player::PlayerMechanics_t::divineFavorPipBreakpoints[i] = d["divine_favor_pip_points"][str.c_str()].GetInt();
+					hash += (Uint32)((Uint32)(i + 1) << (shift % 32)); ++shift;
+					hash += (Uint32)((Uint32)(Player::PlayerMechanics_t::divineFavorPipBreakpoints[i] + 55555) << (shift % 32)); ++shift;
+				}
+			}
+		}
+	}
+
 	auto& effects_all = d["effects"];
 	int poolIndex = -1;
 	if ( effects_all.HasMember("anvil") )
@@ -229,11 +496,148 @@ void ShrineEffects_t::buildShrineEffects()
 			}
 		}
 	}
+	if ( effects_all.HasMember("chorale") )
+	{
+		auto& effects = effects_all["chorale"];
+		for ( auto& pair : shrineEffectsTable )
+		{
+			auto& str = pair.first;
+			++poolIndex;
+			if ( effects.HasMember(str.c_str()) )
+			{
+				if ( effects[str.c_str()].IsArray() )
+				{
+					for ( auto arr_itr = effects[str.c_str()].Begin(); arr_itr != effects[str.c_str()].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsString() )
+						{
+							if ( shrineEffects.find(arr_itr->GetString()) != shrineEffects.end() )
+							{
+								hash += djb2Hash(const_cast<char*>(arr_itr->GetString()));
+								shrineEffectPools[GUI_TYPE_ETERNALSHRINE_MUSIC][pair.second].push_back(arr_itr->GetString());
+							}
+							else
+							{
+								printlog("[JSON]: shrine_effects.json warning: no effect key found for '%s'!", arr_itr->GetString());
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				hash += (Uint32)((Uint32)poolIndex << (shift % 32)); ++shift;
+			}
+		}
+	}
+
+	if ( effects_all.HasMember("ascension") )
+	{
+		auto& effects = effects_all["ascension"];
+		for ( auto& pair : shrineEffectsTable )
+		{
+			auto& str = pair.first;
+			++poolIndex;
+			if ( effects.HasMember(str.c_str()) )
+			{
+				if ( effects[str.c_str()].IsArray() )
+				{
+					for ( auto arr_itr = effects[str.c_str()].Begin(); arr_itr != effects[str.c_str()].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsString() )
+						{
+							if ( shrineEffects.find(arr_itr->GetString()) != shrineEffects.end() )
+							{
+								hash += djb2Hash(const_cast<char*>(arr_itr->GetString()));
+								shrineEffectPools[GUI_TYPE_ETERNALSHRINE_ASCENSION][pair.second].push_back(arr_itr->GetString());
+							}
+							else
+							{
+								printlog("[JSON]: shrine_effects.json warning: no effect key found for '%s'!", arr_itr->GetString());
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				hash += (Uint32)((Uint32)poolIndex << (shift % 32)); ++shift;
+			}
+		}
+	}
+
+	supplicationExcludeStrings.clear();
+	if ( effects_all.HasMember("supplication") )
+	{
+		auto& effects = effects_all["supplication"];
+		for ( auto& pair : shrineEffectsTable )
+		{
+			auto& str = pair.first;
+			++poolIndex;
+			if ( effects.HasMember(str.c_str()) )
+			{
+				if ( effects[str.c_str()].IsArray() )
+				{
+					for ( auto arr_itr = effects[str.c_str()].Begin(); arr_itr != effects[str.c_str()].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsString() )
+						{
+							if ( shrineEffects.find(arr_itr->GetString()) != shrineEffects.end() )
+							{
+								hash += djb2Hash(const_cast<char*>(arr_itr->GetString()));
+								shrineEffectPools[GUI_TYPE_ETERNALSHRINE_SUPPLICATION][pair.second].push_back(arr_itr->GetString());
+							}
+							else
+							{
+								printlog("[JSON]: shrine_effects.json warning: no effect key found for '%s'!", arr_itr->GetString());
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				hash += (Uint32)((Uint32)poolIndex << (shift % 32)); ++shift;
+			}
+		}
+
+		std::vector<std::pair<std::string, std::string>> exclusions = {
+			{"EXCLUDE_HP", "hp" },
+			{"EXCLUDE_MP", "mp" },
+			{"EXCLUDE_CURE", "cure" },
+			{"EXCLUDE_FOOD", "food" },
+			{"EXCLUDE_FORTUNE", "fortune"}
+		};
+		for ( auto& pair : exclusions )
+		{
+			std::string str = pair.first;
+			std::string key = pair.second;
+			if ( effects.HasMember(str.c_str()) )
+			{
+				if ( effects[str.c_str()].IsArray() )
+				{
+					for ( auto arr_itr = effects[str.c_str()].Begin(); arr_itr != effects[str.c_str()].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsString() )
+						{
+							hash += djb2Hash(const_cast<char*>(arr_itr->GetString()));
+							supplicationExcludeStrings[key.c_str()].insert(arr_itr->GetString());
+						}
+					}
+				}
+			}
+		}
+	}
 
 	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_ANVIL].clear();
 	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_SUPPLICATION].clear();
 	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_MUSIC].clear();
 	shrineOutcomes[GUI_TYPE_ETERNALSHRINE_ASCENSION].clear();
+
+	shrineRewards[GUI_TYPE_ETERNALSHRINE_ANVIL].clear();
+	shrineRewards[GUI_TYPE_ETERNALSHRINE_SUPPLICATION].clear();
+	shrineRewards[GUI_TYPE_ETERNALSHRINE_MUSIC].clear();
+	shrineRewards[GUI_TYPE_ETERNALSHRINE_ASCENSION].clear();
 
 	std::map<std::string, ShrineEffectsPools> effectsTableLookup;
 	for ( auto& entry : shrineEffectsTable )
@@ -288,6 +692,231 @@ void ShrineEffects_t::buildShrineEffects()
 				{
 					entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 100 - sum));
 				}
+				else
+				{
+					entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 0));
+				}
+			}
+		}
+	}
+	if ( outcomes_all.HasMember("supplication") )
+	{
+		auto& shrineOutcome = shrineOutcomes[GUI_TYPE_ETERNALSHRINE_SUPPLICATION];
+		char buf[32];
+		for ( int i = 0; i <= 4; ++i )
+		{
+			snprintf(buf, sizeof(buf), "%d", i);
+			auto& outcome = outcomes_all["supplication"];
+			auto& entry = shrineOutcome[buf];
+			if ( outcome.HasMember(buf) )
+			{
+				if ( outcome[buf].IsArray() )
+				{
+					for ( auto arr_itr = outcome[buf].Begin(); arr_itr != outcome[buf].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsObject() )
+						{
+							for ( auto itr = arr_itr->MemberBegin(); itr != arr_itr->MemberEnd(); ++itr )
+							{
+								if ( effectsTableLookup.find(itr->name.GetString()) == effectsTableLookup.end() )
+								{
+									printlog("[JSON]: shrine_effects.json warning: no effect pool found for '%s'!", itr->name.GetString());
+								}
+								else
+								{
+									entry.push_back(std::make_pair(effectsTableLookup[itr->name.GetString()], itr->value.GetInt()));
+
+									hash += (Uint32)((Uint32)entry.back().first << (shift % 32)); ++shift;
+									hash += (Uint32)((Uint32)entry.back().second << (shift % 32)); ++shift;
+								}
+							}
+						}
+					}
+				}
+			}
+			int sum = 0;
+			for ( auto& chance : entry )
+			{
+				sum += chance.second;
+			}
+			if ( sum < 100 )
+			{
+				entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 100 - sum));
+			}
+			else
+			{
+				entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 0));
+			}
+		}
+	}
+
+	if ( outcomes_all.HasMember("ascension") )
+	{
+		auto& shrineOutcome = shrineOutcomes[GUI_TYPE_ETERNALSHRINE_ASCENSION];
+		char buf[32];
+		for ( int i = 0; i <= 4; ++i )
+		{
+			snprintf(buf, sizeof(buf), "%d", i);
+			auto& outcome = outcomes_all["ascension"];
+			auto& entry = shrineOutcome[buf];
+			if ( outcome.HasMember(buf) )
+			{
+				if ( outcome[buf].IsArray() )
+				{
+					for ( auto arr_itr = outcome[buf].Begin(); arr_itr != outcome[buf].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsObject() )
+						{
+							for ( auto itr = arr_itr->MemberBegin(); itr != arr_itr->MemberEnd(); ++itr )
+							{
+								if ( effectsTableLookup.find(itr->name.GetString()) == effectsTableLookup.end() )
+								{
+									printlog("[JSON]: shrine_effects.json warning: no effect pool found for '%s'!", itr->name.GetString());
+								}
+								else
+								{
+									entry.push_back(std::make_pair(effectsTableLookup[itr->name.GetString()], itr->value.GetInt()));
+
+									hash += (Uint32)((Uint32)entry.back().first << (shift % 32)); ++shift;
+									hash += (Uint32)((Uint32)entry.back().second << (shift % 32)); ++shift;
+								}
+							}
+						}
+					}
+				}
+			}
+			int sum = 0;
+			for ( auto& chance : entry )
+			{
+				sum += chance.second;
+			}
+			if ( sum < 100 )
+			{
+				entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 100 - sum));
+			}
+			else
+			{
+				entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 0));
+			}
+		}
+	}
+
+	auto& rewards_all = d["rewards"];
+	if ( rewards_all.HasMember("supplication") )
+	{
+		auto& shrineOutcome = shrineRewards[GUI_TYPE_ETERNALSHRINE_SUPPLICATION];
+		char buf[32];
+
+		const std::vector<std::string> effectPairs = {
+			"hp-mp",
+			"hp-cure",
+			"hp-food",
+			"hp-fortune",
+			"mp-cure",
+			"mp-food",
+			"mp-fortune",
+			"cure-food",
+			"cure-fortune",
+			"food-fortune",
+			"fortune"
+		};
+		for ( int i = 0; i <= 4; ++i )
+		{
+			for ( auto& effectPair : effectPairs )
+			{
+				snprintf(buf, sizeof(buf), "%d-%s", i, effectPair.c_str());
+				auto& outcome = rewards_all["supplication"];
+				auto& entry = shrineOutcome[buf];
+				if ( outcome.HasMember(buf) )
+				{
+					if ( outcome[buf].IsArray() )
+					{
+						for ( auto arr_itr = outcome[buf].Begin(); arr_itr != outcome[buf].End(); ++arr_itr )
+						{
+							if ( arr_itr->IsObject() )
+							{
+								for ( auto itr = arr_itr->MemberBegin(); itr != arr_itr->MemberEnd(); ++itr )
+								{
+									if ( effectsTableLookup.find(itr->name.GetString()) == effectsTableLookup.end() )
+									{
+										printlog("[JSON]: shrine_effects.json warning: no effect pool found for '%s'!", itr->name.GetString());
+									}
+									else
+									{
+										entry.push_back(std::make_pair(effectsTableLookup[itr->name.GetString()], itr->value.GetInt()));
+
+										hash += (Uint32)((Uint32)entry.back().first << (shift % 32)); ++shift;
+										hash += (Uint32)((Uint32)entry.back().second << (shift % 32)); ++shift;
+									}
+								}
+							}
+						}
+					}
+				}
+				int sum = 0;
+				for ( auto& chance : entry )
+				{
+					sum += chance.second;
+				}
+				if ( sum < 100 )
+				{
+					entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 100 - sum));
+				}
+				else
+				{
+					entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 0));
+				}
+			}
+		}
+	}
+	if ( rewards_all.HasMember("chorale") )
+	{
+		auto& shrineOutcome = shrineRewards[GUI_TYPE_ETERNALSHRINE_MUSIC];
+		char buf[32];
+
+		for ( int i = 0; i <= 4; ++i )
+		{
+			snprintf(buf, sizeof(buf), "%d", i);
+			auto& outcome = rewards_all["chorale"];
+			auto& entry = shrineOutcome[buf];
+			if ( outcome.HasMember(buf) )
+			{
+				if ( outcome[buf].IsArray() )
+				{
+					for ( auto arr_itr = outcome[buf].Begin(); arr_itr != outcome[buf].End(); ++arr_itr )
+					{
+						if ( arr_itr->IsObject() )
+						{
+							for ( auto itr = arr_itr->MemberBegin(); itr != arr_itr->MemberEnd(); ++itr )
+							{
+								if ( effectsTableLookup.find(itr->name.GetString()) == effectsTableLookup.end() )
+								{
+									printlog("[JSON]: shrine_effects.json warning: no effect pool found for '%s'!", itr->name.GetString());
+								}
+								else
+								{
+									entry.push_back(std::make_pair(effectsTableLookup[itr->name.GetString()], itr->value.GetInt()));
+
+									hash += (Uint32)((Uint32)entry.back().first << (shift % 32)); ++shift;
+									hash += (Uint32)((Uint32)entry.back().second << (shift % 32)); ++shift;
+								}
+							}
+						}
+					}
+				}
+			}
+			int sum = 0;
+			for ( auto& chance : entry )
+			{
+				sum += chance.second;
+			}
+			if ( sum < 100 )
+			{
+				entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 100 - sum));
+			}
+			else
+			{
+				entry.push_back(std::make_pair(ShrineEffectsPools::EFFECT_EMPTY, 0));
 			}
 		}
 	}
@@ -307,62 +936,483 @@ void ShrineEffects_t::buildShrineEffects()
 	}
 }
 
-std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& my, BaronyRNG& rng)
+std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& my, BaronyRNG& rng, Item* item)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return "0-0"; }
-	if ( players[player]->mechanics.divine_favor >= 9 )
+	if ( !players[player]->entity ) { return "0-0"; }
+
+	std::string result = "0-0";
+	if ( players[player]->mechanics.getDivineFavorPips() >= 9 )
 	{
-		std::string result = "4-";
-		result += std::to_string(rng.rand() % 4);
-		return result;
+		result = "4-";
 	}
-	else if ( players[player]->mechanics.divine_favor >= 7 )
+	else if ( players[player]->mechanics.getDivineFavorPips() >= 7 )
 	{
-		std::string result = "3-";
-		result += std::to_string(rng.rand() % 4);
-		return result;
+		result = "3-";
 	}
-	else if ( players[player]->mechanics.divine_favor >= 5 )
+	else if ( players[player]->mechanics.getDivineFavorPips() >= 5 )
 	{
-		std::string result = "2-";
-		result += std::to_string(rng.rand() % 4);
-		return result;
+		result = "2-";
 	}
-	else if ( players[player]->mechanics.divine_favor >= 3 )
+	else if ( players[player]->mechanics.getDivineFavorPips() >= 3 )
 	{
-		std::string result = "1-";
-		result += std::to_string(rng.rand() % 4);
-		return result;
+		result = "1-";
 	}
 	else
 	{
-		std::string result = "0-";
-		result += std::to_string(rng.rand() % 4);
+		result = "0-";
+	}
+
+	if ( my.eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+	{
+		result = result.substr(0, 1);
 		return result;
 	}
+
+	if ( my.eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+	{
+		result = result.substr(0, 1);
+		return result;
+	}
+
+	if ( my.eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+	{
+		if ( !item )
+		{
+			result += std::to_string(rng.rand() % 4);
+			return result;
+		}
+
+		std::vector<unsigned int> chances;
+		chances.resize(4, 0);
+		enum ChanceDifficulty
+		{
+			NONE,
+			EASY,
+			MED,
+			HARD
+		};
+
+		struct ModFuncs
+		{
+			void mod_item(Item* item, const int repairMod, const int blessMod) {
+				if ( !item ) { return; }
+				
+			};
+			enum ModType
+			{
+				MOD_NORMAL,
+				MOD_CURSE
+			};
+			int repairMod = 0;
+			int blessMod = 0;
+			bool deleteItem = false;
+			bool setItem = false;
+			void setDeleteItem()
+			{
+				deleteItem = true;
+			}
+			void setItemMod(int _repairMod, int _blessMod)
+			{
+				repairMod = _repairMod;
+				blessMod = _blessMod;
+			}
+			void setItemProp(int _repairNew, int _blessNew)
+			{
+				setItem = true;
+				repairMod = _repairNew;
+				blessMod = _blessNew;
+			}
+
+			bool run(Item* item)
+			{
+				if ( !item ) { return false; }
+				if ( deleteItem )
+				{
+					item->count = 0;
+					return true;
+				}
+				if ( setItem )
+				{
+					item->status = (Status)repairMod;
+					item->beatitude = blessMod;
+					return true;
+				}
+				
+				if ( blessMod != 0 || repairMod != 0 )
+				{
+					item->status = (Status)std::max((int)BROKEN, std::min((int)EXCELLENT, (item->status + repairMod)));
+					item->beatitude += blessMod;
+				}
+				return true;
+			}
+		};
+
+		std::map<ChanceDifficulty, ModFuncs> chance_funcs;
+
+		if ( result.find("4-") != std::string::npos )
+		{
+			if ( item->beatitude < 0 )
+			{
+				chance_funcs[HARD].setItemProp(item->status, std::min(4, abs(item->beatitude)));
+				chances[HARD] = 2;
+
+				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 4), 0);
+				chances[MED] = 3;
+
+				chance_funcs[EASY].setItemProp(std::min((int)EXCELLENT, (int)item->status + 2), 0);
+				chances[EASY] = 3;
+
+				//chance_funcs[NONE].setItemMod(-1, 1);
+				//chances[NONE] = 5;
+			}
+			else
+			{
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[HARD] = 2;
+					chance_funcs[HARD].setItemMod(4, 2);
+				}
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[MED] = 3;
+					chance_funcs[MED].setItemMod(4, 1);
+				}
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[EASY] = 3;
+					chance_funcs[EASY].setItemMod(4, 0);
+				}
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[NONE] = 2;
+					chance_funcs[NONE].setItemMod(4, 0);
+				}
+			}
+		}
+		else if ( result.find("3-") != std::string::npos )
+		{
+			if ( item->beatitude < 0 )
+			{
+				chance_funcs[HARD].setItemProp(item->status, std::min(3, abs(item->beatitude)));
+				chances[HARD] = 2;
+
+				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 3), 0);
+				chances[MED] = 3;
+
+				chance_funcs[EASY].setItemProp(std::min((int)EXCELLENT, (int)item->status + 1), 0);
+				chances[EASY] = 4;
+
+				//chance_funcs[NONE].setItemMod(-1, 1);
+				//chances[NONE] = 5;
+			}
+			else
+			{
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[HARD] = 2;
+					chance_funcs[HARD].setItemMod(2, 2);
+				}
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[MED] = 2;
+					chance_funcs[MED].setItemMod(4, 1);
+				}
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[EASY] = 4;
+					chance_funcs[EASY].setItemMod(3, 0);
+				}
+				if ( item->status + 3 <= (int)EXCELLENT )
+				{
+					chances[NONE] = 2;
+					chance_funcs[NONE].setItemMod(3, 0);
+				}
+			}
+		}
+		else if ( result.find("2-") != std::string::npos )
+		{
+			if ( item->beatitude < 0 )
+			{
+				chance_funcs[HARD].setItemProp(item->status, std::min(2, abs(item->beatitude)));
+				chances[HARD] = 2;
+
+				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 2), 0);
+				chances[MED] = 3;
+
+				chance_funcs[EASY].setItemProp(item->status, 0);
+				chances[EASY] = 5;
+
+				//chance_funcs[NONE].setItemMod(-1, 1);
+				//chances[NONE] = 5;
+			}
+			else
+			{
+				if ( item->status + 0 <= (int)EXCELLENT )
+				{
+					chances[HARD] = 2;
+					chance_funcs[HARD].setItemMod(2, 1);
+				}
+				if ( item->status + 4 <= (int)EXCELLENT )
+				{
+					chances[MED] = 2;
+					chance_funcs[MED].setItemMod(4, 0);
+				}
+				if ( item->status + 3 <= (int)EXCELLENT )
+				{
+					chances[EASY] = 4;
+					chance_funcs[EASY].setItemMod(3, 0);
+				}
+				if ( item->status + 2 <= (int)EXCELLENT )
+				{
+					chances[NONE] = 2;
+					chance_funcs[NONE].setItemMod(2, 0);
+				}
+			}
+		}
+		else if ( result.find("1-") != std::string::npos )
+		{
+			if ( item->beatitude < 0 )
+			{
+				chance_funcs[HARD].setItemProp(item->status, std::min(1, abs(item->beatitude)));
+				chances[HARD] = 1;
+
+				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 1), 0);
+				chances[MED] = 1;
+
+				chance_funcs[EASY].setItemProp(item->status, 0);
+				chances[EASY] = 3;
+
+				chance_funcs[NONE].setItemMod(-1, 1);
+				chances[NONE] = 5;
+			}
+			else
+			{
+				if ( item->status + 1 <= (int)EXCELLENT )
+				{
+					chances[HARD] = 1;
+					chance_funcs[HARD].setItemMod(1, 1);
+				}
+				if ( item->status + 3 <= (int)EXCELLENT )
+				{
+					chances[MED] = 2;
+					chance_funcs[MED].setItemMod(4, 0);
+				}
+				if ( item->status + 2 <= (int)EXCELLENT )
+				{
+					chances[EASY] = 5;
+					chance_funcs[EASY].setItemMod(2, 0);
+				}
+				if ( item->status + 1 <= (int)EXCELLENT )
+				{
+					chances[NONE] = 2;
+					chance_funcs[NONE].setItemMod(1, 0);
+				}
+			}
+		}
+		else
+		{
+			if ( item->beatitude < 0 )
+			{
+				chance_funcs[HARD].setItemProp(BROKEN, 0);
+				chances[HARD] = 1;
+			}
+			else
+			{
+				if ( item->status + 2 <= (int)EXCELLENT )
+				{
+					chances[MED] = 3;
+					chance_funcs[MED].setItemMod(2, 0);
+				}
+				if ( item->status + 1 <= (int)EXCELLENT )
+				{
+					chances[EASY] = 5;
+					chance_funcs[EASY].setItemMod(1, 0);
+				}
+				chances[NONE] = 2;
+				chance_funcs[NONE].setDeleteItem();
+			}
+		}
+		bool anychances = false;
+		for ( auto chance : chances )
+		{
+			if ( chance )
+			{
+				anychances = true;
+			}
+		}
+		if ( anychances )
+		{
+			int pick = rng.discrete(chances.data(), chances.size());
+			chance_funcs[(ChanceDifficulty)pick].run(item);
+			result += std::to_string(pick);
+			return result;
+
+		}
+		else
+		{
+			result += std::to_string(rng.rand() % 4);
+			return result;
+		}
+	}
+	else if ( my.eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+	{
+		std::string str = "";
+		int numModifiers = 0;
+		if ( numModifiers < 2 && ((stats[player]->HP / (real_t)stats[player]->MAXHP) <= 0.75) )
+		{
+			str += str == "" ? "hp" : "-hp";
+			++numModifiers;
+		}
+		if ( numModifiers < 2 && ((stats[player]->MP / (real_t)stats[player]->MAXMP) <= 0.75) )
+		{
+			str += str == "" ? "mp" : "-mp";
+			++numModifiers;
+		}
+		if ( numModifiers < 2 )
+		{
+			if ( players[player]->entity->flags[BURNING] )
+			{
+				str += str == "" ? "cure" : "-cure";
+				++numModifiers;
+			}
+			else if ( stats[player]->getEffectActive(EFF_WITHDRAWAL) )
+			{
+				str += str == "" ? "cure" : "-cure";
+				++numModifiers;
+			}
+			else
+			{
+				for ( int i = 0; i < NUMEFFECTS; ++i )
+				{
+					if ( stats[player]->getEffectActive(i) && stats[player]->statusEffectRemovedByCureAilment(i, players[player]->entity) )
+					{
+						str += str == "" ? "cure" : "-cure";
+						++numModifiers;
+						break;
+					}
+				}
+			}
+		}
+		if ( numModifiers < 2 && (stats[player]->HUNGER <= 500) )
+		{
+			str += str == "" ? "food" : "-food";
+			++numModifiers;
+		}
+		if ( numModifiers < 2 )
+		{
+			str += str == "" ? "fortune" : "-fortune";
+			++numModifiers;
+		}
+		result += str;
+	}
+
+	return result;
 }
 
-std::pair<std::string, int> ShrineEffects_t::rollReward(int shrineType, std::string tierString, BaronyRNG& rng)
+std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng)
 {
 	std::pair<std::string, int> result = { "", 1 };
 
-	if ( shrineOutcomes.find(shrineType) == shrineOutcomes.end() ) { return result; }
-	if ( shrineEffectPools.find(shrineType) == shrineEffectPools.end() ) { return result; }
-	auto& outcomes = shrineOutcomes[shrineType];
-	if ( outcomes.find(tierString) == outcomes.end() ) { return result; }
+	auto& resultMap = resultType == SHRINE_RESULT_OUTCOME ? shrineOutcomes : shrineRewards;
 
-	std::vector<unsigned int> chances;
-	for ( auto& pair : outcomes[tierString] )
-	{
-		chances.push_back(pair.second);
-	}
+	if ( resultMap.find(shrineType) == resultMap.end() ) { return result; }
+	if ( shrineEffectPools.find(shrineType) == shrineEffectPools.end() ) { return result; }
+	auto& results = resultMap[shrineType];
 
 	ShrineEffectsPools poolResult = ShrineEffectsPools::EFFECT_EMPTY;
+	std::string resultsLookupString = tierString;
+
+	if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION && resultType == SHRINE_RESULT_OUTCOME )
+	{
+		resultsLookupString = tierString.substr(0, 1);
+	}
+	else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION && resultType == SHRINE_RESULT_OUTCOME )
+	{
+		resultsLookupString = tierString.substr(0, 1);
+	}
+	else if ( shrineType == GUI_TYPE_ETERNALSHRINE_MUSIC && resultType == SHRINE_RESULT_REWARD )
+	{
+		resultsLookupString = tierString.substr(0, 1);
+	}
+
+	if ( results.find(resultsLookupString) == results.end() ) { return result; }
+
+	int negativeActionModifier = 0;
+	if ( player >= 0 && player < MAXPLAYERS )
+	{
+		negativeActionModifier = players[player]->mechanics.getDivinePenaltyModifier();
+	}
+
+	std::vector<unsigned int> chances;
+	bool anychances = false;
+	for ( auto& pair : results[resultsLookupString] )
+	{
+		if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION 
+			&& resultType == SHRINE_RESULT_OUTCOME
+			&& pair.first == ShrineEffectsPools::EFFECT_EMPTY )
+		{
+			if ( tierString == "0-fortune"
+				|| tierString == "1-fortune"
+				|| tierString == "2-fortune"
+				|| tierString == "3-fortune"
+				|| tierString == "4-fortune" )
+			{
+				// ignore empty effects
+				chances.push_back(0);
+				continue;
+			}
+		}
+
+		if ( resultType == SHRINE_RESULT_OUTCOME && pair.first == ShrineEffectsPools::EFFECT_EMPTY )
+		{
+			// reduce nothing outcomes
+			if ( negativeActionModifier < 0 )
+			{
+				if ( pair.second > 0 )
+				{
+					int chance = std::max(1, pair.second + 2 * negativeActionModifier); // e.g -25 is minus 50 weighting
+					chances.push_back(chance);
+					if ( chance > 0 )
+					{
+						anychances = true;
+					}
+					continue;
+				}
+			}
+		}
+		else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION
+			&& resultType == SHRINE_RESULT_REWARD && pair.first == ShrineEffectsPools::EFFECT_EMPTY )
+		{
+			// increase nothing outcomes
+			if ( negativeActionModifier < 0 )
+			{
+				int chance = std::max(1, pair.second - 4 * negativeActionModifier); // e.g -25 is plus 100 weighting
+				chances.push_back(chance);
+				if ( chance > 0 )
+				{
+					anychances = true;
+				}
+				continue;
+			}
+		}
+
+		chances.push_back(pair.second);
+		if ( pair.second > 0 )
+		{
+			anychances = true;
+		}
+	}
+
+	if ( !anychances )
+	{
+		return result;
+	}
 
 	if ( chances.size() > 0 )
 	{
 		int pick = rng.discrete(chances.data(), chances.size());
-		poolResult = outcomes[tierString][pick].first;
+		poolResult = results[resultsLookupString][pick].first;
 	}
 
 	if ( poolResult == ShrineEffectsPools::EFFECT_EMPTY ) { return result; }
@@ -374,10 +1424,38 @@ std::pair<std::string, int> ShrineEffects_t::rollReward(int shrineType, std::str
 	}
 
 	chances.clear();
+	anychances = false;
 	for ( auto& str : effects[poolResult] )
 	{
+		if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+		{
+			bool skip = false;
+			for ( auto& pair : supplicationExcludeStrings )
+			{
+				if ( tierString.find(pair.first) != std::string::npos )
+				{
+					if ( pair.second.find(str) != pair.second.end() )
+					{
+						chances.push_back(0);
+						skip = true;
+						break;
+					}
+				}
+			}
+			if ( skip )
+			{
+				continue;
+			}
+		}
 		chances.push_back(1);
+		anychances = true;
 	}
+
+	if ( !anychances )
+	{
+		return result;
+	}
+
 	if ( chances.size() > 0 )
 	{
 		int pick = rng.discrete(chances.data(), chances.size());
@@ -389,7 +1467,13 @@ std::pair<std::string, int> ShrineEffects_t::rollReward(int shrineType, std::str
 			|| poolResult == ShrineEffectsPools::BODY_CHALLENGE_2
 			|| poolResult == ShrineEffectsPools::MIND_CHALLENGE_2
 			|| poolResult == ShrineEffectsPools::REWARD_ITEM_2
-			|| poolResult == ShrineEffectsPools::REWARD_BUFF_2 )
+			|| poolResult == ShrineEffectsPools::BODY_BUFF_2
+			|| poolResult == ShrineEffectsPools::MIND_BUFF_2
+			|| poolResult == ShrineEffectsPools::FOOD_BUFF_2
+			|| poolResult == ShrineEffectsPools::STATUS_BUFF_HP_2
+			|| poolResult == ShrineEffectsPools::STATUS_BUFF_MP_2
+			|| poolResult == ShrineEffectsPools::MIRACLE_2
+			|| poolResult == ShrineEffectsPools::SONG_2 )
 		{
 			result.second = 2;
 		}
@@ -398,10 +1482,44 @@ std::pair<std::string, int> ShrineEffects_t::rollReward(int shrineType, std::str
 			|| poolResult == ShrineEffectsPools::BODY_CHALLENGE_3
 			|| poolResult == ShrineEffectsPools::MIND_CHALLENGE_3
 			|| poolResult == ShrineEffectsPools::REWARD_ITEM_3
-			|| poolResult == ShrineEffectsPools::REWARD_BUFF_3 )
+			|| poolResult == ShrineEffectsPools::BODY_BUFF_3
+			|| poolResult == ShrineEffectsPools::MIND_BUFF_3
+			|| poolResult == ShrineEffectsPools::FOOD_BUFF_3
+			|| poolResult == ShrineEffectsPools::STATUS_BUFF_HP_3
+			|| poolResult == ShrineEffectsPools::STATUS_BUFF_MP_3
+			|| poolResult == ShrineEffectsPools::MIRACLE_3
+			|| poolResult == ShrineEffectsPools::SONG_3 )
 		{
 			result.second = 3;
 		}
+		else if ( poolResult == ShrineEffectsPools::SONG_4 )
+		{
+			result.second = 4;
+		}
+		else if ( poolResult == ShrineEffectsPools::SONG_5 )
+		{
+			result.second = 5;
+		}
+
+		if ( resultType == SHRINE_RESULT_OUTCOME )
+		{
+			// increase outcomes
+			if ( negativeActionModifier < 0 )
+			{
+				if ( result.second < 3 )
+				{
+					if ( negativeActionModifier <= -20 )
+					{
+						result.second = std::min(3, result.second + 2);
+					}
+					else if ( negativeActionModifier <= -10 )
+					{
+						result.second = std::min(2, result.second + 1);
+					}
+				}
+			}
+		}
+
 		return result;
 	}
 
@@ -468,12 +1586,13 @@ void shrineApplyMusic(Entity* shrine)
 		}
 	}
 
-	for ( auto eff : instrumentsPlaying )
+	for ( auto target : targets )
 	{
-		Uint8 tier = eff.second;
-		if ( tier ) // tier
+		bool anyEffect = false;
+		for ( auto eff : instrumentsPlaying )
 		{
-			for ( auto target : targets )
+			Uint8 tier = eff.second;
+			if ( tier ) // tier
 			{
 				if ( target )
 				{
@@ -481,31 +1600,21 @@ void shrineApplyMusic(Entity* shrine)
 					{
 						int effectID = eff.first;
 						int dur = targetStats->getEffectActive(effectID) ? targetStats->EFFECTS_TIMERS[effectID] : 0;
-						Uint8 tierStrength = Stat::kEnsembleBreakPointTier1 + 1;
-						if ( tier >= 4 )
-						{
-							tierStrength = Stat::kEnsembleBreakPointTier4 + 1;
-						}
-						else if ( tier == 3 )
-						{
-							tierStrength = Stat::kEnsembleBreakPointTier3 + 1;
-						}
-						else if ( tier == 2 )
-						{
-							tierStrength = Stat::kEnsembleBreakPointTier2 + 1;
-						}
+						Uint8 tierStrength = Stat::kEnsembleBreakPointTier1 + tier * 5 + 1;
 						Uint8 effectStrength = std::max(tierStrength, targetStats->getEffectActive(effectID));
 						if ( target->setEffect(effectID, effectStrength, std::max(dur, duration), false) )
 						{
-							if ( dur == 0 )
+							if ( !anyEffect )
 							{
 								if ( target->behavior == &actPlayer )
 								{
+									players[target->skill[2]]->mechanics.eternalShrineEnsemble = true;
 									playSoundEntity(target, 168, 64);
 								}
 								createEnsembleTargetParticleCircling(target);
 								serverSpawnMiscParticles(target, PARTICLE_EFFECT_ENSEMBLE_OTHER_CAST, 0);
 							}
+							anyEffect = true;
 						}
 					}
 				}
@@ -902,7 +2011,7 @@ void actEternalShrineOffering(Entity* my)
 			fx->yaw = my->yaw;
 			fx->actmagicOrbitDist = 0;
 			fx->actmagicNoLight = 1;
-			playSoundEntityLocal(parent, 883, 92);
+			//playSoundEntityLocal(parent, 883, 92);
 		}
 		my->scaley = 0.2;// (1.0 - scale);
 		my->scalez = 0.2;
@@ -1347,14 +2456,14 @@ void actEternalShrineLimb(Entity* my)
 					(Uint32)parent->eternalShrineItemAppearance,
 					parent->eternalShrineItemIdentified, nullptr);
 
+				Entity* target = uidToEntity(parent->eternalShrineTarget);
+
 				std::string tierString = ShrineEffects_t::getTierStringFromEffect(
 					achievementObserver.checkUidIsFromPlayer(parent->eternalShrineTarget), 
 					*parent, 
-					parent->entity_rng ? *parent->entity_rng : local_rng);
-				auto result = ShrineEffects_t::rollReward(parent->eternalShrineType, tierString, parent->entity_rng ? *parent->entity_rng : local_rng);
+					parent->entity_rng ? *parent->entity_rng : local_rng, item);
 
-				bool adorcise = result.first == "ADORCISED";
-				if ( adorcise && spellEffectAdorcise(*parent, spellElementMap[SPELL_ADORCISM], parent->x, parent->y, item) )
+				if ( processShrineLockoutOnEffect(parent, target, tierString, false) )
 				{
 					if ( item->node )
 					{
@@ -1364,31 +2473,140 @@ void actEternalShrineLimb(Entity* my)
 					{
 						free(item);
 					}
-				}
-				else if ( Entity* dropped = dropItemMonster(item, parent, nullptr, item->count) )
-				{
-					dropped->x = parent->x;
-					dropped->y = parent->y;
-					dropped->z = -4.0;
-					dropped->vel_z *= 0.5;
-					dropped->x += 1.0 * cos(parent->yaw) - 1.0 * cos(parent->yaw + PI / 2);
-					dropped->y += 1.0 * sin(parent->yaw) - 1.0 * sin(parent->yaw + PI / 2);
-					dropped->itemEternalShrineResult = parent->eternalShrineType;
-
-					applyShrineEffect(result.first, uidToEntity(parent->eternalShrineTarget), parent, result.second);
 				}
 				else
 				{
-					if ( item->node )
+					auto result = ShrineEffects_t::rollResult(parent->eternalShrineType, ShrineEffects_t::SHRINE_RESULT_OUTCOME, 
+						achievementObserver.checkUidIsFromPlayer(parent->eternalShrineTarget),
+						tierString, parent->entity_rng ? *parent->entity_rng : local_rng);
+
+					if ( item->count > 0 )
 					{
-						list_RemoveNode(item->node);
+						int divineFavorCost = 1;
+						if ( tierString != "" )
+						{
+							divineFavorCost += std::stoi(tierString.substr(0, 1)) / 2;
+						}
+						if ( result.first != "" )
+						{
+							divineFavorCost = std::max(0, divineFavorCost - result.second);
+						}
+
+						int blessDiff = item->beatitude - parent->eternalShrineItemBeatitude;
+						int repairDiff = (int)item->status - parent->eternalShrineItemStatus;
+						if ( blessDiff > 0 )
+						{
+							if ( target && target->behavior == &actPlayer )
+							{
+								messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 255), Language::get(7146));
+							}
+							divineFavorCost += blessDiff;
+						}
+						else if ( repairDiff > 0 )
+						{
+							if ( target && target->behavior == &actPlayer )
+							{
+								messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 255), Language::get(7145));
+							}
+							divineFavorCost += repairDiff / 3;
+						}
+
+						if ( achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget) >= 0 )
+						{
+							players[achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget)]->mechanics.divineFavorModPips(-divineFavorCost);
+						}
+					}
+
+					bool adorcise = result.first == "ADORCISED";
+					if ( item->count == 0 )
+					{
+						if ( target && target->behavior == &actPlayer )
+						{
+							ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING,
+								parent->getUID(), target->skill[2], Language::get(7144), 0);
+						}
+
+						if ( item->node )
+						{
+							list_RemoveNode(item->node);
+						}
+						else
+						{
+							free(item);
+						}
+					}
+					else if ( adorcise && spellEffectAdorcise(*parent, spellElementMap[SPELL_ADORCISM], parent->x, parent->y, item) )
+					{
+						if ( item->node )
+						{
+							list_RemoveNode(item->node);
+						}
+						else
+						{
+							free(item);
+						}
+
+						if ( target && target->behavior == &actPlayer )
+						{
+							int tickDelay = 0;
+							if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+							{
+								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
+							}
+							ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+						}
+					}
+					else if ( Entity* dropped = dropItemMonster(item, parent, nullptr, item->count) )
+					{
+						dropped->x = parent->x;
+						dropped->y = parent->y;
+						dropped->z = -4.0;
+						dropped->vel_z *= 0.5;
+						dropped->x += 1.0 * cos(parent->yaw) - 1.0 * cos(parent->yaw + PI / 2);
+						dropped->y += 1.0 * sin(parent->yaw) - 1.0 * sin(parent->yaw + PI / 2);
+						dropped->itemEternalShrineResult = parent->eternalShrineType;
+
+						bool effect = applyShrineEffect(result.first, target, parent, result.second);
+						if ( effect && target && target->behavior == &actPlayer )
+						{
+							int tickDelay = 0;
+							if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+							{
+								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
+							}
+							ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+						}
 					}
 					else
 					{
-						free(item);
+						if ( item->node )
+						{
+							list_RemoveNode(item->node);
+						}
+						else
+						{
+							free(item);
+						}
+
+						bool effect = applyShrineEffect(result.first, target, parent, result.second);
+						if ( effect && target && target->behavior == &actPlayer )
+						{
+							int tickDelay = 0;
+							if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+							{
+								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
+							}
+							ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+						}
 					}
 
-					applyShrineEffect(result.first, uidToEntity(parent->eternalShrineTarget), parent, result.second);
+					if ( target )
+					{
+						Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_COMPLETED << (target->skill[2] * 2);
+						Uint32 mask = (0b11) << (target->skill[2] * 2);
+						parent->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+						parent->eternalShrinePlayerLockout |= newvalue; // apply new value
+					}
 				}
 
 				parent->eternalShrineItemType = 0;
@@ -1527,7 +2745,11 @@ void actEternalShrine(Entity* my)
 				{
 					if ( strstr(str.c_str(), (*cvar_eternal_shrine_effect).c_str()) )
 					{
-						applyShrineEffect(str, players[0]->entity, my, 1);
+						bool result = applyShrineEffect(str, players[0]->entity, my, 1);
+						if ( result )
+						{
+							ShrinePlayerMessageManager_t::insert(my->getUID(), 0, Language::get(7130), "", std::make_pair("", 0), 0);
+						}
 						break;
 					}
 				}
@@ -1724,16 +2946,6 @@ void actEternalShrine(Entity* my)
 							fx->z -= 10.0;
 						}
 					}
-					if ( my->eternalShrineOrchestrionInstruments > 0 )
-					{
-						if ( multiplayer != CLIENT )
-						{
-							for ( int i = 0; i < MAXPLAYERS; ++i )
-							{
-								players[i]->mechanics.eternalShrineEnsembleTicks = ::ticks; // add beb 1/2 to instrument tracks
-							}
-						}
-					}
 				}
 
 
@@ -1751,59 +2963,79 @@ void actEternalShrine(Entity* my)
 			Sint32 windupTime = (my->eternalShrineOrchestrionTimer & 0xFF0000) >> 16;
 			if ( windupTime == 3 * TICKS_PER_SECOND )
 			{
-				if ( my->eternalShrineItemCount > 0 )
+				std::string tierString = ShrineEffects_t::getTierStringFromEffect(
+					achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
+					*my,
+					my->entity_rng ? *my->entity_rng : local_rng);
+				Entity* target = uidToEntity(my->eternalShrineTarget);
+				if ( processShrineLockoutOnEffect(my, target, tierString, false) )
 				{
-					Item* item = newItem(
-						(ItemType)my->eternalShrineItemType,
-						(Status)my->eternalShrineItemStatus,
-						my->eternalShrineItemBeatitude,
-						my->eternalShrineItemCount,
-						(Uint32)my->eternalShrineItemAppearance,
-						my->eternalShrineItemIdentified, nullptr);
 
-					if ( item )
+				}
+				else
+				{
+					if ( my->eternalShrineItemCount > 0 )
 					{
-						if ( Entity* dropped = dropItemMonster(item, my, nullptr, item->count) )
-						{
-							dropped->x = my->x;
-							dropped->y = my->y;
-							dropped->z = -4.0;
-							dropped->yaw = my->yaw + PI;
-							dropped->x += 4.0 * cos(my->yaw) - 0.0 * cos(my->yaw + PI / 2);
-							dropped->y += 4.0 * sin(my->yaw) - 0.0 * sin(my->yaw + PI / 2);
-							dropped->vel_x = 0.0;
-							dropped->vel_y = 0.0;
-							dropped->itemEternalShrineResult = my->eternalShrineType;
+						Item* item = newItem(
+							(ItemType)my->eternalShrineItemType,
+							(Status)my->eternalShrineItemStatus,
+							my->eternalShrineItemBeatitude,
+							my->eternalShrineItemCount,
+							(Uint32)my->eternalShrineItemAppearance,
+							my->eternalShrineItemIdentified, nullptr);
 
-							dropped->itemNotMoving = 0;
-							dropped->itemNotMovingClient = 0;
-							//dropped->vel_z = -0.25;
-							dropped->itemLevitate = 1.0;
-							dropped->itemLevitateStartZ = dropped->z;
-
-							playSoundEntity(my, 909, 128);
-						}
-						else
+						if ( item )
 						{
-							if ( item->node )
+							if ( Entity* dropped = dropItemMonster(item, my, nullptr, item->count) )
 							{
-								list_RemoveNode(item->node);
+								dropped->x = my->x;
+								dropped->y = my->y;
+								dropped->z = -4.0;
+								dropped->yaw = my->yaw + PI;
+								dropped->x += 4.0 * cos(my->yaw) - 0.0 * cos(my->yaw + PI / 2);
+								dropped->y += 4.0 * sin(my->yaw) - 0.0 * sin(my->yaw + PI / 2);
+								dropped->vel_x = 0.0;
+								dropped->vel_y = 0.0;
+								dropped->itemEternalShrineResult = my->eternalShrineType;
+
+								dropped->itemNotMoving = 0;
+								dropped->itemNotMovingClient = 0;
+								//dropped->vel_z = -0.25;
+								dropped->itemLevitate = 1.0;
+								dropped->itemLevitateStartZ = dropped->z;
+
+								playSoundEntity(my, 909, 128);
 							}
 							else
 							{
-								free(item);
+								if ( item->node )
+								{
+									list_RemoveNode(item->node);
+								}
+								else
+								{
+									free(item);
+								}
 							}
 						}
 					}
-				}
 
-				if ( my->eternalShrineOrchestrionInstruments != 0 )
-				{
-					if ( my->eternalShrineOrchestrionInstruments & (1 << 31) )
+					if ( my->eternalShrineOrchestrionInstruments != 0 )
 					{
-						// reapply music
-						my->eternalShrineOrchestrionInstruments &= ~(1 << 31); // unset the bit
-						shrineApplyMusic(my);
+						if ( my->eternalShrineOrchestrionInstruments & (1 << 31) )
+						{
+							// reapply music
+							my->eternalShrineOrchestrionInstruments &= ~(1 << 31); // unset the bit
+							shrineApplyMusic(my);
+						}
+					}
+
+					if ( target )
+					{
+						Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_COMPLETED << (target->skill[2] * 2);
+						Uint32 mask = (0b11) << (target->skill[2] * 2);
+						my->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+						my->eternalShrinePlayerLockout |= newvalue; // apply new value
 					}
 				}
 
@@ -1849,47 +3081,137 @@ void actEternalShrine(Entity* my)
 					(Uint32)my->eternalShrineItemAppearance,
 					my->eternalShrineItemIdentified, nullptr);
 
-				if ( item )
-				{
-					if ( item->type == TOME_SORCERY )
-					{
-						my->eternalShrineViewingMode = GenericGUIMenu::EternalShrineGUI_t::EternalShrineAscensionType::SORCERY_SPELL;
-					}
-					else if ( item->type == TOME_MYSTICISM )
-					{
-						my->eternalShrineViewingMode = GenericGUIMenu::EternalShrineGUI_t::EternalShrineAscensionType::MYSTICISM_SPELL;
-					}
-					else if ( item->type == TOME_THAUMATURGY )
-					{
-						my->eternalShrineViewingMode = GenericGUIMenu::EternalShrineGUI_t::EternalShrineAscensionType::THAUMATURGY_SPELL;
-					}
-					serverUpdateEntitySkill(my, 7);
-					if ( Entity* dropped = dropItemMonster(item, my, nullptr, item->count) )
-					{
-						dropped->x = my->x;
-						dropped->y = my->y;
-						dropped->z = -4.0;
-						dropped->yaw = my->yaw + PI;
-						dropped->x += 0.25 * cos(my->yaw) - 0.0 * cos(my->yaw + PI / 2);
-						dropped->y += 0.25 * sin(my->yaw) - 0.0 * sin(my->yaw + PI / 2);
-						dropped->itemEternalShrineResult = my->eternalShrineType;
+				Entity* target = uidToEntity(my->eternalShrineTarget);
 
-						dropped->itemNotMoving = 0;
-						dropped->itemNotMovingClient = 0;
-						//dropped->vel_z = -0.25;
-						dropped->itemLevitate = 1.0;
-						dropped->itemLevitateStartZ = dropped->z;
+				std::string tierString = ShrineEffects_t::getTierStringFromEffect(
+					achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
+					*my,
+					my->entity_rng ? *my->entity_rng : local_rng, item);
+
+				if ( processShrineLockoutOnEffect(my, target, tierString, false) )
+				{
+					if ( item->node )
+					{
+						list_RemoveNode(item->node);
 					}
 					else
 					{
-						if ( item->node )
+						free(item);
+					}
+				}
+				else
+				{
+					auto resultOutcome = ShrineEffects_t::rollResult(my->eternalShrineType, ShrineEffects_t::SHRINE_RESULT_OUTCOME, 
+						achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
+						tierString, my->entity_rng ? *my->entity_rng : local_rng);
+					bool effect = false;
+					if ( resultOutcome.first != "" )
+					{
+						effect = applyShrineEffect(resultOutcome.first, target, my, resultOutcome.second);
+					}
+
+					if ( !effect )
+					{
+						playSoundEntity(my, 883, 92);
+					}
+					else
+					{
+						//playSoundEntity(my, 884, 92);
+						playSoundEntity(my, 883, 92);
+
+						if ( target )
 						{
-							list_RemoveNode(item->node);
+							int tickDelay = 0;
+							if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+							{
+								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
+							}
+							ShrinePlayerMessageManager_t::insert(my->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+						}
+					}
+
+					if ( item )
+					{
+						if ( item->type == TOME_SORCERY )
+						{
+							my->eternalShrineViewingMode = GenericGUIMenu::EternalShrineGUI_t::EternalShrineAscensionType::SORCERY_SPELL;
+						}
+						else if ( item->type == TOME_MYSTICISM )
+						{
+							my->eternalShrineViewingMode = GenericGUIMenu::EternalShrineGUI_t::EternalShrineAscensionType::MYSTICISM_SPELL;
+						}
+						else if ( item->type == TOME_THAUMATURGY )
+						{
+							my->eternalShrineViewingMode = GenericGUIMenu::EternalShrineGUI_t::EternalShrineAscensionType::THAUMATURGY_SPELL;
+						}
+
+						if ( items[item->type].category == TOME_SPELL )
+						{
+							int spellID = item->getTomeSpellID();
+							if ( spellID != SPELL_NONE )
+							{
+								if ( auto spell = getSpellFromID(spellID) )
+								{
+									int divineFavorCost = 1 + (spell->difficulty) / 5;
+									if ( resultOutcome.first != "" && effect )
+									{
+										divineFavorCost = std::max(0, divineFavorCost - resultOutcome.second);
+									}
+									if ( achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget) >= 0 )
+									{
+										players[achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget)]->mechanics.divineFavorModPips(-divineFavorCost);
+									}
+								}
+							}
+						}
+
+						serverUpdateEntitySkill(my, 7);
+						if ( my->eternalShrineItemCount <= 0 )
+						{
+							if ( item->node )
+							{
+								list_RemoveNode(item->node);
+							}
+							else
+							{
+								free(item);
+							}
+						}
+						else if ( Entity* dropped = dropItemMonster(item, my, nullptr, item->count) )
+						{
+							dropped->x = my->x;
+							dropped->y = my->y;
+							dropped->z = -4.0;
+							dropped->yaw = my->yaw + PI;
+							dropped->x += 0.25 * cos(my->yaw) - 0.0 * cos(my->yaw + PI / 2);
+							dropped->y += 0.25 * sin(my->yaw) - 0.0 * sin(my->yaw + PI / 2);
+							dropped->itemEternalShrineResult = my->eternalShrineType;
+
+							dropped->itemNotMoving = 0;
+							dropped->itemNotMovingClient = 0;
+							//dropped->vel_z = -0.25;
+							dropped->itemLevitate = 1.0;
+							dropped->itemLevitateStartZ = dropped->z;
 						}
 						else
 						{
-							free(item);
+							if ( item->node )
+							{
+								list_RemoveNode(item->node);
+							}
+							else
+							{
+								free(item);
+							}
 						}
+					}
+
+					if ( target )
+					{
+						Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_COMPLETED << (target->skill[2] * 2);
+						Uint32 mask = (0b11) << (target->skill[2] * 2);
+						my->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+						my->eternalShrinePlayerLockout |= newvalue; // apply new value
 					}
 				}
 
@@ -2267,6 +3589,112 @@ void actEternalShrine(Entity* my)
 			if ( (int)floor(ascensionTimer) == (int)(20 + *cvar_eternal_shrine_ascension_delay) )
 			{
 				flareUp = true;
+
+				if ( multiplayer != CLIENT )
+				{
+					std::string tierString = ShrineEffects_t::getTierStringFromEffect(
+						achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
+						*my,
+						my->entity_rng ? *my->entity_rng : local_rng);
+
+					Entity* target = uidToEntity(my->eternalShrineTarget);
+					if ( target )
+					{
+						if ( processShrineLockoutOnEffect(my, target, tierString, false) )
+						{
+							
+						}
+						else
+						{
+							auto resultOutcome = ShrineEffects_t::rollResult(my->eternalShrineType, ShrineEffects_t::SHRINE_RESULT_OUTCOME, 
+								achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
+								tierString, my->entity_rng ? *my->entity_rng : local_rng);
+							bool effect = false;
+							if ( resultOutcome.first != "" )
+							{
+								effect = applyShrineEffect(resultOutcome.first, target, my, resultOutcome.second);
+							}
+
+							auto resultReward = ShrineEffects_t::rollResult(my->eternalShrineType, ShrineEffects_t::SHRINE_RESULT_REWARD, 
+								achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
+								tierString, my->entity_rng ? *my->entity_rng : local_rng);
+							if ( !effect )
+							{
+								playSoundEntity(my, 914, 156);
+
+								bool supplication = applySupplicationEffect(tierString, target, my);
+								bool effect = applyShrineEffect(resultReward.first, target, my, resultReward.second);
+								if ( supplication || effect )
+								{
+									spawnHeatOrbitSpin(target, 263, false);
+									playSoundEntity(target, 166, 128);
+									playSoundEntity(target, 827, 128);
+								}
+							}
+							else
+							{
+								playSoundEntity(my, 915, 156);
+								int tickDelay = 2 * TICKS_PER_SECOND;
+								if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+								{
+									tickDelay = std::max(tickDelay, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] + 25);
+								}
+								ShrinePlayerMessageManager_t::insert(my->getUID(), target->skill[2],
+									nullptr, tierString, resultReward, tickDelay);
+								ShrinePlayerMessageManager_t::insert(my->getUID(), target->skill[2],
+									Language::get(7143), "", resultOutcome, tickDelay);
+
+								playSoundEntity(target, 827, 128);
+								spawnHeatOrbitSpin(target, 288, true);
+							}
+
+							int divineFavorCost = 1;
+							if ( tierString != "" )
+							{
+								divineFavorCost += std::stoi(tierString.substr(0, 1));
+							}
+							if ( resultReward.first != "" )
+							{
+								divineFavorCost = std::max(0, divineFavorCost + resultReward.second);
+								divineFavorCost = std::min(5, divineFavorCost);
+							}
+							if ( resultOutcome.first != "" && effect )
+							{
+								divineFavorCost = std::max(0, divineFavorCost - resultOutcome.second);
+							}
+							if ( achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget) >= 0 )
+							{
+								players[achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget)]->mechanics.divineFavorModPips(-divineFavorCost);
+							}
+
+							if ( target )
+							{
+								Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_COMPLETED << (target->skill[2] * 2);
+								Uint32 mask = (0b11) << (target->skill[2] * 2);
+								my->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+								my->eternalShrinePlayerLockout |= newvalue; // apply new value
+							}
+
+							/*for ( int i = 0; i < 4; ++i )
+							{
+								if ( Entity* fx = createParticleAestheticOrbit(target, 288, 25, PARTICLE_EFFECT_IGNITE_ORBIT) )
+								{
+									fx->x = target->x;
+									fx->y = target->y;
+									fx->fskill[0] = fx->x;
+									fx->fskill[1] = fx->y;
+									fx->flags[SPRITE] = true;
+									fx->fskill[2] = (i / 4.0) * 2 * PI + PI / 4;
+									fx->fskill[3] += (local_rng.rand() % 10) * PI / 10.0;
+									fx->z = 7.5;
+									fx->vel_z = -0.4 + (local_rng.rand() % 10) * -.025;
+									fx->actmagicOrbitDist = 4;
+									fx->actmagicNoLight = 0;
+								}
+							}*/
+						}
+					}
+				}
 			}
 		}
 		if ( flareUp )
@@ -2283,10 +3711,6 @@ void actEternalShrine(Entity* my)
 			if ( supplicationFlareType <= 2.0 )
 			{
 				playSoundEntityLocal(my, 827, 128);
-			}
-			else
-			{
-				playSoundEntityLocal(my, 914, 128);
 			}
 		}
 
@@ -2429,7 +3853,11 @@ void actEternalShrine(Entity* my)
 		{
 			if ( inrange[i] && players[i]->entity )
 			{
-				if ( my->eternalShrineInteracting != 0 || my->eternalShrineState >= GenericGUIMenu::EternalShrineGUI_t::ETERNAL_SHRINE_STATE_ACTIVE )
+				if ( processShrineLockoutOnEffect(my, players[i]->entity, "", true) )
+				{
+					// do nothing
+				}
+				else if ( my->eternalShrineInteracting != 0 || my->eternalShrineState >= GenericGUIMenu::EternalShrineGUI_t::ETERNAL_SHRINE_STATE_ACTIVE )
 				{
 					if ( Entity* interacting = uidToEntity(my->eternalShrineInteracting) )
 					{
@@ -2464,7 +3892,7 @@ void actEternalShrine(Entity* my)
 						{
 							strcpy((char*)net_packet->data, "ESHO");
 							SDLNet_Write32(my->getUID(), &net_packet->data[4]);
-							SDLNet_Write16(players[i]->mechanics.divine_favor, &net_packet->data[8]);
+							SDLNet_Write16(players[i]->mechanics.getDivineFavorBase(), &net_packet->data[8]);
 							SDLNet_Write32(my->eternalShrinePlayerStates, &net_packet->data[10]);
 							net_packet->address.host = net_clients[i - 1].host;
 							net_packet->address.port = net_clients[i - 1].port;
@@ -2512,8 +3940,14 @@ bool eternalShrineProcessOfferingItem(const int player, Uint32 shrineUid, int sh
 
 	Entity* shrine = shrineUid ? uidToEntity(shrineUid) : nullptr;
 
-	players[player]->mechanics.divine_favor += 1 + local_rng.rand() % 3;
-	players[player]->mechanics.divine_favor = std::min(players[player]->mechanics.divine_favor, Player::DIVINE_FAVOR_MAX);
+	int prevPips = players[player]->mechanics.getDivineFavorPips();
+	int divineFavor = players[player]->mechanics.getDivineFavorFromItem(item);
+	if ( divineFavor >= 0 )
+	{
+		players[player]->mechanics.divineFavorModItem(divineFavor);
+	}
+	int newPips = players[player]->mechanics.getDivineFavorPips();
+	bool poorOffering = divineFavor <= 5;
 
 	if ( shrine )
 	{
@@ -2521,12 +3955,38 @@ bool eternalShrineProcessOfferingItem(const int player, Uint32 shrineUid, int sh
 		if ( !players[player]->isLocalPlayer() )
 		{
 			playerProgress = GenericGUIMenu::EternalShrineGUI_t::EternalShrineSubmitStatus::SUBMIT_CONFIRMED;
+			if ( poorOffering || players[player]->mechanics.getDivineFavorPips() == 0 )
+			{
+				Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_OFFERING << (player * 2);
+				Uint32 mask = (0b11) << (player * 2);
+				shrine->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+				shrine->eternalShrinePlayerLockout |= newvalue; // apply new value
+			}
 		}
 		else if ( playerProgress == GenericGUIMenu::EternalShrineGUI_t::EternalShrineSubmitStatus::SUBMIT_WAITING
 			|| playerProgress == GenericGUIMenu::EternalShrineGUI_t::EternalShrineSubmitStatus::SUBMIT_NONE )
 		{
 			playerProgress = GenericGUIMenu::EternalShrineGUI_t::EternalShrineSubmitStatus::SUBMIT_CONFIRMED;
+			if ( poorOffering || players[player]->mechanics.getDivineFavorPips() == 0 )
+			{
+				Uint32 newvalue = GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_OFFERING << (player * 2);
+				Uint32 mask = (0b11) << (player * 2);
+				shrine->eternalShrinePlayerLockout &= ~(mask); // zero out the player slot
+				shrine->eternalShrinePlayerLockout |= newvalue; // apply new value
+			}
 		}
+
+		if ( poorOffering )
+		{
+			players[player]->mechanics.updateDivineEvent(shrine, 
+				Player::PlayerMechanics_t::DivineEvent::DIVINE_POOR_OFFERINGS);
+		}
+		else
+		{
+			players[player]->mechanics.updateDivineEvent(shrine,
+				Player::PlayerMechanics_t::DivineEvent::DIVINE_OFFERINGS);
+		}
+
 		Uint32 newvalue = playerProgress << (player * 2);
 		Uint32 mask = (0b11) << (player * 2);
 		shrine->eternalShrinePlayerStates &= ~(mask); // zero out the player slot
@@ -2563,7 +4023,7 @@ bool eternalShrineProcessOfferingItem(const int player, Uint32 shrineUid, int sh
 			strcpy((char*)net_packet->data, "ESHF");
 			net_packet->data[4] = player;
 			SDLNet_Write32(shrineUid, &net_packet->data[5]);
-			SDLNet_Write16(players[player]->mechanics.divine_favor, &net_packet->data[9]);
+			SDLNet_Write16(players[player]->mechanics.getDivineFavorBase(), &net_packet->data[9]);
 			SDLNet_Write32(shrine ? shrine->eternalShrinePlayerStates : 0, &net_packet->data[11]);
 
 			net_packet->address.host = net_clients[player - 1].host;
@@ -2694,32 +4154,148 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 		}
 	}
 
-	bool anychances = false;
+	int numChances = 0;
 	for ( auto chance : chances )
 	{
 		if ( chance )
 		{
-			anychances = true;
+			++numChances;
 		}
 	}
+
+	std::string tierString = ShrineEffects_t::getTierStringFromEffect(
+		player,
+		*shrine,
+		shrine->entity_rng ? *shrine->entity_rng : local_rng);
+	auto resultReward = ShrineEffects_t::rollResult(shrine->eternalShrineType, ShrineEffects_t::SHRINE_RESULT_REWARD,
+		player,
+		tierString, shrine->entity_rng ? *shrine->entity_rng : local_rng);
 
 	shrine->eternalShrineOrchestrionInstruments = 0;
 
 	auto& rng = shrine->entity_rng ? *shrine->entity_rng : local_rng;
 
-	bool receiveItem = local_rng.rand() % 4 == 0;
+	bool receiveItem = false;
+	bool applyMusic = false;
 
-	if ( anychances )
+	auto lockoutStatus = (GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus)
+		(shrine->eternalShrinePlayerLockout >> (player * 2) & 0b11);
+	if ( lockoutStatus > GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_NONE )
 	{
-		int pick = rng.discrete(chances.data(), chances.size());
-		int tier = 1 + local_rng.rand() % 4; // 1-4
-		instrumentsPlaying[pick].second = std::max(tier, instrumentsPlaying[pick].second);
-	}
-	else
-	{
-		receiveItem = true;
+		resultReward.first = "";
 	}
 
+	// calculate reward
+	if ( resultReward.first != "" )
+	{
+		int numSongs = 0;
+		if ( resultReward.first.find("ENSEMBLE_1") != std::string::npos )
+		{
+			numSongs = 1;
+			// no solo drum/horn
+			if ( chances[DRUM] && (chances[FLUTE] || chances[LUTE] || chances[LYRE]) )
+			{
+				chances[DRUM] = 0;
+				--numChances;
+			}
+			if ( chances[HORN] && (chances[FLUTE] || chances[LUTE] || chances[LYRE]) )
+			{
+				chances[HORN] = 0;
+				--numChances;
+			}
+		}
+		else if ( resultReward.first.find("ENSEMBLE_2") != std::string::npos )
+		{
+			numSongs = 2;
+		}
+		else if ( resultReward.first.find("ENSEMBLE_3") != std::string::npos )
+		{
+			numSongs = 3;
+		}
+		else if ( resultReward.first.find("ENSEMBLE_4") != std::string::npos )
+		{
+			numSongs = 4;
+		}
+		else if ( resultReward.first.find("ENSEMBLE_5") != std::string::npos )
+		{
+			numSongs = 5;
+		}
+		int tier = resultReward.second;
+		std::vector<InstrumentOrder> newSongs;
+		while ( numSongs > 0 )
+		{
+			if ( numChances > 0 )
+			{
+				int pick = rng.discrete(chances.data(), chances.size());
+				instrumentsPlaying[pick].second = std::max(tier, instrumentsPlaying[pick].second);
+				applyMusic = true;
+				newSongs.push_back((InstrumentOrder)pick);
+				--numChances;
+
+			}
+			--numSongs;
+		}
+
+		int messageDelay = 0;
+		if ( newSongs.size() == 1 )
+		{
+			char buf[64];
+			snprintf(buf, sizeof(buf), Language::get(7141), items[INSTRUMENT_FLUTE + (int)newSongs[0]].getIdentifiedName());
+			ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_GENERAL, shrine->getUID(), player, buf, messageDelay);
+		}
+		else if ( newSongs.size() == 2 )
+		{
+			ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_GENERAL, shrine->getUID(), player, Language::get(7137), messageDelay);
+		}
+		else if ( newSongs.size() == 3 )
+		{
+			ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_GENERAL, shrine->getUID(), player, Language::get(7138), messageDelay);
+		}
+		else if ( newSongs.size() == 4 )
+		{
+			ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_GENERAL, shrine->getUID(), player, Language::get(7139), messageDelay);
+		}
+		else if ( newSongs.size() >= 5 )
+		{
+			ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_GENERAL, shrine->getUID(), player, Language::get(7140), messageDelay);
+		}
+
+		int divineFavorCost = 1 + std::max(tier, (int)newSongs.size()) / 2;
+
+		if ( resultReward.first.find("INSTRUMENT") != std::string::npos )
+		{
+			receiveItem = true;
+			shrine->eternalShrineItemType = INSTRUMENT_FLUTE + rng.rand() % 5;
+			shrine->eternalShrineItemStatus = std::max((int)BROKEN, std::min((int)EXCELLENT, tier - 1));
+			shrine->eternalShrineItemBeatitude = 0;
+			shrine->eternalShrineItemCount = 1;
+			shrine->eternalShrineItemAppearance = local_rng.rand();
+			shrine->eternalShrineItemIdentified = 0;
+
+			ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING, shrine->getUID(), player, Language::get(7142), 2 * TICKS_PER_SECOND);
+
+			++divineFavorCost;
+		}
+		else if ( resultReward.first.find("SCROLL") != std::string::npos )
+		{
+			receiveItem = true;
+
+			std::vector<ItemType> pool = { SCROLL_LITURGY, SCROLL_MINSTRELS, SCROLL_STAMINA, SCROLL_MENTALITY, SCROLL_AGILITY };
+			int pick = rng.rand() % pool.size();
+			shrine->eternalShrineItemType = pool[pick];
+			shrine->eternalShrineItemStatus = EXCELLENT;
+			shrine->eternalShrineItemBeatitude = std::max(0, std::min(2, ((tier - 1) / 2)));
+			shrine->eternalShrineItemCount = 1 + std::max(0, std::min(2, (tier / 2)));
+			shrine->eternalShrineItemAppearance = local_rng.rand();
+			shrine->eternalShrineItemIdentified = 0;
+
+			ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING, shrine->getUID(), player, Language::get(7142), 2 * TICKS_PER_SECOND);
+
+			++divineFavorCost;
+		}
+
+		players[player]->mechanics.divineFavorModPips(-divineFavorCost);
+	}
 
 	int index = -1;
 	for ( auto eff : instrumentsPlaying )
@@ -2732,13 +4308,13 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 		}
 	}
 
-	if ( !receiveItem )
+	if ( applyMusic )
 	{
 		if ( shrine->eternalShrineOrchestrionInstruments != 0 )
 		{
 			shrine->eternalShrineOrchestrionInstruments |= (1 << 31); // signal to reapply music
 		}
-		int duration = 20 * TICKS_PER_SECOND;
+		int duration = 5 * 60 * TICKS_PER_SECOND;
 		shrine->eternalShrineOrchestrionTimer = std::max(timeLeft, duration);
 	}
 	else
@@ -2753,13 +4329,6 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 		{
 			shrine->eternalShrineOrchestrionTimer = 4 * TICKS_PER_SECOND;
 		}
-
-		shrine->eternalShrineItemType = INSTRUMENT_FLUTE + rng.rand() % 5;
-		shrine->eternalShrineItemStatus = EXCELLENT;
-		shrine->eternalShrineItemBeatitude = 0;
-		shrine->eternalShrineItemCount = 1;
-		shrine->eternalShrineItemAppearance = rng.rand();
-		shrine->eternalShrineItemIdentified = 0;
 	}
 
 	serverUpdateEntitySkill(shrine, 20); // eternalShrineOrchestrionTimer
@@ -2846,20 +4415,34 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 		}
 	}
 
+	shrine->eternalShrineItemType = 0;
+	shrine->eternalShrineItemAppearance = 0;
+	shrine->eternalShrineItemStatus = DECREPIT;
+	shrine->eternalShrineItemBeatitude = 0;
+	shrine->eternalShrineItemCount = 1;
+	shrine->eternalShrineItemIdentified = false;
+
 	if ( error )
 	{
 		if ( shrine )
 		{
-			shrine->eternalShrineState = 0;
+			//shrine->eternalShrineState = 0;
+			//serverUpdateEntitySkill(shrine, 4); // eternalShrineState
+			//shrine->eternalShrineOfferingItemTypeModel = 0;
+			//serverUpdateEntitySkill(shrine, 16);
+
+			shrine->eternalShrineItemCount = 0;
+
+			shrine->eternalShrineState = GenericGUIMenu::EternalShrineGUI_t::ETERNAL_SHRINE_STATE_ACTIVE;
+			shrine->eternalShrineTarget = achievementObserver.playerUids[player];
 			serverUpdateEntitySkill(shrine, 4); // eternalShrineState
 			shrine->eternalShrineOfferingItemTypeModel = 0;
+			shrine->eternalShrineOfferingItemTypeModel |= ((GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_WAITING) & 0xF);
 			serverUpdateEntitySkill(shrine, 16);
 		}
 		return false;
 	}
 
-	shrine->eternalShrineItemType = 0;
-	shrine->eternalShrineItemAppearance = 0;
 
 	int skillID = 0;
 	if ( item->appearance == NUM_SPELLS )
@@ -2901,12 +4484,16 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 	{
 		int itemType = 0;
 		std::vector<std::pair<int, int>> chances;
-		int maxDifficulty = std::max(0, (((players[player]->mechanics.divine_favor + 1) / 2) - 1) * 20);
-		if ( players[player]->mechanics.divine_favor >= Player::DIVINE_FAVOR_MAX )
+		std::vector<unsigned int> chance_weights;
+		int maxDifficulty = std::max(0, (((players[player]->mechanics.getDivineFavorPips() + 1) / 2) - 1) * 20);
+		if ( players[player]->mechanics.getDivineFavorPips() >= Player::DIVINE_FAVOR_PIPS_MAX )
 		{
 			maxDifficulty = 100;
 		}
 		int minDifficulty = 0;
+
+		int skillLVL = stats[player]->getModifiedProficiency(skillID) + statGetINT(stats[player], players[player]->entity);
+
 		for ( auto& def : allGameSpells )
 		{
 			if ( auto spell = def.second )
@@ -2918,18 +4505,21 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 				{
 					if ( spell->difficulty <= maxDifficulty
 						&& (spell->difficulty >= minDifficulty)
-						&& spell->skillID == skillID )
+						&& spell->skillID == skillID
+						&& skillLVL >= spell->difficulty )
 					{
 						chances.push_back(std::make_pair(spell->skillID, spell->ID));
+						chance_weights.push_back(1 + spell->difficulty / 5);
 					}
 				}
 			}
 		}
 
 		Uint32 appearance = 0;
-		if ( chances.size() )
+		if ( chances.size() && chances.size() == chance_weights.size() )
 		{
-			int pick = local_rng.rand() % chances.size();
+			auto& rng = shrine->entity_rng ? *shrine->entity_rng : local_rng;
+			int pick = rng.discrete(chance_weights.data(), chance_weights.size());
 			{
 				itemType = TOME_SORCERY;
 				appearance = spellTomeIDToAppearance[chances[pick].second];
@@ -2953,9 +4543,13 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 
 	if ( shrine->eternalShrineItemType == 0 )
 	{
-		shrine->eternalShrineState = 0;
+		shrine->eternalShrineItemCount = 0;
+
+		shrine->eternalShrineState = GenericGUIMenu::EternalShrineGUI_t::ETERNAL_SHRINE_STATE_ACTIVE;
+		shrine->eternalShrineTarget = achievementObserver.playerUids[player];
 		serverUpdateEntitySkill(shrine, 4); // eternalShrineState
 		shrine->eternalShrineOfferingItemTypeModel = 0;
+		shrine->eternalShrineOfferingItemTypeModel |= ((GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_WAITING) & 0xF);
 		serverUpdateEntitySkill(shrine, 16);
 		return false;
 	}
@@ -3469,7 +5063,7 @@ void GenericGUIMenu::EternalShrineGUI_t::openEternalShrine(Entity* shrineEntity)
 			bSkipOfferingPrompt = true;
 		}
 	}
-	pipsTotal = players[playernum]->mechanics.divine_favor;
+	pipsTotal = players[playernum]->mechanics.getDivineFavorPips();
 
 	if ( inputs.getUIInteraction(playernum)->selectedItem )
 	{
@@ -3676,13 +5270,16 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 		}
 	}
 
-	if ( player->mechanics.divine_favor < pipsTotal )
+	if ( bOpen )
 	{
-		pipsTotal = player->mechanics.divine_favor;
+		if ( player->mechanics.getDivineFavorPips() < pipsTotal )
+		{
+			pipsTotal = player->mechanics.getDivineFavorPips();
+		}
 	}
 
 	bool viewActionReady = false;
-	if ( currentView == ASSIST_SHRINE_VIEW_OFFERING )
+	if ( currentView == ASSIST_SHRINE_VIEW_OFFERING || !bOpen )
 	{
 		if ( submittedItem != EternalShrineSubmitStatus::SUBMIT_NONE )
 		{
@@ -3722,10 +5319,10 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 			isInteractable = false;
 		}
 
-		if ( player->mechanics.divine_favor > pipsTotal )
+		if ( player->mechanics.getDivineFavorPips() > pipsTotal )
 		{
-			int diff = player->mechanics.divine_favor - pipsTotal;
-			pipsTotal = player->mechanics.divine_favor;
+			int diff = player->mechanics.getDivineFavorPips() - pipsTotal;
+			pipsTotal = player->mechanics.getDivineFavorPips();
 			pipsAddSpeed = 20;
 		}
 
@@ -5959,7 +7556,7 @@ GenericGUIMenu::EternalShrineGUI_t::EternalItemActions_t GenericGUIMenu::Eternal
 	else if ( itemCategory(item) == SCROLL || item->type == READABLE_BOOK || true )
 	{
 		bool isEquipped = itemIsEquipped(item, player);
-		if ( (!item->identified || isEquipped) )
+		if ( (/*!item->identified || */isEquipped) )
 		{
 			resultAction = ETERNAL_ITEM_UNIDENTIFIED;
 		}
@@ -6074,12 +7671,45 @@ bool GenericGUIMenu::isItemEternalShrineUsable(const Item* item)
 	return true;
 }
 
+void spawnHeatOrbitSpin(Entity* target, int sprite, bool light)
+{
+	for ( int i = 0; i < 2; ++i )
+	{
+		if ( Entity* fx = createParticleAestheticOrbit(target, sprite, TICKS_PER_SECOND / 2, PARTICLE_EFFECT_HEAT_ORBIT_SPIN) )
+		{
+			fx->flags[SPRITE] = true;
+			fx->x = target->x;
+			fx->y = target->y;
+			fx->z = 7.5;
+			fx->fskill[0] = fx->x;
+			fx->fskill[1] = fx->y;
+			fx->vel_z = -0.5;
+			fx->actmagicOrbitDist = 5;
+			fx->fskill[2] = target->yaw + PI / 4.0 + i * PI;
+			fx->yaw = fx->fskill[2];
+			fx->fskill[4] = 0.25;
+			if ( !light )
+			{
+				fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+				fx->actmagicNoLight = 1;
+			}
+
+		}
+	}
+	serverSpawnMiscParticles(target, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, sprite, !light ? 1 : 0, TICKS_PER_SECOND / 2);
+}
+
 bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier)
 {
 	if ( !target ) { return false; }
 	if ( !shrine ) { return false; }
 	Stat* myStats = target->getStats();
 	if ( !myStats ) { return false; }
+
+	if ( effect_str == "EFFECT_EMPTY" || effect_str == "" )
+	{
+		return false;
+	}
 
 	int player = target->isEntityPlayer();
 	bool result = false;
@@ -6103,30 +7733,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7129));
 			}
 
-			for ( int i = 0; i < 2; ++i )
-			{
-				if ( Entity* fx = createParticleAestheticOrbit(target, 288, TICKS_PER_SECOND / 2, PARTICLE_EFFECT_HEAT_ORBIT_SPIN) )
-				{
-					fx->flags[SPRITE] = true;
-					fx->x = target->x;
-					fx->y = target->y;
-					fx->z = 7.5;
-					fx->fskill[0] = fx->x;
-					fx->fskill[1] = fx->y;
-					fx->vel_z = -0.5;
-					fx->actmagicOrbitDist = 5;
-					fx->fskill[2] = target->yaw + PI / 4.0 + i * PI;
-					fx->yaw = fx->fskill[2];
-					fx->fskill[4] = 0.25;
-					/*if ( particle == 1 )
-					{
-						fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
-						fx->actmagicNoLight = 1;
-					}*/
-
-					serverSpawnMiscParticles(target, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 288, 0, fx->skill[0]);
-				}
-			}
+			spawnHeatOrbitSpin(target, 288, true);
 			playSoundEntity(target, 164, 128);
 			result = true;
 		}
@@ -6139,7 +7746,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 5;
 		}
-		if ( tier == 3 )
+		if ( tier >= 3 )
 		{
 			effectStrength = 7;
 		}
@@ -6158,6 +7765,10 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "SILENCE" )
 	{
 		int duration = 5 * 60 * TICKS_PER_SECOND;
+		if ( tier >= 4 )
+		{
+			duration *= 2;
+		}
 		Uint8 effectStrength = 1;
 		target->setEffect(EFF_STASIS, (Uint8)2, 3 * TICKS_PER_SECOND, true, true, true); // aesthetic stasis
 		if ( target->setEffect(EFF_SILENCED, effectStrength, duration, true) )
@@ -6182,7 +7793,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 2; // -30%
 		}
-		else if ( tier == 3 )
+		else if ( tier >= 3 )
 		{
 			effectStrength = 3; // -40%
 		}
@@ -6207,7 +7818,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 3; // -15% max movespeed/DEX
 		}
-		else if ( tier == 3 )
+		else if ( tier >= 3 )
 		{
 			effectStrength = 4; // -20% max movespeed/DEX
 		}
@@ -6237,6 +7848,14 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 6; // 10% for 50% total
 		}
+		else if ( tier == 4 )
+		{
+			effectStrength = 8; // 15% for 75% total
+		}
+		else if ( tier >= 5 )
+		{
+			effectStrength = 10; // 20% for 100% total
+		}
 		if ( target->setEffect(EFF_STASIS, (Uint8)3, duration, true, true, true) )
 		{
 			Uint32 color = makeColorRGB(255, 0, 0);
@@ -6250,51 +7869,79 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		}
 	}
 	else if ( effect_str == "SMOKE_HP"
-		|| effect_str == "SMOKE_MP"
-		|| effect_str == "SMOKE_HP_NOMP"
-		|| effect_str == "SMOKE_MP_NOHP" )
+		|| effect_str == "SMOKE_MP" )
 	{
 		int duration = 5 * 60 * TICKS_PER_SECOND;
-		Uint8 effectStrength = 1 + local_rng.rand() % 4;
-		if ( target->setEffect(EFF_SMOKE_HPMP_RGN, effectStrength, duration, true, true, true) )
+		Uint8 effectStrength = effect_str == "SMOKE_HP" ? 2 : 1;
+		if ( tier >= 3 )
+		{
+			effectStrength += 2;
+		}
+		if ( target->setEffect(EFF_SMOKE_HPMP_RGN, effectStrength, duration, false, true, true) )
 		{
 			Uint32 color = makeColorRGB(0, 255, 0);
 			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7115));
 		}
 
-		int particle = 1;
-		if ( particle )
-		{
-			for ( int i = 0; i < 2; ++i )
-			{
-				if ( Entity* fx = createParticleAestheticOrbit(target, 263, TICKS_PER_SECOND / 2, PARTICLE_EFFECT_HEAT_ORBIT_SPIN) )
-				{
-					fx->flags[SPRITE] = true;
-					fx->x = target->x;
-					fx->y = target->y;
-					fx->z = 7.5;
-					fx->fskill[0] = fx->x;
-					fx->fskill[1] = fx->y;
-					fx->vel_z = -0.5;
-					fx->actmagicOrbitDist = 5;
-					fx->fskill[2] = target->yaw + PI / 4.0 + i * PI;
-					fx->yaw = fx->fskill[2];
-					fx->fskill[4] = 0.25;
-					if ( particle == 1 )
-					{
-						fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
-						fx->actmagicNoLight = 1;
-					}
-
-					serverSpawnMiscParticles(target, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, particle, fx->skill[0]);
-				}
-			}
-		}
-		playSoundEntity(target, 168, 128);
-		playSoundEntity(target, 827, 128);
 		result = true;
 	}
-	else if ( effect_str == "SLOW_DIGEST" )
+	else if ( effect_str == "RESOLVE_HP"
+		|| effect_str == "RESOLVE_MP" )
+	{
+		int duration = 5 * 60 * TICKS_PER_SECOND;
+		Uint8 strength = tier;
+		Uint8 effectStrength = target->getStats() ? target->getStats()->getEffectActive(EFF_RESOLVE) : 0;
+		Uint8 hp = effectStrength & 0xF;
+		Uint8 mp = (effectStrength >> 4) & 0xF;
+		if ( effect_str == "RESOLVE_HP" )
+		{
+			hp = std::max(hp, strength);
+		}
+		else if ( effect_str == "RESOLVE_MP" )
+		{
+			mp = std::max(mp, strength);
+		}
+		effectStrength = hp;
+		effectStrength |= (mp & 0xF) << 4;
+		if ( target->setEffect(EFF_RESOLVE, effectStrength, duration, false, true, true) )
+		{
+			Uint32 color = makeColorRGB(0, 255, 0);
+			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7135));
+		}
+
+		result = true;
+	}
+	else if ( effect_str == "STAMINA" )
+	{
+		int effectStrength = 1;
+		int duration = 5 * TICKS_PER_SECOND * 60;
+		if ( target->setEffect(EFF_CON_BONUS, (Uint8)effectStrength, duration, false) )
+		{
+			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(7134), Language::get(6282));
+			result = true;
+		}
+	}
+	else if ( effect_str == "AGILITY" )
+	{
+		int effectStrength = 1;
+		int duration = 5 * TICKS_PER_SECOND * 60;
+		if ( target->setEffect(EFF_AGILITY, (Uint8)effectStrength, duration, false) )
+		{
+			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(7134), Language::get(6283));
+			result = true;
+		}
+	}
+	else if ( effect_str == "MENTALITY" )
+	{
+		int effectStrength = 1;
+		int duration = 5 * TICKS_PER_SECOND * 60;
+		if ( target->setEffect(EFF_PWR, (Uint8)effectStrength, duration, false) )
+		{
+			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(7134), Language::get(6284));
+			result = true;
+		}
+	}
+	else if ( effect_str == "SLOW_DIGESTION" )
 	{
 		int duration = 5 * 60 * TICKS_PER_SECOND;
 		Uint8 effectStrength = 3;
@@ -6302,11 +7949,11 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 5;
 		}
-		else if ( tier == 3 )
+		else if ( tier >= 3 )
 		{
 			effectStrength = 7;
 		}
-		if ( target->setEffect(EFF_SLOW_DIGEST, effectStrength, duration, true, true, true) )
+		if ( target->setEffect(EFF_SLOW_DIGEST, effectStrength, duration, false, true, true) )
 		{
 			Uint32 color = makeColorRGB(0, 255, 0);
 			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(2385));
@@ -6314,6 +7961,35 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			createParticleFociLight(target, 0, true);
 			result = true;
 		}
+	}
+	else if ( effect_str == "BLESSED_MEALS" )
+	{
+		int duration = 5; // 5 minutes
+		CastSpellProps_t props;
+		props.targetUID = target->getUID();
+		props.optionalData = duration; // converts to 5 minutes at spell
+
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_BLESS_FOOD), false, true, false, &props);
+		result = true;
+	}
+	else if ( effect_str == "SACRED_PATH" )
+	{
+		int charges = tier * 4;
+		CastSpellProps_t props;
+		props.targetUID = target->getUID();
+		props.optionalData = charges;
+
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_SACRED_PATH), false, true, false, &props);
+		result = true;
+	}
+	else if ( effect_str == "SCRY_TREASURES" )
+	{
+		CastSpellProps_t props;
+		props.targetUID = target->getUID();
+		props.optionalData = 2; // unique for scry treasures
+
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_SCRY_TREASURES), false, true, false, &props);
+		result = true;
 	}
 	else if ( effect_str == "DEGENERATION" || effect_str == "DISPIRITED" )
 	{
@@ -6325,7 +8001,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 5;
 		}
-		else if ( tier == 3 )
+		else if ( tier >= 3 )
 		{
 			effectStrength = 7;
 		}
@@ -6367,7 +8043,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 5;
 		}
-		if ( tier == 3 )
+		if ( tier >= 3 )
 		{
 			effectStrength = 7;
 		}
@@ -6391,7 +8067,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 3;
 		}
-		if ( tier == 3 )
+		if ( tier >= 3 )
 		{
 			effectStrength = 5;
 		}
@@ -6474,7 +8150,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 5;
 		}
-		if ( tier == 3 )
+		if ( tier >= 3 )
 		{
 			effectStrength = 5;
 			duration = 125;
@@ -6529,7 +8205,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 1;
 		}
-		if ( tier == 3 )
+		if ( tier >= 3 )
 		{
 			effectStrength = 2;
 		}
@@ -6567,13 +8243,9 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		spellTimer->skill[2] = val;
 		spellTimer->particleTimerEffectLifetime = lifetime;
 		spellTimer->actmagicSpellbookBonus = 0;
-		if ( tier == 2 )
+		if ( tier >= 2 )
 		{
-			spellTimer->actmagicSpellbookBonus = 50;
-		}
-		if ( tier == 3 )
-		{
-			spellTimer->actmagicSpellbookBonus = 100;
+			spellTimer->actmagicSpellbookBonus = 50 * (tier - 1);
 		}
 		spellTimer->actmagicFromSpellbook = 0;
 		spellTimer->actmagicOrbitHitTargetUID1 = target->getUID();
@@ -6598,13 +8270,9 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 				fx1->skill[6] = EFF_HOLY_FIRE;
 			}*/
 			fx1->actmagicSpellbookBonus = 0;
-			if ( tier == 2 )
+			if ( tier >= 2 )
 			{
-				fx1->actmagicSpellbookBonus = 50;
-			}
-			if ( tier == 3 )
-			{
-				fx1->actmagicSpellbookBonus = 100;
+				fx1->actmagicSpellbookBonus = 50 * (tier - 1);
 			}
 			fx1->actmagicFromSpellbook = 0;
 			result = true;
@@ -6629,13 +8297,9 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			fx->scaley = 0.0;
 			fx->scalez = 0.0;
 			fx->actmagicSpellbookBonus = 0;
-			if ( tier == 2 )
+			if ( tier >= 2 )
 			{
-				fx->actmagicSpellbookBonus = 50;
-			}
-			if ( tier == 3 )
-			{
-				fx->actmagicSpellbookBonus = 100;
+				fx->actmagicSpellbookBonus = 50 * (tier - 1);
 			}
 			fx->actmagicFromSpellbook = 0;
 
@@ -6643,14 +8307,414 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			result = true;
 		}
 	}
+	else if ( effect_str == "GREATER_MIGHT" || effect_str == "STURDINESS"
+		|| effect_str == "NIMBLENESS" || effect_str == "COUNSEL" )
+	{
+		CastSpellProps_t props;
+		props.targetUID = target->getUID();
+		props.optionalData = std::min(4, tier);
+		if ( effect_str == "GREATER_MIGHT" )
+		{
+			castSpell(shrine->getUID(), getSpellFromID(SPELL_PROF_GREATER_MIGHT), false, true, false, &props);
+		}
+		else if ( effect_str == "STURDINESS" )
+		{
+			castSpell(shrine->getUID(), getSpellFromID(SPELL_PROF_STURDINESS), false, true, false, &props);
+		}
+		else if ( effect_str == "NIMBLENESS" )
+		{
+			castSpell(shrine->getUID(), getSpellFromID(SPELL_PROF_NIMBLENESS), false, true, false, &props);
+		}
+		else if ( effect_str == "COUNSEL" )
+		{
+			castSpell(shrine->getUID(), getSpellFromID(SPELL_PROF_COUNSEL), false, true, false, &props);
+		}
+		result = true;
+	}
+	else if ( effect_str == "DONATION" 
+		|| effect_str == "HIDDEN_KNOWLEDGE"
+		|| effect_str == "HEALING_POTION"
+		|| effect_str == "MANA_POTION" )
+	{
+		CastSpellProps_t props;
+		props.targetUID = target->getUID();
+		props.optionalData = std::min(3, tier);
+		if ( effect_str == "HEALING_POTION" )
+		{
+			props.optionalData |= (1 << 4);
+		}
+		else if ( effect_str == "MANA_POTION" )
+		{
+			props.optionalData |= (2 << 4);
+		}
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_DONATION), false, true, false, &props);
+		result = true;
+	}
+	else if ( effect_str == "LIGHTEN_LOAD" )
+	{
+		int effectStrength = std::min(3, tier) * 20;
+		int duration = 5 * TICKS_PER_SECOND * 60;
+		if ( target->setEffect(EFF_LIGHTEN_LOAD, (Uint8)effectStrength, duration, false) )
+		{
+			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(6681));
+			playSoundEntity(target, 178, 128);
+			spawnMagicEffectParticles(target->x, target->y, target->z, 170);
+			result = true;
+		}
+	}
 	else
 	{
 		return false;
 	}
-
-	if ( result )
-	{
-		ShrinePlayerMessageManager_t::insert(shrine->getUID(), player, Language::get(7130));
-	}
 	return result;
+}
+
+bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrine)
+{
+	if ( tier_str.length() <= 1 ) { return false; }
+	if ( !target ) { return false; }
+	if ( !shrine ) { return false; }
+	Stat* myStats = target->getStats();
+	if ( !myStats ) { return false; }
+	if ( myStats->HP <= 0 ) { return false; }
+
+	int player = target->isEntityPlayer();
+	bool result = false;
+
+	int tier = std::stoi(tier_str.substr(0, 1));
+
+	bool anyHeal = false;
+	bool anyMP = false;
+	bool anyEffect = false;
+	bool anyCureHeal = false;
+	int numEffectsCured = 0;
+	if ( tier_str.find("hp") != std::string::npos )
+	{
+		int flatHeal = 20 + tier * 10;
+		int cap = 50 + tier * 50;
+		real_t currentPercent = std::min(0.75, myStats->HP / (real_t)std::max(1, myStats->MAXHP));
+		real_t percentHealing = std::max(0.0, 0.75 - currentPercent) * myStats->MAXHP;
+		int healing = std::min(cap, std::max(flatHeal, (int)percentHealing));
+		anyHeal = true;
+		anyEffect = true;
+
+		Uint8 prevStasis = target->getStats() ? target->getStats()->getEffectActive(EFF_STASIS) : false;
+		if ( prevStasis )
+		{
+			target->getStats()->clearEffect(EFF_STASIS);
+		}
+		target->modHP(healing);
+		if ( prevStasis )
+		{
+			target->getStats()->setEffectActive(EFF_STASIS, prevStasis);
+		}
+	}
+	if ( tier_str.find("mp") != std::string::npos )
+	{
+		int flatHeal = 20 + tier * 10;
+		int cap = 50 + tier * 50;
+		real_t currentPercent = std::min(0.75, myStats->MP / (real_t)std::max(1, myStats->MAXMP));
+		real_t percentHealing = std::max(0.0, 0.75 - currentPercent) * myStats->MAXMP;
+		int healing = std::min(cap, std::max(flatHeal, (int)percentHealing));
+		anyMP = true;
+		anyEffect = true;
+
+		int mpAmount = target->modMP(healing);
+		target->playerInsectoidIncrementHungerToMP(mpAmount);
+	}
+	if ( tier_str.find("cure") != std::string::npos )
+	{
+		for ( int c = 0; c < NUMEFFECTS; c++ )   //This does a whole lot more than just cure ailments.
+		{
+			if ( myStats->statusEffectRemovedByCureAilment(c, target) )
+			{
+				if ( myStats->getEffectActive(c) )
+				{
+					myStats->clearEffect(c);
+					if ( myStats->EFFECTS_TIMERS[c] > 0 )
+					{
+						myStats->EFFECTS_TIMERS[c] = 1;
+					}
+					++numEffectsCured;
+				}
+			}
+		}
+
+		if ( myStats->getEffectActive(EFF_WITHDRAWAL) )
+		{
+			++numEffectsCured;
+			target->setEffect(EFF_WITHDRAWAL, false, EFFECT_WITHDRAWAL_BASE_TIME, true);
+			serverUpdatePlayerGameplayStats(player, STATISTICS_FUNCTIONAL, 1);
+		}
+
+		if ( numEffectsCured > 0 )
+		{
+			anyEffect = true;
+		}
+
+		if ( !anyHeal )
+		{
+			int flatHeal = 10 + 5 * tier;
+			if ( tier_str.find("hp") == std::string::npos )
+			{
+				if ( target->getStats()->HP < target->getStats()->MAXHP )
+				{
+					Uint8 prevStasis = target->getStats() ? target->getStats()->getEffectActive(EFF_STASIS) : false;
+					if ( prevStasis )
+					{
+						target->getStats()->clearEffect(EFF_STASIS);
+					}
+					target->modHP(flatHeal);
+					if ( prevStasis )
+					{
+						target->getStats()->setEffectActive(EFF_STASIS, prevStasis);
+					}
+					anyCureHeal = true;
+					anyEffect = true;
+				}
+			}
+			if ( tier_str.find("mp") == std::string::npos )
+			{
+				if ( target->getStats()->MP < target->getStats()->MAXMP )
+				{
+					int mpAmount = target->modMP(flatHeal);
+					target->playerInsectoidIncrementHungerToMP(mpAmount);
+					anyCureHeal = true;
+					anyEffect = true;
+				}
+			}
+		}
+
+		serverUpdateEffects(player);
+	}
+	if ( tier_str.find("food") != std::string::npos )
+	{
+		auto& rng = shrine->entity_rng ? *shrine->entity_rng : local_rng;
+		std::vector<Item*> items_list;
+		if ( tier == 0 )
+		{
+			items_list.push_back(newItem(
+				(ItemType)FOOD_APPLE,
+				(Status)EXCELLENT,
+				0,
+				3,
+				local_rng.rand(),
+				false, nullptr));
+		}
+		else if ( tier == 1 )
+		{
+			ItemType type = FOOD_SHROOM;
+			if ( rng.rand() % 2 == 0 )
+			{
+				type == FOOD_NUT;
+			}
+			items_list.push_back(newItem(
+				(ItemType)type,
+				(Status)EXCELLENT,
+				1,
+				3,
+				local_rng.rand(),
+				false, nullptr));
+
+			type = FOOD_SHROOM;
+			if ( rng.rand() % 2 == 0 )
+			{
+				type == FOOD_NUT;
+			}
+			items_list.push_back(newItem(
+				(ItemType)type,
+				(Status)EXCELLENT,
+				1,
+				3,
+				local_rng.rand(),
+				false, nullptr));
+		}
+		else if ( tier == 2 )
+		{
+			ItemType type = FOOD_SHROOM;
+			if ( rng.rand() % 2 == 0 )
+			{
+				type == FOOD_NUT;
+			}
+			items_list.push_back(newItem(
+				(ItemType)type,
+				(Status)EXCELLENT,
+				1,
+				6,
+				local_rng.rand(),
+				false, nullptr));
+
+			items_list.push_back(newItem(
+				(ItemType)(FOOD_RATION_SPICY + rng.rand() % 6),
+				(Status)EXCELLENT,
+				1,
+				3,
+				local_rng.rand(),
+				false, nullptr));
+
+			if ( rng.rand() % 10 == 0 )
+			{
+				items_list.push_back(newItem(
+					(ItemType)(MASK_MARIGOLD),
+					(Status)EXCELLENT,
+					0,
+					1,
+					local_rng.rand(),
+					false, nullptr));
+			}
+		}
+		else if ( tier == 3 )
+		{
+			std::vector<unsigned int> chances = { 1, 1, 1, 1, 1, 1 };
+			for ( int i = 0; i < 3; ++i )
+			{
+				int pick = rng.discrete(chances.data(), chances.size());
+				chances[pick] = 0;
+				ItemType type = (ItemType)(FOOD_RATION_SPICY + pick);
+
+				items_list.push_back(newItem(
+					(ItemType)(type),
+					(Status)EXCELLENT,
+					1,
+					3,
+					local_rng.rand(),
+					false, nullptr));
+			}
+
+			if ( rng.rand() % 5 == 0 )
+			{
+				items_list.push_back(newItem(
+					(ItemType)(MASK_MARIGOLD),
+					(Status)EXCELLENT,
+					0,
+					1,
+					local_rng.rand(),
+					false, nullptr));
+			}
+		}
+		else if ( tier == 4 )
+		{
+			std::vector<unsigned int> chances = { 1, 1, 1, 1, 1, 1 };
+			for ( int i = 0; i < 3; ++i )
+			{
+				int pick = rng.discrete(chances.data(), chances.size());
+				chances[pick] = 0;
+				ItemType type = (ItemType)(FOOD_RATION_SPICY + pick);
+
+				items_list.push_back(newItem(
+					(ItemType)(type),
+					(Status)EXCELLENT,
+					2,
+					6,
+					local_rng.rand(),
+					false, nullptr));
+			}
+
+			if ( rng.rand() % 3 == 0 )
+			{
+				items_list.push_back(newItem(
+					(ItemType)(MASK_MARIGOLD),
+					(Status)EXCELLENT,
+					1,
+					1,
+					local_rng.rand(),
+					false, nullptr));
+			}
+		}
+
+		int dropIndex = -1;
+		for ( auto item : items_list )
+		{
+			++dropIndex;
+			if ( Entity* dropped = dropItemMonster(item, shrine, nullptr, item->count) )
+			{
+				dropped->x = shrine->x;
+				dropped->y = shrine->y;
+
+				if ( items_list.size() == 2 )
+				{
+					dropped->x += 3.0 * cos(shrine->yaw + PI / 2 + PI * dropIndex);
+					dropped->y += 3.0 * sin(shrine->yaw + PI / 2 + PI * dropIndex);
+				}
+				else if ( items_list.size() == 3 )
+				{
+					dropped->x += 3.0 * cos(shrine->yaw + (2 * PI / 3) * dropIndex);
+					dropped->y += 3.0 * sin(shrine->yaw + (2 * PI / 3) * dropIndex);
+				}
+				else if ( items_list.size() == 4 )
+				{
+					dropped->x += 3.0 * cos(shrine->yaw + PI / 4 + (PI / 2) * dropIndex);
+					dropped->y += 3.0 * sin(shrine->yaw + PI / 4 + (PI / 2) * dropIndex);
+				}
+
+				dropped->z = -4.0;
+				dropped->yaw = shrine->yaw + PI;
+				//dropped->x += 4.0 * cos(my->yaw) - 0.0 * cos(my->yaw + PI / 2);
+				//dropped->y += 4.0 * sin(my->yaw) - 0.0 * sin(my->yaw + PI / 2);
+				dropped->vel_x = 0.0;
+				dropped->vel_y = 0.0;
+				dropped->itemEternalShrineResult = shrine->eternalShrineType;
+
+				dropped->itemNotMoving = 0;
+				dropped->itemNotMovingClient = 0;
+				//dropped->vel_z = -0.25;
+				dropped->itemLevitate = 1.0;
+				dropped->itemLevitateStartZ = dropped->z;
+
+				playSoundEntity(shrine, 909, 128);
+				anyEffect = true;
+			}
+			else
+			{
+				if ( item->node )
+				{
+					list_RemoveNode(item->node);
+				}
+				else
+				{
+					free(item);
+				}
+			}
+		}
+	}
+
+	if ( anyEffect )
+	{
+		if ( anyHeal || anyMP || numEffectsCured > 0 || anyCureHeal )
+		{
+			if ( anyHeal )
+			{
+				if ( anyMP )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7153)); // renewed
+				}
+				else if ( (numEffectsCured > 0 || anyCureHeal) )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7156)); // cleansed and healthy
+				}
+				else
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7154)); // healthier
+				}
+			}
+			else if ( anyMP )
+			{
+				if ( (numEffectsCured > 0 || anyCureHeal) )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7157)); // cleansed and energized
+				}
+				else
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7152)); // energized
+				}
+			}
+			else if ((numEffectsCured > 0 || anyCureHeal) )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(763)); // cleansed
+			}
+			playSoundEntity(target, 168, 128);
+			spawnMagicEffectParticles(target->x, target->y, target->z, 169);
+		}
+	}
+	return anyEffect;
 }

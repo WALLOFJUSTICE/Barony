@@ -346,6 +346,7 @@ void actDecoyBoxCrank(Entity* my);
 void actSpearTrap(Entity* my);
 void actWallBuster(Entity* my);
 void actWallBuilder(Entity* my);
+void actFloorBuilder(Entity* my);
 void actPowerCrystalBase(Entity* my);
 void actPowerCrystal(Entity* my);
 void actPowerCrystalParticleIdle(Entity* my);

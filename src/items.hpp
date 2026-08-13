@@ -563,6 +563,11 @@ typedef enum ItemType
 	MAGICSTAFF_SLAM,
 	MAGICSTAFF_WINDGATE,
 	MAGICSTAFF_SHADE_BOLT,
+	SCROLL_LITURGY,
+	SCROLL_MINSTRELS,
+	SCROLL_STAMINA,
+	SCROLL_MENTALITY,
+	SCROLL_AGILITY,
 	ITEM_ENUM_MAX
 } ItemType;
 const int NUMITEMS = ITEM_ENUM_MAX;
@@ -846,6 +851,11 @@ void item_ScrollFood(Item*& item, int player);
 void item_ScrollConjureArrow(Item*& item, int player);
 void item_ScrollMagicMapping(Item*& item, int player);
 void item_ScrollScry(Item*& item, int player);
+void item_ScrollLiturgy(Item*& item, int player);
+void item_ScrollMinstrels(Item*& item, int player);
+void item_ScrollStamina(Item*& item, int player);
+void item_ScrollMentality(Item*& item, int player);
+void item_ScrollAgility(Item*& item, int player);
 void item_ScrollRepair(Item*& item, int player);
 void item_ScrollDestroyArmor(Item*& item, int player);
 void item_ScrollTeleportation(Item*& item, int player);

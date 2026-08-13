@@ -2643,6 +2643,19 @@ void buttonSpriteProperties(button_t* my)
 				suby2 = yres / 2 + 60;
 				strcpy(subtext, "Ascension Shrine Properties:");
 				break;
+			case 40:
+				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->actFloorBuilderTile));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 44;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				strcpy(subtext, "Floor Builder Properties:");
+				break;
 			default:
 				strcpy(message, "No properties available for current sprite.");
 				messagetime = 60;
@@ -3809,6 +3822,9 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				break;
 			case 39: //ascension shrine
 				selectedEntity[0]->eternalShrineDir = (Sint32)atoi(spriteProperties[0]);
+				break;
+			case 40: //floor builder
+				selectedEntity[0]->actFloorBuilderTile = (Sint32)atoi(spriteProperties[0]);
 				break;
 			default:
 				break;

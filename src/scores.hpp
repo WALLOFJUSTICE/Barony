@@ -563,6 +563,7 @@ struct SaveGameInfo {
 		std::vector<std::pair<int, int>> ducksInARow;
 		std::vector<std::pair<int, int>> favoriteBooksAchievement;
 		std::vector<int> popQuizAchievement;
+		std::vector<int> divineOfferingsHistory;
 		int sustainedSpellMPUsedSorcery = 0;
 		int sustainedSpellMPUsedMysticism = 0;
 		int sustainedSpellMPUsedThaumaturgy = 0;
@@ -570,6 +571,7 @@ struct SaveGameInfo {
 		int baseSpellMPUsedMysticism = 0;
 		int baseSpellMPUsedThaumaturgy = 0;
 		int divine_favor = 0;
+		int bountiesClaimed = 0;
 
 		struct stat_t {
 			struct item_t {
@@ -800,6 +802,8 @@ struct SaveGameInfo {
 			fp->property("escalating_spell_rng_rolls", escalatingSpellRngRolls);
 			fp->property("appraisal_time_progress", appraisal_item_progress);
 			fp->property("divine_favor", divine_favor);
+			fp->property("divine_events", divineOfferingsHistory);
+			fp->property("bounties_claimed", bountiesClaimed);
 			return true;
 		}
 

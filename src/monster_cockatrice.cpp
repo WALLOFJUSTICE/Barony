@@ -118,13 +118,8 @@ void initCockatrice(Entity* my, Stat* myStats)
 						newItem(static_cast<ItemType>(MAGICSTAFF_STONEBLOOD), static_cast<Status>(1 + rng.rand() % 4), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 75, rng), false, &myStats->inventory);
 					}
 				case 1:
-					for ( int i = 0; i < numRolls; ++i )
+					if ( rng.rand() % 3 == 0 ) // 33% chance to choose potion
 					{
-						if ( rng.rand() % 3 == 0 ) // 33% chance to choose high value item
-						{
-							minValue = 100;
-							maxValue = 100;
-						}
 						ItemType itemType = itemTypeWithinGoldValue(Category::POTION, minValue, maxValue, rng);
 						newItem(itemType, static_cast<Status>(1 + rng.rand() % 4), -1 + rng.rand() % 3, 1, rng.rand(), false, &myStats->inventory);
 						// reset values for next loop.

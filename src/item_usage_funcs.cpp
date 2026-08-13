@@ -4220,6 +4220,370 @@ void item_ScrollRepair(Item*& item, int player)
 	}
 }
 
+bool scrollUseHelperServerOnly(Item*& item, int player) // return true if not client
+{
+	if ( players[player] == nullptr || players[player]->entity == nullptr )
+	{
+		return false;
+	}
+
+	if ( players[player]->entity->isBlind() )
+	{
+		if ( players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(775));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
+
+	if ( players[player]->isLocalPlayer() )
+	{
+		conductIlliterate = false;
+		messagePlayer(player, MESSAGE_INVENTORY, Language::get(848));
+	}
+
+	if ( multiplayer == CLIENT )
+	{
+		if ( item )
+		{
+			onScrollUseAppraisalIncrease(item, player);
+			item->identified = true;
+			consumeItem(item, player);
+		}
+		return false;
+	}
+
+	return true;
+}
+
+void item_ScrollLiturgy(Item*& item, int player)
+{
+	int blessing = item->beatitude;
+
+	if ( !players[player]->isLocalPlayer() )
+	{
+		consumeItem(item, player); // server consume scroll always
+	}
+
+	if ( !scrollUseHelperServerOnly(item, player) )
+	{
+		return;
+	}
+
+	// server only below
+	if ( blessing < 0 )
+	{
+		players[player]->mechanics.divineFavorModPips(blessing);
+		playSoundEntity(players[player]->entity, 908, 128);
+		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(7171));
+		createParticleFociLight(players[player]->entity, SPELL_NONE, true);
+	}
+	else
+	{
+		players[player]->mechanics.divineFavorModPips(std::min(2, blessing) + 1);
+		playSoundEntity(players[player]->entity, 906, 128);
+		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(7170));
+		createParticleFociLight(players[player]->entity, SPELL_NONE, true);
+	}
+
+	if ( players[player]->isLocalPlayer() && item )
+	{
+		onScrollUseAppraisalIncrease(item, player);
+		item->identified = true;
+		consumeItem(item, player);
+	}
+}
+
+void spawnMagicEffectParticlesBellScroll(Entity* my, Uint32 sprite)
+{
+	if ( !my ) { return; }
+	int baseX = my->x / 16;
+	int baseY = my->y / 16;
+
+	real_t posx = my->x;
+	real_t posy = my->y;
+	real_t z = 8.0;
+	const int numParticles = 16;
+	for ( int c = 0; c < numParticles; c++ )
+	{
+		Entity* entity = newEntity(1479, 1, map.entities, nullptr); //Particle entity.
+		entity->x = posx + 8.0 * cos(2 * PI * (c / (real_t)numParticles));
+		entity->y = posy + 8.0 * sin(2 * PI * (c / (real_t)numParticles));
+		entity->z = z;
+		entity->scalex = 0.7;
+		entity->scaley = 0.7;
+		entity->scalez = 0.7;
+		entity->sizex = 1;
+		entity->sizey = 1;
+		entity->yaw = (local_rng.rand() % 360) * PI / 180.f;
+		entity->pitch = (local_rng.rand() % 360) * PI / 180.f;
+		entity->flags[PASSABLE] = true;
+		entity->flags[NOUPDATE] = true;
+		entity->flags[UNCLICKABLE] = true;
+		entity->flags[INVISIBLE] = true;
+		entity->flags[INVISIBLE_DITHER] = true;
+		entity->lightBonus = vec4(0.25f, 0.25f,
+			0.25f, 0.f);
+		entity->behavior = &actMagicParticle;
+		entity->vel_z = -0.5;
+		if ( multiplayer != CLIENT )
+		{
+			entity_uids--;
+		}
+		entity->setUID(-3);
+	}
+
+	if ( multiplayer == SERVER )
+	{
+		serverSpawnMiscParticles(my, PARTICLE_EFFECT_BELL_BUFF_SOLO, sprite);
+	}
+}
+
+void item_ScrollStamina(Item*& item, int player)
+{
+	int blessing = item->beatitude;
+
+	if ( !players[player]->isLocalPlayer() )
+	{
+		consumeItem(item, player); // server consume scroll always
+	}
+
+	if ( !scrollUseHelperServerOnly(item, player) )
+	{
+		return;
+	}
+
+	// server only below
+	if ( blessing < 0 )
+	{
+		if ( players[player]->entity->setEffect(EFF_ENFEEBLE, (Uint8)5, 5 * TICKS_PER_SECOND * 60, false) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7125));
+			}
+			playSoundEntity(players[player]->entity, 824, 128);
+			createParticleFociDark(players[player]->entity, SPELL_NONE, true);
+		}
+	}
+	else
+	{
+		int duration = (3 + 2 * std::min(2, blessing)) * 60 * TICKS_PER_SECOND;
+		if ( players[player]->entity->setEffect(EFF_CON_BONUS, true, std::max(stats[player]->EFFECTS_TIMERS[EFF_CON_BONUS], duration), false) )
+		{
+			messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7173), Language::get(6282));
+			playSoundEntity(players[player]->entity, 166, 128);
+			spawnMagicEffectParticlesBellScroll(players[player]->entity, 1479);
+		}
+	}
+
+	if ( players[player]->isLocalPlayer() && item )
+	{
+		onScrollUseAppraisalIncrease(item, player);
+		item->identified = true;
+		consumeItem(item, player);
+	}
+}
+
+void item_ScrollAgility(Item*& item, int player)
+{
+	int blessing = item->beatitude;
+
+	if ( !players[player]->isLocalPlayer() )
+	{
+		consumeItem(item, player); // server consume scroll always
+	}
+
+	if ( !scrollUseHelperServerOnly(item, player) )
+	{
+		return;
+	}
+
+	// server only below
+	if ( blessing < 0 )
+	{
+		if ( players[player]->entity->setEffect(EFF_BURDENED, (Uint8)5, 5 * TICKS_PER_SECOND * 60, false) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7127));
+			}
+			playSoundEntity(players[player]->entity, 824, 128);
+			createParticleFociDark(players[player]->entity, SPELL_NONE, true);
+		}
+	}
+	else
+	{
+		int duration = (3 + 2 * std::min(2, blessing)) * 60 * TICKS_PER_SECOND;
+		if ( players[player]->entity->setEffect(EFF_AGILITY, true, std::max(stats[player]->EFFECTS_TIMERS[EFF_AGILITY], duration), false) )
+		{
+			messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7173), Language::get(6283));
+			playSoundEntity(players[player]->entity, 166, 128);
+			spawnMagicEffectParticlesBellScroll(players[player]->entity, 1479);
+		}
+	}
+
+	if ( players[player]->isLocalPlayer() && item )
+	{
+		onScrollUseAppraisalIncrease(item, player);
+		item->identified = true;
+		consumeItem(item, player);
+	}
+}
+
+void item_ScrollMentality(Item*& item, int player)
+{
+	int blessing = item->beatitude;
+
+	if ( !players[player]->isLocalPlayer() )
+	{
+		consumeItem(item, player); // server consume scroll always
+	}
+
+	if ( !scrollUseHelperServerOnly(item, player) )
+	{
+		return;
+	}
+
+	// server only below
+	if ( blessing < 0 )
+	{
+		if ( players[player]->entity->setEffect(EFF_INCOHERENCE, (Uint8)5, 5 * TICKS_PER_SECOND * 60, false) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(6911));
+			}
+			playSoundEntity(players[player]->entity, 825, 128);
+			createParticleFociDark(players[player]->entity, SPELL_NONE, true);
+		}
+	}
+	else
+	{
+		int duration = (3 + 2 * std::min(2, blessing)) * 60 * TICKS_PER_SECOND;
+		if ( players[player]->entity->setEffect(EFF_PWR, true, std::max(stats[player]->EFFECTS_TIMERS[EFF_PWR], duration), false) )
+		{
+			messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7173), Language::get(6284));
+			playSoundEntity(players[player]->entity, 166, 128);
+			spawnMagicEffectParticlesBellScroll(players[player]->entity, 1479);
+		}
+	}
+
+	if ( players[player]->isLocalPlayer() && item )
+	{
+		onScrollUseAppraisalIncrease(item, player);
+		item->identified = true;
+		consumeItem(item, player);
+	}
+}
+
+void item_ScrollMinstrels(Item*& item, int player)
+{
+	int blessing = item->beatitude;
+
+	if ( !players[player]->isLocalPlayer() )
+	{
+		consumeItem(item, player); // server consume scroll always
+	}
+
+	if ( !scrollUseHelperServerOnly(item, player) )
+	{
+		return;
+	}
+
+	// server only below
+	if ( blessing < 0 )
+	{
+		if ( players[player]->entity->setEffect(EFF_SILENCED, true, 5 * TICKS_PER_SECOND * 60, true) )
+		{
+			Uint32 color = makeColorRGB(255, 0, 0);
+			if ( player >= 0 )
+			{
+				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7111));
+			}
+			playSoundEntity(players[player]->entity, 166, 128);
+			createParticleFociDark(players[player]->entity, 0, true);
+			spawnMagicEffectParticles(players[player]->entity->x, players[player]->entity->y, players[player]->entity->z, 1818);
+		}
+	}
+	else
+	{
+		std::vector<unsigned int> chances;
+		int numchances = 0;
+		for ( int i = EFF_ENSEMBLE_FLUTE; i <= EFF_ENSEMBLE_HORN; ++i )
+		{
+			chances.push_back(stats[player]->getEffectActive(i) ? 0 : 1);
+			if ( chances.back() == 1 )
+			{
+				++numchances;
+			}
+		}
+
+		int tier = 1;
+		if ( players[player]->mechanics.getDivineFavorPips() >= 9 )
+		{
+			tier = 5;
+		}
+		else if ( players[player]->mechanics.getDivineFavorPips() >= 7 )
+		{
+			tier = 4;
+		}
+		else if ( players[player]->mechanics.getDivineFavorPips() >= 5 )
+		{
+			tier = 3;
+		}
+		else if ( players[player]->mechanics.getDivineFavorPips() >= 3 )
+		{
+			tier = 2;
+		}
+		else
+		{
+			tier = 1;
+		}
+
+		Uint8 tierStrength = Stat::kEnsembleBreakPointTier1 + tier * 5 + 1;
+		int effectDuration = 3 * 60 * TICKS_PER_SECOND;
+		int numSongs = std::min(5, 2 + blessing);
+		while ( numchances && numSongs )
+		{
+			int pick = local_rng.discrete(chances.data(), chances.size());
+			chances[pick] = 0;
+
+			stats[player]->setEffectActive(EFF_ENSEMBLE_FLUTE + pick, tierStrength);
+
+			--numSongs;
+			--numchances;
+		}
+
+		for ( int i = EFF_ENSEMBLE_FLUTE; i <= EFF_ENSEMBLE_HORN; ++i )
+		{
+			if ( stats[player]->getEffectActive(i) )
+			{
+				stats[player]->EFFECTS_TIMERS[i] = std::max(stats[player]->EFFECTS_TIMERS[i], effectDuration);
+				players[player]->mechanics.eternalShrineEnsemble = true;
+			}
+		}
+
+		serverUpdateEffects(player);
+		createEnsembleTargetParticleCircling(players[player]->entity);
+		serverSpawnMiscParticles(players[player]->entity, PARTICLE_EFFECT_ENSEMBLE_OTHER_CAST, 0);
+		playSoundEntity(players[player]->entity, 906, 128);
+		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(7172));
+		createParticleFociLight(players[player]->entity, SPELL_NONE, true);
+	}
+
+	if ( players[player]->isLocalPlayer() && item )
+	{
+		onScrollUseAppraisalIncrease(item, player);
+		item->identified = true;
+		consumeItem(item, player);
+	}
+}
+
 void item_ScrollDestroyArmor(Item*& item, int player)
 {
 	Item* armor = nullptr;
@@ -4832,14 +5196,74 @@ void item_ToolMirror(Item*& item, int player)
 		}
 		else
 		{
-			if ( stats[player]->sex == MALE )
+			int divinePips = players[player]->mechanics.getDivineFavorPips();
+			int divinePenalty = players[player]->mechanics.getDivinePenaltyModifier();
+
+			if ( divinePenalty <= -20 )
 			{
-				messagePlayer(player, MESSAGE_HINT, Language::get(903));
+				messagePlayer(player, MESSAGE_HINT, Language::get(7167));
+				broken = true;
+			}
+			else if ( divinePenalty <= -10 )
+			{
+				messagePlayer(player, MESSAGE_HINT, Language::get(7168));
+			}
+			else if ( divinePips >= 9 )
+			{
+				if ( divinePenalty < 0 )
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7163));
+				}
+				else
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7159));
+				}
+			}
+			else if ( divinePips >= 7 )
+			{
+				if ( divinePenalty < 0 )
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7164));
+				}
+				else
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7160));
+				}
+			}
+			else if ( divinePips >= 5 )
+			{
+				if ( divinePenalty < 0 )
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7165));
+				}
+				else
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7161));
+				}
+			}
+			else if ( divinePips >= 3 )
+			{
+				if ( divinePenalty < 0 )
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7166));
+				}
+				else
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(7162));
+				}
 			}
 			else
 			{
-				messagePlayer(player, MESSAGE_HINT, Language::get(904));
+				if ( stats[player]->sex == MALE )
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(903));
+				}
+				else
+				{
+					messagePlayer(player, MESSAGE_HINT, Language::get(904));
+				}
 			}
+			players[player]->mechanics.printDivineFavor();
 		}
 	}
 
@@ -4898,6 +5322,38 @@ void item_ToolMirror(Item*& item, int player)
 		else if ( beatitude < 0 )
 		{
 			broken = true;
+		}
+		else
+		{
+			int divinePenalty = multiplayer == CLIENT ? players[player]->mechanics.client_divine_penalty
+				: players[player]->mechanics.getDivinePenaltyModifier();
+			if ( divinePenalty <= -20 )
+			{
+				item->status = BROKEN;
+				messagePlayer(player, MESSAGE_HINT, Language::get(4344), item->getName());
+
+				if ( multiplayer == CLIENT )
+				{
+					strcpy((char*)net_packet->data, "MIRR");
+					net_packet->data[4] = player;
+					net_packet->address.host = net_server.host;
+					net_packet->address.port = net_server.port;
+					net_packet->len = 5;
+					sendPacketSafe(net_sock, -1, net_packet, 0);
+
+					playSoundPlayer(player, 162, 64);
+				}
+				else
+				{
+					if ( players[player]->entity->setEffect(EFF_BLEEDING, true, TICKS_PER_SECOND * 15, true) )
+					{
+						messagePlayerColor(player, MESSAGE_STATUS,
+							makeColorRGB(255, 0, 0), Language::get(701)); // you're bleeding!
+					}
+					playSoundEntity(players[player]->entity, 162, 64);
+				}
+				broken = true;
+			}
 		}
 
 		if ( broken )

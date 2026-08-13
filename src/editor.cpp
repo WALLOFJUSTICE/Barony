@@ -238,6 +238,11 @@ char eternalShrinePropertyNames[1][19] =
 	"Direction (-1 - 3)"
 };
 
+char floorBuilderPropertyNames[1][20] =
+{
+	"Tile Index (0-9999)"
+};
+
 char furniturePropertyNames[1][19] =
 {
 	"Direction (-1 - 7)"
@@ -9632,6 +9637,97 @@ int main(int argc, char** argv)
 						}
 					}
 				}
+				else if ( newwindow == 44 )
+				{
+					if ( selectedEntity[0] != nullptr )
+					{
+						int numProperties = sizeof(floorBuilderPropertyNames) / sizeof(floorBuilderPropertyNames[0]); //find number of entries in property list
+						const int lenProperties = sizeof(floorBuilderPropertyNames[0]) / sizeof(char); //find length of entry in property list
+						int spacing = 36; // 36 px between each item in the list.
+						int inputFieldHeader_y = suby1 + 28; // 28 px spacing from subwindow start.
+						int inputField_x = subx1 + 8; // 8px spacing from subwindow start.
+						int inputField_y = inputFieldHeader_y + 16;
+						int inputFieldWidth = 64; // width of the text field
+						int inputFieldFeedback_x = inputField_x + inputFieldWidth + 8;
+						char tmpPropertyName[lenProperties] = "";
+						Uint32 color = makeColorRGB(0, 255, 0);
+						Uint32 colorRandom = makeColorRGB(0, 168, 255);
+						Uint32 colorError = makeColorRGB(255, 0, 0);
+
+						for ( int i = 0; i < numProperties; i++ )
+						{
+							int propertyInt = atoi(spriteProperties[i]);
+
+							strcpy(tmpPropertyName, floorBuilderPropertyNames[i]);
+							inputFieldHeader_y = suby1 + 28 + i * spacing;
+							inputField_y = inputFieldHeader_y + 16;
+							// box outlines then text
+							drawDepressed(inputField_x - 4, inputField_y - 4, inputField_x - 4 + inputFieldWidth, inputField_y + 16 - 4);
+							// print values on top of boxes
+							printText(font8x8_bmp, inputField_x, suby1 + 44 + i * spacing, spriteProperties[i]);
+							printText(font8x8_bmp, inputField_x, inputFieldHeader_y, tmpPropertyName);
+
+							if ( errorArr[i] != 1 )
+							{
+								if ( i == 0 )
+								{
+									if ( propertyInt >= numtiles || propertyInt < -1 )
+									{
+										propertyPageError(i, 0); // reset to default 0.
+									}
+									else
+									{
+										if ( propertyInt >= 0 && propertyInt < numtiles )
+										{
+											if ( propertyInt < tileEditorNameStrings.size() )
+											{
+												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tileEditorNameStrings[propertyInt]);
+											}
+											pos.x = inputField_x - 4;
+											pos.y = inputField_y + 16 + 4;
+											pos.w = TEXTURESIZE;
+											pos.h = TEXTURESIZE;
+											if ( propertyInt < numtiles )
+											{
+												if ( tiles[propertyInt] != NULL )
+												{
+													drawImageScaled(tiles[propertyInt], NULL, &pos);
+												}
+											}
+										}
+									}
+								}
+								else
+								{
+									// enter other row entries here
+								}
+							}
+
+							if ( errorMessage )
+							{
+								if ( errorArr[i] == 1 )
+								{
+									printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, colorError, "Invalid ID!");
+								}
+							}
+						}
+
+						propertyPageTextAndInput(numProperties, inputFieldWidth);
+
+						if ( editproperty < numProperties )   // edit
+						{
+							if ( !SDL_IsTextInputActive() )
+							{
+								SDL_StartTextInput();
+								inputstr = spriteProperties[0];
+							}
+
+							// set the maximum length allowed for user input
+							inputlen = 5;
+							propertyPageCursorFlash(spacing);
+						}
+					}
+				}
 				else if ( newwindow == 16 || newwindow == 17 )
 				{
 					int textColumnLeft = subx1 + 16;
@@ -10826,9 +10922,9 @@ int main(int argc, char** argv)
 				tilepalette = 0;
 			}
 
-			int numtiles = static_cast<int>(sizeof(tileEditorNameStrings) / sizeof(tileEditorNameStrings[0]));
-
-			if ( (mousex <= xres && mousey <= yres) && palette[mousey + mousex * yres] >= 0 && palette[mousey + mousex * yres] <= numtiles)
+			if ( (mousex <= xres && mousey <= yres) && palette[mousey + mousex * yres] >= 0 
+				&& palette[mousey + mousex * yres] < numtiles
+				&& palette[mousey + mousex * yres] < tileEditorNameStrings.size())
 			{
 				printTextFormatted(font8x8_bmp, 0, yres - 8, "Tile index:%5d", palette[mousey + mousex * yres]);
 				printTextFormatted(font8x8_bmp, 0, yres - 16, "%s", tileEditorNameStrings[palette[mousey + mousex * yres]]);

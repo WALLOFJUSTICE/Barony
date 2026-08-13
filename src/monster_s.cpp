@@ -933,9 +933,9 @@ void monsterSMoveBodyparts(Entity* my, Stat* myStats, double dist)
 						fx->actmagicNoLight = 1;
 					}
 
-					serverSpawnMiscParticles(my, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, particle, fx->skill[0]);
 				}
 			}
+			serverSpawnMiscParticles(my, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, particle, TICKS_PER_SECOND / 2);
 		}
 	}
 

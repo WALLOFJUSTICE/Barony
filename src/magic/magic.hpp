@@ -396,6 +396,7 @@ static const int PARTICLE_EFFECT_STARE_GAZE = 99;
 static const int PARTICLE_EFFECT_STARE_MESMERIZE = 100;
 static const int PARTICLE_EFFECT_VOID_WIND = 101;
 static const int PARTICLE_EFFECT_BLIND_ORBIT = 102;
+static const int PARTICLE_EFFECT_BELL_BUFF_SOLO = 103;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -1017,6 +1018,7 @@ Entity* spawnMagicParticle(Entity* parentent);
 Entity* spawnMagicParticleCustom(Entity* parentent, int sprite, real_t scale, real_t spreadReduce);
 void spawnMagicEffectParticles(Sint16 x, Sint16 y, Sint16 z, Uint32 sprite);
 void spawnMagicEffectParticlesBell(Entity* bell, Uint32 sprite);
+void spawnMagicEffectParticlesBellScroll(Entity* my, Uint32 sprite);
 void createParticleCircling(Entity* parent, int duration, int sprite);
 void actParticleCircle(Entity* my);
 void actParticleDot(Entity* my);

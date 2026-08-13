@@ -44,7 +44,7 @@ void actWallBuster(Entity* my)
 		Uint16 y = std::min<Uint16>(std::max<int>(0.0, my->y / 16), map.height - 1);
 		map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] = 0;
 		map.tiles[(MAPLAYERS - 1) + y * MAPLAYERS + x * MAPLAYERS * map.height] = 0;
-		spawnExplosion(my->x, my->y, my->z - 8);
+		spawnExplosion(my->x, my->y, my->z - 8, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 		if ( multiplayer == SERVER )
 		{
 			for ( c = 1; c < MAXPLAYERS; c++ )
@@ -59,6 +59,55 @@ void actWallBuster(Entity* my)
 				net_packet->address.host = net_clients[c - 1].host;
 				net_packet->address.port = net_clients[c - 1].port;
 				net_packet->len = 8;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
+		}
+		generatePathMaps();
+		list_RemoveNode(my->mynode);
+	}
+}
+
+void actFloorBuilder(Entity* my)
+{
+	if ( !my->skill[28] )
+	{
+		return;
+	}
+
+	// received on signal
+	if ( my->skill[28] == 2 )
+	{
+		if ( !(my->actFloorBuilderTile >= 0 && my->actFloorBuilderTile < numtiles) )
+		{
+			return;
+		}
+
+		playSoundEntity(my, 182, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+		Uint16 x = std::min<Uint16>(std::max<int>(0.0, my->x / 16), map.width - 1);
+		Uint16 y = std::min<Uint16>(std::max<int>(0.0, my->y / 16), map.height - 1);
+		map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height] = my->actFloorBuilderTile;
+
+		const real_t effectOffset = 2.0;
+		spawnPoof(static_cast<Sint16>(x * 16.0 - effectOffset), static_cast<Sint16>(y * 16.0 - effectOffset), 8, 1.0);
+		spawnPoof(static_cast<Sint16>(x * 16.0 - effectOffset), static_cast<Sint16>(y * 16.0 + 16.0 + effectOffset), 8, 1.0);
+		spawnPoof(static_cast<Sint16>(x * 16.0 + 16.0 + effectOffset), static_cast<Sint16>(y * 16.0 - effectOffset), 8, 1.0);
+		spawnPoof(static_cast<Sint16>(x * 16.0 + 16.0 + effectOffset), static_cast<Sint16>(y * 16.0 + 16.0 + effectOffset), 8, 1.0);
+
+		if ( multiplayer == SERVER )
+		{
+			for ( int c = 1; c < MAXPLAYERS; c++ )
+			{
+				if ( client_disconnected[c] == true || players[c]->isLocalPlayer() )
+				{
+					continue;
+				}
+				strcpy((char*)net_packet->data, "FLRC");
+				SDLNet_Write16(x, &net_packet->data[4]);
+				SDLNet_Write16(y, &net_packet->data[6]);
+				SDLNet_Write16(my->actFloorBuilderTile, &net_packet->data[8]);
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				net_packet->len = 10;
 				sendPacketSafe(net_sock, -1, net_packet, c - 1);
 			}
 		}
@@ -129,7 +178,7 @@ void actWallBuilder(Entity* my)
 			return;
 		}
 
-		playSoundEntity( my, 182, 64 );
+		playSoundEntity( my, 182, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 		Uint16 x = std::min<Uint16>(std::max<int>(0.0, my->x / 16), map.width - 1);
 		Uint16 y = std::min<Uint16>(std::max<int>(0.0, my->y / 16), map.height - 1);
 		map.tiles[OBSTACLELAYER + y * MAPLAYERS + x * MAPLAYERS * map.height] = map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height];

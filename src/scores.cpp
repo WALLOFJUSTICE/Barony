@@ -5487,12 +5487,19 @@ void SaveGameInfo::computeHash(const int playernum, Uint32& hash)
 	{
 		hash += (Uint32)((Uint32)val << (shift % 32)); ++shift;
 	}
+	for ( auto& val : players[playernum].divineOfferingsHistory )
+	{
+		hash += (Uint32)((Uint32)val << (shift % 32)); ++shift;
+	}
 	hash += (Uint32)((Uint32)players[playernum].sustainedSpellMPUsedSorcery << (shift % 32)); ++shift;
 	hash += (Uint32)((Uint32)players[playernum].sustainedSpellMPUsedMysticism << (shift % 32)); ++shift;
 	hash += (Uint32)((Uint32)players[playernum].sustainedSpellMPUsedThaumaturgy << (shift % 32)); ++shift;
 	hash += (Uint32)((Uint32)players[playernum].baseSpellMPUsedSorcery << (shift % 32)); ++shift;
 	hash += (Uint32)((Uint32)players[playernum].baseSpellMPUsedMysticism << (shift % 32)); ++shift;
 	hash += (Uint32)((Uint32)players[playernum].baseSpellMPUsedThaumaturgy << (shift % 32)); ++shift;
+
+	hash += (Uint32)((Uint32)players[playernum].divine_favor << (shift % 32)); ++shift;
+	hash += (Uint32)((Uint32)players[playernum].bountiesClaimed << (shift % 32)); ++shift;
 }
 
 void SaveGameInfo::Player::stat_t::item_t::computeHash(Uint32& hash, Uint32& shift)
@@ -5783,7 +5790,12 @@ int SaveGameInfo::populateFromSession(const int playernum)
 			player.baseSpellMPUsedMysticism = ::players[c]->mechanics.baseSpellMPUsedMysticism;
 			player.baseSpellMPUsedThaumaturgy = ::players[c]->mechanics.baseSpellMPUsedThaumaturgy;
 
-			player.divine_favor = ::players[c]->mechanics.divine_favor;
+			player.divine_favor = ::players[c]->mechanics.getDivineFavorBase();
+			player.bountiesClaimed = ::players[c]->mechanics.bountiesClaimed;
+			for ( auto val : ::players[c]->mechanics.divineOfferingsHistory )
+			{
+				player.divineOfferingsHistory.push_back((int)val);
+			}
 
 			for ( auto& pair : ::players[c]->compendiumProgress.itemEvents )
 			{
@@ -6769,6 +6781,7 @@ int loadGame(int player, const SaveGameInfo& info) {
 		mechanics.baseSpellLevelUpProcs.clear();
 		mechanics.escalatingRngRolls.clear();
 		mechanics.escalatingSpellRngRolls.clear();
+		mechanics.divineOfferingsHistory.clear();
 		for ( auto& pair : info.players[player].itemDegradeRNG )
 		{
 			mechanics.itemDegradeRng[pair.first] = pair.second;
@@ -6813,7 +6826,16 @@ int loadGame(int player, const SaveGameInfo& info) {
 		mechanics.baseSpellMPUsedSorcery = info.players[player].baseSpellMPUsedSorcery;
 		mechanics.baseSpellMPUsedMysticism = info.players[player].baseSpellMPUsedMysticism;
 		mechanics.baseSpellMPUsedThaumaturgy = info.players[player].baseSpellMPUsedThaumaturgy;
-		mechanics.divine_favor = info.players[player].divine_favor;
+		mechanics.setDivineFavor(info.players[player].divine_favor);
+		for ( auto val : info.players[player].divineOfferingsHistory )
+		{
+			if ( val > (int)Player::PlayerMechanics_t::DivineEvent::DIVINE_NONE
+				&& val < (int)Player::PlayerMechanics_t::DivineEvent::DIVINE_ENUM_MAX )
+			{
+				mechanics.divineOfferingsHistory.push_back((Player::PlayerMechanics_t::DivineEvent)val);
+			}
+		}
+		mechanics.bountiesClaimed = info.players[player].bountiesClaimed;
 	}
 
 	Player::Minimap_t::mapDetails = info.map_messages;

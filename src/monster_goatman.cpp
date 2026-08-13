@@ -246,9 +246,12 @@ void initGoatman(Entity* my, Stat* myStats)
 				int numpotions = rng.rand() % NUM_GOATMAN_POTIONS + 2;
 				if ( rng.rand() % 3 == 0 )
 				{
-					int numhealpotion = rng.rand() % 2 + 1;
-					newItem(POTION_HEALING, static_cast<Status>(rng.rand() % 3 + DECREPIT), 0, numhealpotion, rng.rand(), false, &myStats->inventory);
-					numpotions -= numhealpotion;
+					int numhealpotion = rng.rand() % 2;
+					if ( numhealpotion )
+					{
+						newItem(POTION_HEALING, static_cast<Status>(rng.rand() % 3 + DECREPIT), 0, numhealpotion, rng.rand(), false, &myStats->inventory);
+						numpotions -= numhealpotion;
+					}
 				}
 				if ( rng.rand() % 4 > 0 )
 				{

@@ -772,6 +772,8 @@ int checkSpriteType(Sint32 sprite)
 		return 38;
 	case 315: // ascension shrine
 		return 39;
+	case 316: // floor builder
+		return 40;
 	default:
 		return 0;
 		break;
@@ -1326,6 +1328,11 @@ char itemNameStrings[NUM_ITEM_STRINGS][32] =
 	"magicstaff_slam",
 	"magicstaff_windgate",
 	"magicstaff_shade_bolt",
+	"scroll_liturgy",
+	"scroll_minstrels",
+	"scroll_stamina",
+	"scroll_mentality",
+	"scroll_agility",
 	""
 };
 
@@ -2152,7 +2159,8 @@ std::vector<std::pair<const char*, const char*>> spriteEditorNameStrings =
 	{ "SUPPLICATION SHRINE",            "interactables" },
 	{ "ANVIL SHRINE",                   "interactables" },
 	{ "CHORALE SHRINE",                 "interactables" },
-	{ "ASCENSION SHRINE",				"interactables" }
+	{ "ASCENSION SHRINE",				"interactables" },
+	{ "FLOOR BUILDER",                  "mech" },
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][32] =
@@ -2219,7 +2227,7 @@ char monsterEditorNameStrings[NUMMONSTERS][32] =
 	"monster_unused_15"
 };
 
-char tileEditorNameStrings[NUM_EDITOR_TILES][44] =
+std::vector<const char*> tileEditorNameStrings =
 {
 	"backdrop.png",
 	"bback.png",
@@ -2467,7 +2475,231 @@ char tileEditorNameStrings[NUM_EDITOR_TILES][44] =
 	"Shopsign_jewelry.png",
 	"Shopsign_magicstaff.png", 
 	"Shopsign_potion.png",
-	"Transparent.png", 
+	"Transparent.png",
+	"black.png",
+	"white.png",
+	"pentagram_nw.png",
+	"pentagram_n.png",
+	"pentagram_ne.png",
+	"pentagram_w.png",
+	"pentagram_c.png",
+	"pentagram_e.png",
+	"pentagram_sw.png",
+	"pentagram_s.png",
+	"pentagram_se.png",
+	"DullGreenDaimond.png",
+	"DullGreenBrickPillarR.png",
+	"DullGreenBrickPillarL.png",
+	"DullGreenBrickPillarE.png",
+	"DullGreenBrickPillarC.png",
+	"DullGreenBrick2.png",
+	"bonewallpillarb.png",
+	"GoldVeinWall.png",
+	"GoldVeinWallTwo.png",
+	"waterfall1.png",
+	"waterfall2.png",
+	"waterfall3.png",
+	"waterfall4.png",
+	"waterfall5.png",
+	"waterfall6.png",
+	"waterfall7.png",
+	"waterfall8.png",
+	"hellcobble_ash.png",
+	"fallsplash1.png",
+	"fallsplash2.png",
+	"fallsplash3.png",
+	"fallsplash4.png",
+	"fallsplash5.png",
+	"fallsplash6.png",
+	"fallsplash7.png",
+	"fallsplash8.png",
+	"hellcobble.png",
+	"Lavafall_big1.png",
+	"Lavafall_big2.png",
+	"Lavafall_big3.png",
+	"Lavafall_big4.png",
+	"Lavafall_big5.png",
+	"Lavafall_big6.png",
+	"Lavafall_big7.png",
+	"Lavafall_big8.png",
+	"hellstone.png",
+	"Lavafall_bigsplash1.png",
+	"Lavafall_bigsplash2.png",
+	"Lavafall_bigsplash3.png",
+	"Lavafall_bigsplash4.png",
+	"Lavafall_bigsplash5.png",
+	"Lavafall_bigsplash6.png",
+	"Lavafall_bigsplash7.png",
+	"Lavafall_bigsplash8.png",
+	"hellash_rocky.png",
+	"hellash.png",
+	"hellcobble_N.png",
+	"hellcobble_NE.png",
+	"hellcobble_E.png",
+	"hellcobble_SE.png",
+	"hellcobble_S.png",
+	"hellcobble_SW.png",
+	"hellcobble_W.png",
+	"hellcobble_NW.png",
+	"hellcobble_NEO.png",
+	"hellcobble_SEO.png",
+	"hellcobble_SWO.png",
+	"hellcobble_NWO.png",
+	"hellarch.png",
+	"hellbrick_small.png",
+	"hellbrick_pillars_small.png",
+	"TanBrickColumn.png",
+	"TanBrickColumns_L.png",
+	"TanBrickColumns_R.png",
+	"TanBrickColumns_C.png",
+	"TanBrickAlcove.png",
+	"TanBrickScarab.png",
+	"TanBrickScarabFancy.png",
+	"TanBrickStatue.png",
+	"BigOrangeStoneAlcove.png",
+	"BigReliefLTop.png",
+	"BigReliefLBottom.png",
+	"BigReliefRTop.png",
+	"BigReliefRBottom.png",
+	"BigStatueInsectoidTop.png",
+	"BigStatueInsectoidBottom.png",
+	"BigReliefSplitTop.png",
+	"BigReliefSplitBottom.png",
+	"BigReliefLoreTop.png",
+	"BigReliefLoreBottom.png",
+	"LabyrinthTiles.png",
+	"LabyrinthPlate.png",
+	"SandtoRockE.png",
+	"SandtoRockSE.png",
+	"SandtoRockS.png",
+	"SandtoRockSW.png",
+	"SandtoRockW.png",
+	"SandtoRockNW.png",
+	"SandtoRockN.png",
+	"SandtoRockNE.png",
+	"SandtoRockNE_o.png",
+	"SandtoRockSE_o.png",
+	"SandtoRockSW_o.png",
+	"SandtoRockNW_o.png",
+	"RedBrickFace8.png",
+	"MagicTrapWall5.png",
+	"MagicTrapWall6.png",
+	"MagicTrapWall7.png",
+	"MagicTrapWall8.png",
+	"SkullLava7.png",
+	"SkullLava8.png",
+	"Lavafall4.png",
+	"Lavafall5.png",
+	"Lavafall6.png",
+	"Lavafall7.png",
+	"Lavafall8.png",
+	"tilebroken_a.png",
+	"tilebroken_b.png",
+	"tilebroken_c.png",
+	"br_ceiling.png",
+	"br_ceiling-lightOff.png",
+	"br_ceiling-lightOn.png",
+	"br_floor.png",
+	"br_floor2.png",
+	"br_floor-seamH.png",
+	"br_floor-seamV.png",
+	"br_wallC.png",
+	"br_wallF.png",
+	"br_wallFb.png",
+	"br_wallFbl.png",
+	"br_wallFl.png",
+	"br_wallFp.png",
+	"br_wall.png",
+	"br_ceiling-high.png",
+	"dirt_bright.png",
+	"dirtrocky_bright.png",
+	"fortress_alcove.png",
+	"fortress_brickb.png",
+	"fortress_brickt.png",
+	"fortress_crenellations.png",
+	"fortress_crenellationsc.png",
+	"fortress_leavesb.png",
+	"fortress_leavescb.png",
+	"fortress_leavesclb.png",
+	"fortress_leavescrb.png",
+	"fortress_leaveslb.png",
+	"fortress_leavesrb.png",
+	"fortress_pillar.png",
+	"fortress_pillar_leavesl.png",
+	"fortress_pillar_leavesr.png",
+	"grass_red.png",
+	"streetbrick.png",
+	"streetbrick_grassy.png",
+	"streetbrick_worn.png",
+	"streetgrass_w.png",
+	"streetgrass_se.png",
+	"streetgrass_swo.png",
+	"streetgrass_s.png",
+	"streetgrass_nwo.png",
+	"streetgrass_sw.png",
+	"streetgrass_e.png",
+	"streetgrass_neo.png",
+	"streetgrass_nw.png",
+	"streetgrass_n.png",
+	"streetgrass_seo.png",
+	"streetgrass_ne.png",
+	"keep_bricks.png",
+	"keep_bricks_hi.png",
+	"keep_pillar.png",
+	"keep_pillar_hi.png",
+	"marble_a.png",
+	"marble_b.png",
+	"marble_broken_a.png",
+	"marble_broken_b.png",
+	"marble_fancy.png",
+	"marblechannel_n.png",
+	"marblechannel_ne.png",
+	"marblechannel_e.png",
+	"marblechannel_se.png",
+	"marblechannel_s.png",
+	"marblechannel_sw.png",
+	"marblechannel_w.png",
+	"marblechannel_nw.png",
+	"marblechannel_neo.png",
+	"marblechannel_seo.png",
+	"marblechannel_swo.png",
+	"marblechannel_nwo.png",
+	"streetbrick_dirtN.png",
+	"streetbrick_dirtE.png",
+	"streetbrick_dirtS.png",
+	"streetbrick_dirtW.png",
+	"fortress_block.png",
+	"keep_ceiling.png",
+	"keep_sg1_hi.png",
+	"keep_sg1_lo.png",
+	"keep_sg2_hi.png",
+	"keep_sg2_lo.png",
+	"keep_sg3_hi.png",
+	"keep_sg3_lo.png",
+	"fortress_mud1.png",
+	"fortress_mud2.png",
+	"fortress_mud3.png",
+	"fortress_mud4.png",
+	"fortress_mud5.png",
+	"fortress_mud6.png",
+	"fortress_mud7.png",
+	"fortress_mud8.png",
+	"fortress_mulch.png",
+	"keep_block.png",
+	"keep_alcove.png",
+	"keep_spout1.png",
+	"keep_spout2.png",
+	"keep_spout3.png",
+	"keep_spout4.png",
+	"granite_brick.png",
+	"granite_brick_mycelium.png",
+	"granite_brick_drain.png",
+	"stone_granite.png",
+	"granite_tile.png",
+	"rooftop_tiles.png",
+	"rooftop_asphalt.png",
+	"fortress_planks.png",
+	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
 	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
 	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
 	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
@@ -2478,7 +2710,10 @@ char tileEditorNameStrings[NUM_EDITOR_TILES][44] =
 	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
 	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
 	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
-	"Replace Me", "Replace Me", "Replace Me"
+	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
+	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
+	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
+	"Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me", "Replace Me",
 };
 
 int canWearEquip(Entity* entity, int category)
@@ -2527,14 +2762,14 @@ int canWearEquip(Entity* entity, int category)
 
 				//monsters with cloak/weapon/shield/boots/mask/gloves (no helm)
 				case BUGBEAR:
-				case INCUBUS:
-				case SUCCUBUS:
 				case LICH_FIRE:
 				case LICH_ICE:
 					equipType = 2;
 					break;
 
 				//monsters with cloak/weapon/shield/boots/helm/armor/mask/gloves
+				case INCUBUS:
+				case SUCCUBUS:
 				case GNOME:
 				case GOBLIN:
 				case HUMAN:
@@ -3356,6 +3591,20 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 		{
 			// set default new entity attributes.
 			entityNew->eternalShrineDir = 0;
+		}
+	}
+	// floor builder
+	else if ( spriteType == 40 )
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->actFloorBuilderTile = entityToCopy->actFloorBuilderTile;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->actFloorBuilderTile = 0;
 		}
 	}
 

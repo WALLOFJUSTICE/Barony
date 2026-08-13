@@ -282,6 +282,12 @@ void Entity::killedByMonsterObituary(Entity* victim, bool fromSpell)
 	    victim->setObituary(Language::get(1501));
 	    return;
 	}
+	if ( behavior == &actEternalShrine )
+	{
+		hitstats->killer = KilledBy::ETERNAL_SMITE;
+		victim->setObituary(Language::get(7155));
+		return;
+	}
 	if ( behavior == &::actMagicTrapCeiling )
 	{
 	    hitstats->killer = KilledBy::TRAP_MAGIC;
@@ -3806,6 +3812,13 @@ void Entity::handleEffects(Stat* myStats)
 		{
 			maxHPMod += 10;
 		}
+		if ( myStats->getEffectActive(EFF_RESOLVE) )
+		{
+			int hp = std::max(0, std::min(10, myStats->getEffectActive(EFF_RESOLVE) & 0xF));
+			maxHPMod += hp * 10;
+			int mp = std::max(0, std::min(10, (myStats->getEffectActive(EFF_RESOLVE) >> 4) & 0xF));
+			maxMPMod += mp * 10;
+		}
 
 		if ( maxHPMod != myStats->MISC_FLAGS[STAT_FLAG_HP_BONUS] )
 		{
@@ -5358,6 +5371,24 @@ void Entity::handleEffects(Stat* myStats)
 		}
 	}
 
+	if ( player >= 0 )
+	{
+		if ( this->ticks >= 5 )
+		{
+			if ( !players[player]->mechanics.hungerFlagWasOn && (svFlags & SV_FLAG_HUNGER) )
+			{
+				// check insectoid hunger value update
+				if ( myStats->playerRace == RACE_INSECTOID && myStats->stat_appearance == 0 )
+				{
+					Sint32 hungerPointPerMana = playerInsectoidHungerValueOfManaPoint(*myStats);
+					myStats->HUNGER = std::max(0, std::min(myStats->HUNGER, std::max(0, myStats->MP - 1) * hungerPointPerMana));
+					serverUpdateHunger(player);
+				}
+			}
+		}
+		players[player]->mechanics.hungerFlagWasOn = (svFlags & SV_FLAG_HUNGER);
+	}
+
 	// regaining energy over time
 	if ( player >= 0
 		&& ((myStats->playerRace == RACE_SALAMANDER
@@ -5468,7 +5499,7 @@ void Entity::handleEffects(Stat* myStats)
 
 				if ( myStats->MP < Sint32expectedMana )
 				{
-					if ( player == 0 ) // singleplayer/server only.
+					if ( players[player]->isLocalPlayer() ) // singleplayer/server only.
 					{
 						int difference = Sint32expectedMana - myStats->MP;
 						if ( difference > 8 )
@@ -5655,6 +5686,20 @@ void Entity::handleEffects(Stat* myStats)
 	bool fociCharging = false;
 	if ( behavior == &actPlayer )
 	{
+		bool anyEnsemble = false;
+		for ( int i = EFF_ENSEMBLE_FLUTE; i <= EFF_ENSEMBLE_HORN; ++i )
+		{
+			if ( myStats->getEffectActive(i) )
+			{
+				anyEnsemble = true;
+			}
+		}
+
+		if ( !anyEnsemble )
+		{
+			players[player]->mechanics.eternalShrineEnsemble = false;
+		}
+
 		previousEnsemblePlaying = players[player]->mechanics.ensemblePlaying;
    		players[player]->mechanics.ensemblePlaying = -1;
 		if ( !myStats->defending )
@@ -6454,9 +6499,9 @@ void Entity::handleEffects(Stat* myStats)
 						fx->actmagicNoLight = 1;
 					}
 
-					serverSpawnMiscParticles(this, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, particle, fx->skill[0]);
 				}
 			}
+			serverSpawnMiscParticles(this, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, particle, TICKS_PER_SECOND / 2);
 		}
 	}
 
@@ -6871,8 +6916,13 @@ void Entity::handleEffects(Stat* myStats)
 				real_t ratio = std::max(0.025, 0.025 * (effectStrength - 2)); // 2.5% per tick
 
 				myStats->clearEffect(EFF_STASIS); // clear to allow HP drain
-				this->drainMP(std::max(1, (int)(myStats->MAXMP * ratio)), false);
+				this->drainMP(std::max(1, (int)(myStats->MAXHP * ratio)), false);
 				playSoundEntity(this, 28, 64);
+				if ( myStats->HP <= 0 )
+				{
+					myStats->killer = KilledBy::ETERNAL_SMITE;
+					this->setObituary(Language::get(7155));
+				}
 				myStats->setEffectActive(EFF_STASIS, effectStrength);
 				createParticleFociDark(this, 0, true);
 				if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -12619,13 +12669,15 @@ fireagain:
 						if ( behavior == &actPlayer )
 						{
 							if ( weaponskill >= 0 && (weaponskill != PRO_RANGED || whip)
-								&& !(weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY) )
+								/*&& !(weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY)*/ )
 							{
 								if ( myStats->getProficiency(weaponskill) < SKILL_LEVEL_BASIC
 									&& local_rng.rand() % 20 == 0 )
 								{
 									bool skillIncreased = this->increaseSkill(weaponskill);
-									if ( skillIncreased && myStats->type == GOBLIN && weaponskill != PRO_RANGED )
+									if ( skillIncreased && myStats->type == GOBLIN 
+										&& weaponskill != PRO_RANGED
+										&& !(weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY) )
 									{
 										// goblins level up all combat skills at once.
 										int numIncreases = 0;
@@ -13813,7 +13865,9 @@ fireagain:
 					}
 
 					if ( doSkillIncrease
-						&& ((weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM) || weaponskill == PRO_UNARMED || (whip && weaponskill == PRO_RANGED)) )
+						&& ((weaponskill >= PRO_SWORD && weaponskill <= PRO_POLEARM) || weaponskill == PRO_UNARMED 
+							|| weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY
+							|| (whip && weaponskill == PRO_RANGED)) )
 					{
 						if ( myStats->weapon &&
 							(myStats->weapon->type == CRYSTAL_BATTLEAXE
@@ -13831,7 +13885,8 @@ fireagain:
 
 							if ( local_rng.rand() % chance == 0 )
 							{
-								bool lowSkill = hitstats->type == DUMMYBOT;
+								bool lowSkill = hitstats->type == DUMMYBOT 
+									|| weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY;
 								if ( !lowSkill || (lowSkill && myStats->getProficiency(weaponskill) < SKILL_LEVEL_BASIC) )
 								{
 									this->increaseSkill(weaponskill, notify);
@@ -13862,7 +13917,8 @@ fireagain:
 
 							if ( local_rng.rand() % chance == 0 )
 							{
-								bool lowSkill = hitstats->type == DUMMYBOT;
+								bool lowSkill = hitstats->type == DUMMYBOT
+									|| weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY;
 								if ( !lowSkill || (lowSkill && myStats->getProficiency(weaponskill) < SKILL_LEVEL_BASIC) )
 								{
 									this->increaseSkill(weaponskill, notify);
@@ -13887,7 +13943,9 @@ fireagain:
 
 							if ( local_rng.rand() % chance == 0 )
 							{
-								if ( hitstats->type != DUMMYBOT || (hitstats->type == DUMMYBOT && myStats->getProficiency(weaponskill) < SKILL_LEVEL_BASIC) )
+								bool lowSkill = hitstats->type == DUMMYBOT
+									|| weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY;
+								if ( !lowSkill || (lowSkill && myStats->getProficiency(weaponskill) < SKILL_LEVEL_BASIC) )
 								{
 									this->increaseSkill(weaponskill, notify);
 									skillIncreased = true;
@@ -13896,7 +13954,8 @@ fireagain:
 						}
 					}
 
-					if ( skillIncreased && myStats->type == GOBLIN && weaponskill != PRO_RANGED )
+					if ( skillIncreased && myStats->type == GOBLIN && 
+						!(weaponskill == PRO_RANGED || weaponskill == PRO_SORCERY || weaponskill == PRO_MYSTICISM || weaponskill == PRO_THAUMATURGY) )
 					{
 						// goblins level up all combat skills at once.
 						int numIncreases = 0;
@@ -18875,6 +18934,22 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 		players[this->skill[2]]->mechanics.incrementBreakableCounter(Player::PlayerMechanics_t::BreakableEvent::GBREAK_KILL, src);
 	}
 
+	if ( root )
+	{
+		int compendiumPlayer = behavior == &actPlayer ? skill[2] : -1;
+		if ( behavior == &actMonster )
+		{
+			if ( auto leader = uidToEntity(destStats->leader_uid) )
+			{
+				compendiumPlayer = leader->skill[2];
+			}
+		}
+		if ( compendiumPlayer >= 0 )
+		{
+			players[compendiumPlayer]->mechanics.updateDivineEvent(src, Player::PlayerMechanics_t::DivineEvent::DIVINE_KILL);
+		}
+	}
+
 	if ( src->behavior == &actMonster 
 		&& (src->monsterAllySummonRank != 0
 			|| srcStats->type == REVENANT_SKULL
@@ -18901,6 +18976,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 						compendiumPlayer = leader->skill[2];
 					}
 				}
+
 				if ( multiplayer == SINGLE )
 				{
 					if ( splitscreen )
@@ -19588,14 +19664,18 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 						if ( player == i )
 						{
 							int bountyGold = 1;
+							real_t bountyMult = 0.05;
 							if ( stats[i]->helmet->beatitude >= 0 || shouldInvertEquipmentBeatitude(stats[i]) )
 							{
 								bountyGold = 10 + currentlevel + local_rng.rand() % 50;
+								bountyMult += std::min(5, abs(stats[i]->helmet->beatitude)) * 0.05;
 							}
 							else
 							{
 								bountyGold = 1 + local_rng.rand() % 10;
 							}
+							bountyGold *= (1 + players[i]->mechanics.bountiesClaimed * bountyMult);
+							players[i]->mechanics.bountiesClaimed++;
 							messagePlayerColor(i, MESSAGE_COMBAT | MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6101), bountyGold);
 
 							stats[i]->GOLD += bountyGold;
@@ -26129,6 +26209,11 @@ bool Entity::monsterAddNearbyItemToInventory(Stat* myStats, int rangeToFind, int
 					{
 						donationItem = true;
 					}
+					if ( players[c]->mechanics.eternalShrineDonationRevealedOnFloor.find(entity->getUID())
+						!= players[c]->mechanics.eternalShrineDonationRevealedOnFloor.end() )
+					{
+						donationItem = true;
+					}
 				}
 
 				if ( donationItem )
@@ -26635,7 +26720,8 @@ bool Entity::monsterWantsItem(const Item& item, Item**& shouldEquip, node_t*& re
 						|| item.type == ARTIFACT_ORB_RED
 						|| item.type == ARTIFACT_ORB_PURPLE
 						|| items[item.type].hasAttribute("UNBURNABLE")
-						|| items[item.type].hasAttribute("UNVOIDABLE") )
+						|| items[item.type].hasAttribute("UNVOIDABLE")
+						|| item.type >= KEY_STONE && item.type <= KEY_MACHINE )
 					{
 						return false;
 					}
@@ -33693,19 +33779,22 @@ bool Entity::onEntityTrapHitSacredPath(Entity* trap)
 	{
 		if ( Uint8 effectStrength = myStats->getEffectActive(EFF_SACRED_PATH) )
 		{
+			int strength = effectStrength & 0xF;
 			int duration = myStats->EFFECTS_TIMERS[EFF_SACRED_PATH];
-			if ( effectStrength == 1 )
+			if ( strength <= 1 )
 			{
 				if ( myStats->EFFECTS_TIMERS[EFF_SACRED_PATH] > 0 )
 				{
 					myStats->EFFECTS_TIMERS[EFF_SACRED_PATH] = 1;
 				}
 			}
-			else if ( effectStrength > 1 )
+			else if ( strength > 1 )
 			{
-				--effectStrength;
+				--strength;
+				effectStrength &= ~(0xF);
+				effectStrength |= strength & 0xF;
 				myStats->setEffectValueUnsafe(EFF_SACRED_PATH, effectStrength);
-				setEffect(EFF_SACRED_PATH, effectStrength, myStats->EFFECTS_TIMERS[EFF_SACRED_PATH], false);
+				setEffect(EFF_SACRED_PATH, effectStrength, myStats->EFFECTS_TIMERS[EFF_SACRED_PATH], false, true, true);
 			}
 			return true;
 		}
@@ -33758,7 +33847,7 @@ int Entity::getEntityBonusTrapResist()
 				resist += 50;
 			}
 		}
-		if ( myStats->getEffectActive(EFF_SACRED_PATH) )
+		if ( myStats->getEffectActive(EFF_SACRED_PATH) & 0xF )
 		{
 			resist = 100;
 		}
@@ -34230,9 +34319,18 @@ void Entity::creatureHandleLiftZ()
 	switch ( type )
 	{
 		case RAT:
-			focalz = 0.0;
-			focalz -= shift;
+		{
+			if ( behavior == &actPlayer )
+			{
+				z -= shift;
+			}
+			else
+			{
+				focalz = 0.0;
+				focalz -= shift;
+			}
 			break;
+		}
 		case SLIME:
 			focalz -= shift;
 			break;

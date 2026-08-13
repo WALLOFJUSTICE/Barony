@@ -1657,6 +1657,30 @@ void gameLogic(void)
 						// add the leftover sub-second ticks result back into the score.
 						achievementObserver.playerAchievements[c].ticksSpentOverclocked = increase % TICKS_PER_SECOND;
 					}
+
+					if ( !players[c]->isLocalPlayer() )
+					{
+						if ( !players[c]->entity || players[c]->entity->ticks >= TICKS_PER_SECOND )
+						{
+							if ( (players[c]->mechanics.client_divine_favor != players[c]->mechanics.getDivineFavorBase()
+								|| players[c]->mechanics.client_divine_penalty != players[c]->mechanics.getDivinePenaltyModifier())
+								|| (ticks % (TICKS_PER_SECOND * 14) == 0) )
+							{
+								players[c]->mechanics.client_divine_favor = players[c]->mechanics.getDivineFavorBase();
+								players[c]->mechanics.client_divine_penalty = players[c]->mechanics.getDivinePenaltyModifier();
+
+								if ( net_packet && net_packet->data ) {
+									strcpy((char*)net_packet->data, "DIVI");
+									SDLNet_Write32(players[c]->mechanics.client_divine_favor, &net_packet->data[4]);
+									SDLNet_Write32(players[c]->mechanics.client_divine_penalty, &net_packet->data[8]);
+									net_packet->address.host = net_clients[c - 1].host;
+									net_packet->address.port = net_clients[c - 1].port;
+									net_packet->len = 12;
+									sendPacketSafe(net_sock, -1, net_packet, c - 1);
+								}
+							}
+						}
+					}
 				}
 				updateGameplayStatisticsInMainLoop();
 			}
@@ -1904,6 +1928,21 @@ void gameLogic(void)
 							}
 							totalFloorMonsters++;
 						}
+						else if ( entity->behavior == &actEternalShrine )
+						{
+							for ( int i = 0; i < MAXPLAYERS; ++i )
+							{
+								if ( !client_disconnected[i] )
+								{
+									if ( players[i]->mechanics.divineOfferingsMadeOnFloor.find(entity->getUID())
+										== players[i]->mechanics.divineOfferingsMadeOnFloor.end() )
+									{
+										players[i]->mechanics.updateDivineEvent(nullptr, Player::PlayerMechanics_t::DivineEvent::DIVINE_MISSED_OFFERING);
+									}
+								}
+							}
+						}
+
 						if ( (entity->behavior == &actThrown || entity->behavior == &actParticleSapCenter) && entity->sprite == 977 )
 						{
 							// boomerang particle, make sure to return on level change.
@@ -2337,6 +2376,8 @@ void gameLogic(void)
 						}
 						players[i]->hud.followerBars.clear();
 						spellcastingAnimationManager_deactivate(&cast_animation[i]);
+						players[i]->mechanics.divineOfferingsMadeOnFloor.clear();
+						players[i]->mechanics.updateDivineEventOnFloorChange();
 					}
 					EnemyHPDamageBarHandler::dumpCache();
 					AOEIndicators_t::cleanup();

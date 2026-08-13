@@ -156,7 +156,8 @@ void actGoldBag(Entity* my)
 
 					for ( int player = 0; player < MAXPLAYERS; ++player )
 					{
-						if ( players[player]->mechanics.donationRevealedOnFloor == my->getUID() )
+						if ( players[player]->mechanics.donationRevealedOnFloor == my->getUID()
+							|| players[player]->mechanics.eternalShrineDonationRevealedOnFloor.find(my->getUID()) != players[player]->mechanics.eternalShrineDonationRevealedOnFloor.end() )
 						{
 							messagePlayerColor(i, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(6943)); // you discovered a gift
 
@@ -168,7 +169,15 @@ void actGoldBag(Entity* my)
 								}
 							}
 
-							players[player]->mechanics.updateSustainedSpellEvent(SPELL_DONATION, 150.0, 1.0, nullptr);
+							if ( players[player]->mechanics.donationRevealedOnFloor == my->getUID() )
+							{
+								players[player]->mechanics.updateSustainedSpellEvent(SPELL_DONATION, 150.0, 1.0, nullptr);
+							}
+							else if ( players[player]->mechanics.eternalShrineDonationRevealedOnFloor.find(my->getUID()) != players[player]->mechanics.eternalShrineDonationRevealedOnFloor.end() )
+							{
+								players[player]->mechanics.updateDivineEvent(nullptr, Player::PlayerMechanics_t::DivineEvent::DIVINE_CLAIM_DONATION);
+							}
+							playSoundEntity(players[player]->entity, 909, 128);
 							break;
 						}
 					}

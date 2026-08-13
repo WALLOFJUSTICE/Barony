@@ -3292,6 +3292,9 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					}
 					break;
 				}
+				case PARTICLE_EFFECT_BELL_BUFF_SOLO:
+					spawnMagicEffectParticlesBellScroll(entity, sprite);
+					break;
 				case PARTICLE_EFFECT_SHATTERED_GEM:
 					createParticleShatteredGem(entity->x, entity->y, 7.5, sprite, entity);
 					break;
@@ -4745,6 +4748,23 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		spawnPoof(static_cast<Sint16>(x * 16.0 + 16.0 + effectOffset), static_cast<Sint16>(y * 16.0 - effectOffset), 8, 1.0);
 		spawnPoof(static_cast<Sint16>(x * 16.0 + 16.0 + effectOffset), static_cast<Sint16>(y * 16.0 + 16.0 + effectOffset), 8, 1.0);
 	}},
+
+	// create floor
+	{ 'FLRC', []() {
+		int y = SDLNet_Read16(&net_packet->data[6]);
+		int x = SDLNet_Read16(&net_packet->data[4]);
+		if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+		{
+			int tile = SDLNet_Read16(&net_packet->data[8]);
+			map.tiles[y * MAPLAYERS + x * MAPLAYERS * map.height] = tile;
+		}
+
+		const real_t effectOffset = 2.0;
+		spawnPoof(static_cast<Sint16>(x * 16.0 - effectOffset), static_cast<Sint16>(y * 16.0 - effectOffset), 8, 1.0);
+		spawnPoof(static_cast<Sint16>(x * 16.0 - effectOffset), static_cast<Sint16>(y * 16.0 + 16.0 + effectOffset), 8, 1.0);
+		spawnPoof(static_cast<Sint16>(x * 16.0 + 16.0 + effectOffset), static_cast<Sint16>(y * 16.0 - effectOffset), 8, 1.0);
+		spawnPoof(static_cast<Sint16>(x * 16.0 + 16.0 + effectOffset), static_cast<Sint16>(y * 16.0 + 16.0 + effectOffset), 8, 1.0);
+	} },
 
 	// destroy wall
 	{'WALD', [](){
@@ -6767,10 +6787,16 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		}
 	} },
 
+	{ 'DIVI', []() {
+		// server update of non-canonical display of divine favor
+		players[clientnum]->mechanics.client_divine_favor = ((int)SDLNet_Read32(&net_packet->data[4]));
+		players[clientnum]->mechanics.client_divine_penalty = ((int)SDLNet_Read32(&net_packet->data[8]));
+	} },
+
 	{ 'ESHO', []() {
 		// server order to open eternal shrine gui
 		Uint32 uid = SDLNet_Read32(&net_packet->data[4]);
-		players[clientnum]->mechanics.divine_favor = std::min(Player::DIVINE_FAVOR_MAX, (int)SDLNet_Read16(&net_packet->data[8]));
+		players[clientnum]->mechanics.setDivineFavor((int)SDLNet_Read16(&net_packet->data[8]));
 		if ( auto entity = uidToEntity(uid) )
 		{
 			if ( entity->behavior == &::actEternalShrine )
@@ -6803,7 +6829,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		if ( player == clientnum )
 		{
 			Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
-			players[clientnum]->mechanics.divine_favor = std::min(Player::DIVINE_FAVOR_MAX, (int)SDLNet_Read16(&net_packet->data[9]));
+			players[clientnum]->mechanics.setDivineFavor((int)SDLNet_Read16(&net_packet->data[9]));
 			Uint32 shrinePlayerStates = SDLNet_Read32(&net_packet->data[11]);
 			if ( uid > 0 )
 			{

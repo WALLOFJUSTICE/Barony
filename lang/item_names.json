@@ -2168,6 +2168,26 @@
 		"magicstaff_shade_bolt": {
             "name_identified": "magicstaff of shade bolt",
             "name_unidentified": "magicstaff"
+        },
+		"scroll_liturgy": {
+            "name_identified": "scroll of liturgy",
+            "name_unidentified": "scroll"
+        },
+		"scroll_minstrels": {
+            "name_identified": "scroll of minstrels",
+            "name_unidentified": "scroll"
+        },
+		"scroll_stamina": {
+            "name_identified": "scroll of stamina",
+            "name_unidentified": "scroll"
+        },
+		"scroll_mentality": {
+            "name_identified": "scroll of mentality",
+            "name_unidentified": "scroll"
+        },
+		"scroll_agility": {
+            "name_identified": "scroll of agility",
+            "name_unidentified": "scroll"
         }
     },
 	"spell_names": {

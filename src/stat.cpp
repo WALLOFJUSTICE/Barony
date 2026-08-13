@@ -1760,7 +1760,13 @@ int Stat::numShillelaghDebuffsActive(Entity* my)
 		EFF_DISRUPTED,
 		EFF_FROST,
 		EFF_HOLY_FIRE,
-		EFF_MESMERIZED
+		EFF_MESMERIZED,
+		EFF_BURDENED,
+		EFF_SILENCED,
+		EFF_LEVEL_DRAIN,
+		EFF_DEGENERATION,
+		EFF_DISPIRITED,
+		EFF_ENFEEBLE
 	};
 	int result = 0;
 	if ( my && my->flags[BURNING] )
@@ -1812,8 +1818,14 @@ bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
 		case EFF_STASIS:
 		case EFF_DISRUPTED:
 		case EFF_FROST:
-		case EFF_HOLY_FIRE:
+		//case EFF_HOLY_FIRE:
 		case EFF_MESMERIZED:
+		case EFF_BURDENED:
+		case EFF_SILENCED:
+		case EFF_LEVEL_DRAIN:
+		case EFF_DEGENERATION:
+		case EFF_DISPIRITED:
+		case EFF_ENFEEBLE:
 			return true;
 			break;
 		case EFF_DRUNK:

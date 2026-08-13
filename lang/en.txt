@@ -6746,7 +6746,7 @@ Host to enable the game setting.
 6490 Your protection saves you from the boulder!#
 6491 Your protection saves you from the falling bell!#
 6492 Your protection saves you from the spikes!#
-6493 You ward you body against devious traps.#
+6493 Blessings safeguard you from devious traps!#
 6494 Divine forces are leading you to treasure!#
 6495 An enemy is revealed to you!#
 6496 You recall your spell without a target.#
@@ -7412,5 +7412,49 @@ has been unlocked!#
 7131 Hotbar Toggle Loadout#
 7132 Hotbar Loadout 1#
 7133 Hotbar Loadout 2#
+7134 The flames invigorate your %s!#
+7135 The flames fortify your resolve!#
+7136 A gift of divine providence awaits you...#
+7137 The orchestrion plays a simple duet!#
+7138 The orchestrion plays like a small band!#
+7139 The orchestrion provides an inspiring performance!#
+7140 The orchestrion plays an enchanted song!#
+7141 The orchestrion plays a majestic %s!#
+7142 A voice booms inside your mind:
+ "PURE DEVOTION MAKES A PURE SONG."#
+7143 A voice booms inside your mind:
+ "HONOR THY FLESH WITH HUMILITY."#
+7144 The Eternals take pity at your begging.#
+7145 Energy zaps from the hammer into your item!#
+7146 The hammer and your item emit a bright flash!#
+7147 A voice booms inside your mind:
+ "BEGONE."#
+7148 The flames refuse to be stoked further.#
+7149 Your touch fails to resonate.#
+7150 You no longer feel any sense of communion.#
+7151 The metalwork is cold and unflinching.#
+7152 You feel energized!#
+7153 You feel renewed!#
+7154 You feel healthier!#
+7155 meets their maker.#
+7156 Your body feels cleansed and healthier!#
+7157 Your body feels cleansed and energized!#
+7158 Eternal Damnation#
+# mirror pips 3-10
+7159 Your visage returns with a glow.#
+7160 Your high spirits reflect back at you.#
+7161 You see a bright future ahead.#
+7162 Who couldn't love that face?#
+7163 Your visage returns with a faint glow.#
+7164 You appear to be in high spirits.#
+7165 You imagine a bright future ahead.#
+7166 Who would love that face?#
+7167 You feel watched.#
+7168 You feel judged.#
+7169 INDECIPHERABLE#
+7170 Scroll of liturgy text effect.#
+7171 Scroll of liturgy negative text effect.#
+7172 Scroll of minstrels text effect.#
+7173 The scroll invigorates your %s!#
 
 7999 END#

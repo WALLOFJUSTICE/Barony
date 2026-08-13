@@ -6324,9 +6324,9 @@ void actPlayer(Entity* my)
 					fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
 					fx->actmagicNoLight = 1;
 
-					serverSpawnMiscParticles(my, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, 0, fx->skill[0]);
 				}
 			}
+			serverSpawnMiscParticles(my, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, 263, 0, TICKS_PER_SECOND / 2);
 		}
 		else if ( *cvar_pbaoe == 13 )
 		{

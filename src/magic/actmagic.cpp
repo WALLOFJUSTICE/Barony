@@ -8793,7 +8793,7 @@ void actParticleAestheticOrbit(Entity* my)
 							{
 								totalPercent = 35.0;
 							}
-							if ( stats->getEffectActive(EFF_HOLY_FIRE) == 4 )
+							else if ( stats->getEffectActive(EFF_HOLY_FIRE) >= 4 )
 							{
 								totalPercent = 50.0;
 							}
@@ -8930,6 +8930,16 @@ void actParticleAestheticOrbit(Entity* my)
 							my->light = addLight(my->x / 16, my->y / 16, "magic_spray_orange_flicker");
 						}
 					}*/
+					if ( my->sprite == 288 )
+					{
+						if ( !my->actmagicNoLight )
+						{
+							if ( !my->light )
+							{
+								my->light = addLight(my->x / 16, my->y / 16, "orb_blue");
+							}
+						}
+					}
 				}
 			}
 			else
@@ -21270,7 +21280,8 @@ void actRadiusMagicBadge(Entity* my)
 			|| my->sprite == 2403
 			|| my->sprite == 2408
 			|| my->sprite == 2409
-			|| my->sprite == 2508 )
+			|| my->sprite == 2508
+			|| my->sprite == 2547 )
 		{
 			badgeScale = 0.5;
 		}
@@ -21387,6 +21398,9 @@ Entity* createRadiusMagic(int spellID, Entity* caster, real_t x, real_t y, real_
 		break;
 	case SPELL_PROF_COUNSEL:
 		sprite = 2389;
+		break;
+	case SPELL_SACRED_PATH:
+		sprite = 2547;
 		break;
 	case SPELL_COMMAND:
 		sprite = 2390;
@@ -21760,7 +21774,8 @@ void actRadiusMagic(Entity* my)
 					|| my->actRadiusMagicID == SPELL_PROF_COUNSEL
 					|| my->actRadiusMagicID == SPELL_PROF_GREATER_MIGHT
 					|| my->actRadiusMagicID == SPELL_PROF_NIMBLENESS
-					|| my->actRadiusMagicID == SPELL_PROF_STURDINESS )
+					|| my->actRadiusMagicID == SPELL_PROF_STURDINESS
+					|| my->actRadiusMagicID == SPELL_SACRED_PATH )
 				{
 					fx->scalex = 0.8;
 					fx->scaley = 0.8;
@@ -21936,6 +21951,7 @@ void actRadiusMagic(Entity* my)
 		|| my->actRadiusMagicID == SPELL_PINPOINT
 		|| my->actRadiusMagicID == SPELL_MAGICMAPPING
 		|| my->actRadiusMagicID == SPELL_FORGE_JEWEL
+		|| my->actRadiusMagicID == SPELL_SACRED_PATH
 		)
 	{
 		checkArea = false; // visual effect only
