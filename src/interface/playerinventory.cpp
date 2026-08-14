@@ -1532,51 +1532,46 @@ void select_eternalshrine_slot(int player, int currentx, int currenty, int diffx
 	auto& eternalShrineGUI = GenericGUI[player].eternalShrineGUI;
 	//int lowestItemY = 0;
 
-	//if ( currentx < 0 )
-	//{
-	//	if ( diffy != 0 )
-	//	{
-	//		// main mail frame
-	//		if ( currentx == mailboxGUI.MAIL_SLOT_SEND )
-	//		{
-	//			x = mailboxGUI.MAIL_SLOT_RECV;
-	//		}
-	//		else if ( currentx == mailboxGUI.MAIL_SLOT_RECV )
-	//		{
-	//			x = mailboxGUI.MAIL_SLOT_SEND;
-	//		}
-	//		y = 0;
-	//	}
-	//	else if ( diffx != 0 )
-	//	{
-	//		if ( diffx > 0 )
-	//		{
-	//			if ( currentx == mailboxGUI.MAIL_SLOT_SEND )
-	//			{
-	//				players[player]->inventoryUI.selectSlot(0, 0);
-	//			}
-	//			else
-	//			{
-	//				players[player]->inventoryUI.selectSlot(0, 5);
-	//			}
-	//			players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
-	//			return;
-	//		}
-	//		else
-	//		{
-	//			if ( currentx == mailboxGUI.MAIL_SLOT_SEND )
-	//			{
-	//				players[player]->inventoryUI.selectSlot(players[player]->inventoryUI.getSizeX() - 1, 0);
-	//			}
-	//			else
-	//			{
-	//				players[player]->inventoryUI.selectSlot(players[player]->inventoryUI.getSizeX() - 1, 5);
-	//			}
-	//			players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
-	//			return;
-	//		}
-	//	}
-	//}
+	if ( currentx < 0 )
+	{
+		if ( diffy != 0 )
+		{
+			// main shrine frame
+			x = eternalShrineGUI.ETERNALSHRINE_SLOT_SEND;
+			y = 0;
+		}
+		else if ( diffx != 0 )
+		{
+			if ( diffx > 0 )
+			{
+				if ( players[player]->inventory_mode == INVENTORY_MODE_SPELL )
+				{
+					players[player]->inventoryUI.selectSpell(0, players[player]->inventoryUI.getSelectedSpellY());
+					players[player]->GUI.activateModule(Player::GUI_t::MODULE_SPELLS);
+				}
+				else
+				{
+					players[player]->inventoryUI.selectSlot(0, players[player]->inventoryUI.getSelectedSlotY());
+					players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+				}
+				return;
+			}
+			else
+			{
+				if ( players[player]->inventory_mode == INVENTORY_MODE_SPELL )
+				{
+					players[player]->inventoryUI.selectSpell(players[player]->inventoryUI.MAX_SPELLS_X - 1, players[player]->inventoryUI.getSelectedSpellY());
+					players[player]->GUI.activateModule(Player::GUI_t::MODULE_SPELLS);
+				}
+				else
+				{
+					players[player]->inventoryUI.selectSlot(players[player]->inventoryUI.getSizeX() - 1, players[player]->inventoryUI.getSelectedSlotY());
+					players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+				}
+				return;
+			}
+		}
+	}
 	eternalShrineGUI.selectEternalShrineSlot(x, y);
 }
 
@@ -1774,12 +1769,27 @@ void select_spell_slot(int player, int currentx, int currenty, int diffx, int di
 		return;
 	}
 
+	auto& selectedItem = inputs.getUIInteraction(player)->selectedItem;
 	if ( x < 0 ) 
 	{ 
+		if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen && GenericGUI[player].getGuiType() == GUI_TYPE_ETERNALSHRINE_ASCENSION
+			&& GenericGUI[player].eternalShrineGUI.isInteractable && GenericGUI[player].eternalShrineGUI.bSendItemAllowed )
+		{
+			select_eternalshrine_slot(player, GenericGUI[player].eternalShrineGUI.ETERNALSHRINE_SLOT_SEND, 0, 0, 0);
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ETERNALSHRINE);
+			return;
+		}
 		x = Player::Inventory_t::MAX_SPELLS_X - 1; 
 	}
 	if ( x >= Player::Inventory_t::MAX_SPELLS_X ) 
 	{ 
+		if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen && GenericGUI[player].getGuiType() == GUI_TYPE_ETERNALSHRINE_ASCENSION
+			&& GenericGUI[player].eternalShrineGUI.isInteractable && GenericGUI[player].eternalShrineGUI.bSendItemAllowed )
+		{
+			select_eternalshrine_slot(player, GenericGUI[player].eternalShrineGUI.ETERNALSHRINE_SLOT_SEND, 0, 0, 0);
+			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ETERNALSHRINE);
+			return;
+		}
 		x = 0;
 	}
 
@@ -2157,16 +2167,10 @@ void select_inventory_slot(int player, int currentx, int currenty, int diffx, in
 			players[player]->GUI.activateModule(Player::GUI_t::MODULE_MAILBOX);
 			return;
 		}
-		else if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen )
+		else if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen 
+			&& GenericGUI[player].eternalShrineGUI.isInteractable && GenericGUI[player].eternalShrineGUI.bSendItemAllowed )
 		{
-			/*if ( y >= 4 )
-			{
-				select_mail_slot(player, GenericGUI[player].mailboxGUI.MAIL_SLOT_RECV, 0, 0, 0);
-			}
-			else*/
-			{
-				select_eternalshrine_slot(player, 0, 0, 0, 0);
-			}
+			select_eternalshrine_slot(player, GenericGUI[player].eternalShrineGUI.ETERNALSHRINE_SLOT_SEND, 0, 0, 0);
 			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ETERNALSHRINE);
 			return;
 		}
@@ -2249,16 +2253,10 @@ void select_inventory_slot(int player, int currentx, int currenty, int diffx, in
 			players[player]->GUI.activateModule(Player::GUI_t::MODULE_MAILBOX);
 			return;
 		}
-		else if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen )
+		else if ( !selectedItem && GenericGUI[player].eternalShrineGUI.bOpen
+			&& GenericGUI[player].eternalShrineGUI.isInteractable && GenericGUI[player].eternalShrineGUI.bSendItemAllowed )
 		{
-			/*if ( y >= 4 )
-			{
-				select_mail_slot(player, GenericGUI[player].mailboxGUI.MAIL_SLOT_RECV, 0, 0, 0);
-			}
-			else*/
-			{
-				select_eternalshrine_slot(player, 0, 0, 0, 0);
-			}
+			select_eternalshrine_slot(player, GenericGUI[player].eternalShrineGUI.ETERNALSHRINE_SLOT_SEND, 0, 0, 0);
 			players[player]->GUI.activateModule(Player::GUI_t::MODULE_ETERNALSHRINE);
 			return;
 		}
@@ -7575,6 +7573,7 @@ void Player::HUD_t::finalizeFrameTooltip(Item* item, const int x, const int y, i
 			}
 
 			int alignx1 = xres;
+			int alignx2 = 0;
 
 			if ( players[player]->inventoryUI.useItemDropdownOnGamepad == Player::Inventory_t::GAMEPAD_DROPDOWN_COMPACT )
 			{
@@ -7631,6 +7630,7 @@ void Player::HUD_t::finalizeFrameTooltip(Item* item, const int x, const int y, i
 					grabGlyph->pos = useGlyph->pos;
 					grabGlyph->pos.x = grabIcon->pos.x - grabGlyph->pos.w - 4;
 					alignx1 = std::min(alignx1, grabGlyph->pos.x);
+					alignx2 = grabIcon->pos.x + grabIcon->pos.w + 4; // if no text, this will be a fallback
 				}
 			}
 			else
@@ -7684,7 +7684,6 @@ void Player::HUD_t::finalizeFrameTooltip(Item* item, const int x, const int y, i
 			}
 
 			// find the furthest right text for the width of the frame
-			int alignx2 = 0;
 			for ( auto& pair : promptFrames )
 			{
 				auto& img = pair.first;
@@ -9649,7 +9648,7 @@ void Player::Inventory_t::updateInventory()
 				else
 				{
 					bool greyBackground = false;
-					if ( eternalShrineGUI.bOpen )
+					/*if ( eternalShrineGUI.bOpen )
 					{
 						if ( GenericGUI[player].getGuiType() == GUI_TYPE_ETERNALSHRINE_ASCENSION
 							&& eternalShrineGUI.currentView != GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_OFFERING
@@ -9657,7 +9656,7 @@ void Player::Inventory_t::updateInventory()
 						{
 							greyBackground = true;
 						}
-					}
+					}*/
 					updateSlotFrameFromItem(slotFrame, item, greyBackground);
 				}
 			}
@@ -10560,6 +10559,21 @@ void Player::Inventory_t::updateInventory()
 						tooltipCoordX = inventoryBgFrame->getSize().x - 8;
 						tooltipCoordX += compactImg->pos.x;
 					}
+
+					if ( eternalShrineGUI.eternalShrineFrame && eternalShrineGUI.bOpen && eternalShrineGUI.isInteractable )
+					{
+						if ( !players[player]->bUseCompactGUIWidth() )
+						{
+							if ( justify == PANEL_JUSTIFY_LEFT )
+							{
+								tooltipCoordX += 206;
+							}
+							else
+							{
+								tooltipCoordX -= 206;
+							}
+						}
+					}
 				}
 				int tooltipCoordY = slotFrame->getAbsoluteSize().y - players[player]->camera_virtualy1();
 				if ( !itemOnPaperDoll )
@@ -10650,10 +10664,20 @@ void Player::Inventory_t::updateInventory()
 						eternalShrineGUI.setItemDisplayNameAndPrice(item, false);
 					}
 
-					if ( inventoryControlActive && !bIsTooltipDelayed() && eternalShrineGUI.isInteractable )
+					if ( inventoryControlActive && !bIsTooltipDelayed() )
 					{
-						tooltipOpen = true;
-						players[player]->hud.updateFrameTooltip(item, tooltipCoordX, tooltipCoordY, justify);
+						if ( eternalShrineGUI.isInteractable )
+						{
+							if ( !(eternalShrineGUI.sendItem1Uid != 0 && bCompactView) && eternalShrineGUI.bSendItemAllowed )
+							{
+								tooltipOpen = true;
+								players[player]->hud.updateFrameTooltip(item, tooltipCoordX, tooltipCoordY, justify);
+							}
+						}
+						else
+						{
+							tooltipDelayTick = ::ticks + 10;
+						}
 					}
 				}
 				else
@@ -10693,6 +10717,11 @@ void Player::Inventory_t::updateInventory()
 					{
 						if ( Input::inputs[player].binaryToggle(getContextMenuOptionBindingName(player, option).c_str()) )
 						{
+							if ( option == PROMPT_SHRINE_OFFERING || option == PROMPT_SHRINE_APPLY_ITEM ) // handle the click in updateEternalShrine()
+							{
+								continue;
+							}
+
 							bindingPressed = true;
 
 							if ( Input::inputs[player].getPlayerControlType() == Input::PLAYER_CONTROLLED_BY_KEYBOARD )
@@ -11250,7 +11279,7 @@ void Player::Inventory_t::updateInventory()
 						else
 						{
 							bool greyBackground = false;
-							if ( eternalShrineGUI.bOpen )
+							/*if ( eternalShrineGUI.bOpen )
 							{
 								if ( GenericGUI[player].getGuiType() == GUI_TYPE_ETERNALSHRINE_ASCENSION
 									&& eternalShrineGUI.currentView != GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_OFFERING
@@ -11258,7 +11287,7 @@ void Player::Inventory_t::updateInventory()
 								{
 									greyBackground = true;
 								}
-							}
+							}*/
 							updateSlotFrameFromItem(slotFrame, item, greyBackground);
 						}
 					}
@@ -11628,6 +11657,8 @@ std::string getContextMenuOptionBindingName(const int player, const ItemContextM
 		case PROMPT_RETRIEVE_CHEST:
 		case PROMPT_INSPECT:
 		case PROMPT_DROPDOWN:
+		case PROMPT_SHRINE_OFFERING:
+		case PROMPT_SHRINE_APPLY_ITEM:
 			return "MenuConfirm";
 		case PROMPT_DROP:
 			if ( players[player]->inventoryUI.useItemDropdownOnGamepad == Player::Inventory_t::GAMEPAD_DROPDOWN_COMPACT )
@@ -11677,6 +11708,12 @@ const char* getContextMenuLangEntry(const int player, const ItemContextMenuPromp
 			return Language::get(1881);
 		case PROMPT_SELL:
 			return Language::get(345);
+			break;
+		case PROMPT_SHRINE_OFFERING:
+			return Language::get(7174);
+			break;
+		case PROMPT_SHRINE_APPLY_ITEM:
+			return Language::get(7175);
 			break;
 		case PROMPT_BUY:
 			break;
@@ -11796,6 +11833,24 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 
 	if ( itemCategory(item) == SPELL_CAT )
 	{
+		if ( GenericGUI[player].eternalShrineGUI.bOpen )
+		{
+			if ( players[player]->bUseCompactGUIWidth() )
+			{
+				if ( GenericGUI[player].eternalShrineGUI.currentView == GenericGUI[player].eternalShrineGUI.ASSIST_SHRINE_VIEW_OFFERING )
+				{
+					options.insert(options.begin(), PROMPT_SHRINE_OFFERING);
+				}
+				else if ( GenericGUI[player].eternalShrineGUI.currentView == GenericGUI[player].eternalShrineGUI.ASSIST_SHRINE_VIEW_ACTION
+					&& GenericGUI[player].eternalShrineGUI.bSendItemAllowed )
+				{
+					options.insert(options.begin(), PROMPT_SHRINE_APPLY_ITEM);
+				}
+			}
+			options.push_back(PROMPT_GRAB);
+			return options;
+		}
+
 		options.push_back(PROMPT_SPELL_EQUIP);
 		options.push_back(PROMPT_SPELL_QUICKCAST);
 		/*if ( spell_t* spell = getSpellFromItem(player, item, true) )
@@ -12034,6 +12089,11 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 				it = options.erase(it);
 				continue;
 			}
+			if ( (eternalShrineOpen || mailboxOpen) && getContextMenuOptionBindingName(player, *it) == "MenuAlt2" )
+			{
+				it = options.erase(it);
+				continue;
+			}
 			if ( featherOpen && getContextMenuOptionBindingName(player, *it) == "MenuAlt2" )
 			{
 				it = options.erase(it);
@@ -12068,6 +12128,21 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 		++it;
 	}
 
+	if ( eternalShrineOpen )
+	{
+		if ( players[player]->bUseCompactGUIWidth() )
+		{
+			if ( GenericGUI[player].eternalShrineGUI.currentView == GenericGUI[player].eternalShrineGUI.ASSIST_SHRINE_VIEW_OFFERING )
+			{
+				options.insert(options.begin(), PROMPT_SHRINE_OFFERING);
+			}
+			else if ( GenericGUI[player].eternalShrineGUI.currentView == GenericGUI[player].eternalShrineGUI.ASSIST_SHRINE_VIEW_ACTION
+				&& GenericGUI[player].eternalShrineGUI.bSendItemAllowed )
+			{
+				options.insert(options.begin(), PROMPT_SHRINE_APPLY_ITEM);
+			}
+		}
+	}
 	if ( sellingToShop )
 	{
 		options.insert(options.begin(), PROMPT_SELL);

@@ -532,3 +532,4 @@ struct SkillUpAnimation_t
 };
 
 extern SkillUpAnimation_t skillUpAnimation[MAXPLAYERS];
+void drawClockwiseSquareMesh(const char* texture, float lerp, SDL_Rect rect, Uint32 color);

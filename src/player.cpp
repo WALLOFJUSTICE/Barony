@@ -1441,7 +1441,7 @@ Player::GUI_t::GUIModules Player::GUI_t::handleModuleNavigation(bool checkDestin
 		else if ( activeModule == MODULE_SPELLS 
 			&& (player.inventoryUI.spellPanel.bFirstTimeSnapCursor || checkDestinationOnly) )
 		{
-			if ( player.shopGUI.bOpen || player.inventoryUI.chestGUI.bOpen || player.ghost.isActive() )
+			if ( player.shopGUI.bOpen || player.inventoryUI.chestGUI.bOpen || player.ghost.isActive() || GenericGUI[player.playernum].eternalShrineGUI.bOpen )
 			{
 				return MODULE_NONE;
 			}
@@ -1834,7 +1834,7 @@ Player::GUI_t::GUIModules Player::GUI_t::handleModuleNavigation(bool checkDestin
 		else if ( activeModule == MODULE_SPELLS 
 			&& (player.inventoryUI.spellPanel.bFirstTimeSnapCursor || checkDestinationOnly ) )
 		{
-			if ( player.shopGUI.bOpen || player.inventoryUI.chestGUI.bOpen || player.ghost.isActive() )
+			if ( player.shopGUI.bOpen || player.inventoryUI.chestGUI.bOpen || player.ghost.isActive() || GenericGUI[player.playernum].eternalShrineGUI.bOpen )
 			{
 				return MODULE_NONE;
 			}
@@ -2160,6 +2160,11 @@ bool Player::GUI_t::handleInventoryMovement()
 	auto& hotbar_t = players[player]->hotbar;
 
 	if ( !bActiveModuleUsesInventory() )
+	{
+		return false;
+	}
+
+	if ( GenericGUI[player].eternalShrineGUI.bOpen && !GenericGUI[player].eternalShrineGUI.isInteractable )
 	{
 		return false;
 	}

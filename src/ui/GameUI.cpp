@@ -307,7 +307,6 @@ MinotaurWarning_t minotaurWarning[MAXPLAYERS];
 
 void updateLevelUpFrame(const int player);
 void updateSkillUpFrame(const int player);
-void drawClockwiseSquareMesh(const char* texture, float lerp, SDL_Rect rect, Uint32 color);
 
 void capitalizeString(std::string& str)
 {
@@ -29622,7 +29621,7 @@ void Player::Inventory_t::activateItemContextMenuOption(Item* item, ItemContextM
 		sellingItemToShop = true;
 	}
 
-	if ( prompt == PROMPT_DROPDOWN )
+	if ( prompt == PROMPT_DROPDOWN || prompt == PROMPT_SHRINE_OFFERING || prompt == PROMPT_SHRINE_APPLY_ITEM )
 	{
 		return;
 	}
@@ -39886,7 +39885,7 @@ void Player::Inventory_t::SpellPanel_t::updateSpellPanel()
 	closeBtnPos.y = 8;
 	closeBtn->setSize(closeBtnPos);
 	closeGlyph->disabled = true;
-	if ( inputs.getVirtualMouse(player.playernum)->draw_cursor )
+	if ( inputs.getVirtualMouse(player.playernum)->draw_cursor && !GenericGUI[player.playernum].eternalShrineGUI.bOpen )
 	{
 		closeBtn->setDisabled(!isInteractable);
 		if ( isInteractable )
@@ -39898,7 +39897,7 @@ void Player::Inventory_t::SpellPanel_t::updateSpellPanel()
 	{
 		closeBtn->deselect();
 	}
-	if ( closeBtn->isDisabled() && usingGamepad )
+	if ( closeBtn->isDisabled() && usingGamepad && !GenericGUI[player.playernum].eternalShrineGUI.bOpen )
 	{
 		SDL_Rect closeBtnPos = closeBtn->getSize();
 		closeBtnPos.x -= 10;
@@ -39943,28 +39942,36 @@ void Player::Inventory_t::SpellPanel_t::updateSpellPanel()
 	{
 		filterBtn->deselect();
 	}
-	if ( filterBtn->isDisabled() && usingGamepad )
+	if ( filterBtn->isDisabled() && usingGamepad  )
 	{
-		SDL_Rect filterBtnPos = filterBtn->getSize();
-		filterBtnPos.x -= 8;
-		filterBtn->setSize(filterBtnPos);
+		if ( GenericGUI[player.playernum].eternalShrineGUI.bOpen
+			&& (GenericGUI[player.playernum].eternalShrineGUI.sendItem1Uid != 0 || !GenericGUI[player.playernum].eternalShrineGUI.bSendItemAllowed) )
+		{
+			// occupying the Y command for the action button
+		}
+		else
+		{
+			SDL_Rect filterBtnPos = filterBtn->getSize();
+			filterBtnPos.x -= 8;
+			filterBtn->setSize(filterBtnPos);
 
-		filterGlyph->path = Input::inputs[player.playernum].getGlyphPathForBinding("MenuAlt2");
-		if ( auto imgGet = Image::get(filterGlyph->path.c_str()) )
-		{
-			filterGlyph->pos.w = imgGet->getWidth();
-			filterGlyph->pos.h = imgGet->getHeight();
-			filterGlyph->disabled = false;
-		}
-		filterGlyph->pos.x = filterBtn->getSize().x + filterBtn->getSize().w;
-		if ( filterGlyph->pos.x % 2 == 1 )
-		{
-			++filterGlyph->pos.x;
-		}
-		filterGlyph->pos.y = filterBtn->getSize().y + filterBtn->getSize().h / 2 - filterGlyph->pos.h / 2;
-		if ( filterGlyph->pos.y % 2 == 1 )
-		{
-			++filterGlyph->pos.y;
+			filterGlyph->path = Input::inputs[player.playernum].getGlyphPathForBinding("MenuAlt2");
+			if ( auto imgGet = Image::get(filterGlyph->path.c_str()) )
+			{
+				filterGlyph->pos.w = imgGet->getWidth();
+				filterGlyph->pos.h = imgGet->getHeight();
+				filterGlyph->disabled = false;
+			}
+			filterGlyph->pos.x = filterBtn->getSize().x + filterBtn->getSize().w;
+			if ( filterGlyph->pos.x % 2 == 1 )
+			{
+				++filterGlyph->pos.x;
+			}
+			filterGlyph->pos.y = filterBtn->getSize().y + filterBtn->getSize().h / 2 - filterGlyph->pos.h / 2;
+			if ( filterGlyph->pos.y % 2 == 1 )
+			{
+				++filterGlyph->pos.y;
+			}
 		}
 	}
 
@@ -40104,7 +40111,7 @@ void Player::Inventory_t::SpellPanel_t::updateSpellPanel()
 			&& player.GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_SPELLS)
 			&& player.bControlEnabled && !gamePaused && !player.usingCommand() )
 		{
-			if ( Input::inputs[player.playernum].binaryToggle("MenuCancel") )
+			if ( Input::inputs[player.playernum].binaryToggle("MenuCancel") && !GenericGUI[player.playernum].eternalShrineGUI.bOpen )
 			{
 				Input::inputs[player.playernum].consumeBinaryToggle("MenuCancel");
 				player.GUI.activateModule(Player::GUI_t::MODULE_SPELLS);
@@ -40113,10 +40120,18 @@ void Player::Inventory_t::SpellPanel_t::updateSpellPanel()
 			}
 			if ( Input::inputs[player.playernum].binaryToggle("MenuAlt2") )
 			{
-				Input::inputs[player.playernum].consumeBinaryToggle("MenuAlt2");
-				if ( filterBtn )
+				if ( GenericGUI[player.playernum].eternalShrineGUI.bOpen
+					&& (GenericGUI[player.playernum].eternalShrineGUI.sendItem1Uid != 0 || !GenericGUI[player.playernum].eternalShrineGUI.bSendItemAllowed) )
 				{
-					filterBtn->getCallback()(*filterBtn);
+					// occupying the Y command for the action button
+				}
+				else
+				{
+					Input::inputs[player.playernum].consumeBinaryToggle("MenuAlt2");
+					if ( filterBtn )
+					{
+						filterBtn->getCallback()(*filterBtn);
+					}
 				}
 			}
 		}

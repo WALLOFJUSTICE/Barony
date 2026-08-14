@@ -8686,6 +8686,7 @@ void doNewGame(bool makeHighscore) {
 	}
 	EnemyHPDamageBarHandler::dumpCache();
 	AOEIndicators_t::cleanup();
+	ShrinePlayerMessageManager_t::reset();
 	monsterAllyFormations.reset();
 	PingNetworkStatus_t::reset();
 	particleTimerEmitterHitEntities.clear();
@@ -10257,6 +10258,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 	}
 	EnemyHPDamageBarHandler::dumpCache();
 	AOEIndicators_t::cleanup();
+	ShrinePlayerMessageManager_t::reset();
 	monsterAllyFormations.reset();
 	particleTimerEmitterHitEntities.clear();
 	particleTimerEffects.clear();

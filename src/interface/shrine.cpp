@@ -137,99 +137,70 @@ std::set<std::string> ShrineEffects_t::shrineEffects =
 	"ENSEMBLE_5_SCROLL"
 };
 
-struct ShrinePlayerMessageManager_t
+int ShrinePlayerMessageManager_t::processed_on_floor = -1;
+std::map<Uint32, std::vector<ShrinePlayerMessageManager_t::ShrinePlayerMessages_t>> ShrinePlayerMessageManager_t::shrines;
+void ShrinePlayerMessageManager_t::reset()
 {
-	enum MessageType
+	shrines.clear();
+}
+void ShrinePlayerMessageManager_t::insert(Uint32 uid, const int player, const char* lang, std::string tierString, std::pair<std::string, int> resultString, int messageDelay)
+{
+	if ( multiplayer != CLIENT )
 	{
-		SHRINE_MESSAGE_WARNING,
-		SHRINE_MESSAGE_GENERAL,
-		SHRINE_MESSAGE_REJECT
-	};
-	struct ShrinePlayerMessages_t
-	{
-		MessageType messageType = SHRINE_MESSAGE_WARNING;
-		int player = 0;
-		std::string lang_str = "";
-		Uint32 tick = 0;
-		std::string tier_string = "";
-		std::pair<std::string, int> result_pair;
-	
-		ShrinePlayerMessages_t(MessageType _messageType, const int _player, const char* _lang, std::string tierString, std::pair<std::string, int> resultString)
-		{
-			messageType = _messageType;
-			player = _player;
-			lang_str = _lang ? _lang : "";
-			tick = ::ticks;
-			tier_string = tierString;
-			result_pair = resultString;
-		};
-	};
-	static int processed_on_floor;
-	static std::map<Uint32, std::vector<ShrinePlayerMessages_t>> shrines;
-	static void insert(Uint32 uid, const int player, const char* lang, std::string tierString, std::pair<std::string, int> resultString, int messageDelay)
-	{
-		if ( multiplayer != CLIENT )
-		{
-			shrines[uid].push_back(ShrinePlayerMessages_t(SHRINE_MESSAGE_WARNING, player, lang, tierString, resultString));
-			shrines[uid].back().tick += messageDelay;
-		}
+		shrines[uid].push_back(ShrinePlayerMessages_t(SHRINE_MESSAGE_WARNING, player, lang, tierString, resultString));
+		shrines[uid].back().tick += messageDelay;
 	}
-	static void insert(MessageType messageType, Uint32 uid, const int player, const char* lang, int messageDelay)
+}
+void ShrinePlayerMessageManager_t::insert(MessageType messageType, Uint32 uid, const int player, const char* lang, int messageDelay)
+{
+	if ( multiplayer != CLIENT )
 	{
-		if ( multiplayer != CLIENT )
-		{
-			shrines[uid].push_back(ShrinePlayerMessages_t(messageType, player, lang, "", std::pair<std::string, int>("", 0)));
-			shrines[uid].back().tick += messageDelay;
-		}
+		shrines[uid].push_back(ShrinePlayerMessages_t(messageType, player, lang, "", std::pair<std::string, int>("", 0)));
+		shrines[uid].back().tick += messageDelay;
 	}
+}
 
-	static void update(Uint32 uid)
+void ShrinePlayerMessageManager_t::update(Uint32 uid)
+{
+	if ( processed_on_floor != currentlevel )
 	{
-		if ( processed_on_floor != currentlevel )
+		shrines.clear();
+	}
+	processed_on_floor = currentlevel;
+	if ( multiplayer != CLIENT )
+	{
+		if ( shrines.find(uid) != shrines.end() )
 		{
-			shrines.clear();
-		}
-		processed_on_floor = currentlevel;
-		if ( multiplayer != CLIENT )
-		{
-			if ( shrines.find(uid) != shrines.end() )
+			for ( auto it = shrines[uid].begin(); it != shrines[uid].end(); )
 			{
-				for ( auto it = shrines[uid].begin(); it != shrines[uid].end(); )
+				if ( ::ticks >= it->tick + 3 * TICKS_PER_SECOND )
 				{
-					if ( ::ticks >= it->tick + 3 * TICKS_PER_SECOND )
+					if ( it->lang_str != "" )
 					{
-						if ( it->lang_str != "" )
+						if ( Entity* shrine = uidToEntity(uid) )
 						{
-							if ( Entity* shrine = uidToEntity(uid) )
+							if ( it->messageType == SHRINE_MESSAGE_REJECT )
 							{
-								if ( it->messageType == SHRINE_MESSAGE_REJECT )
+								messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
+								playSoundNotificationPlayer(it->player, 921, 92);
+							}
+							else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+							{
+								if ( it->messageType == SHRINE_MESSAGE_GENERAL )
+								{
+									messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 255, 0), it->lang_str.c_str());
+								}
+								else
 								{
 									messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
-									playSoundNotificationPlayer(it->player, 921, 92);
+									playSoundPlayer(it->player, 920, 92);
 								}
-								else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+							}
+							else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+							{
+								if ( it->messageType == SHRINE_MESSAGE_GENERAL )
 								{
-									if ( it->messageType == SHRINE_MESSAGE_GENERAL )
-									{
-										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 255, 0), it->lang_str.c_str());
-									}
-									else
-									{
-										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
-										playSoundPlayer(it->player, 920, 92);
-									}
-								}
-								else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
-								{
-									if ( it->messageType == SHRINE_MESSAGE_GENERAL )
-									{
-										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 255, 255), it->lang_str.c_str());
-									}
-									else
-									{
-										messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
-										playSoundNotificationPlayer(it->player, 919, 92);
-									}
+									messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 255, 255), it->lang_str.c_str());
 								}
 								else
 								{
@@ -237,45 +208,48 @@ struct ShrinePlayerMessageManager_t
 									playSoundNotificationPlayer(it->player, 919, 92);
 								}
 							}
-						}
-						it = shrines[uid].erase(it);
-					}
-					else if ( ::ticks == it->tick )
-					{
-						if ( it->tier_string != "" )
-						{
-							if ( Entity* shrine = uidToEntity(uid) )
+							else
 							{
-								if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+								messagePlayerColor(it->player, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->lang_str.c_str());
+								playSoundNotificationPlayer(it->player, 919, 92);
+							}
+						}
+					}
+					it = shrines[uid].erase(it);
+				}
+				else if ( ::ticks == it->tick )
+				{
+					if ( it->tier_string != "" )
+					{
+						if ( Entity* shrine = uidToEntity(uid) )
+						{
+							if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+							{
+								bool supplication = applySupplicationEffect(it->tier_string, players[it->player]->entity, shrine);
+								bool effect = false;
+								if ( it->result_pair.first != "" )
 								{
-									bool supplication = applySupplicationEffect(it->tier_string, players[it->player]->entity, shrine);
-									bool effect = false;
-									if ( it->result_pair.first != "" )
-									{
-										effect = applyShrineEffect(it->result_pair.first, players[it->player]->entity, shrine, it->result_pair.second);
-									}
-									if ( supplication || effect )
-									{
-										spawnHeatOrbitSpin(players[it->player]->entity, 263, false);
-										playSoundEntity(players[it->player]->entity, 166, 128);
-										playSoundEntity(players[it->player]->entity, 827, 128);
-									}
+									effect = applyShrineEffect(it->result_pair.first, players[it->player]->entity, shrine, it->result_pair.second);
+								}
+								if ( supplication || effect )
+								{
+									spawnHeatOrbitSpin(players[it->player]->entity, 263, false);
+									playSoundEntity(players[it->player]->entity, 166, 128);
+									playSoundEntity(players[it->player]->entity, 827, 128);
 								}
 							}
 						}
-						++it;
 					}
-					else
-					{
-						++it;
-					}
+					++it;
+				}
+				else
+				{
+					++it;
 				}
 			}
 		}
 	}
-};
-std::map<Uint32, std::vector<ShrinePlayerMessageManager_t::ShrinePlayerMessages_t>> ShrinePlayerMessageManager_t::shrines;
-int ShrinePlayerMessageManager_t::processed_on_floor = 0;
+}
 
 bool processShrineLockoutOnEffect(Entity* shrine, Entity* target, std::string tierString, bool onInteract)
 {
@@ -1945,6 +1919,11 @@ void actEternalShrineOffering(Entity* my)
 		{
 			groundheight -= 6.0;
 		}
+		else if ( parent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
+		{
+			my->x += 6.0 * cos(parent->yaw);
+			my->y += 6.0 * sin(parent->yaw);
+		}
 		else if ( parent->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
 		{
 			if ( isSprite )
@@ -2655,8 +2634,14 @@ void actEternalShrineLimb(Entity* my)
 			|| animStrike > 0.01
 			|| parent->eternalShrineOfferingItemVisible >= GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_WAITING )
 		{
+			real_t prevRise = animRise;
 			animRise += std::max((1.0 - animRise), 0.01) / 10.0;
 			animRise = std::min(1.0, animRise);
+
+			if ( prevRise < 0.05 && animRise > 0.05 )
+			{
+				playSoundEntityLocal(my, 896, 128);
+			}
 		}
 		else
 		{
@@ -2860,6 +2845,7 @@ void actEternalShrine(Entity* my)
 
 	auto& ascensionTimer = my->fskill[0];
 	auto& supplicationFlareType = my->fskill[1];
+	auto& interactTimer = my->fskill[2];
 	if ( my->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION && my->eternalShrineState == GenericGUIMenu::EternalShrineGUI_t::ETERNAL_SHRINE_STATE_ACTIVE )
 	{
 		real_t prev = ascensionTimer;
@@ -3291,6 +3277,23 @@ void actEternalShrine(Entity* my)
 			{
 				interval = 80;
 			}
+		}
+
+		int shrineCurrentView = (int)(my->eternalShrineOfferingItemTypeModel & 0xF);
+		if ( (interacting
+			&& (shrineCurrentView == GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_ACTION
+				|| shrineCurrentView == GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_WAITING))
+			|| my->eternalShrineOfferingItemVisible >= GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_WAITING )
+		{
+			if ( interactTimer <= 1.0 )
+			{
+				interactTimer = 2.0;
+				playSoundEntityLocal(my, 777, 128);
+			}
+		}
+		else
+		{
+			interactTimer = 0.0;
 		}
 
 		int viewingMode = my->eternalShrineAscensionItemColor > 0 ? my->eternalShrineAscensionItemColor : my->eternalShrineViewingMode;
@@ -4888,16 +4891,25 @@ void GenericGUIMenu::EternalShrineGUI_t::closeEternalShrine()
 			inputs.getUIInteraction(playernum)->toggleclick = false;
 		}
 		inputs.getUIInteraction(playernum)->selectedItemFromChest = 0;
+
 	}
-	if ( players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE
-		&& !players[playernum]->shootmode )
+
+	if ( player.inventory_mode == INVENTORY_MODE_SPELL )
 	{
-		// reset to inventory mode if still hanging in alchemy GUI
-		players[playernum]->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
-		players[playernum]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
-		if ( !inputs.getVirtualMouse(playernum)->draw_cursor )
+		player.inventoryUI.cycleInventoryTab();
+	}
+	else
+	{
+		if ( players[playernum]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE
+			&& !players[playernum]->shootmode )
 		{
-			players[playernum]->GUI.warpControllerToModule(false);
+			// reset to inventory mode if still hanging in alchemy GUI
+			players[playernum]->hud.compactLayoutMode = Player::HUD_t::COMPACT_LAYOUT_INVENTORY;
+			players[playernum]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+			if ( !inputs.getVirtualMouse(playernum)->draw_cursor )
+			{
+				players[playernum]->GUI.warpControllerToModule(false);
+			}
 		}
 	}
 	clearItemDisplayed();
@@ -5074,6 +5086,10 @@ void GenericGUIMenu::EternalShrineGUI_t::openEternalShrine(Entity* shrineEntity)
 	clearItemDisplayed();
 }
 
+#ifdef USE_FMOD
+std::vector<FMOD::Channel*> buttonSound(MAXPLAYERS, nullptr);
+#endif
+
 void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 {
 	if ( multiplayer == CLIENT )
@@ -5114,6 +5130,19 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 
 	const int playernum = parentGUI.getPlayer();
 	auto player = players[playernum];
+
+	if ( !bOpen )
+	{
+		holdButtonProcessedOnTick = 0;
+#ifdef USE_FMOD
+		bool isplaying = false;
+		buttonSound[playernum]->isPlaying(&isplaying);
+		if ( isplaying )
+		{
+			buttonSound[playernum]->stop();
+		}
+#endif
+	}
 
 	if ( !player->isLocalPlayer() )
 	{
@@ -6241,14 +6270,29 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 		auto title = baseFrame->findField("eternal title");
 		if ( eternalShrineStation )
 		{
-			title->setText(Language::get(6983));
+			if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				title->setText(Language::get(7177));
+			}
+			else if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				title->setText(Language::get(7179));
+			}
+			else if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_MUSIC )
+			{
+				title->setText(Language::get(7178));
+			}
+			else if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				title->setText(Language::get(7176));
+			}
 		}
 		else
 		{
 			title->setText("");
 		}
 
-		SDL_Rect textPos{ 0, 21, baseFrame->getSize().w, 24 };
+		SDL_Rect textPos{ 0, 23, baseFrame->getSize().w, 24 };
 		textPos.y -= 14;
 		title->setSize(textPos);
 	}
@@ -6273,7 +6317,7 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 		{
 			closeBtn->deselect();
 		}
-		if ( closeBtn->isDisabled() && usingGamepad && sendItem1Uid == 0 )
+		if ( closeBtn->isDisabled() && usingGamepad && sendItem1Uid == 0 && isInteractable )
 		{
 			closeGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuCancel");
 			if ( auto imgGet = Image::get(closeGlyph->path.c_str()) )
@@ -6361,26 +6405,61 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 	actionBtn->setDisabled(true);
 	if ( parentGUI.guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
 	{
-		if ( ascensionType == ASCENSION_SPELL )
+		if ( usingGamepad )
 		{
-			actionBtn->setText(Language::get(7086));
+			if ( ascensionType == ASCENSION_SPELL )
+			{
+				actionBtn->setText(Language::get(7183));
+			}
+			else
+			{
+				actionBtn->setText(Language::get(7182));
+			}
 		}
 		else
 		{
-			actionBtn->setText(Language::get(7085));
+			if ( ascensionType == ASCENSION_SPELL )
+			{
+				actionBtn->setText(Language::get(7086));
+			}
+			else
+			{
+				actionBtn->setText(Language::get(7085));
+			}
 		}
 	}
 	else if ( parentGUI.guiType == GUI_TYPE_ETERNALSHRINE_ANVIL )
 	{
-		actionBtn->setText(Language::get(7001));
+		if ( usingGamepad )
+		{
+			actionBtn->setText(Language::get(7184));
+		}
+		else
+		{
+			actionBtn->setText(Language::get(7001));
+		}
 	}
 	else if ( parentGUI.guiType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
 	{
-		actionBtn->setText(Language::get(7083));
+		if ( usingGamepad )
+		{
+			actionBtn->setText(Language::get(7180));
+		}
+		else
+		{
+			actionBtn->setText(Language::get(7083));
+		}
 	}
 	else if ( parentGUI.guiType == GUI_TYPE_ETERNALSHRINE_MUSIC )
 	{
-		actionBtn->setText(Language::get(7084));
+		if ( usingGamepad )
+		{
+			actionBtn->setText(Language::get(7181));
+		}
+		else
+		{
+			actionBtn->setText(Language::get(7084));
+		}
 	}
 
 	auto arrowLeftBtn = baseFrame->findButton("arrow left button");
@@ -6419,18 +6498,50 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 			}
 
 			auto pos = actionBtn->getSize();
+			pos.w = 82;
 			pos.x = baseFramePos.w / 2 - pos.w / 2;
+			static ConsoleVariable<int> cvar_eternal_shrine_action_height("/eternal_shrine_action_height", -28);
 			pos.y = 260;
+			if ( usingGamepad )
+			{
+				pos.y += *cvar_eternal_shrine_action_height;
+			}
+			pos.h = 26;
 			actionBtn->setSize(pos);
 
 			SDL_Color color;
 			getColor(actionBtn->getColor(), &color.r, &color.g, &color.b, &color.a);
 
 			color.a = (Uint8)(255 * alphaRatio);
+
+			actionBtn->setBackground("*#images/ui/Shrines/Button_TakeAll_00.png");
+			actionBtn->setBackgroundHighlighted("*#images/ui/Shrines/Button_TakeAllHigh_00.png");
+			actionBtn->setBackgroundActivated("*#images/ui/Shrines/Button_TakeAllPress_00.png");
+
 			actionBtn->setColor(makeColor(color.r, color.g, color.b, color.a));
 			actionBtn->setHighlightColor(makeColor(255, 255, 255, color.a));
 			actionBtn->setTextColor(actionBtn->getColor());
 			actionBtn->setTextHighlightColor(makeColor(201, 162, 100, 255 * alphaRatio));
+			if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
+			{
+				pos.w = 108;
+				pos.h = 46;
+				pos.x = baseFramePos.w / 2 - pos.w / 2;
+				actionBtn->setSize(pos);
+
+				if ( !((sendItem1Uid != 0 || !bSendItemAllowed) && isInteractable) )
+				{
+					actionBtn->setColor(makeColor(color.r, color.g, color.b, 0));
+					actionBtn->setHighlightColor(makeColor(255, 255, 255, 0));
+					actionBtn->setTextColor(actionBtn->getColor());
+					actionBtn->setTextHighlightColor(makeColor(201, 162, 100, 0));
+				}
+
+				actionBtn->setBackground("*#images/ui/Shrines/HUD_CharSheet_ButtonCompact_00.png");
+				actionBtn->setBackgroundHighlighted("*#images/ui/Shrines/HUD_CharSheet_ButtonHighCompact_00.png");
+				actionBtn->setBackgroundActivated("*#images/ui/Shrines/HUD_CharSheet_ButtonCompactPress_00.png");
+			}
+
 
 			if ( !arrowLeftBtn->isInvisible() )
 			{
@@ -6526,19 +6637,19 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 
 			if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
 			{
-				if ( !isInteractable )
-				{
-					SDL_Color color;
-					getColor(hudColors.characterSheetFaintText, &color.r, &color.g, &color.b, &color.a);
-					color.a = (Uint8)(255 * alphaRatio);
-					actionBtn->setTextColor(makeColor(color.r, color.g, color.b, color.a));
-				}
-				else
+				if ( (sendItem1Uid != 0 || !bSendItemAllowed) && isInteractable )
 				{
 					actionBtn->setTextColor(makeColor(255, 255, 255, 255 * alphaRatio));
 				}
+				else
+				{
+					//SDL_Color color;
+					//getColor(hudColors.characterSheetFaintText, &color.r, &color.g, &color.b, &color.a);
+					//color.a = (Uint8)(255 * alphaRatio);
+					//actionBtn->setTextColor(makeColor(color.r, color.g, color.b, color.a));
+				}
 				actionBtn->setDisabled(true);
-				if ( isInteractable )
+				if ( (sendItem1Uid != 0 || !bSendItemAllowed) && isInteractable )
 				{
 					offeringGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt2");
 					if ( auto imgGet = Image::get(offeringGlyph->path.c_str()) )
@@ -6553,6 +6664,11 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 						++offeringGlyph->pos.x;
 					}
 					offeringGlyph->pos.y = actionBtn->getSize().y + actionBtn->getSize().h - 16;
+
+					static ConsoleVariable<int> cvar_eternal_shrine_action_glyphx("/eternal_shrine_action_glyphx", -82);
+					static ConsoleVariable<int> cvar_eternal_shrine_action_glyphy("/eternal_shrine_action_glyphy", -20);
+					offeringGlyph->pos.x += *cvar_eternal_shrine_action_glyphx;
+					offeringGlyph->pos.y += *cvar_eternal_shrine_action_glyphy;
 				}
 			}
 		}
@@ -6577,7 +6693,8 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 
 			auto pos = offeringBtn->getSize();
 			pos.x = baseFramePos.w / 2 - pos.w / 2;
-			pos.y = 250;
+			static ConsoleVariable<int> cvar_eternal_shrine_offering_height("/eternal_shrine_offering_height", -12);
+			pos.y = 250 + *cvar_eternal_shrine_offering_height;
 			offeringBtn->setSize(pos);
 
 			SDL_Color color;
@@ -6612,19 +6729,20 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 			}
 			if ( usingGamepad && !inputs.getVirtualMouse(playernum)->draw_cursor )
 			{
-				if ( !isInteractable/*potionResultFrame->isDisabled() || alchemyMissingIngredientQty(nullptr)*/ )
+				if ( (sendItem1Uid != 0) && isInteractable )
+				{
+					offeringBtn->setTextColor(makeColor(255, 255, 255, 255 * alphaRatio));
+				}
+				else
 				{
 					SDL_Color color;
 					getColor(hudColors.characterSheetFaintText, &color.r, &color.g, &color.b, &color.a);
 					color.a = (Uint8)(255 * alphaRatio);
 					offeringBtn->setTextColor(makeColor(color.r, color.g, color.b, color.a));
 				}
-				else
-				{
-					offeringBtn->setTextColor(makeColor(255, 255, 255, 255 * alphaRatio));
-				}
+
 				offeringBtn->setDisabled(true);
-				if ( isInteractable/*!potionResultFrame->isDisabled() && !alchemyMissingIngredientQty(nullptr)*/ )
+				if ( (sendItem1Uid != 0) && isInteractable )
 				{
 					offeringGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuAlt2");
 					if ( auto imgGet = Image::get(offeringGlyph->path.c_str()) )
@@ -6676,7 +6794,8 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 		&& (submittedItem == GenericGUIMenu::EternalShrineGUI_t::EternalShrineSubmitStatus::SUBMIT_NONE
 			|| currentView == ASSIST_SHRINE_VIEW_ACTION) )
 	{
-		if ( isInteractable )
+		if ( isInteractable && ((currentView == ASSIST_SHRINE_VIEW_ACTION && viewActionReady && bSendItemAllowed)
+			|| submittedItem == GenericGUIMenu::EternalShrineGUI_t::EternalShrineSubmitStatus::SUBMIT_NONE) )
 		{
 			//const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
 			//real_t setpointDiffX = fpsScale * std::max(.01, (1.0 - animTooltip)) / 2.0;
@@ -6684,6 +6803,25 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 			//animTooltip = std::min(1.0, animTooltip);
 			animTooltip = 1.0;
 			animTooltipTicks = ticks;
+		}
+
+		if ( player->bUseCompactGUIWidth() )
+		{
+			// the inventory tooltip provides the prompt before item is placed
+			if ( !strcmp(activateSelectionPrompt->getText(), Language::get(4172)) )
+			{
+				animTooltip = 0.0;
+			}
+		}
+		if ( currentView == ASSIST_SHRINE_VIEW_ACTION )
+		{
+			if ( parentGUI.guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				if ( !(player->inventoryUI.spellPanel.bOpen && player->inventoryUI.spellPanel.isInteractable) )
+				{
+					animTooltip = 0.0;
+				}
+			}
 		}
 
 		{
@@ -6697,6 +6835,11 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 			if ( usingGamepad )
 			{
 				activateSelectionGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuConfirm");
+
+				if ( sendItem1Uid != 0 )
+				{
+					animTooltip = 0.0;
+				}
 			}
 			else
 			{
@@ -6779,8 +6922,9 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 		activateSelectionGlyph->color = (makeColor(color.r, color.g, color.b, color.a));
 	}
 
-	bool tryBrew = false;
+	bool tryShrineRequestAction = false;
 	bool activateSelection = false;
+	bool actionHoldButton = false;
 	if ( isInteractable )
 	{
 		if ( !inputs.getUIInteraction(playernum)->selectedItem
@@ -6796,8 +6940,12 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 				Input::inputs[playernum].consumeBinaryToggle("MenuCancel");
 				if ( sendItem1Uid == 0 )
 				{
+					if ( players[playernum]->inventory_mode != INVENTORY_MODE_SPELL )
+					{
+						// prevent double sound
+						Player::soundCancel();
+					}
 					parentGUI.closeGUI();
-					Player::soundCancel();
 					return;
 				}
 				else if ( true /*animRecvItem < 0.001*/ )
@@ -6813,42 +6961,212 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 			}
 			else
 			{
-				if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuConfirm") )
+				if ( Input::inputs[playernum].binaryToggle("MenuAlt2") )
 				{
-					activateSelection = true;
-					Input::inputs[playernum].consumeBinaryToggle("MenuConfirm");
+					if ( currentView == ASSIST_SHRINE_VIEW_ACTION )
+					{
+						if ( !offeringGlyph->disabled && isInteractable && viewActionReady )
+						{
+							actionHoldButton = true;
+
+							SDL_Color color;
+							getColor(actionBtn->getTextColor(), &color.r, &color.g, &color.b, &color.a);
+							actionBtn->setTextColor(makeColor(201, 162, 100, color.a));
+
+							{
+								if ( holdButtonProcessedOnTick == 0 )
+								{
+									holdButtonProcessedOnTick = ::ticks;
+									Player::soundActivate();
+#ifdef USE_FMOD
+									bool isplaying = false;
+									buttonSound[playernum]->isPlaying(&isplaying);
+									if ( isplaying )
+									{
+										buttonSound[playernum]->stop();
+									}
+									buttonSound[playernum] = playSound(922, 128);
+#endif
+								}
+							}
+
+							if ( holdButtonProcessedOnTick != 0 )
+							{
+								if ( ticks - holdButtonProcessedOnTick >= 1.75 * TICKS_PER_SECOND )
+								{
+									activateSelection = true;
+									tryShrineRequestAction = true;
+									Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+								}
+							}
+						}
+						else
+						{
+							Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+						}
+					}
+					else if ( currentView == ASSIST_SHRINE_VIEW_OFFERING )
+					{
+						if ( !offeringGlyph->disabled && isInteractable )
+						{
+							activateSelection = true;
+							tryShrineRequestAction = true;
+						}
+						Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+					}
+					else
+					{
+						Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
+					}
 				}
-				else if ( !usingGamepad && Input::inputs[playernum].binaryToggle("MenuRightClick") )
+				else if ( Input::inputs[playernum].binaryToggle("MenuPageRight") || Input::inputs[playernum].binaryToggle("MenuPageLeft") )
 				{
-					activateSelection = true;
-					Input::inputs[playernum].consumeBinaryToggle("MenuRightClick");
+					bool left = Input::inputs[playernum].consumeBinaryToggle("MenuPageLeft");
+					bool right = Input::inputs[playernum].consumeBinaryToggle("MenuPageRight");
+					if ( (left || right)  )
+					{
+						if ( left && (isInteractable && !arrowLeftBtn->isInvisible()) )
+						{
+							arrowLeftBtn->activate();
+							return;
+						}
+						if ( right && (isInteractable && !arrowRightBtn->isInvisible()) )
+						{
+							arrowRightBtn->activate();
+							return;
+						}
+					}
+				}
+				else 
+				{
+					if ( usingGamepad && Input::inputs[playernum].binaryToggle("MenuConfirm") )
+					{
+						activateSelection = true;
+						Input::inputs[playernum].consumeBinaryToggle("MenuConfirm");
+					}
+					else if ( !usingGamepad && Input::inputs[playernum].binaryToggle("MenuRightClick") )
+					{
+						activateSelection = true;
+						Input::inputs[playernum].consumeBinaryToggle("MenuRightClick");
+					}
 				}
 			}
+		}
+	}
+
+	if ( !actionHoldButton )
+	{
+		if ( holdButtonProcessedOnTick != 0 )
+		{
+			holdButtonProcessedOnTick = 0;
+#ifdef USE_FMOD
+			bool isplaying = false;
+			buttonSound[playernum]->isPlaying(&isplaying);
+			if ( isplaying )
+			{
+				buttonSound[playernum]->stop();
+			}
+#endif
+			Player::soundCancel();
+		}
+	}
+	else
+	{
+		if ( actionBtn->getDrawCallback() == nullptr )
+		{
+			actionBtn->setDrawCallback([](const Widget& widget, SDL_Rect rect) {
+
+				const Frame* parent = static_cast<const Frame*>(widget.getParent());
+
+				const int player = widget.getOwner();
+				SDL_Rect drawRect = rect;
+				drawRect.x += 108 / 2;
+				drawRect.y += 46 / 2;
+				drawRect.w = 108;
+				drawRect.h = 46;
+				real_t opacity = 255;
+				if ( parent && parent->getOpacity() < 100.0 )
+				{
+					opacity *= parent->getOpacity() / 100.0;
+				}
+				real_t progress = 0.0;
+				if ( GenericGUI[player].eternalShrineGUI.holdButtonProcessedOnTick != 0 )
+				{
+					progress = (::ticks - GenericGUI[player].eternalShrineGUI.holdButtonProcessedOnTick) / (1.75 * TICKS_PER_SECOND);
+				}
+				progress = std::min(1.0, progress);
+				if ( progress > 0.0 )
+				{
+					drawClockwiseSquareMesh("images/ui/shrines/ButtonHoldHighlight.png",
+						progress,
+						drawRect, makeColor(255, 255, 255, opacity));
+				}
+			});
 		}
 	}
 
 	if ( activateSelection && players[playernum] && players[playernum]->entity
 		/*&& animRecvItem < 0.001*/ )
 	{
-		if ( itemActionType != ETERNAL_ITEM_OK && itemActionType != ETERNAL_ITEM_NONE )
+		if ( itemActionType != ETERNAL_ITEM_OK && !tryShrineRequestAction && itemActionType != ETERNAL_ITEM_NONE )
 		{
 			playSound(90, 64);
 		}
-		if ( (player->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE || (tryBrew && player->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY))
-			&& (itemActionType == ETERNAL_ITEM_OK || tryBrew)
+		if ( (player->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE 
+			|| (tryShrineRequestAction && (player->GUI.activeModule == Player::GUI_t::MODULE_INVENTORY || player->GUI.activeModule == Player::GUI_t::MODULE_SPELLS)))
+			&& (itemActionType == ETERNAL_ITEM_OK || tryShrineRequestAction)
 			)
 		{
-			ItemType oldPotion1Type = WOODEN_SHIELD;
-			ItemType oldPotion2Type = WOODEN_SHIELD;
 			if ( (getSelectedEternalShrineX() >= ETERNALSHRINE_SLOT_SEND && getSelectedEternalShrineX() < 0
-				&& getSelectedEternalShrineY() == 0) || tryBrew )
+				&& getSelectedEternalShrineY() == 0) || tryShrineRequestAction )
 			{
-				if ( !tryBrew && getSelectedEternalShrineX() == ETERNALSHRINE_SLOT_SEND )
+				if ( !tryShrineRequestAction && getSelectedEternalShrineX() == ETERNALSHRINE_SLOT_SEND )
 				{
 					sendItem1Uid = 0;
 					animSendItem1 = 0.0;
 					animSendItem1Frame->setDisabled(true);
 					Player::soundCancel();
+				}
+				else if ( tryShrineRequestAction )
+				{
+					if ( currentView == ASSIST_SHRINE_VIEW_ACTION )
+					{
+						if ( viewActionReady )
+						{
+							if ( !actionBtn->isInvisible() )
+							{
+								actionBtn->activate();
+								return;
+							}
+						}
+					}
+					else if ( currentView == ASSIST_SHRINE_VIEW_OFFERING )
+					{
+						if ( !(player->GUI.activeModule == Player::GUI_t::MODULE_SPELLS && parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ASCENSION) )
+						{
+							if ( !offeringBtn->isInvisible() )
+							{
+								offeringBtn->activate();
+								if ( sendItem1Uid == 0 )
+								{
+									player->inventoryUI.tooltipDelayTick = ::ticks + TICKS_PER_SECOND;
+									// consumed
+									if ( player->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+									{
+										if ( player->inventory_mode == INVENTORY_MODE_SPELL )
+										{
+											player->GUI.activateModule(Player::GUI_t::MODULE_SPELLS);
+										}
+										else
+										{
+											player->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+										}
+									}
+								}
+								return;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -7179,7 +7497,7 @@ void GenericGUIMenu::EternalShrineGUI_t::createEternalShrine()
 		offeringPrompt->setOntop(true);
 
 		auto offeringButton = bgFrame->addButton("offering button");
-		SDL_Rect offeringBtnPos{ 0, 0, 188, 26 };
+		SDL_Rect offeringBtnPos{ 0, 0, 112, 26 };
 		offeringButton->setSize(offeringBtnPos);
 		offeringButton->setColor(makeColor(255, 255, 255, 255));
 		offeringButton->setHighlightColor(makeColor(255, 255, 255, 255));
@@ -7378,6 +7696,18 @@ void GenericGUIMenu::EternalShrineGUI_t::createEternalShrine()
 						}
 					}
 					gui.ascensionType = (EternalShrineAscensionType)type;
+
+					if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+					{
+						if ( players[player]->inventory_mode == INVENTORY_MODE_SPELL )
+						{
+							players[player]->GUI.activateModule(Player::GUI_t::MODULE_SPELLS);
+						}
+						else
+						{
+							players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+						}
+					}
 				}
 				});
 			arrowButton->setTickCallback(genericgui_deselect_fn);
@@ -7426,6 +7756,18 @@ void GenericGUIMenu::EternalShrineGUI_t::createEternalShrine()
 						}
 					}
 					gui.ascensionType = (EternalShrineAscensionType)type;
+
+					if ( players[player]->GUI.activeModule == Player::GUI_t::MODULE_ETERNALSHRINE )
+					{
+						if ( players[player]->inventory_mode == INVENTORY_MODE_SPELL )
+						{
+							players[player]->GUI.activateModule(Player::GUI_t::MODULE_SPELLS);
+						}
+						else
+						{
+							players[player]->GUI.activateModule(Player::GUI_t::MODULE_INVENTORY);
+						}
+					}
 				}
 				});
 			arrowButton->setTickCallback(genericgui_deselect_fn);
@@ -7492,7 +7834,7 @@ GenericGUIMenu::EternalShrineGUI_t::EternalItemActions_t GenericGUIMenu::Eternal
 			clearItemDisplayed();
 		}
 	}
-	if ( !bSendItemAllowed )
+	if ( !bSendItemAllowed || submittedItem == SUBMIT_WAITING )
 	{
 		if ( !checkResultOnly )
 		{

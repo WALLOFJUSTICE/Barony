@@ -4603,3 +4603,38 @@ private:
 	static std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffectsPools, int>>>> shrineRewards;
 	static std::map<std::string, std::set<std::string>> supplicationExcludeStrings;
 };
+
+struct ShrinePlayerMessageManager_t
+{
+	enum MessageType
+	{
+		SHRINE_MESSAGE_WARNING,
+		SHRINE_MESSAGE_GENERAL,
+		SHRINE_MESSAGE_REJECT
+	};
+	struct ShrinePlayerMessages_t
+	{
+		MessageType messageType = SHRINE_MESSAGE_WARNING;
+		int player = 0;
+		std::string lang_str = "";
+		Uint32 tick = 0;
+		std::string tier_string = "";
+		std::pair<std::string, int> result_pair;
+
+		ShrinePlayerMessages_t(MessageType _messageType, const int _player, const char* _lang, std::string tierString, std::pair<std::string, int> resultString)
+		{
+			messageType = _messageType;
+			player = _player;
+			lang_str = _lang ? _lang : "";
+			tick = ::ticks;
+			tier_string = tierString;
+			result_pair = resultString;
+		};
+	};
+	static int processed_on_floor;
+	static std::map<Uint32, std::vector<ShrinePlayerMessages_t>> shrines;
+	static void insert(Uint32 uid, const int player, const char* lang, std::string tierString, std::pair<std::string, int> resultString, int messageDelay);
+	static void insert(MessageType messageType, Uint32 uid, const int player, const char* lang, int messageDelay);
+	static void update(Uint32 uid);
+	static void reset();
+};

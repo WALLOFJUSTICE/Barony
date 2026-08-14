@@ -1141,6 +1141,7 @@ public:
 		bool itemRequiresTitleReflow = true;
 		EternalItemActions_t setItemDisplayNameAndPrice(Item * item, bool checkResultOnly = false);
 		void clearItemDisplayed();
+		Uint32 holdButtonProcessedOnTick = 0;
 
 		EternalShrineGUI_t(GenericGUIMenu& g) :
 			parentGUI(g)
@@ -2210,7 +2211,9 @@ enum ItemContextMenuPrompts {
 	PROMPT_UNEQUIP_FOR_DROP,
 	PROMPT_CLEAR_HOTBAR_SLOT,
 	PROMPT_COOK,
-	PROMPT_SCEPTER_CHARGE
+	PROMPT_SCEPTER_CHARGE,
+	PROMPT_SHRINE_OFFERING,
+	PROMPT_SHRINE_APPLY_ITEM
 };
 
 std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int player, Item* item);

@@ -7456,5 +7456,21 @@ has been unlocked!#
 7171 Scroll of liturgy negative text effect.#
 7172 Scroll of minstrels text effect.#
 7173 The scroll invigorates your %s!#
+7174 Offer#
+7175 Place#
+7176 Supplication#
+7177 Divine Anvil#
+7178 Orchestrion#
+7179 Ascension#
+7180        Reach
+       (Hold)#
+7181        Listen
+       (Hold)#
+7182        Inspire
+       (Hold)#
+7183        Ascend
+       (Hold)#
+7184        Smith
+       (Hold)#
 
 7999 END#
