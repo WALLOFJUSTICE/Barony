@@ -3323,6 +3323,7 @@ void Player::init() // for use on new/restart game, UI related
 	mechanics.eternalShrineDonationRevealedOnFloor.clear();
 	mechanics.donationClaimed = false;
 	mechanics.bountiesClaimed = 0;
+	mechanics.client_hunger_score = 0;
 
 	mechanics.setDivineFavor(0);
 	mechanics.divineOfferingsHistory.clear();
@@ -3370,6 +3371,7 @@ void Player::cleanUpOnEntityRemoval()
 	mechanics.donationRevealedOnFloor = 0;
 	mechanics.eternalShrineDonationRevealedOnFloor.clear();
 	mechanics.donationClaimed = false;
+	mechanics.client_hunger_score = 0;
 }
 
 const bool Player::isLocalPlayer() const
@@ -8977,12 +8979,12 @@ void Player::PlayerMechanics_t::divineFavorModItem(int itemValue)
 	}
 }
 
-int Player::PlayerMechanics_t::getDivineFavorFromItem(Item* item)
+int Player::PlayerMechanics_t::getDivineFavorFromItem(Item* item, int qty)
 {
 	if ( !item ) { return 0; }
 
 	int tmpQty = item->count;
-	item->count = 1;
+	item->count = qty;
 	int value = item->sellValue(-1);
 	item->count = tmpQty;
 	if ( !item->identified )

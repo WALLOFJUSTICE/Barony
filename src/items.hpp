@@ -731,6 +731,7 @@ public:
 	Sint32 potionGetCursedEffectDurationMaximum(Entity* my, Stat* myStats) const;
 	Sint32 potionGetCursedEffectDurationRandom(Entity* my, Stat* myStats) const;
 	static int getBaseFoodSatiation(ItemType type);
+	static int getAutomatonFoodSatiation(ItemType type);
 
 	Sint32 getWeight() const;
 	Sint32 getGoldValue() const;

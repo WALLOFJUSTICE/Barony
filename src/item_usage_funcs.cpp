@@ -5638,7 +5638,15 @@ void item_Food(Item*& item, int player)
 	if ( players[player]->isLocalPlayer() )
 	{
 		conductFoodless = false;
-		if ( item->type == FOOD_MEAT || item->type == FOOD_FISH || item->type == FOOD_TOMALLEY || item->type == FOOD_BLOOD )
+		if ( item->type == FOOD_MEAT || item->type == FOOD_FISH || item->type == FOOD_TOMALLEY 
+			|| item->type == FOOD_BLOOD
+			|| item->type == FOOD_RATION
+			|| item->type == FOOD_RATION_SPICY
+			|| item->type == FOOD_RATION_SOUR
+			|| item->type == FOOD_RATION_BITTER
+			|| item->type == FOOD_RATION_HEARTY
+			|| item->type == FOOD_RATION_HERBAL
+			|| item->type == FOOD_RATION_SWEET )
 		{
 			conductVegetarian = false;
 		}
@@ -6937,6 +6945,72 @@ void item_Spellbook(Item*& item, int player)
 	}
 }
 
+int Item::getAutomatonFoodSatiation(ItemType type)
+{
+	switch ( type )
+	{
+	case GEM_ROCK:
+	case GEM_GLASS:
+		return 50;
+	case GEM_LUCK:
+	case GEM_GARNET:
+	case GEM_RUBY:
+	case GEM_JACINTH:
+	case GEM_AMBER:
+	case GEM_CITRINE:
+	case GEM_JADE:
+	case GEM_EMERALD:
+	case GEM_SAPPHIRE:
+	case GEM_AQUAMARINE:
+	case GEM_AMETHYST:
+	case GEM_FLUORITE:
+	case GEM_OPAL:
+	case GEM_DIAMOND:
+	case GEM_JETSTONE:
+	case GEM_OBSIDIAN:
+	case GEM_JEWEL:
+		return 1000;
+	case READABLE_BOOK:
+		return 400;
+	case SCROLL_MAIL:
+	case SCROLL_BLANK:
+		return 200;
+	case SCROLL_IDENTIFY:
+	case SCROLL_LIGHT:
+	case SCROLL_REMOVECURSE:
+	case SCROLL_FOOD:
+	case SCROLL_MAGICMAPPING:
+	case SCROLL_REPAIR:
+	case SCROLL_DESTROYARMOR:
+	case SCROLL_TELEPORTATION:
+	case SCROLL_SUMMON:
+	case SCROLL_CONJUREARROW:
+	case SCROLL_CHARGING:
+	case SCROLL_SCRY_KEY:
+	case SCROLL_LITURGY:
+	case SCROLL_MINSTRELS:
+	case SCROLL_STAMINA:
+	case SCROLL_MENTALITY:
+	case SCROLL_AGILITY:
+		return 600;
+	case SCROLL_ENCHANTWEAPON:
+	case SCROLL_ENCHANTARMOR:
+		return 600;
+	case SCROLL_FIRE:
+	{
+		return 1500;
+	}
+	case TOOL_METAL_SCRAP:
+		return 50;
+	case TOOL_MAGIC_SCRAP:
+		return 100;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 void item_FoodAutomaton(Item*& item, int player)
 {
 	if ( !stats[player] || !players[player] || !players[player]->entity )
@@ -7039,7 +7113,7 @@ void item_FoodAutomaton(Item*& item, int player)
 			break;
 		case GEM_ROCK:
 		case GEM_GLASS:
-			stats[player]->HUNGER += 50;
+			stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 			break;
 		case GEM_LUCK:
 		case GEM_GARNET:
@@ -7058,11 +7132,11 @@ void item_FoodAutomaton(Item*& item, int player)
 		case GEM_JETSTONE:
 		case GEM_OBSIDIAN:
 		case GEM_JEWEL:
-			stats[player]->HUNGER += 1000;
+			stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 			players[player]->entity->modMP(10);
 			break;
 		case READABLE_BOOK:
-			stats[player]->HUNGER += 400;
+			stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 			if ( stats[player]->playerRace == RACE_AUTOMATON && stats[player]->stat_appearance == 0 )
 			{
 				steamStatisticUpdateClient(player, STEAM_STAT_FASCIST, STEAM_STAT_INT, 1);
@@ -7070,7 +7144,7 @@ void item_FoodAutomaton(Item*& item, int player)
 			break;
 		case SCROLL_MAIL:
 		case SCROLL_BLANK:
-			stats[player]->HUNGER += 200;
+			stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 			break;
 		case SCROLL_IDENTIFY:
 		case SCROLL_LIGHT:
@@ -7084,17 +7158,22 @@ void item_FoodAutomaton(Item*& item, int player)
 		case SCROLL_CONJUREARROW:
 		case SCROLL_CHARGING:
 		case SCROLL_SCRY_KEY:
+		case SCROLL_LITURGY:
+		case SCROLL_MINSTRELS:
+		case SCROLL_STAMINA:
+		case SCROLL_MENTALITY:
+		case SCROLL_AGILITY:
 			players[player]->entity->modMP(20);
-			stats[player]->HUNGER += 600;
+			stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 			break;
 		case SCROLL_ENCHANTWEAPON:
 		case SCROLL_ENCHANTARMOR:
 			players[player]->entity->modMP(40);
-			stats[player]->HUNGER += 600;
+			stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 			break;
 		case SCROLL_FIRE:
 		{
-			stats[player]->HUNGER += 1500;
+			stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 			players[player]->entity->modMP(stats[player]->MAXMP);
 			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3699)); // superheats
 			if ( stats[player]->playerRace == RACE_AUTOMATON && stats[player]->stat_appearance == 0 )
@@ -7147,7 +7226,7 @@ void item_FoodAutomaton(Item*& item, int player)
 			}
 			else
 			{
-				stats[player]->HUNGER += 50;
+				stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 				stats[player]->HUNGER = std::min(stats[player]->HUNGER, 550);
 			}
 			break;
@@ -7165,7 +7244,7 @@ void item_FoodAutomaton(Item*& item, int player)
 			}
 			else
 			{
-				stats[player]->HUNGER += 100;
+				stats[player]->HUNGER += Item::getAutomatonFoodSatiation(item->type);
 				stats[player]->HUNGER = std::min(stats[player]->HUNGER, 1199);
 			}
 			break;
@@ -7300,6 +7379,11 @@ bool itemIsConsumableByAutomaton(const Item& item)
 		case SCROLL_CONJUREARROW:
 		case SCROLL_CHARGING:
 		case SCROLL_SCRY_KEY:
+		case SCROLL_LITURGY:
+		case SCROLL_MINSTRELS:
+		case SCROLL_STAMINA:
+		case SCROLL_MENTALITY:
+		case SCROLL_AGILITY:
 		case TOOL_MAGIC_SCRAP:
 		case TOOL_METAL_SCRAP:
 			return true;

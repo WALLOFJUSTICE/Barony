@@ -9650,6 +9650,10 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 
 		if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
 		{
+			if ( player >= 0 && player < MAXPLAYERS && !players[player]->isLocalPlayer() )
+			{
+				players[player]->mechanics.client_hunger_score = SDLNet_Read32(&net_packet->data[10]);
+			}
 			eternalShrineProcessSupplication(player, uid, shrineType);
 		}
 		else if ( shrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )

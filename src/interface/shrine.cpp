@@ -910,6 +910,39 @@ void ShrineEffects_t::buildShrineEffects()
 	}
 }
 
+static bool debug_anvil_results = false;
+static ConsoleCommand ccmd_eternal_shrine_anvil_view("/eternal_shrine_anvil_debug_view", "", 
+	[](int argc, const char* argv[]) {
+	if ( !(svFlags & SV_FLAG_CHEATS) )
+	{
+		messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+		return;
+	}
+
+	for ( auto node = map.entities->first; node; node = node->next )
+	{
+		if ( Entity* entity = (Entity*)node->element )
+		{
+			if ( entity->behavior == &actEternalShrine && entity->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				debug_anvil_results = true;
+				if ( stats[clientnum]->weapon )
+				{
+					Status prev = stats[clientnum]->weapon->status;
+					for ( int status = BROKEN; status <= EXCELLENT; ++status )
+					{
+						stats[clientnum]->weapon->status = (Status)status;
+						ShrineEffects_t::getTierStringFromEffect(clientnum, *entity, local_rng, stats[clientnum]->weapon);
+					}
+					stats[clientnum]->weapon->status = prev;
+				}
+				debug_anvil_results = false;
+				break;
+			}
+		}
+	}
+});
+
 std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& my, BaronyRNG& rng, Item* item)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return "0-0"; }
@@ -982,6 +1015,7 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 			int blessMod = 0;
 			bool deleteItem = false;
 			bool setItem = false;
+			bool enhanceItem = false;
 			void setDeleteItem()
 			{
 				deleteItem = true;
@@ -991,36 +1025,147 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				repairMod = _repairMod;
 				blessMod = _blessMod;
 			}
-			void setItemProp(int _repairNew, int _blessNew)
+			void setItemProp(Item* item, int _repairNew, int _blessNew)
 			{
 				setItem = true;
-				repairMod = _repairNew;
+
+				if ( item && ((item->type >= ARTIFACT_SWORD && item->type <= ARTIFACT_GLOVES) || item->type == BOOMERANG) )
+				{
+					repairMod = std::min((int)item->status + 1, _repairNew);
+				}
+				else
+				{
+					repairMod = _repairNew;
+				}
 				blessMod = _blessNew;
+			}
+			bool setEnhanceItem(Item* item)
+			{
+				enhanceItem = false;
+				if ( GenericGUIMenu::isItemEnhanceable(item, -1) )
+				{
+					enhanceItem = true;
+				}
+				return enhanceItem;
 			}
 
 			bool run(Item* item)
 			{
 				if ( !item ) { return false; }
+				bool artifact = false;
+				if ( item->type == ARTIFACT_AXE
+					|| item->type == ARTIFACT_SWORD
+					|| item->type == ARTIFACT_MACE
+					|| item->type == ARTIFACT_SPEAR
+					|| item->type == ARTIFACT_AXE
+					|| item->type == ARTIFACT_BOW
+					|| item->type == ARTIFACT_BREASTPIECE
+					|| item->type == ARTIFACT_HELM
+					|| item->type == ARTIFACT_BOOTS
+					|| item->type == ARTIFACT_CLOAK
+					|| item->type == ARTIFACT_GLOVES
+					|| item->type == MASK_ARTIFACT_VISOR )
+				{
+					artifact = true;
+				}
 				if ( deleteItem )
 				{
 					item->count = 0;
 					return true;
 				}
+
+				if ( enhanceItem )
+				{
+					if ( GenericGUIMenu::isItemEnhanceable(item, -1) )
+					{
+						int type = GenericGUIMenu::getItemEnhanceResult(item);
+						if ( type >= 0 )
+						{
+							item->type = ItemType(type);
+						}
+					}
+				}
+
+				if ( item->type == ENCHANTED_FEATHER )
+				{
+					if ( item->appearance % ENCHANTED_FEATHER_MAX_DURABILITY < 100 )
+					{
+						int durability = item->appearance % ENCHANTED_FEATHER_MAX_DURABILITY;
+						int repairAmount = 100 - durability;
+						item->appearance += repairAmount;
+					}
+				}
+				else if ( item->type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF) )
+				{
+					if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX < 100 )
+					{
+						int durability = item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
+						int repairAmount = ((MAGICSTAFF_SCEPTER_CHARGE_MAX - 1) - durability);
+						item->appearance += repairAmount;
+					}
+				}
+				else if ( item->type == TOOL_SENTRYBOT || item->type == TOOL_SPELLBOT || item->type == TOOL_DUMMYBOT
+					|| item->type == TOOL_GYROBOT )
+				{
+					if ( !item->tinkeringBotIsMaxHealth() )
+					{
+						item->appearance = ITEM_TINKERING_APPEARANCE;
+					}
+				}
+
 				if ( setItem )
 				{
 					item->status = (Status)repairMod;
-					item->beatitude = blessMod;
+					if ( !artifact )
+					{
+						item->beatitude = blessMod;
+					}
+					else
+					{
+						item->beatitude = std::min(item->beatitude + 1, blessMod);
+					}
 					return true;
 				}
 				
 				if ( blessMod != 0 || repairMod != 0 )
 				{
 					item->status = (Status)std::max((int)BROKEN, std::min((int)EXCELLENT, (item->status + repairMod)));
-					item->beatitude += blessMod;
+					if ( !artifact )
+					{
+						item->beatitude += blessMod;
+					}
+					else
+					{
+						item->beatitude += std::min(1, blessMod);
+					}
 				}
 				return true;
 			}
 		};
+
+		bool canCharge = false;
+		if ( item->type == ENCHANTED_FEATHER )
+		{
+			if ( item->appearance % ENCHANTED_FEATHER_MAX_DURABILITY < 100 )
+			{
+				canCharge = true;
+			}
+		}
+		else if ( item->type == MAGICSTAFF_SCEPTER || (MAGICSTAFFS_USE_CHARGE && itemCategory(item) == MAGICSTAFF) )
+		{
+			if ( item->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX < 100 )
+			{
+				canCharge = true;
+			}
+		}
+		else if ( item->type == TOOL_SENTRYBOT || item->type == TOOL_SPELLBOT || item->type == TOOL_DUMMYBOT
+			|| item->type == TOOL_GYROBOT )
+		{
+			if ( !item->tinkeringBotIsMaxHealth() )
+			{
+				canCharge = true;
+			}
+		}
 
 		std::map<ChanceDifficulty, ModFuncs> chance_funcs;
 
@@ -1028,14 +1173,14 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 		{
 			if ( item->beatitude < 0 )
 			{
-				chance_funcs[HARD].setItemProp(item->status, std::min(4, abs(item->beatitude)));
+				chance_funcs[HARD].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 4), std::min(4, abs(item->beatitude)));
 				chances[HARD] = 2;
 
-				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 4), 0);
-				chances[MED] = 3;
+				//chance_funcs[MED].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 4), 0);
+				//chances[MED] = 3;
 
-				chance_funcs[EASY].setItemProp(std::min((int)EXCELLENT, (int)item->status + 2), 0);
-				chances[EASY] = 3;
+				//chance_funcs[EASY].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 2), 0);
+				//chances[EASY] = 3;
 
 				//chance_funcs[NONE].setItemMod(-1, 1);
 				//chances[NONE] = 5;
@@ -1045,37 +1190,40 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[HARD] = 2;
+					chance_funcs[HARD].setEnhanceItem(item);
 					chance_funcs[HARD].setItemMod(4, 2);
 				}
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[MED] = 3;
-					chance_funcs[MED].setItemMod(4, 1);
+					chance_funcs[MED].setEnhanceItem(item);
+					chance_funcs[MED].setItemMod(4, item->beatitude == 0 ? 3 : 1);
 				}
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 3;
-					chance_funcs[EASY].setItemMod(4, 0);
+					chance_funcs[EASY].setEnhanceItem(item);
+					chance_funcs[EASY].setItemMod(4, item->beatitude == 0 ? 2 : 1);
 				}
-				if ( item->status + 0 <= (int)EXCELLENT )
+				/*if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[NONE] = 2;
 					chance_funcs[NONE].setItemMod(4, 0);
-				}
+				}*/
 			}
 		}
 		else if ( result.find("3-") != std::string::npos )
 		{
 			if ( item->beatitude < 0 )
 			{
-				chance_funcs[HARD].setItemProp(item->status, std::min(3, abs(item->beatitude)));
+				chance_funcs[HARD].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 4), std::min(3, abs(item->beatitude)));
 				chances[HARD] = 2;
 
-				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 3), 0);
-				chances[MED] = 3;
+				//chance_funcs[MED].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 3), 0);
+				//chances[MED] = 3;
 
-				chance_funcs[EASY].setItemProp(std::min((int)EXCELLENT, (int)item->status + 1), 0);
-				chances[EASY] = 4;
+				//chance_funcs[EASY].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 1), 0);
+				//chances[EASY] = 4;
 
 				//chance_funcs[NONE].setItemMod(-1, 1);
 				//chances[NONE] = 5;
@@ -1085,37 +1233,40 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[HARD] = 2;
-					chance_funcs[HARD].setItemMod(2, 2);
+					chance_funcs[HARD].setEnhanceItem(item);
+					chance_funcs[HARD].setItemMod(4, item->beatitude == 0 ? 2 : 1);
 				}
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[MED] = 2;
 					chance_funcs[MED].setItemMod(4, 1);
 				}
-				if ( item->status + 0 <= (int)EXCELLENT )
+				if ( item->status + 2 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 4;
+					chance_funcs[EASY].setEnhanceItem(item);
 					chance_funcs[EASY].setItemMod(3, 0);
 				}
-				if ( item->status + 3 <= (int)EXCELLENT )
+				/*if ( item->status + 3 <= (int)EXCELLENT )
 				{
 					chances[NONE] = 2;
+					chance_funcs[EASY].setEnhanceItem(item);
 					chance_funcs[NONE].setItemMod(3, 0);
-				}
+				}*/
 			}
 		}
 		else if ( result.find("2-") != std::string::npos )
 		{
 			if ( item->beatitude < 0 )
 			{
-				chance_funcs[HARD].setItemProp(item->status, std::min(2, abs(item->beatitude)));
+				chance_funcs[HARD].setItemProp(item, item->status, std::min(2, abs(item->beatitude)));
 				chances[HARD] = 2;
 
-				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 2), 0);
-				chances[MED] = 3;
+				chance_funcs[MED].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 4), 0);
+				chances[MED] = 2;
 
-				chance_funcs[EASY].setItemProp(item->status, 0);
-				chances[EASY] = 5;
+				//chance_funcs[EASY].setItemProp(item, item->status, 0);
+				//chances[EASY] = 5;
 
 				//chance_funcs[NONE].setItemMod(-1, 1);
 				//chances[NONE] = 5;
@@ -1125,7 +1276,14 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[HARD] = 2;
-					chance_funcs[HARD].setItemMod(2, 1);
+					if ( chance_funcs[HARD].setEnhanceItem(item) )
+					{
+						chance_funcs[HARD].setItemMod(2, 0);
+					}
+					else
+					{
+						chance_funcs[HARD].setItemMod(2, 1);
+					}
 				}
 				if ( item->status + 4 <= (int)EXCELLENT )
 				{
@@ -1148,24 +1306,31 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 		{
 			if ( item->beatitude < 0 )
 			{
-				chance_funcs[HARD].setItemProp(item->status, std::min(1, abs(item->beatitude)));
+				chance_funcs[HARD].setItemProp(item, item->status, std::min(1, abs(item->beatitude)));
 				chances[HARD] = 1;
 
-				chance_funcs[MED].setItemProp(std::min((int)EXCELLENT, (int)item->status + 1), 0);
-				chances[MED] = 1;
+				chance_funcs[MED].setItemProp(item, std::min((int)EXCELLENT, (int)item->status + 4), 0);
+				chances[MED] = 3;
 
-				chance_funcs[EASY].setItemProp(item->status, 0);
-				chances[EASY] = 3;
-
-				chance_funcs[NONE].setItemMod(-1, 1);
-				chances[NONE] = 5;
+				//chance_funcs[EASY].setItemProp(item, item->status, 0);
+				//chances[EASY] = 3;
+				
+				//chance_funcs[NONE].setItemMod(-1, 1);
+				//chances[NONE] = 5;
 			}
 			else
 			{
-				if ( item->status + 1 <= (int)EXCELLENT )
+				if ( item->status <= (int)EXCELLENT )
 				{
 					chances[HARD] = 1;
-					chance_funcs[HARD].setItemMod(1, 1);
+					if ( chance_funcs[HARD].setEnhanceItem(item) )
+					{
+						chance_funcs[HARD].setItemMod(1, 0);
+					}
+					else
+					{
+						chance_funcs[HARD].setItemMod(1, 1);
+					}
 				}
 				if ( item->status + 3 <= (int)EXCELLENT )
 				{
@@ -1188,7 +1353,7 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 		{
 			if ( item->beatitude < 0 )
 			{
-				chance_funcs[HARD].setItemProp(BROKEN, 0);
+				chance_funcs[HARD].setItemProp(item, BROKEN, 0);
 				chances[HARD] = 1;
 			}
 			else
@@ -1204,16 +1369,57 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 					chance_funcs[EASY].setItemMod(1, 0);
 				}
 				chances[NONE] = 2;
-				chance_funcs[NONE].setDeleteItem();
+				if ( !canCharge )
+				{
+					chance_funcs[NONE].setDeleteItem();
+				}
+				else
+				{
+					chance_funcs[NONE].setItemMod(1, 0);
+				}
 			}
 		}
 		bool anychances = false;
+		int chanceIndex = -1;
+		int chanceTotal = 0;
 		for ( auto chance : chances )
 		{
+			chanceTotal += chance;
+		}
+		for ( auto chance : chances )
+		{
+			++chanceIndex;
 			if ( chance )
 			{
 				anychances = true;
 			}
+			if ( debug_anvil_results )
+			{
+				if ( chanceIndex == NONE )
+				{
+					messagePlayer(player, MESSAGE_MISC, "Tier %c Anvil %s: [NONE]: %.1f%%", 
+						result[0], ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), chance * 100 / (real_t)chanceTotal);
+				}
+				else if ( chanceIndex == EASY )
+				{
+					messagePlayer(player, MESSAGE_MISC, "Tier %c Anvil %s: [EASY]: %.1f%%",
+						result[0], ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), chance * 100 / (real_t)chanceTotal);
+				}
+				else if ( chanceIndex == MED )
+				{
+					messagePlayer(player, MESSAGE_MISC, "Tier %c Anvil %s: [MED]: %.1f%%",
+						result[0], ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), chance * 100 / (real_t)chanceTotal);
+				}
+				else if ( chanceIndex == HARD )
+				{
+					messagePlayer(player, MESSAGE_MISC, "Tier %c Anvil %s: [HARD]: %.1f%%",
+						result[0], ItemTooltips.getItemStatusAdjective(item->type, item->status).c_str(), chance * 100 / (real_t)chanceTotal);
+				}
+			}
+		}
+		if ( debug_anvil_results )
+		{
+			return result;
 		}
 		if ( anychances )
 		{
@@ -1268,7 +1474,18 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				}
 			}
 		}
-		if ( numModifiers < 2 && (stats[player]->HUNGER <= 500) )
+
+		bool foodAllowed = false;
+		if ( stats[player]->HUNGER + players[player]->mechanics.client_hunger_score <= 2500 )
+		{
+			foodAllowed = true;
+		}
+		if ( stats[player]->type == SKELETON && (svFlags & SV_FLAG_HUNGER) )
+		{
+			foodAllowed = false;
+		}
+
+		if ( numModifiers < 2 && foodAllowed )
 		{
 			str += str == "" ? "food" : "-food";
 			++numModifiers;
@@ -1284,7 +1501,7 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 	return result;
 }
 
-std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng)
+std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng, Item* item)
 {
 	std::pair<std::string, int> result = { "", 1 };
 
@@ -1421,6 +1638,29 @@ std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEf
 				continue;
 			}
 		}
+
+		if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL
+			&& resultType == SHRINE_RESULT_OUTCOME )
+		{
+			if ( str == "ADORCISED" )
+			{
+				if ( !item )
+				{
+					chances.push_back(0);
+					continue;
+				}
+				if ( item )
+				{
+					if ( !(itemCategory(item) == WEAPON || itemCategory(item) == THROWN 
+						|| itemCategory(item) == POTION || itemCategory(item) == FOOD) )
+					{
+						chances.push_back(0);
+						continue;
+					}
+				}
+			}
+		}
+
 		chances.push_back(1);
 		anychances = true;
 	}
@@ -2452,19 +2692,20 @@ void actEternalShrineLimb(Entity* my)
 					{
 						free(item);
 					}
+					createParticleFociLight(parent, SPELL_NONE, true);
 				}
 				else
 				{
 					auto result = ShrineEffects_t::rollResult(parent->eternalShrineType, ShrineEffects_t::SHRINE_RESULT_OUTCOME, 
 						achievementObserver.checkUidIsFromPlayer(parent->eternalShrineTarget),
-						tierString, parent->entity_rng ? *parent->entity_rng : local_rng);
+						tierString, parent->entity_rng ? *parent->entity_rng : local_rng, item);
 
 					if ( item->count > 0 )
 					{
 						int divineFavorCost = 1;
 						if ( tierString != "" )
 						{
-							divineFavorCost += std::stoi(tierString.substr(0, 1)) / 2;
+							divineFavorCost += std::stoi(tierString.substr(0, 1));
 						}
 						if ( result.first != "" )
 						{
@@ -2473,26 +2714,52 @@ void actEternalShrineLimb(Entity* my)
 
 						int blessDiff = item->beatitude - parent->eternalShrineItemBeatitude;
 						int repairDiff = (int)item->status - parent->eternalShrineItemStatus;
-						if ( blessDiff > 0 )
+
+						bool transformed = (int)item->type != parent->eternalShrineItemType;
+						if ( transformed )
 						{
 							if ( target && target->behavior == &actPlayer )
 							{
-								messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 255), Language::get(7146));
+								messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 0), Language::get(7186));
+							}
+						}
+
+						if ( blessDiff > 0 )
+						{
+							if ( !transformed && target && target->behavior == &actPlayer )
+							{
+								messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 0), Language::get(7146));
 							}
 							divineFavorCost += blessDiff;
 						}
-						else if ( repairDiff > 0 )
+						else if ( repairDiff > 0  || item->appearance != (Uint32)parent->eternalShrineItemAppearance )
 						{
-							if ( target && target->behavior == &actPlayer )
+							if ( !transformed && target && target->behavior == &actPlayer )
 							{
-								messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 255), Language::get(7145));
+								messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 0), Language::get(7145));
 							}
 							divineFavorCost += repairDiff / 3;
 						}
 
-						if ( achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget) >= 0 )
+						if ( item->type == ARTIFACT_AXE
+							|| item->type == ARTIFACT_SWORD
+							|| item->type == ARTIFACT_MACE
+							|| item->type == ARTIFACT_SPEAR
+							|| item->type == ARTIFACT_AXE
+							|| item->type == ARTIFACT_BOW
+							|| item->type == ARTIFACT_BREASTPIECE
+							|| item->type == ARTIFACT_HELM
+							|| item->type == ARTIFACT_BOOTS
+							|| item->type == ARTIFACT_CLOAK
+							|| item->type == ARTIFACT_GLOVES
+							|| item->type == MASK_ARTIFACT_VISOR )
 						{
-							players[achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget)]->mechanics.divineFavorModPips(-divineFavorCost);
+							divineFavorCost *= 2;
+						}
+
+						if ( achievementObserver.checkUidIsFromPlayer(parent->eternalShrineTarget) >= 0 )
+						{
+							players[achievementObserver.checkUidIsFromPlayer(parent->eternalShrineTarget)]->mechanics.divineFavorModPips(-divineFavorCost);
 						}
 					}
 
@@ -2501,8 +2768,27 @@ void actEternalShrineLimb(Entity* my)
 					{
 						if ( target && target->behavior == &actPlayer )
 						{
-							ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING,
-								parent->getUID(), target->skill[2], Language::get(7144), 0);
+							int favorTotal = 0;
+							for ( int i = 0; i < parent->eternalShrineItemCount; ++i )
+							{
+								int divineFavor = players[target->skill[2]]->mechanics.getDivineFavorFromItem(item, 1);
+								if ( divineFavor >= 0 )
+								{
+									favorTotal += divineFavor;
+									players[target->skill[2]]->mechanics.divineFavorModItem(divineFavor);
+								}
+							}
+
+							if ( favorTotal >= 2000 )
+							{
+								ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING,
+									parent->getUID(), target->skill[2], Language::get(7185), 0);
+							}
+							else
+							{
+								ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING,
+									parent->getUID(), target->skill[2], Language::get(7144), 0);
+							}
 						}
 
 						if ( item->node )
@@ -2513,6 +2799,7 @@ void actEternalShrineLimb(Entity* my)
 						{
 							free(item);
 						}
+						createParticleFociLight(parent, SPELL_NONE, true);
 					}
 					else if ( adorcise && spellEffectAdorcise(*parent, spellElementMap[SPELL_ADORCISM], parent->x, parent->y, item) )
 					{
@@ -2527,12 +2814,13 @@ void actEternalShrineLimb(Entity* my)
 
 						if ( target && target->behavior == &actPlayer )
 						{
-							int tickDelay = 0;
-							if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
-							{
-								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
-							}
-							ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+							//int tickDelay = 0;
+							//if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+							//{
+							//	tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
+							//}
+							//ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+							messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 0), Language::get(7187));
 						}
 					}
 					else if ( Entity* dropped = dropItemMonster(item, parent, nullptr, item->count) )
@@ -3944,13 +4232,13 @@ bool eternalShrineProcessOfferingItem(const int player, Uint32 shrineUid, int sh
 	Entity* shrine = shrineUid ? uidToEntity(shrineUid) : nullptr;
 
 	int prevPips = players[player]->mechanics.getDivineFavorPips();
-	int divineFavor = players[player]->mechanics.getDivineFavorFromItem(item);
+	int divineFavor = players[player]->mechanics.getDivineFavorFromItem(item, 1);
 	if ( divineFavor >= 0 )
 	{
 		players[player]->mechanics.divineFavorModItem(divineFavor);
 	}
 	int newPips = players[player]->mechanics.getDivineFavorPips();
-	bool poorOffering = divineFavor <= 5;
+	bool poorOffering = divineFavor <= 5 || item->status == BROKEN;
 
 	if ( shrine )
 	{
@@ -4230,6 +4518,7 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 			if ( numChances > 0 )
 			{
 				int pick = rng.discrete(chances.data(), chances.size());
+				chances[pick] = 0;
 				instrumentsPlaying[pick].second = std::max(tier, instrumentsPlaying[pick].second);
 				applyMusic = true;
 				newSongs.push_back((InstrumentOrder)pick);
@@ -4684,6 +4973,67 @@ bool eternalShrineOnAscendItem(const int player, Uint32 shrineUid, Item* item)
 	return result;
 }
 
+int getSupplicationHungerScore(const int player)
+{
+	if ( player < 0 || player >= MAXPLAYERS ) { return 0; }
+	if ( players[player]->isLocalPlayer() )
+	{
+		int total = 0;
+		bool tinopener = false;
+		for ( node_t* node = stats[player]->inventory.first; node; node = node->next )
+		{
+			if ( Item* item = (Item*)node->element )
+			{
+				if ( item->type == TOOL_TINOPENER )
+				{
+					tinopener = true;
+					break;
+				}
+			}
+		}
+
+
+		for ( node_t* node = stats[player]->inventory.first; node; node = node->next )
+		{
+			if ( Item* item = (Item*)node->element )
+			{
+				if ( stats[player]->type == AUTOMATON )
+				{
+					if ( itemIsConsumableByAutomaton(*item) )
+					{
+						total += Item::getAutomatonFoodSatiation(item->type) * item->count;
+					}
+					continue;
+				}
+				if ( int foodVal = Item::getBaseFoodSatiation(item->type) )
+				{
+					if ( item->type == FOOD_TIN )
+					{
+						if ( !tinopener && stats[player]->type != GOATMAN )
+						{
+							continue;
+						}
+					}
+					total += foodVal * item->count;
+				}
+				else if ( item->type == FOOD_BLOOD )
+				{
+					if ( playerRequiresBloodToSustain(player) )
+					{
+						total += 250 * item->count;
+					}
+				}
+				else if ( item->type == SCROLL_FOOD )
+				{
+					total += 1800 * item->count;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
 bool eternalShrineOnSupplication(const int player, Uint32 shrineUid)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return false; }
@@ -4697,16 +5047,19 @@ bool eternalShrineOnSupplication(const int player, Uint32 shrineUid)
 		net_packet->data[4] = clientnum;
 		net_packet->data[5] = shrine->eternalShrineType;
 		SDLNet_Write32(shrineUid, &net_packet->data[6]);
+		int hungerScore = getSupplicationHungerScore(player);
+		SDLNet_Write32(hungerScore, &net_packet->data[10]);
 
 		net_packet->address.host = net_server.host;
 		net_packet->address.port = net_server.port;
-		net_packet->len = 10;
+		net_packet->len = 14;
 		sendPacketSafe(net_sock, -1, net_packet, 0);
 
 		shrine->eternalShrineState = GenericGUIMenu::EternalShrineGUI_t::ETERNAL_SHRINE_STATE_CLIENT_WAITING_RESULT;
 	}
 	else
 	{
+		players[player]->mechanics.client_hunger_score = getSupplicationHungerScore(player);
 		result = eternalShrineProcessSupplication(player, shrineUid, shrine->eternalShrineType);
 	}
 
@@ -7809,17 +8162,37 @@ bool GenericGUIMenu::EternalShrineGUI_t::inventoryItemAllowedInGUI(Item* item)
 		return false;
 	}*/
 
-	if ( item->type == READABLE_BOOK || itemCategory(item) == SCROLL || true )
+	if ( itemCategory(item) == SPELL_CAT )
 	{
-		return true;
-	}
-
-	if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ASCENSION )
-	{
-		if ( itemCategory(item) == SPELL_CAT )
+		if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ASCENSION )
 		{
 			return true;
 		}
+		else
+		{
+			return false;
+		}
+	}
+
+	if ( currentView == ASSIST_SHRINE_VIEW_ACTION )
+	{
+		if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ANVIL )
+		{
+			if ( items[item->type].item_slot != ItemEquippableSlot::NO_EQUIP )
+			{
+				return true;
+			}
+			if ( item->type == ENCHANTED_FEATHER )
+			{
+				return true;
+			}
+			return false;
+		}
+		return true;
+	}
+	else
+	{
+		return true;
 	}
 	return false;
 }
@@ -7895,10 +8268,10 @@ GenericGUIMenu::EternalShrineGUI_t::EternalItemActions_t GenericGUIMenu::Eternal
 			resultAction = ETERNAL_ITEM_INVALID;
 		}
 	}
-	else if ( itemCategory(item) == SCROLL || item->type == READABLE_BOOK || true )
+	else if ( inventoryItemAllowedInGUI(item) )
 	{
 		bool isEquipped = itemIsEquipped(item, player);
-		if ( (/*!item->identified || */isEquipped) )
+		if ( isEquipped )
 		{
 			resultAction = ETERNAL_ITEM_UNIDENTIFIED;
 		}
@@ -8833,7 +9206,69 @@ bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrin
 	{
 		auto& rng = shrine->entity_rng ? *shrine->entity_rng : local_rng;
 		std::vector<Item*> items_list;
-		if ( tier == 0 )
+		if ( stats[player]->type == AUTOMATON )
+		{
+			if ( tier == 0 || tier == 1 )
+			{
+				items_list.push_back(newItem(
+					(ItemType)SCROLL_LIGHT,
+					(Status)EXCELLENT,
+					0,
+					1,
+					local_rng.rand(),
+					false, nullptr));
+
+				items_list.push_back(newItem(
+					(ItemType)SCROLL_LIGHT,
+					(Status)EXCELLENT,
+					0,
+					1,
+					local_rng.rand(),
+					false, nullptr));
+
+				if ( tier == 1 )
+				{
+					items_list.push_back(newItem(
+						(ItemType)SCROLL_LIGHT,
+						(Status)EXCELLENT,
+						0,
+						1,
+						local_rng.rand(),
+						false, nullptr));
+				}
+			}
+			else if ( tier >= 3 )
+			{
+				items_list.push_back(newItem(
+					(ItemType)SCROLL_FIRE,
+					(Status)EXCELLENT,
+					0,
+					1,
+					local_rng.rand(),
+					false, nullptr));
+				if ( tier >= 4 )
+				{
+					items_list.push_back(newItem(
+						(ItemType)SCROLL_FIRE,
+						(Status)EXCELLENT,
+						0,
+						1,
+						local_rng.rand(),
+						false, nullptr));
+				}
+				if ( tier >= 5 )
+				{
+					items_list.push_back(newItem(
+						(ItemType)SCROLL_FIRE,
+						(Status)EXCELLENT,
+						0,
+						1,
+						local_rng.rand(),
+						false, nullptr));
+				}
+			}
+		}
+		else if ( tier == 0 )
 		{
 			items_list.push_back(newItem(
 				(ItemType)FOOD_APPLE,
@@ -8968,6 +9403,19 @@ bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrin
 		for ( auto item : items_list )
 		{
 			++dropIndex;
+			if ( items[item->type].category == FOOD )
+			{
+				if ( playerRequiresBloodToSustain(player) )
+				{
+					item->type = FOOD_BLOOD;
+				}
+				/*if ( stats[player]->type == SKELETON && (svFlags & SV_FLAG_HUNGER) )
+				{
+					item->type = BONE_THROWING;
+					item->beatitude = 0;
+					item->status = DECREPIT;
+				}*/
+			}
 			if ( Entity* dropped = dropItemMonster(item, shrine, nullptr, item->count) )
 			{
 				dropped->x = shrine->x;

@@ -2411,7 +2411,7 @@ public:
 		std::vector<std::pair<int, Uint32>> pendingDucks;
 		std::map<int, int> favoriteBooksAchievement;
 		std::set<int> popQuizAchievement;
-		int getDivineFavorFromItem(Item* item);
+		int getDivineFavorFromItem(Item* item, int qty);
 		static std::vector<int> divineFavorPipBreakpoints;
 		enum class DivineEvent
 		{
@@ -2431,6 +2431,7 @@ public:
 		};
 		int client_divine_favor = 0;
 		int client_divine_penalty = 0;
+		int client_hunger_score = 0;
 		std::vector<DivineEvent> divineOfferingsHistory;
 		int getDivinePenaltyModifier();
 		std::map<Uint32, DivineEvent> divineOfferingsMadeOnFloor;

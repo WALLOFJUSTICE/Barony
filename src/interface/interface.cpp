@@ -5480,6 +5480,144 @@ bool GenericGUIMenu::isItemScepterChargeable(const Item* item)
 	return false;
 }
 
+bool GenericGUIMenu::isItemEnhanceable(const Item* item, const int player)
+{
+	if ( !item ) { return false; }
+
+	if ( item->type == BRONZE_AXE
+		|| item->type == BRONZE_MACE
+		|| item->type == BRONZE_SWORD
+		|| item->type == BRONZE_TOMAHAWK )
+	{
+		return true;
+	}
+	else if ( item->type == IRON_AXE
+		|| item->type == IRON_MACE
+		|| item->type == IRON_SWORD
+		|| item->type == IRON_SPEAR
+		|| item->type == IRON_DAGGER )
+	{
+		return true;
+	}
+	else if ( item->type == STEEL_AXE
+		|| item->type == STEEL_MACE
+		|| item->type == STEEL_SWORD
+		|| item->type == STEEL_HALBERD
+		|| item->type == STEEL_CHAKRAM )
+	{
+		return true;
+	}
+
+	if ( item->type == SLING )
+	{
+		return true;
+	}
+
+	if ( player == -1 ) // other effect
+	{
+		if ( item->type == LEATHER_BOOTS
+			|| item->type == LEATHER_HELM
+			|| item->type == LEATHER_BREASTPIECE
+			|| item->type == GLOVES
+			|| item->type == BRASS_KNUCKLES )
+		{
+			return true;
+		}
+
+		if ( item->type == IRON_BOOTS
+			|| item->type == IRON_HELM
+			|| item->type == IRON_BREASTPIECE
+			|| item->type == BRACERS
+			|| item->type == IRON_KNUCKLES )
+		{
+			return true;
+		}
+
+		if ( item->type == STEEL_BOOTS
+			|| item->type == STEEL_HELM
+			|| item->type == STEEL_BREASTPIECE
+			|| item->type == GAUNTLETS )
+		{
+			return true;
+		}
+	}
+}
+
+int GenericGUIMenu::getItemEnhanceResult(const Item* item)
+{
+	switch ( item->type )
+	{
+	case BRONZE_AXE:
+		return IRON_AXE;
+	case BRONZE_MACE:
+		return IRON_MACE;
+	case BRONZE_SWORD:
+		return IRON_SWORD;
+	case BRONZE_TOMAHAWK:
+		return IRON_DAGGER;
+
+	case IRON_AXE:
+		return STEEL_AXE;
+	case IRON_MACE:
+		return STEEL_MACE;
+	case IRON_SWORD:
+		return STEEL_SWORD;
+	case IRON_SPEAR:
+		return STEEL_HALBERD;
+	case IRON_DAGGER:
+		return STEEL_CHAKRAM;
+
+	case STEEL_AXE:
+		return CRYSTAL_BATTLEAXE;
+	case STEEL_MACE:
+		return CRYSTAL_MACE;
+	case STEEL_SWORD:
+		return CRYSTAL_SWORD;
+	case STEEL_HALBERD:
+		return CRYSTAL_SPEAR;
+	case STEEL_CHAKRAM:
+		return CRYSTAL_SHURIKEN;
+
+	case SLING:
+		return CROSSBOW;
+
+	case LEATHER_BOOTS:
+		return IRON_BOOTS;
+	case LEATHER_HELM:
+		return IRON_HELM;
+	case LEATHER_BREASTPIECE:
+		return IRON_BREASTPIECE;
+	case GLOVES:
+		return BRACERS;
+	case BRASS_KNUCKLES:
+		return IRON_KNUCKLES;
+
+	case IRON_BOOTS:
+		return STEEL_BOOTS;
+	case IRON_HELM:
+		return STEEL_HELM;
+	case IRON_BREASTPIECE:
+		return STEEL_BREASTPIECE;
+	case BRACERS:
+		return GAUNTLETS;
+	case IRON_KNUCKLES:
+		return SPIKED_GAUNTLETS;
+
+	case STEEL_BOOTS:
+		return CRYSTAL_BOOTS;
+	case STEEL_HELM:
+		return CRYSTAL_HELM;
+	case STEEL_BREASTPIECE:
+		return CRYSTAL_BREASTPIECE;
+	case GAUNTLETS:
+		return CRYSTAL_GLOVES;
+
+	default:
+		break;
+	}
+	return -1;
+}
+
 bool GenericGUIMenu::isItemAlterable(const Item* item)
 {
 	if ( !item )
@@ -5571,26 +5709,7 @@ bool GenericGUIMenu::isItemAlterable(const Item* item)
 	}
 	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ENHANCE_WEAPON )
 	{
-		if ( item->type == BRONZE_AXE
-			|| item->type == BRONZE_MACE
-			|| item->type == BRONZE_SWORD
-			|| item->type == BRONZE_TOMAHAWK )
-		{
-			return true;
-		}
-		else if ( item->type == IRON_AXE
-			|| item->type == IRON_MACE
-			|| item->type == IRON_SWORD
-			|| item->type == IRON_SPEAR
-			|| item->type == IRON_DAGGER )
-		{
-			return true;
-		}
-		else if ( item->type == STEEL_AXE
-			|| item->type == STEEL_MACE
-			|| item->type == STEEL_SWORD
-			|| item->type == STEEL_HALBERD
-			|| item->type == STEEL_CHAKRAM )
+		if ( GenericGUIMenu::isItemEnhanceable(item, gui_player) )
 		{
 			return true;
 		}
@@ -6914,55 +7033,14 @@ void GenericGUIMenu::alterItem(Item* item)
 	}
 	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ENHANCE_WEAPON )
 	{
-		switch ( item->type )
+		int result = GenericGUIMenu::getItemEnhanceResult(item);
+		if ( result < 0 )
 		{
-			case BRONZE_AXE:
-				item->type = IRON_AXE;
-				break;
-			case BRONZE_MACE:
-				item->type = IRON_MACE;
-				break;
-			case BRONZE_SWORD:
-				item->type = IRON_SWORD;
-				break;
-			case BRONZE_TOMAHAWK:
-				item->type = IRON_DAGGER;
-				break;
-			case IRON_AXE:
-				item->type = STEEL_AXE;
-				break;
-			case IRON_MACE:
-				item->type = STEEL_MACE;
-				break;
-			case IRON_SWORD:
-				item->type = STEEL_SWORD;
-				break;
-			case IRON_SPEAR:
-				item->type = STEEL_HALBERD;
-				break;
-			case IRON_DAGGER:
-				item->type = STEEL_CHAKRAM;
-				break;
-			case STEEL_AXE:
-				item->type = CRYSTAL_BATTLEAXE;
-				break;
-			case STEEL_MACE:
-				item->type = CRYSTAL_MACE;
-				break;
-			case STEEL_SWORD:
-				item->type = CRYSTAL_SWORD;
-				break;
-			case STEEL_HALBERD:
-				item->type = CRYSTAL_SPEAR;
-				break;
-			case STEEL_CHAKRAM:
-				item->type = CRYSTAL_SHURIKEN;
-				break;
-			default:
-				messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
-				closeGUI();
-				return;
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->description());
+			closeGUI();
+			return;
 		}
+		item->type = ItemType(result);
 		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
 			nullptr, SPELL_ENHANCE_WEAPON, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
 	}
@@ -7025,7 +7103,7 @@ void GenericGUIMenu::alterItem(Item* item)
 		}
 		else
 		{
-			Item* itemToPickup = newItem(newType, SERVICABLE, item->beatitude, 1, item->appearance, true, nullptr);
+			Item* itemToPickup = newItem(newType, WORN, item->beatitude, 1, item->appearance, true, nullptr);
 			Item* pickedUp = itemPickup(gui_player, itemToPickup);
 			int oldCount = item->count;
 			item->count = 1;
@@ -11855,6 +11933,11 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case SCROLL_ENCHANTWEAPON:
 		case SCROLL_ENCHANTARMOR:
 		case SCROLL_SCRY_KEY:
+		case SCROLL_LITURGY:
+		case SCROLL_MINSTRELS:
+		case SCROLL_STAMINA:
+		case SCROLL_MENTALITY:
+		case SCROLL_AGILITY:
 
 		case SPELLBOOK_FIREBALL:
 		case SPELLBOOK_INVISIBILITY:

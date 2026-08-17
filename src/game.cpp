@@ -1524,7 +1524,8 @@ void gameLogic(void)
 						&& stats[c]->breastplate && stats[c]->breastplate->type == ARTIFACT_BREASTPIECE
 						&& stats[c]->gloves && stats[c]->gloves->type == ARTIFACT_GLOVES
 						&& stats[c]->cloak && stats[c]->cloak->type == ARTIFACT_CLOAK
-						&& stats[c]->shoes && stats[c]->shoes->type == ARTIFACT_BOOTS )
+						&& stats[c]->shoes && stats[c]->shoes->type == ARTIFACT_BOOTS 
+						&& stats[c]->mask && stats[c]->mask->type == MASK_ARTIFACT_VISOR )
 					{
 						steamAchievementClient(c, "BARONY_ACH_GIFTS_ETERNALS");
 					}

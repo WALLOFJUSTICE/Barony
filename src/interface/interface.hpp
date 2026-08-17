@@ -471,6 +471,8 @@ public:
 
 	// transmute
 	bool isItemAlterable(const Item* item);
+	static bool isItemEnhanceable(const Item* item, const int player);
+	static int getItemEnhanceResult(const Item* item);
 	void alterItem(Item* item);
 	int getAlterItemResultAtCycle(Item* item);
 
