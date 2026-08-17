@@ -8991,7 +8991,6 @@ int Player::PlayerMechanics_t::getDivineFavorFromItem(Item* item, int qty)
 	{
 		value /= 100;
 	}
-
 	return value;
 }
 

@@ -4878,13 +4878,13 @@ Sint32 Item::potionGetEffectHealth(Entity* my, Stat* myStats) const
 		{
 			int amount = std::max(7 + status, 0);
 			int multiplier = std::max(5, beatitude + 5);
-			amount *= multiplier / 5.f;
+			amount *= multiplier / 3.f;
 			heal += amount;
 			break;
 		}
 		case POTION_EXTRAHEALING:
 		{
-			int amount = std::max(15 + status, 0);
+			int amount = std::max(7 + status, 0);
 			int multiplier = std::max(5, beatitude + 5);
 			amount *= multiplier;
 			heal += amount;
@@ -7444,6 +7444,12 @@ int Item::magicstaffGetChargeDepletion(Entity* my, Stat* myStats, bool isPlayer)
 			{
 				result = (result + 1) / 2; // round up
 			}
+			if ( beatitude > 0 || shouldInvertEquipmentBeatitude(myStats) )
+			{
+				result -= (1 + abs(beatitude)) / 2; // round up
+			}
+
+			result = std::max(2, result);
 		}
 	}
 

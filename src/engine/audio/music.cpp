@@ -562,6 +562,7 @@ void handleLevelMusic()
 		olddarkmap = darkmap;
 		levelmusicplaying = true;
 		devilmusicplaying = false;
+		sanctummusicplaying = false;
 		herxmusicplaying = false;
 		minotaurmusicplaying = false;
 		combatmusicplaying = false;
@@ -576,6 +577,7 @@ void handleLevelMusic()
 		playMusic(devilmusic, true, true, true);
 		levelmusicplaying = false;
 		devilmusicplaying = true;
+		sanctummusicplaying = false;
 		herxmusicplaying = false;
 		minotaurmusicplaying = false;
 		combatmusicplaying = false;
@@ -588,6 +590,7 @@ void handleLevelMusic()
 		playMusic(herxmusic, true, true, true);
 		levelmusicplaying = false;
 		devilmusicplaying = false;
+		sanctummusicplaying = false;
 		herxmusicplaying = true;
 		minotaurmusicplaying = false;
 		combatmusicplaying = false;
@@ -600,6 +603,7 @@ void handleLevelMusic()
 		playMusic(minotaurmusic[0], true, true, true);
 		levelmusicplaying = false;
 		devilmusicplaying = false;
+		sanctummusicplaying = false;
 		herxmusicplaying = false;
 		minotaurmusicplaying = true;
 		combatmusicplaying = false;
@@ -709,6 +713,7 @@ void handleLevelMusic()
 		}
 		levelmusicplaying = false;
 		devilmusicplaying = false;
+		sanctummusicplaying = false;
 		herxmusicplaying = false;
 		combatmusicplaying = true;
 		shopmusicplaying = false;
@@ -721,6 +726,7 @@ void handleLevelMusic()
 		playMusic(shopmusic, true, true, true);
 		levelmusicplaying = false;
 		devilmusicplaying = false;
+		sanctummusicplaying = false;
 		herxmusicplaying = false;
 		minotaurmusicplaying = false;
 		combatmusicplaying = false;

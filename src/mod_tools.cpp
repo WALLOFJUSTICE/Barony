@@ -5049,12 +5049,12 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 
 				if ( item.type == POTION_HEALING )
 				{
-					const int statBonus = compendiumTooltipIntro ? 0 : (2 * std::max(0, statGetCON(stats[player], players[player]->entity)));
+					const int statBonus = std::min(30, compendiumTooltipIntro ? 0 : (2 * std::max(0, statGetCON(stats[player], players[player]->entity))));
 					healthVal += statBonus;
 				}
 				else if ( item.type == POTION_EXTRAHEALING )
 				{
-					const int statBonus = compendiumTooltipIntro ? 0 : (4 * std::max(0, statGetCON(stats[player], players[player]->entity)));
+					const int statBonus = std::min(30, compendiumTooltipIntro ? 0 : (2 * std::max(0, statGetCON(stats[player], players[player]->entity))));
 					healthVal += statBonus;
 				}
 				else if ( item.type == POTION_RESTOREMAGIC )
@@ -6187,6 +6187,21 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		{
 			snprintf(buf, sizeof(buf), str.c_str(), getItemBeatitudeAdjective(item.beatitude).c_str());
 		}
+		else if ( tooltipType.compare("tooltip_magicstaff_scepter") == 0 )
+		{
+			if ( detailTag.compare("magicstaff_charge_use") == 0 )
+			{
+				int chargeDegrade = item.magicstaffGetChargeDepletion(
+					compendiumTooltipIntro ? nullptr : players[player]->entity,
+					compendiumTooltipIntro ? nullptr : stats[player],
+					true);
+				snprintf(buf, sizeof(buf), str.c_str(), chargeDegrade);
+			}
+			else
+			{
+				return;
+			}
+		}
 		else if ( tooltipType.compare("tooltip_magicstaff") == 0 )
 		{
 			if ( detailTag.compare("magicstaff_charge_use") == 0 )
@@ -6257,7 +6272,7 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		{
 			if ( stats[player] && statGetCON(stats[player], players[player]->entity) > 0 && !compendiumTooltipIntro )
 			{
-				snprintf(buf, sizeof(buf), str.c_str(), 2 * std::max(0, statGetCON(stats[player], players[player]->entity)));
+				snprintf(buf, sizeof(buf), str.c_str(), std::min(30, 2 * std::max(0, statGetCON(stats[player], players[player]->entity))));
 			}
 			else
 			{
@@ -6268,7 +6283,7 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 		{
 			if ( stats[player] && statGetCON(stats[player], players[player]->entity) > 0 && !compendiumTooltipIntro )
 			{
-				snprintf(buf, sizeof(buf), str.c_str(), 4 * std::max(0, statGetCON(stats[player], players[player]->entity)));
+				snprintf(buf, sizeof(buf), str.c_str(), std::min(30, 2 * std::max(0, statGetCON(stats[player], players[player]->entity))));
 			}
 			else
 			{

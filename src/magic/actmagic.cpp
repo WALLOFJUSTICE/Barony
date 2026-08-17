@@ -9608,7 +9608,10 @@ void actParticleAestheticOrbit(Entity* my)
 							}
 						}
 
-						applyGenericMagicDamage(caster, parent, *my, SPELL_PSYCHIC_SPEAR, damage, true);
+						if ( applyGenericMagicDamage(caster, parent, *my, SPELL_PSYCHIC_SPEAR, damage, true) )
+						{
+							messagePlayerColor(parent->isEntityPlayer(), MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(7189));
+						}
 					}
 
 					if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, 0.0, TICKS_PER_SECOND, 16.0) )
@@ -9713,6 +9716,14 @@ void actParticleAestheticOrbit(Entity* my)
 					my->fskill[1] = std::min(my->fskill[1] + 0.15, 1.0);
 					if ( my->fskill[1] >= 1.0 )
 					{
+						if ( my->ticks == breakpoint1 + 10 )
+						{
+							if ( !my->actmagicNoLight )
+							{
+								playSoundEntityLocal(my, 910, 128);
+							}
+						}
+
 						if ( my->ticks >= breakpoint1 + 20 )
 						{
 							if ( my->ticks == breakpoint1 + 20 )
@@ -9745,7 +9756,10 @@ void actParticleAestheticOrbit(Entity* my)
 													playSoundEntity(parent, 249, 64);
 												}
 												flatDamage += my->skill[4];
-												applyGenericMagicDamage(caster, parent, *my, SPELL_PINPOINT, flatDamage, true);
+												if ( applyGenericMagicDamage(caster, parent, *my, SPELL_PINPOINT, flatDamage, true) )
+												{
+													messagePlayerColor(parent->isEntityPlayer(), MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(7188));
+												}
 												//spawnMagicEffectParticles(parent->x, parent->y, parent->z, 981);
 
 												if ( caster && parent->getStats() )
@@ -9758,8 +9772,11 @@ void actParticleAestheticOrbit(Entity* my)
 											{
 												int damage = getSpellDamageFromID(SPELL_TURN_UNDEAD, caster, caster ? caster->getStats() : nullptr,
 													my, my->actmagicSpellbookBonus / 100.0);
-												applyGenericMagicDamage(caster, parent, *my, SPELL_TURN_UNDEAD, damage, true);
-
+												if ( applyGenericMagicDamage(caster, parent, *my, SPELL_TURN_UNDEAD, damage, true) )
+												{
+													messagePlayerColor(parent->isEntityPlayer(), MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(7188));
+												}
+												
 												if ( my->skill[6] == EFF_HOLY_FIRE )
 												{
 													if ( parent->setEffect(EFF_HOLY_FIRE, true, 5 * TICKS_PER_SECOND, true) )
@@ -9772,6 +9789,7 @@ void actParticleAestheticOrbit(Entity* my)
 															fx->flags[INVISIBLE] = true;
 															fx->skill[3] = caster ? caster->getUID() : 0;
 														}
+														messagePlayerColor(parent->isEntityPlayer(), MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(4324));
 														serverSpawnMiscParticles(parent, PARTICLE_EFFECT_HOLY_FIRE, 288, 0, burnDuration);
 													}
 												}
@@ -16194,11 +16212,13 @@ void Entity::castFallingMagicMissile(int spellID, real_t distFromCaster, real_t 
 		double missile_speed = 4;
 		entity->vel_x = 0.0;
 		entity->vel_y = 0.0;
+		entity->sizex = 5;
+		entity->sizey = 5;
 		entity->vel_z = 0.5 * (missile_speed);
 		entity->pitch = PI / 2;
 		entity->actmagicIsVertical = MAGIC_ISVERTICAL_Z;
 		spawnMagicEffectParticles(entity->x, entity->y, 0, 174);
-		playSoundEntity(entity, spellGetCastSound(spell), 128);
+		playSoundEntity(entity, spellGetCastSound(spell), 64);
 	}
 }
 
@@ -16240,7 +16260,7 @@ Entity* Entity::castOrbitingMagicMissile(int spellID, real_t distFromCaster, rea
 		entity->actmagicOrbitVerticalDirection = 1;
 		entity->actmagicOrbitLifetime = duration;
 		entity->vel_z = entity->actmagicOrbitVerticalSpeed;
-		playSoundEntity(entity, spellGetCastSound(spell), 128);
+		playSoundEntity(entity, spellGetCastSound(spell), 64);
 		//spawnMagicEffectParticles(entity->x, entity->y, 0, 174);
 	}
 	return entity;

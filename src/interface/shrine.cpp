@@ -134,7 +134,8 @@ std::set<std::string> ShrineEffects_t::shrineEffects =
 	"ENSEMBLE_4_SCROLL",
 	"ENSEMBLE_5",
 	"ENSEMBLE_5_INSTRUMENT",
-	"ENSEMBLE_5_SCROLL"
+	"ENSEMBLE_5_SCROLL",
+	"TIER_ITEM"
 };
 
 int ShrinePlayerMessageManager_t::processed_on_floor = -1;
@@ -365,6 +366,7 @@ std::map<int, std::map<ShrineEffects_t::ShrineEffectsPools, std::vector<std::str
 std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffects_t::ShrineEffectsPools, int>>>> ShrineEffects_t::shrineOutcomes;
 std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffects_t::ShrineEffectsPools, int>>>> ShrineEffects_t::shrineRewards;
 std::map<std::string, std::set<std::string>> ShrineEffects_t::supplicationExcludeStrings;
+std::map<int, ShrineEffects_t::SkillItemPools_t> ShrineEffects_t::skillItemMap;
 Uint32 ShrineEffects_t::shrineJsonHashRead = 0;
 void ShrineEffects_t::buildShrineEffects()
 {
@@ -895,7 +897,222 @@ void ShrineEffects_t::buildShrineEffects()
 		}
 	}
 
-	//hash += djb2Hash(const_cast<char*>(t.internalName.c_str()));
+	skillItemMap.clear();
+	if ( d.HasMember("skill_items") )
+	{
+		for ( int skillID = 0; skillID < NUMPROFICIENCIES; ++skillID )
+		{
+			for ( auto itr = d["skill_items"].MemberBegin(); itr != d["skill_items"].MemberEnd(); ++itr )
+			{
+				if ( itr->value.HasMember("id") && itr->value["id"].IsInt() && itr->value["id"].GetInt() == skillID )
+				{
+					auto& allPool = skillItemMap[skillID];
+					for ( int tier = 0; tier < 3; ++tier )
+					{
+						char tierString[16];
+						snprintf(tierString, sizeof(tierString), "%d", tier);
+						if ( !itr->value.HasMember(tierString) )
+						{
+							continue;
+						}
+
+						auto& pool = allPool.pool[tier + 1];
+						for ( auto item_itr = itr->value[tierString].MemberBegin(); item_itr != itr->value[tierString].MemberEnd(); ++item_itr )
+						{
+							std::string itemName = item_itr->name.GetString();
+
+							hash += djb2Hash(const_cast<char*>(itemName.c_str()));
+							hash += (Uint32)((Uint32)item_itr->value.GetInt() << (shift % 32)); ++shift;
+
+							pool.push_back(std::vector<Item>());
+							auto& def = pool.back();
+							if ( ItemTooltips.itemNameStringToItemID.find(itemName) != ItemTooltips.itemNameStringToItemID.end() )
+							{
+								auto& item = def.emplace_back(Item());
+								item.type = (ItemType)ItemTooltips.itemNameStringToItemID[itemName];
+								item.beatitude = item_itr->value.GetInt();
+								item.status = EXCELLENT;
+								item.count = 1;
+								item.identified = false;
+								item.appearance = 0;
+							}
+							else
+							{
+								if ( itemName == "cat_lockpicks" )
+								{
+									auto& item = def.emplace_back(Item());
+									item.type = TOOL_LOCKPICK;
+									item.beatitude = item_itr->value.GetInt();
+									item.status = EXCELLENT;
+									item.count = 5;
+									item.identified = false;
+									item.appearance = 0;
+
+									{
+										auto& item = def.emplace_back(Item());
+										item.type = TOOL_BEARTRAP;
+										item.beatitude = item_itr->value.GetInt();
+										item.status = EXCELLENT;
+										item.count = 3;
+										item.identified = false;
+										item.appearance = 0;
+									}
+								}
+								else if ( itemName == "cat_gold" )
+								{
+									auto& item = def.emplace_back(Item());
+									item.type = GEM_ROCK;
+									item.beatitude = 0;
+									item.status = EXCELLENT;
+									item.count = item_itr->value.GetInt();
+									item.identified = false;
+									item.appearance = 0;
+								}
+								else if ( itemName == "cat_water" )
+								{
+									auto& item = def.emplace_back(Item());
+									item.type = POTION_WATER;
+									item.beatitude = item_itr->value.GetInt();
+									item.status = EXCELLENT;
+									item.count = 5;
+									item.identified = false;
+									item.appearance = 0;
+								}
+								else if ( itemName == "cat_acid" )
+								{
+									auto& item = def.emplace_back(Item());
+									item.type = POTION_ACID;
+									item.beatitude = item_itr->value.GetInt();
+									item.status = EXCELLENT;
+									item.count = 5;
+									item.identified = false;
+									item.appearance = 0;
+								}
+								else if ( itemName == "cat_spellbook" )
+								{
+									int difficulty = item_itr->value.GetInt() * 20;
+									bool first = true;
+									for ( auto& spellDef : allGameSpells )
+									{
+										if ( auto spell = spellDef.second )
+										{
+											if ( spell->difficulty == difficulty
+												&& !spell->hide_from_ui
+												&& spell->drop_table >= 0
+												&& spell->skillID == skillID )
+											{
+												int spellbook = getSpellbookFromSpellID(spell->ID);
+												if ( items[spellbook].category == SPELLBOOK )
+												{
+													if ( !first )
+													{
+														pool.push_back(std::vector<Item>());
+													}
+													first = false;
+													auto& def = pool.back();
+
+													auto& item = def.emplace_back(Item());
+													item.type = (ItemType)spellbook;
+													item.beatitude = 0;
+													item.status = EXCELLENT;
+													item.count = 1;
+													item.identified = false;
+													item.appearance = 0;
+												}
+												else
+												{
+													if ( !first )
+													{
+														pool.push_back(std::vector<Item>());
+													}
+													first = false;
+													auto& def = pool.back();
+
+													auto& item = def.emplace_back(Item());
+													item.type = TOME_SORCERY;
+													if ( skillID == PRO_THAUMATURGY )
+													{
+														item.type = TOME_THAUMATURGY;
+													}
+													else if ( skillID == PRO_MYSTICISM )
+													{
+														item.type = TOME_MYSTICISM;
+													}
+													item.beatitude = 0;
+													item.status = EXCELLENT;
+													item.count = 1;
+													item.identified = false;
+													item.appearance = spellTomeIDToAppearance[spell->ID];
+												}
+											}
+										}
+									}
+								}
+								else if ( itemName == "cat_instrument" )
+								{
+									auto& item = def.emplace_back(Item());
+									item.type = INSTRUMENT_FLUTE;
+									item.beatitude = item_itr->value.GetInt();
+									item.status = EXCELLENT;
+									item.count = 1;
+									item.identified = false;
+									item.appearance = 0;
+
+									{
+										pool.push_back(std::vector<Item>());
+										auto& def = pool.back();
+										auto& item = def.emplace_back(Item());
+										item.type = INSTRUMENT_LUTE;
+										item.beatitude = item_itr->value.GetInt();
+										item.status = EXCELLENT;
+										item.count = 1;
+										item.identified = false;
+										item.appearance = 0;
+									}
+
+									{
+										pool.push_back(std::vector<Item>());
+										auto& def = pool.back();
+										auto& item = def.emplace_back(Item());
+										item.type = INSTRUMENT_HORN;
+										item.beatitude = item_itr->value.GetInt();
+										item.status = EXCELLENT;
+										item.count = 1;
+										item.identified = false;
+										item.appearance = 0;
+									}
+
+									{
+										pool.push_back(std::vector<Item>());
+										auto& def = pool.back();
+										auto& item = def.emplace_back(Item());
+										item.type = INSTRUMENT_DRUM;
+										item.beatitude = item_itr->value.GetInt();
+										item.status = EXCELLENT;
+										item.count = 1;
+										item.identified = false;
+										item.appearance = 0;
+									}
+
+									{
+										pool.push_back(std::vector<Item>());
+										auto& def = pool.back();
+										auto& item = def.emplace_back(Item());
+										item.type = INSTRUMENT_LYRE;
+										item.beatitude = item_itr->value.GetInt();
+										item.status = EXCELLENT;
+										item.count = 1;
+										item.identified = false;
+										item.appearance = 0;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 
 	printlog("[JSON]: Successfully read json file %s", inputPath.c_str());
 
@@ -3018,11 +3235,13 @@ void actEternalShrine(Entity* my)
 				{
 					if ( strstr(str.c_str(), (*cvar_eternal_shrine_effect).c_str()) )
 					{
-						bool result = applyShrineEffect(str, players[0]->entity, my, 1);
-						if ( result )
+						int tier = 1 + local_rng.rand() % 3;
+						bool result = applyShrineEffect(str, players[0]->entity, my, tier);
+						messagePlayer(clientnum, MESSAGE_MISC, "Tier: %d", tier);
+						/*if ( result )
 						{
 							ShrinePlayerMessageManager_t::insert(my->getUID(), 0, Language::get(7130), "", std::make_pair("", 0), 0);
-						}
+						}*/
 						break;
 					}
 				}
@@ -5029,6 +5248,7 @@ int getSupplicationHungerScore(const int player)
 				}
 			}
 		}
+		return total;
 	}
 
 	return 0;
@@ -8980,18 +9200,20 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			fx1->y = target->y;
 			fx1->fskill[6] = fx1->yaw;
 			fx1->skill[3] = shrine->getUID();
-			/*if ( effectStrength >= 3 )
+			//if ( effectStrength >= 3 )
 			{
 				fx1->skill[6] = EFF_HOLY_FIRE;
-			}*/
+			}
 			fx1->actmagicSpellbookBonus = 0;
 			if ( tier >= 2 )
 			{
-				fx1->actmagicSpellbookBonus = 50 * (tier - 1);
+				fx1->actmagicSpellbookBonus += 100 * (tier - 1);
 			}
 			fx1->actmagicFromSpellbook = 0;
 			result = true;
 		}
+
+		serverSpawnMiscParticles(target, PARTICLE_EFFECT_TURN_UNDEAD, 2401);
 	}
 	else if ( effect_str == "PSYCHIC_SPEAR" ) // psychic spear
 	{
@@ -9062,6 +9284,19 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			props.optionalData |= (2 << 4);
 		}
+		/*else if ( effect_str == "HIDDEN_KNOWLEDGE" )
+		{
+			props.optionalData |= (3 << 4);
+		}*/
+		castSpell(shrine->getUID(), getSpellFromID(SPELL_DONATION), false, true, false, &props);
+		result = true;
+	}
+	else if ( effect_str == "TIER_ITEM" )
+	{
+		CastSpellProps_t props;
+		props.targetUID = target->getUID();
+		props.optionalData = std::min(3, tier);
+		props.optionalData |= (4 << 4);
 		castSpell(shrine->getUID(), getSpellFromID(SPELL_DONATION), false, true, false, &props);
 		result = true;
 	}

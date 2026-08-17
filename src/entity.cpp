@@ -4577,6 +4577,11 @@ void Entity::handleEffects(Stat* myStats)
 		{
 			myStats->HUNGER = 500;
 		}
+		else if ( player >= 0 && myStats->type == SKELETON && myStats->HUNGER < 400 && (svFlags & SV_FLAG_HUNGER) )
+		{
+			myStats->HUNGER = 400;
+			serverUpdateHunger(player);
+		}
 		else if ( myStats->HUNGER < 100 )
 		{
 			myStats->HUNGER = 100;
@@ -10859,12 +10864,12 @@ void Entity::attack(int pose, int charge, Entity* target)
 						else
 						{
 							magicstaffStrike = true;
-							if ( charge == 99 )
+							/*if ( charge == 99 )
 							{
 								charge = Stat::getMaxAttackCharge(myStats);
 								messagePlayer(isEntityPlayer(), MESSAGE_EQUIPMENT, Language::get(6839), items[myStats->weapon->type].getIdentifiedName());
 								playSoundEntity(this, 163, 128);
-							}
+							}*/
 						}
 					}
 

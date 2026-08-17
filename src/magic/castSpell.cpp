@@ -2794,6 +2794,8 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 					int minTier = 0;
 					int maxTier = 0;
+					std::vector<Item>* customItemProps = nullptr;
+					int numDonations = 1;
 					if ( caster->behavior == &actPlayer )
 					{
 						int strength = getSpellDamageFromID(SPELL_DONATION, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
@@ -2806,20 +2808,124 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					{
 						if ( castSpellProps )
 						{
-							if ( (castSpellProps->optionalData & 0xF) == 1 )
+							int tier = (castSpellProps->optionalData & 0xF);
+							if ( tier == 1 )
 							{
 								minTier = 4;
 							}
-							else if ( (castSpellProps->optionalData & 0xF) == 2 )
+							else if ( tier == 2 )
 							{
 								minTier = 8;
 							}
-							else if ( (castSpellProps->optionalData & 0xF) >= 3 )
+							else if ( tier >= 3 )
 							{
 								minTier = 12;
 							}
 
-							//int modifier = ((castSpellProps->optionalData >> 4) & 0xF);
+							int modifier = ((castSpellProps->optionalData >> 4) & 0xF);
+							if ( modifier == 1 )
+							{
+								donations.clear();
+								if ( tier == 1 )
+								{
+									donations.push_back({ 0, { POTION_HEALING, 3 } });
+								}
+								else if ( tier == 2 )
+								{
+									donations.push_back({ 0, { POTION_EXTRAHEALING, 2 } });
+								}
+								else if ( tier >= 3 )
+								{
+									donations.push_back({ 0, { POTION_EXTRAHEALING, 3 } });
+								}
+								minTier = 0;
+							}
+							else if ( modifier == 2 )
+							{
+								donations.clear();
+								if ( tier == 1 )
+								{
+									donations.push_back({ 0, { POTION_RESTOREMAGIC, 1 } });
+								}
+								else if ( tier == 2 )
+								{
+									donations.push_back({ 0, { POTION_RESTOREMAGIC, 2 } });
+								}
+								else if ( tier >= 3 )
+								{
+									donations.push_back({ 0, { POTION_RESTOREMAGIC, 3 } });
+								}
+								minTier = 0;
+							}
+							else if ( modifier == 3 ) // hidden knowledge
+							{
+
+							}
+							else if ( modifier == 4 ) // skill item tier
+							{
+								if ( playernum >= 0 && playernum < MAXPLAYERS )
+								{
+									std::vector<std::pair<int, int>> highestSkills;
+									int highest = 0;
+									for ( int i = 0; i < NUMPROFICIENCIES; ++i )
+									{
+										highestSkills.push_back({ i, stats[playernum]->getProficiency(i) });
+										highest = std::max(stats[playernum]->getProficiency(i), highest);
+									}
+									auto compFunc = [](std::pair<int, int>& lhs, std::pair<int, int>& rhs)
+									{
+										return lhs.second > rhs.second;
+									};
+									std::sort(highestSkills.begin(), highestSkills.end(), compFunc);
+									int numResults = 0;
+									std::vector<unsigned int> skillChances;
+									for ( auto& val : highestSkills )
+									{
+										if ( val.second == highest )
+										{
+											++numResults;
+											skillChances.push_back(1);
+											continue;
+										}
+										if ( val.second < highest )
+										{
+											if ( numResults < 3 )
+											{
+												highest = val.second;
+												++numResults;
+												skillChances.push_back(1);
+											}
+											else
+											{
+												skillChances.push_back(0);
+											}
+										}
+									}
+
+									if ( numResults )
+									{
+										int pick = local_rng.discrete(skillChances.data(), skillChances.size());
+										auto& result = highestSkills[pick];
+										if ( ShrineEffects_t::skillItemMap[result.first].pool[tier].size() )
+										{
+											int pick = local_rng.rand() % ShrineEffects_t::skillItemMap[result.first].pool[tier].size();
+											if ( ShrineEffects_t::skillItemMap[result.first].pool[tier][pick].size() )
+											{
+												customItemProps = &ShrineEffects_t::skillItemMap[result.first].pool[tier][pick];
+												numDonations = customItemProps->size();
+												donations.clear();
+												int index = -1;
+												for ( auto& item : *customItemProps )
+												{
+													++index;
+													donations.push_back({ index, { item.type, 0 } });
+												}
+												minTier = 0;
+											}
+										}
+									}
+								}
+							}
 						}
 						int goldMult = static_cast<int>((currentlevel + 5) / 5) * 5;
 						for ( auto& pair : donations )
@@ -2849,12 +2955,21 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						chances[0] = 1; // just in case
 					}
 
-					while ( breakables.size() )
+					if ( caster->behavior == &actEternalShrine )
+					{
+						if ( breakables.size() == 0 )
+						{
+							breakables.push_back(caster);
+						}
+					}
+
+					while ( breakables.size() && numDonations > 0 )
 					{
 						int pick = local_rng.rand() % breakables.size();
 						auto entity = breakables[pick];
-
+						--numDonations;
 						int pickDonation = local_rng.discrete(chances.data(), chances.size());
+						chances[pickDonation] = 0;
 
 						Entity* item = newEntity(-1, 1, map.entities, nullptr); //Rock entity.
 						item->flags[INVISIBLE] = true;
@@ -2870,9 +2985,26 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							item->z = 6.25;
 							item->goldBouncing = 1;
 							item->goldAmount = donation.second.second;
-							item->goldInContainer = entity->getUID();
-							entity->colliderContainedEntity = item->getUID();
-							serverUpdateEntitySkill(entity, 15); // update colliderContainedEntity
+
+							if ( entity->behavior == &actEternalShrine )
+							{
+								item->z = 0.0;
+								item->vel_z = (-40 - local_rng.rand() % 10) * .01;
+								item->goldBouncing = 0;
+								item->x += 12.0 * cos(entity->yaw);
+								item->y += 12.0 * sin(entity->yaw);
+								item->flags[INVISIBLE] = false;
+								if ( customItemProps && pickDonation < customItemProps->size() )
+								{
+									item->goldAmount = customItemProps->at(pickDonation).count;
+								}
+							}
+							else
+							{
+								item->goldInContainer = entity->getUID();
+								entity->colliderContainedEntity = item->getUID();
+								serverUpdateEntitySkill(entity, 15); // update colliderContainedEntity
+							}
 						}
 						else
 						{
@@ -2880,31 +3012,62 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							item->z = 0.0;
 							item->vel_z = -.5; // important to not immediately be on ground and set NOUPDATE
 							item->roll = PI / 2.0;
-							item->itemContainer = entity->getUID();
-							entity->colliderContainedEntity = item->getUID();
-							serverUpdateEntitySkill(entity, 15); // update colliderContainedEntity
 
-							item->skill[10] = donation.second.first;    // type
-							item->skill[11] = EXCELLENT;				// status
-							item->skill[12] = 0;						// beatitude
-							if ( donation.second.first == POTION_WATER )
+							if ( entity->behavior == &actEternalShrine )
 							{
-								item->skill[12] = 4;				// beatitude
+								item->z = -4.0;
+								item->yaw = entity->yaw + PI;
+								item->vel_x = 0.0;
+								item->vel_y = 0.0;
+								item->itemEternalShrineResult = entity->eternalShrineType;
+
+								item->itemNotMoving = 0;
+								item->itemNotMovingClient = 0;
+								//dropped->vel_z = -0.25;
+								item->itemLevitate = 1.0;
+								item->itemLevitateStartZ = item->z;
 							}
-							if ( donation.second.first == FOOD_BREAD )
+							else
 							{
-								if ( donation.first >= 15 )
-								{
-									item->skill[12] = 2;				// beatitude
-								}
-								else if ( donation.first >= 10 )
-								{
-									item->skill[12] = 1;				// beatitude
-								}
+								item->itemContainer = entity->getUID();
+								entity->colliderContainedEntity = item->getUID();
+								serverUpdateEntitySkill(entity, 15); // update colliderContainedEntity
 							}
-							item->skill[13] = 1;						// count
-							item->skill[14] = 0;						// appearance
-							item->skill[15] = 1;						// identified
+
+
+							if ( customItemProps && pickDonation < customItemProps->size() )
+							{
+								item->skill[10] = customItemProps->at(pickDonation).type;		// type
+								item->skill[11] = customItemProps->at(pickDonation).status;		// status
+								item->skill[12] = customItemProps->at(pickDonation).beatitude;	// beatitude
+								item->skill[13] = customItemProps->at(pickDonation).count;		// count
+								item->skill[14] = customItemProps->at(pickDonation).appearance;	// appearance
+								item->skill[15] = customItemProps->at(pickDonation).identified;	// identified
+							}
+							else
+							{
+								item->skill[10] = donation.second.first;    // type
+								item->skill[11] = EXCELLENT;				// status
+								item->skill[12] = 0;						// beatitude
+								if ( donation.second.first == POTION_WATER )
+								{
+									item->skill[12] = 4;				// beatitude
+								}
+								if ( donation.second.first == FOOD_BREAD )
+								{
+									if ( donation.first >= 15 )
+									{
+										item->skill[12] = 2;				// beatitude
+									}
+									else if ( donation.first >= 10 )
+									{
+										item->skill[12] = 1;				// beatitude
+									}
+								}
+								item->skill[13] = donation.second.second;   // count
+								item->skill[14] = 0;						// appearance
+								item->skill[15] = 1;						// identified
+							}
 						}
 
 						item->sizex = 4;
@@ -2926,23 +3089,59 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						{
 							duration = 5 * 60 * TICKS_PER_SECOND;
 						}
-						createParticleSpellPinpointTarget(entity, target->getUID(), 1768, duration, spell->ID);
-						serverSpawnMiscParticles(entity, PARTICLE_EFFECT_PINPOINT, 1768, target->getUID(), duration, spell->ID);
 
-						playSoundEntity(entity, 167, 128);
+						if ( entity->behavior == &actEternalShrine )
+						{
+
+						}
+						else
+						{
+							createParticleSpellPinpointTarget(entity, target->getUID(), 1768, duration, spell->ID);
+							serverSpawnMiscParticles(entity, PARTICLE_EFFECT_PINPOINT, 1768, target->getUID(), duration, spell->ID);
+						}
+
+						if ( entity->behavior != &actEternalShrine )
+						{
+							playSoundEntity(entity, 167, 128);
+						}
 						if ( caster->behavior == &actPlayer )
 						{
 							players[playernum]->mechanics.updateSustainedSpellEvent(SPELL_DONATION, 100.0, 1.0, nullptr);
 						}
 
 						found = true;
-						break;
-
-						if ( !found )
+						if ( numDonations <= 0 )
 						{
-							breakables.erase(breakables.begin() + pick);
+							break;
 						}
+
+						anyChances = false;
+						for ( int i = 0; i < chances.size(); ++i )
+						{
+							if ( chances[i] )
+							{
+								anyChances = true;
+							}
+						}
+
+						if ( !anyChances )
+						{
+							break;
+						}
+
+						breakables.erase(breakables.begin() + pick);
+
+						if ( caster->behavior == &actEternalShrine )
+						{
+							if ( breakables.size() == 0 )
+							{
+								breakables.push_back(caster);
+							}
+						}
+						continue;
+
 					}
+
 					if ( !found )
 					{
 						messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6942));

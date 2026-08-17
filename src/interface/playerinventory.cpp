@@ -10659,16 +10659,17 @@ void Player::Inventory_t::updateInventory()
 				else if ( eternalShrineGUI.bOpen )
 				{
 					eternalShrineOpen = true;
-					if ( eternalShrineGUI.inventoryItemAllowedInGUI(item) )
+					/*if ( eternalShrineGUI.inventoryItemAllowedInGUI(item) )
 					{
-						eternalShrineGUI.setItemDisplayNameAndPrice(item, false);
-					}
+					}*/
+					eternalShrineGUI.setItemDisplayNameAndPrice(item, false);
 
 					if ( inventoryControlActive && !bIsTooltipDelayed() )
 					{
 						if ( eternalShrineGUI.isInteractable )
 						{
-							if ( !(eternalShrineGUI.sendItem1Uid != 0 && bCompactView) && eternalShrineGUI.bSendItemAllowed )
+							if ( !(eternalShrineGUI.sendItem1Uid != 0 && bCompactView)
+								&& !(bCompactView && !eternalShrineGUI.bSendItemAllowed) )
 							{
 								tooltipOpen = true;
 								players[player]->hud.updateFrameTooltip(item, tooltipCoordX, tooltipCoordY, justify);

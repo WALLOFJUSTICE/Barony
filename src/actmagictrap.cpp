@@ -176,6 +176,8 @@ void Entity::actMagicTrapCeiling()
 		{
 			entity->x = x;
 			entity->y = y;
+			entity->sizex = 5;
+			entity->sizey = 5;
 			entity->z = ceilingModel->z - 2;
 			double missile_speed = 4.0;
 			entity->vel_x = 0.0;

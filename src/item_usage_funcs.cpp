@@ -2400,7 +2400,7 @@ bool item_PotionHealing(Item*& item, Entity* entity, Entity* usedBy, bool should
 	//Bonus from CON, to scale up healing potions as the game progresses.
 	if ( statGetCON(stats, entity) > 0 )
 	{
-		amount += 2 * statGetCON(stats, entity);
+		amount += std::min(30, 2 * statGetCON(stats, entity));
 	}
 
 	real_t healMult = entity->getHealingSpellPotionModifierFromEffects(false);
@@ -2561,7 +2561,7 @@ bool item_PotionExtraHealing(Item*& item, Entity* entity, Entity* usedBy, bool s
 	//Bonus from CON, to scale up healing potions as the game progresses.
 	if ( statGetCON(stats, entity) > 0 )
 	{
-		amount += 4 * statGetCON(stats, entity);
+		amount += std::min(30, 2 * statGetCON(stats, entity));
 	}
 
 	real_t healMult = entity->getHealingSpellPotionModifierFromEffects(false);

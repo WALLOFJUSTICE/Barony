@@ -836,6 +836,16 @@ void actHudWeapon(Entity* my)
 	}
 
 	bool shootmode = players[HUDWEAPON_PLAYERNUM]->shootmode;
+	bool overchargeAutoAttack = true;
+	int staffCharge = 0;
+	if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon && itemCategory(stats[HUDWEAPON_PLAYERNUM]->weapon) == MAGICSTAFF )
+	{
+		staffCharge = stats[HUDWEAPON_PLAYERNUM]->weapon->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
+		if ( staffCharge > 0 )
+		{
+			overchargeAutoAttack = false;
+		}
+	}
 
 	bool swingweapon = false;
 	if ( players[HUDWEAPON_PLAYERNUM]->entity
@@ -846,7 +856,7 @@ void actHudWeapon(Entity* my)
 		&& !gamePaused
 		&& players[HUDWEAPON_PLAYERNUM]->entity->isMobile()
 		&& (!(input.binaryToggle("Defend") && stats[HUDWEAPON_PLAYERNUM]->defending) || cast_animation[HUDWEAPON_PLAYERNUM].spellWaitingAttackInput() )
-		&& HUDWEAPON_OVERCHARGE < Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) )
+		&& (HUDWEAPON_OVERCHARGE < Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) || !overchargeAutoAttack) )
 	{
 		swingweapon = true;
 	}
@@ -3770,6 +3780,14 @@ void actHudWeapon(Entity* my)
 		}
 	}
 
+	bool magicstaff = false;
+	if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon
+		&& (stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER
+			|| (MAGICSTAFFS_USE_CHARGE && itemCategory(stats[HUDWEAPON_PLAYERNUM]->weapon) == MAGICSTAFF)) )
+	{
+		magicstaff = true;
+	}
+
 	if ( HUDWEAPON_CHARGE == Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) || castStrikeAnimation
 		|| players[HUDWEAPON_PLAYERNUM]->entity->skill[9] == MONSTER_POSE_SPECIAL_WINDUP2
 		|| shakeRangedWeapon )
@@ -3798,6 +3816,10 @@ void actHudWeapon(Entity* my)
 				HUDWEAPON_OLDVIBRATEX = (local_rng.rand() % 30 - 10) / 80.f;
 				HUDWEAPON_OLDVIBRATEY = (local_rng.rand() % 30 - 10) / 80.f;
 				HUDWEAPON_OLDVIBRATEZ = (local_rng.rand() % 30 - 10) / 80.f;
+				if ( magicstaff && (HUDWEAPON_OVERCHARGE < Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) - 3) )
+				{
+					HUDWEAPON_OLDVIBRATEZ = (local_rng.rand() % 30 - 10) / 160.f;
+				}
 				HUDWEAPON_MOVEX += HUDWEAPON_OLDVIBRATEX;
 				HUDWEAPON_MOVEY += HUDWEAPON_OLDVIBRATEY;
 				HUDWEAPON_MOVEZ += HUDWEAPON_OLDVIBRATEZ;
@@ -3823,6 +3845,7 @@ void actHudWeapon(Entity* my)
 			entity->flags[NOUPDATE] = true;
 			entity->flags[UPDATENEEDED] = false;
 			entity->flags[OVERDRAW] = true;
+			entity->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
 			entity->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
 			entity->scaley = 0.25f;
 			entity->scalez = 0.25f;
@@ -4228,11 +4251,22 @@ void actHudWeapon(Entity* my)
 			if ( HUDWEAPON_OVERCHARGE == (Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) - 3) )
 			{
 				numparticles = 3;
+				if ( staffCharge > 0 )
+				{
+					playSoundEntityLocal(players[HUDWEAPON_PLAYERNUM]->entity, 924, 128);
+					HUDWEAPON_MOVEZ += 2;
+				}
 			}
 			else if ( ticks % 5 == 0 )
 			{
 				numparticles = 1;
 			}
+
+			if ( staffCharge == 0 )
+			{
+				numparticles = 0;
+			}
+
 			for ( int i = 0; i < numparticles; ++i )
 			{
 				Entity* particle = spawnGib(my, 16);
@@ -4241,6 +4275,7 @@ void actHudWeapon(Entity* my)
 				particle->flags[NOUPDATE] = true;
 				particle->flags[UPDATENEEDED] = false;
 				particle->flags[OVERDRAW] = true;
+				particle->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
 				particle->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
 				particle->scaley = 0.25f;
 				particle->scalez = 0.25f;
@@ -4255,12 +4290,20 @@ void actHudWeapon(Entity* my)
 				particle->vel_x = cos(particle->yaw) * .1;
 				particle->vel_y = sin(particle->yaw) * .1;
 				particle->vel_z = -.05;
+				if ( numparticles == 3 )
+				{
+					particle->vel_z = -.1;
+				}
 				particle->fskill[3] = 0.01;
 				particle->skill[11] = HUDWEAPON_PLAYERNUM;
 
 				real_t focalx = my->focalx;
 				real_t focaly = my->focaly;
 				real_t focalz = (my->focalz - 6);
+				if ( stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER )
+				{
+					focalz += 2;
+				}
 
 				// magic code to translate focals into pure coords (doesn't include focaly)
 				real_t xoffset = focalz * sin(my->pitch + PI) * cos(my->roll) * cos(my->yaw);

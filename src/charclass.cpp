@@ -3121,7 +3121,7 @@ void initClass(const int player)
 			useItem(item, player);
 		}
 
-		item = newItem(MAGICSTAFF_SCEPTER, EXCELLENT, 0, 1, 50, true, nullptr);
+		item = newItem(MAGICSTAFF_SCEPTER, EXCELLENT, 0, 1, 100, true, nullptr);
 		if ( isLocalPlayer )
 		{
 			item2 = itemPickup(player, item);

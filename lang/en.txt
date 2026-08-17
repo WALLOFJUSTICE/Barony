@@ -7472,5 +7472,11 @@ has been unlocked!#
        (Hold)#
 7184        Smith
        (Hold)#
+7185 A voice booms inside your mind:
+ "A WORTHY GIFT."#
+7186 The hammer molds your item into a new form!#
+7187 Your item comes to life!#
+7188 You are smited by divine precision!#
+7189 You are struck by a psychic spear!#
 
 7999 END#

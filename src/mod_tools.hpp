@@ -4506,12 +4506,18 @@ public:
 		SHRINE_RESULT_OUTCOME
 	};
 	static std::pair<std::string, int> rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng, Item* item = nullptr);
+	struct SkillItemPools_t
+	{
+		std::map<int, std::vector<std::vector<Item>>> pool;
+	};
+	static std::map<int, SkillItemPools_t> skillItemMap;
 private:
 	static std::map<int, std::map<ShrineEffectsPools, std::vector<std::string>>> shrineEffectPools;
 	static std::vector<std::pair<std::string, ShrineEffectsPools>> shrineEffectsTable;
 	static std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffectsPools, int>>>> shrineOutcomes;
 	static std::map<int, std::map<std::string, std::vector<std::pair<ShrineEffectsPools, int>>>> shrineRewards;
 	static std::map<std::string, std::set<std::string>> supplicationExcludeStrings;
+
 };
 
 struct ShrinePlayerMessageManager_t
