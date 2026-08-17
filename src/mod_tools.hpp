@@ -1387,97 +1387,7 @@ public:
 	std::vector<FollowerGenerateDetails_t> followersToGenerateForLeaders;
 	inline bool inUse() { return usingCustomManager; };
 
-	void readFromFile(Uint32 seed)
-	{
-		monster_curve_rng.seedBytes(&seed, sizeof(seed));
-		MonsterStatCustomManager::monster_stat_rng.seedBytes(&seed, sizeof(seed));
-
-		allLevelCurves.clear();
-		usingCustomManager = false;
-		if ( PHYSFS_getRealDir("/data/monstercurve.json") )
-		{
-			std::string inputPath = PHYSFS_getRealDir("/data/monstercurve.json");
-			inputPath.append("/data/monstercurve.json");
-
-			File* fp = FileIO::open(inputPath.c_str(), "rb");
-			if ( !fp )
-			{
-				printlog("[JSON]: Error: Could not locate json file %s", inputPath.c_str());
-				return;
-			}
-			char buf[65536];
-			int count = fp->read(buf, sizeof(buf[0]), sizeof(buf));
-			buf[count] = '\0';
-			rapidjson::StringStream is(buf);
-			FileIO::close(fp);
-
-			rapidjson::Document d;
-			d.ParseStream(is);
-			if ( !d.HasMember("version") )
-			{
-				printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
-				return;
-			}
-			int version = d["version"].GetInt();
-
-			if ( d.HasMember("levels") )
-			{
-				usingCustomManager = true;
-				const rapidjson::Value& levels = d["levels"];
-				for ( rapidjson::Value::ConstMemberIterator map_itr = levels.MemberBegin(); map_itr != levels.MemberEnd(); ++map_itr )
-				{
-					LevelCurve newCurve;
-					newCurve.mapName = map_itr->name.GetString();
-					if ( map_itr->value.HasMember("random_generation_monsters") )
-					{
-						const rapidjson::Value& randomGeneration = map_itr->value["random_generation_monsters"];
-						for ( rapidjson::Value::ConstValueIterator monsters_itr = randomGeneration.Begin(); monsters_itr != randomGeneration.End(); ++monsters_itr )
-						{
-							const rapidjson::Value& monster = *monsters_itr;
-							MonsterCurveEntry newMonster(monster["name"].GetString(),
-								monster["dungeon_depth_minimum"].GetInt(),
-								monster["dungeon_depth_maximum"].GetInt(),
-								monster["weighted_chance"].GetInt(),
-								"");
-
-							if ( monster.HasMember("variants") )
-							{
-								for ( rapidjson::Value::ConstMemberIterator var_itr = monster["variants"].MemberBegin();
-									var_itr != monster["variants"].MemberEnd(); ++var_itr )
-								{
-									newMonster.addVariant(var_itr->name.GetString(), var_itr->value.GetInt());
-								}
-							}
-							newCurve.monsterCurve.push_back(newMonster);
-						}
-					}
-
-					if ( map_itr->value.HasMember("fixed_monsters") )
-					{
-						const rapidjson::Value& fixedGeneration = map_itr->value["fixed_monsters"];
-						for ( rapidjson::Value::ConstValueIterator monsters_itr = fixedGeneration.Begin(); monsters_itr != fixedGeneration.End(); ++monsters_itr )
-						{
-							const rapidjson::Value& monster = *monsters_itr;
-							MonsterCurveEntry newMonster(monster["name"].GetString(), 0, 255, 1, "");
-
-							if ( monster.HasMember("variants") )
-							{
-								for ( rapidjson::Value::ConstMemberIterator var_itr = monster["variants"].MemberBegin();
-									var_itr != monster["variants"].MemberEnd(); ++var_itr )
-								{
-									newMonster.addVariant(var_itr->name.GetString(), var_itr->value.GetInt());
-								}
-							}
-							newCurve.fixedSpawns.push_back(newMonster);
-						}
-					}
-					allLevelCurves.push_back(newCurve);
-				}
-			}
-			printCurve(allLevelCurves);
-			printlog("[JSON]: Successfully read json file %s", inputPath.c_str());
-		}
-	}
+	void readFromFile(Uint32 seed);
 
 	static int getMonsterTypeFromString(std::string monsterStr)
 	{
@@ -4595,7 +4505,7 @@ public:
 		SHRINE_RESULT_REWARD,
 		SHRINE_RESULT_OUTCOME
 	};
-	static std::pair<std::string, int> rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng);
+	static std::pair<std::string, int> rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng, Item* item = nullptr);
 private:
 	static std::map<int, std::map<ShrineEffectsPools, std::vector<std::string>>> shrineEffectPools;
 	static std::vector<std::pair<std::string, ShrineEffectsPools>> shrineEffectsTable;

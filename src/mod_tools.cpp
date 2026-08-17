@@ -8772,6 +8772,97 @@ void VideoManager_t::update()
 #endif
 
 #ifndef EDITOR
+void MonsterCurveCustomManager::readFromFile(Uint32 seed)
+{
+	monster_curve_rng.seedBytes(&seed, sizeof(seed));
+	MonsterStatCustomManager::monster_stat_rng.seedBytes(&seed, sizeof(seed));
+
+	allLevelCurves.clear();
+	usingCustomManager = false;
+	if ( PHYSFS_getRealDir("/data/monstercurve.json") )
+	{
+		std::string inputPath = PHYSFS_getRealDir("/data/monstercurve.json");
+		inputPath.append("/data/monstercurve.json");
+
+		File* fp = FileIO::open(inputPath.c_str(), "rb");
+		if ( !fp )
+		{
+			printlog("[JSON]: Error: Could not locate json file %s", inputPath.c_str());
+			return;
+		}
+		char buf[65536];
+		FileReadStreamCustomWrapper is(fp, buf, sizeof(buf)); // custom parser to read chunks at a time
+		//rapidjson::StringStream is(buf);
+
+		rapidjson::Document d;
+		d.ParseStream(is);
+		FileIO::close(fp);
+		if ( !d.HasMember("version") )
+		{
+			printlog("[JSON]: Error: No 'version' value in json file, or JSON syntax incorrect! %s", inputPath.c_str());
+			return;
+		}
+		int version = d["version"].GetInt();
+
+		if ( d.HasMember("levels") )
+		{
+			usingCustomManager = true;
+			const rapidjson::Value& levels = d["levels"];
+			for ( rapidjson::Value::ConstMemberIterator map_itr = levels.MemberBegin(); map_itr != levels.MemberEnd(); ++map_itr )
+			{
+				LevelCurve newCurve;
+				newCurve.mapName = map_itr->name.GetString();
+				if ( map_itr->value.HasMember("random_generation_monsters") )
+				{
+					const rapidjson::Value& randomGeneration = map_itr->value["random_generation_monsters"];
+					for ( rapidjson::Value::ConstValueIterator monsters_itr = randomGeneration.Begin(); monsters_itr != randomGeneration.End(); ++monsters_itr )
+					{
+						const rapidjson::Value& monster = *monsters_itr;
+						MonsterCurveEntry newMonster(monster["name"].GetString(),
+							monster["dungeon_depth_minimum"].GetInt(),
+							monster["dungeon_depth_maximum"].GetInt(),
+							monster["weighted_chance"].GetInt(),
+							"");
+
+						if ( monster.HasMember("variants") )
+						{
+							for ( rapidjson::Value::ConstMemberIterator var_itr = monster["variants"].MemberBegin();
+								var_itr != monster["variants"].MemberEnd(); ++var_itr )
+							{
+								newMonster.addVariant(var_itr->name.GetString(), var_itr->value.GetInt());
+							}
+						}
+						newCurve.monsterCurve.push_back(newMonster);
+					}
+				}
+
+				if ( map_itr->value.HasMember("fixed_monsters") )
+				{
+					const rapidjson::Value& fixedGeneration = map_itr->value["fixed_monsters"];
+					for ( rapidjson::Value::ConstValueIterator monsters_itr = fixedGeneration.Begin(); monsters_itr != fixedGeneration.End(); ++monsters_itr )
+					{
+						const rapidjson::Value& monster = *monsters_itr;
+						MonsterCurveEntry newMonster(monster["name"].GetString(), 0, 255, 1, "");
+
+						if ( monster.HasMember("variants") )
+						{
+							for ( rapidjson::Value::ConstMemberIterator var_itr = monster["variants"].MemberBegin();
+								var_itr != monster["variants"].MemberEnd(); ++var_itr )
+							{
+								newMonster.addVariant(var_itr->name.GetString(), var_itr->value.GetInt());
+							}
+						}
+						newCurve.fixedSpawns.push_back(newMonster);
+					}
+				}
+				allLevelCurves.push_back(newCurve);
+			}
+		}
+		printCurve(allLevelCurves);
+		printlog("[JSON]: Successfully read json file %s", inputPath.c_str());
+	}
+}
+
 void MonsterData_t::loadMonsterDataJSON()
 {
 	if ( PHYSFS_getRealDir("/data/monster_data.json") )
