@@ -69,7 +69,8 @@ void initHuman(Entity* my, Stat* myStats)
 			{
 				if ( ((*cvar_summonBosses && conductGameChallenges[CONDUCT_CHEATS_ENABLED]) || rng.rand() % 25 == 0) && !myStats->MISC_FLAGS[STAT_FLAG_DISABLE_MINIBOSS]
 					&& strcmp(myStats->name, "scriptNPC") && !strstr(myStats->name, "$summon") && myStats->MISC_FLAGS[STAT_FLAG_NPC] == 0
-					&& myStats->leader_uid == 0 )
+					&& myStats->leader_uid == 0
+					&& strncmp(map.name, "Mages Guild", 11) )
 				{
 					specialMonsterVariant = 1;
 					int specialMonsterType = rng.rand() % 10;
@@ -368,6 +369,7 @@ void initHuman(Entity* my, Stat* myStats)
 			// random effects
 			if ( rng.rand() % 10 == 0 && strcmp(myStats->name, "scriptNPC") 
 				&& !strstr(myStats->name, "$summon")
+				&& strncmp(map.name, "Mages Guild", 11)
 				&& myStats->MISC_FLAGS[STAT_FLAG_NPC] == 0 && myStats->getAttribute("spawn_no_sleep") == "" )
 			{
 				myStats->setEffectActive(EFF_ASLEEP, 1);
