@@ -5541,6 +5541,8 @@ bool GenericGUIMenu::isItemEnhanceable(const Item* item, const int player)
 			return true;
 		}
 	}
+
+	return false;
 }
 
 int GenericGUIMenu::getItemEnhanceResult(const Item* item)

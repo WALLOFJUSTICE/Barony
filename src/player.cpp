@@ -9118,12 +9118,12 @@ int Player::PlayerMechanics_t::getDivinePenaltyModifier()
 		{ DivineEvent::DIVINE_PLAYER_KILL, -3 },
 		{ DivineEvent::DIVINE_TEAM_KILL, -3 },
 		{ DivineEvent::DIVINE_FRIENDLY_KILL, -3 },
-		{ DivineEvent::DIVINE_DEFACE, -10 },
-		{ DivineEvent::DIVINE_SHOP_KILL, -10 },
+		{ DivineEvent::DIVINE_DEFACE, -15 },
+		{ DivineEvent::DIVINE_SHOP_KILL, -15 },
 		{ DivineEvent::DIVINE_OFFERINGS, 2 },
 		{ DivineEvent::DIVINE_POOR_OFFERINGS, 1 },
 		{ DivineEvent::DIVINE_CLAIM_DONATION, 1 },
-		{ DivineEvent::DIVINE_MISSED_OFFERING, -1 },
+		{ DivineEvent::DIVINE_MISSED_OFFERING, -3 },
 		{ DivineEvent::DIVINE_NO_FLOOR_INFRACTIONS, 1 }
 	};
 

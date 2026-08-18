@@ -988,6 +988,26 @@ void ShrineEffects_t::buildShrineEffects()
 									item.identified = false;
 									item.appearance = 0;
 								}
+								else if ( itemName == "cat_revenant_skull" )
+								{
+									auto& item = def.emplace_back(Item());
+									item.type = WOODEN_SHIELD;
+									item.beatitude = 0;
+									item.status = EXCELLENT;
+									item.count = item_itr->value.GetInt();
+									item.identified = false;
+									item.appearance = REVENANT_SKULL;
+								}
+								else if ( itemName == "cat_earth_sprite" )
+								{
+									auto& item = def.emplace_back(Item());
+									item.type = WOODEN_SHIELD;
+									item.beatitude = 0;
+									item.status = EXCELLENT;
+									item.count = item_itr->value.GetInt();
+									item.identified = false;
+									item.appearance = EARTH_ELEMENTAL;
+								}
 								else if ( itemName == "cat_spellbook" )
 								{
 									int difficulty = item_itr->value.GetInt() * 20;
@@ -1143,15 +1163,20 @@ static ConsoleCommand ccmd_eternal_shrine_anvil_view("/eternal_shrine_anvil_debu
 			if ( entity->behavior == &actEternalShrine && entity->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
 			{
 				debug_anvil_results = true;
-				if ( stats[clientnum]->weapon )
+				Item** slot = &stats[clientnum]->weapon;
+				if ( argc >= 2 && argv[1][0] == '1' )
 				{
-					Status prev = stats[clientnum]->weapon->status;
+					slot = &stats[clientnum]->shield;
+				}
+				if ( slot && *slot )
+				{
+					Status prev = (*slot)->status;
 					for ( int status = BROKEN; status <= EXCELLENT; ++status )
 					{
-						stats[clientnum]->weapon->status = (Status)status;
-						ShrineEffects_t::getTierStringFromEffect(clientnum, *entity, local_rng, stats[clientnum]->weapon);
+						(*slot)->status = (Status)status;
+						ShrineEffects_t::getTierStringFromEffect(clientnum, *entity, local_rng, (*slot));
 					}
-					stats[clientnum]->weapon->status = prev;
+					(*slot)->status = prev;
 				}
 				debug_anvil_results = false;
 				break;
@@ -1233,20 +1258,80 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 			bool deleteItem = false;
 			bool setItem = false;
 			bool enhanceItem = false;
+			bool ignoreRepairItem(Item* item)
+			{
+				if ( item )
+				{
+					if ( items[item->type].category == THROWN
+						&& item->type != BOOMERANG )
+					{
+						if ( item->status != BROKEN )
+						{
+							return true;
+						}
+					}
+					if ( itemTypeIsQuiver(item->type) )
+					{
+						if ( item->status != BROKEN )
+						{
+							return true;
+						}
+					}
+				}
+
+				return false;
+			}
+			bool isArtifact(Item* item)
+			{
+				if ( item )
+				{
+					if ( item->type == ARTIFACT_AXE
+						|| item->type == ARTIFACT_SWORD
+						|| item->type == ARTIFACT_MACE
+						|| item->type == ARTIFACT_SPEAR
+						|| item->type == ARTIFACT_AXE
+						|| item->type == ARTIFACT_BOW
+						|| item->type == ARTIFACT_BREASTPIECE
+						|| item->type == ARTIFACT_HELM
+						|| item->type == ARTIFACT_BOOTS
+						|| item->type == ARTIFACT_CLOAK
+						|| item->type == ARTIFACT_GLOVES
+						|| item->type == MASK_ARTIFACT_VISOR )
+					{
+						return true;
+					}
+				}
+				return false;
+			}
 			void setDeleteItem()
 			{
 				deleteItem = true;
 			}
-			void setItemMod(int _repairMod, int _blessMod)
+			bool setItemMod(Item* item, int _repairMod, int _blessMod)
 			{
 				repairMod = _repairMod;
 				blessMod = _blessMod;
+
+				if ( _blessMod == 0 )
+				{
+					if ( ignoreRepairItem(item) )
+					{
+						return false;
+					}
+				}
+
+				return true;
 			}
 			void setItemProp(Item* item, int _repairNew, int _blessNew)
 			{
 				setItem = true;
 
-				if ( item && ((item->type >= ARTIFACT_SWORD && item->type <= ARTIFACT_GLOVES) || item->type == BOOMERANG) )
+				if ( ignoreRepairItem(item) )
+				{
+					// no repair
+					repairMod = item->status;
+				}
+				else if ( isArtifact(item) || (item && item->type == BOOMERANG) )
 				{
 					repairMod = std::min((int)item->status + 1, _repairNew);
 				}
@@ -1254,7 +1339,15 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				{
 					repairMod = _repairNew;
 				}
-				blessMod = _blessNew;
+
+				if ( isArtifact(item) )
+				{
+					blessMod = std::min((int)std::max(0, (int)item->beatitude) + 1, _blessNew);
+				}
+				else
+				{
+					blessMod = _blessNew;
+				}
 			}
 			bool setEnhanceItem(Item* item)
 			{
@@ -1269,22 +1362,8 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 			bool run(Item* item)
 			{
 				if ( !item ) { return false; }
-				bool artifact = false;
-				if ( item->type == ARTIFACT_AXE
-					|| item->type == ARTIFACT_SWORD
-					|| item->type == ARTIFACT_MACE
-					|| item->type == ARTIFACT_SPEAR
-					|| item->type == ARTIFACT_AXE
-					|| item->type == ARTIFACT_BOW
-					|| item->type == ARTIFACT_BREASTPIECE
-					|| item->type == ARTIFACT_HELM
-					|| item->type == ARTIFACT_BOOTS
-					|| item->type == ARTIFACT_CLOAK
-					|| item->type == ARTIFACT_GLOVES
-					|| item->type == MASK_ARTIFACT_VISOR )
-				{
-					artifact = true;
-				}
+				bool artifact = isArtifact(item);
+				
 				if ( deleteItem )
 				{
 					item->count = 0;
@@ -1333,27 +1412,33 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				if ( setItem )
 				{
 					item->status = (Status)repairMod;
-					if ( !artifact )
-					{
-						item->beatitude = blessMod;
-					}
-					else
-					{
-						item->beatitude = std::min(item->beatitude + 1, blessMod);
-					}
+					item->beatitude = blessMod;
 					return true;
 				}
 				
-				if ( blessMod != 0 || repairMod != 0 )
+				if ( repairMod != 0 )
 				{
-					item->status = (Status)std::max((int)BROKEN, std::min((int)EXCELLENT, (item->status + repairMod)));
-					if ( !artifact )
+					if ( !ignoreRepairItem(item) )
 					{
-						item->beatitude += blessMod;
+						if ( artifact || (item && item->type == BOOMERANG) )
+						{
+							item->status = (Status)std::max((int)BROKEN, std::min((int)EXCELLENT, (item->status + std::min(1, repairMod))));
+						}
+						else
+						{
+							item->status = (Status)std::max((int)BROKEN, std::min((int)EXCELLENT, (item->status + repairMod)));
+						}
+					}
+				}
+				if ( blessMod != 0 )
+				{
+					if ( artifact )
+					{
+						item->beatitude += std::min(1, blessMod);
 					}
 					else
 					{
-						item->beatitude += std::min(1, blessMod);
+						item->beatitude += blessMod;
 					}
 				}
 				return true;
@@ -1408,19 +1493,19 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				{
 					chances[HARD] = 2;
 					chance_funcs[HARD].setEnhanceItem(item);
-					chance_funcs[HARD].setItemMod(4, 2);
+					chance_funcs[HARD].setItemMod(item, 4, 2);
 				}
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[MED] = 3;
 					chance_funcs[MED].setEnhanceItem(item);
-					chance_funcs[MED].setItemMod(4, item->beatitude == 0 ? 3 : 1);
+					chance_funcs[MED].setItemMod(item, 4, item->beatitude == 0 ? 3 : 1);
 				}
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 3;
 					chance_funcs[EASY].setEnhanceItem(item);
-					chance_funcs[EASY].setItemMod(4, item->beatitude == 0 ? 2 : 1);
+					chance_funcs[EASY].setItemMod(item, 4, item->beatitude == 0 ? 2 : 1);
 				}
 				/*if ( item->status + 0 <= (int)EXCELLENT )
 				{
@@ -1451,18 +1536,23 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				{
 					chances[HARD] = 2;
 					chance_funcs[HARD].setEnhanceItem(item);
-					chance_funcs[HARD].setItemMod(4, item->beatitude == 0 ? 2 : 1);
+					chance_funcs[HARD].setItemMod(item, 4, item->beatitude == 0 ? 2 : 1);
 				}
 				if ( item->status + 0 <= (int)EXCELLENT )
 				{
 					chances[MED] = 2;
-					chance_funcs[MED].setItemMod(4, 1);
+					chance_funcs[MED].setItemMod(item, 4, 1);
 				}
 				if ( item->status + 2 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 4;
-					chance_funcs[EASY].setEnhanceItem(item);
-					chance_funcs[EASY].setItemMod(3, 0);
+					bool enhance = chance_funcs[EASY].setEnhanceItem(item);
+					bool res = chance_funcs[EASY].setItemMod(item, 3, 0);
+
+					if ( !enhance && !res )
+					{
+						chances[EASY] = 0;
+					}
 				}
 				/*if ( item->status + 3 <= (int)EXCELLENT )
 				{
@@ -1495,27 +1585,30 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 					chances[HARD] = 2;
 					if ( chance_funcs[HARD].setEnhanceItem(item) )
 					{
-						chance_funcs[HARD].setItemMod(2, 0);
+						chance_funcs[HARD].setItemMod(item, 2, 0);
 					}
 					else
 					{
-						chance_funcs[HARD].setItemMod(2, 1);
+						chance_funcs[HARD].setItemMod(item, 2, 1);
 					}
 				}
 				if ( item->status + 4 <= (int)EXCELLENT )
 				{
 					chances[MED] = 2;
-					chance_funcs[MED].setItemMod(4, 0);
+					bool res = chance_funcs[MED].setItemMod(item, 4, 0);
+					if ( !res ) { chances[MED] = 0; }
 				}
 				if ( item->status + 3 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 4;
-					chance_funcs[EASY].setItemMod(3, 0);
+					bool res = chance_funcs[EASY].setItemMod(item, 3, 0);
+					if ( !res ) { chances[EASY] = 0; }
 				}
 				if ( item->status + 2 <= (int)EXCELLENT )
 				{
 					chances[NONE] = 2;
-					chance_funcs[NONE].setItemMod(2, 0);
+					bool res = chance_funcs[NONE].setItemMod(item, 2, 0);
+					if ( !res ) { chances[NONE] = 0; }
 				}
 			}
 		}
@@ -1542,27 +1635,30 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 					chances[HARD] = 1;
 					if ( chance_funcs[HARD].setEnhanceItem(item) )
 					{
-						chance_funcs[HARD].setItemMod(1, 0);
+						chance_funcs[HARD].setItemMod(item, 1, 0);
 					}
 					else
 					{
-						chance_funcs[HARD].setItemMod(1, 1);
+						chance_funcs[HARD].setItemMod(item, 1, 1);
 					}
 				}
 				if ( item->status + 3 <= (int)EXCELLENT )
 				{
 					chances[MED] = 2;
-					chance_funcs[MED].setItemMod(4, 0);
+					bool res = chance_funcs[MED].setItemMod(item, 4, 0);
+					if ( !res ) { chances[MED] = 0; }
 				}
 				if ( item->status + 2 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 5;
-					chance_funcs[EASY].setItemMod(2, 0);
+					bool res = chance_funcs[EASY].setItemMod(item, 2, 0);
+					if ( !res ) { chances[EASY] = 0; }
 				}
 				if ( item->status + 1 <= (int)EXCELLENT )
 				{
 					chances[NONE] = 2;
-					chance_funcs[NONE].setItemMod(1, 0);
+					bool res = chance_funcs[NONE].setItemMod(item, 1, 0);
+					if ( !res ) { chances[NONE] = 0; }
 				}
 			}
 		}
@@ -1578,21 +1674,34 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				if ( item->status + 2 <= (int)EXCELLENT )
 				{
 					chances[MED] = 3;
-					chance_funcs[MED].setItemMod(2, 0);
+					bool res = chance_funcs[MED].setItemMod(item, 2, 0);
+					if ( !res ) { chances[MED] = 0; }
 				}
 				if ( item->status + 1 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 5;
-					chance_funcs[EASY].setItemMod(1, 0);
+					bool res = chance_funcs[EASY].setItemMod(item, 1, 0);
+					if ( !res ) { chances[EASY] = 0; }
 				}
+
 				chances[NONE] = 2;
 				if ( !canCharge )
 				{
-					chance_funcs[NONE].setDeleteItem();
+					if ( chance_funcs[NONE].ignoreRepairItem(item) )
+					{
+						if ( !chance_funcs[NONE].setEnhanceItem(item) )
+						{
+							chance_funcs[NONE].setDeleteItem();
+						}
+					}
+					else
+					{
+						chance_funcs[NONE].setDeleteItem();
+					}
 				}
 				else
 				{
-					chance_funcs[NONE].setItemMod(1, 0);
+					chance_funcs[NONE].setItemMod(item, 1, 0);
 				}
 			}
 		}
@@ -1937,15 +2046,23 @@ std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEf
 			// increase outcomes
 			if ( negativeActionModifier < 0 )
 			{
-				if ( result.second < 3 )
+				if ( result.second <= 3 )
 				{
-					if ( negativeActionModifier <= -20 )
+					if ( negativeActionModifier <= -40 )
+					{
+						result.second = std::min(5, result.second + 2);
+					}
+					else if ( negativeActionModifier <= -30 )
+					{
+						result.second = std::min(4, result.second + 2);
+					}
+					else if ( negativeActionModifier <= -20 )
 					{
 						result.second = std::min(3, result.second + 2);
 					}
 					else if ( negativeActionModifier <= -10 )
 					{
-						result.second = std::min(2, result.second + 1);
+						result.second = std::min(3, result.second + 1);
 					}
 				}
 			}
@@ -3227,6 +3344,19 @@ void actEternalShrine(Entity* my)
 	if ( *cvar_eternal_shrine_effect != "" )
 	{
 		uppercaseString(*cvar_eternal_shrine_effect);
+		int tier = 1 + local_rng.rand() % 3;
+		auto find = (*cvar_eternal_shrine_effect).find(' ');
+		if ( find != std::string::npos )
+		{
+			char c = (*cvar_eternal_shrine_effect).at(find + 1);
+			if ( c >= '1' && c <= '5' )
+			{
+				tier = 1 + (c - '1');
+			}
+			(*cvar_eternal_shrine_effect) = (*cvar_eternal_shrine_effect).substr(0, find);
+		}
+
+
 		if ( multiplayer != CLIENT )
 		{
 			if ( svFlags & SV_FLAG_CHEATS )
@@ -3235,7 +3365,6 @@ void actEternalShrine(Entity* my)
 				{
 					if ( strstr(str.c_str(), (*cvar_eternal_shrine_effect).c_str()) )
 					{
-						int tier = 1 + local_rng.rand() % 3;
 						bool result = applyShrineEffect(str, players[0]->entity, my, tier);
 						messagePlayer(clientnum, MESSAGE_MISC, "Tier: %d", tier);
 						/*if ( result )
@@ -4457,7 +4586,7 @@ bool eternalShrineProcessOfferingItem(const int player, Uint32 shrineUid, int sh
 		players[player]->mechanics.divineFavorModItem(divineFavor);
 	}
 	int newPips = players[player]->mechanics.getDivineFavorPips();
-	bool poorOffering = divineFavor <= 5 || item->status == BROKEN;
+	bool poorOffering = divineFavor <= 5 || item->status == BROKEN || item->beatitude < 0;
 
 	if ( shrine )
 	{
@@ -4994,7 +5123,19 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 	if ( skillID > 0 )
 	{
 		int itemType = 0;
-		std::vector<std::pair<int, int>> chances;
+		struct Chance
+		{
+			int skillID = -1;
+			int spellID = -1;
+			int difficulty = -1;
+			Chance(int _skill, int _spell, int _diff)
+			{
+				skillID = _skill;
+				spellID = _spell;
+				difficulty = _diff;
+			}
+		};
+		std::vector<Chance> chances;
 		std::vector<unsigned int> chance_weights;
 		int maxDifficulty = std::max(0, (((players[player]->mechanics.getDivineFavorPips() + 1) / 2) - 1) * 20);
 		if ( players[player]->mechanics.getDivineFavorPips() >= Player::DIVINE_FAVOR_PIPS_MAX )
@@ -5004,7 +5145,7 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 		int minDifficulty = 0;
 
 		int skillLVL = stats[player]->getModifiedProficiency(skillID) + statGetINT(stats[player], players[player]->entity);
-
+		int highestDifficulty = 0;
 		for ( auto& def : allGameSpells )
 		{
 			if ( auto spell = def.second )
@@ -5019,26 +5160,40 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 						&& spell->skillID == skillID
 						&& skillLVL >= spell->difficulty )
 					{
-						chances.push_back(std::make_pair(spell->skillID, spell->ID));
+						chances.emplace_back(Chance(spell->skillID, spell->ID, spell->difficulty));
 						chance_weights.push_back(1 + spell->difficulty / 5);
+						highestDifficulty = std::max(spell->difficulty, highestDifficulty);
 					}
 				}
 			}
 		}
 
+		bool anychances = false;
+		for ( int i = 0; i < chances.size(); ++i )
+		{
+			if ( std::min(80, chances[i].difficulty) == std::min(80, highestDifficulty) )
+			{
+				anychances = true;
+			}
+			else
+			{
+				chance_weights[i] = 0;
+			}
+		}
+
 		Uint32 appearance = 0;
-		if ( chances.size() && chances.size() == chance_weights.size() )
+		if ( anychances && chances.size() && chances.size() == chance_weights.size() )
 		{
 			auto& rng = shrine->entity_rng ? *shrine->entity_rng : local_rng;
 			int pick = rng.discrete(chance_weights.data(), chance_weights.size());
 			{
 				itemType = TOME_SORCERY;
-				appearance = spellTomeIDToAppearance[chances[pick].second];
-				if ( chances[pick].first == PRO_MYSTICISM )
+				appearance = spellTomeIDToAppearance[chances[pick].spellID];
+				if ( chances[pick].skillID == PRO_MYSTICISM )
 				{
 					itemType = TOME_MYSTICISM;
 				}
-				else if ( chances[pick].first == PRO_THAUMATURGY )
+				else if ( chances[pick].skillID == PRO_THAUMATURGY )
 				{
 					itemType = TOME_THAUMATURGY;
 				}
@@ -8723,15 +8878,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "LEVEL_DRAIN" )
 	{
 		int duration = 5 * 60 * TICKS_PER_SECOND;
-		Uint8 effectStrength = 1; // -20%
-		if ( tier == 2 )
-		{
-			effectStrength = 2; // -30%
-		}
-		else if ( tier >= 3 )
-		{
-			effectStrength = 3; // -40%
-		}
+		Uint8 effectStrength = std::min(5, std::max(1, tier)); // -20 to -60%
 		target->setEffect(EFF_STASIS, (Uint8)2, 3 * TICKS_PER_SECOND, true, true, true);  // aesthetic stasis
 		if ( target->setEffect(EFF_LEVEL_DRAIN, effectStrength, duration, true) )
 		{
@@ -8791,7 +8938,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		{
 			effectStrength = 10; // 20% for 100% total
 		}
-		if ( target->setEffect(EFF_STASIS, (Uint8)3, duration, true, true, true) )
+		if ( target->setEffect(EFF_STASIS, (Uint8)effectStrength, duration, true, true, true) )
 		{
 			Uint32 color = makeColorRGB(255, 0, 0);
 			if ( player >= 0 )
@@ -8823,18 +8970,34 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "RESOLVE_HP"
 		|| effect_str == "RESOLVE_MP" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = 15 * 60 * TICKS_PER_SECOND;
 		Uint8 strength = tier;
+		if ( tier == 2 )
+		{
+			strength = 3;
+		}
+		if ( tier == 3 )
+		{
+			strength = 5;
+		}
 		Uint8 effectStrength = target->getStats() ? target->getStats()->getEffectActive(EFF_RESOLVE) : 0;
 		Uint8 hp = effectStrength & 0xF;
 		Uint8 mp = (effectStrength >> 4) & 0xF;
 		if ( effect_str == "RESOLVE_HP" )
 		{
 			hp = std::max(hp, strength);
+			if ( mp )
+			{
+				mp = std::max(mp, hp);
+			}
 		}
 		else if ( effect_str == "RESOLVE_MP" )
 		{
 			mp = std::max(mp, strength);
+			if ( hp )
+			{
+				hp = std::max(mp, hp);
+			}
 		}
 		effectStrength = hp;
 		effectStrength |= (mp & 0xF) << 4;
@@ -9180,7 +9343,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		spellTimer->actmagicSpellbookBonus = 0;
 		if ( tier >= 2 )
 		{
-			spellTimer->actmagicSpellbookBonus = 50 * (tier - 1);
+			spellTimer->actmagicSpellbookBonus = 75 * (tier - 1);
 		}
 		spellTimer->actmagicFromSpellbook = 0;
 		spellTimer->actmagicOrbitHitTargetUID1 = target->getUID();
@@ -9207,7 +9370,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			fx1->actmagicSpellbookBonus = 0;
 			if ( tier >= 2 )
 			{
-				fx1->actmagicSpellbookBonus += 100 * (tier - 1);
+				fx1->actmagicSpellbookBonus += 250 * (tier - 1);
 			}
 			fx1->actmagicFromSpellbook = 0;
 			result = true;
@@ -9236,7 +9399,8 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			fx->actmagicSpellbookBonus = 0;
 			if ( tier >= 2 )
 			{
-				fx->actmagicSpellbookBonus = 50 * (tier - 1);
+				fx->actmagicSpellbookBonus += 100;
+				fx->actmagicSpellbookBonus += 100 * (tier - 1);
 			}
 			fx->actmagicFromSpellbook = 0;
 

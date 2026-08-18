@@ -3781,7 +3781,7 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 				}
 			}
 			const int skillLVL = stats[player]->getModifiedProficiency(PRO_ALCHEMY) / 20;
-			if ( tryEmptyBottle && local_rng.rand() % 100 < std::min(80, (60 + skillLVL * 10)) ) // 60 - 80% chance
+			if ( tryEmptyBottle && local_rng.rand() % 100 < std::min(80, (40 + skillLVL * 5)) ) // 40 - 65% chance
 			{
 				Item* emptyBottle = newItem(POTION_EMPTY, SERVICABLE, 0, 1, 0, true, nullptr);
 				itemPickup(player, emptyBottle);

@@ -69,9 +69,9 @@ void initRevenantSkull(Entity* my, Stat* myStats)
 			// count any inventory items set to default in edtior
 			int defaultItems = countDefaultItems(myStats);
 
-			my->setHardcoreStats(*myStats);
-
-			if ( myStats->getAttribute("revenant_skull") != "" )
+			if ( myStats->getAttribute("revenant_skull") != ""
+				|| myStats->getAttribute("SHRINE_SPAWN") == "1"
+				|| myStats->getAttribute("SHRINE_DONATION_SPAWN") == "1" )
 			{
 				myStats->HP = 80 + std::max(0, (myStats->LVL - 5)) * 4;
 				myStats->MAXHP = myStats->HP;
@@ -81,6 +81,19 @@ void initRevenantSkull(Entity* my, Stat* myStats)
 				myStats->CON = 5 + std::max(0, (myStats->LVL - 5)) / 4;
 				myStats->PER = 8 + std::max(0, (myStats->LVL - 5)) / 3;
 			}
+			else
+			{
+				myStats->LVL = std::max(10, currentlevel);
+
+				myStats->HP = 80 + std::max(0, (myStats->LVL - 5)) * 4;
+				myStats->MAXHP = myStats->HP;
+				myStats->OLDHP = myStats->HP;
+				myStats->STR = 10 + std::max(0, (myStats->LVL - 5)) / 3;
+				myStats->DEX = 3 + std::max(0, (myStats->LVL - 5)) / 3;
+				myStats->CON = 5 + std::max(0, (myStats->LVL - 5)) / 4;
+				myStats->PER = 8 + std::max(0, (myStats->LVL - 5)) / 3;
+			}
+			my->setHardcoreStats(*myStats);
 		}
 	}
 
@@ -1759,7 +1772,8 @@ void initEarthElemental(Entity* my, Stat* myStats)
 			int defaultItems = countDefaultItems(myStats);
 
 			if ( myStats->getAttribute("SUMMONED_CREATURE") == "1"
-				|| myStats->getAttribute("SHRINE_SPAWN") == "1" )
+				|| myStats->getAttribute("SHRINE_SPAWN") == "1"
+				|| myStats->getAttribute("SHRINE_DONATION_SPAWN") == "1" )
 			{
 				// min 5, max 20
 				myStats->HP = 40 + std::max(0, (myStats->LVL - 5)) * 5; //40 - 115

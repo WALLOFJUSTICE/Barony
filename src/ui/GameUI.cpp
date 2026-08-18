@@ -6341,6 +6341,121 @@ void StatusEffectQueueEntry_t::animateNotification(int player)
 	pos.h = animateStartH + destH * animateH;
 }
 
+std::string getStatusEffectNumberString(Uint8 effectStrength, std::vector<int> breakpoints, int effectID = -1)
+{
+	std::string val = "";
+	if ( effectStrength >= 1 )
+	{
+		int index = 0;
+		for ( auto point : breakpoints )
+		{
+			++index;
+			if ( (int)effectStrength >= point )
+			{
+				if ( index == 1 )
+				{
+					val = "I";
+				}
+				else if ( index == 2 )
+				{
+					val = "II";
+				}
+				else if ( index == 3 )
+				{
+					val = "III";
+				}
+				else if ( index == 4 )
+				{
+					val = "IV";
+				}
+				else if ( index == 5 )
+				{
+					val = "V";
+				}
+				else if ( index == 6 )
+				{
+					val = "VI";
+				}
+				else if ( index == 7 )
+				{
+					val = "VII";
+				}
+				else if ( index == 8 )
+				{
+					val = "VIII";
+				}
+				else if ( index == 9 )
+				{
+					val = "IX";
+				}
+				else if ( index == 10 )
+				{
+					val = "X";
+				}
+			}
+		}
+	}
+
+	return val;
+}
+
+
+std::map<std::string, std::function<std::string(int)>> statusfx_num_lookup =
+{
+	{ "holy_burn.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_HOLY_FIRE), std::vector<int>{2, 3, 4}); }
+	},
+	{ "incoherence.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_INCOHERENCE), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
+	},
+	{ "weaken.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_WEAKNESS), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
+	},
+	{ "enfeeble.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_ENFEEBLE), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
+	},
+	{ "burdened.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_BURDENED), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
+	},
+	{ "fortify_hp.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_RESOLVE) & 0xF, std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
+	},
+	{ "fortify_mp.png", [](int player)
+		{ return getStatusEffectNumberString((stats[player]->getEffectActive(EFF_RESOLVE) >> 4) & 0xF, std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
+	},
+	{ "fortify_hpmp.png", [](int player)
+		{ return getStatusEffectNumberString(
+			std::max(stats[player]->getEffectActive(EFF_RESOLVE) & 0xF, (stats[player]->getEffectActive(EFF_RESOLVE) >> 4) & 0xF),
+			std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
+	},
+	{ "slowdigestion.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_SLOW_DIGEST), std::vector<int>{3, 5, 7}, 7); }
+	},
+	{ "regen_hpoff.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_DEGENERATION), std::vector<int>{3, 5, 7}); }
+	},
+	{ "regen_mpoff.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_DISPIRITED), std::vector<int>{3, 5, 7}); }
+	},
+	{ "lighten_load.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_LIGHTEN_LOAD) / 20, std::vector<int>{1, 2, 3, 4, 5}); }
+	}
+};
+
+std::string statusfx_num_lookup_exists(std::string& path)
+{
+	for ( auto& pair : statusfx_num_lookup )
+	{
+		if ( path.find(pair.first) != std::string::npos )
+		{
+			return pair.first;
+		}
+	}
+
+	return "";
+}
+
+
 static ConsoleVariable<bool> cvar_statusfx_align_text_right("/statusfx_align_text_right", false);
 void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 	Frame* frame = (Frame*)&widget;
@@ -6379,6 +6494,16 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_SIGIL_NPC)
 				|| stats[player]->getEffectActive(EFF_SANCTUARY)
 				|| stats[player]->getEffectActive(EFF_LEVEL_DRAIN)
+				|| stats[player]->getEffectActive(EFF_HOLY_FIRE)
+				|| stats[player]->getEffectActive(EFF_WEAKNESS)
+				|| stats[player]->getEffectActive(EFF_INCOHERENCE)
+				|| stats[player]->getEffectActive(EFF_ENFEEBLE)
+				|| stats[player]->getEffectActive(EFF_BURDENED)
+				|| stats[player]->getEffectActive(EFF_RESOLVE)
+				|| stats[player]->getEffectActive(EFF_SLOW_DIGEST)
+				|| stats[player]->getEffectActive(EFF_DEGENERATION)
+				|| stats[player]->getEffectActive(EFF_DISPIRITED)
+				|| stats[player]->getEffectActive(EFF_LIGHTEN_LOAD)
 				|| (cast_animation[player].overcharge > 0 || cast_animation[player].overcharge_init > 0)
 				|| (players[player]->mechanics.gremlinBreakableCounter > 0 && stats[player]->type == GREMLIN)
 				|| players[player]->mechanics.getWealthTier() > 0 )
@@ -6388,6 +6513,28 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 					bool alignRight = *cvar_statusfx_align_text_right;
 					if ( !img->disabled )
 					{
+						std::string lookup = statusfx_num_lookup_exists(img->path);
+						if ( lookup != "" )
+						{
+							std::string val = statusfx_num_lookup[lookup](player);
+							if ( val != "" )
+							{
+								alignRight = true;
+
+								if ( auto text = Text::get(val.c_str(),
+									"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
+								{
+									text->drawColor(SDL_Rect{ 0,0,0,0 },
+										SDL_Rect{ pos.x + img->pos.x + (alignRight ? (img->pos.w - (int)text->getWidth()) : (img->pos.w / 2 - (int)text->getWidth() / 2 + *cvar_assist_icon_txt_x)),
+										pos.y + img->pos.y + img->pos.h / 2 - (int)text->getHeight() / 2 - 3 + *cvar_assist_icon_txt_y,
+										0, 0 },
+										SDL_Rect{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY },
+										makeColor(255, 255, 255, 255));
+								}
+								continue;
+							}
+						}
+
 						if ( img->path.find("assistance.png") != std::string::npos )
 						{
 							if ( auto text = Text::get(std::to_string(stats[player]->MISC_FLAGS[STAT_FLAG_ASSISTANCE_PLAYER_PTS]).c_str(), 
@@ -7118,7 +7265,11 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
-								if ( effectStrength >= 4 )
+								if ( effectStrength >= 5 )
+								{
+									val = "V";
+								}
+								else if ( effectStrength >= 4 )
 								{
 									val = "IV";
 								}
@@ -37147,7 +37298,7 @@ std::string formatSkillSheetEffects(int playernum, int proficiency, std::string&
 		}
 		else if ( tag == "ALCHEMY_EMPTY_BOTTLE_CONSUME" )
 		{
-			val = std::min(80, (60 + static_cast<int>(stats[playernum]->getModifiedProficiency(proficiency) / 20) * 10));
+			val = std::min(80, (40 + static_cast<int>(stats[playernum]->getModifiedProficiency(proficiency) / 20) * 5));
 			snprintf(buf, sizeof(buf), rawValue.c_str(), (int)val);
 		}
 		else if ( tag == "ALCHEMY_EMPTY_BOTTLE_BREW" )

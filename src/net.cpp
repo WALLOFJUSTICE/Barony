@@ -3654,7 +3654,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					int duration = SDLNet_Read32(&net_packet->data[15]);
 					for ( int i = 0; i < 3; ++i )
 					{
-						if ( Entity* fx = createParticleAestheticOrbit(entity, 233, duration, PARTICLE_EFFECT_IGNITE_ORBIT) )
+						if ( Entity* fx = createParticleAestheticOrbit(entity, sprite, duration, PARTICLE_EFFECT_IGNITE_ORBIT) )
 						{
 							fx->flags[SPRITE] = true;
 							fx->x = entity->x;

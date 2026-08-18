@@ -2938,6 +2938,106 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						maxTier = minTier + 4;
 					}
 
+					if ( customItemProps && caster && caster->behavior == &actEternalShrine && playernum >= 0 && playernum < MAXPLAYERS )
+					{
+						for ( int i = 0; i < (*customItemProps).size(); ++i )
+						{
+							if ( (*customItemProps)[i].type == WOODEN_SHIELD && (*customItemProps)[i].appearance > 0 && (*customItemProps)[i].appearance < NUMMONSTERS )
+							{
+								// hack to summon allies
+								Monster type = (Monster)(*customItemProps)[i].appearance;
+								int numSummons = 0;
+								for ( int count = 0; count < (*customItemProps)[i].count; ++count )
+								{
+									if ( Entity* monster = summonMonster(type, floor(target->x / 16) * 16 + 8, floor(target->y / 16) * 16 + 8) )
+									{
+										Stat* monsterStats = monster->getStats();
+										if ( monsterStats )
+										{
+											monsterStats->setAttribute("SHRINE_DONATION_SPAWN", "1");
+											monsterStats->MISC_FLAGS[STAT_FLAG_MONSTER_DISABLE_HC_SCALING] = true;
+											monsterStats->LVL = std::max(5, currentlevel);
+										}
+
+										for ( int i = 0; i < 3; ++i )
+										{
+											if ( Entity* fx = createParticleAestheticOrbit(monster, 288, TICKS_PER_SECOND, PARTICLE_EFFECT_IGNITE_ORBIT) )
+											{
+												fx->flags[SPRITE] = true;
+												fx->x = monster->x;
+												fx->y = monster->y;
+												fx->fskill[0] = fx->x;
+												fx->fskill[1] = fx->y;
+												fx->z = -7.5;
+												fx->vel_z = 0.25;
+												fx->actmagicOrbitDist = 4;
+												fx->fskill[2] = monster->yaw + (i) * 2 * PI / 3.0;
+												fx->yaw = fx->fskill[2];
+												fx->actmagicNoLight = 1;
+
+											}
+										}
+										serverSpawnMiscParticles(monster, PARTICLE_EFFECT_SUMMON_FLAMES, 288, 0, TICKS_PER_SECOND);
+
+										if ( forceFollower(*target, *monster) )
+										{
+											++numSummons;
+											monster->monsterAllyIndex = playernum;
+											if ( multiplayer == SERVER )
+											{
+												serverUpdateEntitySkill(monster, 42); // update monsterAllyIndex for clients.
+											}
+
+											// change the color of the hit entity.
+											Compendium_t::Events_t::eventUpdateMonster(playernum, Compendium_t::CPDM_RECRUITED, monster, 1);
+											monster->flags[USERFLAG2] = true;
+											serverUpdateEntityFlag(monster, USERFLAG2);
+											if ( monsterChangesColorWhenAlly(monsterStats) )
+											{
+												int bodypart = 0;
+												for ( node_t* node = monster->children.first; node != nullptr; node = node->next )
+												{
+													if ( bodypart >= LIMB_HUMANOID_TORSO )
+													{
+														Entity* tmp = (Entity*)node->element;
+														if ( tmp )
+														{
+															tmp->flags[USERFLAG2] = true;
+															//serverUpdateEntityFlag(tmp, USERFLAG2);
+														}
+													}
+													++bodypart;
+												}
+											}
+										}
+									}
+								}
+								donations.erase(donations.begin() + i);
+								--numDonations;
+								if ( numSummons )
+								{
+									if ( type == EARTH_ELEMENTAL )
+									{
+										playSoundEntity(target, 799, 128);
+									}
+									else
+									{
+										playSoundEntity(target, 164, 128);
+									}
+
+								}
+								if ( numSummons == 1 )
+								{
+									messagePlayerColor(playernum, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(879), getMonsterLocalizedName((Monster)type).c_str());
+								}
+								else if ( numSummons >= 2 )
+								{
+									messagePlayerColor(playernum, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(881), getMonsterLocalizedPlural((Monster)type).c_str());
+								}
+							}
+						}
+					}
+
 					std::vector<unsigned int> chances;
 					chances.resize(donations.size());
 					bool anyChances = false;
@@ -2950,7 +3050,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							anyChances = true;
 						}
 					}
-					if ( !anyChances )
+					if ( !anyChances && chances.size() )
 					{
 						chances[0] = 1; // just in case
 					}
@@ -2963,7 +3063,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						}
 					}
 
-					while ( breakables.size() && numDonations > 0 )
+					while ( chances.size() && breakables.size() && numDonations > 0 )
 					{
 						int pick = local_rng.rand() % breakables.size();
 						auto entity = breakables[pick];
@@ -3102,7 +3202,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 						if ( entity->behavior != &actEternalShrine )
 						{
-							playSoundEntity(entity, 167, 128);
+							playSoundEntity(entity, 903, 128);
 						}
 						if ( caster->behavior == &actPlayer )
 						{
@@ -3159,12 +3259,12 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					}
 
 					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
-						target->x, target->y, 16, 2 * TICKS_PER_SECOND, target) )
+						caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
 					{
 
 					}
 					spawnMagicEffectParticles(target->x, target->y, target->z, 174);
-					playSoundEntity(target, 167, 128);
+					playSoundEntity(target, 903, 128);
 				}
 				else
 				{

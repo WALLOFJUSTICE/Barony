@@ -8771,6 +8771,14 @@ Sint32 statModifyLevelDrain(int statType, Sint32 currentValue, Stat* entitystats
 		{
 			drainMult = 0.4;
 		}
+		else if ( effectStrength == 4 )
+		{
+			drainMult = 0.5;
+		}
+		else if ( effectStrength == 5 )
+		{
+			drainMult = 0.6;
+		}
 		real_t factor = std::max(0.5, 1.0 - drainMult * statRatio); // 5% per strength
 		returnVal *= factor;
 	}

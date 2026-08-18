@@ -21869,6 +21869,11 @@ void actRadiusMagic(Entity* my)
 	{
 		checkArea = false;
 		int interval = getSpellEffectDurationSecondaryFromID(my->actRadiusMagicID, caster, nullptr, caster, my->actmagicSpellbookBonus / 100.0);
+		if ( caster && caster->behavior == &actPlayer )
+		{
+			int pips = players[caster->skill[2]]->mechanics.getDivineFavorPips();
+			interval *= (1.0 - 0.5 * pips / Player::DIVINE_FAVOR_PIPS_MAX);
+		}
 		if ( my->ticks % (interval) == 1 && my->ticks >= interval )
 		{
 			checkArea = true;
