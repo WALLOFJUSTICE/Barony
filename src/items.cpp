@@ -2217,6 +2217,12 @@ Entity* dropItemMonster(Item* const item, Entity* const monster, Stat* const mon
 		entity->itemOriginalOwner = item->ownerUid;
 		entity->parent = monster->getUID();
 
+		if ( monster->behavior == &actFreeCam )
+		{
+			entity->vel_x = (1.5 + .025 * (local_rng.rand() % 11)) * cos(monster->yaw);
+			entity->vel_y = (1.5 + .025 * (local_rng.rand() % 11)) * sin(monster->yaw);
+		}
+
 		if ( monsterStats )
 		{
 			if (monsterStats->type == INCUBUS || monsterStats->type == SUCCUBUS )

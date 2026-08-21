@@ -8996,6 +8996,7 @@ void doNewGame(bool makeHighscore) {
 			players[i]->hud.magicRightHand = nullptr;
 			players[i]->hud.magicRangefinder = nullptr;
 			players[i]->ghost.reset();
+			players[i]->freecam.reset();
 			FollowerMenu[i].recentEntity = nullptr;
 			FollowerMenu[i].followerToCommand = nullptr;
 			FollowerMenu[i].entityToInteractWith = nullptr;
@@ -9331,6 +9332,7 @@ void doNewGame(bool makeHighscore) {
 			players[i]->hud.magicRightHand = nullptr;
 			players[i]->hud.magicRangefinder = nullptr;
 			players[i]->ghost.reset();
+			players[i]->freecam.reset();
 			FollowerMenu[i].recentEntity = nullptr;
 			FollowerMenu[i].followerToCommand = nullptr;
 			FollowerMenu[i].entityToInteractWith = nullptr;
@@ -10332,6 +10334,7 @@ void doEndgame(bool saveHighscore, bool onServerDisconnect) {
 		players[i]->hud.magicRightHand = nullptr;
 		players[i]->hud.magicRangefinder = nullptr;
 		players[i]->ghost.reset();
+		players[i]->freecam.reset();
 		FollowerMenu[i].recentEntity = nullptr;
 		FollowerMenu[i].followerToCommand = nullptr;
 		FollowerMenu[i].entityToInteractWith = nullptr;

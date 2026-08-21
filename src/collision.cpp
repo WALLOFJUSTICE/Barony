@@ -1165,6 +1165,12 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 	{
 		type = my->getMonsterTypeFromSprite();
 	}
+
+	if ( my && my->behavior == &actFreeCam )
+	{
+		return 1;
+	}
+
 	bool entityDodgeChance = false;
 	for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
 	{
@@ -1225,7 +1231,8 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 						|| type == FLAME_ELEMENTAL
 						|| (type == GRYPHON && entity->isUntargetableGryphon())
 						|| entity->isColliderPathableMonster(type)
-						)) || my->behavior == &actDeathGhost) )
+						)) || my->behavior == &actDeathGhost
+							|| my->behavior == &actFreeCam) )
 			{
 				continue;
 			}
@@ -1294,7 +1301,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 			{
 				continue;    // monsters don't have hard collision with door frames
 			}
-			if ( my->behavior == &actDeathGhost && (entity->behavior == &actMonster 
+			if ( (my->behavior == &actDeathGhost || my->behavior == &actFreeCam) && (entity->behavior == &actMonster
 				|| entity->behavior == &actPlayer 
 				|| (entity->behavior == &actBoulder && entityInsideEntity(my, entity))) )
 			{
@@ -1485,7 +1492,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 
 
 					}
-					else if ( parent && parent->behavior == &actDeathGhost
+					else if ( parent && (parent->behavior == &actDeathGhost || parent->behavior == &actFreeCam)
 						&& (entity->behavior == &actPlayer
 							|| (entity->behavior == &actMonster && entity->monsterAllyGetPlayerLeader())) )
 					{

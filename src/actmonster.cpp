@@ -14810,7 +14810,7 @@ bool Entity::monsterAllyEquipmentInClass(const Item& item) const
 					return true;
 					break;
 				case TOOL:
-					if ( checkEquipType(&item) == TYPE_OFFHAND )
+					if ( checkEquipType(&item) == TYPE_OFFHAND || item.type == TOOL_GLASSES )
 					{
 						return true;
 					}

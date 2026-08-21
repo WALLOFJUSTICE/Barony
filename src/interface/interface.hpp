@@ -243,7 +243,7 @@ void takeScreenshot(const char* output_path = nullptr);
 bool loadInterfaceResources();
 void freeInterfaceResources();
 void clickDescription(const int player, Entity* entity);
-void consoleCommand(char const * const command);
+void consoleCommand(char const * const command, bool suppressMessage = false);
 void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap);
 struct MinimapHighlight_t
 {

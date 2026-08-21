@@ -201,6 +201,8 @@ public:
 
 	//! consume bindings that all use the same input as given binding
 	void consumeBindingsSharedWithBinding(const char* binding);
+	void consumeBindingsSharedWithKeycode(SDL_Keycode key);
+	void consumeBindingsSharedWithMouseButton(int mousebutton);
 
 	//! return true if binding conflicts with system binding (i.e left/right click, scroll wheel)
 	bool bindingIsSharedWithKeyboardSystemBinding(const char* binding);

@@ -1627,6 +1627,7 @@ void actBoulder(Entity* my)
 						blood->parent = my->getUID();
 						blood->sizex = 2;
 						blood->sizey = 2;
+						blood->behavior = &actBlood;
 						int randomScale = local_rng.rand() % 10;
 						blood->scalex = (100 - randomScale) / 100.f;
 						blood->scaley = blood->scalex;

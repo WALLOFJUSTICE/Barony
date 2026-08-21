@@ -1542,6 +1542,11 @@ int generateDungeon(char* levelset, Uint32 seed)
 			darkmap = true;
 		}
 	}
+	if ( Player::cinemaMode )
+	{
+		minotaurlevel = 0;
+		darkmap = false;
+	}
 
 	int secretlevelexit = 0;
 
@@ -5936,6 +5941,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					stationEntity->yaw = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
+					posChances.erase(posChances.begin() + pickedPos);
 					possiblelocations[y + x * map.height] = false;
 					--numpossiblelocations;
 
@@ -5955,6 +5961,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					stationEntity->yaw = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
+					posChances.erase(posChances.begin() + pickedPos);
 					possiblelocations[y + x * map.height] = false;
 					--numpossiblelocations;
 
@@ -5975,6 +5982,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					stationEntity->eternalShrineDir = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
+					posChances.erase(posChances.begin() + pickedPos);
 					possiblelocations[y + x * map.height] = false;
 					--numpossiblelocations;
 
@@ -5995,6 +6003,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					stationEntity->eternalShrineDir = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
+					posChances.erase(posChances.begin() + pickedPos);
 					possiblelocations[y + x * map.height] = false;
 					--numpossiblelocations;
 
@@ -6015,6 +6024,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					stationEntity->eternalShrineDir = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
+					posChances.erase(posChances.begin() + pickedPos);
 					possiblelocations[y + x * map.height] = false;
 					--numpossiblelocations;
 
@@ -6035,6 +6045,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					stationEntity->eternalShrineDir = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
+					posChances.erase(posChances.begin() + pickedPos);
 					possiblelocations[y + x * map.height] = false;
 					--numpossiblelocations;
 

@@ -11209,7 +11209,16 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 				if ( !strcmp(calloutMenu.interactText, "") || forceBlankInteractText )
 				{
 					text->setDisabled(false);
-					text->setText(Language::get(4348)); // "Call out..."
+					if ( Player::cinemaMode && player.freecam.isActive() && player.freecam.tool["callout"] != "" )
+					{
+						char buf[128];
+						snprintf(buf, sizeof(buf), "(%s) ...", player.freecam.tool["callout"].c_str());
+						text->setText(buf);
+					}
+					else
+					{
+						text->setText(Language::get(4348)); // "Call out..."
+					}
 				}
 				else
 				{
@@ -34973,6 +34982,23 @@ void Player::Hotbar_t::updateHotbar()
 	{
 		tempHideHotbar = true;
 	}
+
+	if ( hotbarQueuedSwitch != HOTBAR_ENUM_END )
+	{
+		if ( player.ghost.isActive() )
+		{
+			hotbarQueuedSwitch = HOTBAR_ENUM_END;
+		}
+		else if ( !stats[player.playernum]->getEffectActive(EFF_SHAPESHIFT) && players[player.playernum]->hotbar.swapHotbarOnShapeshift == 0 )
+		{
+			tempHideHotbar = true;
+		}
+		else
+		{
+			hotbarQueuedSwitch = HOTBAR_ENUM_END;
+		}
+	}
+
 	if ( tempHideHotbar )
 	{
 		const real_t fpsScale = getFPSScale(50.0); // ported from 50Hz
@@ -34990,6 +35016,19 @@ void Player::Hotbar_t::updateHotbar()
 		if ( animHide <= 0.001 )
 		{
 			isInteractable = true;
+		}
+	}
+
+	if ( hotbarQueuedSwitch != HOTBAR_ENUM_END && tempHideHotbar )
+	{
+		if ( animHide > 0.0 )
+		{
+			isInteractable = false;
+			if ( animHide >= 0.9999 )
+			{
+				switchDefaultHotbar(hotbarQueuedSwitch);
+				hotbarQueuedSwitch = HOTBAR_ENUM_END;
+			}
 		}
 	}
 

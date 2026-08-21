@@ -30,6 +30,7 @@
 #include "classdescriptions.hpp"
 #include "ui/MainMenu.hpp"
 #include "interface/consolecommand.hpp"
+#include "paths.hpp"
 #ifdef USE_PLAYFAB
 #include "playfab.hpp"
 #endif
@@ -46,6 +47,338 @@ static ConsoleVariable<float> cvar_calloutStartZLimit("/callout_start_z_limit", 
 static ConsoleVariable<float> cvar_followerStartZ("/follower_start_z", -2.5);
 static ConsoleVariable<float> cvar_followerMoveTo("/follower_moveto_z", 0.1);
 static ConsoleVariable<float> cvar_followerStartZLimit("/follower_start_z_limit", 7.5);
+bool Player::cinemaMode = false;
+
+void Player::FreeCam_t::processCallout(Entity* entity, int x, int y)
+{
+	if ( multiplayer == CLIENT ) { return; }
+
+	if ( tool["callout"] == "npc freeze" )
+	{
+		if ( !entity || (entity && entity->behavior != &actMonster) )
+		{
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: No monster selected to freeze");
+		}
+		else
+		{
+			entity->setEffect(EFF_STUNNED, true, 0, false);
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Frozen %s", getMonsterLocalizedName(entity->getMonsterTypeFromSprite()).c_str());
+		}
+	}
+	else if ( tool["callout"] == "npc unfreeze" )
+	{
+		if ( !entity || (entity && entity->behavior != &actMonster) )
+		{
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: No monster selected to freeze");
+		}
+		else
+		{
+			entity->setEffect(EFF_STUNNED, false, 0, false);
+			entity->setEffect(EFF_ASLEEP, false, 0, false);
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Unfrozen %s", getMonsterLocalizedName(entity->getMonsterTypeFromSprite()).c_str());
+		}
+	}
+	else if ( tool["callout"] == "command entity" )
+	{
+		Entity* commanded = uidToEntity(commandEntityUid);
+		if ( commanded && commanded->behavior == &actMonster )
+		{
+			if ( commanded->monsterSetPathToLocation(x, y, 1,
+				GeneratePathTypes::GENERATE_PATH_BOSS_TRACKING_HUNT) ) // try closest tiles
+			{
+				commanded->monsterState = MONSTER_STATE_HUNT;
+				commanded->monsterTarget = entity ? entity->getUID() : 0;
+				if ( commanded->getStats() )
+				{
+					commanded->getStats()->setAttribute("SWORN_ENEMY", std::to_string(commanded->monsterTarget));
+				}
+				serverUpdateEntitySkill(commanded, 0);
+			}
+			else if ( commanded->monsterSetPathToLocation(x, y, 2,
+				GeneratePathTypes::GENERATE_PATH_BOSS_TRACKING_HUNT) ) // expand search
+			{
+				commanded->monsterState = MONSTER_STATE_HUNT;
+				commanded->monsterTarget = entity ? entity->getUID() : 0;
+				if ( commanded->getStats() )
+				{
+					commanded->getStats()->setAttribute("SWORN_ENEMY", std::to_string(commanded->monsterTarget));
+				}
+				serverUpdateEntitySkill(commanded, 0);
+			}
+			commandEntityUid = 0;
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: %s commanded", getMonsterLocalizedName(commanded->getMonsterTypeFromSprite()).c_str());
+		}
+		else if ( commanded && commanded->behavior == &actColliderDecoration )
+		{
+			commandEntityUid = 0;
+			int x1 = commanded->x / 16;
+			int y1 = commanded->y / 16;
+			commanded->x += (x - x1) * 16.0;
+			commanded->y += (y - y1) * 16.0;
+
+			// send new light info to clients
+			if ( multiplayer == SERVER )
+			{
+				for ( int c = 1; c < MAXPLAYERS; c++ )
+				{
+					if ( client_disconnected[c] == true || players[c]->isLocalPlayer() )
+					{
+						continue;
+					}
+					strcpy((char*)net_packet->data, "EMOV");
+					SDLNet_Write32(commanded->getUID(), &net_packet->data[4]);
+					SDLNet_Write32(commanded->x * 256.0, &net_packet->data[8]);
+					SDLNet_Write32(commanded->y * 256.0, &net_packet->data[12]);
+					SDLNet_Write16(x, &net_packet->data[16]);
+					SDLNet_Write16(y, &net_packet->data[18]);
+					net_packet->len = 20;
+					net_packet->address.host = net_clients[c - 1].host;
+					net_packet->address.port = net_clients[c - 1].port;
+					sendPacketSafe(net_sock, -1, net_packet, c - 1);
+				}
+			}
+		}
+		else
+		{
+			if ( entity )
+			{
+				if ( entity->behavior == &actMonster )
+				{
+					commandEntityUid = entity->getUID();
+					messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Locked on to %s", getMonsterLocalizedName(entity->getMonsterTypeFromSprite()).c_str());
+				}
+				else if ( entity->behavior == &actColliderDecoration )
+				{
+					commandEntityUid = entity->getUID();
+					messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Locked on to collider");
+				}
+			}
+		}
+	}
+	else if ( tool["callout"] == "light (torch)" || tool["callout"] == "light (shard)" )
+	{
+		const char* name = "npc_torch";
+		if ( tool["callout"] == "light (shard)" )
+		{
+			name = "npc_shard";
+		}
+		Entity* entity = newEntity(-1, 1, map.entities, nullptr);
+		entity->x = x * 16.0 + 8.0;
+		entity->y = y * 16.0 + 8.0;
+		entity->setEntityString(name);
+		entity->behavior = &actLightSourceBasic;
+		entity->flags[PASSABLE] = true;
+		entity->flags[NOUPDATE] = true;
+		entity->flags[UNCLICKABLE] = true;
+		entity->flags[UPDATENEEDED] = false;
+		if ( multiplayer != CLIENT )
+		{
+			entity_uids--;
+		}
+		entity->setUID(-3);
+
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Added light: %s", name);
+
+		// send new light info to clients
+		if ( multiplayer == SERVER )
+		{
+			for ( int c = 1; c < MAXPLAYERS; c++ )
+			{
+				if ( client_disconnected[c] == true || players[c]->isLocalPlayer() )
+				{
+					continue;
+				}
+				strcpy((char*)net_packet->data, "CLSC");
+				SDLNet_Write16(x, &net_packet->data[4]);
+				SDLNet_Write16(y, &net_packet->data[6]);
+				SDLNet_Write16(strlen(name) + 1, &net_packet->data[8]);
+				stringCopyUnsafe((char*)&net_packet->data[10], name, strlen(name) + 1);
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				net_packet->len = 10 + strlen(name) + 1;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
+		}
+	}
+	else if ( tool["callout"] == "remove light" )
+	{
+		int radius = 1;
+		node_t* nextnode = nullptr;
+		int removed = 0;
+		for ( auto node = map.entities->first; node; node = nextnode )
+		{
+			nextnode = node->next;
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actLightSourceBasic )
+				{
+					if ( (int)(entity->x / 16) >= x - radius && (int)(entity->x / 16) <= x + radius
+						&& (int)(entity->y / 16) >= y - radius && (int)(entity->y / 16) <= y + radius )
+					{
+						entity->removeLightField();
+						list_RemoveNode(entity->mynode);
+						++removed;
+						continue;
+					}
+				}
+			}
+		}
+
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Removed %d lights", removed);
+		if ( multiplayer == SERVER )
+		{
+			for ( int c = 1; c < MAXPLAYERS; c++ )
+			{
+				if ( client_disconnected[c] == true || players[c]->isLocalPlayer() )
+				{
+					continue;
+				}
+				strcpy((char*)net_packet->data, "DLSC");
+				SDLNet_Write16(x, &net_packet->data[4]);
+				SDLNet_Write16(y, &net_packet->data[6]);
+				SDLNet_Write16(radius, &net_packet->data[8]);
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				net_packet->len = 10;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
+		}
+	}
+}
+
+static ConsoleCommand ccmd_cinemamode("/cinemamode", "", [](int argc, const char** argv) {
+	if ( !(svFlags & SV_FLAG_CHEATS) )
+	{
+		messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+		return;
+	}
+
+	Player::cinemaMode = !players[clientnum]->cinemaMode;
+	//players[clientnum]->freecam.setActive(Player::cinemaMode);
+	if ( !players[clientnum]->cinemaMode )
+	{
+		players[clientnum]->freecam.setActive(false);
+		consoleCommand("/cameralerp 30.0", true);
+		consoleCommand("/autocameralerp true", true);
+		consoleCommand("/callout_debug false", true);
+		consoleCommand("/game_ui_sfx_volume 32.0", true);
+		consoleCommand("/callout_sfx_vol 128", true);
+		players[clientnum]->freecam.tool["needsupdate"] = "1";
+		if ( players[clientnum]->entity )
+		{
+			players[clientnum]->entity->skill[3] = 0;
+		}
+	}
+	else if ( players[clientnum]->cinemaMode )
+	{
+		//godmode = true;
+		//everybodyfriendly = true;
+		//noclip = true;
+		//consoleCommand("/hud_weapon_hide true");
+		consoleCommand("/callout_debug true", false);
+		players[clientnum]->freecam.tool["needsupdate"] = "1";
+		if ( players[clientnum]->entity )
+		{
+			players[clientnum]->entity->skill[3] = 3;
+		}
+
+		if ( players[clientnum]->freecam.my )
+		{
+			players[clientnum]->freecam.setActive(true);
+		}
+		else
+		{
+			players[clientnum]->freecam.createCamera();
+		}
+
+		/*stats[clientnum]->HP = DEFAULT_HP;
+		stats[clientnum]->MAXHP = DEFAULT_HP;
+		stats[clientnum]->OLDHP = stats[clientnum]->HP;
+		stats[clientnum]->MP = DEFAULT_MP;
+		stats[clientnum]->MAXMP = DEFAULT_MP;
+
+		stats[clientnum]->STR = 0;
+		stats[clientnum]->DEX = 0;
+		stats[clientnum]->CON = 0;
+		stats[clientnum]->INT = 0;
+		stats[clientnum]->PER = 0;
+		stats[clientnum]->CHR = 0;
+		for ( int i = 0; i < NUMPROFICIENCIES; ++i )
+		{
+			stats[clientnum]->setProficiencyUnsafe(i, 0);
+		}
+
+		initClassStats(client_classes[clientnum], stats[clientnum]);
+		for ( int i = 0; i < 50; ++i )
+		{
+			if ( players[clientnum]->entity )
+			{
+				stats[clientnum]->LVL++;
+
+				int increasestat[3] = { 0, 0, 0 };
+				int statIncrease[NUMSTATS] = { 0, 0, 0, 0, 0, 0 };
+				players[clientnum]->entity->playerStatIncrease(CLASS_ROGUE, increasestat);
+				for ( int i = 0; i < 3; i++ )
+				{
+					statIncrease[increasestat[i]] += 1;
+					switch ( increasestat[i] )
+					{
+					case STAT_STR:
+						stats[clientnum]->STR++;
+						break;
+					case STAT_DEX:
+						stats[clientnum]->DEX++;
+						break;
+					case STAT_CON:
+						stats[clientnum]->CON++;
+						break;
+					case STAT_INT:
+						stats[clientnum]->INT++;
+						break;
+					case STAT_PER:
+						stats[clientnum]->PER++;
+						break;
+					case STAT_CHR:
+						stats[clientnum]->CHR++;
+						break;
+					default:
+						break;
+					}
+				}
+
+				for ( int i = 0; i < NUMPROFICIENCIES; ++i )
+				{
+					if ( i != PRO_STEALTH )
+					{
+						stats[clientnum]->setProficiencyUnsafe(i, 80);
+					}
+				}
+
+				int hpMod = HP_MOD;
+				int mpMod = MP_MOD;
+				auto& baseGrowths = ClassBaseGrowths::getClassBaseGrowths(client_classes[clientnum]);
+				hpMod = baseGrowths.baseHP;
+				mpMod = baseGrowths.baseMP;
+				for ( int i = 0; i < 3; ++i )
+				{
+					hpMod += ClassBaseGrowths::hpStatGrowths[increasestat[i]] * statIncrease[increasestat[i]];
+					mpMod += ClassBaseGrowths::mpStatGrowths[increasestat[i]] * statIncrease[increasestat[i]];
+				}
+				stats[clientnum]->MAXHP += hpMod;
+				stats[clientnum]->MAXMP += mpMod;
+				stats[clientnum]->HP = stats[clientnum]->MAXHP;
+				stats[clientnum]->MP = stats[clientnum]->MAXMP;
+
+				if ( stats[clientnum]->playerRace == RACE_INSECTOID && stats[clientnum]->stat_appearance == 0 )
+				{
+					Sint32 oldMP = stats[clientnum]->MP;
+					stats[clientnum]->MAXMP = std::min(100, stats[clientnum]->MAXMP);
+					players[clientnum]->entity->playerInsectoidIncrementHungerToMP(stats[clientnum]->MP - oldMP);
+				}
+			}
+		}*/
+	}
+});
 
 /*-------------------------------------------------------------------------------
 
@@ -182,6 +515,1766 @@ void Player::Ghost_t::handleGhostCameraBobbing(bool useRefreshRateDelta)
 		GHOSTCAM_BOB = 0;
 		GHOSTCAM_BOBMODE = 0;
 	}
+}
+
+void drawTextHelper(int x, int y, const char* text, const char* fmt = nullptr)
+{
+	char buf[128];
+	if ( fmt )
+	{
+		snprintf(buf, sizeof(buf), text, fmt);
+	}
+	else
+	{
+		snprintf(buf, sizeof(buf), text);
+	}
+	if ( auto textGet = Text::get(buf, "fonts/pixel_maz_multiline.ttf#16#2",
+		makeColor(255, 255, 255, 255), 0) )
+	{
+		Uint32 color = makeColorRGB(255, 255, 255);
+		if ( strstr(buf, ":") && !(strstr(buf, "off") || strstr(buf, "default") ) )
+		{
+			color = makeColorRGB(255, 255, 0);
+		}
+		textGet->drawColor(SDL_Rect{ 0,0,0,0 }, SDL_Rect{x, y, 0, 0}, SDL_Rect{0, 0, xres, yres}, color);
+	}
+}
+
+void Player::FreeCam_t::printHelp()
+{
+	if ( !Player::cinemaMode ) { return; }
+	if ( tool["help"] != "" )
+	{
+		int x = 8;
+		int y = 20;
+		drawTextHelper(x, y, "[H] Disable Help"); y += 20;
+		drawTextHelper(x, y, "[F1] Camera Speed: %s", tool["camspeed"] == "" ? "default" : tool["camspeed"].c_str()); y += 20;
+		drawTextHelper(x, y, "[F2] Camera Rotate: %s", tool["camrotate"] == "" ? "default" : tool["camrotate"].c_str()); y += 20;
+		drawTextHelper(x, y, "[F3] Camera Light: %s", tool["light"] == "" ? "default" : tool["light"].c_str()); y += 20;
+		drawTextHelper(x, y, "[F4] Flight Control: %s", tool["control_flight"] == "" ? "default" : tool["control_flight"].c_str()); y += 20;
+		drawTextHelper(x, y, "[F5] Change Glyphs (TBD)"); y += 20;
+		drawTextHelper(x, y, "[F7] Noclip Walls: %s", tool["noclip"] == "" ? "off" : tool["noclip"].c_str()); y += 20;
+		drawTextHelper(x, y, "[F8] Clean Blood"); y += 20;
+		drawTextHelper(x, y, "[F9] Clean Items"); y += 20;
+		drawTextHelper(x, y, "[F10] Silence Key SFX: %s", tool["silence"] == "" ? "off" : tool["silence"].c_str()); y += 20;
+		drawTextHelper(x, y, "[F11] Toggle Cinema Mode"); y += 20;
+		drawTextHelper(x, y, "[N] Toggle HUD"); y += 20;
+		drawTextHelper(x, y, "[-] Camera Is Stuck"); y += 20;
+		y += 10;
+		drawTextHelper(x, y, "Callout Tool: %s", tool["callout"] == "" ? "off" : tool["callout"].c_str()); y += 20;
+		drawTextHelper(x, y, "[1] Command Object"); y += 20;
+		drawTextHelper(x, y, "[2] Freeze NPC"); y += 20;
+		drawTextHelper(x, y, "[3] Edit Lights"); y += 20;
+		drawTextHelper(x, y, "[4] Deselect Callout Tool"); y += 20;
+		drawTextHelper(x, y, "[5] Cue Record"); y += 20;
+		drawTextHelper(x, y, "[6] Cue Record (Waypoint)"); y += 20;
+		drawTextHelper(x, y, "[8] Delete Placed Lights"); y += 20;
+		drawTextHelper(x, y, "[9] Unfreeze NPCs"); y += 20;
+		drawTextHelper(x, y, "[0] World Freeze: %s", gameloopFreezeEntities ? "on" : "off"); y += 20;
+		y += 10;
+		drawTextHelper(x, y, "[KP 1/2/3] Place Waypoints"); y += 20;
+		drawTextHelper(x, y, "[KP 4/5/6] Warp to Waypoints"); y += 20;
+		drawTextHelper(x, y, "[KP *] Waypoint Speed: %s", tool["waypoint_speed"] == "" ? "default" : tool["waypoint_speed"].c_str()); y += 20;
+		drawTextHelper(x, y, "[KP /] Waypoint Lock: %s", tool["waypoint_lock"] == "" ? "off" : "on"); y += 20;
+		drawTextHelper(x, y, "[KP Enter] Waypoint Run"); y += 20;
+	}
+}
+
+//void normalizeAngle(real_t& val, real_t min, real_t max)
+//{
+//	real_t range = std::max(fabs(min), fabs(max));
+//	val = fmod(val, range);
+//	while ( val >= max )
+//	{
+//		val -= 2 * PI;
+//	}
+//	while ( val < min )
+//	{
+//		val += 2 * PI;
+//	}
+//}
+
+Player::FreeCam_t::Waypoint_t::Waypoint_t(Entity& my)
+{
+	x = my.x;
+	y = my.y;
+	z = my.z;
+
+	pitch = my.pitch;
+	roll = my.roll;
+	yaw = my.yaw;
+}
+
+void Player::FreeCam_t::Waypoint_t::applyToEntity(Entity* my)
+{
+	if ( !my ) { return; }
+	my->x = x;
+	my->y = y;
+	my->z = z;
+	my->pitch = pitch;
+	my->roll = roll;
+	my->yaw = yaw;
+}
+
+void Player::FreeCam_t::processInput()
+{
+	if ( !Player::cinemaMode || player.usingCommand() ) { return; }
+	auto& input = Input::inputs[player.playernum];
+
+	if ( tool["control_flight"] == "Q/E to hover" )
+	{
+		if ( Input::keys[SDLK_q] )
+		{
+			if ( tool["hover"] != "lower" )
+			{
+				input.consumeBindingsSharedWithKeycode(SDLK_q);
+			}
+			tool["hover"] = "lower";
+		}
+		else if ( Input::keys[SDLK_e] )
+		{
+			if ( tool["hover"] != "raise" )
+			{
+				input.consumeBindingsSharedWithKeycode(SDLK_e);
+			}
+			tool["hover"] = "raise";
+		}
+		else
+		{
+			tool["hover"] = "";
+		}
+	}
+	else
+	{
+		tool["hover"] = "";
+	}
+
+	tool["roll"] = "";
+	if ( tool["control_flight"] == "Q/E roll / forward hover" )
+	if ( Input::keys[SDLK_q] )
+	{
+		if ( tool["hover"] != "right" )
+		{
+			input.consumeBindingsSharedWithKeycode(SDLK_q);
+		}
+		tool["roll"] = "right";
+	}
+	else if ( Input::keys[SDLK_e] )
+	{
+		if ( tool["hover"] != "left" )
+		{
+			input.consumeBindingsSharedWithKeycode(SDLK_e);
+		}
+		tool["roll"] = "left";
+	}
+	else
+	{
+		tool["roll"] = "";
+	}
+
+	if ( Input::keys[SDLK_h] )
+	{
+		Input::keys[SDLK_h] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_h);
+		if ( tool["help"] == "" )
+		{
+			tool["help"] = "1";
+			nohud = false;
+		}
+		else
+		{
+			tool["help"] = "";
+		}
+	}
+
+	if ( Input::keys[SDLK_n] )
+	{
+		Input::keys[SDLK_n] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_n);
+		nohud = !nohud;
+	}
+
+	if ( Input::keys[SDLK_F1] )
+	{
+		tool["needsupdate"] = "1";
+		Input::keys[SDLK_F1] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_F1);
+		if ( tool["camspeed"] == "" )
+		{
+			tool["camspeed"] = "fast";
+		}
+		else if ( tool["camspeed"] == "fast" )
+		{
+			tool["camspeed"] = "fast x2";
+		}
+		else if ( tool["camspeed"] == "fast x2" )
+		{
+			tool["camspeed"] = "slow";
+		}
+		else if ( tool["camspeed"] == "slow" )
+		{
+			tool["camspeed"] = "slow x2";
+		}
+		else if ( tool["camspeed"] == "slow x2" )
+		{
+			tool["camspeed"] = "slow x3";
+		}
+		else
+		{
+			tool["camspeed"] = "";
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Camera Speed: %s", tool["camspeed"] == "" ? "default" : tool["camspeed"].c_str());
+	}
+	if ( Input::keys[SDLK_F2] )
+	{
+		tool["needsupdate"] = "1";
+		Input::keys[SDLK_F2] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_F2);
+		if ( tool["camrotate"] == "" )
+		{
+			tool["camrotate"] = "slow x1";
+		}
+		else if ( tool["camrotate"] == "slow x1" )
+		{
+			tool["camrotate"] = "slow x2";
+		}
+		else if ( tool["camrotate"] == "slow x2" )
+		{
+			tool["camrotate"] = "slow x3";
+		}
+		else
+		{
+			tool["camrotate"] = "";
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Camera Rotate: %s", tool["camrotate"] == "" ? "default" : tool["camrotate"].c_str());
+	}
+	if ( Input::keys[SDLK_F3] )
+	{
+		Input::keys[SDLK_F3] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_F3);
+		Player::soundActivate();
+		if ( tool["light"] == "" )
+		{
+			tool["light"] = "torch";
+		}
+		else if ( tool["light"] == "torch" )
+		{
+			tool["light"] = "lantern";
+		}
+		else
+		{
+			tool["light"] = "";
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Camera Light: %s", tool["light"] == "" ? "default" : tool["light"].c_str());
+	}
+	if ( Input::keys[SDLK_F4] )
+	{
+		Input::keys[SDLK_F4] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_F4);
+		Player::soundActivate();
+		if ( tool["control_flight"] == "" )
+		{
+			tool["control_flight"] = "forward to hover";
+		}
+		else if ( tool["control_flight"] == "forward to hover" )
+		{
+			tool["control_flight"] = "Q/E roll / forward hover";
+		}
+		else if ( tool["control_flight"] == "Q/E roll / forward hover" )
+		{
+			tool["control_flight"] = "Q/E to hover";
+		}
+		else
+		{
+			tool["control_flight"] = "";
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Flight Control: %s", tool["control_flight"] == "" ? "default" : tool["control_flight"].c_str());
+	}
+	if ( Input::keys[SDLK_F7] )
+	{
+		Input::keys[SDLK_F7] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_F7);
+		tool["noclip"] = (tool["noclip"] == "") ? "on" : ((tool["noclip"] == "on") ? "on / no floor" : "");
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Noclip Walls: %s", tool["noclip"] == "" ? "off" : tool["noclip"].c_str());
+	}
+	if ( Input::keys[SDLK_F8] )
+	{
+		Input::keys[SDLK_F8] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_F8);
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Cleaned blood");
+		node_t* nextnode = nullptr;
+		for ( auto node = map.entities->first; node; node = nextnode )
+		{
+			nextnode = node->next;
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actBlood )
+				{
+					list_RemoveNode(entity->mynode);
+				}
+			}
+		}
+	}
+	if ( Input::keys[SDLK_F9] )
+	{
+		Input::keys[SDLK_F9] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_F9);
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Cleaned items");
+		node_t* nextnode = nullptr;
+		for ( auto node = map.entities->first; node; node = nextnode )
+		{
+			nextnode = node->next;
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actItem )
+				{
+					entity->removeLightField();
+					list_RemoveNode(entity->mynode);
+				}
+			}
+		}
+	}
+
+	if ( Input::keys[SDLK_F10] )
+	{
+		Input::keys[SDLK_F10] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_F10);
+		tool["needsupdate"] = "1";
+		if ( tool["silence"] == "" ) { 
+			tool["silence"] = "on"; 
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Silenced hotkey sounds");
+		}
+		else
+		{
+			tool["silence"] = "";
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Hotkey sounds enabled");
+		}
+	}
+
+	if ( Input::keys[SDLK_9] )
+	{
+		Input::keys[SDLK_9] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_9);
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Unfreeze all NPCs");
+		for ( auto node = map.creatures->first; node; node = node->next )
+		{
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( Stat* stats = entity->getStats() )
+				{
+					if ( stats->getEffectActive(EFF_STUNNED) )
+					{
+						entity->setEffect(EFF_STUNNED, false, 0, false);
+					}
+					if ( stats->getEffectActive(EFF_ASLEEP) )
+					{
+						entity->setEffect(EFF_ASLEEP, false, 0, false);
+					}
+				}
+			}
+		}
+	}
+	if ( Input::keys[SDLK_8] )
+	{
+		Input::keys[SDLK_8] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_8);
+
+		node_t* nextnode = nullptr;
+		int removed = 0;
+		for ( auto node = map.entities->first; node; node = nextnode )
+		{
+			nextnode = node->next;
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actLightSourceBasic )
+				{
+					entity->removeLightField();
+					list_RemoveNode(entity->mynode);
+				}
+			}
+		}
+
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Removed %d lights", removed);
+		if ( multiplayer == SERVER )
+		{
+			for ( int c = 1; c < MAXPLAYERS; c++ )
+			{
+				if ( client_disconnected[c] == true || players[c]->isLocalPlayer() )
+				{
+					continue;
+				}
+				strcpy((char*)net_packet->data, "DLSC");
+				SDLNet_Write16(map.width / 2, &net_packet->data[4]);
+				SDLNet_Write16(map.height / 2, &net_packet->data[6]);
+				SDLNet_Write16(1000, &net_packet->data[8]);
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				net_packet->len = 10;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
+		}
+	}
+
+	if ( Input::keys[SDLK_KP_1] )
+	{
+		Input::keys[SDLK_KP_1] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_1);
+		if ( player.freecam.isActive() )
+		{
+			if ( tool["waypoint_lock"] == "on" )
+			{
+				playSound(90, 64);
+				messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoints locked");
+			}
+			else
+			{
+				Player::soundActivate();
+				while ( waypoints.size() < 3 )
+				{
+					waypoints.emplace_back(*player.freecam.my);
+				}
+				waypoints[0] = Player::FreeCam_t::Waypoint_t(*player.freecam.my);
+				messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoint 1 set");
+			}
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	if ( Input::keys[SDLK_KP_4] )
+	{
+		Input::keys[SDLK_KP_4] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_4);
+		if ( player.freecam.isActive() )
+		{
+			Player::soundActivate();
+			while ( waypoints.size() < 3 )
+			{
+				waypoints.emplace_back(*player.freecam.my);
+			}
+			waypoint_run = false;
+			waypoints[0].applyToEntity(player.freecam.my);
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Moved to Waypoint 1");
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	if ( Input::keys[SDLK_KP_2] )
+	{
+		Input::keys[SDLK_KP_2] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_2);
+		if ( player.freecam.isActive() )
+		{
+			if ( tool["waypoint_lock"] == "on" )
+			{
+				playSound(90, 64);
+				messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoints locked");
+			}
+			else
+			{
+				Player::soundActivate();
+				while ( waypoints.size() < 3 )
+				{
+					waypoints.emplace_back(*player.freecam.my);
+				}
+				waypoints[1] = Player::FreeCam_t::Waypoint_t(*player.freecam.my);
+				messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoint 2 set");
+			}
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	if ( Input::keys[SDLK_KP_5] )
+	{
+		Input::keys[SDLK_KP_5] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_5);
+		if ( player.freecam.isActive() )
+		{
+			Player::soundActivate();
+			while ( waypoints.size() < 3 )
+			{
+				waypoints.emplace_back(*player.freecam.my);
+			}
+			waypoint_run = false;
+			waypoints[1].applyToEntity(player.freecam.my);
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Moved to Waypoint 2");
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	if ( Input::keys[SDLK_KP_3] )
+	{
+		Input::keys[SDLK_KP_3] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_3);
+		if ( player.freecam.isActive() )
+		{
+			if ( tool["waypoint_lock"] == "on" )
+			{
+				playSound(90, 64);
+				messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoints locked");
+			}
+			else
+			{
+				Player::soundActivate();
+				while ( waypoints.size() < 3 )
+				{
+					waypoints.emplace_back(*player.freecam.my);
+				}
+				waypoints[2] = Player::FreeCam_t::Waypoint_t(*player.freecam.my);
+				messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoint 3 set");
+			}
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	if ( Input::keys[SDLK_KP_6] )
+	{
+		Input::keys[SDLK_KP_6] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_6);
+		if ( player.freecam.isActive() )
+		{
+			Player::soundActivate();
+			while ( waypoints.size() < 3 )
+			{
+				waypoints.emplace_back(*player.freecam.my);
+			}
+			waypoint_run = false;
+			waypoints[2].applyToEntity(player.freecam.my);
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Moved to Waypoint 3");
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+
+	if ( Input::keys[SDLK_KP_DIVIDE] )
+	{
+		Input::keys[SDLK_KP_DIVIDE] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_DIVIDE);
+		if ( tool["waypoint_lock"] == "" )
+		{
+			tool["waypoint_lock"] = "on";
+		}
+		else
+		{
+			tool["waypoint_lock"] = "";
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoint Lock: %s", tool["waypoint_lock"] == "" ? "off" : tool["waypoint_lock"].c_str());
+	}
+
+	if ( Input::keys[SDLK_KP_MULTIPLY] )
+	{
+		Input::keys[SDLK_KP_MULTIPLY] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_MULTIPLY);
+		if ( tool["waypoint_speed"] == "" )
+		{
+			tool["waypoint_speed"] = "fast";
+		}
+		else if ( tool["waypoint_speed"] == "fast" )
+		{
+			tool["waypoint_speed"] = "fast x2";
+		}
+		else if ( tool["waypoint_speed"] == "fast x2" )
+		{
+			tool["waypoint_speed"] = "slow";
+		}
+		else if ( tool["waypoint_speed"] == "slow" )
+		{
+			tool["waypoint_speed"] = "slow x2";
+		}
+		else if ( tool["waypoint_speed"] == "slow x2" )
+		{
+			tool["waypoint_speed"] = "slow x3";
+		}
+		else
+		{
+			tool["waypoint_speed"] = "";
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoint Speed: %s", tool["waypoint_speed"] == "" ? "default" : tool["waypoint_speed"].c_str());
+	}
+
+	if ( Input::keys[SDLK_KP_ENTER] )
+	{
+		Input::keys[SDLK_KP_ENTER] = 0;
+		input.consumeBindingsSharedWithKeycode(SDLK_KP_ENTER);
+		if ( player.freecam.isActive() )
+		{
+			tool["waypoint_lock"] = "on";
+			if ( waypoint_run )
+			{
+				Player::soundCancel();
+				waypoint_run = false;
+			}
+			else
+			{
+				player.freecam.waypoint_lerp = 0.0;
+				player.freecam.waypoint_run = true;
+				player.freecam.waypointIndex = 0;
+				while ( waypoints.size() < 3 )
+				{
+					waypoints.emplace_back(*player.freecam.my);
+				}
+				waypoints[0].applyToEntity(player.freecam.my);
+				messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Waypoint playback");
+			}
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	
+	if ( Input::keys[SDLK_1] )
+	{
+		Input::keys[SDLK_1] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_1);
+		nohud = false;
+		tool["callout"] = "command entity";
+		if ( !player.shootmode )
+		{
+			player.closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_DONT_CLOSE_CALLOUTGUI);
+		}
+		CalloutMenu[player.playernum].selectMoveTo = true;
+		CalloutMenu[player.playernum].optionSelected = CalloutRadialMenu::CALLOUT_CMD_SELECT;
+		CalloutMenu[player.playernum].lockOnEntityUid = 0;
+
+		if ( player.worldUI.isEnabled() )
+		{
+			player.worldUI.reset();
+			player.worldUI.tooltipView = Player::WorldUI_t::TooltipView::TOOLTIP_VIEW_RESCAN;
+			player.worldUI.gimpDisplayTimer = 0;
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Callout: %s", tool["callout"] == "" ? "off" : tool["callout"].c_str());
+	}
+
+	if ( Input::keys[SDLK_2] )
+	{
+		Input::keys[SDLK_2] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_2);
+		nohud = false;
+
+		if ( !CalloutMenu[player.playernum].selectMoveTo )
+		{
+			tool["callout"] = "npc freeze";
+		}
+		else if ( tool["callout"] == "npc freeze" )
+		{
+			tool["callout"] = "npc unfreeze";
+		}
+		else
+		{
+			tool["callout"] = "npc freeze";
+		}
+		if ( !player.shootmode )
+		{
+			player.closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_DONT_CLOSE_CALLOUTGUI);
+		}
+		CalloutMenu[player.playernum].selectMoveTo = true;
+		CalloutMenu[player.playernum].optionSelected = CalloutRadialMenu::CALLOUT_CMD_SELECT;
+		CalloutMenu[player.playernum].lockOnEntityUid = 0;
+
+		if ( player.worldUI.isEnabled() )
+		{
+			player.worldUI.reset();
+			player.worldUI.tooltipView = Player::WorldUI_t::TooltipView::TOOLTIP_VIEW_RESCAN;
+			player.worldUI.gimpDisplayTimer = 0;
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Callout: %s", tool["callout"] == "" ? "off" : tool["callout"].c_str());
+	}
+	else if ( Input::keys[SDLK_3] )
+	{
+		Input::keys[SDLK_3] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_3);
+		nohud = false;
+
+		if ( !CalloutMenu[player.playernum].selectMoveTo )
+		{
+			tool["callout"] = "light (torch)";
+		}
+		else if ( tool["callout"] == "light (torch)" )
+		{
+			tool["callout"] = "light (shard)";
+		}
+		else if ( tool["callout"] == "light (shard)" )
+		{
+			tool["callout"] = "remove light";
+		}
+		else
+		{
+			tool["callout"] = "light (torch)";
+		}
+		if ( !player.shootmode )
+		{
+			player.closeAllGUIs(CLOSEGUI_ENABLE_SHOOTMODE, CLOSEGUI_DONT_CLOSE_CALLOUTGUI);
+		}
+		CalloutMenu[player.playernum].selectMoveTo = true;
+		CalloutMenu[player.playernum].optionSelected = CalloutRadialMenu::CALLOUT_CMD_SELECT;
+		CalloutMenu[player.playernum].lockOnEntityUid = 0;
+
+		if ( player.worldUI.isEnabled() )
+		{
+			player.worldUI.reset();
+			player.worldUI.tooltipView = Player::WorldUI_t::TooltipView::TOOLTIP_VIEW_RESCAN;
+			player.worldUI.gimpDisplayTimer = 0;
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Callout: %s", tool["callout"] == "" ? "off" : tool["callout"].c_str());
+	}
+	else if ( Input::keys[SDLK_4] )
+	{
+		Input::keys[SDLK_4] = 0;
+		//Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_4);
+		tool["callout"] = "";
+		CalloutMenu[player.playernum].closeCalloutMenuGUI();
+		Player::soundCancel();
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Callout: %s", tool["callout"] == "" ? "off" : tool["callout"].c_str());
+	}
+	else if ( Input::keys[SDLK_5] )
+	{
+		Input::keys[SDLK_5] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_5);
+		if ( multiplayer != CLIENT )
+		{
+			tool["help"] = "";
+			nohud = true;
+			countdown = 2 * TICKS_PER_SECOND;
+			playSound(116, 64);
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	else if ( Input::keys[SDLK_6] )
+	{
+		Input::keys[SDLK_6] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_6);
+		if ( multiplayer != CLIENT )
+		{
+			tool["help"] = "";
+			nohud = true;
+			countdown = 2 * TICKS_PER_SECOND;
+			playSound(116, 64);
+
+			player.freecam.waypoint_lerp = 0.0;
+			player.freecam.waypoint_run = true;
+			player.freecam.waypointIndex = 0;
+			while ( waypoints.size() < 3 )
+			{
+				waypoints.emplace_back(*player.freecam.my);
+			}
+			waypoints[0].applyToEntity(player.freecam.my);
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	else if ( Input::keys[SDLK_0] )
+	{
+		Input::keys[SDLK_0] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_0);
+		if ( multiplayer != CLIENT )
+		{
+			gameloopFreezeEntities = !gameloopFreezeEntities;
+			messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Freeze entities: %s", gameloopFreezeEntities ? "on" : "off");
+		}
+		else
+		{
+			playSound(90, 64);
+		}
+	}
+	else if ( Input::keys[SDLK_MINUS] )
+	{
+		Input::keys[SDLK_MINUS] = 0;
+		Player::soundActivate();
+		input.consumeBindingsSharedWithKeycode(SDLK_MINUS);
+		if ( player.freecam.my )
+		{
+			player.freecam.my->x = (map.width / 2) * 16.0 + 8.0;
+			player.freecam.my->y = (map.height / 2) * 16.0 + 8.0;
+		}
+		messagePlayer(player.playernum, MESSAGE_MISC, "[Cinema]: Unstuck camera");
+	}
+}
+
+void actFreeCam(Entity* my)
+{
+	int playernum = GHOSTCAM_PLAYERNUM;
+	if ( playernum < 0 || playernum >= MAXPLAYERS )
+	{
+		return;
+	}
+
+	if ( multiplayer != CLIENT )
+	{
+		if ( client_disconnected[playernum] )
+		{
+			my->removeLightField();
+			list_RemoveNode(my->mynode);
+			return;
+		}
+
+		/*if ( players[playernum]->entity )
+		{
+			if ( !stats[playernum]->getEffectActive(EFF_PROJECT_SPIRIT) )
+			{
+				my->removeLightField();
+				list_RemoveNode(my->mynode);
+				return;
+			}
+		}*/
+	}
+
+	my->flags[NOCLIP_WALLS] = players[playernum]->freecam.tool["noclip"] != "" ? true : false;
+	if ( players[playernum]->freecam.tool["needsupdate"] == "1" )
+	{
+		players[playernum]->freecam.tool["needsupdate"] = "";
+
+		if ( players[playernum]->freecam.tool["silence"] == "" )
+		{
+			consoleCommand("/game_ui_sfx_volume 32", true);
+			consoleCommand("/callout_sfx_vol 128", true);
+		}
+		else
+		{
+			consoleCommand("/game_ui_sfx_volume 0", true);
+			consoleCommand("/callout_sfx_vol 0", true);
+		}
+
+		if ( players[playernum]->freecam.tool["camrotate"] == "" )
+		{
+			consoleCommand("/cameralerp 30.0", true);
+			consoleCommand("/autocameralerp true", true);
+		}
+		else if ( players[playernum]->freecam.tool["camrotate"] == "slow x1" )
+		{
+			consoleCommand("/cameralerp 15.0", true);
+			consoleCommand("/autocameralerp false", true);
+		}
+		else if ( players[playernum]->freecam.tool["camrotate"] == "slow x2" )
+		{
+			consoleCommand("/cameralerp 10.0", true);
+			consoleCommand("/autocameralerp false", true);
+		}
+		else if ( players[playernum]->freecam.tool["camrotate"] == "slow x3" )
+		{
+			consoleCommand("/cameralerp 5.0", true);
+			consoleCommand("/autocameralerp false", true);
+		}
+	}
+
+	if ( players[playernum]->isLocalPlayer() || multiplayer != CLIENT )
+	{
+		if ( my->flags[INVISIBLE] != GHOSTCAM_DEACTIVATED )
+		{
+			my->flags[INVISIBLE] = GHOSTCAM_DEACTIVATED;
+			if ( multiplayer != CLIENT )
+			{
+				serverUpdateEntityFlag(my, INVISIBLE);
+			}
+		}
+	}
+
+	players[playernum]->freecam.my = my;
+	players[playernum]->freecam.uid = my->getUID();
+
+	if ( !GHOSTCAM_INIT )
+	{
+		GHOSTCAM_INIT = 1;
+
+		// nametag (for voice)
+		Entity* nametag = newEntity(-1, 1, map.entities, nullptr);
+		nametag->x = my->x;
+		nametag->y = my->y;
+		nametag->z = my->z - 6;
+		nametag->sizex = 1;
+		nametag->sizey = 1;
+		nametag->flags[NOUPDATE] = true;
+		nametag->flags[PASSABLE] = true;
+		nametag->flags[SPRITE] = true;
+		nametag->flags[UNCLICKABLE] = true;
+		nametag->flags[BRIGHT] = true;
+		nametag->behavior = &actSpriteNametag;
+		nametag->parent = my->getUID();
+		nametag->scalex = 0.2;
+		nametag->scaley = 0.2;
+		nametag->scalez = 0.2;
+		nametag->ditheringDisabled = true;
+		nametag->skill[0] = GHOSTCAM_PLAYERNUM;
+		nametag->skill[1] = playerColor(GHOSTCAM_PLAYERNUM, colorblind_lobby, false);
+		nametag->skill[3] = 2; // mode 2 doesn't draw but keeps position
+	}
+
+	auto player = players[playernum];
+
+	my->removeLightField();
+	const char* light_type = nullptr;
+	bool ambientLight = true;
+	if ( players[playernum]->isLocalPlayer() )
+	{
+		if ( player->freecam.tool["light"] == "torch" )
+		{
+			if ( my->actFreeCamLight != 1 )
+			{
+				my->actFreeCamLight = 1;
+				serverUpdateEntitySkill(my, 12);
+			}
+		}
+		else if ( player->freecam.tool["light"] == "lantern" )
+		{
+			if ( my->actFreeCamLight != 2 )
+			{
+				my->actFreeCamLight = 2;
+				serverUpdateEntitySkill(my, 12);
+			}
+		}
+		else
+		{
+			if ( my->actFreeCamLight != 0 )
+			{
+				my->actFreeCamLight = 0;
+				serverUpdateEntitySkill(my, 12);
+			}
+		}
+	}
+
+	if ( my->actFreeCamLight > 0 )
+	{
+		ambientLight = false;
+	}
+
+	if ( !player->freecam.isActive() )
+	{
+		// no light
+	}
+	else if ( !ambientLight )
+	{
+		if ( my->actFreeCamLight == 1 )
+		{
+			light_type = "player_torch";
+		}
+		else if ( my->actFreeCamLight == 2 )
+		{
+			light_type = "player_lantern";
+		}
+		my->light = addLight(my->x / 16, my->y / 16, light_type, 0, 0);
+	}
+	else if ( players[playernum]->isLocalPlayer() )
+	{
+		light_type = "player_ambient";
+		my->light = addLight(my->x / 16, my->y / 16, light_type, 0, playernum + 1);
+	}
+
+	if ( player->isLocalPlayer() && !player->freecam.isActive() )
+	{
+		my->vel_x = 0.0;
+		my->vel_y = 0.0;
+		my->vel_z = 0.0;
+		player->freecam.countdown = 0;
+
+		if ( Input::keys[SDLK_F11] )
+		{
+			Input::keys[SDLK_F11] = 0;
+			Player::soundActivate();
+			Input::inputs[playernum].consumeBindingsSharedWithKeycode(SDLK_F11);
+			consoleCommand("/cinemamode");
+		}
+	}
+	if ( player->isLocalPlayer() && player->freecam.isActive() )
+	{
+		if ( !usecamerasmoothing )
+		{
+			player->freecam.handleFreeMovement(false);
+			player->freecam.handleFreeCameraUpdate(false);
+		}
+
+		if ( Input::keys[SDLK_F11] )
+		{
+			Input::keys[SDLK_F11] = 0;
+			Player::soundActivate();
+			Input::inputs[playernum].consumeBindingsSharedWithKeycode(SDLK_F11);
+			consoleCommand("/cinemamode");
+		}
+
+		if ( player->freecam.countdown > 0 )
+		{
+			--player->freecam.countdown;
+			if ( player->freecam.countdown == 1.5 * TICKS_PER_SECOND
+				|| player->freecam.countdown == 1 * TICKS_PER_SECOND
+				|| player->freecam.countdown == 0.5 * TICKS_PER_SECOND )
+			{
+				playSound(116, 64);
+			}
+
+			if ( player->freecam.countdown == 0 )
+			{
+				if ( multiplayer == SERVER )
+				{
+					for ( int i = 1; i < MAXPLAYERS; ++i )
+					{
+						if ( players[i]->isLocalPlayer() ) { continue; }
+						if ( client_disconnected[i] ) { continue; }
+
+						strcpy((char*)net_packet->data, "CALL");
+						net_packet->data[4] = playernum;
+						SDLNet_Write32(my->getUID(), &net_packet->data[5]);
+						net_packet->data[9] = (Uint8)CalloutRadialMenu::CALLOUT_CMD_AFFIRMATIVE;
+						SDLNet_Write32(0, &net_packet->data[10]);
+						net_packet->len = 14;
+						net_packet->address.host = net_clients[i - 1].host;
+						net_packet->address.port = net_clients[i - 1].port;
+						sendPacketSafe(net_sock, -1, net_packet, i - 1);
+					}
+				}
+				gameloopFreezeEntities = false;
+				for ( auto node = map.creatures->first; node; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( Stat* stats = entity->getStats() )
+						{
+							if ( stats->getEffectActive(EFF_STUNNED) )
+							{
+								entity->setEffect(EFF_STUNNED, false, 0, false);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if ( player->freecam.waypoint_run )
+		{
+			if ( player->freecam.waypointIndex > 0 )
+			{
+				player->freecam.waypoint_run = false;
+			}
+			else
+			{
+				auto& wp1 = player->freecam.waypoints[player->freecam.waypointIndex];
+				auto& wp2 = player->freecam.waypoints[player->freecam.waypointIndex + 1];
+				auto& wp3 = player->freecam.waypoints[player->freecam.waypointIndex + 2];
+				auto& t = player->freecam.waypoint_lerp;
+				real_t lerp = t * t * (3.0f - 2.0f * t); // bezier from 0 to width as t (0-1)
+				real_t x1 = (wp2.x * lerp) + (wp1.x * (1.0 - lerp));
+				real_t y1 = (wp2.y * lerp) + (wp1.y * (1.0 - lerp));
+				real_t z1 = (wp2.z * lerp) + (wp1.z * (1.0 - lerp));
+				real_t x2 = (wp3.x * lerp) + (wp2.x * (1.0 - lerp));
+				real_t y2 = (wp3.y * lerp) + (wp2.y * (1.0 - lerp));
+				real_t z2 = (wp3.z * lerp) + (wp2.z * (1.0 - lerp));
+
+				my->x = (x2 * lerp) + (x1 * (1.0 - lerp));
+				my->y = (y2 * lerp) + (y1 * (1.0 - lerp));
+				my->z = (z2 * lerp) + (z1 * (1.0 - lerp));
+
+				real_t pitch1 = TimerExperiments::lerpAngle(wp1.pitch, wp2.pitch, lerp);
+				real_t pitch2 = TimerExperiments::lerpAngle(wp2.pitch, wp3.pitch, lerp);
+				my->pitch = TimerExperiments::lerpAngle(pitch1, pitch2, lerp);
+
+				real_t roll1 = TimerExperiments::lerpAngle(wp1.roll, wp2.roll, lerp);
+				real_t roll2 = TimerExperiments::lerpAngle(wp2.roll, wp3.roll, lerp);
+				my->roll = TimerExperiments::lerpAngle(roll1, roll2, lerp);
+
+				real_t yaw1 = TimerExperiments::lerpAngle(wp1.yaw, wp2.yaw, lerp);
+				real_t yaw2 = TimerExperiments::lerpAngle(wp2.yaw, wp3.yaw, lerp);
+				my->yaw = TimerExperiments::lerpAngle(yaw1, yaw2, lerp);
+
+				real_t speedFactor = 1.0;
+				if ( player->freecam.tool["waypoint_speed"] == "slow" )
+				{
+					speedFactor *= 0.75;
+				}
+				else if ( player->freecam.tool["waypoint_speed"] == "slow x2" )
+				{
+					speedFactor *= 0.5;
+				}
+				else if ( player->freecam.tool["waypoint_speed"] == "slow x3" )
+				{
+					speedFactor *= 0.25;
+				}
+				else if ( player->freecam.tool["waypoint_speed"] == "fast" )
+				{
+					speedFactor *= 1.25;
+				}
+				else if ( player->freecam.tool["waypoint_speed"] == "fast x2" )
+				{
+					speedFactor *= 1.5;
+				}
+
+				if ( Input::inputs[playernum].binary("Defend") )
+				{
+					speedFactor *= .5;
+				}
+
+				if ( player->freecam.countdown == 0 )
+				{
+					player->freecam.waypoint_lerp += 0.01 * speedFactor;
+				}
+				player->freecam.waypoint_lerp = std::min(1.0, player->freecam.waypoint_lerp);
+				if ( player->freecam.waypoint_lerp >= 1.0 )
+				{
+					player->freecam.waypoint_lerp = 0.0;
+					++player->freecam.waypointIndex;
+				}
+			}
+		}
+
+		//player->ghost.handleActions();
+		//player->ghost.handleAttack();
+
+		real_t camx, camy, camz, camang, camvang, camroll_ang;
+		camx = my->x / 16.f;
+		camy = my->y / 16.f;
+		camz = my->z * 2.f + GHOSTCAM_BOB;
+
+		camang = my->yaw;
+		camvang = my->pitch;
+		camroll_ang = my->roll;
+
+		if ( !TimerExperiments::bUseTimerInterpolation )
+		{
+			cameras[playernum].x = camx;
+			cameras[playernum].y = camy;
+			cameras[playernum].z = camz;
+			cameras[playernum].ang = camang;
+			cameras[playernum].vang = camvang;
+		}
+		else
+		{
+			TimerExperiments::cameraCurrentState[playernum].x.velocity =
+				TimerExperiments::lerpFactor * (camx - TimerExperiments::cameraCurrentState[playernum].x.position);
+			TimerExperiments::cameraCurrentState[playernum].y.velocity =
+				TimerExperiments::lerpFactor * (camy - TimerExperiments::cameraCurrentState[playernum].y.position);
+			TimerExperiments::cameraCurrentState[playernum].z.velocity =
+				TimerExperiments::lerpFactor * (camz - TimerExperiments::cameraCurrentState[playernum].z.position);
+
+			real_t diff = camang - TimerExperiments::cameraCurrentState[playernum].yaw.position;
+			if ( diff >= PI )
+			{
+				diff -= 2 * PI;
+			}
+			else if ( diff < -PI )
+			{
+				diff += 2 * PI;
+			}
+			TimerExperiments::cameraCurrentState[playernum].yaw.velocity = diff * TimerExperiments::lerpFactor;
+			diff = camvang - TimerExperiments::cameraCurrentState[playernum].pitch.position;
+			if ( diff >= PI )
+			{
+				diff -= 2 * PI;
+			}
+			else if ( diff < -PI )
+			{
+				diff += 2 * PI;
+			}
+			TimerExperiments::cameraCurrentState[playernum].pitch.velocity = diff * TimerExperiments::lerpFactor;
+			diff = camroll_ang - TimerExperiments::cameraCurrentState[playernum].roll.position;
+			if ( diff >= PI )
+			{
+				diff -= 2 * PI;
+			}
+			else if ( diff < -PI )
+			{
+				diff += 2 * PI;
+			}
+			TimerExperiments::cameraCurrentState[playernum].roll.velocity = diff * TimerExperiments::lerpFactor;
+		}
+	}
+
+	static ConsoleVariable<float> cvar_freecamBounce("/freecam_bounce", 0.9);
+	real_t dist = 0.0;
+	if ( player->isLocalPlayer() )
+	{
+		// send movement updates to server
+		if ( multiplayer == CLIENT )
+		{
+			strcpy((char*)net_packet->data, "FMOV");
+			net_packet->data[4] = playernum;
+			net_packet->data[5] = currentlevel;
+			SDLNet_Write16((Sint16)(my->x * 32), &net_packet->data[6]);
+			SDLNet_Write16((Sint16)(my->y * 32), &net_packet->data[8]);
+			SDLNet_Write16((Sint16)(my->vel_x * 128), &net_packet->data[10]);
+			SDLNet_Write16((Sint16)(my->vel_y * 128), &net_packet->data[12]);
+			SDLNet_Write16((Sint16)(my->yaw * 128), &net_packet->data[14]);
+			SDLNet_Write16((Sint16)(my->pitch * 128), &net_packet->data[16]);
+			net_packet->data[18] = (int)secretleveltype;
+			// continued after clipmove...
+		}
+
+		// perform collision detection
+		dist = clipMove(&my->x, &my->y, my->vel_x, my->vel_y, my);
+
+		my->z += my->vel_z;
+		if ( player->freecam.tool["noclip"] == "on / no floor" )
+		{
+			my->z = std::min(40.0, std::max(-22.5, my->z));
+		}
+		else
+		{
+			my->z = std::min(6.5, std::max(-22.5, my->z));
+		}
+		bool bounceAnimate = false;
+		if ( dist != sqrt(my->vel_x * my->vel_x + my->vel_y * my->vel_y) )
+		{
+			if ( !hit.side )
+			{
+				my->vel_x *= *cvar_freecamBounce;
+				my->vel_y *= *cvar_freecamBounce;
+			}
+			else if ( hit.side == HORIZONTAL )
+			{
+				my->vel_x *= *cvar_freecamBounce;
+			}
+			else
+			{
+				my->vel_y *= *cvar_freecamBounce;
+			}
+			my->vel_x = std::max(-4.0, std::min(my->vel_x, 4.0));
+			my->vel_y = std::max(-4.0, std::min(my->vel_y, 4.0));
+		}
+
+		if ( multiplayer == CLIENT )
+		{
+			net_packet->data[19] = my->actFreeCamLight;
+			if ( GHOSTCAM_DEACTIVATED )
+			{
+				net_packet->data[19] |= (1 << 4);
+			}
+			if ( player->freecam.tool["noclip"] != "" )
+			{
+				net_packet->data[19] |= (1 << 5);
+			}
+			net_packet->address.host = net_server.host;
+			net_packet->address.port = net_server.port;
+			net_packet->len = 20;
+			sendPacket(net_sock, -1, net_packet, 0);
+		}
+	}
+
+	if ( !player->isLocalPlayer() && multiplayer == SERVER )
+	{
+		// PLAYER_VEL* skills updated by messages sent to server from client
+
+		// move (dead reckoning)
+		// from GMOV in serverHandlePacket - new_x and new_y are accumulated positions
+		if ( my->new_x > 0.001 )
+		{
+			my->x = my->new_x;
+		}
+		if ( my->new_y > 0.001 )
+		{
+			my->y = my->new_y;
+		}
+
+		dist = clipMove(&my->x, &my->y, my->vel_x, my->vel_y, my);
+	}
+
+	if ( !player->isLocalPlayer() && multiplayer == CLIENT )
+	{
+		dist = sqrt(my->vel_x * my->vel_x + my->vel_y * my->vel_y);
+	}
+
+
+	real_t dir = my->yaw - atan2(my->vel_y, my->vel_x);
+	while ( dir < 0 )
+	{
+		dir += 2 * PI;
+	}
+	while ( dir > 2 * PI )
+	{
+		dir -= 2 * PI;
+	}
+	//messagePlayer(0, MESSAGE_DEBUG, "%.2f", dir);
+}
+
+void Player::FreeCam_t::setActive(bool active)
+{
+	if ( my )
+	{
+		Uint32 deactivated = (active ? 0 : 1);
+		if ( deactivated != GHOSTCAM_DEACTIVATED )
+		{
+			GHOSTCAM_DEACTIVATED = deactivated;
+			if ( multiplayer == SERVER && player.isLocalPlayer() )
+			{
+				serverUpdateEntitySkill(my, 7);
+			}
+		}
+	}
+}
+
+Entity* Player::FreeCam_t::createCamera()
+{ 
+	if ( !player.isLocalPlayer() )
+	{
+		return nullptr;
+	}
+
+	if ( my )
+	{
+		return nullptr;
+	}
+
+	if ( multiplayer != CLIENT )
+	{
+		Entity* entity = newEntity(2548, 1, map.entities, nullptr); //Ghost entity.
+		if ( player.entity )
+		{
+			entity->x = player.entity->x;
+			entity->y = player.entity->y;
+		}
+		else
+		{
+			entity->x = (map.width / 2) * 16.0 + 8;
+			entity->y = (map.height / 2) * 16.0 + 8;
+		}
+		entity->z = -4;
+		entity->flags[PASSABLE] = true;
+		entity->flags[INVISIBLE] = false;
+		entity->flags[GENIUS] = true;
+		entity->flags[NOCLIP_CREATURES] = true;
+		entity->behavior = &actFreeCam;
+		entity->skill[2] = player.playernum;
+		entity->sizex = 2;
+		entity->sizey = 2;
+		entity->yaw = 0.0;
+		if ( player.entity )
+		{
+			entity->yaw = player.entity->yaw;
+		}
+		entity->pitch = PI / 16;
+		if ( player.playernum == clientnum && multiplayer == CLIENT )
+		{
+			entity->flags[UPDATENEEDED] = false;
+		}
+		else
+		{
+			entity->flags[UPDATENEEDED] = true;
+		}
+		uid = entity->getUID();
+		my = entity;
+		return my;
+	}
+
+	if ( multiplayer == CLIENT )
+	{
+		strcpy((char*)net_packet->data, "FREC");
+		net_packet->data[4] = player.playernum;
+		net_packet->data[5] = currentlevel;
+		int x = 0;
+		int y = 0;
+		if ( player.entity )
+		{
+			x = player.entity->x / 16;
+			y = player.entity->y / 16;
+		}
+		else
+		{
+			x = (map.width / 2);
+			y = (map.height / 2);
+		}
+		SDLNet_Write16((Sint16)(x), &net_packet->data[6]);
+		SDLNet_Write16((Sint16)(y), &net_packet->data[8]);
+		net_packet->data[10] = (int)secretleveltype;
+		net_packet->address.host = net_server.host;
+		net_packet->address.port = net_server.port;
+		net_packet->len = 11;
+		sendPacketSafe(net_sock, -1, net_packet, 0);
+	}
+
+	return nullptr;
+}
+
+void Player::FreeCam_t::handleFreeCameraUpdate(bool useRefreshRateDelta)
+{
+	if ( !isActive() ) { return; }
+
+	if ( !my ) { return; }
+
+	bool controllable = true; //isControllable();
+
+	real_t mousex_relative = mousexrel;
+	real_t mousey_relative = mouseyrel;
+
+	mousex_relative = inputs.getMouseFloat(player.playernum, Inputs::ANALOGUE_XREL);
+	mousey_relative = inputs.getMouseFloat(player.playernum, Inputs::ANALOGUE_YREL);
+
+	const bool smoothmouse = playerSettings[multiplayer ? 0 : player.playernum].smoothmouse;
+	const bool reversemouse = playerSettings[multiplayer ? 0 : player.playernum].reversemouse;
+	real_t mouse_speed = playerSettings[multiplayer ? 0 : player.playernum].mousespeed;
+	if ( inputs.getVirtualMouse(player.playernum)->lastMovementFromController )
+	{
+		mouse_speed = 32.0;
+	}
+
+	double refreshRateDelta = 1.0;
+	if ( useRefreshRateDelta && fps > 0.0 )
+	{
+		refreshRateDelta *= TICKS_PER_SECOND / (real_t)fpsLimit;
+	}
+
+	// rotate
+	if ( !player.usingCommand() && controllable
+		&& (player.bControlEnabled || !player.entity) && !gamePaused && my->isMobile() && !inputs.hasController(player.playernum) )
+	{
+		if ( /*noclip*/true )
+		{
+			my->vel_z -= (Input::inputs[player.playernum].analog("Turn Right")
+				- Input::inputs[player.playernum].analog("Turn Left")) * 0.005 * refreshRateDelta;
+		}
+		else
+		{
+			my->yaw += (Input::inputs[player.playernum].analog("Turn Right")
+				- Input::inputs[player.playernum].analog("Turn Left")) * .05 * refreshRateDelta;
+		}
+	}
+
+	if ( tool["roll"] == "right" )
+	{
+		my->roll -= .005 * refreshRateDelta;
+	}
+	else if ( tool["roll"] == "left" )
+	{
+		my->roll += .005 * refreshRateDelta;
+	}
+	while ( my->roll >= PI )
+	{
+		my->roll -= PI * 2;
+	}
+	while ( my->roll < -PI )
+	{
+		my->roll += PI * 2;
+	}
+	my->roll *= 0.975;
+
+	bool shootmode = player.shootmode;
+
+	if ( shootmode && !gamePaused && controllable )
+	{
+		if ( smoothmouse )
+		{
+			if ( my->isMobile() )
+			{
+				GHOSTCAM_ROTX += mousex_relative * .006 * (mouse_speed / 128.f);
+			}
+			if ( !disablemouserotationlimit )
+			{
+				GHOSTCAM_ROTX = fmin(fmax(-0.35, GHOSTCAM_ROTX), 0.35);
+			}
+			GHOSTCAM_ROTX *= pow(0.5, refreshRateDelta);
+		}
+		else
+		{
+			if ( my->isMobile() )
+			{
+				if ( disablemouserotationlimit )
+				{
+					GHOSTCAM_ROTX = mousex_relative * .01f * (mouse_speed / 128.f);
+				}
+				else
+				{
+					GHOSTCAM_ROTX = std::min<float>(std::max<float>(-0.35f, mousex_relative * .01f * (mouse_speed / 128.f)), 0.35f);
+				}
+			}
+			else
+			{
+				GHOSTCAM_ROTX = 0;
+			}
+		}
+	}
+
+	my->yaw += GHOSTCAM_ROTX * refreshRateDelta;
+	while ( my->yaw >= PI * 2 )
+	{
+		my->yaw -= PI * 2;
+	}
+	while ( my->yaw < 0 )
+	{
+		my->yaw += PI * 2;
+	}
+
+	if ( smoothmouse )
+	{
+		GHOSTCAM_ROTX *= pow(0.5, refreshRateDelta);
+	}
+	else
+	{
+		GHOSTCAM_ROTX = 0;
+	}
+
+	// look up and down
+	if ( controllable )
+	{
+		if ( !player.usingCommand()
+			&& (player.bControlEnabled || !player.entity) && !gamePaused && my->isMobile() && !inputs.hasController(player.playernum) )
+		{
+			my->pitch += (Input::inputs[player.playernum].analog("Look Down")
+				- Input::inputs[player.playernum].analog("Look Up")) * .05 * refreshRateDelta;
+		}
+		if ( shootmode && !gamePaused )
+		{
+			if ( smoothmouse )
+			{
+				if ( my->isMobile() )
+				{
+					GHOSTCAM_ROTY += mousey_relative * .006 * (mouse_speed / 128.f) * (reversemouse * 2 - 1);
+				}
+				GHOSTCAM_ROTY = fmin(fmax(-0.35, GHOSTCAM_ROTY), 0.35);
+				GHOSTCAM_ROTY *= pow(0.5, refreshRateDelta);
+			}
+			else
+			{
+				if ( my->isMobile() )
+				{
+					GHOSTCAM_ROTY = std::min<float>(std::max<float>(-0.35f,
+						mousey_relative * .01f * (mouse_speed / 128.f) * (reversemouse * 2 - 1)), 0.35f);
+				}
+				else
+				{
+					GHOSTCAM_ROTY = 0;
+				}
+			}
+		}
+		my->pitch -= GHOSTCAM_ROTY * refreshRateDelta;
+	}
+	else
+	{
+		my->pitch = PI / 16;
+	}
+
+	if ( my->pitch > PI / 3 )
+	{
+		my->pitch = PI / 3;
+	}
+	if ( my->pitch < -PI / 3 )
+	{
+		my->pitch = -PI / 3;
+	}
+
+	if ( smoothmouse )
+	{
+		GHOSTCAM_ROTY *= pow(0.5, refreshRateDelta);
+	}
+	else
+	{
+		GHOSTCAM_ROTY = 0;
+	}
+
+	if ( TimerExperiments::bUseTimerInterpolation )
+	{
+		while ( TimerExperiments::cameraCurrentState[player.playernum].yaw.position >= PI * 2 )
+		{
+			TimerExperiments::cameraCurrentState[player.playernum].yaw.position -= PI * 2;
+		}
+		while ( TimerExperiments::cameraCurrentState[player.playernum].yaw.position < 0 )
+		{
+			TimerExperiments::cameraCurrentState[player.playernum].yaw.position += PI * 2;
+		}
+		real_t diff = my->yaw - TimerExperiments::cameraCurrentState[player.playernum].yaw.position;
+		if ( diff > PI )
+		{
+			diff -= 2 * PI;
+		}
+		else if ( diff < -PI )
+		{
+			diff += 2 * PI;
+		}
+		TimerExperiments::cameraCurrentState[player.playernum].yaw.velocity = diff * TimerExperiments::lerpFactor;
+		while ( TimerExperiments::cameraCurrentState[player.playernum].pitch.position >= PI )
+		{
+			TimerExperiments::cameraCurrentState[player.playernum].pitch.position -= PI * 2;
+		}
+		while ( TimerExperiments::cameraCurrentState[player.playernum].pitch.position < -PI )
+		{
+			TimerExperiments::cameraCurrentState[player.playernum].pitch.position += PI * 2;
+		}
+		diff = my->pitch - TimerExperiments::cameraCurrentState[player.playernum].pitch.position;
+		if ( diff >= PI )
+		{
+			diff -= 2 * PI;
+		}
+		else if ( diff < -PI )
+		{
+			diff += 2 * PI;
+		}
+		TimerExperiments::cameraCurrentState[player.playernum].pitch.velocity = diff * TimerExperiments::lerpFactor;
+
+		while ( TimerExperiments::cameraCurrentState[player.playernum].roll.position >= PI * 2 )
+		{
+			TimerExperiments::cameraCurrentState[player.playernum].roll.position -= PI * 2;
+		}
+		while ( TimerExperiments::cameraCurrentState[player.playernum].roll.position < 0 )
+		{
+			TimerExperiments::cameraCurrentState[player.playernum].roll.position += PI * 2;
+		}
+		diff = my->roll - TimerExperiments::cameraCurrentState[player.playernum].roll.position;
+		if ( diff > PI )
+		{
+			diff -= 2 * PI;
+		}
+		else if ( diff < -PI )
+		{
+			diff += 2 * PI;
+		}
+		TimerExperiments::cameraCurrentState[player.playernum].roll.velocity = diff * TimerExperiments::lerpFactor;
+		if ( tool["control_flight"] != "Q/E roll / forward hover" )
+		{
+			TimerExperiments::cameraCurrentState[player.playernum].roll.position = 0.0;
+			TimerExperiments::cameraCurrentState[player.playernum].roll.velocity = 0.0 * TimerExperiments::lerpFactor;
+		}
+	}
+}
+
+bool Player::FreeCam_t::isActive() { 
+
+	if ( my )
+	{
+		if ( !GHOSTCAM_DEACTIVATED )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void Player::FreeCam_t::handleFreeMovement(bool useRefreshRateDelta)
+{
+	if ( !isActive() ) { return; }
+
+	if ( !my ) { return; }
+
+	Input& input = Input::inputs[player.playernum];
+
+	double refreshRateDelta = 1.0;
+	if ( useRefreshRateDelta && fps > 0.0 )
+	{
+		refreshRateDelta *= TICKS_PER_SECOND / (real_t)fpsLimit;
+	}
+
+	// calculate movement forces
+	bool allowMovement = true;// isControllable() && playerAllowedMovement(player.playernum);
+	static ConsoleVariable<float> cvar_freeCamSpeed("/freecam_speed", 1.5);
+	static ConsoleVariable<float> cvar_freeCamDrag("/freecam_drag", 0.95);
+	real_t drag = *cvar_freeCamDrag;
+	if ( ((!player.usingCommand() && (player.bControlEnabled || !player.entity) && !gamePaused))
+		&& allowMovement )
+	{
+		//x_force and y_force represent the amount of percentage pushed on that respective axis. Given a keyboard, it's binary; either you're pushing "move left" or you aren't. On an analog stick, it can range from whatever value to whatever.
+		float x_force = 0;
+		float y_force = 0;
+
+		{
+			double backpedalMultiplier = 1.0;
+
+			if ( !inputs.hasController(player.playernum) )
+			{
+				x_force = (input.binary("Move Right") - input.binary("Move Left"));
+				y_force = input.binary("Move Forward") - (double)input.binary("Move Backward") * backpedalMultiplier;
+			}
+
+			if ( inputs.hasController(player.playernum) /*&& !input.binary("Move Left") && !input.binary("Move Right")*/ )
+			{
+				x_force = inputs.getController(player.playernum)->getLeftXPercentForPlayerMovement(player.playernum);
+			}
+
+			if ( inputs.hasController(player.playernum) /*&& !input.binary("Move Forward") && !input.binary("Move Backward")*/ )
+			{
+				y_force = inputs.getController(player.playernum)->getLeftYPercentForPlayerMovement(player.playernum);
+				if ( y_force < 0 )
+				{
+					y_force *= backpedalMultiplier;    //Move backwards more slowly.
+				}
+			}
+		}
+
+		real_t speedFactor = *cvar_freeCamSpeed;
+
+		int speedMult = 1;
+
+		if ( tool["camspeed"] == "slow" )
+		{
+			speedFactor *= 0.75;
+		}
+		else if ( tool["camspeed"] == "slow x2" )
+		{
+			speedFactor *= 0.5;
+		}
+		else if ( tool["camspeed"] == "slow x3" )
+		{
+			speedFactor *= 0.25;
+		}
+		else if ( tool["camspeed"] == "fast" )
+		{
+			speedFactor *= 1.25;
+		}
+		else if ( tool["camspeed"] == "fast x2" )
+		{
+			speedFactor *= 1.5;
+		}
+
+		if ( input.binary("Defend") )
+		{
+			input.consumeBinaryToggle("Defend");
+			input.consumeBinaryToggle("Sneak");
+			speedMult += 1;
+		}
+
+		speedFactor *= refreshRateDelta;
+
+		my->vel_x += y_force * cos(my->yaw) * .045 * speedFactor / (speedMult);
+		my->vel_y += y_force * sin(my->yaw) * .045 * speedFactor / (speedMult);
+		my->vel_x += x_force * cos(my->yaw + PI / 2) * .0225 * speedFactor / (speedMult);
+		my->vel_y += x_force * sin(my->yaw + PI / 2) * .0225 * speedFactor / (speedMult);
+
+		if ( tool["control_flight"] == "forward to hover" || tool["control_flight"] == "Q/E roll / forward hover" )
+		{
+			my->vel_z += y_force * .045 * sin(my->pitch) * speedFactor / (speedMult);
+		}
+		else if ( tool["control_flight"] == "Q/E to hover" )
+		{
+			if ( tool["hover"] == "lower" )
+			{
+				my->vel_z += 0.25 * .045 * speedFactor / (speedMult);
+			}
+			if ( tool["hover"] == "raise" )
+			{
+				my->vel_z += -0.25 * .045 * speedFactor / (speedMult);
+			}
+		}
+		my->vel_z = std::max(-4.0, std::min(my->vel_z, 4.0));
+	}
+	my->vel_x *= pow(drag, refreshRateDelta);
+	my->vel_y *= pow(drag, refreshRateDelta);
+	my->vel_z *= pow(drag, refreshRateDelta);
 }
 
 void Player::Ghost_t::handleGhostMovement(const bool useRefreshRateDelta)
@@ -391,6 +2484,14 @@ bool Player::Ghost_t::handleQuickTurn(bool useRefreshRateDelta)
 		bDoingQuickTurn = false;
 		return false;
 	}
+}
+
+void Player::FreeCam_t::reset()
+{
+	uid = 0;
+	my = nullptr;
+	waypoints.clear();
+	waypointIndex = 0;
 }
 
 void Player::Ghost_t::reset()
@@ -3254,6 +5355,8 @@ void actProjectSpiritCam(Entity* my)
 	}
 }
 
+static ConsoleVariable<bool> cvar_player_deathcam_disable("/player_deathcam_disable", false);
+
 void actDeathCam(Entity* my)
 {
 	/*if ( keystatus[SDLK_F4] )
@@ -3303,6 +5406,8 @@ void actDeathCam(Entity* my)
 	else if ( DEATHCAM_TIME < deathcamGameoverPromptTicks )
 	{
 		if ( players[DEATHCAM_PLAYERNUM]->ghost.isActive() 
+			|| players[DEATHCAM_PLAYERNUM]->freecam.isActive()
+			|| *cvar_player_deathcam_disable
 			|| (players[DEATHCAM_PLAYERNUM]->entity && players[DEATHCAM_PLAYERNUM]->entity->playerCreatedDeathCam == 0) )
 		{
 			DEATHCAM_DISABLE_GAMEOVER = 1;
@@ -3315,6 +5420,8 @@ void actDeathCam(Entity* my)
 			gameModeManager.Tutorial.openGameoverWindow();
 		}
 		else if ( !(players[DEATHCAM_PLAYERNUM]->ghost.isActive() 
+			|| players[DEATHCAM_PLAYERNUM]->freecam.isActive()
+			|| *cvar_player_deathcam_disable
 			|| (players[DEATHCAM_PLAYERNUM]->entity && players[DEATHCAM_PLAYERNUM]->entity->playerCreatedDeathCam == 0) )
 			&& DEATHCAM_DISABLE_GAMEOVER == 0 )
 		{
@@ -3333,6 +5440,8 @@ void actDeathCam(Entity* my)
 
 	bool shootmode = players[DEATHCAM_PLAYERNUM]->shootmode;
 	if ( shootmode && !gamePaused && !(players[DEATHCAM_PLAYERNUM]->ghost.isActive() 
+		|| players[DEATHCAM_PLAYERNUM]->freecam.isActive()
+		|| *cvar_player_deathcam_disable
 		|| (players[DEATHCAM_PLAYERNUM]->entity && players[DEATHCAM_PLAYERNUM]->entity->playerCreatedDeathCam == 0)) )
 	{
 		if ( !players[DEATHCAM_PLAYERNUM]->GUI.isGameoverActive() )
@@ -3462,7 +5571,8 @@ void actDeathCam(Entity* my)
 		&& players[DEATHCAM_PLAYERNUM]->bControlEnabled
 		&& !players[DEATHCAM_PLAYERNUM]->usingCommand()
 		&& !gamePaused
-		&& !(players[DEATHCAM_PLAYERNUM]->ghost.isActive() || players[DEATHCAM_PLAYERNUM]->entity)
+		&& !*cvar_player_deathcam_disable
+		&& !(players[DEATHCAM_PLAYERNUM]->ghost.isActive() || players[DEATHCAM_PLAYERNUM]->freecam.isActive() || players[DEATHCAM_PLAYERNUM]->entity)
 		&& (Input::inputs[DEATHCAM_PLAYERNUM].consumeBinaryToggle("Attack")
 			|| Input::inputs[DEATHCAM_PLAYERNUM].consumeBinaryToggle("MenuConfirm")) )
 	{
@@ -3502,8 +5612,21 @@ void actDeathCam(Entity* my)
 
 	my->removeLightField();
 
-	if ( players[DEATHCAM_PLAYERNUM]->ghost.isActive() || players[DEATHCAM_PLAYERNUM]->entity )
+	if ( players[DEATHCAM_PLAYERNUM]->ghost.isActive() || players[DEATHCAM_PLAYERNUM]->freecam.isActive() || players[DEATHCAM_PLAYERNUM]->entity )
 	{
+		return;
+	}
+	if ( *cvar_player_deathcam_disable )
+	{
+		if ( TimerExperiments::bUseTimerInterpolation )
+		{
+			TimerExperiments::cameraCurrentState[DEATHCAM_PLAYERNUM].x.velocity = 0;
+			TimerExperiments::cameraCurrentState[DEATHCAM_PLAYERNUM].y.velocity = 0;
+			TimerExperiments::cameraCurrentState[DEATHCAM_PLAYERNUM].z.velocity = 0;
+			TimerExperiments::cameraCurrentState[DEATHCAM_PLAYERNUM].yaw.velocity = 0;
+			TimerExperiments::cameraCurrentState[DEATHCAM_PLAYERNUM].pitch.velocity = 0;
+			TimerExperiments::cameraCurrentState[DEATHCAM_PLAYERNUM].roll.velocity = 0;
+		}
 		return;
 	}
 
@@ -3776,6 +5899,10 @@ void Player::PlayerMovement_t::startQuickTurn(bool force)
 
 void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta)
 {
+	if ( player.freecam.isActive() )
+	{
+		return;
+	}
 	if ( !players[player.playernum]->entity || (players[player.playernum]->entity 
 		&& stats[player.playernum]->getEffectActive(EFF_PROJECT_SPIRIT)
 		&& players[player.playernum]->entity->skill[3] == 2) )
@@ -4400,6 +6527,8 @@ real_t Player::PlayerMovement_t::getWeightRatio(int weight, Sint32 STR)
 	return weightratio;
 }
 
+static ConsoleVariable<float> cvar_player_max_speed_factor("/player_max_speed_factor", 1.0);
+
 real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 {
 	real_t slowSpeedPenalty = 0.0;
@@ -4440,6 +6569,10 @@ real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 	if ( int effectStrength = stats[player.playernum]->getEffectActive(EFF_BURDENED) )
 	{
 		maxSpeed *= std::max(0.5, 1.0 - (effectStrength * 0.05));
+	}
+	if ( svFlags & SV_FLAG_CHEATS )
+	{
+		maxSpeed *= std::min(1.f, *cvar_player_max_speed_factor);
 	}
 
 	real_t speedFactor = std::min((((DEX) * .4) + 8.5 - slowSpeedPenalty) * weightratio, maxSpeed);
@@ -4562,7 +6695,7 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 
 	// calculate movement forces
 
-	bool allowMovement = my->isMobile() && playerAllowedMovement(player.playernum);
+	bool allowMovement = my->isMobile() && playerAllowedMovement(player.playernum) && !player.freecam.isActive();
 	bool pacified = stats[PLAYER_NUM]->getEffectActive(EFF_PACIFY) > 0;
 	bool rooted = stats[PLAYER_NUM]->getEffectActive(EFF_ROOTED) > 0;
 	if ( rooted )
@@ -10160,6 +12293,12 @@ void actPlayer(Entity* my)
 							}
 						}
 					}
+					else if ( Player::cinemaMode && players[PLAYER_NUM]->freecam.isActive() && players[PLAYER_NUM]->freecam.tool["callout"] != "" )
+					{
+						calloutMenu.closeCalloutMenuGUI();
+						input.consumeBinaryToggle("Call Out");
+						Player::soundCancel();
+					}
 					else if ( calloutMenu.selectMoveTo )
 					{
 						// we're selecting a target for the ally.
@@ -11217,7 +13356,7 @@ void actPlayer(Entity* my)
 								}
 							}
 
-							if (allDead)
+							if (allDead && !Player::cinemaMode )
 							{
 								playMusic(gameovermusic, false, true, false);
 							}

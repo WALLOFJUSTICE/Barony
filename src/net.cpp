@@ -1944,6 +1944,7 @@ void clientActions(Entity* entity)
 		case 1399:
 		case 1400:
 			entity->flags[NOUPDATE] = true;
+			entity->behavior = &actBlood;
 			break;
 		case 162:
 			entity->behavior = &actCampfire;
@@ -2086,6 +2087,31 @@ void clientActions(Entity* entity)
 			break;
 		case 1913:
 			entity->behavior = &actLeafPile;
+			break;
+		case 2548:
+			playernum = SDLNet_Read32(&net_packet->data[30]);
+			if ( playernum >= 0 && playernum < MAXPLAYERS )
+			{
+				if ( players[playernum] )
+				{
+					players[playernum]->freecam.my = entity;
+				}
+				entity->skill[2] = playernum;
+				entity->behavior = &actFreeCam;
+				if ( playernum == clientnum && multiplayer == CLIENT )
+				{
+					entity->flags[UPDATENEEDED] = false;
+				}
+				else
+				{
+					entity->flags[UPDATENEEDED] = true;
+				}
+				entity->flags[PASSABLE] = true;
+				//entity->flags[INVISIBLE] = false;
+				entity->flags[GENIUS] = true;
+				entity->sizex = 2;
+				entity->sizey = 2;
+			}
 			break;
 		case Player::Ghost_t::GHOST_MODEL_P1:
 		case Player::Ghost_t::GHOST_MODEL_P2:
@@ -2316,6 +2342,7 @@ static void changeLevel() {
 		players[i]->hud.magicRightHand = nullptr;
 		players[i]->hud.magicRangefinder = nullptr;
 		players[i]->ghost.reset();
+		players[i]->freecam.reset();
 		FollowerMenu[i].recentEntity = nullptr;
 		FollowerMenu[i].followerToCommand = nullptr;
 		FollowerMenu[i].entityToInteractWith = nullptr;
@@ -2713,6 +2740,10 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			{
 				// don't update my ghost
 			}
+			else if ( entity->behavior == &actFreeCam && entity->skill[2] == clientnum )
+			{
+				// don't update my ghost
+			}
 			else if ( entity->flags[NOUPDATE] )
 			{
 				// inform the server that it tried to update a no-update entity
@@ -2993,6 +3024,16 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		players[clientnum]->ghost.my->x = ((Sint16)SDLNet_Read16(&net_packet->data[4])) / 32.0;
 		players[clientnum]->ghost.my->y = ((Sint16)SDLNet_Read16(&net_packet->data[6])) / 32.0;
 	}},
+
+	// freecam movement correction
+	{ 'FMOV', []() {
+		if ( players[clientnum] == nullptr || players[clientnum]->freecam.my == nullptr )
+		{
+			return;
+		}
+		players[clientnum]->freecam.my->x = ((Sint16)SDLNet_Read16(&net_packet->data[4])) / 32.0;
+		players[clientnum]->freecam.my->y = ((Sint16)SDLNet_Read16(&net_packet->data[6])) / 32.0;
+	} },
 
 	// update health
 	{'UPHP', [](){
@@ -4733,6 +4774,50 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		    SDLNet_Read16(&net_packet->data[6]),
 		    data.data());
 	}},
+
+	// add basic light
+	{ 'CLSC', []() {
+		std::vector<char> data;
+		const auto len = SDLNet_Read16(&net_packet->data[8]);
+		data.resize(len);
+		stringCopy(data.data(), (const char*)&net_packet->data[10], data.size(), len);
+
+		Entity* entity = newEntity(-1, 1, map.entities, nullptr);
+		entity->x = SDLNet_Read16(&net_packet->data[4]) * 16.0 + 8.0;
+		entity->y = SDLNet_Read16(&net_packet->data[6]) * 16.0 + 8.0;
+		entity->setEntityString(data.data());
+		entity->behavior = &actLightSourceBasic;
+		entity->flags[PASSABLE] = true;
+		entity->flags[NOUPDATE] = true;
+		entity->flags[UNCLICKABLE] = true;
+		entity->flags[UPDATENEEDED] = false;
+		entity->setUID(-3);
+	} },
+
+	// delete basic light in area
+	{ 'DLSC', []() {
+		int _x = SDLNet_Read16(&net_packet->data[4]);
+		int _y = SDLNet_Read16(&net_packet->data[6]);
+		int radius = SDLNet_Read16(&net_packet->data[8]);
+		node_t* nextnode = nullptr;
+		for ( auto node = map.entities->first; node; node = nextnode )
+		{
+			nextnode = node->next;
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actLightSourceBasic )
+				{
+					if ( (int)(entity->x / 16) >= _x - radius && (int)(entity->x / 16) <= _x + radius
+						&& (int)(entity->y / 16) >= _y - radius && (int)(entity->y / 16) <= _y + radius )
+					{
+						entity->removeLightField();
+						list_RemoveNode(entity->mynode);
+						continue;
+					}
+				}
+			}
+		}
+	} },
 
 	// create wall
 	{'WALC', [](){
@@ -6960,6 +7045,40 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 	{ 'GBRK', []() {
 		players[clientnum]->mechanics.gremlinBreakableCounter = net_packet->data[4];
 	} },
+
+	// generic entity update position
+	{ 'EMOV', []() {
+		Uint32 uid = SDLNet_Read32(&net_packet->data[4]);
+		if ( Entity* entity = uidToEntity(uid) )
+		{
+			real_t x2 = (SDLNet_Read32(&net_packet->data[8]) / 256.0);
+			real_t y2 = (SDLNet_Read32(&net_packet->data[12]) / 256.0);
+
+			int x_move = SDLNet_Read16(&net_packet->data[16]);
+			int y_move = SDLNet_Read16(&net_packet->data[18]);
+
+			int x1 = entity->x / 16;
+			int y1 = entity->y / 16;
+			real_t newx = (x_move - x1) * 16.0;
+			real_t newy = (y_move - y1) * 16.0;
+
+			{
+				real_t dx, dy;
+				dx = newx - x2;
+				dy = newy - y2;
+				if ( sqrt(dx * dx + dy * dy) < 1.0 ) // accurate, shift it ourselves
+				{
+					entity->x = newx;
+					entity->y = newy;
+				}
+				else
+				{
+					entity->x = x2;
+					entity->y = y2;
+				}
+			}
+		}
+	} },
 };
 
 void clientHandlePacket()
@@ -7495,6 +7614,124 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		}
 	}},
 
+	// freecam move
+	{ 'FMOV', []() {
+		const int player = net_packet->data[4];
+		if ( player < 0 || player >= MAXPLAYERS )
+		{
+			return;
+		}
+		client_keepalive[player] = ticks;
+		if ( players[player] == nullptr || players[player]->freecam.my == nullptr )
+		{
+			return;
+		}
+
+		// check if the info is outdated
+		if ( net_packet->data[5] != currentlevel || net_packet->data[18] != (int)secretleveltype )
+		{
+			return;
+		}
+
+		// get info from client
+		auto dx = ((Sint16)SDLNet_Read16(&net_packet->data[6])) / 32.0;
+		auto dy = ((Sint16)SDLNet_Read16(&net_packet->data[8])) / 32.0;
+		auto velx = ((Sint16)SDLNet_Read16(&net_packet->data[10])) / 128.0;
+		auto vely = ((Sint16)SDLNet_Read16(&net_packet->data[12])) / 128.0;
+		auto yaw = ((Sint16)SDLNet_Read16(&net_packet->data[14])) / 128.0;
+		auto pitch = ((Sint16)SDLNet_Read16(&net_packet->data[16])) / 128.0;
+		int light = (int)(net_packet->data[19] & 0xF);
+		int deactivated = ((int)((net_packet->data[19] >> 4) & 1) == 1) ? 1 : 0;
+		int noclipping = ((int)((net_packet->data[19] >> 5) & 1) == 1) ? 1 : 0;
+
+		// update rotation
+		players[player]->freecam.my->yaw = yaw;
+		players[player]->freecam.my->pitch = pitch;
+
+		// update player's internal velocity variables
+		players[player]->freecam.my->vel_x = velx; // PLAYER_VELX
+		players[player]->freecam.my->vel_y = vely; // PLAYER_VELY
+
+		// store old coordinates
+		// since this function runs more often than actPlayer runs, we need to keep track of the accumulated position in new_x/new_y
+		real_t ox = players[player]->freecam.my->x;
+		real_t oy = players[player]->freecam.my->y;
+		players[player]->freecam.my->x = players[player]->freecam.my->new_x;
+		players[player]->freecam.my->y = players[player]->freecam.my->new_y;
+
+		// calculate distance
+		dx -= players[player]->freecam.my->x;
+		dy -= players[player]->freecam.my->y;
+		auto dist = sqrt(dx * dx + dy * dy);
+
+		players[player]->freecam.my->flags[NOCLIP_WALLS] = noclipping ? true : false;
+
+		// move player with collision detection
+		real_t result = clipMove(&players[player]->freecam.my->x, &players[player]->freecam.my->y, dx, dy, players[player]->freecam.my);
+		if ( result < dist - .025 )
+		{
+			// player encountered obstacle on path
+			// stop updating position on server side and send client corrected position
+			const int j = net_packet->data[4];
+			if ( j > 0 && j < MAXPLAYERS )
+			{
+				strcpy((char*)net_packet->data, "FMOV");
+				SDLNet_Write16((Sint16)(players[j]->freecam.my->x * 32), &net_packet->data[4]);
+				SDLNet_Write16((Sint16)(players[j]->freecam.my->y * 32), &net_packet->data[6]);
+				net_packet->address.host = net_clients[j - 1].host;
+				net_packet->address.port = net_clients[j - 1].port;
+				net_packet->len = 8;
+				sendPacket(net_sock, -1, net_packet, j - 1);
+			}
+		}
+
+		// clipMove sent any corrections to the client, now let's save the updated coordinates.
+		players[player]->freecam.my->new_x = players[player]->freecam.my->x;
+		players[player]->freecam.my->new_y = players[player]->freecam.my->y;
+		// return x/y to their original state as this can update more than actPlayer and causes stuttering. use new_x/new_y in actPlayer.
+		players[player]->freecam.my->x = ox;
+		players[player]->freecam.my->y = oy;
+
+		if ( light != players[player]->freecam.my->actFreeCamLight )
+		{
+			players[player]->freecam.my->actFreeCamLight = light;
+			for ( int c = 1; c < MAXPLAYERS; ++c ) // send to other players
+			{
+				if ( c == player || client_disconnected[c] || players[c]->isLocalPlayer() )
+				{
+					continue;
+				}
+				strcpy((char*)net_packet->data, "ENTS");
+				SDLNet_Write32(players[player]->freecam.my->getUID(), &net_packet->data[4]);
+				net_packet->data[8] = 12;
+				SDLNet_Write32(players[player]->freecam.my->actFreeCamLight, &net_packet->data[9]);
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				net_packet->len = 13;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
+		}
+		if ( deactivated != players[player]->freecam.my->skill[7] )
+		{
+			players[player]->freecam.setActive(deactivated == 0 ? true : false);
+			for ( int c = 1; c < MAXPLAYERS; ++c ) // send to other players
+			{
+				if ( c == player || client_disconnected[c] || players[c]->isLocalPlayer() )
+				{
+					continue;
+				}
+				strcpy((char*)net_packet->data, "ENTS");
+				SDLNet_Write32(players[player]->freecam.my->getUID(), &net_packet->data[4]);
+				net_packet->data[8] = 7;
+				SDLNet_Write32(players[player]->freecam.my->skill[7], &net_packet->data[9]);
+				net_packet->address.host = net_clients[c - 1].host;
+				net_packet->address.port = net_clients[c - 1].port;
+				net_packet->len = 13;
+				sendPacketSafe(net_sock, -1, net_packet, c - 1);
+			}
+		}
+	} },
+
 	{'REZZ', []() {
 		// check if the info is outdated
 		if ( net_packet->data[5] != currentlevel || net_packet->data[10] != (int)secretleveltype )
@@ -7594,6 +7831,53 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 		entity->flags[UPDATENEEDED] = true;
 		Compendium_t::Events_t::eventUpdateMonster(player, Compendium_t::CPDM_GHOST_SPAWNED, entity, 1);
 	}},
+
+	// player created freecam
+	{ 'FREC', []() {
+		// check if the info is outdated
+		if ( net_packet->data[5] != currentlevel || net_packet->data[10] != (int)secretleveltype )
+		{
+			return;
+		}
+
+		int player = net_packet->data[4];
+
+		if ( player < 0 || player >= MAXPLAYERS )
+		{
+			return;
+		}
+
+		int x = SDLNet_Read16(&net_packet->data[6]);
+		int y = SDLNet_Read16(&net_packet->data[8]);
+
+		if ( players[player]->freecam.my )
+		{
+			list_RemoveNode(players[player]->freecam.my->mynode);
+			players[player]->freecam.my = nullptr;
+		}
+		players[player]->freecam.reset();
+
+		// deathcam
+		int sprite = 2548;
+		Entity* entity = newEntity(sprite, 1, map.entities, nullptr); //Ghost entity.
+		players[player]->freecam.my = entity;
+		players[player]->freecam.uid = entity->getUID();
+		entity->x = (x * 16) + 8;
+		entity->y = (y * 16) + 8;
+		entity->new_x = entity->x;
+		entity->new_y = entity->y;
+		entity->z = -4;
+		entity->flags[PASSABLE] = true;
+		entity->flags[INVISIBLE] = true;
+		entity->flags[GENIUS] = true;
+		entity->behavior = &actFreeCam;
+		entity->skill[2] = player;
+		entity->yaw = 0.0;
+		entity->pitch = PI / 16;
+		entity->sizex = 2;
+		entity->sizey = 2;
+		entity->flags[UPDATENEEDED] = true;
+	} },
 
 	// tried to update
 	{'NOUP', [](){
@@ -7839,7 +8123,8 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 			else
 			{
 				Uint32 overrideUID = 0;
-				if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost) && entity->skill[2] != pnum )
+				if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost
+					|| entity->behavior == &actFreeCam) && entity->skill[2] != pnum )
 				{
 					if ( cmd == CalloutRadialMenu::CALLOUT_CMD_AFFIRMATIVE
 						|| cmd == CalloutRadialMenu::CALLOUT_CMD_THANKS )

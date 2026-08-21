@@ -1209,6 +1209,70 @@ bool Input::bindingIsSharedWithKeyboardSystemBinding(const char* binding)
 	return false;
 }
 
+void Input::consumeBindingsSharedWithKeycode(SDL_Keycode key)
+{
+	if ( multiplayer != SINGLE && player != 0 ) {
+		inputs[0].consumeBindingsSharedWithKeycode(key);
+		return;
+	}
+#ifndef EDITOR
+	if ( disabled )
+	{
+		return;
+	}
+	for ( auto& b : bindings )
+	{
+		if ( !b.second.binary )
+		{
+			continue; // don't pre-consume non-pressed buttons
+		}
+		if ( b.second.consumed )
+		{
+			continue; // no need to consume again
+		}
+		if ( b.second.type == binding_t::KEYBOARD )
+		{
+			if ( b.second.keycode == key )
+			{
+				b.second.consumed = true;
+			}
+		}
+	}
+#endif
+}
+
+void Input::consumeBindingsSharedWithMouseButton(int mousebutton)
+{
+	if ( multiplayer != SINGLE && player != 0 ) {
+		inputs[0].consumeBindingsSharedWithMouseButton(mousebutton);
+		return;
+	}
+#ifndef EDITOR
+	if ( disabled )
+	{
+		return;
+	}
+	for ( auto& b : bindings )
+	{
+		if ( !b.second.binary )
+		{
+			continue; // don't pre-consume non-pressed buttons
+		}
+		if ( b.second.consumed )
+		{
+			continue; // no need to consume again
+		}
+		if ( b.second.type == binding_t::MOUSE_BUTTON )
+		{
+			if ( b.second.mouseButton == mousebutton )
+			{
+				b.second.consumed = true;
+			}
+		}
+	}
+#endif
+}
+
 void Input::consumeBindingsSharedWithBinding(const char* binding)
 {
 	if (multiplayer != SINGLE && player != 0) {

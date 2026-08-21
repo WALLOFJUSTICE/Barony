@@ -65,31 +65,6 @@ Deconstruct an Entity
 
 -------------------------------------------------------------------------------*/
 
-struct ClassBaseGrowths
-{
-	struct ClassHPMPValues
-	{
-		int baseHP = 3;
-		int baseMP = 3;
-		int baseRegenHP = 3;
-		int baseRegenMP = 3;
-	};
-	static const std::vector<real_t> statRegenHP;
-	static const std::vector<real_t> statRegenMP;
-	static const std::vector<int> hpStatGrowths;
-	static const std::vector<int> mpStatGrowths;
-	static const real_t hpRegenFactor;
-	static const real_t mpRegenFactor;
-	static const std::vector<ClassHPMPValues> classBaseGrowths;
-	static const ClassHPMPValues& getClassBaseGrowths(int classnum)
-	{
-		if ( classnum >= 0 && (classnum + 1) < classBaseGrowths.size() )
-		{
-			return classBaseGrowths.at(classnum + 1);
-		}
-		return classBaseGrowths.at(0);
-	}
-};
 //															STR		DEX		CON		INT		PER		CHR
 const std::vector<real_t> ClassBaseGrowths::statRegenHP = { 0.05,	0.1,	0.0,	0.0,	0.0,	0.0 };
 const std::vector<real_t> ClassBaseGrowths::statRegenMP = { 0.0,	0.0,	0.0,	0.00,	.05,	0.1 };
@@ -215,6 +190,10 @@ Entity::~Entity()
 			{
 				players[i]->ghost.my = nullptr;
 				players[i]->ghost.reset();
+			}
+			if ( this == players[i]->freecam.my )
+			{
+				players[i]->freecam.reset();
 			}
 		}
 	}
@@ -4531,6 +4510,16 @@ void Entity::handleEffects(Stat* myStats)
 			processHunger = false;
 		}
 	}
+	if ( Player::cinemaMode )
+	{
+		processHunger = false;
+		myStats->HUNGER = 500;
+		if ( behavior == &actMonster )
+		{
+			myStats->clearEffect(EFF_ASLEEP);
+			myStats->EFFECTS_TIMERS[EFF_ASLEEP] = 0;
+		}
+	}
 
 	bool playerAutomaton = (myStats->type == AUTOMATON && player >= 0);
 
@@ -6771,6 +6760,7 @@ void Entity::handleEffects(Stat* myStats)
 						entity->y = this->y;
 						entity->z = 8.0 + (local_rng.rand() % 20) / 100.0;
 						entity->parent = this->uid;
+						entity->behavior = &actBlood;
 						entity->sizex = 2;
 						entity->sizey = 2;
 						entity->yaw = (local_rng.rand() % 360) * PI / 180.0;
@@ -10198,7 +10188,8 @@ bool Entity::isMobile()
 	{
 		return false;
 	}
-	else if ( behavior == &actPlayer && (entitystats->getEffectActive(EFF_PROJECT_SPIRIT)) )
+	else if ( behavior == &actPlayer 
+		&& (entitystats->getEffectActive(EFF_PROJECT_SPIRIT) /*|| players[skill[2]]->freecam.isActive()*/) )
 	{
 		return false;
 	}
@@ -20000,6 +19991,16 @@ bool Entity::checkEnemy(Entity* your)
 	{
 		return false;
 	}
+
+	if ( myStats->getAttribute("SWORN_ENEMY") != "" )
+	{
+		Uint32 targetUid = std::stoul(myStats->getAttribute("SWORN_ENEMY"));
+		if ( your->getUID() == targetUid )
+		{
+			return true;
+		}
+	}
+
 	if ( everybodyfriendly || intro )   // friendly monsters mode
 	{
 		return false;
@@ -20649,6 +20650,15 @@ bool Entity::checkFriend(Entity* your)
 	if ( !myStats || !yourStats )
 	{
 		return false;
+	}
+
+	if ( myStats->getAttribute("SWORN_ENEMY") != "" )
+	{
+		Uint32 targetUid = std::stoul(myStats->getAttribute("SWORN_ENEMY"));
+		if ( your->getUID() == targetUid )
+		{
+			return false;
+		}
 	}
 
 	if ( everybodyfriendly || intro )   // friendly monsters mode
@@ -26906,6 +26916,10 @@ bool Entity::monsterWantsItem(const Item& item, Item**& shouldEquip, node_t*& re
 				{
 					shouldEquip = &myStats->shield;
 					return true;
+				}
+				if ( item.type == TOOL_GLASSES )
+				{
+					return (shouldEquip = shouldMonsterEquipThisArmor(item));
 				}
 			}
 			break;

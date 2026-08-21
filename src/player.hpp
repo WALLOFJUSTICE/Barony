@@ -674,6 +674,7 @@ public:
 	SplitScreenTypes splitScreenType = SPLITSCREEN_DEFAULT;
 	bool bControlEnabled = true; // disabled if dead waiting for gameover prompt etc
 	bool was_connected_to_game = false;
+	static bool cinemaMode;
 	Player(int playernum = 0, bool local_host = true);
 	~Player();
 
@@ -1927,6 +1928,49 @@ public:
 		void createBounceAnimate();
 	} ghost;
 
+	class FreeCam_t
+	{
+		Player& player;
+		bool active = false;
+	public:
+		FreeCam_t(Player& p) : player(p)
+		{
+		};
+		~FreeCam_t() {};
+		Entity* my = nullptr;
+		Uint32 uid = 0;
+		Uint32 commandEntityUid = 0;
+		int countdown = 0;
+		struct Waypoint_t
+		{
+			real_t x = 0.0;
+			real_t y = 0.0;
+			real_t z = 0.0;
+			real_t pitch = 0.0;
+			real_t roll = 0.0;
+			real_t yaw = 0.0;
+			void applyToEntity(Entity* my);
+			Waypoint_t(Entity& my);
+			Waypoint_t() {}
+		};
+		std::vector<Waypoint_t> waypoints;
+		Waypoint_t start_waypoint;
+		bool waypoint_run = false;
+		int waypointIndex = 0;
+		real_t waypoint_lerp = 0.0;
+		bool slowmode = false;
+		std::map<std::string, std::string> tool;
+		void printHelp();
+		void processInput();
+		void setActive(bool active);
+		Entity* createCamera();
+		bool isActive();
+		void processCallout(Entity* entity, int x, int y);
+		void reset();
+		void handleFreeCameraUpdate(bool useRefreshRateDelta);
+		void handleFreeMovement(bool useRefreshRateDelta);
+	} freecam;
+
 	class MessageZone_t
 	{
 		//Time in seconds before the message starts fading.
@@ -2304,8 +2348,10 @@ public:
 			HOTBAR_IMP,
 			HOTBAR_LOADOUT1,
 			HOTBAR_LOADOUT2,
-			HOTBAR_LOADOUT3
+			HOTBAR_LOADOUT3,
+			HOTBAR_ENUM_END
 		};
+		HotbarLoadouts hotbarQueuedSwitch = HOTBAR_ENUM_END;
 
 		void clear()
 		{

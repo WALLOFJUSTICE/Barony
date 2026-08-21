@@ -363,6 +363,17 @@ void actCrystalShard(Entity* my)
 	}
 }
 
+void actLightSourceBasic(Entity* my)
+{
+	if ( my->string )
+	{
+		if ( !my->light )
+		{
+			my->light = addLight(my->x / 16, my->y / 16, my->string);
+		}
+	}
+}
+
 void actLightSource(Entity* my)
 {
 	if ( !my )

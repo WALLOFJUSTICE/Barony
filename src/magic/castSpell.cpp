@@ -2252,22 +2252,31 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						strength = std::min(strength, maxStrength);
 					}
 
-					Uint8 effectStrength = strength;
-					effectStrength |= ((1 + ((caster->isEntityPlayer() >= 0) ? caster->skill[2] : MAXPLAYERS)) & 0xF) << 4;
-
 					Entity* target = caster;
 					if ( castSpellProps && castSpellProps->targetUID != 0 )
 					{
 						target = uidToEntity(castSpellProps->targetUID);
 					}
-
-					int duration = element->duration;
+					Uint8 effectStrength = strength;
+					effectStrength |= ((1 + ((caster->isEntityPlayer() >= 0) ? caster->skill[2] : MAXPLAYERS)) & 0xF) << 4;
 					if ( caster->behavior == &actEternalShrine )
 					{
-						duration = 5 * 60 * TICKS_PER_SECOND;
+						if ( Stat* targetStats = target->getStats() )
+						{
+							if ( targetStats->getEffectActive(EFF_SACRED_PATH) )
+							{
+								// don't rearrange caster
+								Uint8 existingStrength = targetStats->getEffectActive(EFF_SACRED_PATH);
+								int total = std::min(0xF, (int)(existingStrength & 0xF) + strength);
+								existingStrength &= ~(0xF);
+								existingStrength |= (total & 0xF);
+								effectStrength = existingStrength;
+							}
+						}
 					}
 
-					if ( target->setEffect(EFF_SACRED_PATH, (Uint8)effectStrength, duration, false, true, true) )
+					int duration = element->duration;
+					if ( target->setEffect(EFF_SACRED_PATH, (Uint8)effectStrength, 0, false, true, true) )
 					{
 						messagePlayerColor(target->isEntityPlayer(),
 							MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6493));

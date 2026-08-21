@@ -3930,8 +3930,8 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 		resistance = 0;
 		trapResist = 0;
 	}
-	else if ( spellID == SPELL_EARTH_ELEMENTAL && damageSourceProjectile.behavior == &actMonster
-		&& damageSourceProjectile.getMonsterTypeFromSprite() == EARTH_ELEMENTAL )
+	else if ( spellID == SPELL_EARTH_ELEMENTAL && caster && caster->behavior == &actMonster
+		&& caster->getMonsterTypeFromSprite() == EARTH_ELEMENTAL )
 	{
 		// pure dmg
 		dmgGib = DMG_STRONGEST;
@@ -3974,6 +3974,11 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 						&& caster->getMonsterTypeFromSprite() == EARTH_ELEMENTAL )
 					{
 						caster->flags[PASSABLE] = false; // let monsters aggro
+						if ( caster->monsterAllyGetPlayerLeader() && targetStats->type == SHOPKEEPER )
+						{
+							// stops elemental cheese and sets hostility since can't aggro back with passable after spawn
+							ShopkeeperPlayerHostility.onShopkeeperHit(hitentity, targetStats, caster->monsterAllyGetPlayerLeader());
+						}
 					}
 					hitentity->monsterAcquireAttackTarget(*caster, MONSTER_STATE_PATH, true);
 					caster->flags[PASSABLE] = oldPassable;

@@ -466,11 +466,21 @@ void Entity::spawnBlood(int bloodSprite)
 				entity->parent = getUID();
 				entity->sizex = 2;
 				entity->sizey = 2;
+				entity->behavior = &actBlood;
 				entity->yaw = (local_rng.rand() % 360) * PI / 180.0;
 				entity->flags[UPDATENEEDED] = true;
 				entity->flags[PASSABLE] = true;
 			}
 		}
+	}
+}
+
+void actBlood(Entity* my)
+{
+	if ( !spawn_blood )
+	{
+		list_RemoveNode(my->mynode);
+		return;
 	}
 }
 

@@ -2730,25 +2730,39 @@ void drawStatusNew(const int player)
 	{
 		if ( !inputs.getUIInteraction(player)->selectedItem
 			&& !players[player]->GUI.isDropdownActive()
+			&& !(players[player]->hotbar.faceMenuButtonHeld && players[player]->hotbar.useHotbarFaceMenu)
 			&& players[player]->GUI.bModuleAccessibleWithMouse(Player::GUI_t::MODULE_HOTBAR) )
 		{
 			if ( !stats[player]->getEffectActive(EFF_SHAPESHIFT) && players[player]->hotbar.swapHotbarOnShapeshift == 0)
 			{
 				if ( Input::inputs[player].consumeBinaryToggle("Hotbar Toggle Loadout") )
 				{
-					players[player]->hotbar.switchDefaultHotbar();
+					if ( players[player]->hotbar.defaultHotbarLoadoutIndex == Player::Hotbar_t::HOTBAR_DEFAULT )
+					{
+						players[player]->hotbar.hotbarQueuedSwitch = Player::Hotbar_t::HOTBAR_LOADOUT1;
+					}
+					else if ( players[player]->hotbar.defaultHotbarLoadoutIndex == Player::Hotbar_t::HOTBAR_LOADOUT1 )
+					{
+						players[player]->hotbar.hotbarQueuedSwitch = Player::Hotbar_t::HOTBAR_DEFAULT;
+					}
 					Player::soundMovement();
 					hotbar_t.hotbarTooltipLastGameTick = ticks;
 				}
 				if ( Input::inputs[player].consumeBinaryToggle("Hotbar Loadout 1") )
 				{
-					players[player]->hotbar.switchDefaultHotbar(Player::Hotbar_t::HOTBAR_DEFAULT);
+					if ( players[player]->hotbar.defaultHotbarLoadoutIndex != Player::Hotbar_t::HOTBAR_DEFAULT )
+					{
+						players[player]->hotbar.hotbarQueuedSwitch = Player::Hotbar_t::HOTBAR_DEFAULT;
+					}
 					Player::soundMovement();
 					hotbar_t.hotbarTooltipLastGameTick = ticks;
 				}
 				if ( Input::inputs[player].consumeBinaryToggle("Hotbar Loadout 2") )
 				{
-					players[player]->hotbar.switchDefaultHotbar(Player::Hotbar_t::HOTBAR_LOADOUT1);
+					if ( players[player]->hotbar.defaultHotbarLoadoutIndex != Player::Hotbar_t::HOTBAR_LOADOUT1 )
+					{
+						players[player]->hotbar.hotbarQueuedSwitch = Player::Hotbar_t::HOTBAR_LOADOUT1;
+					}
 					Player::soundMovement();
 					hotbar_t.hotbarTooltipLastGameTick = ticks;
 				}
@@ -2759,6 +2773,7 @@ void drawStatusNew(const int player)
 		const auto& inventoryUI = players[player]->inventoryUI;
 		if ( inputs.bPlayerUsingKeyboardControl(player)
 			&& players[player]->gui_mode != GUI_MODE_SIGN
+			&& players[player]->hotbar.hotbarQueuedSwitch == Player::Hotbar_t::HOTBAR_ENUM_END
 			&& (shootmode || (!shootmode && !(playerSettings[multiplayer ? 0 : player].hotbar_numkey_quick_add && (mouseInsidePlayerHotbar(player) || mouseInsidePlayerInventory(player))))) )
 		{
 			// if hotbar_numkey_quick_add is enabled, then the number keys won't do the default equip function
@@ -2884,6 +2899,7 @@ void drawStatusNew(const int player)
 			&& gui_mode != (GUI_MODE_SHOP)
 			&& !GenericGUI[player].isGUIOpen()
 			&& !inputs.getUIInteraction(player)->selectedItem
+			&& players[player]->hotbar.hotbarQueuedSwitch == Player::Hotbar_t::HOTBAR_ENUM_END
 			&& shootmode )
 		{
 			Player::Hotbar_t::FaceMenuGroup pressed = Player::Hotbar_t::GROUP_NONE;

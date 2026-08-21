@@ -197,7 +197,7 @@ void ConsoleCommand::add_to_map()
 
 -------------------------------------------------------------------------------*/
 
-void consoleCommand(char const* const command_str)
+void consoleCommand(char const* const command_str, bool suppressMessage)
 {
 	if (!command_str || command_str[0] == '\0')
 	{
@@ -236,7 +236,17 @@ void consoleCommand(char const* const command_str)
 	else
 	{
 		auto& ccmd = find->second;
-		ccmd(tokens.size(), tokens.data());
+		if ( suppressMessage )
+		{
+			Uint32 flag = messagesEnabled & MESSAGE_MISC;
+			messagesEnabled &= ~(MESSAGE_MISC);
+			ccmd(tokens.size(), tokens.data());
+			messagesEnabled |= flag;
+		}
+		else
+		{
+			ccmd(tokens.size(), tokens.data());
+		}
 	}
 }
 
@@ -554,7 +564,16 @@ namespace ConsoleCommands {
 				{
 					qty = 50;
 				}
-				dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+				if ( Player::getPlayerInteractEntity(clientnum) && Player::getPlayerInteractEntity(clientnum) != players[clientnum]->entity
+					&& multiplayer != CLIENT )
+				{
+					dropItemMonster(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory),
+						Player::getPlayerInteractEntity(clientnum), nullptr, qty);
+				}
+				else
+				{
+					dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+				}
 				break;
 			}
 		}
@@ -568,7 +587,16 @@ namespace ConsoleCommands {
 					{
 						qty = 50;
 					}
-					dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+					if ( Player::getPlayerInteractEntity(clientnum) && Player::getPlayerInteractEntity(clientnum) != players[clientnum]->entity
+						&& multiplayer != CLIENT )
+					{
+						dropItemMonster(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory),
+							Player::getPlayerInteractEntity(clientnum), nullptr, qty);
+					}
+					else
+					{
+						dropItem(newItem(static_cast<ItemType>(c), EXCELLENT, 0, qty, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+					}
 					break;
 				}
 			}
@@ -1825,7 +1853,7 @@ namespace ConsoleCommands {
 		{
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(284));
 		}
-		else if ( players[clientnum] && players[clientnum]->entity )
+		else if ( players[clientnum] && Player::getPlayerInteractEntity(clientnum) )
 		{
 			if ( argc < 2 ) {
 				return;
@@ -1835,7 +1863,9 @@ namespace ConsoleCommands {
 			playSoundEntity(players[clientnum]->entity, 153, 64);
 
 			//Spawn monster
-			Entity* monster = summonMonster(SHOPKEEPER, players[clientnum]->entity->x + 32 * cos(players[clientnum]->entity->yaw), players[clientnum]->entity->y + 32 * sin(players[clientnum]->entity->yaw));
+			Entity* monster = summonMonster(SHOPKEEPER,
+				Player::getPlayerInteractEntity(clientnum)->x + 32 * cos(Player::getPlayerInteractEntity(clientnum)->yaw), 
+				Player::getPlayerInteractEntity(clientnum)->y + 32 * sin(Player::getPlayerInteractEntity(clientnum)->yaw));
 			if ( monster )
 			{
 				messagePlayer(clientnum, MESSAGE_MISC, Language::get(302), getMonsterLocalizedName(SHOPKEEPER).c_str());
@@ -1860,7 +1890,7 @@ namespace ConsoleCommands {
 		{
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(284));
 		}
-		else if (players[clientnum] && players[clientnum]->entity)
+		else if (players[clientnum] && Player::getPlayerInteractEntity(clientnum) )
 		{
 			if (argc < 2) {
 				return;
@@ -1887,7 +1917,9 @@ namespace ConsoleCommands {
 				MonsterStatCustomManager::StatEntry* statEntry = monsterStatCustomManager.readFromFile(name.c_str());
 				if (statEntry)
 				{
-					Entity* monster = summonMonster(static_cast<Monster>(statEntry->type), players[clientnum]->entity->x + 32 * cos(players[clientnum]->entity->yaw), players[clientnum]->entity->y + 32 * sin(players[clientnum]->entity->yaw));
+					Entity* monster = summonMonster(static_cast<Monster>(statEntry->type), 
+						Player::getPlayerInteractEntity(clientnum)->x + 32 * cos(Player::getPlayerInteractEntity(clientnum)->yaw), 
+						Player::getPlayerInteractEntity(clientnum)->y + 32 * sin(Player::getPlayerInteractEntity(clientnum)->yaw));
 					if (monster)
 					{
 						messagePlayer(clientnum, MESSAGE_MISC, Language::get(302), monstertypename[static_cast<Monster>(statEntry->type)]);
@@ -1939,7 +1971,9 @@ namespace ConsoleCommands {
 				playSoundEntity(players[clientnum]->entity, 153, 64);
 
 				//Spawn monster
-				Entity* monster = summonMonster(static_cast<Monster>(creature), players[clientnum]->entity->x + 32 * cos(players[clientnum]->entity->yaw), players[clientnum]->entity->y + 32 * sin(players[clientnum]->entity->yaw));
+				Entity* monster = summonMonster(static_cast<Monster>(creature), 
+					Player::getPlayerInteractEntity(clientnum)->x + 32 * cos(Player::getPlayerInteractEntity(clientnum)->yaw),
+					Player::getPlayerInteractEntity(clientnum)->y + 32 * sin(Player::getPlayerInteractEntity(clientnum)->yaw));
 				if (monster)
 				{
 					messagePlayer(clientnum, MESSAGE_MISC, Language::get(302), getMonsterLocalizedName((Monster)creature).c_str());
@@ -1966,9 +2000,9 @@ namespace ConsoleCommands {
 		{
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(284));
 		}
-		else if (players[clientnum] && players[clientnum]->entity)
+		else if (players[clientnum] && Player::getPlayerInteractEntity(clientnum) )
 		{
-			auto player = players[clientnum]->entity;
+			auto player = Player::getPlayerInteractEntity(clientnum);
 
 			playSoundEntity(player, 153, 64);
 
@@ -5098,6 +5132,29 @@ namespace ConsoleCommands {
 		Item* item = newItem(type, EXCELLENT, 0, 1, local_rng.rand(), true, &stats[clientnum]->inventory);
 		itemLevelCurvePostProcess(nullptr, item, local_rng);
 		dropItem(item, 0);
+	});
+
+	static ConsoleCommand ccmd_item_list_equippable_tool("/item_list_equippable_tool", "lists equippable non armor or weapons", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+		
+		for ( int i = 0; i < NUMITEMS; ++i )
+		{
+			if ( items[i].item_slot != NO_EQUIP )
+			{
+				if ( items[i].category != WEAPON && items[i].category != ARMOR
+					&& items[i].category != SPELLBOOK
+					&& items[i].category != RING
+					&& items[i].category != AMULET
+					&& items[i].category != MAGICSTAFF )
+				{
+					messagePlayer(clientnum, MESSAGE_MISC, "%s", items[i].getIdentifiedName());
+				}
+			}
+		}
 	});
 
 	static ConsoleCommand ccmd_spawnitem2("/spawnitem2", "spawn an item with beatitude and status (/spawnitem -2 5 wooden shield) (cheat)", []CCMD{

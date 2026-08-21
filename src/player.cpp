@@ -3254,6 +3254,7 @@ Player::Player(int in_playernum, bool in_local_host) :
 	skillSheet(*this),
 	movement(*this),
 	ghost(*this),
+	freecam(*this),
 	messageZone(*this),
 	worldUI(*this),
 	hotbar(*this),
@@ -3282,6 +3283,8 @@ Player::~Player()
 
 void Player::init() // for use on new/restart game, UI related
 {
+	cinemaMode = false;
+
 	hud.resetBars();
 	hud.compactLayoutMode = HUD_t::COMPACT_LAYOUT_INVENTORY;
 	inventoryUI.resetInventory();
@@ -3393,6 +3396,12 @@ Entity* Player::getPlayerInteractEntity(const int playernum)
 	{
 		return nullptr;
 	}
+
+	if ( players[playernum]->freecam.isActive() && players[playernum]->freecam.my )
+	{
+		return players[playernum]->freecam.my;
+	}
+
 	return players[playernum]->ghost.isActive() ? players[playernum]->ghost.my : players[playernum]->entity;
 }
 
@@ -3590,6 +3599,10 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 		spellInteract = true;
 		maxDist = 64.0;
 	}
+	else if ( playerEntity->behavior == &actFreeCam )
+	{
+		return 0.0;
+	}
 	else if ( parent 
 		&& (parent->getMonsterTypeFromSprite() == SHOPKEEPER 
 			|| parent->monsterCanTradeWith(player.playernum)
@@ -3655,7 +3668,7 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 				Entity* ohitentity = hit.entity;
 				real_t tangent2 = atan2(playerEntity->y - parent->y, playerEntity->x - parent->x);
 				bool oldPassable = playerEntity->flags[PASSABLE];
-				if ( playerEntity->behavior == &actDeathGhost )
+				if ( playerEntity->behavior == &actDeathGhost || playerEntity->behavior == &actFreeCam )
 				{
 					playerEntity->flags[PASSABLE] = false; // hack to make ghosts linetraceable
 				}
@@ -3860,7 +3873,7 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 				Entity* ohitentity = hit.entity;
 				real_t tangent2 = atan2(playerEntity->y - tooltip.y, playerEntity->x - tooltip.x);
 				bool oldPassable = playerEntity->flags[PASSABLE];
-				if ( playerEntity->behavior == &actDeathGhost )
+				if ( playerEntity->behavior == &actDeathGhost || playerEntity->behavior == &actFreeCam )
 				{
 					playerEntity->flags[PASSABLE] = false; // hack to make ghosts linetraceable
 				}
@@ -9018,7 +9031,7 @@ int Player::PlayerMechanics_t::getDivineFavorPips()
 	return lastPip;
 }
 
-int Player::DIVINE_FAVOR_MAX = 11000;
+int Player::DIVINE_FAVOR_MAX = 10000;
 std::vector<int> Player::PlayerMechanics_t::divineFavorPipBreakpoints;
 int Player::PlayerMechanics_t::getDivineFavorBase()
 {

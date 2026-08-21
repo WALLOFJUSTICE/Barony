@@ -186,6 +186,7 @@ bool entityWantsJewel(int tier, Entity& entity, Stat& stats, bool checkTypeOnly)
 		case GREMLIN:
 		case SUCCUBUS:
 		case GOATMAN:
+		case TROLL:
 			req = 2;
 			break;
 		case KOBOLD:

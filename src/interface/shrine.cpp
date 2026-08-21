@@ -1657,7 +1657,7 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				if ( item->status + 1 <= (int)EXCELLENT )
 				{
 					chances[NONE] = 2;
-					bool res = chance_funcs[NONE].setItemMod(item, 1, 0);
+					bool res = chance_funcs[NONE].setItemMod(item, 2, 0);
 					if ( !res ) { chances[NONE] = 0; }
 				}
 			}
@@ -1680,7 +1680,7 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 				if ( item->status + 1 <= (int)EXCELLENT )
 				{
 					chances[EASY] = 5;
-					bool res = chance_funcs[EASY].setItemMod(item, 1, 0);
+					bool res = chance_funcs[EASY].setItemMod(item, 2, 0);
 					if ( !res ) { chances[EASY] = 0; }
 				}
 
@@ -9399,8 +9399,8 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			fx->actmagicSpellbookBonus = 0;
 			if ( tier >= 2 )
 			{
-				fx->actmagicSpellbookBonus += 100;
-				fx->actmagicSpellbookBonus += 100 * (tier - 1);
+				fx->actmagicSpellbookBonus += 90;
+				fx->actmagicSpellbookBonus += 180 * (tier - 1);
 			}
 			fx->actmagicFromSpellbook = 0;
 

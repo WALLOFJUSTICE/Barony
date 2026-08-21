@@ -1087,16 +1087,16 @@ void glBeginCamera(view_t* camera, bool useHDR, map_t& map)
     const float aspect = (real_t)camera->winw / (real_t)camera->winh;
 	const float rotx = camera->vang * 180.f / PI; // get x rotation
 	const float roty = (camera->ang - 3.f * PI / 2.f) * 180.f / PI; // get y rotation
-	const float rotz = 0.f; // get z rotation
-    
+	const float rotz = camera->roll_ang * 180.f / PI; // get z rotation
+
     // setup projection + view matrix (shader)
     mat4x4_t proj, view, view2, identity;
     vec4_t translate(-camera->x * 32.f, camera->z, -camera->y * 32.f, 0.f);
     (void)perspective(&proj, fov, aspect, CLIPNEAR, CLIPFAR);
     (void)perspective(&camera->proj_hud, 60.f, aspect, CLIPNEAR, CLIPFAR);
     (void)rotate_mat(&view, &view2, rotx, &identity.x); view2 = view;
-    (void)rotate_mat(&view, &view2, roty, &identity.y); view2 = view;
     (void)rotate_mat(&view, &view2, rotz, &identity.z); view2 = view;
+    (void)rotate_mat(&view, &view2, roty, &identity.y); view2 = view;
     (void)translate_mat(&view, &view2, &translate); view2 = view;
     
     // store proj * view

@@ -389,14 +389,16 @@ void TimerExperiments::renderCameras(view_t& camera, int player)
 		return;
 	}
 
+	camera.roll_ang = 0.0;
 	if ( players[player]->entity )
 	{
-		if ( players[player]->entity->skill[3] == 2 )
+		if ( players[player]->entity->skill[3] == 2 || players[player]->entity->skill[3] == 3 )
 		{
 			camera.x = TimerExperiments::cameraRenderState[player].x.position;
 			camera.y = TimerExperiments::cameraRenderState[player].y.position;
 			camera.ang = TimerExperiments::cameraRenderState[player].yaw.position;
 			camera.vang = TimerExperiments::cameraRenderState[player].pitch.position;
+			camera.roll_ang = TimerExperiments::cameraRenderState[player].roll.position;
 			camera.z = TimerExperiments::cameraRenderState[player].z.position; // this uses PLAYER_CAMERAZ_ACCEL, not entity Z
 		}
 		else if ( !(players[player]->entity->skill[3] != 0) ) // skill[3] is debug cam
@@ -993,6 +995,11 @@ void gameLogic(void)
 		auto_appraise_lowest_time[i] = std::numeric_limits<int>::max();
 	}
 
+	if ( !intro && !gamePaused && !loading )
+	{
+		players[clientnum]->freecam.processInput();
+	}
+
 	if ( creditstage > 0 )
 	{
 		credittime++;
@@ -1039,7 +1046,7 @@ void gameLogic(void)
 		auto& camera_shakey = cameravars[c].shakey;
 		auto& camera_shakex2 = cameravars[c].shakex2;
 		auto& camera_shakey2 = cameravars[c].shakey2;
-		if ( shaking )
+		if ( shaking && !Player::cinemaMode )
 		{
 			static ConsoleVariable<int> cvar_shake_max("/shake_max", 15);
 			camera_shakex = std::min(camera_shakex, *cvar_shake_max / 100.0);
@@ -1767,6 +1774,7 @@ void gameLogic(void)
 							&& entity->behavior != &actPlayer
 							&& entity->behavior != &actPlayerLimb
 							&& entity->behavior != &actDeathGhost
+							&& entity->behavior != &actFreeCam
 							&& entity->behavior != &actHudWeapon
 							&& entity->behavior != &actHudShield
 							&& entity->behavior != &actHudAdditional
@@ -2005,6 +2013,7 @@ void gameLogic(void)
 						players[i]->hud.magicRightHand = nullptr;
 						players[i]->hud.magicRangefinder = nullptr;
 						players[i]->ghost.reset();
+						players[i]->freecam.reset();
 						FollowerMenu[i].recentEntity = nullptr;
 						FollowerMenu[i].followerToCommand = nullptr;
 						FollowerMenu[i].entityToInteractWith = nullptr;
@@ -3557,6 +3566,7 @@ void gameLogic(void)
 						if ( gameloopFreezeEntities
 							&& entity->behavior != &actPlayer
 							&& entity->behavior != &actDeathGhost
+							&& entity->behavior != &actFreeCam
 							&& entity->behavior != &actPlayerLimb
 							&& entity->behavior != &actHudWeapon
 							&& entity->behavior != &actHudShield
@@ -3609,7 +3619,7 @@ void gameLogic(void)
 
 											// move the bodyparts of these otherwise the limbs will get left behind in this adjustment.
 											if ( entity->behavior == &actPlayer || entity->behavior == &actMonster
-												|| entity->behavior == &actDeathGhost )
+												|| entity->behavior == &actDeathGhost || entity->behavior == &actFreeCam )
 											{
 												ox = entity->x;
 												oy = entity->y;
@@ -3626,7 +3636,7 @@ void gameLogic(void)
 
 											// move the bodyparts of these otherwise the limbs will get left behind in this adjustment.
 											if ( entity->behavior == &actPlayer || entity->behavior == &actMonster
-												|| entity->behavior == &actDeathGhost )
+												|| entity->behavior == &actDeathGhost || entity->behavior == &actFreeCam )
 											{
 												for ( Entity *bodypart : entity->bodyparts )
 												{
@@ -3644,7 +3654,8 @@ void gameLogic(void)
 										double ox = 0, oy = 0, onewx = 0, onewy = 0;
 										if ( entity->behavior == &actPlayer 
 											|| entity->behavior == &actMonster
-											|| entity->behavior == &actDeathGhost )
+											|| entity->behavior == &actDeathGhost 
+											|| entity->behavior == &actFreeCam )
 										{
 											ox = entity->x;
 											oy = entity->y;
@@ -3654,7 +3665,8 @@ void gameLogic(void)
 										real_t dist = clipMove(&entity->x, &entity->y, entity->vel_x, entity->vel_y, entity);
 										real_t new_dist = clipMove(&entity->new_x, &entity->new_y, entity->vel_x, entity->vel_y, entity);
 										if ( entity->behavior == &actPlayer || entity->behavior == &actMonster
-											|| entity->behavior == &actDeathGhost )
+											|| entity->behavior == &actDeathGhost
+											|| entity->behavior == &actFreeCam )
 										{
 											for (Entity *bodypart : entity->bodyparts)
 											{
@@ -5794,6 +5806,10 @@ void ingameHud()
 		{
 			players[player]->bControlEnabled = true;
 		}
+		else if ( players[player]->freecam.isActive() )
+		{
+			players[player]->bControlEnabled = true;
+		}
 #ifdef USE_IMGUI
 		if ( ImGui_t::isInit )
 		{
@@ -6358,10 +6374,7 @@ void ingameHud()
 		//drawSkillsSheet(player);
 		if ( !gamePaused )
 		{
-			if ( !nohud )
-			{
-				drawStatusNew(player);
-			}
+			drawStatusNew(player);
 			//drawSustainedSpells(player);
 		}
 
@@ -6761,7 +6774,7 @@ void drawAllPlayerCameras() {
 		    auto& globalLightModifier = players[c]->camera().globalLightModifier;
 		    auto& globalLightModifierEntities = players[c]->camera().globalLightModifierEntities;
 		    auto& globalLightModifierActive = players[c]->camera().globalLightModifierActive;
-			if (shaking && players[c] && players[c]->entity && !gamePaused)
+			if (shaking && !Player::cinemaMode && players[c] && players[c]->entity && !gamePaused)
 			{
 				camera.ang += cosspin * drunkextend[c];
 				camera.vang += sinspin * drunkextend[c];
@@ -6781,6 +6794,9 @@ void drawAllPlayerCameras() {
 					players[c]->ghost.handleGhostCameraBobbing(true);
 					players[c]->ghost.handleGhostMovement(true);
 					players[c]->ghost.handleGhostCameraUpdate(true);
+
+					players[c]->freecam.handleFreeMovement(true);
+					players[c]->freecam.handleFreeCameraUpdate(true);
 					//messagePlayer(0, "%3.2f | %3.2f", players[c]->entity->yaw, oldYaw);
 				}
 			}
@@ -6967,7 +6983,7 @@ void drawAllPlayerCameras() {
 				map.setMapHDRSettings();
             }
 
-			if (shaking && players[c] && players[c]->entity && !gamePaused)
+			if (shaking && !Player::cinemaMode && players[c] && players[c]->entity && !gamePaused)
 			{
 				camera.ang -= cosspin * drunkextend[c];
 				camera.vang -= sinspin * drunkextend[c];
@@ -7679,6 +7695,7 @@ int main(int argc, char** argv)
 						players[i]->hud.magicRightHand = nullptr;
 						players[i]->hud.magicRangefinder = nullptr;
 						players[i]->ghost.reset();
+						players[i]->freecam.reset();
 						FollowerMenu[i].recentEntity = nullptr;
 						FollowerMenu[i].followerToCommand = nullptr;
 						FollowerMenu[i].entityToInteractWith = nullptr;
@@ -8252,6 +8269,7 @@ int main(int argc, char** argv)
 			{
 			    printTextFormatted(font16x16_bmp, 8, 8, "fps = %3.1f", fps);
 			}
+			players[clientnum]->freecam.printHelp();
 			if ( enableDebugKeys )
 			{
 				printTextFormatted(font8x8_bmp, 8, 20, "gui module: %d\ngui mode: %d", players[0]->GUI.activeModule, players[0]->gui_mode);

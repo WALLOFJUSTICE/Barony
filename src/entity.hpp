@@ -868,6 +868,9 @@ public:
 	// actFloorBuild
 	Sint32& actFloorBuilderTile = skill[0];
 
+	// actFreeCam
+	Sint32& actFreeCamLight = skill[12];
+
 	void pedestalOrbInit(); // init orb properties
 
 	// a pointer to the entity's location in a list (ie the map list of entities)
@@ -1833,3 +1836,29 @@ public:
 	std::unordered_map<std::string, int> scriptVariables;
 };
 extern TextSourceScript textSourceScript;
+
+struct ClassBaseGrowths
+{
+	struct ClassHPMPValues
+	{
+		int baseHP = 3;
+		int baseMP = 3;
+		int baseRegenHP = 3;
+		int baseRegenMP = 3;
+	};
+	static const std::vector<real_t> statRegenHP;
+	static const std::vector<real_t> statRegenMP;
+	static const std::vector<int> hpStatGrowths;
+	static const std::vector<int> mpStatGrowths;
+	static const real_t hpRegenFactor;
+	static const real_t mpRegenFactor;
+	static const std::vector<ClassHPMPValues> classBaseGrowths;
+	static const ClassHPMPValues& getClassBaseGrowths(int classnum)
+	{
+		if ( classnum >= 0 && (classnum + 1) < classBaseGrowths.size() )
+		{
+			return classBaseGrowths.at(classnum + 1);
+		}
+		return classBaseGrowths.at(0);
+	}
+};

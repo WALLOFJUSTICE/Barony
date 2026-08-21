@@ -7399,8 +7399,8 @@ void GenericGUIMenu::repairItem(Item* item)
 						repairAmount = MAGICSTAFF_SCEPTER_CHARGE_MAX / 2;
 					}
 				}
-				//item->status = EXCELLENT;
-				item->status = static_cast<Status>(std::min(item->status + 1, static_cast<int>(EXCELLENT)));
+				item->status = EXCELLENT;
+				//item->status = static_cast<Status>(std::min(item->status + 4, static_cast<int>(EXCELLENT)));
 				item->appearance += repairAmount;
 				messagePlayer(gui_player, MESSAGE_MISC, Language::get(3730), item->getName());
 				closeGUI();
@@ -28142,7 +28142,10 @@ std::string CalloutRadialMenu::setCalloutText(Field* field, const char* iconName
 		key = "location";
 		break;
 	case CALLOUT_TYPE_PLAYER:
-		if ( cmd == CALLOUT_CMD_HELP && entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost)
+		if ( cmd == CALLOUT_CMD_HELP && entity 
+			&& (entity->behavior == &actPlayer 
+				|| entity->behavior == &actDeathGhost
+				|| entity->behavior == &actFreeCam)
 			&& player >= 0 && player < MAXPLAYERS && entity == playerEntity )
 		{
 			if ( players[player]->isLocalPlayer() )
@@ -28362,7 +28365,9 @@ std::string CalloutRadialMenu::setCalloutText(Field* field, const char* iconName
 		else if ( cmd == CALLOUT_CMD_LOOK )
 		{
 			std::string targetPlayerName = "";
-			if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost) )
+			if ( entity && (entity->behavior == &actPlayer 
+				|| entity->behavior == &actDeathGhost
+				|| entity->behavior == &actFreeCam) )
 			{
 				char shortname[32];
 				stringCopy(shortname, stats[entity->skill[2]]->name, sizeof(shortname), 22);
@@ -28421,7 +28426,9 @@ std::string CalloutRadialMenu::setCalloutText(Field* field, const char* iconName
 			|| cmd == CALLOUT_CMD_THANKS )
 		{
 			std::string targetPlayerName = "";
-			if ( entity && (entity->behavior == &actPlayer || entity->behavior == &actDeathGhost) )
+			if ( entity && (entity->behavior == &actPlayer 
+				|| entity->behavior == &actDeathGhost
+				|| entity->behavior == &actFreeCam) )
 			{
 				char shortname[32];
 				stringCopy(shortname, stats[entity->skill[2]]->name, sizeof(shortname), 22);
@@ -29367,7 +29374,7 @@ CalloutRadialMenu::CalloutType CalloutRadialMenu::getCalloutTypeForEntity(const 
 	}
 	CalloutType type = CALLOUT_TYPE_GENERIC_INTERACTABLE;
 
-	if ( parent->behavior == &actPlayer || parent->behavior == &actDeathGhost )
+	if ( parent->behavior == &actPlayer || parent->behavior == &actDeathGhost || parent->behavior == &actFreeCam )
 	{
 		type = CALLOUT_TYPE_PLAYER;
 	}
@@ -29688,6 +29695,10 @@ bool CalloutRadialMenu::uidMatchesPlayer(const int playernum, const Uint32 uid)
 	{
 		return true;
 	}
+	else if ( players[playernum]->freecam.uid == uid )
+	{
+		return true;
+	}
 	return false;
 }
 
@@ -29696,6 +29707,10 @@ Uint32 CalloutRadialMenu::getPlayerUid(const int playernum)
 	if ( players[playernum]->ghost.isActive() )
 	{
 		return players[playernum]->ghost.uid;
+	}
+	else if ( players[playernum]->freecam.isActive() )
+	{
+		return players[playernum]->freecam.uid;
 	}
 	else
 	{
@@ -29860,7 +29875,8 @@ void CalloutRadialMenu::drawCallouts(const int playernum)
 			bool selfCallout = false;
 			if ( uidMatchesPlayer(playernum, callout.second.entityUid) )
 			{
-				if ( i == playernum && players[i]->entity && players[i]->entity->skill[3] != 0 && !players[i]->ghost.isActive() )
+				if ( i == playernum && players[i]->entity && players[i]->entity->skill[3] != 0 
+					&& !players[i]->ghost.isActive() && !players[i]->freecam.isActive() )
 				{
 					// debug/thirdperson cam.
 				}
@@ -30022,7 +30038,7 @@ void CalloutRadialMenu::drawCallouts(const int playernum)
 							|| callout.second.cmd == CALLOUT_CMD_SOUTH 
 							|| callout.second.cmd == CALLOUT_CMD_SOUTHWEST 
 							|| callout.second.cmd == CALLOUT_CMD_SOUTHEAST
-							|| (callout.second.cmd == CALLOUT_CMD_HELP && players[i]->ghost.isActive()) )
+							|| (callout.second.cmd == CALLOUT_CMD_HELP && (players[i]->ghost.isActive() || players[i]->freecam.isActive())) )
 						{
 							// fade early for simple thumbs up/down for players
 							lifePercent = callout.second.ticks / (real_t)((TICKS_PER_SECOND * 4) / 5);
@@ -30054,7 +30070,7 @@ void CalloutRadialMenu::drawCallouts(const int playernum)
 				Entity* ohitentity = hit.entity;
 
 				bool oldPassable = playerEntity->flags[PASSABLE];
-				if ( playerEntity->behavior == &actDeathGhost )
+				if ( playerEntity->behavior == &actDeathGhost || playerEntity->behavior == &actFreeCam )
 				{
 					playerEntity->flags[PASSABLE] = false; // hack to make ghosts linetraceable
 				}
@@ -30483,6 +30499,13 @@ bool CalloutRadialMenu::createParticleCallout(Entity* entity, CalloutRadialMenu:
 		}
 	}
 
+	if ( callout.cmd == CalloutRadialMenu::CalloutCommand::CALLOUT_CMD_LOOK
+		&& Player::cinemaMode && players[gui_player]->freecam.isActive() && players[gui_player]->freecam.tool["callout"] != "" )
+	{
+		players[gui_player]->freecam.processCallout(entity, entity->x / 16, entity->y / 16);
+		callout.doMessage = false;
+	}
+
 	return callout.doMessage;
 }
 bool CalloutRadialMenu::createParticleCallout(real_t x, real_t y, real_t z, Uint32 uid, CalloutRadialMenu::CalloutCommand _cmd)
@@ -30603,6 +30626,22 @@ bool CalloutRadialMenu::createParticleCallout(real_t x, real_t y, real_t z, Uint
 		{
 			Compendium_t::Events_t::eventUpdateMonster(getPlayer(), Compendium_t::CPDM_GHOST_PINGS, players[getPlayer()]->ghost.my, 1);
 		}
+	}
+
+	if ( callout.cmd == CalloutRadialMenu::CalloutCommand::CALLOUT_CMD_LOOK
+		&& Player::cinemaMode && players[gui_player]->freecam.isActive() && players[gui_player]->freecam.tool["callout"] != "" )
+	{
+		if ( uid == 0 )
+		{
+			Uint16 _x = std::min<Uint16>(std::max<int>(0.0, moveToX / 16), map.width - 1);
+			Uint16 _y = std::min<Uint16>(std::max<int>(0.0, moveToY / 16), map.height - 1);
+			players[gui_player]->freecam.processCallout(nullptr, _x, _y);
+		}
+		else if ( Entity* entity = uidToEntity(uid) )
+		{
+			players[gui_player]->freecam.processCallout(entity, entity->x / 16, entity->y / 16);
+		}
+		callout.doMessage = false;
 	}
 
 	return callout.doMessage;
@@ -30990,7 +31029,9 @@ void CalloutRadialMenu::drawCalloutMenu()
 						if ( Entity* target = uidToEntity(lockOnEntityUid) )
 						{
 							Uint32 overrideUID = 0;
-							if ( (target->behavior == &actPlayer || target->behavior == &actDeathGhost)
+							if ( (target->behavior == &actPlayer 
+								|| target->behavior == &actDeathGhost
+								|| target->behavior == &actFreeCam)
 								&& target->skill[2] != getPlayer() )
 							{
 								if ( (CalloutCommand)optionSelected == CALLOUT_CMD_HELP )
@@ -31778,7 +31819,16 @@ bool CalloutRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool updat
 
 	if ( updateInteractText )
 	{
-		strcpy(interactText, Language::get(4347)); // "Callout "
+		if ( Player::cinemaMode && players[gui_player]->freecam.isActive() && players[gui_player]->freecam.tool["callout"] != "" )
+		{
+			strcpy(interactText, "(");
+			strcat(interactText, players[gui_player]->freecam.tool["callout"].c_str()); // "Callout "
+			strcat(interactText, ") ");
+		}
+		else
+		{
+			strcpy(interactText, Language::get(4347)); // "Callout "
+		}
 	}
 
 	/*if ( selectedEntity.behavior == &actTorch && interactWorld )
@@ -32153,7 +32203,9 @@ bool CalloutRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool updat
 			strcat(interactText, getMonsterLocalizedName((Monster)monsterType).c_str());
 		}
 	}
-	else if ( selectedEntity.behavior == &actPlayer || selectedEntity.behavior == &actDeathGhost )
+	else if ( selectedEntity.behavior == &actPlayer 
+		|| selectedEntity.behavior == &actDeathGhost
+		|| selectedEntity.behavior == &actFreeCam )
 	{
 		if ( updateInteractText )
 		{

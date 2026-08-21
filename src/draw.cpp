@@ -2123,6 +2123,15 @@ void drawEntities3D(view_t* camera, int mode)
 						continue;
 					}
 			}
+			else if ( entity->behavior == &actFreeCam )
+			{
+				// ghost have small collision box
+				if ( camera->x >= (entity->x - std::max(4, entity->sizex)) / 16 && camera->x <= (entity->x + std::max(4, entity->sizex)) / 16 )
+					if ( camera->y >= (entity->y - std::max(4, entity->sizey)) / 16 && camera->y <= (entity->y + std::max(4, entity->sizey)) / 16 )
+					{
+						continue;
+					}
+			}
 			else
 #endif
 			{
@@ -2150,6 +2159,12 @@ void drawEntities3D(view_t* camera, int mode)
                     {
                         continue;
                     }
+#ifndef EDITOR
+					if ( Player::cinemaMode )
+					{
+						continue;
+					}
+#endif
                 }
                 else if ( entity->behavior == &actHudAdditional
 						 || entity->behavior == &actHudAdditional2
@@ -2163,6 +2178,12 @@ void drawEntities3D(view_t* camera, int mode)
                     {
                         continue;
                     }
+#ifndef EDITOR
+					if ( Player::cinemaMode )
+					{
+						continue;
+					}
+#endif
                 }
             }
         }
@@ -2401,7 +2422,9 @@ void drawEntities3D(view_t* camera, int mode)
                     if (multiplayer == CLIENT) {
 #ifdef USE_FMOD
 #ifndef EDITOR
-						if ( parent->behavior == &actPlayer || parent->behavior == &actDeathGhost )
+						if ( (parent->behavior == &actPlayer && !players[parent->skill[2]]->freecam.isActive())
+							|| parent->behavior == &actDeathGhost
+							|| parent->behavior == &actFreeCam )
 						{
 							auto voiceState = VoiceChat.getVoiceState(parent->skill[2]);
 							real_t prevZ = entity->z;
@@ -2458,7 +2481,9 @@ void drawEntities3D(view_t* camera, int mode)
                     } else {
 #ifdef USE_FMOD
 #ifndef EDITOR
-						if ( parent->behavior == &actPlayer || parent->behavior == &actDeathGhost )
+						if ( (parent->behavior == &actPlayer && !players[parent->skill[2]]->freecam.isActive()) 
+							|| parent->behavior == &actDeathGhost 
+							|| parent->behavior == &actFreeCam )
 						{
 							auto voiceState = VoiceChat.getVoiceState(parent->skill[2]);
 							real_t prevZ = entity->z;

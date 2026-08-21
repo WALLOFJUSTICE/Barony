@@ -228,9 +228,12 @@ struct framebuffer {
 constexpr float defaultLuminance = 0.25f;
 typedef struct view_t
 {
-    real_t x, y, z;
-    real_t ang;
-    real_t vang;
+    real_t x = 0.0; 
+    real_t y = 0.0;
+    real_t z = 0.0;
+    real_t ang = 0.0;
+    real_t vang = 0.0;
+    real_t roll_ang = 0.0;
     Sint32 winx, winy, winw, winh;
     real_t globalLightModifier = 0.0;
     real_t globalLightModifierEntities = 0.0;
