@@ -4013,10 +4013,12 @@ int physfsLoadMapFile(int levelToLoad, Uint32 seed, bool useRandSeed, int* check
 				}
 			}
 			int result = loadMap(mapName.c_str(), &map, map.entities, map.creatures, checkMapHash);
+#ifndef EDITOR
 			if ( result >= 0 )
 			{
 				postProcessStaticGameMap(&map);
 			}
+#endif
 			/*if ( !strncmp(map.filename, "backrooms", 9) )
 			{
 				bool flipHorizontal = (mapseed % 4) == 1 || (mapseed % 4) == 2;
