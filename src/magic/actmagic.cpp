@@ -1998,7 +1998,6 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 	//node_t *node = NULL;
 	spellElement_t* element = NULL;
 	node_t* node = NULL;
-	double tangent;
 
 	Entity* parent = uidToEntity(my->parent);
 
@@ -2611,6 +2610,10 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 						}
 
 						if ( my->actmagicCastByTinkerTrap == 1 )
+						{
+							skipMessage = true;
+						}
+						if ( spell->ID == SPELL_WATER_BOLT && reflection == 0 )
 						{
 							skipMessage = true;
 						}
@@ -3345,6 +3348,13 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 									magicDmg *= 2;
 								}
 							}
+							else if ( spell->ID == SPELL_WATER_BOLT )
+							{
+								if ( hitstats->type == VAMPIRE )
+								{
+									magicDmg *= 1.5;
+								}
+							}
 						}
 					}
 
@@ -3711,6 +3721,64 @@ void actMagicMissile(Entity* my)   //TODO: Verify this function.
 											hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
 											hit.entity->monsterKnockbackTangentDir = my->yaw;
 										}
+									}
+								}
+
+								if ( spell->ID == SPELL_WATER_BOLT )
+								{
+									if ( hit.entity->behavior == &actPlayer )
+									{
+										if ( my->actmagicProjectileArc != 0 )
+										{
+											if ( hitstats && !hitstats->getEffectActive(EFF_CHOKING) 
+												&& local_rng.rand() % 3 == 0
+												&& hit.entity->setEffect(EFF_CHOKING, true, 30 * TICKS_PER_SECOND, false) )
+											{
+												playSoundEntity(hit.entity, 665, 64);
+												messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(7198));
+											}
+											else
+											{
+												messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(376));
+												if ( hitstats->type == VAMPIRE )
+												{
+													messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(644));
+												}
+											}
+										}
+										else
+										{
+											messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(376));
+											if ( hitstats->type == VAMPIRE )
+											{
+												messagePlayerColor(hit.entity->skill[2], MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(644));
+											}
+										}
+
+										if ( hitstats && hitstats->getEffectActive(EFF_POLYMORPH) )
+										{
+											hit.entity->setEffect(EFF_POLYMORPH, false, 0, true);
+											hit.entity->effectPolymorph = 0;
+											serverUpdateEntitySkill(hit.entity, 50);
+
+											messagePlayer(hit.entity->skill[2], MESSAGE_STATUS, Language::get(3192));
+											if ( !hitstats->getEffectActive(EFF_SHAPESHIFT) )
+											{
+												messagePlayer(hit.entity->skill[2], MESSAGE_STATUS, Language::get(3185));
+											}
+											else
+											{
+												messagePlayer(hit.entity->skill[2], MESSAGE_STATUS, Language::get(4303));
+											}
+											playSoundEntity(hit.entity, 400, 92);
+											createParticleDropRising(hit.entity, 593, 1.f);
+											serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_RISING_DROP, 593);
+										}
+									}
+									if ( hit.entity->flags[BURNING] )
+									{
+										hit.entity->flags[BURNING] = false;
+										serverUpdateEntityFlag(hit.entity, BURNING);
 									}
 								}
 							}
@@ -13468,9 +13536,18 @@ void actParticleTimer(Entity* my)
 							{
 								//if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
 								{
-									if ( parent->checkFriend(entity) && parent->friendlyFireProtection(entity) )
+									if ( parent->checkFriend(entity) )
 									{
-										continue;
+										if ( parent->friendlyFireProtection(entity) )
+										{
+											continue;
+										}
+
+										if ( parent && parent->behavior == &actMonster && !parent->monsterAllyGetPlayerLeader()
+											&& !(achievementObserver.checkUidIsFromPlayer(parent->getStats()->leader_uid) >= 0) )
+										{
+											continue;
+										}
 									}
 								}
 							}
@@ -15684,7 +15761,7 @@ void actParticleSapCenter(Entity* my)
 							monsterStats->setAttribute("special_npc", "skeleton knight");
 							if ( my->skill[10] != 0 )
 							{
-								monsterStats->setAttribute("summon_overcharge", "1");
+								monsterStats->setAttribute("summon_overcharge", std::to_string(my->skill[10]));
 							}
 							strcpy(monsterStats->name, MonsterData_t::getSpecialNPCName(*monsterStats).c_str());
 							forceFollower(*caster, *monster);
@@ -15747,7 +15824,7 @@ void actParticleSapCenter(Entity* my)
 										monsterStats->setAttribute("special_npc", "skeleton sentinel");
 										if ( my->skill[10] != 0 )
 										{
-											monsterStats->setAttribute("summon_overcharge", "1");
+											monsterStats->setAttribute("summon_overcharge", std::to_string(my->skill[10]));
 										}
 										strcpy(monsterStats->name, MonsterData_t::getSpecialNPCName(*monsterStats).c_str());
 										magicLevel = 1;
@@ -18585,6 +18662,10 @@ void actParticleFloorMagic(Entity* my)
 		}
 		else if ( my->actfloorMagicType == ParticleTimerEffect_t::EffectType::EFFECT_WATERSPLASH )
 		{
+			BaronyRNG rng;
+			Uint32 waterSeed = my->getUID();
+			rng.seedBytes(&waterSeed, sizeof(waterSeed));
+
 			my->flags[INVISIBLE] = true;
 			my->scalex = 1.0;
 			my->actmagicNoParticle = 1;
@@ -18593,7 +18674,7 @@ void actParticleFloorMagic(Entity* my)
 			std::fill(chances.begin(), chances.end(), 1);
 			for ( int i = 0; i < 4; ++i )
 			{
-				int pick = local_rng.discrete(chances.data(), chances.size());
+				int pick = rng.discrete(chances.data(), chances.size());
 				chances[pick] = 0;
 				spawnWaterPuddle(my, my->x, my->y, PARTICLE_LIFE, pick, i == 0 ? 2463 : 2464);
 			}
@@ -19427,9 +19508,18 @@ void actParticleFloorMagic(Entity* my)
 								{
 									int prevDuration = stats->getEffectActive(EFF_DISRUPTED) ? stats->EFFECTS_TIMERS[EFF_DISRUPTED] : 0;
 									int duration = getSpellEffectDurationFromID(spellID, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0);
+
+									Uint8 strength = 1;
+									if ( caster && 
+										((caster->behavior == &actMonster && caster->getMonsterTypeFromSprite() == EARTH_ELEMENTAL)
+										|| caster->behavior == &actEternalShrine) )
+									{
+										strength = 2;
+									}
+
 									if ( !stats->getEffectActive(EFF_DISRUPTED) )
 									{
-										entity->setEffect(EFF_DISRUPTED, true, duration, false, true, false, false); // don't override strength
+										entity->setEffect(EFF_DISRUPTED, strength, duration, false, true, false, false); // don't override strength
 									}
 									else
 									{

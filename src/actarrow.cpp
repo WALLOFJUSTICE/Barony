@@ -2099,8 +2099,8 @@ void actArrow(Entity* my)
 						// if nothing chosen to degrade, check extra shield chances to degrade
 						if ( hitstats->shield != NULL && hitstats->shield->status > BROKEN && armor == NULL
 							&& !itemTypeIsQuiver(hitstats->shield->type) && itemCategory(hitstats->shield) != SPELLBOOK
-							&& !itemTypeIsFoci(hitstats->shield->type)
-							&& !(hitstats->shield->type >= INSTRUMENT_FLUTE && hitstats->shield->type <= INSTRUMENT_HORN)
+							/*&& !itemTypeIsFoci(hitstats->shield->type)*/
+							/*&& !(hitstats->shield->type >= INSTRUMENT_FLUTE && hitstats->shield->type <= INSTRUMENT_HORN)*/
 							&& hitstats->shield->type != TOOL_TINKERING_KIT && hitstats->shield->type != TOOL_FRYING_PAN )
 						{
 							if ( hitstats->shield->type == TOOL_CRYSTALSHARD && hitstats->defending )

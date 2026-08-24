@@ -624,6 +624,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 	bool overdrewIntoHP = false;
 	bool playerCastingFromKnownSpellbook = false;
 	int spellBookBonusPercent = 0;
+	if ( castSpellProps )
+	{
+		spellBookBonusPercent += castSpellProps->powerBonusPercent;
+	}
 	int spellBookBeatitude = 0;
 	ItemType spellbookType = WOODEN_SHIELD;
 	bool sustainedSpell = false;
@@ -8236,9 +8240,23 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				sapParticle->skill[8] = timer->x;
 				sapParticle->skill[9] = timer->y;
 				sapParticle->skill[10] = 0;
-				if ( castSpellProps && castSpellProps->overcharge > 0 && !usingSpellbook )
+
+				if ( caster->behavior == &actPlayer )
 				{
-					sapParticle->skill[10] = 1; // overcharged
+					int spellFullCost = getCostOfSpell(spell, caster);
+					int discountedAmount = 0;
+					if ( multiplayer == SINGLE )
+					{
+						discountedAmount = 100 - std::min(100, std::max(0, (int)(100.0 * cast_animation[player].mana_cost / (real_t)spellFullCost)));
+					}
+					else
+					{
+						discountedAmount = 100 - std::min(100, std::max(0, (int)(100.0 * magiccost / (real_t)spellFullCost)));
+					}
+					if ( discountedAmount > 0 )
+					{
+						sapParticle->skill[10] = discountedAmount;
+					}
 				}
 
 				serverSpawnMiscParticlesAtLocation(previousx / 16, previousy / 16, 0, PARTICLE_EFFECT_SPELL_SUMMON, 791);
@@ -8487,6 +8505,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						{
 							velocityBonus += 2;
 						}
+						else
+						{
+							velocityBonus += 1;
+						}
 					}
 				}
 				if ( Entity* gib = spawnFociGib(caster->x, caster->y, 1.0, caster->yaw, velocityBonus, caster->getUID(), particle, local_rng.rand()) )
@@ -8504,6 +8526,11 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						{
 							gib->actmagicSpellbookBonus += spellBookBonusPercent;
 						}
+					}
+					else if ( caster->behavior == &actMonster && spellBookBonusPercent > 0 )
+					{
+						gib->actmagicSpellbookBonus += spellBookBonusPercent;
+
 					}
 					result = gib;
 				}
@@ -9043,10 +9070,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			else if ( usingSpellbook )
 			{
 				missileEntity->actmagicFromSpellbook = 1;
-				if ( spellBookBonusPercent > 0 )
-				{
-					missileEntity->actmagicSpellbookBonus = spellBookBonusPercent;
-				}
+			}
+			if ( spellBookBonusPercent > 0 )
+			{
+				missileEntity->actmagicSpellbookBonus = spellBookBonusPercent;
 			}
 
 			if ( spell->ID == SPELL_METEOR && castSpellProps )
@@ -9457,10 +9484,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			else if ( usingSpellbook )
 			{
 				missileEntity->actmagicFromSpellbook = 1;
-				if ( spellBookBonusPercent > 0 )
-				{
-					missileEntity->actmagicSpellbookBonus = spellBookBonusPercent;
-				}
+			}
+			if ( spellBookBonusPercent > 0 )
+			{
+				missileEntity->actmagicSpellbookBonus = spellBookBonusPercent;
 			}
 			node = list_AddNodeFirst(&missileEntity->children);
 			node->element = copySpell(spell);
@@ -9498,10 +9525,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			else if ( usingSpellbook )
 			{
 				entity1->actmagicFromSpellbook = 1;
-				if ( spellBookBonusPercent > 0 )
-				{
-					entity1->actmagicSpellbookBonus = spellBookBonusPercent;
-				}
+			}
+			if ( spellBookBonusPercent > 0 )
+			{
+				entity1->actmagicSpellbookBonus = spellBookBonusPercent;
 			}
 			node = list_AddNodeFirst(&entity1->children);
 			node->element = copySpell(spell);
@@ -9535,10 +9562,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			else if ( usingSpellbook )
 			{
 				entity2->actmagicFromSpellbook = 1;
-				if ( spellBookBonusPercent > 0 )
-				{
-					entity2->actmagicSpellbookBonus = spellBookBonusPercent;
-				}
+			}
+			if ( spellBookBonusPercent > 0 )
+			{
+				entity2->actmagicSpellbookBonus = spellBookBonusPercent;
 			}
 			node = list_AddNodeFirst(&entity2->children);
 			node->element = copySpell(spell);

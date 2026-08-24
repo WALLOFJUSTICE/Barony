@@ -460,7 +460,9 @@ typedef struct map_t
 {
 	char name[32];   // name of the map
 	char author[32]; // author of the map
-	unsigned int width, height, skybox;  // size of the map + skybox
+	unsigned int width = 0;
+	unsigned int height = 0;
+	unsigned int skybox = 0;  // size of the map + skybox
 	Sint32 flags[16];
 	Sint32* tiles = nullptr;
 	std::unordered_map<Sint32, node_t*> entities_map;
@@ -479,6 +481,7 @@ typedef struct map_t
 	static const Uint32 TILE_ATTRIBUTE_GREASE = 1 << 3;
 	static const Uint32 TILE_ATTRIBUTE_TREASURE_ROOM = 1 << 4;
 	static const Uint32 TILE_ATTRIBUTE_EXIT_ROOM = 1 << 5;
+	static const Uint32 TILE_ATTRIBUTE_WATER = 1 << 6;
 	bool tileHasAttribute(int x, int y, int layer, Uint32 attribute);
 	void setMapHDRSettings();
 	char filename[256];

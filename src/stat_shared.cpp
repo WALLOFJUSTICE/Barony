@@ -1477,7 +1477,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->OLDHP = stats->HP;
 			stats->STR = 28;
 			stats->DEX = 10;
-			stats->CON = 30;
+			stats->CON = 20;
 			stats->INT = 20;
 			stats->PER = 20;
 			stats->CHR = 50;
@@ -1501,7 +1501,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->setProficiency(PRO_POLEARM, 80);
 			stats->setProficiency(PRO_MACE, 80);
 			stats->setProficiency(PRO_SWORD, 80);
-			stats->setProficiency(PRO_SHIELD, 100);
+			stats->setProficiency(PRO_SHIELD, 50);
 			stats->setProficiency(PRO_RANGED, 100);
 			break;
 		case 207:
@@ -1701,7 +1701,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->RANDOM_HP = stats->RANDOM_MAXHP;
 			stats->MAXMP = 1000;
 			stats->MP = 0;
-			stats->STR = 18;
+			stats->STR = 22;
 			stats->DEX = 5;
 			stats->CON = 25;
 			stats->INT = -3;
@@ -1789,7 +1789,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->STR = 30;
 			stats->DEX = 5;
 			stats->CON = 18;
-			stats->PER = 15;
+			stats->PER = 20;
 			stats->CHR = 0;
 			stats->EXP = 0;
 			stats->LVL = 30;
@@ -1812,7 +1812,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->setProficiency(PRO_AXE, 80);
 			stats->setProficiency(PRO_POLEARM, 80);
 			stats->setProficiency(PRO_RANGED, 80);
-			stats->setProficiency(PRO_SHIELD, 80);
+			stats->setProficiency(PRO_SHIELD, 50);
 			stats->setProficiency(PRO_MYSTICISM, 80);
 			stats->setProficiency(PRO_THAUMATURGY, 80);
 			stats->setProficiency(PRO_SORCERY, 80);

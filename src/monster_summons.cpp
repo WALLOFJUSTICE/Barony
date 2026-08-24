@@ -24,6 +24,39 @@
 #include "scores.hpp"
 #include "mod_tools.hpp"
 
+Entity* spawnMagicCastGib(Entity* my, Entity* limb)
+{
+	if ( !my || !limb ) { return nullptr; }
+	Entity* gib = spawnGib(limb, 16);
+	gib->flags[INVISIBLE] = false;
+	gib->flags[SPRITE] = true;
+	gib->flags[NOUPDATE] = true;
+	gib->flags[UPDATENEEDED] = false;
+	gib->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
+	gib->x += 0.0 * cos(limb->yaw);
+	gib->y += 0.0 * sin(limb->yaw);
+	gib->z = limb->z + 1.0;
+	if ( limb->flags[INVISIBLE] && !limb->flags[INVISIBLE_DITHER] )
+	{
+		gib->z += 1.0;
+	}
+	gib->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
+	gib->scaley = 0.25f;
+	gib->scalez = 0.25f;
+	gib->sprite = 16; //TODO: Originally. 22. 16 -- spark sprite instead?
+	gib->yaw = ((local_rng.rand() % 6) * 60) * PI / 180.0;
+	gib->pitch = (local_rng.rand() % 360) * PI / 180.0;
+	gib->roll = (local_rng.rand() % 360) * PI / 180.0;
+	gib->vel_x = cos(limb->yaw) * .1;
+	gib->vel_y = sin(limb->yaw) * .1;
+	gib->vel_z = -.15;
+	gib->fskill[3] = 0.01;
+	gib->fskill[4] = 0.01; // GIB_SHRINK
+	gib->skill[4] = 25; // GIB_LIFESPAN
+
+	return gib;
+}
+
 void initRevenantSkull(Entity* my, Stat* myStats)
 {
 	node_t* node;
@@ -34,10 +67,10 @@ void initRevenantSkull(Entity* my, Stat* myStats)
 	my->flags[INVISIBLE] = true; // hide the "AI" bodypart
 	if ( multiplayer != CLIENT )
 	{
-		MONSTER_SPOTSND = -1;
-		MONSTER_SPOTVAR = 1;
-		MONSTER_IDLESND = -1;
-		MONSTER_IDLEVAR = 1;
+		MONSTER_SPOTSND = 932;
+		MONSTER_SPOTVAR = 3;
+		MONSTER_IDLESND = 932;
+		MONSTER_IDLEVAR = 3;
 	}
 
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
@@ -129,10 +162,10 @@ void initAdorcisedWeapon(Entity* my, Stat* myStats)
 	my->flags[INVISIBLE] = true; // hide the "AI" bodypart
 	if ( multiplayer != CLIENT )
 	{
-		MONSTER_SPOTSND = -1;
-		MONSTER_SPOTVAR = 1;
-		MONSTER_IDLESND = -1;
-		MONSTER_IDLEVAR = 1;
+		MONSTER_SPOTSND = 929;
+		MONSTER_SPOTVAR = 3;
+		MONSTER_IDLESND = 929;
+		MONSTER_IDLEVAR = 3;
 	}
 
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
@@ -229,6 +262,23 @@ void initAdorcisedWeapon(Entity* my, Stat* myStats)
 							node->deconstructor = &emptyDeconstructor;
 							list_RemoveNode(node);
 							break;
+						}
+					}
+				}
+			}
+
+			if ( !MonsterData_t::nameMatchesSpecialNPCName(*myStats, "void treasure") )
+			{
+				if ( myStats->getAttribute("spirit_weapon") == "" 
+					&& myStats->getAttribute("adorcised_weapon") == ""
+					&& myStats->getAttribute("SHRINE_SPAWN") == "" )
+				{
+					if ( myStats->weapon )
+					{
+						if ( rng.rand() % 10 != 0 )
+						{
+							myStats->weapon->isDroppable = false;
+							myStats->monsterNoDropItems = 1;
 						}
 					}
 				}
@@ -431,13 +481,39 @@ void revenantSkullDie(Entity* my)
 			serverSpawnGibForClient(entity);
 		}
 	}
-	playSoundEntity(my, 94, 128);
+	playSoundEntity(my, 935, 128);
+	playSoundEntity(my, 94, 64);
 	list_RemoveNode(my->mynode);
 	return;
 }
 
 void adorcisedWeaponDie(Entity* my)
 {
+	if ( Stat* myStats = my->getStats() )
+	{
+		if ( myStats->monsterNoDropItems )
+		{
+			int index = -1;
+			for ( auto bodypart : my->bodyparts )
+			{
+				++index;
+				if ( bodypart->flags[INVISIBLE] )
+				{
+					continue;
+				}
+				if ( Entity* entity = spawnGib(my, bodypart->sprite) )
+				{
+					entity->x = bodypart->x;
+					entity->y = bodypart->y;
+					entity->z = bodypart->z;
+					entity->skill[5] = 1; // poof
+					serverSpawnGibForClient(entity);
+				}
+			}
+		}
+	}
+
+	playSoundEntity(my, 76, 32);
 	my->removeMonsterDeathNodes();
 	spawnPoof(my->x, my->y, my->z, 1.0, true);
 	list_RemoveNode(my->mynode);
@@ -831,6 +907,10 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 									pick = MONSTER_POSE_RANGED_WINDUP3;
 								}
 								else if ( my->monsterState != MONSTER_STATE_WAIT )
+								{
+									pick = MONSTER_POSE_RANGED_WINDUP3;
+								}
+								else if ( local_rng.rand() % 4 > 0 )
 								{
 									pick = MONSTER_POSE_RANGED_WINDUP3;
 								}
@@ -1957,6 +2037,7 @@ void initEarthElemental(Entity* my, Stat* myStats)
 #define EARTH_FLOAT_Z body->fskill[5]
 #define EARTH_FLOAT_ANIM body->fskill[6]
 #define EARTH_PEBBLE_IDLE_ANIM entity->fskill[3]
+#define EARTH_ARM_CAST_ANIM entity->fskill[3]
 #define EARTH_ATTACK_1 body->fskill[7]
 #define EARTH_ATTACK_FLOAT body->fskill[8]
 #define EARTH_ATTACK_2 body->fskill[9]
@@ -1965,6 +2046,85 @@ void initEarthElemental(Entity* my, Stat* myStats)
 #define EARTH_SPAWN_STATE body->skill[0]
 #define EARTH_SPAWN_ANIM body->fskill[12]
 #define EARTH_SPAWN_ANIM2 body->fskill[13]
+
+void earthElementalRollAttack(Entity* my, Entity* toAttack)
+{
+	if ( my && my->setEffect(EFF_KNOCKBACK, true, 40, false) )
+	{
+		my->setEffect(EFF_DASH, true, 40, false);
+		my->setEffect(EFF_STUNNED, true, 40, false);
+		my->attack(MONSTER_POSE_EARTH_ELEMENTAL_ROLL, 0, nullptr);
+		real_t pushbackMultiplier = 2.0;
+		real_t tangent = atan2(my->y - toAttack->y, my->x - toAttack->x) + PI;
+		my->vel_x = cos(tangent) * pushbackMultiplier;
+		my->vel_y = sin(tangent) * pushbackMultiplier;
+		my->monsterKnockbackVelocity = 0.005;
+		my->monsterKnockbackTangentDir = tangent;
+		my->monsterKnockbackUID = 0;
+	}
+}
+
+void Entity::earthElementalChooseWeapon(const Entity* target, double dist)
+{
+	Stat* myStats = getStats();
+	if ( !myStats )
+	{
+		return;
+	}
+
+	if ( monsterSpecialState != 0 && monsterSpecialTimer != 0 )
+	{
+		return;
+	}
+
+	if ( myStats->LVL < 15 )
+	{
+		return;
+	}
+
+	if ( monsterSpecialTimer == 0
+		&& (ticks % 10 == 0)
+		&& (monsterAttack == 0)
+		&& dist < 48 )
+	{
+		Stat* targetStats = target->getStats();
+		if ( !targetStats )
+		{
+			return;
+		}
+
+		int specialRoll = -1;
+		int bonusFromHP = 0;
+		specialRoll = local_rng.rand() % 40;
+		if ( myStats->HP <= myStats->MAXHP * 0.8 )
+		{
+			bonusFromHP += 2; // +% chance if on low health
+		}
+		if ( myStats->HP <= myStats->MAXHP * 0.4 )
+		{
+			bonusFromHP += 3; // +extra % chance if on lower health
+		}
+
+		int requiredRoll = (2 + bonusFromHP);
+
+		if ( dist < STRIKERANGE )
+		{
+			requiredRoll += 5;
+		}
+
+		if ( specialRoll < requiredRoll )
+		{
+			if ( local_rng.rand() % 2 && myStats->LVL > 20 )
+			{
+				monsterSpecialState = EARTH_ELEMENTAL_CAST_CHARGE;
+			}
+			else
+			{
+				monsterSpecialState = EARTH_ELEMENTAL_CAST_BLAST;
+			}
+		}
+	}
+}
 
 void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 {
@@ -2038,6 +2198,18 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 			//MONSTER_ATTACK = mothGetAttackPose(my, MONSTER_POSE_MELEE_WINDUP1);
 			MONSTER_ATTACK = MONSTER_POSE_MELEE_WINDUP2;// mothGetAttackPose(my, MONSTER_POSE_MAGIC_WINDUP1);
 			MONSTER_ATTACKTIME = 0;
+		}
+		if ( Input::keys[SDLK_i] )
+		{
+			Input::keys[SDLK_i] = 0;
+			//MONSTER_ATTACK = mothGetAttackPose(my, MONSTER_POSE_MELEE_WINDUP1);
+			MONSTER_ATTACK = MONSTER_POSE_RANGED_WINDUP3;// mothGetAttackPose(my, MONSTER_POSE_MAGIC_WINDUP1);
+			MONSTER_ATTACKTIME = 0;
+		}
+		if ( Input::keys[SDLK_u] )
+		{
+			Input::keys[SDLK_u] = 0;
+			my->monsterDefend = my->monsterDefend ? 0 : 1;
 		}
 		//	if ( keystatus[SDLK_h] )
 		//	{
@@ -2200,7 +2372,14 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 				}
 			}
 
-			if ( !my->monsterDefend || MONSTER_ATTACK != 0 )
+			if ( MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP2
+				|| MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP3 )
+			{
+				// cast anim
+				EARTH_DEFEND += limbs[EARTH_ELEMENTAL][16][0];
+				EARTH_DEFEND = std::min(1.0, EARTH_DEFEND);
+			}
+			else if ( !my->monsterDefend || (MONSTER_ATTACK != 0) )
 			{
 				if ( EARTH_DEFEND > 0.0 )
 				{
@@ -2247,16 +2426,47 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 
 					if ( MONSTER_ATTACKTIME >= 55 )
 					{
+						if ( multiplayer != CLIENT )
+						{
+							myStats->setAttribute("npc_spell_id", "");
+						}
 						MONSTER_ATTACK = 0;
 						EARTH_LIMB_FSKILL_YAW = 0.0;
 					}
 					else
 					{
-						if ( MONSTER_ATTACKTIME == 20 
-							|| MONSTER_ATTACKTIME == 35
-							|| MONSTER_ATTACKTIME == 50 )
+						if ( multiplayer != CLIENT )
 						{
-							if ( multiplayer != CLIENT )
+							int spellID = SPELL_NONE;
+							if ( myStats->getAttribute("npc_spell_id") != "" )
+							{
+								spellID = std::stoi(myStats->getAttribute("npc_spell_id"));
+							}
+							if ( spellID == SPELL_FOCI_SANDBLAST )
+							{
+								if ( MONSTER_ATTACKTIME >= 20 && MONSTER_ATTACKTIME % 10 == 0 )
+								{
+									CastSpellProps_t props;
+									props.powerBonusPercent = 100;
+									castSpell(my->getUID(), getSpellFromID(SPELL_FOCI_SANDBLAST), true, false, false, &props);
+								}
+							}
+							else if ( spellID == SPELL_DISRUPT_EARTH )
+							{
+								if ( MONSTER_ATTACKTIME == 20 )
+								{
+									//earthElementalRollAttack(my, uidToEntity(my->monsterTarget));
+									CastSpellProps_t props;
+									if ( props.setToMonsterCast(my, SPELL_DISRUPT_EARTH) )
+									{
+										props.powerBonusPercent = 100;
+										castSpell(my->getUID(), getSpellFromID(SPELL_DISRUPT_EARTH), true, false, false, &props);
+									}
+								}
+							}
+							else if ( MONSTER_ATTACKTIME == 20 
+								|| MONSTER_ATTACKTIME == 35
+								|| MONSTER_ATTACKTIME == 50 )
 							{
 								const Sint32 temp = MONSTER_ATTACKTIME;
 								const Sint32 temp2 = MONSTER_ATTACK;
@@ -2423,6 +2633,43 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 							}
 						}
 					}
+				}
+			}
+			else if ( MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP2
+				|| MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP3 )
+			{
+				if ( MONSTER_ATTACKTIME == 0 )
+				{
+					EARTH_ATTACK_1 = 0.0;
+					EARTH_ATTACK_2 = 0.0;
+					EARTH_ATTACK_3 = 0.0;
+					EARTH_LIMB_FSKILL_YAW = 0.0;
+					playSoundEntityLocal(my, 170, 32);
+					//createParticleDot(my);
+					if ( multiplayer != CLIENT )
+					{
+						playSoundEntityLocal(my, MONSTER_SPOTSND, 128);
+						if ( MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP2 )
+						{
+							myStats->setAttribute("npc_spell_id", std::to_string(SPELL_FOCI_SANDBLAST));
+						}
+						else
+						{
+							myStats->setAttribute("npc_spell_id", std::to_string(SPELL_DISRUPT_EARTH));
+						}
+					}
+				}
+
+				EARTH_ATTACK_1 += limbs[EARTH_ELEMENTAL][16][0];
+				EARTH_ATTACK_1 = std::min(EARTH_ATTACK_1, (real_t)limbs[EARTH_ELEMENTAL][16][1]);
+
+				if ( MONSTER_ATTACKTIME >= 55 )
+				{
+					if ( multiplayer != CLIENT )
+					{
+						my->attack(MONSTER_POSE_MELEE_WINDUP1, 0, nullptr);
+					}
+					EARTH_LIMB_FSKILL_YAW = 0.0;
 				}
 			}
 		}
@@ -2744,6 +2991,20 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 
 				entity->z -= EARTH_ATTACK_FLOAT;
 			}
+
+			if ( MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP2
+				|| MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP3 )
+			{
+				EARTH_ARM_CAST_ANIM += 0.3;
+				real_t castAnim = 1.25;
+
+				entity->x += EARTH_ATTACK_1 * castAnim * cos(yaw + EARTH_ARM_CAST_ANIM);
+				entity->y += EARTH_ATTACK_1 * castAnim * sin(yaw + EARTH_ARM_CAST_ANIM);
+				if ( entity->ticks % 5 == 3 )
+				{
+					spawnMagicCastGib(my, entity);
+				}
+			}
 			break;
 		}
 		case EARTH_RIGHTARM:
@@ -2827,6 +3088,20 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 				entity->z += 0.75 * cos(-pitchAngle);
 
 				entity->z -= EARTH_ATTACK_FLOAT;
+			}
+
+			if ( MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP2
+				|| MONSTER_ATTACK == MONSTER_POSE_RANGED_WINDUP3 )
+			{
+				EARTH_ARM_CAST_ANIM += 0.3;
+				real_t castAnim = 1.25;
+
+				entity->x += EARTH_ATTACK_1 * castAnim * cos(yaw + EARTH_ARM_CAST_ANIM);
+				entity->y += EARTH_ATTACK_1 * castAnim * sin(yaw + EARTH_ARM_CAST_ANIM);
+				if ( entity->ticks % 5 == 0 )
+				{
+					spawnMagicCastGib(my, entity);
+				}
 			}
 			break;
 		}
@@ -3703,6 +3978,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 							{
 								CastSpellProps_t props;
 								props.optionalData = 1;
+								props.powerBonusPercent = 100;
 								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false, false, &props);
 							}
 						}
@@ -3732,6 +4008,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 								}
 								CastSpellProps_t props;
 								props.optionalData = 1;
+								props.powerBonusPercent = 100;
 								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false, false, &props);
 								my->yaw = yaw;
 							}

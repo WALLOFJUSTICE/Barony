@@ -955,7 +955,6 @@ int initApp(char const * const title, int fullscreen)
 
 	std::atomic_bool loading_music_done{ false };
 	auto loading_music_task = std::async(std::launch::async, [&loading_music_done]() {
-		File* fp;
 		updateLoadingScreen(10);
 #ifndef EDITOR
 		if ( !loadMusic() )

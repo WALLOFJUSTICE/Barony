@@ -7352,12 +7352,9 @@ int main(int argc, char** argv)
 			printlog("Failed to get binary path. Program may not work corectly!\n");
 		}
 #endif
-		SDL_Rect pos, src;
-		int c;
+		SDL_Rect pos;
 		//int tilesreceived=0;
 		//Mix_Music **music, *intromusic, *splashmusic, *creditsmusic;
-		node_t* node;
-		Entity* entity;
 		//SDL_Surface *sky_bmp;
 		light_t* light;
 
@@ -7398,7 +7395,7 @@ int main(int argc, char** argv)
 		// read command line arguments
 		if ( argc > 1 )
 		{
-			for (c = 1; c < argc; c++)
+			for ( int c = 1; c < argc; c++)
 			{
 #ifdef STEAMWORKS
 			    cmd_line += argv[c];
@@ -7492,7 +7489,7 @@ int main(int argc, char** argv)
 		map.worldUI->last = nullptr;
 
 		// initialize engine
-		if ( (c = initApp("Barony", fullscreen)) )
+		if ( int c = initApp("Barony", fullscreen) )
 		{
 			printlog("Critical error: %d\n", c);
 #ifdef STEAMWORKS
@@ -7535,7 +7532,7 @@ int main(int argc, char** argv)
         getTimeAndDateFormatted(getTime(), buffer, sizeof(buffer));
 		printlog("Launch time: %s\n", buffer);
 
-		if ( (c = initGame()) )
+		if ( int c = initGame() )
 		{
 			printlog("Critical error in initGame: %d\n", c);
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Uh oh",
@@ -7791,7 +7788,7 @@ int main(int argc, char** argv)
 				{
 					if (classtoquickstart[0] != '\0')
 					{
-						for ( c = 0; c <= CLASS_MONK; c++ ) {
+						for ( int c = 0; c <= CLASS_MONK; c++ ) {
 							if ( !strcmp(classtoquickstart, playerClassLangEntry(c, 0)) ) {
 								client_classes[0] = c;
 								break;
@@ -8081,7 +8078,7 @@ int main(int argc, char** argv)
 					//printTextFormatted(font8x8_bmp, 8, 20, "%s", timerOutput.c_str());
 					for ( node_t* node = map.entities->first; node; node = node->next )
 					{
-						entity = (Entity*)node->element;
+						Entity* entity = (Entity*)node->element;
 						if ( entity->bUseRenderInterpolation )
 						{
 							entity->lerp_ox = entity->x;
@@ -8127,7 +8124,7 @@ int main(int argc, char** argv)
 				{
 					for ( node_t* node = map.entities->first; node; node = node->next )
 					{
-						entity = (Entity*)node->element;
+						Entity* entity = (Entity*)node->element;
 						if ( entity->bUseRenderInterpolation )
 						{
 							entity->x = entity->lerp_ox;

@@ -1124,7 +1124,6 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 			case LICH_HEAD:
 			{
 				entity->z -= 4.25;
-				node_t* tempNode;
 				Entity* playertotrack = NULL;
 				double disttoplayer = 0.0;
 				Entity* target = uidToEntity(my->monsterTarget);

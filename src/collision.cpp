@@ -58,7 +58,6 @@ real_t entityDist(Entity* my, Entity* your)
 Entity* entityClicked(bool* clickedOnGUI, bool clickCheckOverride, int player, EntityClickType clicktype)
 {
 	Uint32 uidnum;
-	GLubyte pixel[4];
 
 	Input& input = Input::inputs[player];
 

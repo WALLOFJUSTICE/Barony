@@ -2603,6 +2603,10 @@ std::string ItemTooltips_t::getSpellIconFormatText(const int player, Item& item,
 				{
 					vals.push_back(getSpellDamageFromID(spell->ID, caster, myStats, caster, bonusPercent, false));
 				}
+				else if ( key == "dmg_nobonus" )
+				{
+					vals.push_back(getSpellDamageFromID(spell->ID, nullptr, nullptr, nullptr, 0.0, false));
+				}
 				else if ( key == "dmg2" )
 				{
 					vals.push_back(getSpellDamageSecondaryFromID(spell->ID, caster, myStats, caster, bonusPercent, false));
@@ -2763,7 +2767,8 @@ std::string ItemTooltips_t::getSpellIconFormatText(const int player, Item& item,
 						}
 					}
 				}
-				int damage = vals[0] + std::max(1, vals[1] * statGetINT(myStats, caster)) * (1.0 + bonusPercent + getBonusFromCasterOfSpellElement(caster, myStats, element, spell->ID, spell->skillID));
+				int damage = (vals[0] + std::max(1, vals[1] * statGetINT(myStats, caster))) 
+					* (1.0 + (bonusPercent + getBonusFromCasterOfSpellElement(caster, myStats, element, spell->ID, spell->skillID)) * element->getDamageMult());
 				snprintf(buf, sizeof(buf), format.c_str(), damage);
 				str = buf;
 			}
@@ -4698,10 +4703,11 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 				|| conditionalAttribute == "EFF_BONE_RESIST" || conditionalAttribute == "EFF_BANDIT_LEATHER" )
 			{
 				real_t base = 0.1;
-				real_t bonus = 0.05;
+				real_t bonus = 0.03;
 				if ( items[item.type].item_slot == ItemEquippableSlot::EQUIPPABLE_IN_SLOT_BREASTPLATE )
 				{
 					base = 0.2;
+					bonus = 0.05;
 				}
 				if ( item.type == BANDIT_BREASTPIECE )
 				{
@@ -4770,7 +4776,7 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 			{
 				if ( itemTypeIsInstrument(item.type) )
 				{
-					snprintf(buf, sizeof(buf), str.c_str(), items[item.type].attributes[conditionalAttribute]);
+					snprintf(buf, sizeof(buf), str.c_str(), items[item.type].attributes[conditionalAttribute] + 2 * (EXCELLENT - (int)item.status));
 					str = buf;
 					return;
 				}
@@ -4989,6 +4995,7 @@ void ItemTooltips_t::formatItemIcon(const int player, std::string tooltipType, I
 				if ( auto spell = getSpellFromID(spellID) )
 				{
 					mpCost = getCostOfSpell(spell, compendiumTooltipIntro ? nullptr : players[player]->entity);
+					mpCost += 2 * ((int)EXCELLENT - (int)item.status);
 				}
 			}
 
@@ -5661,7 +5668,7 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 				snprintf(nextChrStatStr, sizeof(nextChrStatStr), "N/A");
 			}
 
-			snprintf(buf, sizeof(buf), str.c_str(), items[item.type].attributes["EFF_INSTRUMENT_MP_COST"], 
+			snprintf(buf, sizeof(buf), str.c_str(), items[item.type].attributes["EFF_INSTRUMENT_MP_COST"] + 2 * (EXCELLENT - (int)item.status),
 				nextChrStatStr, nextChrStr);
 		}
 	}
@@ -5849,6 +5856,8 @@ void ItemTooltips_t::formatItemDetails(const int player, std::string tooltipType
 
 					mpCost = getSpellPropertyFromID(spell_t::SPELLPROP_FOCI_SECONDARY_MANA_COST, spellID,
 						caster, myStats, caster);
+
+					mpCost += 2 * ((int)EXCELLENT - (int)item.status);
 
 					int tier = bless > 0 ? std::min(2, bless) : 0;
 					Sint32 CHR = statGetCHR(myStats, caster);

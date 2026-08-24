@@ -24,7 +24,6 @@
 
 void initBugbear(Entity* my, Stat* myStats)
 {
-	int c;
 	node_t* node;
 
 	my->flags[BURNABLE] = true;

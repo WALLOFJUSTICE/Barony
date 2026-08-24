@@ -496,6 +496,21 @@ void Entity::killedByMonsterObituary(Entity* victim, bool fromSpell)
 			case SALAMANDER:
 				victim->setObituary(Language::get(6741));
 				break;
+			case WATER_ELEMENTAL:
+				victim->setObituary(Language::get(7192));
+				break;
+			case HAUNTED_ARMOR:
+				victim->setObituary(Language::get(7193));
+				break;
+			case DRAGON:
+				victim->setObituary(Language::get(7196));
+				break;
+			case GRYPHON:
+				victim->setObituary(Language::get(7194));
+				break;
+			case STAREMASTER:
+				victim->setObituary(Language::get(7195));
+				break;
 			default:
 				victim->setObituary(Language::get(1500));
 				break;
@@ -2461,6 +2476,9 @@ void Entity::effectTimes()
 					case EFF_BURDENED:
 						messagePlayer(player, MESSAGE_STATUS, Language::get(7128));
 						break;
+					case EFF_CHOKING:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7197));
+						break;
 					case EFF_LEVEL_DRAIN:
 						messagePlayer(player, MESSAGE_STATUS, Language::get(7122));
 						break;
@@ -2925,9 +2943,6 @@ Otherwise returns NULL
 
 Entity* uidToEntity(Sint32 uidnum)
 {
-	node_t* node;
-	Entity* entity;
-
 	auto it = map.entities_map.find(uidnum);
 	if ( it != map.entities_map.end() )
 		return (Entity*)it->second->element;
@@ -5790,8 +5805,9 @@ void Entity::handleEffects(Stat* myStats)
 										myStats->shield->beatitude;
 									if ( bless < 0 )
 									{
-										mpcost += abs(bless) * mpcost;
+										mpcost += abs(bless) * mpcost * 2;
 									}
+									mpcost += 2 * ((int)EXCELLENT - (int)myStats->shield->status);
 
 									if ( (defendTime - chargeTimeInit) > 0 )
 									{
@@ -5801,38 +5817,43 @@ void Entity::handleEffects(Stat* myStats)
 
 										if ( bless < 0 )
 										{
-											mpcost += abs(bless) * mpcost;
+											mpcost += abs(bless) * mpcost * 2;
 										}
+										mpcost += 2 * ((int)EXCELLENT - (int)myStats->shield->status);
 
 										int tier = bless > 0 ? std::min(2, bless) : 0;
 										int cycle = (defendTime - chargeTimeInit) / chargeTime;
-										Sint32 CHR = statGetCHR(myStats, this);
-										if ( CHR > 0 )
 										{
-											if ( CHR >= 3 && CHR <= 7 )
+											Sint32 CHR = statGetCHR(myStats, this);
+											if ( CHR > 0 )
 											{
-												tier += 1;
+												if ( CHR >= 3 && CHR <= 7 )
+												{
+													tier += 1;
+												}
+												else if ( CHR >= 8 && CHR <= 14 )
+												{
+													tier += 2;
+												}
+												else if ( CHR >= 15 && CHR <= 29 )
+												{
+													tier += 3;
+												}
+												else if ( CHR >= 30 && CHR <= 59 )
+												{
+													tier += 4;
+												}
+												else if ( CHR >= 60 )
+												{
+													tier += 5;
+												}
 											}
-											else if ( CHR >= 8 && CHR <= 14 )
-											{
-												tier += 2;
-											}
-											else if ( CHR >= 15 && CHR <= 29 )
-											{
-												tier += 3;
-											}
-											else if ( CHR >= 30 && CHR <= 59 )
-											{
-												tier += 4;
-											}
-											else if ( CHR >= 60 )
-											{
-												tier += 5;
-											}
+											Compendium_t::Events_t::eventUpdateCodex(player, Compendium_t::CPDM_OFFHAND_CHR_MAX, "offhand casting", CHR);
 										}
-
-										Compendium_t::Events_t::eventUpdateCodex(player, Compendium_t::CPDM_OFFHAND_CHR_MAX, "offhand casting", CHR);
-
+										if ( bless < 0 )
+										{
+											tier = 0;
+										}
 										tier = std::min(tier, 5);
 
 										switch ( tier )
@@ -6010,6 +6031,11 @@ void Entity::handleEffects(Stat* myStats)
 							break;
 						}
 
+						if ( myStats->shield->status < EXCELLENT )
+						{
+							mpcost += 2 * ((int)EXCELLENT - (int)myStats->shield->status); //2/4/6% extra mana
+						}
+
 						mpcost = std::max(1, myStats->MAXMP * mpcost / 100);
 
 						bool failedCast = false;
@@ -6176,7 +6202,17 @@ void Entity::handleEffects(Stat* myStats)
 							}
 							else
 							{
-								effectStrength = std::max(1, std::min(static_cast<int>(effectStrength), (1 + 5 * (castCycle - 1))));
+								int perCastCycle = 5;
+								if ( myStats->shield->beatitude >= 0 || shouldInvertEquipmentBeatitude(myStats) )
+								{
+									perCastCycle = std::max(1, perCastCycle + abs(myStats->shield->beatitude));
+								}
+								else
+								{
+									perCastCycle = std::max(1, perCastCycle + 2 * myStats->shield->beatitude);
+								}
+
+								effectStrength = std::max(1, std::min(static_cast<int>(effectStrength), (1 + perCastCycle * (castCycle - 1))));
 							}
 
 							for ( node_t* node = map.creatures->first; node && effect >= 0; node = node->next )
@@ -6892,6 +6928,40 @@ void Entity::handleEffects(Stat* myStats)
 			}
 		}
 	}*/
+
+	//if ( behavior == &actPlayer && myStats->getEffectActive(EFF_CHOKING) )
+	//{
+	//	if ( (myStats->EFFECTS_ACCRETION_TIME[EFF_CHOKING] % (2 * TICKS_PER_SECOND)) == 1 )
+	//	{
+	//		real_t ratio = 0.01;
+	//		Sint32 oldHP = myStats->HP;
+	//		this->drainMP(std::max(1, (int)(myStats->MAXMP * ratio)), false);
+	//		if ( myStats->HP < oldHP )
+	//		{
+	//			playSoundEntity(this, 28, 64);
+	//			if ( myStats->HP <= 0 )
+	//			{
+	//				myStats->killer = KilledBy::WATER_CHOKING;
+	//				this->setObituary(Language::get(7190));
+	//			}
+	//			if ( player >= 0 && players[player]->isLocalPlayer() )
+	//			{
+	//				camera_shakex -= .03;
+	//				camera_shakey += 3;
+	//			}
+	//			else if ( player > 0 && multiplayer == SERVER && !players[player]->isLocalPlayer() )
+	//			{
+	//				strcpy((char*)net_packet->data, "SHAK");
+	//				net_packet->data[4] = -3; // turns into -.03
+	//				net_packet->data[5] = 3;
+	//				net_packet->address.host = net_clients[player - 1].host;
+	//				net_packet->address.port = net_clients[player - 1].port;
+	//				net_packet->len = 6;
+	//				sendPacketSafe(net_sock, -1, net_packet, player - 1);
+	//			}
+	//		}
+	//	}
+	//}
 
 	bool stasisDither = flags[STASIS_DITHER];
 	if ( myStats->getEffectActive(EFF_STASIS) )
@@ -7723,9 +7793,10 @@ void Entity::handleEffects(Stat* myStats)
 						{
 							mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
 							firstManaToRefund += std::min(spellCost, static_cast<int>((mySummonStats->MP / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
-							if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+							if ( mySummonStats->getAttribute("summon_overcharge") != "" )
 							{
-								firstManaToRefund /= 2;
+								int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
+								firstManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
 							}
 							mySummon->setHP(0); // sacrifice!
 							++numSummonedAllies;
@@ -7734,9 +7805,10 @@ void Entity::handleEffects(Stat* myStats)
 						{
 							mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
 							secondManaToRefund += std::min(spellCost, static_cast<int>((mySummonStats->MP / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
-							if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+							if ( mySummonStats->getAttribute("summon_overcharge") != "" )
 							{
-								secondManaToRefund /= 2;
+								int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
+								secondManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
 							}
 							mySummon->setHP(0); // for glorious leader!
 							++numSummonedAllies;
@@ -8265,6 +8337,16 @@ void Entity::handleEffects(Stat* myStats)
 		myStats->EFFECTS_TIMERS[EFF_PROJECT_SPIRIT] = 1;
 		steamAchievementClient(player, "BARONY_ACH_DISTRACTED");
 		serverUpdateEffects(player);
+	}
+
+	if ( myStats->getEffectActive(EFF_CHOKING)
+		&& ((myStats->type == AUTOMATON || myStats->type == SKELETON)
+			|| (myStats->amulet && myStats->amulet->type == AMULET_WATERBREATHING)) )
+	{
+		if ( myStats->EFFECTS_TIMERS[EFF_CHOKING] > 1 )
+		{
+			myStats->EFFECTS_TIMERS[EFF_CHOKING] = 1;
+		}
 	}
 
 	if ( myStats->OLDHP > myStats->HP && myStats->getEffectActive(EFF_HEALING_WORD) )
@@ -9929,6 +10011,22 @@ Sint32 statGetCHR(Stat* entitystats, Entity* my)
 		CHR += std::max(4, static_cast<int>(CHR * .25));
 	}
 
+	if ( entitystats->shield && itemTypeIsInstrument(entitystats->shield->type) )
+	{
+		if ( entitystats->shield->beatitude >= 0 || shouldInvertEquipmentBeatitude(entitystats) )
+		{
+			// no change
+		}
+		else if ( entitystats->shield->beatitude < 0 )
+		{
+			CHR *= 0.5;
+			if ( entitystats->shield->beatitude <= -2 )
+			{
+				CHR *= 0.5;
+			}
+		}
+	}
+
 	if ( entitystats->getEffectActive(EFF_LEVEL_DRAIN) )
 	{
 		CHR = statModifyLevelDrain(STAT_CHR, CHR, entitystats, my);
@@ -10810,7 +10908,9 @@ void Entity::attack(int pose, int charge, Entity* target)
 		}
 		if ( myStats->type == SALAMANDER && pose == MONSTER_POSE_MAGIC_CAST1 )
 		{
-			castSpell(uid, &spell_fireball, true, false);
+			CastSpellProps_t props;
+			props.powerBonusPercent = 100;
+			castSpell(uid, &spell_fireball, true, false, false, &props);
 			return;
 		}
 		if ( myStats->type == MONSTER_ADORCISED_WEAPON && (myStats->getAttribute("spirit_weapon") != "" || monsterSpecialState == ADORCISED_WEAPON_SPECIAL_CHARGE)
@@ -14463,8 +14563,8 @@ fireagain:
 					// if nothing chosen to degrade, check extra shield chances to degrade
 					if ( hitstats->shield != NULL && hitstats->shield->status > BROKEN && armor == NULL
 						&& !itemTypeIsQuiver(hitstats->shield->type) && itemCategory(hitstats->shield) != SPELLBOOK
-						&& !itemTypeIsFoci(hitstats->shield->type)
-						&& !itemTypeIsInstrument(hitstats->shield->type)
+						/*&& !itemTypeIsFoci(hitstats->shield->type)*/
+						/*&& !itemTypeIsInstrument(hitstats->shield->type)*/
 						&& hitstats->shield->type != TOOL_DUCK
 						&& parriedDamage == 0
 						&& hitstats->shield->type != TOOL_TINKERING_KIT
@@ -14486,7 +14586,7 @@ fireagain:
 						{
 							// if no armor piece was chosen to break, grant chance to improve shield skill.
 							if ( itemCategory(hitstats->shield) == ARMOR
-								|| (hitstats->defending) )
+								|| (hitstats->defending && hitstats->getPassiveShieldBonus(true, false)) )
 							{
 								int roll = 20;
 								int hitskill = hitstats->getProficiency(PRO_SHIELD) / 20;
@@ -16885,7 +16985,7 @@ fireagain:
 
 							if ( attacker->behavior == &actPlayer )
 							{
-								messagePlayerMonsterEvent(attacker->skill[2], makeColorRGB(255, 0, 0), *myStats, Language::get(7075), Language::get(7076), MSG_COMBAT);
+								messagePlayerMonsterEvent(attacker->skill[2], makeColorRGB(255, 0, 0), *hitstats, Language::get(7075), Language::get(7076), MSG_COMBAT);
 							}
 							if ( defender->behavior == &actPlayer )
 							{
@@ -18472,7 +18572,6 @@ bool teleportCoordHasTrap(const int x, const int y)
 bool Entity::teleportAroundEntity(Entity* target, int dist, int effectType)
 {
 	int numlocations = 0;
-	int pickedlocation;
 	int player = -1;
 	if ( !target )
 	{
@@ -18956,8 +19055,7 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 
 	if ( src->behavior == &actMonster 
 		&& (src->monsterAllySummonRank != 0
-			|| srcStats->type == REVENANT_SKULL
-			|| (srcStats->type == MONSTER_ADORCISED_WEAPON && (src->monsterAllyGetPlayerLeader() 
+			|| ((srcStats->type == REVENANT_SKULL || srcStats->type == MONSTER_ADORCISED_WEAPON) && (src->monsterAllyGetPlayerLeader()
 				|| achievementObserver.checkUidIsFromPlayer(srcStats->leader_uid) >= 0))
 			|| (srcStats->type == MOTH_SMALL && srcStats->getAttribute("fire_sprite") != "")
 			|| (srcStats->type == SKELETON && srcStats->getAttribute("revenant_skeleton") != "")
@@ -19042,6 +19140,10 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 		baseXp = 5;
 	}*/
 	else if ( srcStats->type == GNOME )
+	{
+		baseXp = 5;
+	}
+	else if ( srcStats->type == REVENANT_SKULL || (srcStats->type == SKELETON && currentlevel >= 5) )
 	{
 		baseXp = 5;
 	}
@@ -22763,23 +22865,34 @@ int Entity::getAttackPose() const
 		}
 		else if ( myStats->type == EARTH_ELEMENTAL )
 		{
-			switch ( local_rng.rand() % 4 )
+			if ( this->monsterSpecialTimer == MONSTER_SPECIAL_COOLDOWN_EARTH_ELEMENTAL_CAST )
 			{
-			case 0:
-				pose = MONSTER_POSE_MELEE_WINDUP1;
-				break;
-			case 1:
-				pose = MONSTER_POSE_MELEE_WINDUP2;
-				break;
-			case 2:
-				pose = MONSTER_POSE_MELEE_WINDUP3;
-				break;
-			case 3:
-				pose = MONSTER_POSE_RANGED_WINDUP1;
-				break;
-			default:
-				pose = MONSTER_POSE_MELEE_WINDUP1;
-				break;
+				pose = MONSTER_POSE_RANGED_WINDUP2;
+			}
+			else if (this->monsterSpecialTimer == MONSTER_SPECIAL_COOLDOWN_EARTH_ELEMENTAL_CAST2)
+			{
+				pose = MONSTER_POSE_RANGED_WINDUP3;
+			}
+			else
+			{
+				switch ( local_rng.rand() % 4 )
+				{
+				case 0:
+					pose = MONSTER_POSE_MELEE_WINDUP1;
+					break;
+				case 1:
+					pose = MONSTER_POSE_MELEE_WINDUP2;
+					break;
+				case 2:
+					pose = MONSTER_POSE_MELEE_WINDUP3;
+					break;
+				case 3:
+					pose = MONSTER_POSE_RANGED_WINDUP1;
+					break;
+				default:
+					pose = MONSTER_POSE_MELEE_WINDUP1;
+					break;
+				}
 			}
 		}
 		else
@@ -25374,6 +25487,16 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 
 		switch ( effect )
 		{
+			case EFF_CHOKING:
+				if ( myStats->type == SKELETON || myStats->type == AUTOMATON )
+				{
+					return false;
+				}
+				if ( myStats->amulet && myStats->amulet->type == AMULET_WATERBREATHING )
+				{
+					return false;
+				}
+			break;
 			case EFF_DEGENERATION:
 				if ( !(svFlags & SV_FLAG_HUNGER) )
 				{
@@ -33154,15 +33277,15 @@ real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableTy
 			}
 			if ( myStats.gloves && myStats.gloves->type == CHAIN_GLOVES )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.gloves, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.gloves, 0.1, 0.03));
 			}
 			if ( myStats.shoes && myStats.shoes->type == CHAIN_BOOTS )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.shoes, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.shoes, 0.1, 0.03));
 			}
 			if ( myStats.helmet && myStats.helmet->type == CHAIN_COIF )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.03));
 			}
 		}
 		if ( damageType == DAMAGE_TABLE_MAGIC || damageType == DAMAGE_TABLE_RANGED )
@@ -33173,15 +33296,15 @@ real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableTy
 			}
 			if ( myStats.gloves && myStats.gloves->type == QUILTED_GLOVES )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.gloves, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.gloves, 0.1, 0.03));
 			}
 			if ( myStats.shoes && myStats.shoes->type == QUILTED_BOOTS )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.shoes, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.shoes, 0.1, 0.03));
 			}
 			if ( myStats.helmet && myStats.helmet->type == QUILTED_CAP )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.03));
 			}
 		}
 		if ( damageType == DAMAGE_TABLE_UNARMED )
@@ -33192,15 +33315,15 @@ real_t Entity::getDamageTableMultiplier(Entity* my, Stat& myStats, DamageTableTy
 			}
 			if ( myStats.gloves && myStats.gloves->type == BONE_BRACERS )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.gloves, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.gloves, 0.1, 0.03));
 			}
 			if ( myStats.shoes && myStats.shoes->type == BONE_BOOTS )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.shoes, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.shoes, 0.1, 0.03));
 			}
 			if ( myStats.helmet && myStats.helmet->type == BONE_HELM )
 			{
-				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.05));
+				allBonuses.push_back(-Entity::getDamageTableEquipmentMod(myStats, *myStats.helmet, 0.1, 0.03));
 			}
 		}
 		if ( damageType == DAMAGE_TABLE_MAGIC )

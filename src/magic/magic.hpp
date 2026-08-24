@@ -980,6 +980,7 @@ struct CastSpellProps_t
 	int wallDir = 0;
 	Uint8 optionalData = 0;
 	Uint8 overcharge = 0;
+	int powerBonusPercent = 0;
 	bool setToMonsterCast(Entity* monster, int spellID);
 };
 

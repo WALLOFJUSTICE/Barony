@@ -44,10 +44,10 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 
 	if ( multiplayer != CLIENT )
 	{
-		MONSTER_SPOTSND = -1;
-		MONSTER_SPOTVAR = 1;
-		MONSTER_IDLESND = -1;
-		MONSTER_IDLEVAR = 1;
+		MONSTER_SPOTSND = 925;
+		MONSTER_SPOTVAR = 2;
+		MONSTER_IDLESND = 927;
+		MONSTER_IDLEVAR = 2;
 	}
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
 	{
@@ -597,8 +597,8 @@ void hauntedArmorDie(Entity* my)
 	}
 
 	//my->spawnBlood(681);
-
-	playSoundEntity(my, 28, 128);
+	playSoundEntity(my, 451 + local_rng.rand() % 2, 92);
+	//playSoundEntity(my, 28, 128);
 
 	my->removeMonsterDeathNodes();
 
@@ -730,7 +730,8 @@ void hauntedArmorSelectSpell(Entity* my, Stat* myStats)
 			if ( !(myStats->getEffectActive(EFF_GUARD_BODY) || myStats->getEffectActive(EFF_GUARD_SPIRIT)
 				/*|| myStats->getEffectActive(EFF_DIVINE_GUARD)*/) )
 			{
-				options.push_back({ SPELL_GUARD_BODY, EFF_GUARD_BODY, true });
+				options.push_back({ SPELL_GUARD_SPIRIT, EFF_GUARD_SPIRIT, true });
+				//options.push_back({ SPELL_GUARD_BODY, EFF_GUARD_BODY, true });
 				//options.push_back({ SPELL_GUARD_SPIRIT, true });
 				//options.push_back({ SPELL_DIVINE_GUARD, true });
 			}
@@ -1026,7 +1027,6 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 			}
 			if ( fx && !limb->flags[INVISIBLE] && currentState == find->second )
 			{
-				//playSoundEntity(my, 76, 64);
 				Entity* gib = spawnGib(limb, limb->sprite);
 				gib->skill[5] = 1;
 				gib->sprite = limb->sprite;
@@ -1034,6 +1034,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 				gib->y = limb->y;
 				gib->z = limb->z;
 				serverSpawnGibForClient(gib);
+				playSoundEntity(my, 76, 32);
 			}
 			limb->flags[INVISIBLE] = true;
 		}
@@ -1112,8 +1113,8 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 
 		real_t percentHP = myStats->HP / (real_t)std::max(1, myStats->MAXHP);
 
-		int hauntedHPState = myStats->getAttribute("haunted_state") != "" ? stoi(myStats->getAttribute("haunted_state")) : 0;
-		int hauntedPrevState = hauntedHPState;
+		hauntedHPState = myStats->getAttribute("haunted_state") != "" ? stoi(myStats->getAttribute("haunted_state")) : 0;
+		hauntedPrevState = hauntedHPState;
 		if ( percentHP < 0.2 )
 		{
 			if ( hauntedHPState < 6 )
@@ -1194,8 +1195,9 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			entity->yaw = my->yaw;
 		}
 
-		real_t anim = (ticks % (int)spd) / std::max(1.0, spd);
-		real_t anim2 = ((ticks + (int)(spd / 2)) % (int)spd) / std::max(1.0, spd);
+		Uint32 animTicks = my->ticks;
+		real_t anim = (animTicks % (int)spd) / std::max(1.0, spd);
+		real_t anim2 = ((animTicks + (int)(spd / 2)) % (int)spd) / std::max(1.0, spd);
 		if ( bodypart == LIMB_HUMANOID_TORSO || bodypart == LIMB_HUMANOID_CLOAK )
 		{
 			entity->z -= 0.5 + 0.5 * cos(PI / 2 + 2 * PI * anim * anim);
@@ -1213,12 +1215,12 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					HAUNTED_ARMOR_CAST_ANIM = std::max(0.0, HAUNTED_ARMOR_CAST_ANIM - 0.1);
 				}
 
-				HAUNTED_ARMOR_BOB = 2.0 + 1.0 * cos(PI + 2 * PI * ((ticks % (int)(spd * 2)) / (spd * 2)));
+				HAUNTED_ARMOR_BOB = 2.0 + 1.0 * cos(PI + 2 * PI * ((animTicks % (int)(spd * 2)) / (spd * 2)));
 			}
 		}
 		else if ( bodypart == LIMB_HUMANOID_MASK || bodypart == LIMB_HUMANOID_HELMET )
 		{
-			//entity->z -= 0.5 + 0.5 * cos(PI / 4 + 2 * PI * (ticks % 100) / 100.0);
+			//entity->z -= 0.5 + 0.5 * cos(PI / 4 + 2 * PI * (animTicks % 100) / 100.0);
 			entity->z -= 1.0 + 0.5 * cos(PI / 4 + PI / 2 + 2 * PI * anim * anim);
 		}
 		else if ( bodypart == LIMB_HUMANOID_RIGHTARM || bodypart == LIMB_HUMANOID_WEAPON )
@@ -1272,6 +1274,12 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			{
 				entity->z -= 1.0 * sin(2 * PI * (anim - 0.5));
 			}
+
+			//if ( (((animTicks + (int)(spd / 2)) % (int)spd) == 0)/*
+			//	|| (((animTicks + (int)(spd / 2)) % (int)spd) == 0)*/ )
+			//{
+			//	playSoundEntityLocal(my, 925 + local_rng.rand() % 4, 64);
+			//}
 
 			entity->pitch = (PI / 8) * sin(-PI / 16 + anim * 2 * PI * anim);
 			entity->x -= 1.25 * cos(PI + 2 * PI * anim) * cos(my->yaw);
@@ -1684,7 +1692,7 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 
 				entity->yaw += MONSTER_WEAPONYAW;
 
-				if ( ticks % 4 == 2 )
+				if ( my->ticks % 4 == 2 )
 				{
 					Entity* fx = spawnMagicParticleCustom(entity, 96, 0.5, 1.0);
 					fx->vel_x = 0.25 * cos(my->yaw + PI / 2 + PI / 4);
@@ -1772,7 +1780,7 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				}
 				entity->yaw += MONSTER_SHIELDYAW;
 
-				if ( ticks % 4 == 0 )
+				if ( my->ticks % 4 == 0 )
 				{
 					Entity* fx = spawnMagicParticleCustom(entity, 96, 0.5, 1.0);
 					fx->vel_x = 0.25 * cos(my->yaw - PI / 2 - PI / 4);
@@ -2010,7 +2018,7 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 				my->setHelmetLimbOffset(entity);
 
 
-				if ( ticks % 2 == 0 )
+				if ( my->ticks % 2 == 0 )
 				{
 					Entity* fx = spawnMagicParticleCustom(entity, 96, 0.5, 1.0);
 					fx->vel_x = 0.25 * cos(entity->yaw + PI);

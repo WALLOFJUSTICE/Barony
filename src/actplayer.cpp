@@ -6724,6 +6724,10 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 		{
 			movementDrag = 0.99;
 		}
+		else if ( map.tileHasAttribute(static_cast<int>(my->x / 16), static_cast<int>(my->y / 16), 0, map_t::TILE_ATTRIBUTE_WATER) )
+		{
+			movementDrag = 0.99;
+		}
 		else if ( stats[PLAYER_NUM]->getEffectActive(EFF_MAGIC_GREASE) )
 		{
 			movementDrag = 0.95;

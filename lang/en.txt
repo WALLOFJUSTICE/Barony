@@ -7346,7 +7346,7 @@ has been unlocked!#
 7072 %s is disrupted!#
 7073 A flying dart disrupts you!#
 7074 You absorbed an incoming spell!#
-7075 The %s shield disrupts you!#
+7075 The %s's shield disrupts you!#
 7076 %s's shield disrupts you!#
 
 # NVIDIA OpenGL present modes
@@ -7478,5 +7478,16 @@ has been unlocked!#
 7187 Your item comes to life!#
 7188 You are smited by divine precision!#
 7189 You are struck by a psychic spear!#
+7190 gets choked out by a water elemental.#
+7191 Choking Water#
+7192 gets washed out by a water elemental.#
+7193 gets hollowed out by a haunted armor.#
+7194 falls prey to a flight encounter with a gryphon.#
+7195 is blinked out of existence by a staremaster.#
+7196 proves themselves unworthy facing the dragon.#
+7197 You can breathe normally again.#
+7198 Invading water impedes your breath!#
+7199 You can't drink that. You're breathless!#
+7200 You can't eat that. You're breathless!#
 
 7999 END#

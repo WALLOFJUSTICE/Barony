@@ -245,14 +245,15 @@ void initMonsterS(Entity* my, Stat* myStats)
 			{
 				if ( type == SALAMANDER_ZEALOT )
 				{
-					switch ( rng.rand() % 3 )
+					switch ( rng.rand() % 4 )
 					{
 					case 0:
-						break;
 					case 1:
-						myStats->breastplate = newItem(CHAIN_HAUBERK, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					case 2:
+						myStats->breastplate = newItem(CHAIN_HAUBERK, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 3:
 						myStats->breastplate = newItem(SILVER_BREASTPIECE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					}

@@ -6530,11 +6530,19 @@ void actMonster(Entity* my)
 							{
 								chaseRange = 20;
 							}
+							if ( myStats->type == EARTH_ELEMENTAL && my->monsterDefend )
+							{
+								chaseRange = 20;
+							}
 							if ( myStats->type == GRYPHON )
 							{
 								chaseRange = 20;
 							}
 							if ( myStats->type == DUCK_SMALL )
+							{
+								chaseRange = 32;
+							}
+							if ( myStats->type == EARTH_ELEMENTAL && my->monsterSpecialState != 0 )
 							{
 								chaseRange = 32;
 							}
@@ -10429,6 +10437,19 @@ timeToGoAgain:
 			}
 		}
 
+		if ( myStats && myStats->type == WATER_ELEMENTAL )
+		{
+			Entity* entity = uidToEntity(my->monsterTarget);
+			if ( entity != nullptr )
+			{
+				if ( entity->behavior == &actPlayer )
+				{
+					assailant[entity->skill[2]] = true;  // as long as this is active, combat music doesn't turn off
+					assailantTimer[entity->skill[2]] = COMBAT_MUSIC_COOLDOWN;
+				}
+			}
+		}
+
 		if ( myStats && myStats->type == DUCK_SMALL )
 		{
 			if ( my->monsterSpecialState == DUCK_DIVE )
@@ -10672,8 +10693,7 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 	}
 	if ( myStats->type == REVENANT_SKULL 
 		|| myStats->type == MONSTER_ADORCISED_WEAPON 
-		|| myStats->type == FLAME_ELEMENTAL
-		|| myStats->type == EARTH_ELEMENTAL )
+		|| myStats->type == FLAME_ELEMENTAL )
 	{
 		if ( monsterSpecialState == SKULL_CAST )
 		{
@@ -10685,6 +10705,13 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			lichRangeCheckOverride = true;
 		}
 		else if ( myStats->type == MONSTER_ADORCISED_WEAPON && monsterSpecialState == ADORCISED_WEAPON_SPECIAL_CHARGE )
+		{
+			lichRangeCheckOverride = true;
+		}
+	}
+	else if ( myStats->type == EARTH_ELEMENTAL )
+	{
+		if ( monsterSpecialState == EARTH_ELEMENTAL_CAST_BLAST || monsterSpecialState == EARTH_ELEMENTAL_CAST_CHARGE )
 		{
 			lichRangeCheckOverride = true;
 		}
@@ -10852,6 +10879,18 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 			if ( this->monsterAttack == MONSTER_POSE_MAGIC_WINDUP3 )
 			{
 				this->monsterHitTime--;
+			}
+		}
+		if ( myStats->type == EARTH_ELEMENTAL )
+		{
+			if ( this->monsterAttack == MONSTER_POSE_RANGED_WINDUP2
+				|| this->monsterAttack == MONSTER_POSE_RANGED_WINDUP3 )
+			{
+				this->monsterHitTime--;
+			}
+			else if ( this->monsterAttack == MONSTER_POSE_MELEE_WINDUP1 )
+			{
+				this->monsterHitTime = std::min(HITRATE / 2, this->monsterHitTime);
 			}
 		}
 
@@ -12017,6 +12056,17 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 						monsterSpecialTimer = MONSTER_SPECIAL_COOLDOWN_SKULL_CAST;
 					}
 					break;
+				case EARTH_ELEMENTAL:
+					// magic
+					if ( monsterSpecialState == EARTH_ELEMENTAL_CAST_BLAST )
+					{
+						monsterSpecialTimer = MONSTER_SPECIAL_COOLDOWN_EARTH_ELEMENTAL_CAST;
+					}
+					else if ( monsterSpecialState == EARTH_ELEMENTAL_CAST_CHARGE )
+					{
+						monsterSpecialTimer = MONSTER_SPECIAL_COOLDOWN_EARTH_ELEMENTAL_CAST2;
+					}
+					break;
 				case MOTH_SMALL:
 					// magic
 					if ( monsterSpecialState == MOTH_CAST )
@@ -12339,6 +12389,16 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 				case REVENANT_SKULL:
 				case FLAME_ELEMENTAL:
 					if ( monsterSpecialState == SKULL_CAST || forceDeinit )
+					{
+						monsterSpecialState = 0;
+						shouldAttack = false;
+						deinitSuccess = true;
+					}
+					break;
+				case EARTH_ELEMENTAL:
+					if ( monsterSpecialState == EARTH_ELEMENTAL_CAST_BLAST 
+						|| monsterSpecialState == EARTH_ELEMENTAL_CAST_CHARGE
+						|| forceDeinit )
 					{
 						monsterSpecialState = 0;
 						shouldAttack = false;
@@ -14358,7 +14418,7 @@ int Entity::shouldMonsterDefend(Stat& myStats, const Entity& target, const Stat&
 
 	if ( myStats.type == EARTH_ELEMENTAL )
 	{
-		if ( local_rng.rand() % 20 < 8 )
+		if ( local_rng.rand() % 20 < 8 && monsterSpecialState == 0 )
 		{
 			return MONSTER_DEFEND_HOLD;
 		}

@@ -1915,7 +1915,10 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 				hitMonsterCanTransferEquipment = false;
 				break;
 			default:
-				hitMonsterCanTransferEquipment = true;
+				if ( !targetStats->monsterNoDropItems )
+				{
+					hitMonsterCanTransferEquipment = true;
+				}
 				break;
 		}
 
@@ -2194,6 +2197,19 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 					}
 					targetStats->weapon = nullptr;
 				}
+				else if ( targetStats->weapon && !targetStats->weapon->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->weapon->node )
+					{
+						list_RemoveNode(targetStats->weapon->node);
+					}
+					else
+					{
+						free(targetStats->weapon);
+					}
+					targetStats->weapon = nullptr;
+				}
 				else
 				{
 					summonedStats->weapon = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
@@ -2205,24 +2221,72 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			slot = itemSlot(targetStats, targetStats->shield);
 			if ( slot )
 			{
-				summonedStats->shield = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->shield && !targetStats->shield->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->shield->node )
+					{
+						list_RemoveNode(targetStats->shield->node);
+					}
+					else
+					{
+						free(targetStats->shield);
+					}
+					targetStats->shield = nullptr;
+				}
+				else
+				{
+					summonedStats->shield = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 
 			// breastplate
 			slot = itemSlot(targetStats, targetStats->breastplate);
 			if ( slot )
 			{
-				summonedStats->breastplate = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->breastplate && !targetStats->breastplate->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->breastplate->node )
+					{
+						list_RemoveNode(targetStats->breastplate->node);
+					}
+					else
+					{
+						free(targetStats->breastplate);
+					}
+					targetStats->breastplate = nullptr;
+				}
+				else
+				{
+					summonedStats->breastplate = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 
 			// shoes
 			slot = itemSlot(targetStats, targetStats->shoes);
 			if ( slot )
 			{
-				summonedStats->shoes = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->shoes && !targetStats->shoes->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->shoes->node )
+					{
+						list_RemoveNode(targetStats->shoes->node);
+					}
+					else
+					{
+						free(targetStats->shoes);
+					}
+					targetStats->shoes = nullptr;
+				}
+				else
+				{
+					summonedStats->shoes = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 
 			// helm
@@ -2238,6 +2302,19 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 						dropped->flags[USERFLAG1] = true;
 					}
 				}
+				else if ( targetStats->helmet && !targetStats->helmet->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->helmet->node )
+					{
+						list_RemoveNode(targetStats->helmet->node);
+					}
+					else
+					{
+						free(targetStats->helmet);
+					}
+					targetStats->helmet = nullptr;
+				}
 				else
 				{
 					summonedStats->helmet = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
@@ -2249,40 +2326,120 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			slot = itemSlot(targetStats, targetStats->mask);
 			if ( slot )
 			{
-				summonedStats->mask = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->mask && !targetStats->mask->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->mask->node )
+					{
+						list_RemoveNode(targetStats->mask->node);
+					}
+					else
+					{
+						free(targetStats->mask);
+					}
+					targetStats->mask = nullptr;
+				}
+				else
+				{
+					summonedStats->mask = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 
 			// amulet
 			slot = itemSlot(targetStats, targetStats->amulet);
 			if ( slot )
 			{
-				summonedStats->amulet = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->amulet && !targetStats->amulet->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->amulet->node )
+					{
+						list_RemoveNode(targetStats->amulet->node);
+					}
+					else
+					{
+						free(targetStats->amulet);
+					}
+					targetStats->amulet = nullptr;
+				}
+				else
+				{
+					summonedStats->amulet = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 
 			// ring
 			slot = itemSlot(targetStats, targetStats->ring);
 			if ( slot )
 			{
-				summonedStats->ring = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->ring && !targetStats->ring->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->ring->node )
+					{
+						list_RemoveNode(targetStats->ring->node);
+					}
+					else
+					{
+						free(targetStats->ring);
+					}
+					targetStats->ring = nullptr;
+				}
+				else
+				{
+					summonedStats->ring = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 
 			// cloak
 			slot = itemSlot(targetStats, targetStats->cloak);
 			if ( slot )
 			{
-				summonedStats->cloak = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->cloak && !targetStats->cloak->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->cloak->node )
+					{
+						list_RemoveNode(targetStats->cloak->node);
+					}
+					else
+					{
+						free(targetStats->cloak);
+					}
+					targetStats->cloak = nullptr;
+				}
+				else
+				{
+					summonedStats->cloak = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 
 			// gloves
 			slot = itemSlot(targetStats, targetStats->gloves);
 			if ( slot )
 			{
-				summonedStats->gloves = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
-					(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				if ( targetStats->gloves && !targetStats->gloves->isDroppable )
+				{
+					// non-droppables are not dropped
+					if ( targetStats->gloves->node )
+					{
+						list_RemoveNode(targetStats->gloves->node);
+					}
+					else
+					{
+						free(targetStats->gloves);
+					}
+					targetStats->gloves = nullptr;
+				}
+				else
+				{
+					summonedStats->gloves = newItem((*slot)->type, (*slot)->status, (*slot)->beatitude,
+						(*slot)->count, (*slot)->appearance, (*slot)->identified, nullptr);
+				}
 			}
 		}
 		else if ( hitMonsterCanTransferEquipment && !summonCanEquipItems )
@@ -4060,6 +4217,13 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 			}
 			damage *= fireMultiplier;
 		}
+		else if ( spellID == SPELL_WATER_BOLT )
+		{
+			if ( targetStats->type == VAMPIRE )
+			{
+				damage *= 1.5;
+			}
+		}
 		if ( spellID == SPELL_DEFY_FLESH )
 		{
 			damage = std::max(1, damage);
@@ -4140,6 +4304,38 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 					cameravars[player].shakex += strength * 0.01;
 					cameravars[player].shakey += strength;
 				}
+			}
+
+			if ( spellID == SPELL_WATER_BOLT )
+			{
+				if ( targetStats->getEffectActive(EFF_POLYMORPH) )
+				{
+					hitentity->setEffect(EFF_POLYMORPH, false, 0, true);
+					hitentity->effectPolymorph = 0;
+					serverUpdateEntitySkill(hitentity, 50);
+
+					messagePlayer(hitentity->skill[2], MESSAGE_STATUS, Language::get(3192));
+					if ( !targetStats->getEffectActive(EFF_SHAPESHIFT) )
+					{
+						messagePlayer(hitentity->skill[2], MESSAGE_STATUS, Language::get(3185));
+					}
+					else
+					{
+						messagePlayer(hitentity->skill[2], MESSAGE_STATUS, Language::get(4303));
+					}
+					playSoundEntity(hitentity, 400, 92);
+					createParticleDropRising(hitentity, 593, 1.f);
+					serverSpawnMiscParticles(hitentity, PARTICLE_EFFECT_RISING_DROP, 593);
+				}
+			}
+		}
+
+		if ( spellID == SPELL_WATER_BOLT )
+		{
+			if ( hitentity->flags[BURNING] )
+			{
+				hitentity->flags[BURNING] = false;
+				serverUpdateEntityFlag(hitentity, BURNING);
 			}
 		}
 

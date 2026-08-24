@@ -26,7 +26,6 @@
 
 void initSkeleton(Entity* my, Stat* myStats)
 {
-	int c;
 	node_t* node;
 
 	my->flags[BURNABLE] = false;
@@ -684,9 +683,10 @@ void skeletonDie(Entity* my)
 				//	}
 				//}
 				int manaToRefund = std::min(spellCost, static_cast<int>(myStats->MP / static_cast<float>(myStats->MAXMP) * spellCost)); // MP to restore
-				if ( myStats && myStats->getAttribute("summon_overcharge") == "1" )
+				if ( myStats && myStats->getAttribute("summon_overcharge") != "" )
 				{
-					manaToRefund /= 2;
+					int manaDiscountPercent = std::stoi(myStats->getAttribute("summon_overcharge"));
+					manaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
 				}
 				if ( manaToRefund > 0 )
 				{

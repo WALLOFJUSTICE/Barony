@@ -790,6 +790,7 @@ static ConsoleVariable<Vector4> cvar_color_mist_form("/color_mist_form", Vector4
 static ConsoleVariable<Vector4> cvar_color_hologram("/color_hologram", Vector4{ 0.9, 0.2, 0.5, 0.f });
 static ConsoleVariable<Vector4> cvar_color_force_shield("/color_force_shield", Vector4{ 0.8, 0.8, 0.0, 0.f });
 static ConsoleVariable<Vector4> cvar_color_reflector_shield("/color_reflector_shield", Vector4{ 0.8, 0.8, 0.0, 0.f });
+static ConsoleVariable<Vector4> cvar_color_ally_shift("/color_ally_shift", Vector4{ 0.5, 0.5, 0.5, 1.0 });
 #endif
 
 static void uploadLightUniforms(view_t* camera, Shader& shader, Entity* entity, int mode, bool remap) {
@@ -817,6 +818,7 @@ static void uploadLightUniforms(view_t* camera, Shader& shader, Entity* entity, 
                 remap.z.z = 1.f / 3.f;
             }
             else if (entity->flags[USERFLAG2]) {
+#ifndef EDITOR
                 if ((entity->behavior != &actMonster /*&& entity->noColorChangeAllyLimb < 0.01*/) 
                     || monsterChangesColorWhenAlly(nullptr, entity)) {
                     // certain allies use G/B/R color map
@@ -824,11 +826,14 @@ static void uploadLightUniforms(view_t* camera, Shader& shader, Entity* entity, 
                     remap.x.y = 1.f;
                     remap.y.z = 1.f;
                     remap.z.x = 1.f;
-
-                    //remap.x.x = 0.8f; - desaturate option
-                    //remap.y.y = 0.8f;
-                    //remap.z.z = 0.8f;
+                    if ( cvar_color_ally_shift->w > 0.05 )
+                    {
+                        remap.x.x = cvar_color_ally_shift->x; // - desaturate option
+                        remap.y.y = cvar_color_ally_shift->y;
+                        remap.z.z = cvar_color_ally_shift->z;
+                    }
                 }
+#endif
             }
 
 #ifndef EDITOR

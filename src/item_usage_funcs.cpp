@@ -296,6 +296,15 @@ bool item_PotionWater(Item*& item, Entity* entity, Entity* usedBy)
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -705,6 +714,15 @@ bool item_PotionBooze(Item*& item, Entity* entity, Entity* usedBy, bool shouldCo
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -858,6 +876,15 @@ bool item_PotionJuice(Item*& item, Entity* entity, Entity* usedBy)
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -1052,6 +1079,15 @@ bool item_PotionSickness(Item*& item, Entity* entity, Entity* usedBy)
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -1269,6 +1305,15 @@ bool item_PotionConfusion(Item*& item, Entity* entity, Entity* usedBy)
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -1378,6 +1423,15 @@ bool item_PotionCureAilment(Item*& item, Entity* entity, Entity* usedBy)
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -1513,6 +1567,15 @@ bool item_PotionBlindness(Item*& item, Entity* entity, Entity* usedBy)
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -1593,6 +1656,15 @@ bool item_PotionInvisibility(Item*& item, Entity* entity, Entity* usedBy)
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -1688,6 +1760,15 @@ bool item_PotionLevitation(Item*& item, Entity* entity, Entity* usedBy)
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -1772,6 +1853,15 @@ bool item_PotionSpeed(Item*& item, Entity* entity, Entity* usedBy)
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -1877,6 +1967,15 @@ bool item_PotionStrength(Item*& item, Entity* entity, Entity* usedBy)
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -1972,6 +2071,15 @@ bool item_PotionAcid(Item*& item, Entity* entity, Entity* usedBy)
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -2077,6 +2185,15 @@ bool item_PotionUnstableStorm(Item*& item, Entity* entity, Entity* usedBy, Entit
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -2254,6 +2371,15 @@ bool item_PotionParalysis(Item*& item, Entity* entity, Entity* usedBy)
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -2338,6 +2464,15 @@ bool item_PotionHealing(Item*& item, Entity* entity, Entity* usedBy, bool should
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -2499,6 +2634,15 @@ bool item_PotionExtraHealing(Item*& item, Entity* entity, Entity* usedBy, bool s
 			}
 			return false;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -2664,6 +2808,15 @@ bool item_PotionRestoreMagic(Item*& item, Entity* entity, Entity* usedBy)
 			return false;
 		}
 	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return false;
+	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
 		if ( player >= 0 && players[player]->isLocalPlayer() )
@@ -2793,6 +2946,15 @@ Entity* item_PotionPolymorph(Item*& item, Entity* entity, Entity* usedBy)
 			}
 			return nullptr;
 		}
+	}
+	if ( stats->getEffectActive(EFF_CHOKING) )
+	{
+		if ( player >= 0 && players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7199));
+			playSoundPlayer(player, 90, 64);
+		}
+		return nullptr;
 	}
 	if ( stats->getEffectActive(EFF_VOMITING) )
 	{
@@ -5624,6 +5786,16 @@ void item_Food(Item*& item, int player)
 		}
 	}
 
+	if ( stats[player]->getEffectActive(EFF_CHOKING) )
+	{
+		if ( players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7200));
+			playSoundPlayer(player, 90, 64);
+		}
+		return;
+	}
+
 	// can't eat while vomiting
 	if ( stats[player]->getEffectActive(EFF_VOMITING) )
 	{
@@ -6095,6 +6267,16 @@ void item_FoodTin(Item*& item, int player)
 			}
 			return;
 		}
+	}
+
+	if ( stats[player]->getEffectActive(EFF_CHOKING) )
+	{
+		if ( players[player]->isLocalPlayer() )
+		{
+			messagePlayer(player, MESSAGE_HINT, Language::get(7200));
+			playSoundPlayer(player, 90, 64);
+		}
+		return;
 	}
 
 	// can't eat while vomiting

@@ -1234,6 +1234,9 @@ public:
 			case MOTH_SMALL:
 				mothChooseWeapon(target, dist);
 				break;
+			case EARTH_ELEMENTAL:
+				earthElementalChooseWeapon(target, dist);
+				break;
 			case BUGBEAR:
 				bugbearChooseWeapon(target, dist);
 				break;
@@ -1285,6 +1288,7 @@ public:
 	void shadowChooseWeapon(const Entity* target, double dist);
 	void succubusChooseWeapon(const Entity* target, double dist);
 	void slimeChooseWeapon(const Entity* target, double dist);
+	void earthElementalChooseWeapon(const Entity* target, double dist);
 	void mothChooseWeapon(const Entity* target, double dist);
 	void bugbearChooseWeapon(const Entity* target, double dist);
 	void monsterDChooseWeapon(const Entity* target, double dist);

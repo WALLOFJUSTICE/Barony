@@ -6021,10 +6021,6 @@ void GenericGUIMenu::rebuildGUIInventory()
 
 void GenericGUIMenu::updateGUI()
 {
-	SDL_Rect pos;
-	node_t* node;
-	int y, c;
-
 	const Sint32 mousex = inputs.getMouse(gui_player, Inputs::X);
 	const Sint32 mousey = inputs.getMouse(gui_player, Inputs::Y);
 	const Sint32 omousex = inputs.getMouse(gui_player, Inputs::OX);
@@ -6461,7 +6457,7 @@ void GenericGUIMenu::updateGUI()
 			std::unordered_map<ItemType, int> itemCounts;
 			if ( guiType == GUI_TYPE_TINKERING && tinkeringFilter == TINKER_FILTER_CRAFTABLE )
 			{
-				for ( node = stats[gui_player]->inventory.first; node != NULL; node = node->next )
+				for ( node_t* node = stats[gui_player]->inventory.first; node != NULL; node = node->next )
 				{
 					if ( node->element )
 					{
@@ -6469,7 +6465,7 @@ void GenericGUIMenu::updateGUI()
 						itemCounts[item->type] += item->count;
 					}
 				}
-				for ( node = player_inventory->first; node != NULL; node = node->next )
+				for ( node_t* node = player_inventory->first; node != NULL; node = node->next )
 				{
 					if ( node->element )
 					{
@@ -29920,7 +29916,6 @@ void CalloutRadialMenu::drawCallouts(const int playernum)
 				continue;
 			}
 
-			vec4_t v;
 			mat4x4_t m, t;
 
 			auto camera = &cameras[playernum];
@@ -37875,7 +37870,6 @@ void GenericGUIMenu::AssistShrineGUI_t::updateAssistShrine()
 							const int padyMid = 8;
 							SDL_Rect tooltipPos = SDL_Rect{ 400, 0, maxWidth, 100 };
 
-							char titleBuf[64];
 							std::string classname = playerClassLangEntry(itemType, parentGUI.gui_player);
 							uppercaseString(classname);
 							txt->setText(classname.c_str());
@@ -38059,7 +38053,6 @@ void GenericGUIMenu::AssistShrineGUI_t::updateAssistShrine()
 
 							Monster race = getMonsterFromPlayerRace(itemType);
 
-							char titleBuf[64];
 							std::string racename;
 							if ( selectedDisableAbilities == 1 && itemType != RACE_HUMAN )
 							{

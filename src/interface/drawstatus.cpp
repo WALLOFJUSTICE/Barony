@@ -1985,9 +1985,6 @@ bool warpMouseToSelectedHotbarSlot(const int player)
 
 void drawStatusNew(const int player)
 {
-	Sint32 x, y, z, c, i;
-	node_t* node;
-
 	const int x1 = players[player]->camera_x1();
 	const int x2 = players[player]->camera_x2();
 	const int y1 = players[player]->camera_y1();

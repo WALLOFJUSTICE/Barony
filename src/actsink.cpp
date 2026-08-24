@@ -113,7 +113,12 @@ void actSink(Entity* my)
 					messagePlayer(i, MESSAGE_INTERACTION, Language::get(580));
 					playSoundEntity(my, 140 + local_rng.rand() % 2, 64);
 				}
-				else
+				else if ( stats[i]->getEffectActive(EFF_CHOKING) )
+				{
+					messagePlayer(i, MESSAGE_INTERACTION, Language::get(7199));
+					//playSoundPlayer(i, 90, 64);
+				}
+				else if ( players[i] && players[i]->entity )
 				{
 					if ( players[i]->entity->flags[BURNING] )
 					{

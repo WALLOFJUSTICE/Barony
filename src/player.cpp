@@ -7556,6 +7556,11 @@ bool Player::PlayerMechanics_t::itemDegradeRoll(Item* item, int skillID, int* ch
 			default:
 				break;
 			}
+			if ( itemTypeIsFoci(item->type) || itemTypeIsInstrument(item->type) )
+			{
+				interval = 3 + item->status;
+			}
+
 			if ( item->beatitude < 0
 				&& !intro && !shouldInvertEquipmentBeatitude(stats[player.playernum]) )
 			{

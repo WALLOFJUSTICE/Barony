@@ -1816,6 +1816,44 @@ void actWaterPuddle(Entity* my)
 	{
 		if ( my->scalex <= 0.0 )
 		{
+			if ( multiplayer != CLIENT )
+			{
+				int x = my->x / 16.0;
+				int y = my->y / 16.0;
+				if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+				{
+					bool foundWater = false;
+					auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 0);
+					for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end() && !foundWater; ++it )
+					{
+						list_t* currentList = *it;
+						for ( node_t* node = currentList->first; node != nullptr; node = node->next )
+						{
+							Entity* entity = (Entity*)node->element;
+							if ( entity && entity->behavior == &actWaterPuddle && entity != my )
+							{
+								int x2 = entity->x / 16;
+								int y2 = entity->y / 16;
+								if ( x2 == x && y2 == y )
+								{
+									foundWater = true;
+									break;
+								}
+							}
+						}
+					}
+
+					if ( !foundWater )
+					{
+						if ( map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_WATER) )
+						{
+							map.tileAttributes[0 + (y * MAPLAYERS) + (x * MAPLAYERS * map.height)] &= ~map_t::TILE_ATTRIBUTE_WATER;
+							serverUpdateMapTileFlag(x, y, 0, 0, map_t::TILE_ATTRIBUTE_WATER);
+						}
+					}
+				}
+			}
+
 			list_RemoveNode(my->mynode);
 			return;
 		}
@@ -1836,6 +1874,17 @@ void actWaterPuddle(Entity* my)
 			my->scalex = std::min(my->scalex + diff, my->fskill[0]);
 		}
 		my->scalez = my->scalex;
+
+		if ( multiplayer != CLIENT )
+		{
+			int x = my->x / 16.0;
+			int y = my->y / 16.0;
+			if ( !map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_WATER) )
+			{
+				map.tileAttributes[0 + (y * MAPLAYERS) + (x * MAPLAYERS * map.height)] |= map_t::TILE_ATTRIBUTE_WATER;
+				serverUpdateMapTileFlag(x, y, 0, map_t::TILE_ATTRIBUTE_WATER, 0);
+			}
+		}
 	}
 }
 
@@ -1894,6 +1943,7 @@ void spawnWaterPuddle(Entity* parent, real_t x, real_t y, int duration, int loca
 		{
 			--entity_uids;
 		}
+		TileEntityList.addEntity(*entity);
 		entity->setUID(-3);
 	}
 }

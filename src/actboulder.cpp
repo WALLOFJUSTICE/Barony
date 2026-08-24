@@ -526,9 +526,10 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 										if ( numSummonedAllies == 0 )
 										{
 											firstManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
-											if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+											if ( mySummonStats->getAttribute("summon_overcharge") != "" )
 											{
-												firstManaToRefund /= 2;
+												int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
+												firstManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
 											}
 											++numSummonedAllies;
 										}
@@ -536,9 +537,10 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 										{
 											mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
 											secondManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
-											if ( mySummonStats->getAttribute("summon_overcharge") == "1" )
+											if ( mySummonStats->getAttribute("summon_overcharge") != "" )
 											{
-												secondManaToRefund /= 2;
+												int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
+												secondManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
 											}
 											++numSummonedAllies;
 											break;

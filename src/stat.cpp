@@ -669,6 +669,19 @@ Stat* Stat::copyStats()
 	newStat->GOLD = this->GOLD;
 	newStat->HUNGER = this->HUNGER;
 
+	newStat->RANDOM_STR = this->RANDOM_STR;
+	newStat->RANDOM_DEX = this->RANDOM_DEX;
+	newStat->RANDOM_CON = this->RANDOM_CON;
+	newStat->RANDOM_INT = this->RANDOM_INT;
+	newStat->RANDOM_PER = this->RANDOM_PER;
+	newStat->RANDOM_CHR = this->RANDOM_CHR;
+	newStat->RANDOM_MAXHP = this->RANDOM_MAXHP;
+	newStat->RANDOM_HP = this->RANDOM_HP;
+	newStat->RANDOM_MAXMP = this->RANDOM_MAXMP;
+	newStat->RANDOM_MP = this->RANDOM_MP;
+	newStat->RANDOM_LVL = this->RANDOM_LVL;
+	newStat->RANDOM_GOLD = this->RANDOM_GOLD;
+
 	for (c = 0; c < NUMPROFICIENCIES; c++)
 	{
 		newStat->PROFICIENCIES[c] = this->PROFICIENCIES[c];
@@ -950,8 +963,8 @@ int Stat::pickRandomEquippedItemToDegradeOnHit(Item** returnItem, bool excludeWe
 		|| itemCategory(shield) == SPELLBOOK
 		|| shield->type == TOOL_TINKERING_KIT
 		|| shield->type == TOOL_FRYING_PAN
-		|| itemTypeIsFoci(shield->type)
-		|| itemTypeIsInstrument(shield->type)
+		/*|| itemTypeIsFoci(shield->type)*/
+		/*|| itemTypeIsInstrument(shield->type)*/
 		|| shield->type == TOOL_DUCK )
 		 )
 	{
@@ -1826,6 +1839,7 @@ bool Stat::statusEffectRemovedByCureAilment(const int effect, Entity* my)
 		case EFF_DEGENERATION:
 		case EFF_DISPIRITED:
 		case EFF_ENFEEBLE:
+		case EFF_CHOKING:
 			return true;
 			break;
 		case EFF_DRUNK:

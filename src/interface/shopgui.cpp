@@ -154,10 +154,6 @@ bool getShopFreeSlot(const int player, list_t* shopInventory, Item* itemToSell, 
 
 void updateShopWindow(const int player)
 {
-	SDL_Rect pos;
-	node_t* node;
-	int c;
-
 	if ( player < 0 )
 	{
 		return;
@@ -206,7 +202,7 @@ void updateShopWindow(const int player)
 				}
 			}
 		}
-		for ( node = shopInv[player]->first; node != NULL; node = node->next )
+		for ( node_t* node = shopInv[player]->first; node != NULL; node = node->next )
 		{
 			Item* item = (Item*)node->element;
 			if ( item )

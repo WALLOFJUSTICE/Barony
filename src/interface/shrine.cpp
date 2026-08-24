@@ -9399,8 +9399,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			fx->actmagicSpellbookBonus = 0;
 			if ( tier >= 2 )
 			{
-				fx->actmagicSpellbookBonus += 90;
-				fx->actmagicSpellbookBonus += 180 * (tier - 1);
+				fx->actmagicSpellbookBonus += 90 * (tier - 1);
 			}
 			fx->actmagicFromSpellbook = 0;
 
@@ -9682,7 +9681,7 @@ bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrin
 			ItemType type = FOOD_SHROOM;
 			if ( rng.rand() % 2 == 0 )
 			{
-				type == FOOD_NUT;
+				type = FOOD_NUT;
 			}
 			items_list.push_back(newItem(
 				(ItemType)type,
@@ -9695,7 +9694,7 @@ bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrin
 			type = FOOD_SHROOM;
 			if ( rng.rand() % 2 == 0 )
 			{
-				type == FOOD_NUT;
+				type = FOOD_NUT;
 			}
 			items_list.push_back(newItem(
 				(ItemType)type,
@@ -9710,7 +9709,7 @@ bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrin
 			ItemType type = FOOD_SHROOM;
 			if ( rng.rand() % 2 == 0 )
 			{
-				type == FOOD_NUT;
+				type = FOOD_NUT;
 			}
 			items_list.push_back(newItem(
 				(ItemType)type,

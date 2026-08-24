@@ -12840,7 +12840,7 @@ void HUDDrawGameEndHint(const int player, SDL_Rect rect)
 			}
 			if ( auto textGet = Text::get(Language::get(6052), smallfont_outline, makeColorRGB(255, 255, 255), 0) )
 			{
-				Uint8 r, g, b, a;
+				Uint8 r, g, b;
 				getColor(hudColors.characterSheetRed, &r, &g, &b, nullptr);
 				real_t opacity = 0.5 + .4 * (1.0 * cos(players[player]->hud.animDeadPrompt * 2 * PI) + 1.0);
 				Uint32 color = makeColor(r, g, b, std::max(0.25, std::min(opacity, 1.0)) * 255);
@@ -43812,7 +43812,6 @@ void createSkillUpFrame(const int player)
 	auto skillsFrame = hud_t.skillupFrame->addFrame("skills");
 	skillsFrame->setDisabled(true);
 	skillsFrame->setHollow(true);
-	char name[32];
 	std::string font = "fonts/pixelmix.ttf#16#2";
 
 	auto skillFrame = skillsFrame->addFrame("skill");

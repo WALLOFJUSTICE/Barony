@@ -169,6 +169,7 @@ static const int EFF_DISPIRITED = 144;
 static const int EFF_ENFEEBLE = 145;
 static const int EFF_BURDENED = 146;
 static const int EFF_RESOLVE = 147;
+static const int EFF_CHOKING = 148;
 static const int NUMEFFECTS = 160;
 
 // stats
@@ -321,7 +322,8 @@ enum KilledBy {
 	MUSHROOM,
 	LEAVES,
 	DEATH_KNOCKBACK,
-	ETERNAL_SMITE
+	ETERNAL_SMITE,
+	WATER_CHOKING
 };
 
 class Stat

@@ -9465,6 +9465,9 @@ bind_failed:
 					case KilledBy::ETERNAL_SMITE:
 						cause_of_death = Language::get(7158);
 						break;
+					case KilledBy::WATER_CHOKING:
+						cause_of_death = Language::get(7191);
+						break;
 					default: 
 					{
 						cause_of_death = Language::get(5794 + (int)score->stats->killer);
@@ -27836,6 +27839,9 @@ failed:
 			break;
 		case KilledBy::ETERNAL_SMITE:
 			cause_of_death = Language::get(7158);
+			break;
+		case KilledBy::WATER_CHOKING:
+			cause_of_death = Language::get(7191);
 			break;
         default: {
             cause_of_death = Language::get(5794 + (int)stats[player]->killer);

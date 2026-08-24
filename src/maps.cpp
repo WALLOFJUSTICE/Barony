@@ -1409,6 +1409,253 @@ bool loadSubRoomData(std::string fullMapPath, list_t* mapList)
 	return true;
 }
 
+struct GroupSubRooms_t
+{
+	std::string rootMapFileName = "";
+	int count = 0;
+	std::vector<bool> possibleRooms;
+	list_t list;
+	std::map<int, GroupSubRooms_t> innerSubRooms;
+	GroupSubRooms_t()
+	{
+		list.first = nullptr;
+		list.last = nullptr;
+	}
+};
+
+int postProcessStaticGameMap(map_t* map)
+{
+	if ( !map ) { return -1; }
+
+	list_t mapList;
+	mapList.first = nullptr;
+	mapList.last = nullptr;
+
+	GroupSubRooms_t subRooms;
+
+	std::string mapFileName = map->filename;
+	if ( mapFileName.find(".lmp") != std::string::npos )
+	{
+		mapFileName.erase(mapFileName.begin() + mapFileName.find(".lmp"), mapFileName.end());
+	}
+
+	// load subrooms if found
+	for ( char letter = 'a'; letter <= 'z'; letter++ )
+	{
+		char subRoomName[128] = "";
+		snprintf(subRoomName, sizeof(subRoomName), "%s%c", mapFileName.c_str(), letter);
+
+		std::string fullMapPath = physfsFormatMapName(subRoomName);
+
+		if ( fullMapPath.empty() )
+		{
+			break;    // no more levels to load
+		}
+
+		printlog("[SUBMAP GENERATOR] Found map lv %s, count: %d", subRoomName, subRooms.count);
+
+		if ( loadSubRoomData(fullMapPath, &subRooms.list) )
+		{
+			++subRooms.count;
+		}
+	}
+
+	if ( subRooms.count <= 0 )
+	{
+		return -1;
+	}
+
+	struct SubmapSectors_t
+	{
+		int start_x = 0;
+		int start_y = 0;
+		int width = 0;
+		int height = 0;
+	};
+	std::vector<SubmapSectors_t> submapSectors;
+
+	for ( int z = 0; z < MAPLAYERS; z++ )
+	{
+		for ( int y0 = 0; y0 < map->height; y0++ )
+		{
+			for ( int x0 = 0; x0 < map->width; x0++ )
+			{
+				if ( map->tiles[z + (y0)*MAPLAYERS + (x0)*MAPLAYERS * map->height] == 201 )
+				{
+					bool skip = false;
+					for ( auto& sector : submapSectors )
+					{
+						// check existing sectors
+						if ( x0 >= sector.start_x && x0 < sector.start_x + sector.width && y0 >= sector.start_y && y0 < sector.start_y + sector.height )
+						{
+							skip = true;
+							break;
+						}
+					}
+					if ( skip ) { continue; }
+
+					auto& sector = submapSectors.emplace_back(SubmapSectors_t());
+					sector.start_x = x0;
+					sector.start_y = y0;
+					sector.width++;
+					sector.height++;
+
+					int y1 = y0;
+					while ( y1 < map->height )
+					{
+						++y1;
+						if ( map->tiles[z + (y1)*MAPLAYERS + (x0)*MAPLAYERS * map->height] == 201 )
+						{
+							sector.height++;
+						}
+						else
+						{
+							break;
+						}
+					}
+
+					while ( x0 < map->width )
+					{
+						x0++;
+						if ( map->tiles[z + (y0)*MAPLAYERS + (x0)*MAPLAYERS * map->height] == 201 )
+						{
+							sector.width++;
+						}
+						else
+						{
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	BaronyRNG rng;
+	rng.seedBytes(&mapseed, sizeof(mapseed));
+
+	for ( auto& sector : submapSectors )
+	{
+		std::vector<unsigned int> chances(subRooms.count, 0);
+		int index = -1;
+		bool anychances = false;
+		for ( node_t* node = subRooms.list.first; node; node = node->next )
+		{
+			++index;
+			if ( node->element )
+			{
+				if ( node_t* innerNode = ((list_t*)node->element)->first )
+				{
+					if ( map_t* innerMap = (map_t*)innerNode->element )
+					{
+						if ( innerMap->width == sector.width && innerMap->height == sector.height )
+						{
+							chances[index] = 1;
+							anychances = true;
+						}
+					}
+				}
+			}
+		}
+
+		if ( !anychances )
+		{
+			continue;
+		}
+
+		int pickSubRoom = rng.discrete(chances.data(), chances.size());
+		node_t* subRoomNode = subRooms.list.first;
+		{
+			int k = 0;
+			while ( 1 )
+			{
+				if ( k == pickSubRoom )
+				{
+					break;
+				}
+				subRoomNode = subRoomNode->next;
+				k++;
+			}
+		}
+		subRoomNode = ((list_t*)subRoomNode->element)->first;
+		map_t* subRoomMap = (map_t*)subRoomNode->element;
+		node_t* subRoomDoorNode = subRoomNode->next;
+		bool foundSubRoom = false;
+		int subRoom_tilex = 0;
+		int subRoom_tiley = 0;
+		int subRoom_tileStartx = -1;
+		int subRoom_tileStarty = -1;
+
+		for ( int z = 0; z < MAPLAYERS; z++ )
+		{
+			for ( int y0 = sector.start_y; y0 < sector.start_y + sector.height && y0 < map->height; y0++ )
+			{
+				for ( int x0 = sector.start_x; x0 < sector.start_x + sector.width && x0 < map->width; x0++ )
+				{
+					if ( map->tiles[z + (y0)*MAPLAYERS + (x0)*MAPLAYERS * map->height] == 201 )
+					{
+						if ( !foundSubRoom )
+						{
+							subRoom_tileStartx = x0;
+							subRoom_tileStarty = y0;
+							foundSubRoom = true;
+							char submapLogMsg[256] = "";
+							snprintf(submapLogMsg, sizeof(submapLogMsg),
+								"Picked level: %d from %d possible rooms in submap %s at x:%d y:%d", pickSubRoom + 1, subRooms.count, map->filename, x0, y0);
+							printlog(submapLogMsg);
+						}
+
+						map->tiles[z + y0 * MAPLAYERS + x0 * MAPLAYERS * map->height] = subRoomMap->tiles[z + (subRoom_tiley)*MAPLAYERS + (subRoom_tilex)*MAPLAYERS * subRoomMap->height];
+
+						++subRoom_tilex;
+						if ( subRoom_tilex >= subRoomMap->width )
+						{
+							subRoom_tilex = 0;
+							++subRoom_tiley;
+							if ( subRoom_tiley >= subRoomMap->height )
+							{
+								subRoom_tiley = 0;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if ( foundSubRoom )
+		{
+			// copy the entities from subroom
+			for ( subRoomNode = subRoomMap->entities->first; subRoomNode != nullptr; subRoomNode = subRoomNode->next )
+			{
+				Entity* entity = (Entity*)subRoomNode->element;
+				Entity* childEntity = newEntity(entity->sprite, 1, map->entities, nullptr);
+
+				// entity will return nullptr on getStats called in setSpriteAttributes as behaviour &actmonster is not set.
+				// check if the monster sprite is correct and set the behaviour manually for getStats.
+				if ( checkSpriteType(entity->sprite) == 1 && multiplayer != CLIENT )
+				{
+					entity->behavior = &actMonster;
+				}
+
+				setSpriteAttributes(childEntity, entity, entity);
+				childEntity->x = entity->x + subRoom_tileStartx * 16;
+				childEntity->y = entity->y + subRoom_tileStarty * 16;
+				childEntity->mapGenerationRoomX = subRoom_tileStartx;
+				childEntity->mapGenerationRoomY = subRoom_tileStarty;
+				if ( entity->behavior == &actMonster || entity->behavior == &actPlayer )
+				{
+					entity->addToCreatureList(map->creatures);
+				}
+				//messagePlayer(0, "1 Generated entity. Sprite: %d X: %.2f Y: %.2f", childEntity->sprite, childEntity->x / 16, childEntity->y / 16);
+			}
+		}
+	}
+
+	list_FreeAll(&subRooms.list);
+
+	return 1;
+}
+
 /*-------------------------------------------------------------------------------
 
 	generateDungeon
@@ -1429,7 +1676,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 	door_t* door, *newDoor;
 	bool* possiblelocations, *possiblelocations2;
 	bool* firstroomtile, *secretlevelexittile;
-	Sint32 numpossiblelocations, pickedlocation, subroomPickRoom;
+	Sint32 numpossiblelocations, pickedlocation;
 	Entity* entity, *entity2, *childEntity;
 	Uint32 levellimit;
 	list_t doorList;
@@ -1561,19 +1808,6 @@ int generateDungeon(char* levelset, Uint32 seed)
 	doorList.first = nullptr;
 	doorList.last = nullptr;
 
-	struct GroupSubRooms_t
-	{
-		std::string rootMapFileName = "";
-		int count = 0;
-		std::vector<bool> possibleRooms;
-		list_t list;
-		std::map<int, GroupSubRooms_t> innerSubRooms;
-		GroupSubRooms_t()
-		{
-			list.first = nullptr;
-			list.last = nullptr;
-		}
-	};
 	GroupSubRooms_t shopSubRooms;
 	enum TreasureRoomTypes : int
 	{
@@ -2036,6 +2270,39 @@ int generateDungeon(char* levelset, Uint32 seed)
 			possiblerooms[c] = true;
 		}
 		levellimit = (map.width * map.height);
+
+
+		if ( secretlevelexit )
+		{
+			secretlevelmap.tiles = nullptr;
+			secretlevelmap.entities = (list_t*)malloc(sizeof(list_t));
+			secretlevelmap.entities->first = nullptr;
+			secretlevelmap.entities->last = nullptr;
+			secretlevelmap.creatures = new list_t;
+			secretlevelmap.creatures->first = nullptr;
+			secretlevelmap.creatures->last = nullptr;
+			secretlevelmap.worldUI = nullptr;
+			std::string fullMapPath = physfsFormatMapName(levelData.node.secret_exit.filename.c_str());
+			if ( fullMapPath.empty() || loadMap(fullMapPath.c_str(), &secretlevelmap, secretlevelmap.entities, secretlevelmap.creatures, &checkMapHash) == -1 )
+			{
+				list_FreeAll(secretlevelmap.entities);
+				free(secretlevelmap.entities);
+				list_FreeAll(secretlevelmap.creatures);
+				delete secretlevelmap.creatures;
+				if ( secretlevelmap.tiles )
+				{
+					free(secretlevelmap.tiles);
+				}
+				secretlevelmap.width = 0;
+				secretlevelmap.height = 0;
+			}
+			if ( !verifyMapHash(fullMapPath.c_str(), checkMapHash) )
+			{
+				conductGameChallenges[CONDUCT_MODDED] = 1;
+				Mods::disableSteamAchievements = true;
+			}
+		}
+
 		for ( int c = 0; c < levellimit; c++ )
 		{
 			// reset array of possible locations for the current room
@@ -2067,32 +2334,6 @@ int generateDungeon(char* levelset, Uint32 seed)
 			}
 			else if ( c == 1 && secretlevelexit )
 			{
-				secretlevelmap.tiles = nullptr;
-				secretlevelmap.entities = (list_t*) malloc(sizeof(list_t));
-				secretlevelmap.entities->first = nullptr;
-				secretlevelmap.entities->last = nullptr;
-				secretlevelmap.creatures = new list_t;
-				secretlevelmap.creatures->first = nullptr;
-				secretlevelmap.creatures->last = nullptr;
-				secretlevelmap.worldUI = nullptr;
-				std::string fullMapPath = physfsFormatMapName(levelData.node.secret_exit.filename.c_str());
-				if ( fullMapPath.empty() || loadMap(fullMapPath.c_str(), &secretlevelmap, secretlevelmap.entities, secretlevelmap.creatures, &checkMapHash) == -1 )
-				{
-					list_FreeAll(secretlevelmap.entities);
-					free(secretlevelmap.entities);
-					list_FreeAll(secretlevelmap.creatures);
-					delete secretlevelmap.creatures;
-					if ( secretlevelmap.tiles )
-					{
-						free(secretlevelmap.tiles);
-					}
-				}
-				if (!verifyMapHash(fullMapPath.c_str(), checkMapHash))
-				{
-					conductGameChallenges[CONDUCT_MODDED] = 1;
-					Mods::disableSteamAchievements = true;
-				}
-
 				levelnum = 0;
 				levelnum2 = -1;
 				tempMap = &secretlevelmap;
@@ -2200,6 +2441,12 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 			bool hellGenerationFix = !strncmp(map.name, "Hell", 4) && !MFLAG_GENADJACENTROOMS;
 
+			// test boundaries
+			int limit_left = (std::max(2, getMapPossibleLocationX1()));
+			int limit_right = (std::min(getMapPossibleLocationX2(), (int)map.width - 3));
+			int limit_up = (std::max(2, getMapPossibleLocationY1()));
+			int limit_down = (std::min(getMapPossibleLocationY2(), (int)map.height - 3));
+
 			for ( int y0 = 0; y0 < map.height; y0++ )
 			{
 				for ( int x0 = 0; x0 < map.width; x0++ )
@@ -2217,8 +2464,48 @@ int generateDungeon(char* levelset, Uint32 seed)
 							}
 						}
 					}
+					if ( c == 0 && secretlevelexit )
+					{
+						// check secret level exit might not fit with start room
+						if ( possiblelocations2[x0 + y0 * map.width] == true )
+						{
+							if ( secretlevelmap.width > 0 && secretlevelmap.height > 0 )
+							{
+								bool left = false;
+								bool right = false;
+								bool up = false;
+								bool down = false;
+								if ( x0 - limit_left >= secretlevelmap.width )
+								{
+									// allowed left
+									left = true;
+								}
+								if ( x0 + tempMap->width - 1 + secretlevelmap.width <= limit_right )
+								{
+									// allowed right
+									right = true;
+								}
+								if ( y0 - limit_up >= secretlevelmap.height )
+								{
+									// allowed up
+									up = true;
+								}
+								if ( y0 + tempMap->height - 1 + secretlevelmap.height <= limit_down )
+								{
+									// allowed down
+									down = true;
+								}
+								if ( !left && !up && !right && !down )
+								{
+									possiblelocations2[x0 + y0 * map.width] = false;
+									numpossiblelocations--;
+								}
+							}
+						}
+					}
 				}
 			}
+
 
 			// in case no locations are available, remove this room from the selection
 			if ( ((c == 1 && !secretlevelexit) || (c == 3 && secretlevelexit)) && treasureRoomLevel)
@@ -2872,19 +3159,21 @@ int generateDungeon(char* levelset, Uint32 seed)
 					free(shopmap.tiles);
 				}
 			}
-			if ( secretlevelexit && c == 1 )
-			{
-				list_FreeAll(secretlevelmap.entities);
-				free(secretlevelmap.entities);
-				list_FreeAll(secretlevelmap.creatures);
-				delete secretlevelmap.creatures;
-				if ( secretlevelmap.tiles )
-				{
-					free(secretlevelmap.tiles);
-				}
-			}
 			++roomcount;
 		}
+
+		if ( secretlevelexit )
+		{
+			list_FreeAll(secretlevelmap.entities);
+			free(secretlevelmap.entities);
+			list_FreeAll(secretlevelmap.creatures);
+			delete secretlevelmap.creatures;
+			if ( secretlevelmap.tiles )
+			{
+				free(secretlevelmap.tiles);
+			}
+		}
+
 		list_FreeAll(&shopSubRooms.list);
 		for ( int i = 0; i < TreasureRoomTypes::TREASURE_ROOM_MAX; ++i )
 		{
@@ -4071,6 +4360,13 @@ int generateDungeon(char* levelset, Uint32 seed)
 	{
 		forcedMonsterSpawns = genMonsterMin + map_rng.rand() % std::max(genMonsterMax - genMonsterMin, 1);
 	}
+
+	if ( levelData.id == "underworld2_1"
+		|| levelData.id == "underworld2_2" )
+	{
+		forcedMonsterSpawns += 5;
+	}
+
 	if ( genLootMin > 0 || genLootMax > 0 )
 	{
 		forcedLootSpawns = genLootMin + map_rng.rand() % std::max(genLootMax - genLootMin, 1);
@@ -7130,7 +7426,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 			KEY_GEN_ENUM_END
 		};
 
-		std::vector<Entity*> goodEntities[KEY_GEN_ENUM_END];
+		std::vector<std::pair<Entity*, int>> goodEntities[KEY_GEN_ENUM_END]; // entity then tile distance
 		std::set<int> itemEntityCoords;
 		std::vector<unsigned int> chances = { 4, 3, 6 };
 		if ( svFlags & SV_FLAG_CHEATS )
@@ -7205,15 +7501,15 @@ int generateDungeon(char* levelset, Uint32 seed)
 					&& !(x >= startRoomInfo.x1 && x <= startRoomInfo.x2
 						&& y >= startRoomInfo.y1 && y <= startRoomInfo.y2) ) // check floor, dont spawn in treasure room, shop, or start area
 				{
-					goodEntities[entityType].push_back(entity2);
+					goodEntities[entityType].push_back({ entity2, 1 });
 				}
 			}
 		}
 
 		for ( auto it = goodEntities[KEY_GEN_TABLE_PODIUM].begin(); it != goodEntities[KEY_GEN_TABLE_PODIUM].end(); )
 		{
-			int x = static_cast<int>((*it)->x / 16);
-			int y = static_cast<int>((*it)->y / 16);
+			int x = static_cast<int>((*it).first->x / 16);
+			int y = static_cast<int>((*it).first->y / 16);
 
 			if ( itemEntityCoords.find(x + 10000 * y) != itemEntityCoords.end() ) // item already exists on this tile
 			{
@@ -7279,6 +7575,38 @@ int generateDungeon(char* levelset, Uint32 seed)
 				//	}
 				//}
 
+				int key_x = generateKeyItems.front().second % 10000;
+				int key_y = generateKeyItems.front().second / 10000;
+				for ( auto& entities : goodEntities )
+				{
+					for ( auto& pair : entities )
+					{
+						int tileWeight = 1;
+
+						real_t dx = (key_x * 16.0 + 8.0) - pair.first->x;
+						real_t dy = (key_y * 16.0 + 8.0) - pair.first->y;
+						real_t dist = sqrt(dx * dx + dy * dy) / 16.0;
+
+						if ( dist < 5 )
+						{
+							tileWeight = 5;
+						}
+						else if ( dist < 10 )
+						{
+							tileWeight = 5;
+						}
+						else if ( dist < 15 )
+						{
+							tileWeight = 3;
+						}
+						else
+						{
+							tileWeight = 1;
+						}
+						pair.second = tileWeight;
+					}
+				}
+
 				for ( int c = 0; c < KEY_GEN_ENUM_END; ++c )
 				{
 					if ( chances[c] > 0 )
@@ -7298,8 +7626,16 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 				chances = previousChances;
 
-				int pick = map_rng.rand() % entities.size();
-				Entity* ent = entities[pick];
+				std::vector<unsigned int> entities_chances(entities.size(), 1);
+				int index = -1;
+				for ( auto pair : entities )
+				{
+					++index;
+					entities_chances[index] = pair.second;
+				}
+
+				int pick = map_rng.discrete(entities_chances.data(), entities_chances.size());
+				Entity* ent = entities[pick].first;
 				entities.erase(entities.begin() + pick);
 				if ( entities.empty() )
 				{
