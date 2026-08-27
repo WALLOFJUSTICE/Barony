@@ -1656,19 +1656,23 @@ bool sokobanManMove(Entity* sokobanman, int diffx, int diffy, std::vector<std::p
 	int check_x = x + diffx;
 	int check_y = y + diffy;
 
+	if ( x < 0 || x > map.width - 1 || y < 0 || y > map.height - 1 )
+	{
+		return false;
+	}
 	int floor = map.tiles[0 + y * MAPLAYERS + x * MAPLAYERS * map.height];
 	int wall = map.tiles[1 + y * MAPLAYERS + x * MAPLAYERS * map.height];
 	if ( !floor || wall ) { return false; }
 
 	auto isWall = [](int x, int y) {
-		if ( x <= 0 || x >= map.width - 1 || y <= 0 || y >= map.height - 1 )
+		if ( x < 0 || x > map.width - 1 || y < 0 || y > map.height - 1 )
 		{
 			return true;
 		}
 		return map.tiles[1 + y * MAPLAYERS + x * MAPLAYERS * map.height] != 0;
 	};
 	auto anyFloor = [](int x, int y) {
-		if ( x <= 0 || x >= map.width - 1 || y <= 0 || y >= map.height - 1 )
+		if ( x < 0 || x > map.width - 1 || y < 0 || y > map.height - 1 )
 		{
 			return false;
 		}
@@ -2700,6 +2704,7 @@ int main(int argc, char** argv)
 			}
 
 			static bool sokobanManMode = false;
+			static int sokobanMoves = 0;
 			{
 				std::vector<std::pair<Entity*, SDL_Rect>> sokobanModeEntities;
 				Entity* sokobanMan = nullptr;
@@ -2724,12 +2729,22 @@ int main(int argc, char** argv)
 								int y = entity->y / 16;
 								sokobanModeEntities.emplace_back(entity, SDL_Rect{ x, y, 0, 0 });
 							}
-							else if ( entity->sprite != 4 && entity->sprite != 5 && entity->sprite != 6
-								&& entity->sprite != 7 )
+							else
 							{
-								int x = entity->x / 16;
-								int y = entity->y / 16;
-								sokobanModeEntities.emplace_back(entity, SDL_Rect{ x, y, 0, 0 });
+								if ( entity->sprite < spriteEditorNameStrings.size() )
+								{
+									if ( entity->sprite != 4 && entity->sprite != 5 && entity->sprite != 6
+										&& entity->sprite != 7 && entity->sprite != 8 && entity->sprite != 9
+										&& entity->sprite != 119 && entity->sprite != 19 && entity->sprite != 20 )
+									{
+										if ( spriteEditorNameStrings[entity->sprite].second != "mech" )
+										{
+											int x = entity->x / 16;
+											int y = entity->y / 16;
+											sokobanModeEntities.emplace_back(entity, SDL_Rect{ x, y, 0, 0 });
+										}
+									}
+								}
 							}
 						}
 					}
@@ -2758,6 +2773,11 @@ int main(int argc, char** argv)
 					clearUndos(sokoban_undolist, sokoban_undospot, sokoban_redospot);
 				}
 
+				if ( !sokobanManMode )
+				{
+					sokobanMoves = 0;
+				}
+
 				if ( sokobanManMode && !subwindow )
 				{
 					if ( keystatus[SDLK_w] || keystatus[SDLK_UP] )
@@ -2766,6 +2786,7 @@ int main(int argc, char** argv)
 						keystatus[SDLK_UP] = 0;
 						if ( sokobanManMove(sokobanMan, 0, -1, sokobanModeEntities) )
 						{
+							++sokobanMoves;
 							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
 						}
 					}
@@ -2775,6 +2796,7 @@ int main(int argc, char** argv)
 						keystatus[SDLK_DOWN] = 0;
 						if ( sokobanManMove(sokobanMan, 0, 1, sokobanModeEntities) )
 						{
+							++sokobanMoves;
 							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
 						}
 					}
@@ -2784,6 +2806,7 @@ int main(int argc, char** argv)
 						keystatus[SDLK_LEFT] = 0;
 						if ( sokobanManMove(sokobanMan, -1, 0, sokobanModeEntities) )
 						{
+							++sokobanMoves;
 							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
 						}
 					}
@@ -2793,6 +2816,7 @@ int main(int argc, char** argv)
 						keystatus[SDLK_RIGHT] = 0;
 						if ( sokobanManMove(sokobanMan, 1, 0, sokobanModeEntities) )
 						{
+							++sokobanMoves;
 							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
 						}
 					}
@@ -3135,6 +3159,10 @@ int main(int argc, char** argv)
 			{
 				drawWindowFancy(0, yres - 16, xres, yres);
 				printTextFormatted(font8x8_bmp, 4, yres - 12, "X: %4d Y: %4d Z: %d %s", drawx, drawy, drawlayer + 1, layerstatus);
+				if ( sokobanManMode )
+				{
+					printTextFormatted(font8x8_bmp, 300, yres - 12, "Sokoban Moves: %d", sokobanMoves);
+				}
 				if ( messagetime )
 				{
 					printText(font8x8_bmp, xres - 8 * (strlen(message)) - 12, yres - 12, message);

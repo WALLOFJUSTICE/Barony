@@ -405,7 +405,9 @@ Sint32 doorFrameSprite() {
     if (stringStr(map.name, "Bram", sizeof(map_t::name), 4)) {
         return 1169;
     }
-    if (stringStr(map.name, "Underworld", sizeof(map_t::name), 10)) {
+    if (stringStr(map.name, "Underworld", sizeof(map_t::name), 10) 
+		|| !strncmp(map.filename, "penitentiary", 12) 
+		|| !strncmp(map.filename, "void", 4) ) {
         return 1169;
     }
 	if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "bastille", 8) ) {

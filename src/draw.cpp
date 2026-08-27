@@ -3355,8 +3355,10 @@ void drawEntities2D(long camx, long camy, map_t& destmap)
 
 					}
 				}
-				else if ( (omousex / TEXTURESIZE) * 32 == pos.x
-						&& (omousey / TEXTURESIZE) * 32 == pos.y
+				else if ( /*(omousex / TEXTURESIZE) * 32 == pos.x -- can sometimes miss the sprite if camera y all the way down
+						&& (omousey / TEXTURESIZE) * 32 == pos.y*/
+						((omousex + camx) >> TEXTUREPOWER) == entity->x / 16
+						&& ((omousey + camy) >> TEXTUREPOWER) == entity->y / 16
 						&& selectedEntity[0] == NULL
 						&& entity->sprite < spriteEditorNameStrings.size()
 						&& hovertext
