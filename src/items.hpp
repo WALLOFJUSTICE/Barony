@@ -782,6 +782,7 @@ class ItemGeneric
 {
 	std::string item_name_identified;      // identified item name
 	std::string item_name_unidentified;    // unidentified item name
+	int level;					// item level for random generation
 public:
 	int index;                  // world model
 	int indexShort;				// short mob world model
@@ -792,12 +793,22 @@ public:
 	list_t images;              // item image filenames (inventory)
 	list_t surfaces;            // item image surfaces (inventory)
 	Category category;          // item category
-	int level;					// item level for random generation
+	enum ItemRealms
+	{
+		REALM_NONE,
+		MORTAL,
+		ETERNAL,
+		HELL
+	};
+	std::map<ItemRealms, int> realmLevels;
 	// equip slot that item can go in
 	ItemEquippableSlot item_slot = ItemEquippableSlot::NO_EQUIP;
 	std::map<std::string, Sint32> attributes;
 	std::string tooltip = "tooltip_default";
 
+	int getItemCurveLevel(ItemRealms realm);
+	int getItemLevel() { return level; }
+	void setItemLevel(int _level) { level = _level; }
 	const char* getIdentifiedName() const { return item_name_identified.c_str(); }
 	const char* getUnidentifiedName() const { return item_name_unidentified.c_str(); }
 	void setIdentifiedName(std::string name) { item_name_identified = name; }
@@ -875,7 +886,7 @@ void item_ToolLootBag(Item*& item, int player);
 //General functions.
 Item* newItem(ItemType type, Status status, Sint16 beatitude, Sint16 count, Uint32 appearance, bool identified, list_t* inventory);
 Item* uidToItem(Uint32 uid);
-ItemType itemLevelCurveEntity(Entity& my, Category cat, int minLevel, int maxLevel, BaronyRNG& rng);
+ItemType itemLevelCurveEntity(Entity& my, Category cat, int minLevel, int maxLevel, BaronyRNG& rng, std::vector<std::pair<std::string, int>>* spawnModifiers = nullptr);
 bool itemLevelCurvePostProcess(Entity* my, Item* item, BaronyRNG& rng, 
 #ifdef EDITOR
 	int itemLevel = 0
@@ -884,7 +895,8 @@ bool itemLevelCurvePostProcess(Entity* my, Item* item, BaronyRNG& rng,
 #endif
 	, int* lastItemType = nullptr, int* lastItemSpellType = nullptr
 );
-ItemType itemLevelCurve(Category cat, int minLevel, int maxLevel, BaronyRNG& rng);
+ItemType itemLevelCurve(Category cat, int minLevel, int maxLevel, BaronyRNG& rng, std::vector<std::pair<std::string, int>>* spawnModifiers = nullptr);
+int levelCurveComboItemSets(std::vector<unsigned int>& chances, ItemType baseItem, const int minLevel, const int maxLevel, ItemGeneric::ItemRealms realm, std::set<ItemType>& excludes, std::vector<std::pair<std::string, int>>* spawnModifiers = nullptr);
 Item* newItemFromEntity(const Entity* entity, bool discardUid = false); //Make sure to call free(item). discardUid will free the new items uid if this is for temp purposes
 Entity* dropItemMonster(Item* item, Entity* monster, Stat* monsterStats, Sint16 count = 1);
 Item** itemSlot(Stat* myStats, Item* item);

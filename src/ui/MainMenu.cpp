@@ -36678,7 +36678,7 @@ failed:
 						std::string name = items[id].getIdentifiedName();
 						camelCaseString(name);
 						char buf[128];
-						if ( items[id].level >= 0 )
+						if ( items[id].getItemLevel() >= 0 )
 						{
 							if ( items[id].category == SPELLBOOK )
 							{
@@ -36712,7 +36712,7 @@ failed:
 							}
 							else
 							{
-								snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), items[id].level);
+								snprintf(buf, sizeof(buf), "\n%s %d", Language::get(6173), items[id].getItemLevel());
 							}
 						}
 						else

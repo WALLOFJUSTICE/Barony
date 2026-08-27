@@ -44,6 +44,7 @@ button_t* butToolbox;
 button_t* butStatusBar;
 button_t* butAllLayers;
 button_t* butHoverText;
+button_t* butSubmapPreview;
 button_t* butViewSprites;
 button_t* butGrid;
 button_t* but3DMode;
@@ -253,7 +254,7 @@ void buttonTilePalette(button_t* my)
 
 void buttonSprite(button_t* my)
 {
-	makeUndo();
+	makeUndo(undolist, undospot, redospot);
 	spritepalette = 1;
 }
 
@@ -456,7 +457,7 @@ void buttonNew(button_t* my)
 void buttonNewConfirm(button_t* my)
 {
 	int x, y, z, c;
-	clearUndos();
+	clearUndos(undolist, undospot, redospot);
 	free(map.tiles);
 	free(camera.vismap);
 	list_FreeAll(map.entities);
@@ -840,40 +841,6 @@ void buttonOpenDirectory(button_t* my)
 	updateModFolderNames();
 }
 
-void buttonOpenConfirm(button_t* my)
-{
-	int c, c2;
-	clearUndos();
-	strcpy(oldfilename, filename);
-	strcpy(message, "");
-	for ( c = 0; c < 32; c++ )
-	{
-		if (filename[c] == 0)
-		{
-			break;
-		}
-	}
-	/*for ( c2 = 0; c2 < 32 - c; c2++ )
-	{
-		strcat(message, " ");
-	}*/
-	std::string fullMapName = physfsFormatMapName(filename);
-	printlog("opening map file '%s'...\n", fullMapName.c_str());
-	if (loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr) == -1)
-	{
-		strcat(message, "Failed to open ");
-		strcat(message, filename);
-	}
-	else
-	{
-		strcat(message, "Opened '");
-		strcat(message, filename);
-		strcat(message, "'");
-	}
-	messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
-	buttonCloseSubwindow(my);
-}
-
 void buttonSave(button_t* my)
 {
 	int c, c2;
@@ -1036,7 +1003,7 @@ void buttonPaste(button_t* my)
 void buttonDelete(button_t* my)
 {
 	menuVisible = 0;
-	makeUndo();
+	makeUndo(undolist, undospot, redospot);
 
 	// delete the selected entity, if there is one
 	if ( selectedEntity[0] != NULL)
@@ -1117,13 +1084,13 @@ void buttonSelectAll(button_t* my)
 void buttonUndo(button_t* my)
 {
 	menuVisible = 0;
-	undo();
+	undo(undolist, undospot, redospot);
 }
 
 void buttonRedo(button_t* my)
 {
 	menuVisible = 0;
-	redo();
+	redo(undolist, undospot, redospot);
 }
 
 // View menu
@@ -1354,7 +1321,7 @@ void buttonAttributesConfirm(button_t* my)
 {
 	int x, y, z, c;
 	map_t mapcopy;
-	makeUndo();
+	makeUndo(undolist, undospot, redospot);
 
 	// make a copy of the current map
 	mapcopy.width = map.width;
@@ -1568,7 +1535,7 @@ void buttonClearMap(button_t* my)
 void buttonClearMapConfirm(button_t* my)
 {
 	long x, y, z;
-	makeUndo();
+	makeUndo(undolist, undospot, redospot);
 	for ( z = 0; z < MAPLAYERS; z++ )
 	{
 		for ( y = 0; y < map.height; y++ )
@@ -1753,7 +1720,7 @@ void buttonCloseSubwindow(button_t* my)
 	strcpy(filename, oldfilename);
 }
 
-void buttonOpenNextMap(button_t* my)
+void buttonOpenNextMap(button_t* my, std::string include_prefix)
 {
 	buttonCloseSubwindow(my);
 	
@@ -1781,6 +1748,15 @@ void buttonOpenNextMap(button_t* my)
 					{
 						f.erase(find, strlen(".lmp"));
 					}
+
+					if ( include_prefix != "" && (f == include_prefix || f.find(include_prefix) == std::string::npos) )
+					{
+						// end of submap list
+						strcpy(message, "Unable to open next map, end of matching submap list while previewing");
+						messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
+						return;
+					}
+
 					strcpy(filename, f.c_str());
 					buttonOpenConfirm(my);
 					return;
@@ -1797,7 +1773,7 @@ void buttonOpenNextMap(button_t* my)
 	messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
 }
 
-void buttonOpenPrevMap(button_t* my)
+void buttonOpenPrevMap(button_t* my, std::string include_prefix)
 {
 	buttonCloseSubwindow(my);
 
@@ -1825,6 +1801,14 @@ void buttonOpenPrevMap(button_t* my)
 					{
 						f.erase(find, strlen(".lmp"));
 					}
+					if ( include_prefix != "" && (f == include_prefix || f.find(include_prefix) == std::string::npos) )
+					{
+						// end of submap list
+						strcpy(message, "Unable to open prev map, first of matching submap list while previewing");
+						messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
+						return;
+					}
+
 					strcpy(filename, f.c_str());
 					buttonOpenConfirm(my);
 					return;
@@ -2655,6 +2639,21 @@ void buttonSpriteProperties(button_t* my)
 				suby1 = yres / 2 - 60;
 				suby2 = yres / 2 + 60;
 				strcpy(subtext, "Floor Builder Properties:");
+				break;
+			case 41:
+			case 42:
+			case 43:
+				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->workStationDir));
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				newwindow = 45;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				strcpy(subtext, "Station Properties:");
 				break;
 			default:
 				strcpy(message, "No properties available for current sprite.");
@@ -3826,6 +3825,11 @@ void buttonSpritePropertiesConfirm(button_t* my)
 			case 40: //floor builder
 				selectedEntity[0]->actFloorBuilderTile = (Sint32)atoi(spriteProperties[0]);
 				break;
+			case 41: // cauldron
+			case 42: // workbench
+			case 43: // mailbox
+				selectedEntity[0]->workStationDir = (Sint32)atoi(spriteProperties[0]);
+				break;
 			default:
 				break;
 		}
@@ -3848,7 +3852,7 @@ void buttonSpritePropertiesConfirm(button_t* my)
 	{
 		if ( my == butMonsterOK )
 		{
-			makeUndo();
+			makeUndo(undolist, undospot, redospot);
 		}
 		buttonCloseSpriteSubwindow(my);
 	}

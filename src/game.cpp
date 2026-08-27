@@ -1180,13 +1180,14 @@ void gameLogic(void)
 		fadealpha = std::max(0, fadealpha - 10);
 	}
 
-	static ConsoleVariable<int> cvar_net_packet_tick("/net_packet_tick", 4);
+	static ConsoleVariable<int> cvar_net_packet_tick("/net_packet_tick", 50); // was 4
 	static ConsoleVariable<int> cvar_net_packet_retry("/net_packet_retry", MAXTRIES);
-	static ConsoleVariable<int> cvar_net_packet_delete("/net_packet_delete", MAXDELETES);
+	static ConsoleVariable<int> cvar_net_packet_delete("/net_packet_delete", 100); // was 2 / MAXDELETES
 	static ConsoleVariable<bool> cvar_net_packet_debug("/net_packet_debug", false);
+	static ConsoleVariable<bool> cvar_net_packet_reliable_clear("/net_packet_reliable_clear", false);
 
 	// handle safe packets
-	if ( (ticks % std::max(1, *cvar_net_packet_tick) == 0) )
+	if ( (ticks % 4 == 0) )
 	{
 		int j = 0;
 		for ( node = safePacketsSent.first; node != nullptr; node = nextnode )
@@ -1195,8 +1196,22 @@ void gameLogic(void)
 
 			packetsend_t* packet = (packetsend_t*)node->element;
 			//printlog("Packet resend: %d", packet->hostnum);
+			if ( packet->sentTick >= ticks )
+			{
+				continue; // packet too new
+			}
+			if ( ticks - packet->sentTick <= *cvar_net_packet_tick )
+			{
+				continue; // packet too new
+			}
+			if ( packet->reliable && *cvar_net_packet_reliable_clear )
+			{
+				list_RemoveNode(node); // no need to send again
+				continue;
+			}
 			sendPacket(packet->sock, packet->channel, packet->packet, packet->hostnum, true);
 			packet->tries++;
+			packet->sentTick = ticks + packet->tries * TICKS_PER_SECOND; // add another delay before re-send
 
 			if ( *cvar_net_packet_debug )
 			{

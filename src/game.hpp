@@ -63,6 +63,8 @@ typedef struct packetsend_t
 	int num;
 	int tries;
 	int hostnum;
+	Uint32 sentTick = 0;
+	bool reliable = false;
 } packetsend_t;
 extern list_t safePacketsSent;
 extern std::unordered_map<int, Uint32> safePacketsReceivedMap[MAXPLAYERS];

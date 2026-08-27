@@ -936,6 +936,21 @@ void ItemTooltips_t::readItemsFromFile()
 		t.gold = item_itr->value["gold_value"].GetInt();
 		t.weight = item_itr->value["weight_value"].GetInt();
 		t.itemLevel = item_itr->value["item_level"].GetInt();
+		if ( item_itr->value.HasMember("item_realm_level") )
+		{
+			if ( item_itr->value["item_realm_level"].HasMember("mortal") )
+			{
+				t.itemRealms.emplace_back(std::make_pair("mortal", item_itr->value["item_realm_level"]["mortal"].GetInt()));
+			}
+			if ( item_itr->value["item_realm_level"].HasMember("eternal") )
+			{
+				t.itemRealms.emplace_back(std::make_pair("eternal", item_itr->value["item_realm_level"]["eternal"].GetInt()));
+			}
+			if ( item_itr->value["item_realm_level"].HasMember("hell") )
+			{
+				t.itemRealms.emplace_back(std::make_pair("hell", item_itr->value["item_realm_level"]["hell"].GetInt()));
+			}
+		}
 		t.category = item_itr->value["item_category"].GetString();
 		t.equipSlot = item_itr->value["equip_slot"].GetString();
 
@@ -1016,13 +1031,18 @@ void ItemTooltips_t::readItemsFromFile()
 		"EFF_SHIELD_THORNS",
 		"EFF_SHIELD_THORNS_MOD",
 		"MAGICSTAFF_CHARGE",
-		"EFF_SKILL_MAGICSTAFF"
+		"EFF_SKILL_MAGICSTAFF",
+		"EQUIP_GROUP",
+		"UNIQUE_GROUP",
+		"CLOTHING_GROUP",
+		"MATERIAL",
+		"ITEM_MISC_LEVEL"
 	};
 
 	for ( int i = 0; i < NUMITEMS && i < itemsRead; ++i )
 	{
 		assert(i == tmpItems[i].itemId);
-		items[i].level = tmpItems[i].itemLevel;
+		items[i].setItemLevel(tmpItems[i].itemLevel);
 		items[i].gold_value = tmpItems[i].gold;
 		items[i].weight = tmpItems[i].weight;
 		items[i].fpindex = tmpItems[i].fpIndex;
@@ -1164,10 +1184,33 @@ void ItemTooltips_t::readItemsFromFile()
 			items[i].item_slot = ItemEquippableSlot::EQUIPPABLE_IN_SLOT_HELM;
 		}
 
+		items[i].realmLevels.clear();
+		for ( auto& realm : tmpItems[i].itemRealms )
+		{
+			if ( realm.first == "mortal" )
+			{
+				items[i].realmLevels[ItemGeneric::ItemRealms::MORTAL] = realm.second;
+				hash += (Uint32)((Uint32)(ItemGeneric::ItemRealms::MORTAL + 1) << (shift % 32)); ++shift;
+				hash += (Uint32)((Uint32)realm.second << (shift % 32)); ++shift;
+			}
+			if ( realm.first == "eternal" )
+			{
+				items[i].realmLevels[ItemGeneric::ItemRealms::ETERNAL] = realm.second;
+				hash += (Uint32)((Uint32)(ItemGeneric::ItemRealms::ETERNAL + 1) << (shift % 32)); ++shift;
+				hash += (Uint32)((Uint32)realm.second << (shift % 32)); ++shift;
+			}
+			if ( realm.first == "hell" )
+			{
+				items[i].realmLevels[ItemGeneric::ItemRealms::HELL] = realm.second;
+				hash += (Uint32)((Uint32)(ItemGeneric::ItemRealms::HELL + 1) << (shift % 32)); ++shift;
+				hash += (Uint32)((Uint32)realm.second << (shift % 32)); ++shift;
+			}
+		}
+
 		hash += (Uint32)((Uint32)items[i].item_slot << (shift % 32)); ++shift;
 		hash += (Uint32)((Uint32)items[i].weight << (shift % 32)); ++shift;
 		hash += (Uint32)((Uint32)items[i].gold_value << (shift % 32)); ++shift;
-		hash += (Uint32)((Uint32)items[i].level << (shift % 32)); ++shift;
+		hash += (Uint32)((Uint32)items[i].getItemLevel() << (shift % 32)); ++shift;
 
 		for ( auto& str : hashedAttributes )
 		{
@@ -20424,10 +20467,43 @@ void GameLevels_t::readFromFile()
 			{
 				data.node.save_img = (*arr_it)["save_img"].GetString();
 			}
+			data.node.itemRealm = ItemGeneric::ItemRealms::MORTAL;
+			if ( arr_it->HasMember("item_realm") && (*arr_it)["item_realm"].IsString() )
+			{
+				std::string str = (*arr_it)["item_realm"].GetString();
+				if ( str == "eternal" )
+				{
+					data.node.itemRealm = ItemGeneric::ItemRealms::ETERNAL;
+				}
+				else if ( str == "hell" )
+				{
+					data.node.itemRealm = ItemGeneric::ItemRealms::HELL;
+				}
+			}
 			levelData[data.id] = data;
 			allLevels[data.level_track][data.depth] = data.id;
 		}
 	}
+}
+
+ItemGeneric::ItemRealms GameLevels_t::getCurrentMapItemRealm(const int current_level, const SecretLevelType secret_level)
+{
+	ItemGeneric::ItemRealms realm = ItemGeneric::ItemRealms::REALM_NONE;
+	auto find1 = gameLevels.allLevels.find((int)secretleveltype);
+	if ( find1 != gameLevels.allLevels.end() )
+	{
+		auto find2 = find1->second.find(currentlevel);
+		if ( find2 != find1->second.end() )
+		{
+			auto find3 = gameLevels.levelData.find(find2->second);
+			if ( find3 != gameLevels.levelData.end() )
+			{
+				realm = find3->second.node.itemRealm;
+			}
+		}
+	}
+
+	return realm;
 }
 
 std::string GameLevels_t::getIDFromStage(const int current_level, const SecretLevelType secret_level) const
@@ -20451,7 +20527,7 @@ GameLevels_t::LevelData_t GameLevels_t::getCurrentMap(const int current_level, c
 	auto find1 = levelData.find(currentStage);
 
 	LevelData_t data;
-	const  std::string defaultString = std::string("default" + std::to_string((int)current_secret_level));
+	const std::string defaultString = std::string("default" + std::to_string((int)current_secret_level));
 	if ( levelData.find(defaultString) != levelData.end() )
 	{
 		data = levelData.at(defaultString);

@@ -85,6 +85,8 @@ bool messagePlayer(int player, Uint32 type, char const * const message, ...) {re
 bool itemTypeIsFoci(const ItemType type) { return false; } // dummy
 
 map_t copymap;
+std::pair<int, int> submapPrevisCoords;
+map_t submapPrevisMap;
 
 int errorMessage = 0;
 int errorArr[12] =
@@ -237,6 +239,12 @@ char eternalShrinePropertyNames[1][19] =
 {
 	"Direction (-1 - 3)"
 };
+
+char workStationPropertyNames[1][19] =
+{
+	"Direction (-1 - 3)"
+};
+
 
 char floorBuilderPropertyNames[1][20] =
 {
@@ -1130,17 +1138,26 @@ void editFill(int x, int y, int layer, int type)
 
 #define MAXUNDOS 10
 
+node_t* sokoban_undospot = nullptr;
+node_t* sokoban_redospot = nullptr;
+list_t sokoban_undolist;
+
 node_t* undospot = nullptr;
 node_t* redospot = nullptr;
 list_t undolist;
-void makeUndo()
+void makeUndo(list_t& list, node_t*& undo_spot, node_t*& redo_spot)
 {
+	if ( &list == &undolist )
+	{
+		clearUndos(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+	}
+
 	node_t* node, *nextnode;
 
 	// eliminate any undo nodes beyond the one we are currently on
-	if ( undospot != nullptr )
+	if ( undo_spot != nullptr )
 	{
-		for ( node = undospot->next; node != nullptr; node = nextnode )
+		for ( node = undo_spot->next; node != nullptr; node = nextnode )
 		{
 			nextnode = node->next;
 			list_RemoveNode(node);
@@ -1148,9 +1165,9 @@ void makeUndo()
 	}
 	else
 	{
-		if ( redospot )
+		if ( redo_spot )
 		{
-			list_FreeAll(&undolist);
+			list_FreeAll(&list);
 		}
 	}
 
@@ -1180,25 +1197,47 @@ void makeUndo()
 		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, undomap->entities, nullptr);
 
 		setSpriteAttributes(entity, (Entity*)node->element, (Entity*)node->element);
+		if ( &list == &sokoban_undolist )
+		{
+			entity->flags[INVISIBLE] = ((Entity*)node->element)->flags[INVISIBLE];
+		}
 	}
 
 	// add the new node to the undo list
-	node = list_AddNodeLast(&undolist);
+	node = list_AddNodeLast(&list);
 	node->element = undomap;
 	node->deconstructor = &mapDeconstructor;
-	if ( list_Size(&undolist) > MAXUNDOS + 1 )
+
+	int maxUndos = MAXUNDOS;
+	if ( &list == &sokoban_undolist )
 	{
-		list_RemoveNode(undolist.first);
+		maxUndos = 500;
 	}
-	undospot = node;
-	redospot = nullptr;
+	if ( list_Size(&list) > maxUndos + 1 )
+	{
+		list_RemoveNode(list.first);
+	}
+	undo_spot = node;
+	redo_spot = nullptr;
 }
 
-void clearUndos()
+void clearUndos(list_t& list, node_t*& undo_spot, node_t*& redo_spot)
 {
-	list_FreeAll(&undolist);
-	undospot = nullptr;
-	redospot = nullptr;
+	if ( &list == &undolist )
+	{
+		clearUndos(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+	}
+	else if ( &list == &sokoban_undolist )
+	{
+		while ( sokoban_undospot && sokoban_undospot->prev )
+		{
+			undo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+		}
+	}
+
+	list_FreeAll(&list);
+	undo_spot = nullptr;
+	redo_spot = nullptr;
 }
 
 /*-------------------------------------------------------------------------------
@@ -1209,23 +1248,40 @@ void clearUndos()
 
 -------------------------------------------------------------------------------*/
 
-void undo()
+void undo(list_t& list, node_t*& undo_spot, node_t*& redo_spot)
 {
+	if ( &list == &undolist )
+	{
+		clearUndos(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+	}
+
 	node_t* node;
-	if ( undospot == NULL )
+	if ( undo_spot == NULL )
 	{
 		return;
 	}
 	selectedEntity[0] = NULL;
-	if ( undospot == undolist.last )
+	if ( &list == &sokoban_undolist )
 	{
-		node_t* tempnode = undospot;
-		makeUndo();
-		undospot = tempnode;
+		if ( undo_spot->prev == nullptr )
+		{
+			return;
+		}
+		undo_spot = undo_spot->prev;
+		// no extra copies as below branch
+	}
+	else
+	{
+		if ( undo_spot == list.last )
+		{
+			node_t* tempnode = undo_spot;
+			makeUndo(list, undo_spot, redo_spot);
+			undo_spot = tempnode;
+		}
 	}
 	free(map.tiles);
 	free(camera.vismap);
-	map_t* undomap = (map_t*)undospot->element;
+	map_t* undomap = (map_t*)undo_spot->element;
 	map.width = undomap->width;
 	map.height = undomap->height;
 	map.tiles = (Sint32*) malloc(sizeof(Sint32) * map.width * map.height * MAPLAYERS);
@@ -1238,30 +1294,52 @@ void undo()
 		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, map.entities, nullptr);
 
 		setSpriteAttributes(entity, (Entity*)node->element, (Entity*)node->element);
+		if ( &list == &sokoban_undolist )
+		{
+			entity->flags[INVISIBLE] = ((Entity*)node->element)->flags[INVISIBLE];
+		}
 	}
-	if ( redospot != NULL )
+
+	if ( &list == &undolist )
 	{
-		redospot = redospot->prev;
+		if ( redo_spot != NULL )
+		{
+			redo_spot = redo_spot->prev;
+		}
+		else
+		{
+			redo_spot = undo_spot->next;
+		}
+		undo_spot = undo_spot->prev;
 	}
-	else
+	else if ( &list == &sokoban_undolist )
 	{
-		redospot = undospot->next;
+		node_t* nextnode = nullptr;
+		for ( node = undo_spot->next; node != nullptr; node = nextnode )
+		{
+			nextnode = node->next;
+			list_RemoveNode(node);
+		}
 	}
-	undospot = undospot->prev;
 }
 
-void redo()
+void redo(list_t& list, node_t*& undo_spot, node_t*& redo_spot)
 {
+	if ( &list == &undolist )
+	{
+		clearUndos(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+	}
+
 	node_t* node;
 
-	if ( redospot == NULL )
+	if ( redo_spot == NULL )
 	{
 		return;
 	}
 	selectedEntity[0] = NULL;
 	free(map.tiles);
 	free(camera.vismap);
-	map_t* undomap = (map_t*)redospot->element;
+	map_t* undomap = (map_t*)redo_spot->element;
 	map.width = undomap->width;
 	map.height = undomap->height;
 	map.tiles = (Sint32*) malloc(sizeof(Sint32) * map.width * map.height * MAPLAYERS);
@@ -1274,16 +1352,20 @@ void redo()
 		Entity* entity = newEntity(((Entity*)node->element)->sprite, 1, map.entities, nullptr);
 
 		setSpriteAttributes(entity, (Entity*)node->element, (Entity*)node->element);
+		if ( &list == &sokoban_undolist )
+		{
+			entity->flags[INVISIBLE] = ((Entity*)node->element)->flags[INVISIBLE];
+		}
 	}
-	if ( undospot != NULL )
+	if ( undo_spot != NULL )
 	{
-		undospot = undospot->next;
+		undo_spot = undo_spot->next;
 	}
 	else
 	{
-		undospot = redospot->prev;
+		undo_spot = redo_spot->prev;
 	}
-	redospot = redospot->next;
+	redo_spot = redo_spot->next;
 }
 
 void processCommandLine(int argc, char** argv)
@@ -1566,6 +1648,101 @@ void updateRecentTileList(int tile)
 	return;
 }
 
+bool sokobanManMove(Entity* sokobanman, int diffx, int diffy, std::vector<std::pair<Entity*, SDL_Rect>>& entities)
+{
+	int x = sokobanman->x / 16;
+	int y = sokobanman->y / 16;
+
+	int check_x = x + diffx;
+	int check_y = y + diffy;
+
+	int floor = map.tiles[0 + y * MAPLAYERS + x * MAPLAYERS * map.height];
+	int wall = map.tiles[1 + y * MAPLAYERS + x * MAPLAYERS * map.height];
+	if ( !floor || wall ) { return false; }
+
+	auto isWall = [](int x, int y) {
+		if ( x <= 0 || x >= map.width - 1 || y <= 0 || y >= map.height - 1 )
+		{
+			return true;
+		}
+		return map.tiles[1 + y * MAPLAYERS + x * MAPLAYERS * map.height] != 0;
+	};
+	auto anyFloor = [](int x, int y) {
+		if ( x <= 0 || x >= map.width - 1 || y <= 0 || y >= map.height - 1 )
+		{
+			return false;
+		}
+		return map.tiles[0 + y * MAPLAYERS + x * MAPLAYERS * map.height] != 0;
+	};
+
+	if ( isWall(check_x, check_y) || !anyFloor(check_x, check_y) )
+	{
+		// wall
+		return false;
+	}
+
+	if ( entities.size() == 0 ) { return true; }
+
+	std::pair<Entity*, SDL_Rect> toPush = { nullptr, SDL_Rect{} };
+	bool freeSpacePush = true;
+	for ( auto& pair : entities )
+	{
+		Entity* ent = pair.first;
+		auto& coord = pair.second;
+		if ( coord.x == check_x && coord.y == check_y )
+		{
+			if ( ent->sprite == 44 ) // boulder
+			{
+				toPush.first = ent;
+				toPush.second = coord;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else if ( coord.x == check_x + diffx && coord.y == check_y + diffy )
+		{
+			if ( !ent->flags[INVISIBLE] )
+			{
+				freeSpacePush = false;
+			}
+		}
+	}
+
+	if ( isWall(check_x + diffx, check_y + diffy) )
+	{
+		// wall ahead
+		freeSpacePush = false;
+	}
+
+	if ( toPush.first && freeSpacePush )
+	{
+		toPush.first->x += diffx * 16.0;
+		toPush.first->y += diffy * 16.0;
+		if ( !anyFloor(check_x + diffx, check_y + diffy) )
+		{
+			toPush.first->flags[INVISIBLE] = true;
+		}
+		sokobanman->x += diffx * 16.0;
+		sokobanman->y += diffy * 16.0;
+
+		return true;
+	}
+
+	if ( toPush.first )
+	{
+		return false;
+	}
+
+	sokobanman->x += diffx * 16.0;
+	sokobanman->y += diffy * 16.0;
+
+	return true;
+}
+
+void buttonSubmapPreview(button_t* my);
+
 /*-------------------------------------------------------------------------------
 
 	main
@@ -1694,8 +1871,17 @@ int main(int argc, char** argv)
 	copymap.entities = nullptr;
 	copymap.creatures = nullptr;
 	copymap.worldUI = nullptr;
+	submapPrevisMap.tiles = nullptr;
+	submapPrevisMap.entities = (list_t*)malloc(sizeof(list_t));
+	submapPrevisMap.entities->first = nullptr;
+	submapPrevisMap.entities->last = nullptr;
+	submapPrevisMap.creatures = nullptr;
+	submapPrevisMap.worldUI = nullptr;
+	memset(submapPrevisMap.filename, 0, sizeof(submapPrevisMap.filename));
 	undolist.first = nullptr;
 	undolist.last = nullptr;
+	sokoban_undolist.first = nullptr;
+	sokoban_undolist.last = nullptr;
 
 	// Load Cursors
 	cursorArrow = SDL_GetCursor();
@@ -2069,6 +2255,15 @@ int main(int argc, char** argv)
 	button->action = &buttonHoverText;
 	button->visible = 0;
 
+	butSubmapPreview = button = newButton();
+	strcpy(button->label, "Submap View     F7");
+	button->x = 96;
+	button->y = 112 + 16;
+	button->sizex = 152;
+	button->sizey = 16;
+	button->action = &buttonSubmapPreview;
+	button->visible = 0;
+
 	// map menu
 	butAttributes = button = newButton();
 	strcpy(button->label, "Attributes ...  Ctrl+M      ");
@@ -2219,7 +2414,7 @@ int main(int argc, char** argv)
 			}
 			else if ( menuVisible == 3 )
 			{
-				if ((omousex > 96 + butToolbox->sizex || omousex < 80 || omousey > 128 || (omousey < 16 && omousex > 192)) && mousestatus[SDL_BUTTON_LEFT])
+				if ((omousex > 96 + butToolbox->sizex || omousex < 80 || omousey > 144 || (omousey < 16 && omousex > 192)) && mousestatus[SDL_BUTTON_LEFT])
 				{
 					menuVisible = 0;
 					menuDisappear = 1;
@@ -2294,7 +2489,7 @@ int main(int argc, char** argv)
 									if ( selectedEntity[0]->x / 16 != prev_x || selectedEntity[0]->y / 16 != prev_y || duplicatedSprite )
 									{
 										duplicatedSprite = false;
-										makeUndo();
+										makeUndo(undolist, undospot, redospot);
 									}
 								}
 								mousestatus[SDL_BUTTON_LEFT] = 0;
@@ -2308,7 +2503,7 @@ int main(int argc, char** argv)
 									// if previous sprite was duplicated and another right click is registered, store an undo.
 									if ( duplicatedSprite )
 									{
-										makeUndo();
+										makeUndo(undolist, undospot, redospot);
 									}
 									duplicatedSprite = true;
 								}
@@ -2338,7 +2533,7 @@ int main(int argc, char** argv)
 									mousestatus[SDL_BUTTON_LEFT] = 0;
 									if ( newwindow == 0 && selectedEntity[0] != NULL )
 									{
-										makeUndo();
+										makeUndo(undolist, undospot, redospot);
 									}
 								}
 								else if ( mousestatus[SDL_BUTTON_RIGHT] && selectedTool == 1 )
@@ -2347,7 +2542,7 @@ int main(int argc, char** argv)
 									duplicatedSprite = true;
 									if ( newwindow == 0 )
 									{
-										makeUndo();
+										makeUndo(undolist, undospot, redospot);
 									}
 									selectedEntity[0] = newEntity(entity->sprite, 0, map.entities, nullptr);
 									lastSelectedEntity[0] = selectedEntity[0];
@@ -2369,7 +2564,7 @@ int main(int argc, char** argv)
 						if ( !savedundo )
 						{
 							savedundo = true;
-							makeUndo();
+							makeUndo(undolist, undospot, redospot);
 						}
 						if ( !pasting )   // Not Pasting, Normal Editing Mode
 						{
@@ -2504,17 +2699,143 @@ int main(int argc, char** argv)
 				SDL_SetCursor(cursorArrow);
 			}
 
+			static bool sokobanManMode = false;
+			{
+				std::vector<std::pair<Entity*, SDL_Rect>> sokobanModeEntities;
+				Entity* sokobanMan = nullptr;
+				for ( node = map.entities->first; node != NULL; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( entity->sprite == 317 ) // sokoban mode
+						{
+							if ( !sokobanMan )
+							{
+								sokobanMan = entity;
+								node = map.entities->first;
+								sokobanModeEntities.clear();
+							}
+						}
+						else if ( sokobanMan )
+						{
+							if ( entity->sprite == 44 )
+							{
+								int x = entity->x / 16;
+								int y = entity->y / 16;
+								sokobanModeEntities.emplace_back(entity, SDL_Rect{ x, y, 0, 0 });
+							}
+							else if ( entity->sprite != 4 && entity->sprite != 5 && entity->sprite != 6
+								&& entity->sprite != 7 )
+							{
+								int x = entity->x / 16;
+								int y = entity->y / 16;
+								sokobanModeEntities.emplace_back(entity, SDL_Rect{ x, y, 0, 0 });
+							}
+						}
+					}
+				}
+
+				if ( sokobanMan )
+				{
+					if ( selectedEntity[0] )
+					{
+						sokobanManMode = false;
+					}
+					if ( list_Size(&sokoban_undolist) == 0 )
+					{
+						sokobanManMode = false;
+					}
+					if ( sokobanManMode == false && !selectedEntity[0] )
+					{
+						clearUndos(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+						makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+						sokobanManMode = true;
+					}
+				}
+				else
+				{
+					sokobanManMode = false;
+					clearUndos(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+				}
+
+				if ( sokobanManMode && !subwindow )
+				{
+					if ( keystatus[SDLK_w] || keystatus[SDLK_UP] )
+					{
+						keystatus[SDLK_w] = 0;
+						keystatus[SDLK_UP] = 0;
+						if ( sokobanManMove(sokobanMan, 0, -1, sokobanModeEntities) )
+						{
+							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+						}
+					}
+					else if ( keystatus[SDLK_s] || keystatus[SDLK_DOWN] )
+					{
+						keystatus[SDLK_s] = 0;
+						keystatus[SDLK_DOWN] = 0;
+						if ( sokobanManMove(sokobanMan, 0, 1, sokobanModeEntities) )
+						{
+							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+						}
+					}
+					else if ( keystatus[SDLK_a] || keystatus[SDLK_LEFT] )
+					{
+						keystatus[SDLK_a] = 0;
+						keystatus[SDLK_LEFT] = 0;
+						if ( sokobanManMove(sokobanMan, -1, 0, sokobanModeEntities) )
+						{
+							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+						}
+					}
+					else if ( keystatus[SDLK_d] || keystatus[SDLK_RIGHT] )
+					{
+						keystatus[SDLK_d] = 0;
+						keystatus[SDLK_RIGHT] = 0;
+						if ( sokobanManMove(sokobanMan, 1, 0, sokobanModeEntities) )
+						{
+							makeUndo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+						}
+					}
+					else if ( keystatus[SDLK_r] )
+					{
+						keystatus[SDLK_r] = 0;
+						undo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+					}
+					else if ( keystatus[SDLK_q] )
+					{
+						keystatus[SDLK_q] = 0;
+						while ( sokoban_undospot && sokoban_undospot->prev )
+						{
+							undo(sokoban_undolist, sokoban_undospot, sokoban_redospot);
+						}
+					}
+				}
+			}
+
 			// main drawing
 			drawClearBuffers();
 			if ( mode3d == false )
 			{
+				std::string submapFilename = submapPrevisMap.filename;
+				if ( submapFilename.find(".lmp") != std::string::npos )
+				{
+					submapFilename.erase(submapFilename.begin() + submapFilename.find(".lmp"), submapFilename.end());
+				}
 				if ( alllayers )
 					for (c = 0; c <= drawlayer; c++)
 					{
+						if ( strcmp(submapPrevisMap.filename, "") && strstr(map.filename, submapFilename.c_str()) )
+						{
+							drawLayer(camx - submapPrevisCoords.first, camy - submapPrevisCoords.second, c, &submapPrevisMap);
+						}
 						drawLayer(camx, camy, c, &map);
 					}
 				else
 				{
+					if ( strcmp(submapPrevisMap.filename, "") && strstr(map.filename, submapFilename.c_str()) )
+					{
+						drawLayer(camx - submapPrevisCoords.first, camy - submapPrevisCoords.second, drawlayer, &submapPrevisMap);
+					}
 					drawLayer(camx, camy, drawlayer, &map);
 				}
 				if ( pasting )
@@ -2531,11 +2852,94 @@ int main(int argc, char** argv)
 				}
 				if ( viewsprites )
 				{
-					drawEntities2D(camx, camy);
+					if ( strcmp(submapPrevisMap.filename, "") && strstr(map.filename, submapFilename.c_str()) )
+					{
+						drawEntities2D(camx - submapPrevisCoords.first, camy - submapPrevisCoords.second, submapPrevisMap);
+					}
+					drawEntities2D(camx, camy, map);
 				}
+
+				if ( sokobanManMode )
+				{
+					for ( int x = 0; x < map.width; ++x )
+					{
+						for ( int y = 0; y < map.height; ++y )
+						{
+							if ( map.tiles[1 + y * MAPLAYERS + x * MAPLAYERS * map.height] )
+							{
+								// walls
+								SDL_Rect pos;
+								pos.x = (x << TEXTUREPOWER) - camx;
+								pos.y = (y << TEXTUREPOWER) - camy;
+								pos.w = (1) << TEXTUREPOWER;
+								pos.h = (1) << TEXTUREPOWER;
+
+								SDL_Rect boxPos;
+								boxPos.x = pos.x;
+								boxPos.y = pos.y;
+								boxPos.w = pos.w;
+								boxPos.h = pos.h;
+
+								drawRect(&boxPos, makeColorRGB(255, 0, 0), 128);
+							}
+							else if ( !map.tiles[0 + y * MAPLAYERS + x * MAPLAYERS * map.height] )
+							{
+								SDL_Rect pos;
+								pos.x = (x << TEXTUREPOWER) - camx;
+								pos.y = (y << TEXTUREPOWER) - camy;
+								pos.w = (1) << TEXTUREPOWER;
+								pos.h = (1) << TEXTUREPOWER;
+
+								SDL_Rect boxPos;
+								boxPos.x = pos.x;
+								boxPos.y = pos.y;
+								boxPos.w = pos.w;
+								boxPos.h = pos.h;
+
+								drawRect(&boxPos, makeColorRGB(0, 255, 0), 128);
+							}
+						}
+					}
+				}
+
 				if ( showgrid )
 				{
 					drawGrid(camx, camy);
+
+					if ( strcmp(submapPrevisMap.filename, "") && strstr(map.filename, submapFilename.c_str()) )
+					{
+						// red outline
+						Uint32 color = makeColorRGB(255, 0, 0);
+						drawLine(-camx, 
+							(map.height << TEXTUREPOWER) - camy, 
+							(map.width << TEXTUREPOWER) - camx, 
+							(map.height << TEXTUREPOWER) - camy, color, 255);
+						drawLine((map.width << TEXTUREPOWER) - camx, 
+							-camy, 
+							(map.width << TEXTUREPOWER) - camx, 
+							(map.height << TEXTUREPOWER) - camy, color, 255);
+						drawLine(-camx, 
+							-camy, 
+							(map.width << TEXTUREPOWER) - camx, 
+							-camy, color, 255);
+						drawLine(-camx,
+							-camy,
+							-camx,
+							(map.height << TEXTUREPOWER) - camy, color, 255);
+						/*for ( int y = 0; y < map.height; y++ )
+						{
+							x = 0;
+							{
+								drawLine((x << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, ((x + 1) << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, color, 255);
+								drawLine((x << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, (x << TEXTUREPOWER) - camx, ((y + 1) << TEXTUREPOWER) - camy, color, 255);
+							}
+							x = map.width - 1;
+							{
+								drawLine((x << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, ((x + 1) << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, color, 255);
+								drawLine((x << TEXTUREPOWER) - camx, (y << TEXTUREPOWER) - camy, (x << TEXTUREPOWER) - camx, ((y + 1) << TEXTUREPOWER) - camy, color, 255);
+							}
+						}*/
+					}
 				}
 			}
 			else
@@ -2780,11 +3184,12 @@ int main(int argc, char** argv)
 			}
 			if ( menuVisible == 3 )
 			{
-				drawWindowFancy(80, 16, 96, 128);
+				drawWindowFancy(80, 16, 96, 144);
 				butToolbox->visible = 1;
 				butStatusBar->visible = 1;
 				butAllLayers->visible = 1;
 				butHoverText->visible = 1;
+				butSubmapPreview->visible = 1;
 				butViewSprites->visible = 1;
 				butGrid->visible = 1;
 				but3DMode->visible = 1;
@@ -2823,6 +3228,7 @@ int main(int argc, char** argv)
 				butStatusBar->visible = 0;
 				butAllLayers->visible = 0;
 				butHoverText->visible = 0;
+				butSubmapPreview->visible = 0;
 				butViewSprites->visible = 0;
 				butGrid->visible = 0;
 				but3DMode->visible = 0;
@@ -9728,6 +10134,101 @@ int main(int argc, char** argv)
 						}
 					}
 				}
+				else if ( newwindow >= 45 )
+				{
+					if ( selectedEntity[0] != nullptr )
+					{
+						int numProperties = sizeof(workStationPropertyNames) / sizeof(workStationPropertyNames[0]); //find number of entries in property list
+						const int lenProperties = sizeof(workStationPropertyNames[0]) / sizeof(char); //find length of entry in property list
+						int spacing = 36; // 36 px between each item in the list.
+						int inputFieldHeader_y = suby1 + 28; // 28 px spacing from subwindow start.
+						int inputField_x = subx1 + 8; // 8px spacing from subwindow start.
+						int inputField_y = inputFieldHeader_y + 16;
+						int inputFieldWidth = 64; // width of the text field
+						int inputFieldFeedback_x = inputField_x + inputFieldWidth + 8;
+						char tmpPropertyName[lenProperties] = "";
+						Uint32 color = makeColorRGB(0, 255, 0);
+						Uint32 colorRandom = makeColorRGB(0, 168, 255);
+						Uint32 colorError = makeColorRGB(255, 0, 0);
+
+						for ( int i = 0; i < numProperties; i++ )
+						{
+							int propertyInt = atoi(spriteProperties[i]);
+
+							strcpy(tmpPropertyName, workStationPropertyNames[i]);
+							inputFieldHeader_y = suby1 + 28 + i * spacing;
+							inputField_y = inputFieldHeader_y + 16;
+							// box outlines then text
+							drawDepressed(inputField_x - 4, inputField_y - 4, inputField_x - 4 + inputFieldWidth, inputField_y + 16 - 4);
+							// print values on top of boxes
+							printText(font8x8_bmp, inputField_x, suby1 + 44 + i * spacing, spriteProperties[i]);
+							printText(font8x8_bmp, inputField_x, inputFieldHeader_y, tmpPropertyName);
+
+							if ( errorArr[i] != 1 )
+							{
+								if ( i == 0 )
+								{
+									if ( propertyInt > 3 || propertyInt < -1 )
+									{
+										propertyPageError(i, 0); // reset to default 0.
+									}
+									else
+									{
+										char tmpStr[32] = "";
+										switch ( propertyInt )
+										{
+										case -1:
+											strcpy(tmpStr, "random");
+											break;
+										case 0:
+											strcpy(tmpStr, "East");
+											break;
+										case 1:
+											strcpy(tmpStr, "South");
+											break;
+										case 2:
+											strcpy(tmpStr, "West");
+											break;
+										case 3:
+											strcpy(tmpStr, "North");
+											break;
+										default:
+											break;
+										}
+										printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tmpStr);
+									}
+								}
+								else
+								{
+									// enter other row entries here
+								}
+							}
+
+							if ( errorMessage )
+							{
+								if ( errorArr[i] == 1 )
+								{
+									printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, colorError, "Invalid ID!");
+								}
+							}
+						}
+
+						propertyPageTextAndInput(numProperties, inputFieldWidth);
+
+						if ( editproperty < numProperties )   // edit
+						{
+							if ( !SDL_IsTextInputActive() )
+							{
+								SDL_StartTextInput();
+								inputstr = spriteProperties[0];
+							}
+
+							// set the maximum length allowed for user input
+							inputlen = 3;
+							propertyPageCursorFlash(spacing);
+						}
+					}
+				}
 				else if ( newwindow == 16 || newwindow == 17 )
 				{
 					int textColumnLeft = subx1 + 16;
@@ -10282,7 +10783,7 @@ int main(int argc, char** argv)
 					{
 						keystatus[SDLK_DOWN] = 0;
 						// move entities
-						makeUndo();
+						makeUndo(undolist, undospot, redospot);
 						if ( selectedarea_y2 < map.height - 1 )
 						{
 							for ( std::vector<Entity*>::iterator it = groupedEntities.begin(); it != groupedEntities.end(); ++it )
@@ -10301,7 +10802,7 @@ int main(int argc, char** argv)
 					{
 						keystatus[SDLK_UP] = 0;
 						// move entities
-						makeUndo();
+						makeUndo(undolist, undospot, redospot);
 						if ( selectedarea_y1 > 0 )
 						{
 							for ( std::vector<Entity*>::iterator it = groupedEntities.begin(); it != groupedEntities.end(); ++it )
@@ -10320,7 +10821,7 @@ int main(int argc, char** argv)
 					{
 						keystatus[SDLK_LEFT] = 0;
 						// move entities
-						makeUndo();
+						makeUndo(undolist, undospot, redospot);
 						if ( selectedarea_x1 > 0 )
 						{
 							for ( std::vector<Entity*>::iterator it = groupedEntities.begin(); it != groupedEntities.end(); ++it )
@@ -10339,7 +10840,7 @@ int main(int argc, char** argv)
 					{
 						keystatus[SDLK_RIGHT] = 0;
 						// move entities
-						makeUndo();
+						makeUndo(undolist, undospot, redospot);
 						if ( selectedarea_x2 < map.width - 1 )
 						{
 							for ( std::vector<Entity*>::iterator it = groupedEntities.begin(); it != groupedEntities.end(); ++it )
@@ -10370,6 +10871,11 @@ int main(int argc, char** argv)
 				{
 					keystatus[SDLK_F1] = 0;
 					buttonAbout(NULL);
+				}
+				if ( keystatus[SDLK_F7] )
+				{
+					keystatus[SDLK_F7] = 0;
+					buttonSubmapPreview(NULL);
 				}
 				if ( keystatus[SDLK_h] )
 				{
@@ -10409,7 +10915,7 @@ int main(int argc, char** argv)
 				if ( keystatus[SDLK_F2] )
 				{
 					keystatus[SDLK_F2] = 0;
-					makeUndo();
+					makeUndo(undolist, undospot, redospot);
 					buttonSpriteProperties(NULL);
 				}
 				if ( keystatus[SDLK_KP_7] )
@@ -10528,12 +11034,41 @@ int main(int argc, char** argv)
 				if ( keystatus[SDLK_F5] )
 				{
 					keystatus[SDLK_F5] = 0;
-					buttonOpenPrevMap(nullptr);
+					bool restrict_submaps = false;
+					std::string submapFilename = submapPrevisMap.filename;
+					if ( submapFilename.find(".lmp") != std::string::npos )
+					{
+						submapFilename.erase(submapFilename.begin() + submapFilename.find(".lmp"), submapFilename.end());
+					}
+					if ( strcmp(submapPrevisMap.filename, "") && strstr(map.filename, submapFilename.c_str()) && strcmp(map.filename, submapPrevisMap.filename) )
+					{
+						buttonOpenPrevMap(nullptr, submapFilename);
+						memset(submapPrevisMap.filename, 0, sizeof(submapPrevisMap.filename));
+						buttonSubmapPreview(nullptr);
+					}
+					else
+					{
+						buttonOpenPrevMap(nullptr, "");
+					}
 				}
 				if ( keystatus[SDLK_F8] )
 				{
 					keystatus[SDLK_F8] = 0;
-					buttonOpenNextMap(nullptr);
+					std::string submapFilename = submapPrevisMap.filename;
+					if ( submapFilename.find(".lmp") != std::string::npos )
+					{
+						submapFilename.erase(submapFilename.begin() + submapFilename.find(".lmp"), submapFilename.end());
+					}
+					if ( strcmp(submapPrevisMap.filename, "") && strstr(map.filename, submapFilename.c_str()) && strcmp(map.filename, submapPrevisMap.filename) )
+					{
+						buttonOpenNextMap(nullptr, submapFilename);
+						memset(submapPrevisMap.filename, 0, sizeof(submapPrevisMap.filename));
+						buttonSubmapPreview(nullptr);
+					}
+					else
+					{
+						buttonOpenNextMap(nullptr, "");
+					}
 				}
 			}
 			// process and draw buttons
@@ -10989,7 +11524,39 @@ int main(int argc, char** argv)
 	{
 		free(copymap.tiles);
 	}
+	{
+		list_FreeAll(submapPrevisMap.entities);
+		if ( submapPrevisMap.entities )
+		{
+			free(submapPrevisMap.entities);
+			submapPrevisMap.entities = nullptr;
+		}
+		list_FreeAll(submapPrevisMap.creatures);
+
+		if ( submapPrevisMap.trapexcludelocations )
+		{
+			free(submapPrevisMap.trapexcludelocations);
+			submapPrevisMap.trapexcludelocations = nullptr;
+		}
+		if ( submapPrevisMap.monsterexcludelocations )
+		{
+			free(submapPrevisMap.monsterexcludelocations);
+			submapPrevisMap.monsterexcludelocations = nullptr;
+		}
+		if ( submapPrevisMap.lootexcludelocations )
+		{
+			free(submapPrevisMap.lootexcludelocations);
+			submapPrevisMap.lootexcludelocations = nullptr;
+		}
+		if ( submapPrevisMap.tiles != nullptr )
+		{
+			free(submapPrevisMap.tiles);
+			submapPrevisMap.tiles = nullptr;
+		}
+	}
+
 	list_FreeAll(&undolist);
+	list_FreeAll(&sokoban_undolist);
 	saveTilePalettes();
     for (int c = 0; c < sizeof(view_t::fb) / sizeof(view_t::fb[0]); ++c) {
         camera.fb[c].destroy();
@@ -11067,4 +11634,227 @@ void reselectEntityGroup()
 int generateDungeon(char* levelset, Uint32 seed)
 {
 	return 0; // dummy function
+}
+
+void buttonSubmapPreview(button_t* my)
+{
+	struct SubmapSectors_t
+	{
+		int start_x = 0;
+		int start_y = 0;
+		int width = 0;
+		int height = 0;
+	};
+	static int sectorIndex = -1;
+	if ( !strcmp(submapPrevisMap.filename, "") )
+	{
+		sectorIndex = -1;
+	}
+	memset(submapPrevisMap.filename, 0, sizeof(submapPrevisMap.filename));
+
+	std::string filename = map.filename;
+	if ( filename.find(".lmp") != std::string::npos )
+	{
+		filename.erase(filename.begin() + filename.find(".lmp"), filename.end());
+		if ( filename[filename.size() - 1] >= 'a' && filename[filename.size() - 1] <= 'z' )
+		{
+			filename.erase(filename.begin() + filename.size() - 1, filename.end());
+
+			std::string fullMapName = physfsFormatMapName(filename.c_str());
+			printlog("opening map file '%s'...\n", filename.c_str());
+			if ( loadMap(fullMapName.c_str(), &submapPrevisMap, submapPrevisMap.entities, submapPrevisMap.creatures, nullptr) == -1 )
+			{
+				strcpy(message, "Failed to preview ");
+				strcat(message, filename.c_str());
+			}
+			else
+			{
+				strcpy(message, "Opened '");
+				strcat(message, map.filename);
+				strcat(message, "' with parent preview map: '");
+				strcat(message, filename.c_str());
+				strcat(message, "'");
+
+				std::vector<SubmapSectors_t> submapSectors;
+				for ( int z = 0; z < MAPLAYERS; z++ )
+				{
+					for ( int y0 = 0; y0 < submapPrevisMap.height; y0++ )
+					{
+						for ( int x0 = 0; x0 < submapPrevisMap.width; x0++ )
+						{
+							if ( submapPrevisMap.tiles[z + (y0)*MAPLAYERS + (x0)*MAPLAYERS * submapPrevisMap.height] == 201 )
+							{
+								bool skip = false;
+								for ( auto& sector : submapSectors )
+								{
+									// check existing sectors
+									if ( x0 >= sector.start_x && x0 < sector.start_x + sector.width && y0 >= sector.start_y && y0 < sector.start_y + sector.height )
+									{
+										skip = true;
+										break;
+									}
+								}
+								if ( skip ) { continue; }
+
+								auto& sector = submapSectors.emplace_back(SubmapSectors_t());
+								sector.start_x = x0;
+								sector.start_y = y0;
+								sector.width++;
+								sector.height++;
+
+								int y1 = y0;
+								while ( y1 < submapPrevisMap.height )
+								{
+									++y1;
+									if ( submapPrevisMap.tiles[z + (y1)*MAPLAYERS + (x0)*MAPLAYERS * submapPrevisMap.height] == 201 )
+									{
+										sector.height++;
+									}
+									else
+									{
+										break;
+									}
+								}
+
+								while ( x0 < submapPrevisMap.width )
+								{
+									x0++;
+									if ( submapPrevisMap.tiles[z + (y0)*MAPLAYERS + (x0)*MAPLAYERS * submapPrevisMap.height] == 201 )
+									{
+										sector.width++;
+									}
+									else
+									{
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+
+				for ( auto it = submapSectors.begin(); it != submapSectors.end(); )
+				{
+					if ( !(it->width == map.width && it->height == map.height) )
+					{
+						it = submapSectors.erase(it);
+					}
+					else
+					{
+						++it;
+					}
+				}
+
+				if ( submapSectors.size() == 0 )
+				{
+					memset(submapPrevisMap.filename, 0, sizeof(submapPrevisMap.filename));
+					sectorIndex = -1;
+					strcpy(message, "No matching submap regions found in '");
+					strcat(message, filename.c_str());
+					strcat(message, "'");
+					messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
+					return;
+				}
+				++sectorIndex;
+				if ( sectorIndex < 0 )
+				{
+					sectorIndex = -1;
+				}
+
+				if ( sectorIndex >= submapSectors.size() )
+				{
+					memset(submapPrevisMap.filename, 0, sizeof(submapPrevisMap.filename));
+					sectorIndex = -1;
+					strcpy(message, "Reset submap preview");
+					messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
+					return;
+				}
+
+				for ( int z = 0; z < MAPLAYERS; z++ )
+				{
+					for ( int y0 = submapSectors[sectorIndex].start_y; y0 < submapPrevisMap.height; y0++ )
+					{
+						for ( int x0 = submapSectors[sectorIndex].start_x; x0 < submapPrevisMap.width; x0++ )
+						{
+							if ( x0 >= submapSectors[sectorIndex].start_x && x0 < submapSectors[sectorIndex].start_x + submapSectors[sectorIndex].width
+								&& y0 >= submapSectors[sectorIndex].start_y && y0 < submapSectors[sectorIndex].start_y + submapSectors[sectorIndex].height )
+							{
+								if ( submapPrevisMap.tiles[z + (y0)*MAPLAYERS + (x0)*MAPLAYERS * submapPrevisMap.height] == 201 )
+								{
+									submapPrevisMap.tiles[z + (y0)*MAPLAYERS + (x0)*MAPLAYERS * submapPrevisMap.height] = 0;
+								}
+							}
+						}
+					}
+				}
+
+				strcat(message, ", sector: ");
+				char buf[32];
+				snprintf(buf, sizeof(buf), "%d", sectorIndex + 1);
+				strcat(message, buf);
+				strcat(message, " of ");
+				snprintf(buf, sizeof(buf), "%d", (int)submapSectors.size());
+				strcat(message, buf);
+
+				submapPrevisCoords.first = -submapSectors[sectorIndex].start_x << TEXTUREPOWER;
+				submapPrevisCoords.second = -submapSectors[sectorIndex].start_y << TEXTUREPOWER;
+			}
+			messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
+			return;
+		}
+	}
+
+	sectorIndex = -1;
+	strcpy(message, "No parent map found for '");
+	strcat(message, filename.c_str());
+	strcat(message, "'");
+	messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
+}
+
+void buttonOpenConfirm(button_t* my)
+{
+	int c, c2;
+	clearUndos(undolist, undospot, redospot);
+	strcpy(oldfilename, filename);
+	strcpy(message, "");
+	for ( c = 0; c < 32; c++ )
+	{
+		if ( filename[c] == 0 )
+		{
+			break;
+		}
+	}
+	/*for ( c2 = 0; c2 < 32 - c; c2++ )
+	{
+		strcat(message, " ");
+	}*/
+	std::string fullMapName = physfsFormatMapName(filename);
+	printlog("opening map file '%s'...\n", fullMapName.c_str());
+	if ( loadMap(fullMapName.c_str(), &map, map.entities, map.creatures, nullptr) == -1 )
+	{
+		strcat(message, "Failed to open ");
+		strcat(message, filename);
+	}
+	else
+	{
+		strcat(message, "Opened '");
+		strcat(message, filename);
+		strcat(message, "'");
+	}
+	messagetime = 60; // 60*50 ms = 3000 ms (3 seconds)
+	buttonCloseSubwindow(my);
+
+	std::string submapFilename = submapPrevisMap.filename;
+	if ( submapFilename.find(".lmp") != std::string::npos )
+	{
+		submapFilename.erase(submapFilename.begin() + submapFilename.find(".lmp"), submapFilename.end());
+	}
+	if ( strcmp(submapPrevisMap.filename, "") && strstr(map.filename, submapFilename.c_str()) && strcmp(map.filename, submapPrevisMap.filename) )
+	{
+		// keep existing preview
+	}
+	else
+	{
+		memset(submapPrevisMap.filename, 0, sizeof(submapPrevisMap.filename));
+	}
 }

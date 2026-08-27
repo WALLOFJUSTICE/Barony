@@ -491,6 +491,10 @@ FMOD::Channel* playSound(Uint16 snd, Uint8 vol, SoundChannelGroupIndex channelIn
 		{
 			vol = std::min((Uint8)100, vol); // tutorial sounds
 		}
+		if ( snd == 879 )
+		{
+			vol = std::min((Uint8)100, vol); // throneroom alarm
+		}
         
         channel->setVolume(vol / 255.f);
         channel->set3DAttributes(&position, nullptr);

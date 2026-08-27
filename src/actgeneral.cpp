@@ -3105,6 +3105,10 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			{
 				return TO_BELL;
 			}
+			else if ( !tagValue.compare("boulder") )
+			{
+				return TO_BOULDER;
+			}
 			else if ( !tagValue.compare("teleporter") )
 			{
 				return TO_TELEPORTER;
@@ -3296,6 +3300,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
 						|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
 						|| (entity->behavior == &actBell && attachTo == TO_BELL)
+						|| (entity->behavior == &actBoulder && attachTo == TO_BOULDER)
 						|| (entity->behavior == &actTeleporter && attachTo == TO_TELEPORTER && entity->teleporterType != 3)
 						|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
 						|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)
@@ -5742,6 +5747,7 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 					|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
 					|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
 					|| (entity->behavior == &actBell && attachTo == TO_BELL)
+					|| (entity->behavior == &actBoulder && attachTo == TO_BOULDER)
 					|| (entity->behavior == &actTeleporter && attachTo == TO_TELEPORTER && entity->teleporterType != 3)
 					|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
 					|| (entity->isDamageableCollider() && attachTo == TO_COLLIDER)

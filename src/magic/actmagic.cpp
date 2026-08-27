@@ -1303,7 +1303,7 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 		if ( magicstaff )
 		{
 			// MAGICSTAFFS_USE_CHARGE todo
-			real_t percentChance = 100.0 / (real_t)((eventType & spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE) ? 12 : 8);
+ 			real_t percentChance = 100.0 / (real_t)((eventType & spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE) ? 12 : 8);
 			if ( players[player]->mechanics.rollRngProc(Player::PlayerMechanics_t::RngRollTypes::RNG_ROLL_SPELL_LEVELS, 
 				std::max(1, std::min(100, (int)percentChance)), spellID) ) //16.67%
 			{
@@ -1734,7 +1734,7 @@ void magicOnEntityHit(Entity* parent, Entity* particle, Entity* hitentity, Stat*
 					magicOnSpellCastEvent(parent, particle, hitentity, spellID, 
 						additionalFlags 
 						| spell_t::SPELL_LEVEL_EVENT_DMG 
-						| spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE
+						/*| spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE*/
 						| spell_t::SPELL_LEVEL_EVENT_MAGICSTAFF, 1);
 				}
 			}

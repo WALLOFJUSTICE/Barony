@@ -7333,5 +7333,99 @@ namespace ConsoleCommands {
 		gameLevels.readFromFile();
 		messagePlayer(clientnum, MESSAGE_MISC, "Reloaded levels.json");
 	});
+
+	static ConsoleCommand ccmd_item_combos_test("/item_combos_test", "", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+	std::vector<unsigned int> chances(NUMITEMS, 0);
+	std::set<ItemType> excludes;
+	int minimumQuality = 0;
+	int level = 0;
+	if ( currentlevel >= 32 )
+	{
+		minimumQuality = 10;
+	}
+	else if ( currentlevel >= 18 )
+	{
+		minimumQuality = 5;
+	}
+	struct Errors
+	{
+		ItemGeneric::ItemRealms realm;
+		int minlvl = 0;
+		int maxlvl = 0;
+		ItemType type;
+		Errors(ItemType _type, int _min, int _max, ItemGeneric::ItemRealms _realm)
+		{
+			realm = _realm;
+			minlvl = _min;
+			maxlvl = _max;
+			type = _type;
+		}
+	};
+	std::vector<Errors> errors;
+	for ( ItemType type = WOODEN_SHIELD; type < ITEM_ENUM_MAX; type = (ItemType)((int)type + 1) )
+	{
+		if ( items[type].category == WEAPON || items[type].category == ARMOR )
+		{
+			int itemLevel = items[type].getItemCurveLevel(ItemGeneric::ItemRealms::MORTAL);
+			int numEntries = 0;
+			if ( itemLevel != -1 && (itemLevel >= 0 && itemLevel <= 6) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 0, 6, ItemGeneric::ItemRealms::MORTAL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 0, 6, ItemGeneric::ItemRealms::MORTAL); }
+			}
+			if ( itemLevel != -1 && (itemLevel >= 5 && itemLevel <= 23) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 5, 23, ItemGeneric::ItemRealms::MORTAL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 5, 23, ItemGeneric::ItemRealms::MORTAL); }
+			}
+			if ( itemLevel != -1 && (itemLevel >= 10 && itemLevel <= 37) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 10, 37, ItemGeneric::ItemRealms::MORTAL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 10, 37, ItemGeneric::ItemRealms::MORTAL); }
+			}
+
+			itemLevel = items[type].getItemCurveLevel(ItemGeneric::ItemRealms::HELL);
+			if ( itemLevel != -1 && (itemLevel >= 0 && itemLevel <= 17) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 0, 17, ItemGeneric::ItemRealms::HELL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 0, 17, ItemGeneric::ItemRealms::HELL); }
+			}
+			if ( itemLevel != -1 && (itemLevel >= 5 && itemLevel <= 23) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 5, 23, ItemGeneric::ItemRealms::HELL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 5, 23, ItemGeneric::ItemRealms::HELL); }
+			}
+
+			itemLevel = items[type].getItemCurveLevel(ItemGeneric::ItemRealms::ETERNAL);
+			if ( itemLevel != -1 && (itemLevel >= 0 && itemLevel <= 17) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 0, 17, ItemGeneric::ItemRealms::ETERNAL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 0, 17, ItemGeneric::ItemRealms::ETERNAL); }
+			}
+			if ( itemLevel != -1 && (itemLevel >= 5 && itemLevel <= 23) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 5, 23, ItemGeneric::ItemRealms::ETERNAL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 5, 23, ItemGeneric::ItemRealms::ETERNAL); }
+			}
+			if ( itemLevel != -1 && (itemLevel >= 10 && itemLevel <= 37) )
+			{
+				numEntries = levelCurveComboItemSets(chances, type, 10, 37, ItemGeneric::ItemRealms::ETERNAL, excludes);
+				if ( numEntries == 0 ) { errors.emplace_back(type, 10, 37, ItemGeneric::ItemRealms::ETERNAL); }
+			}
+		}
+	}
+
+	for ( auto& error : errors )
+	{
+		messagePlayer(clientnum, MESSAGE_MISC, "Error: %s (min %d max %d realm %d", items[error.type].getIdentifiedName(), error.minlvl, error.maxlvl, (int)error.realm);
+	}
+
+	});
 }
 

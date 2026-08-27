@@ -2655,6 +2655,7 @@ class ItemTooltips_t
 		Sint32 gold = 0;
 		Sint32 weight = 0;
 		Sint32 itemLevel = -1;
+		std::vector<std::pair<std::string, Sint32>> itemRealms;
 		std::string category = "nothing";
 		std::string equipSlot = "nothing";
 		std::vector<std::string> imagePaths;
@@ -4372,6 +4373,7 @@ struct GameLevels_t
 		std::string save_img = "";
 		bool disable_gen_exits = false;
 		bool disable_gen_stations = false;
+		ItemGeneric::ItemRealms itemRealm = ItemGeneric::ItemRealms::MORTAL;
 	};
 	struct LevelData_t
 	{
@@ -4385,6 +4387,7 @@ struct GameLevels_t
 	bool enable_lich_messages = true;
 	static Uint32 hash;
 	bool verifyHash();
+	ItemGeneric::ItemRealms getCurrentMapItemRealm(const int current_level, const SecretLevelType secret_level);
 	std::string getIDFromStage(const int current_level, const SecretLevelType secret_level) const;
 	LevelData_t getCurrentMap(const int current_level, const SecretLevelType current_secret_level) const;
 	LevelData_t getNextMap(const int current_level, const SecretLevelType current_secret_level, const SecretLevelType target_secret_level) const;

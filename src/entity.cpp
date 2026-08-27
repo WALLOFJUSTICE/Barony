@@ -648,20 +648,26 @@ int Entity::entityLightAfterReductions(Stat& myStats, Entity* observer)
 		light = std::max(16 * 5, light + 3 * 16);
 	}
 
-	if ( myStats.getEffectActive(EFF_DUSTED) )
+	if ( observer && observer->behavior == &actMonster )
 	{
-		int increment = 16 * 3;
-		if ( observer && observer->behavior == &actMonster )
+		if ( Stat* observerStats = observer->getStats() )
 		{
-			if ( Stat* observerStats = observer->getStats() )
+			if ( myStats.getEffectActive(EFF_DUSTED) )
 			{
+				int increment = 16 * 3;
 				if ( observerStats->type == MYCONID )
 				{
 					light = std::max(light, 5 * 16);
 				}
+				light = std::max(increment, light + increment);
+			}
+			if ( observerStats->type == SALAMANDER &&
+				(observerStats->getEffectActive(EFF_SALAMANDER_HEART) == 1 
+					|| observerStats->getEffectActive(EFF_SALAMANDER_HEART) == 2) )
+			{
+				light = std::max(light, 5 * 16);
 			}
 		}
-		light = std::max(increment, light + increment);
 	}
 	if ( !strcmp(map.filename, "void.lmp") )
 	{
@@ -30288,6 +30294,10 @@ bool monsterNameIsGeneric(Stat& monsterStats)
 		|| strstr(monsterStats.name, "guard")
 		|| strstr(monsterStats.name, "sergeant")
 		|| strstr(monsterStats.name, "squire")
+		|| strstr(monsterStats.name, "cellarer")
+		|| strstr(monsterStats.name, "informant")
+		|| strstr(monsterStats.name, "penitent")
+		|| strstr(monsterStats.name, "echo of")
 		|| strstr(monsterStats.name, Language::get(7007))
 		|| !strcmp(monsterStats.name, Language::get(6807)) // revenant skeleton
 		|| MonsterData_t::nameMatchesSpecialNPCName(monsterStats, "the entity")

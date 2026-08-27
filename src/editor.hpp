@@ -88,6 +88,7 @@ extern button_t* butToolbox;
 extern button_t* butStatusBar;
 extern button_t* butAllLayers;
 extern button_t* butHoverText;
+extern button_t* butSubmapPreview;
 extern button_t* butViewSprites;
 extern button_t* butGrid;
 extern button_t* butFullscreen;
@@ -130,6 +131,8 @@ extern bool selectedarea;
 extern bool pasting;
 extern map_t copymap;
 extern list_t undolist;
+extern node_t* undospot;
+extern node_t* redospot;
 
 // fps
 extern bool showfps;
@@ -141,10 +144,10 @@ extern real_t fps;
 extern Sint32 ocamx, ocamy;
 
 // undo/redo funcs
-void makeUndo();
-void clearUndos();
-void undo();
-void redo();
+void makeUndo(list_t& list, node_t*& undo_spot, node_t*& redo_spot);
+void clearUndos(list_t& list, node_t*& undo_spot, node_t*& redo_spot);
+void undo(list_t& list, node_t*& undo_spot, node_t*& redo_spot);
+void redo(list_t& list, node_t*& undo_spot, node_t*& redo_spot);
 
 // function prototypes for buttons.c:
 void buttonExit(button_t* my);
@@ -199,8 +202,8 @@ void buttonCloseSpriteSubwindow(button_t* my);
 void buttonMonsterItems(button_t* my);
 void initMonsterPropertiesWindow();
 void buttonOpenDirectory(button_t* my);
-void buttonOpenPrevMap(button_t* my);
-void buttonOpenNextMap(button_t* my);
+void buttonOpenPrevMap(button_t* my, std::string include_prefix);
+void buttonOpenNextMap(button_t* my, std::string include_prefix);
 
 extern char itemName[128];
 extern int itemSelect;

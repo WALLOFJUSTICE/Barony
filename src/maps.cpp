@@ -408,10 +408,10 @@ Sint32 doorFrameSprite() {
     if (stringStr(map.name, "Underworld", sizeof(map_t::name), 10)) {
         return 1169;
     }
-	if ( !strncmp(map.filename, "fortress", 8) ) {
+	if ( !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "bastille", 8) ) {
 		return 1631;
 	}
-	if ( !strncmp(map.filename, "keep", 4) ) {
+	if ( !strncmp(map.filename, "keep", 4) || !strncmp(map.filename, "arena", 5) || !strncmp(map.filename, "throneroom", 10) ) {
 		return 1699;
 	}
     return 1; // default door frame
@@ -1788,11 +1788,6 @@ int generateDungeon(char* levelset, Uint32 seed)
 			}
 			darkmap = true;
 		}
-	}
-	if ( Player::cinemaMode )
-	{
-		minotaurlevel = 0;
-		darkmap = false;
 	}
 
 	int secretlevelexit = 0;
@@ -6234,7 +6229,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					Entity* stationEntity = newEntity(300, 1, map.entities, nullptr); // cauldron
 					stationEntity->x = x * 16.0;
 					stationEntity->y = y * 16.0;
-					stationEntity->yaw = top.dir / 2;
+					stationEntity->workStationDir = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
 					posChances.erase(posChances.begin() + pickedPos);
@@ -6254,7 +6249,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 					Entity* stationEntity = newEntity(301, 1, map.entities, nullptr); // workbench
 					stationEntity->x = x * 16.0;
 					stationEntity->y = y * 16.0;
-					stationEntity->yaw = top.dir / 2;
+					stationEntity->workStationDir = top.dir / 2;
 
 					stationLocations.erase(stationLocations.begin() + pickedPos);
 					posChances.erase(posChances.begin() + pickedPos);
@@ -6269,6 +6264,26 @@ int generateDungeon(char* levelset, Uint32 seed)
 						}
 					}
 				}
+				//else if ( stationSpawn == "mailbox" )
+				//{
+				//	Entity* stationEntity = newEntity(302 + map_rng.rand() % 2, 1, map.entities, nullptr); // mailbox
+				//	stationEntity->x = x * 16.0;
+				//	stationEntity->y = y * 16.0;
+				//	stationEntity->workStationDir = top.dir / 2;
+
+				//	stationLocations.erase(stationLocations.begin() + pickedPos);
+				//	posChances.erase(posChances.begin() + pickedPos);
+				//	possiblelocations[y + x * map.height] = false;
+				//	--numpossiblelocations;
+
+				//	if ( *cvar_debug_station_spawn )
+				//	{
+				//		if ( (svFlags & SV_FLAG_CHEATS) )
+				//		{
+				//			messagePlayer(clientnum, MESSAGE_DEBUG, "[STATIONS]: %s generated at x:%d y:%d", stationSpawn.c_str(), x, y);
+				//		}
+				//	}
+				//}
 				else if ( stationSpawn == "anvil" )
 				{
 					Entity* stationEntity = newEntity(313, 1, map.entities, nullptr); // workbench
@@ -11887,7 +11902,16 @@ void assignActions(map_t* map)
 				entity->z = 7.5;
 				entity->flags[PASSABLE] = false;
 				entity->behavior = &actCauldron;
-				entity->yaw = entity->yaw * (PI / 2); // rotate as set in editor
+				// rotate as set in editor
+				if ( entity->workStationDir == -1 )
+				{
+					entity->workStationDir = (map_rng.rand() % 4);
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
+				else
+				{
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
 				entity->sprite = 1622; // firepit
 				entity->seedEntityRNG(map_rng.getU32());
 				break;
@@ -11899,7 +11923,16 @@ void assignActions(map_t* map)
 				entity->z = 7.5;
 				entity->flags[PASSABLE] = false;
 				entity->behavior = &actWorkbench;
-				entity->yaw = entity->yaw * (PI / 2); // rotate as set in editor
+				// rotate as set in editor
+				if ( entity->workStationDir == -1 )
+				{
+					entity->workStationDir = (map_rng.rand() % 4);
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
+				else
+				{
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
 				entity->sprite = 1617;
 				entity->seedEntityRNG(map_rng.getU32());
 				break;
@@ -11911,7 +11944,16 @@ void assignActions(map_t* map)
 				entity->z = 7.5;
 				entity->flags[PASSABLE] = false;
 				entity->behavior = &actMailbox;
-				entity->yaw = entity->yaw * (PI / 2); // rotate as set in editor
+				// rotate as set in editor
+				if ( entity->workStationDir == -1 )
+				{
+					entity->workStationDir = (map_rng.rand() % 4);
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
+				else
+				{
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
 				entity->sprite = 1619;
 				entity->seedEntityRNG(map_rng.getU32());
 				break;
@@ -11923,7 +11965,16 @@ void assignActions(map_t* map)
 				entity->z = 7.5;
 				entity->flags[PASSABLE] = false;
 				entity->behavior = &actMailbox;
-				entity->yaw = entity->yaw * (PI / 2); // rotate as set in editor
+				// rotate as set in editor
+				if ( entity->workStationDir == -1 )
+				{
+					entity->workStationDir = (map_rng.rand() % 4);
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
+				else
+				{
+					entity->yaw = entity->workStationDir * 90 * (PI / 180.f);
+				}
 				entity->sprite = 1620;
 				entity->seedEntityRNG(map_rng.getU32());
 				break;

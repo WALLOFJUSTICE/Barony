@@ -676,7 +676,12 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 			{
 				if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) && (projectile->behavior == &actMagicMissile || projectile->behavior == &actArrow) )
 				{
-					if ( parent->checkFriend(this) && parent->friendlyFireProtection(this) )
+					if ( projectile->behavior == &actMagicMissile
+						&& (projectile->actmagicTinkerTrapFriendlyFire == 1 || projectile->actmagicAllowFriendlyFireHit == 1) )
+					{
+						// can hit allies no penalty
+					}
+					else if ( parent->checkFriend(this) && parent->friendlyFireProtection(this) )
 					{
 						projectile->collisionIgnoreTargets.insert(getUID());
 						return true;

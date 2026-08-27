@@ -2401,7 +2401,12 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 
 	// read map version number
 	fp->read(valid_data, sizeof(char), strlen("BARONY LMPV2.0"));
-	if ( strncmp(valid_data, "BARONY LMPV3.4", strlen("BARONY LMPV2.0")) == 0 )
+	if ( strncmp(valid_data, "BARONY LMPV3.5", strlen("BARONY LMPV2.0")) == 0 )
+	{
+		// workbench/cauldron/mailbox attributes
+		editorVersion = 35;
+	}
+	else if ( strncmp(valid_data, "BARONY LMPV3.4", strlen("BARONY LMPV2.0")) == 0 )
 	{
 		// teleporter updates
 		editorVersion = 34;
@@ -3172,6 +3177,23 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 					fp->read(&dummy, sizeof(Sint32), 1);
 					break;
 				}
+				case 41:
+				case 42:
+				case 43:
+					if ( editorVersion < 35 )
+					{
+						setSpriteAttributes(entity, nullptr, nullptr);
+					}
+					else
+					{
+						fp->read(&entity->workStationDir, sizeof(Sint32), 1);
+						Sint32 dummy = 0; // some extra future data
+						fp->read(&dummy, sizeof(Sint32), 1);
+						fp->read(&dummy, sizeof(Sint32), 1);
+						fp->read(&dummy, sizeof(Sint32), 1);
+						fp->read(&dummy, sizeof(Sint32), 1);
+					}
+					break;
 				default:
 					break;
 			}
@@ -3458,7 +3480,7 @@ int saveMap(const char* filename2)
 			return 1;
 		}
 
-		fp->write("BARONY LMPV3.4", sizeof(char), strlen("BARONY LMPV2.0")); // magic code
+		fp->write("BARONY LMPV3.5", sizeof(char), strlen("BARONY LMPV2.0")); // magic code
 		fp->write(map.name, sizeof(char), 32); // map filename
 		fp->write(map.author, sizeof(char), 32); // map author
 		fp->write(&map.width, sizeof(Uint32), 1); // map width
@@ -3771,6 +3793,18 @@ int saveMap(const char* filename2)
 				{
 					fp->write(&entity->actFloorBuilderTile, sizeof(Sint32), 1);
 					Sint32 dummy = 0; // some extra future data
+					fp->write(&dummy, sizeof(Sint32), 1);
+					break;
+				}
+				case 41:
+				case 42:
+				case 43:
+				{
+					fp->write(&entity->workStationDir, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
 					fp->write(&dummy, sizeof(Sint32), 1);
 					break;
 				}

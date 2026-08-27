@@ -224,6 +224,10 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 			{
 				entityPointsOfInterest.push_back(entity);
 			}
+			else if ( entity->behavior == &actTeleporter && !entity->flags[INVISIBLE] )
+			{
+				entityPointsOfInterest.push_back(entity);
+			}
 			else if ( entity->getEntityShowOnMapDuration() > 0 )
 			{
 				entityPointsOfInterest.push_back(entity);
@@ -445,6 +449,36 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 	};
 
 	std::vector<std::pair<Uint32, std::pair<real_t, real_t>>> deathboxSkulls;
+
+	auto drawWarp = [](real_t x, real_t y, real_t size, SDL_Rect rect, Uint32 color) {
+		const int mapGCD = std::max(map.width, map.height);
+		const int xmin = ((int)map.width - mapGCD) / 2;
+		const int ymin = ((int)map.height - mapGCD) / 2;
+		const real_t unitX = (real_t)rect.w / (real_t)mapGCD;
+		const real_t unitY = (real_t)rect.h / (real_t)mapGCD;
+		x = (x - xmin) * unitX + rect.x;
+		y = (y - ymin) * unitY + rect.y;
+
+		auto imgGet = Image::get("*images/ui/HUD/warp_point.png");
+
+		const real_t sx = unitX * (getMinimapZoom() / 100.0) * size;
+		const real_t sy = unitY * (getMinimapZoom() / 100.0) * size;
+
+		const SDL_Rect src{
+			0,
+			0,
+			imgGet->getSurf()->w,
+			imgGet->getSurf()->h,
+		};
+		const SDL_Rect dest{
+			(int)(x - sx / 2.0),
+			(int)(y - sy / 2.0),
+			(int)(sx),
+			(int)(sy),
+		};
+		const SDL_Rect viewport{ 0, 0, Frame::virtualScreenX, Frame::virtualScreenY };
+		imgGet->drawColor(&src, dest, viewport, color);
+	};
 
 	auto drawSkull = [](real_t x, real_t y, real_t size, SDL_Rect rect, Uint32 color) {
 		const int mapGCD = std::max(map.width, map.height);
@@ -801,6 +835,16 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 				{
 					// boulder
 					drawCircleMesh((real_t)x + 0.5, (real_t)y + 0.5, (real_t)1.0, rect, makeColor(140, 220, 255, 255));
+				}
+			}
+			else if ( entity->behavior == &actTeleporter )
+			{
+				int x = std::min<int>(std::max<int>(0, entity->x / 16), map.width - 1);
+				int y = std::min<int>(std::max<int>(0, entity->y / 16), map.height - 1);
+				if ( minimap[y][x] == 1 || minimap[y][x] == 2 )
+				{
+					// boulder
+					drawWarp((real_t)x + 0.5, (real_t)y + 0.5, (real_t)1.0, rect, makeColor(140, 220, 255, 255));
 				}
 			}
 			else if ( entity->behavior == &actItem && entity->sprite >= items[TOOL_PLAYER_LOOT_BAG].index &&

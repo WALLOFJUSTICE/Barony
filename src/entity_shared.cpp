@@ -774,6 +774,13 @@ int checkSpriteType(Sint32 sprite)
 		return 39;
 	case 316: // floor builder
 		return 40;
+	case 300: // cauldron
+		return 41;
+	case 301: // workbench
+		return 42;
+	case 302: // mailbox
+	case 303:
+		return 43;
 	default:
 		return 0;
 		break;
@@ -2161,6 +2168,7 @@ std::vector<std::pair<const char*, const char*>> spriteEditorNameStrings =
 	{ "CHORALE SHRINE",                 "interactables" },
 	{ "ASCENSION SHRINE",				"interactables" },
 	{ "FLOOR BUILDER",                  "mech" },
+	{ "SOKOBAN MAN",                    "misc" },
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][32] =
@@ -3591,6 +3599,22 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 		{
 			// set default new entity attributes.
 			entityNew->eternalShrineDir = 0;
+		}
+	}
+	// workbench/cauldron/mailbox
+	else if ( spriteType == 41
+		|| spriteType == 42
+		|| spriteType == 43 )
+	{
+		if ( entityToCopy != nullptr )
+		{
+			// copy old entity attributes to newly created.
+			entityNew->workStationDir = entityToCopy->workStationDir;
+		}
+		else
+		{
+			// set default new entity attributes.
+			entityNew->workStationDir = 0;
 		}
 	}
 	// floor builder

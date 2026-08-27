@@ -222,6 +222,8 @@ int sendPacketSafe(UDPsocket sock, int channel, UDPpacket* packet, int hostnum)
 	SDLNet_Write32(packetnum, &packetsend->packet->data[5]);
 	packetsend->num = packetnum;
 	packetsend->tries = 0;
+	packetsend->sentTick = ::ticks;
+	packetsend->reliable = false;
 	packetnum++;
 
 	node_t* node = list_AddNodeFirst(&safePacketsSent);
@@ -239,6 +241,7 @@ int sendPacketSafe(UDPsocket sock, int channel, UDPpacket* packet, int hostnum)
 #ifdef STEAMWORKS
 			if ( steamIDRemote[hostnum] )
 			{
+				packetsend->reliable = true;
 				return SteamNetworking()->SendP2PPacket(*static_cast<CSteamID* >(steamIDRemote[hostnum]), packetsend->packet->data, packetsend->packet->len, k_EP2PSendReliable, 0);
 			}
 			else
@@ -5452,6 +5455,14 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		if ( monster >= 0 && monster < NUMMONSTERS )
 		{
 			kills[monster]++;
+		}
+	}},
+
+	// forced set skills
+	{ 'SKI2', []() {
+		for ( int i = 0; i < NUMPROFICIENCIES; ++i )
+		{
+			stats[clientnum]->setProficiency(i, (net_packet->data[4 + i]));
 		}
 	}},
 

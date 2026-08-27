@@ -119,6 +119,10 @@ void initBugbear(Entity* my, Stat* myStats)
 						else
 						{
 							myStats->weapon = newItem(HEAVY_CROSSBOW, static_cast<Status>(rng.rand() % 2 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							if ( myStats->weapon && rng.rand() % 10 > 0 )
+							{
+								myStats->shield->isDroppable = false;
+							}
 						}
 					}
 				}
@@ -127,6 +131,10 @@ void initBugbear(Entity* my, Stat* myStats)
 					if ( rng.rand() % 4 == 0 && !hasAlly )
 					{
 						myStats->weapon = newItem(HEAVY_CROSSBOW, static_cast<Status>(rng.rand() % 2 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( myStats->weapon && rng.rand() % 10 > 0 )
+						{
+							myStats->shield->isDroppable = false;
+						}
 					}
 					else
 					{
@@ -150,7 +158,11 @@ void initBugbear(Entity* my, Stat* myStats)
 					{
 						if ( !leader->hasRangedWeapon() && rng.rand() % 4 == 0 )
 						{
-							myStats->shield = newItem(STEEL_SHIELD, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
+							myStats->shield = newItem(SCUTUM, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							if ( myStats->shield && rng.rand() % 10 > 0 )
+							{ 
+								myStats->shield->isDroppable = false;
+							}
 						}
 					}
 				}
@@ -158,7 +170,11 @@ void initBugbear(Entity* my, Stat* myStats)
 				{
 					if ( (hasAlly && rng.rand() % 4 == 0) || (!hasAlly && rng.rand() % 3 > 0) )
 					{
-						myStats->shield = newItem(STEEL_SHIELD, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
+						myStats->shield = newItem(SCUTUM, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 10 > 0 )
+						{
+							myStats->shield->isDroppable = false;
+						}
 					}
 				}
 			}
@@ -1087,7 +1103,7 @@ void bugbearMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					else
 					{
 						entity->flags[INVISIBLE] = false;
-						if ( myStats->shield->type == STEEL_SHIELD )
+						if ( myStats->shield->type == SCUTUM )
 						{
 							entity->sprite = 1420;
 						}

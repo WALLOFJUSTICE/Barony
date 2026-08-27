@@ -6337,6 +6337,7 @@ void actMonster(Entity* my)
 				{
 					light += 150;
 				}
+
 				double targetdist = sqrt( pow(my->x - entity->x, 2) + pow(my->y - entity->y, 2) );
 
 				real_t monsterVisionRange = sightranges[myStats->type];
@@ -6355,6 +6356,33 @@ void actMonster(Entity* my)
 				if ( myStats->getEffectActive(EFF_FEAR) )
 				{
 					targetdist = 0.0; // so we can always see our scary target.
+				}
+
+				if ( entity != nullptr )
+				{
+					if ( targetdist < monsterVisionRange )
+					{
+						if ( currentlevel >= 20 )
+						{
+							// later level monsters have better sight on foes
+							if ( my->monsterStrafeDirection != 0 || hasrangedweapon/*my->backupWithRangedWeapon(*myStats, targetdist, hasrangedweapon)*/ )
+							{
+								// don't outrange yourself out of the fight
+								if ( targetdist <= 64.0 )
+								{
+									light = std::max(light, (int)(targetdist + 2.0));
+								}
+							}
+							else
+							{
+								// melee/other
+								if ( targetdist <= 48.0 )
+								{
+									light = std::max(light, (int)(targetdist + 2.0));
+								}
+							}
+						}
+					}
 				}
 
 				if ( targetdist > monsterVisionRange )

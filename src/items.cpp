@@ -327,7 +327,7 @@ enum ItemLevelCurveType
 
 ItemLevelCurveType itemLevelCurveType = ITEM_LEVEL_CURVE_TYPE_DEFAULT;
 int itemLevelCurveShop = -1;
-ItemType itemLevelCurveEntity(Entity& my, Category cat, int minLevel, int maxLevel, BaronyRNG& rng)
+ItemType itemLevelCurveEntity(Entity& my, Category cat, int minLevel, int maxLevel, BaronyRNG& rng, std::vector<std::pair<std::string, int>>* spawnModifiers)
 {
 	itemLevelCurveType = ITEM_LEVEL_CURVE_TYPE_DEFAULT;
 	itemLevelCurveShop = -1;
@@ -341,7 +341,7 @@ ItemType itemLevelCurveEntity(Entity& my, Category cat, int minLevel, int maxLev
 		itemLevelCurveType = ITEM_LEVEL_CURVE_TYPE_CHEST;
 	}
 
-	auto result = itemLevelCurve(cat, minLevel, maxLevel, rng);
+	auto result = itemLevelCurve(cat, minLevel, maxLevel, rng, spawnModifiers);
 	itemLevelCurveType = ITEM_LEVEL_CURVE_TYPE_DEFAULT;
 	itemLevelCurveShop = -1;
 	return result;
@@ -686,11 +686,349 @@ bool isHatShopItem(ItemType hat)
 	return false;
 }
 
-ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLevel, BaronyRNG& rng)
+int levelCurveComboItemSets(std::vector<unsigned int>& chances, ItemType baseItem, const int minLevel, const int maxLevel, ItemGeneric::ItemRealms realm, std::set<ItemType>& excludes, std::vector<std::pair<std::string, int>>* spawnModifiers)
 {
-	const int numitems = NUMITEMS;
-	bool chances[NUMITEMS];
+	assert(chances.size() == NUMITEMS);
+
+	enum Materials
+	{
+		MATERIAL_BRONZE,
+		MATERIAL_IRON,
+		MATERIAL_STEEL,
+		MATERIAL_CRYSTAL,
+		MATERIAL_UNUSED,
+		MATERIAL_SILVER,
+		MATERIAL_BLACKIRON,
+		MATERIAL_BONE,
+		MATERIAL_QUILT,
+		MATERIAL_CHAIN
+	};
+	enum SetGroups
+	{
+		SET_TIER_0,
+		SET_TIER_1,
+		SET_TIER_2,
+		SET_TIER_3,
+		SET_RANGER,
+		SET_CLOTHING,
+		SET_HAT_MASK,
+		SET_UNIQUE
+	};
+	static std::map<int, std::set<ItemType>> materials;
+	static std::map<int, std::set<ItemType>> groups;
+	static std::map<ItemType, std::set<SetGroups>> item_groups;
+
+	if ( materials.size() == 0 )
+	{
+		for ( int i = 0; i < NUMITEMS; ++i )
+		{
+			if ( items[i].hasAttribute("MATERIAL") )
+			{
+				materials[items[i].attributes["MATERIAL"]].insert((ItemType)(i));
+			}
+		}
+	}
+	if ( groups.size() == 0 )
+	{
+		for ( int i = 0; i < NUMITEMS; ++i )
+		{
+			if ( items[i].hasAttribute("EQUIP_GROUP") && items[i].attributes["EQUIP_GROUP"] >= SET_TIER_0 && items[i].attributes["EQUIP_GROUP"] <= SET_RANGER )
+			{
+				groups[items[i].attributes["EQUIP_GROUP"]].insert((ItemType)(i));
+				item_groups[(ItemType)i].insert((SetGroups)items[i].attributes["EQUIP_GROUP"]);
+			}
+			if ( isRangedWeapon((ItemType)(i)) || items[i].category == THROWN || itemTypeIsQuiver((ItemType)(i)) )
+			{
+				groups[SET_RANGER].insert((ItemType)(i));
+				item_groups[(ItemType)i].insert(SET_RANGER);
+			}
+			if ( items[i].hasAttribute("CLOTHING_GROUP") )
+			{
+				groups[SET_CLOTHING].insert((ItemType)(i));
+				item_groups[(ItemType)i].insert(SET_CLOTHING);
+			}
+			if ( items[i].hasAttribute("UNIQUE_GROUP") )
+			{
+				groups[SET_UNIQUE].insert((ItemType)(i));
+				item_groups[(ItemType)i].insert(SET_UNIQUE);
+			}
+			if ( items[i].item_slot == EQUIPPABLE_IN_SLOT_HELM || items[i].item_slot == EQUIPPABLE_IN_SLOT_MASK )
+			{
+				groups[SET_HAT_MASK].insert((ItemType)(i));
+				item_groups[(ItemType)i].insert(SET_HAT_MASK);
+			}
+		}
+	}
+
+	std::set<int> uniques;
+	if ( spawnModifiers )
+	{
+		for ( auto& pair : *spawnModifiers )
+		{
+			if ( pair.first == "spawn_unique" )
+			{
+				uniques.insert(pair.second);
+			}
+		}
+
+	}
+
+	if ( uniques.size() )
+	{
+		for ( auto cat : uniques )
+		{
+			for ( auto type : groups[SET_UNIQUE] )
+			{
+				if ( type != baseItem && items[type].category == cat )
+				{
+					chances[type] = 10;
+				}
+			}
+		}
+	}
+	else
+	{
+		enum Combos
+		{
+			COMBO_MELEE_ARMOR,
+			COMBO_MELEE_ARMOR_MATERIAL,
+			COMBO_MELEE_RANGED,
+			COMBO_MELEE_THROWN,
+			COMBO_RANGED_ARMOR,
+			COMBO_RANGED_ACCESSORY,
+			COMBO_HAT_MASK,
+			COMBO_CLOTHES,
+			COMBO_ARMOR_2X,
+			COMBO_ARMOR_MATERIAL_2X
+		};
+
+		std::set<Combos> combos;
+		if ( isRangedWeapon(baseItem) )
+		{
+			combos.insert(COMBO_RANGED_ARMOR);
+			combos.insert(COMBO_RANGED_ACCESSORY);
+		}
+		else if ( items[baseItem].category == WEAPON )
+		{
+			combos.insert(COMBO_MELEE_ARMOR);
+			combos.insert(COMBO_MELEE_RANGED);
+			combos.insert(COMBO_MELEE_THROWN);
+			if ( items[baseItem].hasAttribute("MATERIAL") && materials.find(items[baseItem].attributes["MATERIAL"]) != materials.end() )
+			{
+				combos.insert(COMBO_MELEE_ARMOR_MATERIAL);
+			}
+		}
+		else if ( items[baseItem].category == ARMOR )
+		{
+			combos.insert(COMBO_ARMOR_2X);
+			combos.insert(COMBO_HAT_MASK);
+			combos.insert(COMBO_CLOTHES);
+			if ( items[baseItem].hasAttribute("MATERIAL") && materials.find(items[baseItem].attributes["MATERIAL"]) != materials.end() )
+			{
+				combos.insert(COMBO_ARMOR_MATERIAL_2X);
+			}
+		}
+
+		for ( auto combo : combos )
+		{
+			if ( combo == COMBO_MELEE_ARMOR_MATERIAL || combo == COMBO_ARMOR_MATERIAL_2X )
+			{
+				for ( auto type : materials[items[baseItem].attributes["MATERIAL"]] )
+				{
+					if ( type != baseItem && items[type].category == ARMOR && items[type].item_slot != items[baseItem].item_slot )
+					{
+						chances[type] = 10;
+					}
+				}
+			}
+			else if ( combo == COMBO_HAT_MASK )
+			{
+				if ( item_groups[baseItem].find(SET_HAT_MASK) != item_groups[baseItem].end() )
+				{
+					for ( auto type : groups[SET_HAT_MASK] )
+					{
+						if ( type != baseItem && items[type].item_slot != items[baseItem].item_slot )
+						{
+							chances[type] = 10;
+						}
+					}
+				}
+			}
+			else if ( combo == COMBO_CLOTHES )
+			{
+				if ( item_groups[baseItem].find(SET_CLOTHING) != item_groups[baseItem].end() )
+				{
+					for ( auto type : groups[SET_CLOTHING] )
+					{
+						if ( type != baseItem && items[type].item_slot != items[baseItem].item_slot )
+						{
+							chances[type] = 10;
+						}
+					}
+				}
+			}
+			else if ( combo == COMBO_MELEE_RANGED
+				|| combo == COMBO_MELEE_THROWN )
+			{
+				for ( auto group : item_groups[baseItem] )
+				{
+					if ( group == SET_TIER_0
+						|| group == SET_TIER_1
+						|| group == SET_TIER_2
+						|| group == SET_TIER_3 )
+					{
+						for ( auto type : groups[group] )
+						{
+							if ( type != baseItem
+								&& (combo == COMBO_MELEE_RANGED && isRangedWeapon(type)
+									|| combo == COMBO_MELEE_THROWN && items[type].category == THROWN) )
+							{
+								chances[type] = 10;
+							}
+						}
+					}
+				}
+			}
+			else if ( combo == COMBO_RANGED_ARMOR
+				|| combo == COMBO_MELEE_ARMOR
+				|| combo == COMBO_ARMOR_2X )
+			{
+				for ( auto group : item_groups[baseItem] )
+				{
+					if ( group == SET_TIER_0
+						|| group == SET_TIER_1
+						|| group == SET_TIER_2
+						|| group == SET_TIER_3 )
+					{
+						for ( auto type : groups[group] )
+						{
+							if ( type != baseItem && items[type].category == ARMOR && items[type].item_slot != items[baseItem].item_slot )
+							{
+								chances[type] = 10;
+							}
+						}
+					}
+				}
+			}
+			else if ( combo == COMBO_RANGED_ACCESSORY )
+			{
+				if ( item_groups[baseItem].find(SET_RANGER) != item_groups[baseItem].end() )
+				{
+					for ( auto type : groups[SET_RANGER] )
+					{
+						if ( type != baseItem && items[type].item_slot != items[baseItem].item_slot )
+						{
+							chances[type] = 10;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	int numEntries = 0;
+	for ( int c = 0; c < NUMITEMS; ++c )
+	{
+		if ( chances[c] )
+		{
+			int itemLevel = items[c].getItemCurveLevel(realm);
+			if ( itemLevel != -1 && (itemLevel >= minLevel && itemLevel <= maxLevel) && excludes.find((ItemType)c) == excludes.end() )
+			{
+				// OK item
+				if ( items[c].item_slot == EQUIPPABLE_IN_SLOT_MASK && items[c].category == TOOL )
+				{
+					// glasses / blindfolds lower chance
+					chances[c] = std::max((int)chances[c] / 2, 1);
+				}
+			}
+			else
+			{
+				bool nochance = true;
+				if ( itemTypeIsQuiver((ItemType)c) && excludes.find((ItemType)c) == excludes.end() )
+				{
+					if ( items[c].hasAttribute("ITEM_MISC_LEVEL") )
+					{
+						if ( (items[c].attributes["ITEM_MISC_LEVEL"] >= minLevel && items[c].attributes["ITEM_MISC_LEVEL"] <= maxLevel) )
+						{
+							if ( !(c == QUIVER_BLACKIRON && realm == ItemGeneric::MORTAL)
+								&& !(c == QUIVER_CRYSTAL && realm == ItemGeneric::ETERNAL) )
+							{
+								nochance = false;
+							}
+						}
+					}
+				}
+				if ( nochance )
+				{
+					chances[c] = 0;
+				}
+			}
+		}
+
+		if ( chances[c] )
+		{
+			++numEntries;
+		}
+	}
+
+	return numEntries;
+}
+
+int ItemGeneric::getItemCurveLevel(ItemRealms realm)
+{
+	if ( realm == REALM_NONE || realmLevels.size() == 0 ) { return level; }
+
+	if ( realmLevels.find(realm) != realmLevels.end() )
+	{
+		return realmLevels[realm];
+	}
+	return level; 
+}
+
+ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLevel, BaronyRNG& rng, std::vector<std::pair<std::string, int>>* spawnModifiers)
+{
+	std::vector<unsigned int> item_chances(NUMITEMS, 0);
 	int c;
+
+	//"spawn_unique"
+	//"exclude"
+	//"combo_item"
+	std::set<ItemType> excludes;
+	int doUniqueEquipCategory = -1;
+	int doComboItem = -1;
+	if ( spawnModifiers )
+	{
+		for ( auto& pair : *spawnModifiers )
+		{
+			if ( pair.first == "exclude" )
+			{
+				excludes.insert((ItemType)pair.second);
+			}
+			else if ( pair.first == "spawn_unique" )
+			{
+				doUniqueEquipCategory = pair.second;
+			}
+			else if ( pair.first == "combo_item" )
+			{
+				doComboItem = pair.second;
+			}
+		}
+	}
+
+	ItemGeneric::ItemRealms realm = gameLevels.getCurrentMapItemRealm(currentlevel, secretleveltype);
+	int customChancesSet = 0;
+	if ( doUniqueEquipCategory >= 0 )
+	{
+		customChancesSet = levelCurveComboItemSets(item_chances, (ItemType)WOODEN_SHIELD, minLevel, maxLevel, realm, excludes, spawnModifiers);
+		if ( customChancesSet == 0 )
+		{
+			return GEM_ROCK;
+		}
+	}
+	else if ( doComboItem >= 0 )
+	{
+		customChancesSet = levelCurveComboItemSets(item_chances, (ItemType)doComboItem, minLevel, maxLevel, realm, excludes, spawnModifiers);
+	}
 
 	if ( cat < 0 || cat >= Category::CATEGORY_MAX )
 	{
@@ -699,116 +1037,121 @@ ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLev
 	}
 
 	Uint32 numoftype = 0;
-	for ( c = 0; c < numitems; ++c )
+	if ( customChancesSet )
 	{
-		chances[c] = false;
-		if ( items[c].category == cat )
+		// no alter
+		numoftype = customChancesSet;
+	}
+	else
+	{
+		for ( c = 0; c < NUMITEMS; ++c )
 		{
-			if ( items[c].level != -1 && (items[c].level >= minLevel && items[c].level <= maxLevel) )
+			if ( items[c].category == cat )
 			{
-				chances[c] = true;
-				numoftype++;
-
-				if ( itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_SHOP )
+				int itemLevel = items[c].getItemCurveLevel(realm);
+				if ( itemLevel != -1 && (itemLevel >= minLevel && itemLevel <= maxLevel) && excludes.find((ItemType)c) == excludes.end() )
 				{
-					if ( c == READABLE_BOOK )
+					item_chances[c] = 1;
+
+					if ( itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_SHOP )
 					{
+						if ( c == READABLE_BOOK )
+						{
+							continue;
+						}
+
+						if ( itemLevelCurveShop == 1 ) // hat store
+						{
+							if ( !isHatShopItem(static_cast<ItemType>(c)) )
+							{
+								item_chances[c] = 0;
+								continue;
+							}
+						}
+						if ( items[c].hasAttribute("SHOP_EXCLUDE_FROM_CATEGORY_1") )
+						{
+							if ( items[c].attributes["SHOP_EXCLUDE_FROM_CATEGORY_1"] == itemLevelCurveShop )
+							{
+								item_chances[c] = 0;
+								continue;
+							}
+						}
+						if ( items[c].hasAttribute("SHOP_EXCLUDE_FROM_CATEGORY_2") )
+						{
+							if ( items[c].attributes["SHOP_EXCLUDE_FROM_CATEGORY_2"] == itemLevelCurveShop )
+							{
+								item_chances[c] = 0;
+								continue;
+							}
+						}
+					}
+					if ( itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_DEFAULT
+						&& items[c].hasAttribute("ITEM_NO_FLOOR_SPAWN") && items[c].attributes["ITEM_NO_FLOOR_SPAWN"] == 1 )
+					{
+						item_chances[c] = 0;
 						continue;
 					}
 
-					if ( itemLevelCurveShop == 1 ) // hat store
+					if ( cat == TOOL )
 					{
-						if ( !isHatShopItem(static_cast<ItemType>(c)) )
+						switch ( static_cast<ItemType>(c) )
 						{
-							chances[c] = false;
-							continue;
-						}
-					}
-					if ( items[c].hasAttribute("SHOP_EXCLUDE_FROM_CATEGORY_1") )
-					{
-						if ( items[c].attributes["SHOP_EXCLUDE_FROM_CATEGORY_1"] == itemLevelCurveShop )
-						{
-							chances[c] = false;
-							continue;
-						}
-					}
-					if ( items[c].hasAttribute("SHOP_EXCLUDE_FROM_CATEGORY_2") )
-					{
-						if ( items[c].attributes["SHOP_EXCLUDE_FROM_CATEGORY_2"] == itemLevelCurveShop )
-						{
-							chances[c] = false;
-							continue;
-						}
-					}
-				}
-
-				if ( cat == TOOL )
-				{
-					switch ( static_cast<ItemType>(c) )
-					{
 						case TOOL_TINOPENER:
 							if ( rng.rand() % 2 )   // 50% chance
 							{
-								chances[c] = false;
+								item_chances[c] = 0;
 							}
 							break;
 						case TOOL_LANTERN:
 							if ( rng.rand() % 4 == 0 )   // 25% chance
 							{
-								chances[c] = false;
+								item_chances[c] = 0;
 							}
 							break;
 						case TOOL_FRYING_PAN:
 							if ( rng.rand() % 4 )   // 75% chance
 							{
-								chances[c] = false;
+								item_chances[c] = 0;
 							}
 							break;
 						default:
 							break;
+						}
 					}
-				}
-				else if ( cat == ARMOR )
-				{
-					switch ( static_cast<ItemType>(c) )
+					else if ( cat == ARMOR )
 					{
+						switch ( static_cast<ItemType>(c) )
+						{
 						case CLOAK_BACKPACK:
 							if ( rng.rand() % 4 )   // 25% chance
 							{
-								chances[c] = false;
+								item_chances[c] = false;
 							}
 							break;
 						case MASK_GRASS_SPRIG: // swamp only
 							if ( !(!strncmp(map.name, "The Swamp", 9)
 								&& itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_DEFAULT) )
 							{
-								chances[c] = false;
+								item_chances[c] = false;
 							}
 							break;
 						default:
 							break;
+						}
+					}
+
+					if ( item_chances[c] )
+					{
+						numoftype++;
 					}
 				}
 			}
 		}
 	}
+
 	if ( numoftype == 0 )
 	{
 		printlog("warning: category passed to itemLevelCurve has no items!\n");
-		return GEM_ROCK;
-	}
-
-	// calculate number of items left
-	Uint32 numleft = 0;
-	for ( c = 0; c < numitems; c++ )
-	{
-		if ( chances[c] == true )
-		{
-			numleft++;
-		}
-	}
-	if ( numleft == 0 )
-	{
 		return GEM_ROCK;
 	}
 
@@ -822,27 +1165,8 @@ ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLev
 	}
 
 	// pick the item
-	Uint32 pick = rng.rand() % numleft;
-	for ( c = 0; c < numitems; c++ )
-	{
-		if ( items[c].category == cat )
-		{
-			if ( chances[c] == true )
-			{
-				if ( pick == 0 )
-				{
-					//messagePlayer(0, "Chose item: %s of %d items.", items[c].getIdentifiedName() ,numleft);
-					return static_cast<ItemType>(c);
-				}
-				else
-				{
-					pick--;
-				}
-			}
-		}
-	}
-
-	return GEM_ROCK;
+	Uint32 pick = rng.discrete(item_chances.data(), item_chances.size());
+	return (ItemType)pick;
 }
 
 /*-------------------------------------------------------------------------------
@@ -6345,12 +6669,14 @@ ItemType itemTypeWithinGoldValue(const int cat, const int minValue, const int ma
 		pickAnyCategory = true;
 	}
 
+	ItemGeneric::ItemRealms realm = gameLevels.getCurrentMapItemRealm(currentlevel, secretleveltype);
+
 	// find highest value of items in category
 	for ( c = 0; c < NUMITEMS; ++c )
 	{
 		if ( items[c].category == cat || (pickAnyCategory && items[c].category < Category::CATEGORY_MAX - 2) )
 		{
-			if ( items[c].gold_value >= minValue && items[c].gold_value <= maxValue && items[c].level != -1 )
+			if ( items[c].gold_value >= minValue && items[c].gold_value <= maxValue && items[c].getItemCurveLevel(realm) != -1 )
 			{
 				// chance true for an item if it's not forbidden from the global item list.
 				chances[c] = true;

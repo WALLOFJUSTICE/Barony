@@ -278,6 +278,8 @@ void initShopkeeper(Entity* my, Stat* myStats)
 				shoplevel = std::max(15, shoplevel);
 			}
 
+			ItemGeneric::ItemRealms realm = gameLevels.getCurrentMapItemRealm(currentlevel, secretleveltype);
+
 			if ( shoplevel >= 30 )
 			{
 				if ( rng.rand() % 3 == 0 )
@@ -890,11 +892,11 @@ void initShopkeeper(Entity* my, Stat* myStats)
 									// punching stuff (5%)
 									std::vector<ItemType> gloveWeapons;
 									gloveWeapons.push_back(BRASS_KNUCKLES);
-									if ( shoplevel >= items[SPIKED_GAUNTLETS].level )
+									if ( shoplevel >= items[SPIKED_GAUNTLETS].getItemCurveLevel(realm) )
 									{
 										gloveWeapons.push_back(SPIKED_GAUNTLETS);
 									}
-									if ( shoplevel >= items[IRON_KNUCKLES].level )
+									if ( shoplevel >= items[IRON_KNUCKLES].getItemCurveLevel(realm) )
 									{
 										gloveWeapons.push_back(IRON_KNUCKLES);
 									}

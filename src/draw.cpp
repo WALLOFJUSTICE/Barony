@@ -2672,24 +2672,25 @@ void drawEntities3D(view_t* camera, int mode)
 
 -------------------------------------------------------------------------------*/
 
-void drawEntities2D(long camx, long camy)
+void drawEntities2D(long camx, long camy, map_t& destmap)
 {
 	// editor only
 #ifndef EDITOR
 #else
+
 	node_t* node;
 	Entity* entity;
 	SDL_Rect pos, box;
 	int offsetx = 0;
 	int offsety = 0;
 
-	if ( map.entities->first == nullptr )
+	if ( destmap.entities->first == nullptr )
 	{
 		return;
 	}
 
 	// draw entities
-	for ( node = map.entities->first; node != nullptr; node = node->next )
+	for ( node = destmap.entities->first; node != nullptr; node = node->next )
 	{
 		entity = (Entity*)node->element;
 		if ( entity->flags[INVISIBLE] )
@@ -2864,7 +2865,7 @@ void drawEntities2D(long camx, long camy)
 	}
 
 	// draw hover text for entities over the top of sprites.
-	for ( node = map.entities->first;
+	for ( node = destmap.entities->first;
 		  node != nullptr
 			&& (openwindow == 0
 			&& savewindow == 0)

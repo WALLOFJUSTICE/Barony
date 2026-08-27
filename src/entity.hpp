@@ -755,6 +755,9 @@ public:
 	Sint32& eternalShrineOrchestrionInstruments = skill[22];
 	Sint32& eternalShrinePlayerLockout = skill[23];
 
+	//--WORKSTATIONS
+	Sint32& workStationDir = skill[7];
+
 	enum PressurePlateTriggerTypes : int
 	{
 		PRESSURE_PLATE_DEFAULT_ALL,
@@ -1739,7 +1742,8 @@ public:
 		TO_GOLD,
 		TO_BELL,
 		TO_SUMMONTRAP,
-		TO_TELEPORTER
+		TO_TELEPORTER,
+		TO_BOULDER
 	};
 	enum ScriptType : int
 	{

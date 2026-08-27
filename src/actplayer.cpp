@@ -532,12 +532,483 @@ void drawTextHelper(int x, int y, const char* text, const char* fmt = nullptr)
 		makeColor(255, 255, 255, 255), 0) )
 	{
 		Uint32 color = makeColorRGB(255, 255, 255);
-		if ( strstr(buf, ":") && !(strstr(buf, "off") || strstr(buf, "default") ) )
+		if ( strstr(buf, ":") && !(strstr(buf, "off") || strstr(buf, "default") || (fmt && !strcmp(fmt, "0"))) )
 		{
 			color = makeColorRGB(255, 255, 0);
 		}
 		textGet->drawColor(SDL_Rect{ 0,0,0,0 }, SDL_Rect{x, y, 0, 0}, SDL_Rect{0, 0, xres, yres}, color);
 	}
+}
+
+int processQuickDebug(int player, bool check, SDL_Keycode keycode)
+{
+	if ( !(svFlags & SV_FLAG_CHEATS) )
+	{
+		return 0;
+	}
+
+	static std::map<SDL_Keycode, std::function<int(int, bool)>> funcs =
+	{
+		{ SDLK_1,[](int player, bool check) {
+			if ( !check )
+			{
+				godmode = !godmode;
+			}
+			return godmode;
+		}},
+		{ SDLK_2,[](int player, bool check) {
+			if ( !check )
+			{
+				everybodyfriendly = !everybodyfriendly;
+			}
+			return everybodyfriendly;
+		}},
+		{ SDLK_3,[](int player, bool check) {
+			if ( !check )
+			{
+				noclip = !noclip;
+			}
+			return noclip;
+		}},
+		{ SDLK_4,[](int player, bool check) {
+			static bool state = false;
+			if ( !check )
+			{
+				state = !state;
+				state ? consoleCommand("/hud_weapon_hide true", true) : consoleCommand("/hud_weapon_hide false", true);
+			}
+			return state;
+		}},
+		{ SDLK_5,[](int player, bool check) {
+			if ( check )
+			{
+				return svFlags & SV_FLAG_MINOTAURS;
+			}
+			if ( svFlags & SV_FLAG_MINOTAURS )
+			{
+				svFlags &= ~(SV_FLAG_MINOTAURS);
+			}
+			else
+			{
+				svFlags |= SV_FLAG_MINOTAURS;
+			}
+			if ( multiplayer == SERVER )
+			{
+				// update client flags
+				strcpy((char*)net_packet->data, "SVFL");
+				SDLNet_Write32(svFlags, &net_packet->data[4]);
+				net_packet->len = 8;
+
+				for ( int c = 1; c < MAXPLAYERS; c++ )
+				{
+					if ( client_disconnected[c] || players[c]->isLocalPlayer() )
+					{
+						continue;
+					}
+					net_packet->address.host = net_clients[c - 1].host;
+					net_packet->address.port = net_clients[c - 1].port;
+					sendPacketSafe(net_sock, -1, net_packet, c - 1);
+					messagePlayer(c, MESSAGE_MISC, Language::get(276));
+				}
+			}
+			return svFlags & SV_FLAG_MINOTAURS;
+		}},
+		{ SDLK_7,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["custom_seed"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["custom_seed"]);
+			}
+			int seed = players[clientnum]->freecam.tool["custom_seed"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["custom_seed"]);
+			++seed;
+			players[clientnum]->freecam.tool["custom_seed"] = std::to_string(seed);
+			return seed;
+		}},
+		{ SDLK_6,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["custom_seed"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["custom_seed"]);
+			}
+			int seed = players[clientnum]->freecam.tool["custom_seed"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["custom_seed"]);
+			seed = std::max(0, seed - 1);
+			players[clientnum]->freecam.tool["custom_seed"] = std::to_string(seed);
+			return seed;
+		}},
+		{ SDLK_8,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["custom_seed"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["custom_seed"]);
+			}
+			if ( players[clientnum]->freecam.tool["custom_seed"] == "" )
+			{
+				players[clientnum]->freecam.tool["custom_seed"] = "0";
+			}
+			int seed = std::stoi(players[clientnum]->freecam.tool["custom_seed"]);
+			char buf[128];
+			snprintf(buf, sizeof(buf), "/setmapseed %d", seed);
+			consoleCommand(buf);
+			return seed;
+		}},
+		{ SDLK_F4,[](int player, bool check) {
+			int modify_player = std::stoi(players[clientnum]->freecam.tool["cheats_modify"]);
+			if ( check )
+			{
+				return modify_player;
+			}
+
+			modify_player++;
+			while ( client_disconnected[modify_player] )
+			{
+				modify_player++;
+				if ( modify_player >= MAXPLAYERS )
+				{
+					modify_player = 0;
+					break;
+				}
+			}
+			players[clientnum]->freecam.tool["cheats_modify"] = std::to_string(modify_player);
+			return modify_player;
+		}},
+		{ SDLK_F8,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["jump_level"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["jump_level"]);
+			}
+			int level = players[clientnum]->freecam.tool["jump_level"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["jump_level"]);
+
+			secretleveltype = (SecretLevelType)(players[clientnum]->freecam.tool["secret_level"] == "" ? (int)secretleveltype 
+				: std::stoi(players[clientnum]->freecam.tool["secret_level"]));
+
+			players[clientnum]->freecam.tool["jump_level"] = std::to_string(level);
+			char buf[128];
+			snprintf(buf, sizeof(buf), "/jumplevel %d", -1 + level);
+			consoleCommand(buf);
+
+			level = 0;
+			players[clientnum]->freecam.tool["jump_level"] = std::to_string(level);
+			return level;
+		} },
+		{ SDLK_EQUALS,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["jump_level"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["jump_level"]);
+			}
+			int level = players[clientnum]->freecam.tool["jump_level"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["jump_level"]);
+			++level;
+			players[clientnum]->freecam.tool["jump_level"] = std::to_string(level);
+			return level;
+		} },
+		{ SDLK_MINUS,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["jump_level"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["jump_level"]);
+			}
+			int level = players[clientnum]->freecam.tool["jump_level"] == "" ? 0 : std::stoi(players[clientnum]->freecam.tool["jump_level"]);
+			--level;
+			players[clientnum]->freecam.tool["jump_level"] = std::to_string(level);
+			return level;
+		} },
+		{ SDLK_F9,[](int player, bool check) {
+			if ( check )
+			{
+				return 0;
+			}
+
+			secretleveltype = (SecretLevelType)(players[clientnum]->freecam.tool["secret_level"] == "" ? (int)secretleveltype
+				: std::stoi(players[clientnum]->freecam.tool["secret_level"]));
+
+			char buf[128];
+			snprintf(buf, sizeof(buf), "/jumplevel -2");
+			consoleCommand(buf);
+			return 0;
+		} },
+		{ SDLK_F10,[](int player, bool check) {
+			if ( check )
+			{
+				return 0;
+			}
+
+			secretleveltype = (SecretLevelType)(players[clientnum]->freecam.tool["secret_level"] == "" ? (int)secretleveltype
+				: std::stoi(players[clientnum]->freecam.tool["secret_level"]));
+
+			char buf[128];
+			snprintf(buf, sizeof(buf), "/nextlevel");
+			consoleCommand(buf);
+			return 0;
+		} },
+		{ SDLK_0,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["secret_level"] == "" ? (int)secretleveltype : std::stoi(players[clientnum]->freecam.tool["secret_level"]);
+			}
+			if ( players[clientnum]->freecam.tool["secret_level"] == "" )
+			{
+				players[clientnum]->freecam.tool["secret_level"] = std::to_string((int)secretleveltype);
+			}
+			int next = std::stoi(players[clientnum]->freecam.tool["secret_level"]) + 1;
+			if ( next >= 4 )
+			{
+				next = 0;
+			}
+			players[clientnum]->freecam.tool["secret_level"] = std::to_string(next);
+			return next;
+		} },
+		{ SDLK_F2,[](int player, bool check) {
+			static int lvl[MAXPLAYERS];
+			static bool init = false;
+			if ( !init )
+			{
+				init = true;
+				for ( int i = 0; i < MAXPLAYERS; ++i )
+				{
+					lvl[i] = 0;
+				}
+			}
+
+			if ( client_disconnected[player] )
+			{
+				return 0;
+			}
+
+			if ( check )
+			{
+				return lvl[player];
+			}
+			lvl[player] += 10;
+			if ( lvl[player] > 100 ) {
+				lvl[player] = 0;
+			}
+			if ( players[clientnum]->freecam.tool["char_update"] == "" )
+			{
+				players[clientnum]->freecam.tool["char_update"] = std::to_string(1 << player);
+			}
+			else
+			{
+				int char_update = std::stoi(players[clientnum]->freecam.tool["char_update"]);
+				char_update |= 1 << player;
+				players[clientnum]->freecam.tool["char_update"] = std::to_string(char_update);
+			}
+			for ( int i = 0; i < NUMPROFICIENCIES; ++i )
+			{
+				if ( i != PRO_STEALTH )
+				{
+					stats[player]->setProficiencyUnsafe(i, lvl[player]);
+				}
+			}
+			return lvl[player];
+		}},
+		{ SDLK_F1,[](int player, bool check) {
+			static int lvl[MAXPLAYERS];
+			static bool init = false;
+			if ( !init )
+			{
+				init = true;
+				for ( int i = 0; i < MAXPLAYERS; ++i )
+				{
+					lvl[i] = 0;
+				}
+			}
+
+			if ( client_disconnected[player] )
+			{
+				return 0;
+			}
+
+			if ( check )
+			{
+				return lvl[player];
+			}
+			lvl[player] += 10;
+			if ( lvl[player] > 50 ) {
+				lvl[player] = 0;
+			}
+			if ( players[clientnum]->freecam.tool["char_update"] == "" )
+			{
+				players[clientnum]->freecam.tool["char_update"] = std::to_string(1 << player);
+			}
+			else
+			{
+				int char_update = std::stoi(players[clientnum]->freecam.tool["char_update"]);
+				char_update |= 1 << player;
+				players[clientnum]->freecam.tool["char_update"] = std::to_string(char_update);
+			}
+			stats[player]->HP = DEFAULT_HP;
+			stats[player]->MAXHP = DEFAULT_HP;
+			stats[player]->OLDHP = stats[player]->HP;
+			stats[player]->MP = DEFAULT_MP;
+			stats[player]->MAXMP = DEFAULT_MP;
+			stats[player]->EXP = 0;
+			stats[player]->STR = 0;
+			stats[player]->DEX = 0;
+			stats[player]->CON = 0;
+			stats[player]->INT = 0;
+			stats[player]->PER = 0;
+			stats[player]->CHR = 0;
+			stats[player]->LVL = 0;
+			for ( int i = 0; i < NUMPROFICIENCIES; ++i )
+			{
+				stats[player]->setProficiencyUnsafe(i, 0);
+			}
+			initClassStats(client_classes[player], stats[player]);
+			for ( int i = 0; i < lvl[player]; ++i )
+			{
+				if ( players[player]->entity )
+				{
+					stats[player]->LVL++;
+
+					int increasestat[3] = { 0, 0, 0 };
+					int statIncrease[NUMSTATS] = { 0, 0, 0, 0, 0, 0 };
+					players[player]->entity->playerStatIncrease(client_classes[player], increasestat);
+					for ( int i = 0; i < 3; i++ )
+					{
+						statIncrease[increasestat[i]] += 1;
+						switch ( increasestat[i] )
+						{
+						case STAT_STR:
+							stats[player]->STR++;
+							break;
+						case STAT_DEX:
+							stats[player]->DEX++;
+							break;
+						case STAT_CON:
+							stats[player]->CON++;
+							break;
+						case STAT_INT:
+							stats[player]->INT++;
+							break;
+						case STAT_PER:
+							stats[player]->PER++;
+							break;
+						case STAT_CHR:
+							stats[player]->CHR++;
+							break;
+						default:
+							break;
+						}
+					}
+
+					int hpMod = HP_MOD;
+					int mpMod = MP_MOD;
+					auto& baseGrowths = ClassBaseGrowths::getClassBaseGrowths(client_classes[player]);
+					hpMod = baseGrowths.baseHP;
+					mpMod = baseGrowths.baseMP;
+					for ( int i = 0; i < 3; ++i )
+					{
+						hpMod += ClassBaseGrowths::hpStatGrowths[increasestat[i]] * statIncrease[increasestat[i]];
+						mpMod += ClassBaseGrowths::mpStatGrowths[increasestat[i]] * statIncrease[increasestat[i]];
+					}
+					stats[player]->MAXHP += hpMod;
+					stats[player]->MAXMP += mpMod;
+					stats[player]->HP = stats[player]->MAXHP;
+					stats[player]->MP = stats[player]->MAXMP;
+
+					if ( stats[player]->playerRace == RACE_INSECTOID && stats[player]->stat_appearance == 0 )
+					{
+						Sint32 oldMP = stats[player]->MP;
+						stats[player]->MAXMP = std::min(100, stats[player]->MAXMP);
+						players[player]->entity->playerInsectoidIncrementHungerToMP(stats[player]->MP - oldMP);
+					}
+				}
+			}
+			return lvl[player];
+		}},
+		{ SDLK_F5,[](int player, bool check) {
+			if ( check )
+			{
+				return players[clientnum]->freecam.tool["char_update"] != "" ? 1 : 0;
+			}
+
+			if ( players[clientnum]->freecam.tool["char_update"] == "" )
+			{
+				return 0;
+			}
+
+			int char_update = std::stoi(players[clientnum]->freecam.tool["char_update"]);
+			for ( int player = 0; player < MAXPLAYERS; ++player )
+			{
+				if ( char_update & (1 << player) )
+				{
+					if ( client_disconnected[player] )
+					{
+						continue;
+					}
+					// inform clients of stat changes
+					if ( multiplayer == SERVER )
+					{
+						if ( player > 0 && !players[player]->isLocalPlayer() )
+						{
+							strcpy((char*)net_packet->data, "ATTR");
+							net_packet->data[4] = clientnum;
+							net_packet->data[5] = (Sint8)stats[player]->STR;
+							net_packet->data[6] = (Sint8)stats[player]->DEX;
+							net_packet->data[7] = (Sint8)stats[player]->CON;
+							net_packet->data[8] = (Sint8)stats[player]->INT;
+							net_packet->data[9] = (Sint8)stats[player]->PER;
+							net_packet->data[10] = (Sint8)stats[player]->CHR;
+							net_packet->data[11] = (Uint8)stats[player]->EXP;
+							net_packet->data[12] = (Uint8)stats[player]->LVL;
+							SDLNet_Write16((Sint16)stats[player]->HP, &net_packet->data[13]);
+							SDLNet_Write16((Sint16)stats[player]->MAXHP, &net_packet->data[15]);
+							SDLNet_Write16((Sint16)stats[player]->MP, &net_packet->data[17]);
+							SDLNet_Write16((Sint16)stats[player]->MAXMP, &net_packet->data[19]);
+							net_packet->address.host = net_clients[player - 1].host;
+							net_packet->address.port = net_clients[player - 1].port;
+							net_packet->len = 21;
+							sendPacketSafe(net_sock, -1, net_packet, player - 1);
+
+							strcpy((char*)net_packet->data, "SKI2");
+							for ( int i = 0; i < NUMPROFICIENCIES; ++i )
+							{
+								net_packet->data[4 + i] = std::max(0, std::min(100, stats[player]->getProficiency(i)));
+							}
+							net_packet->address.host = net_clients[player - 1].host;
+							net_packet->address.port = net_clients[player - 1].port;
+							net_packet->len = 20;
+							sendPacketSafe(net_sock, -1, net_packet, player - 1);
+						}
+					}
+
+					Uint8 effectStrength = stats[player]->getEffectActive(EFF_GROWTH);
+					if ( effectStrength >= 1 )
+					{
+						int stages = 3;
+						if ( players[player]->entity )
+						{
+							players[player]->entity->setEffect(EFF_GROWTH, (Uint8)(std::min(4, effectStrength + stages)), 15 * TICKS_PER_SECOND, false);
+							if ( stats[player]->getEffectActive(EFF_GROWTH) - effectStrength == 2 )
+							{
+								messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6924));
+							}
+							else if ( stats[player]->getEffectActive(EFF_GROWTH) > effectStrength )
+							{
+								messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(6925));
+							}
+						}
+					}
+					messagePlayerColor(player, MESSAGE_STATUS, makeColorRGB(0, 255, 0), "Received debug stat update");
+				}
+			}
+			serverUpdatePlayerLVL(); // update all clients of party levels.
+			players[clientnum]->freecam.tool["char_update"] = "";
+			return 0;
+		} }
+	};
+
+	auto& input = Input::inputs[clientnum];
+	for ( auto& func : funcs )
+	{
+		if ( (keycode == SDL_KeyCode::SDLK_END && Input::keys[func.first]) || keycode == func.first )
+		{
+			if ( !check )
+			{
+				Input::keys[func.first] = 0;
+				Player::soundActivate();
+				input.consumeBindingsSharedWithKeycode(func.first);
+			}
+			return func.second(player, check);
+		}
+	}
+
+	return 0;
 }
 
 void Player::FreeCam_t::printHelp()
@@ -548,35 +1019,98 @@ void Player::FreeCam_t::printHelp()
 		int x = 8;
 		int y = 20;
 		drawTextHelper(x, y, "[H] Disable Help"); y += 20;
-		drawTextHelper(x, y, "[F1] Camera Speed: %s", tool["camspeed"] == "" ? "default" : tool["camspeed"].c_str()); y += 20;
-		drawTextHelper(x, y, "[F2] Camera Rotate: %s", tool["camrotate"] == "" ? "default" : tool["camrotate"].c_str()); y += 20;
-		drawTextHelper(x, y, "[F3] Camera Light: %s", tool["light"] == "" ? "default" : tool["light"].c_str()); y += 20;
-		drawTextHelper(x, y, "[F4] Flight Control: %s", tool["control_flight"] == "" ? "default" : tool["control_flight"].c_str()); y += 20;
-		drawTextHelper(x, y, "[F5] Change Glyphs (TBD)"); y += 20;
-		drawTextHelper(x, y, "[F7] Noclip Walls: %s", tool["noclip"] == "" ? "off" : tool["noclip"].c_str()); y += 20;
-		drawTextHelper(x, y, "[F8] Clean Blood"); y += 20;
-		drawTextHelper(x, y, "[F9] Clean Items"); y += 20;
-		drawTextHelper(x, y, "[F10] Silence Key SFX: %s", tool["silence"] == "" ? "off" : tool["silence"].c_str()); y += 20;
-		drawTextHelper(x, y, "[F11] Toggle Cinema Mode"); y += 20;
-		drawTextHelper(x, y, "[N] Toggle HUD"); y += 20;
-		drawTextHelper(x, y, "[-] Camera Is Stuck"); y += 20;
-		y += 10;
-		drawTextHelper(x, y, "Callout Tool: %s", tool["callout"] == "" ? "off" : tool["callout"].c_str()); y += 20;
-		drawTextHelper(x, y, "[1] Command Object"); y += 20;
-		drawTextHelper(x, y, "[2] Freeze NPC"); y += 20;
-		drawTextHelper(x, y, "[3] Edit Lights"); y += 20;
-		drawTextHelper(x, y, "[4] Deselect Callout Tool"); y += 20;
-		drawTextHelper(x, y, "[5] Cue Record"); y += 20;
-		drawTextHelper(x, y, "[6] Cue Record (Waypoint)"); y += 20;
-		drawTextHelper(x, y, "[8] Delete Placed Lights"); y += 20;
-		drawTextHelper(x, y, "[9] Unfreeze NPCs"); y += 20;
-		drawTextHelper(x, y, "[0] World Freeze: %s", gameloopFreezeEntities ? "on" : "off"); y += 20;
-		y += 10;
-		drawTextHelper(x, y, "[KP 1/2/3] Place Waypoints"); y += 20;
-		drawTextHelper(x, y, "[KP 4/5/6] Warp to Waypoints"); y += 20;
-		drawTextHelper(x, y, "[KP *] Waypoint Speed: %s", tool["waypoint_speed"] == "" ? "default" : tool["waypoint_speed"].c_str()); y += 20;
-		drawTextHelper(x, y, "[KP /] Waypoint Lock: %s", tool["waypoint_lock"] == "" ? "off" : "on"); y += 20;
-		drawTextHelper(x, y, "[KP Enter] Waypoint Run"); y += 20;
+		drawTextHelper(x, y, "[V] Cheats View"); y += 20;
+
+		if ( tool["cheats"] != "" )
+		{
+			if ( player.playernum != clientnum ) { return; }
+			if ( tool["cheats_modify"] == "" )
+			{
+				tool["cheats_modify"] = "0";
+			}
+			int modify_player = std::stoi(tool["cheats_modify"]);
+			if ( client_disconnected[modify_player] )
+			{
+				tool["cheats_modify"] = "0";
+				modify_player = 0;
+			}
+			drawTextHelper(x, y, "[1] God mode: %s", processQuickDebug(modify_player, true, SDLK_1) ? "on" : "off"); y += 20;
+			drawTextHelper(x, y, "[2] Friendly mode: %s", processQuickDebug(modify_player, true, SDLK_2) ? "on" : "off"); y += 20;
+			drawTextHelper(x, y, "[3] Noclip: %s", processQuickDebug(modify_player, true, SDLK_3) ? "on" : "off"); y += 20;
+			int hideweapon = processQuickDebug(modify_player, true, SDLK_4);
+			drawTextHelper(x, y, "[4] Hide Weapon: %s", hideweapon ? "toggled" : "off"); y += 20;
+			processQuickDebug(modify_player, true, SDLK_4);
+			drawTextHelper(x, y, "[5] Minotaurs: %s", processQuickDebug(modify_player, true, SDLK_5) ? "on" : "off"); y += 20;
+			drawTextHelper(x, y, "[6/7] Custom Seed [+/-]: %s", std::to_string(processQuickDebug(modify_player, true, SDLK_6)).c_str()); y += 20;
+			int seed = processQuickDebug(modify_player, true, SDLK_7);
+			drawTextHelper(x, y, "[8] Apply Seed: %s", seed != 0 ? ((Uint32)seed != forceMapSeed ? "needs update" : "set") : "off"); y += 20;
+
+			y += 10;
+			std::string lvls = "";
+			std::string skills = "";
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				if ( i == modify_player )
+				{
+					lvls += "[";
+					lvls += std::to_string(processQuickDebug(i, true, SDLK_F1));
+					lvls += "]";
+					skills += "[";
+					skills += std::to_string(processQuickDebug(i, true, SDLK_F2));
+					skills += "]";
+				}
+				else
+				{
+					lvls += std::to_string(processQuickDebug(i, true, SDLK_F1));
+					skills += std::to_string(processQuickDebug(i, true, SDLK_F2));
+				}
+				lvls += " ";
+				skills += " ";
+			}
+			drawTextHelper(x, y, "[F1] Player LEVEL setpoint: %s", lvls.c_str()); y += 20;
+			drawTextHelper(x, y, "[F2] Player SKILL setpoint: %s", skills.c_str()); y += 20;
+			drawTextHelper(x, y, "[F4] Editing player: %s", modify_player == clientnum ? "0 (You)" : tool["cheats_modify"].c_str()); y += 20;
+			drawTextHelper(x, y, "[F5] Refresh client player setpoints: %s", processQuickDebug(modify_player, true, SDLK_F5) ? "needs update" : ""); y += 20;
+
+			y += 10;
+			drawTextHelper(x, y, "[F8] Reload Level"); y += 20;
+			drawTextHelper(x, y, "[F9] Quick Reload -1 Level"); y += 20;
+			drawTextHelper(x, y, "[F10] Quick Reload +1 Level"); y += 20;
+			drawTextHelper(x, y, "[0] Adjust Secret Level Depth: %s", std::to_string(processQuickDebug(modify_player, true, SDLK_0)).c_str()); y += 20;
+			drawTextHelper(x, y, "[-/+] Adjust Level Jump: %s", std::to_string(processQuickDebug(modify_player, true, SDLK_MINUS)).c_str()); y += 20;
+		}
+		else
+		{
+			drawTextHelper(x, y, "[F1] Camera Speed: %s", tool["camspeed"] == "" ? "default" : tool["camspeed"].c_str()); y += 20;
+			drawTextHelper(x, y, "[F2] Camera Rotate: %s", tool["camrotate"] == "" ? "default" : tool["camrotate"].c_str()); y += 20;
+			drawTextHelper(x, y, "[F3] Camera Light: %s", tool["light"] == "" ? "default" : tool["light"].c_str()); y += 20;
+			drawTextHelper(x, y, "[F4] Flight Control: %s", tool["control_flight"] == "" ? "default" : tool["control_flight"].c_str()); y += 20;
+			drawTextHelper(x, y, "[F5] Change Glyphs (TBD)"); y += 20;
+			drawTextHelper(x, y, "[F7] Noclip Walls: %s", tool["noclip"] == "" ? "off" : tool["noclip"].c_str()); y += 20;
+			drawTextHelper(x, y, "[F8] Clean Blood"); y += 20;
+			drawTextHelper(x, y, "[F9] Clean Items"); y += 20;
+			drawTextHelper(x, y, "[F10] Silence Key SFX: %s", tool["silence"] == "" ? "off" : tool["silence"].c_str()); y += 20;
+			drawTextHelper(x, y, "[F11] Toggle Cinema Mode"); y += 20;
+			drawTextHelper(x, y, "[N] Toggle HUD"); y += 20;
+			drawTextHelper(x, y, "[-] Camera Is Stuck"); y += 20;
+			y += 10;
+			drawTextHelper(x, y, "Callout Tool: %s", tool["callout"] == "" ? "off" : tool["callout"].c_str()); y += 20;
+			drawTextHelper(x, y, "[1] Command Object"); y += 20;
+			drawTextHelper(x, y, "[2] Freeze NPC"); y += 20;
+			drawTextHelper(x, y, "[3] Edit Lights"); y += 20;
+			drawTextHelper(x, y, "[4] Deselect Callout Tool"); y += 20;
+			drawTextHelper(x, y, "[5] Cue Record"); y += 20;
+			drawTextHelper(x, y, "[6] Cue Record (Waypoint)"); y += 20;
+			drawTextHelper(x, y, "[8] Delete Placed Lights"); y += 20;
+			drawTextHelper(x, y, "[9] Unfreeze NPCs"); y += 20;
+			drawTextHelper(x, y, "[0] World Freeze: %s", gameloopFreezeEntities ? "on" : "off"); y += 20;
+			y += 10;
+			drawTextHelper(x, y, "[KP 1/2/3] Place Waypoints"); y += 20;
+			drawTextHelper(x, y, "[KP 4/5/6] Warp to Waypoints"); y += 20;
+			drawTextHelper(x, y, "[KP *] Waypoint Speed: %s", tool["waypoint_speed"] == "" ? "default" : tool["waypoint_speed"].c_str()); y += 20;
+			drawTextHelper(x, y, "[KP /] Waypoint Lock: %s", tool["waypoint_lock"] == "" ? "off" : "on"); y += 20;
+			drawTextHelper(x, y, "[KP Enter] Waypoint Run"); y += 20;
+		}
 	}
 }
 
@@ -686,6 +1220,43 @@ void Player::FreeCam_t::processInput()
 		{
 			tool["help"] = "";
 		}
+	}
+
+	if ( multiplayer == CLIENT )
+	{
+		tool["cheats"] = "";
+	}
+	else
+	{
+		if ( Input::keys[SDLK_v] )
+		{
+			Input::keys[SDLK_v] = 0;
+			Player::soundActivate();
+			input.consumeBindingsSharedWithKeycode(SDLK_v);
+			if ( tool["cheats"] == "" )
+			{
+				tool["cheats"] = "1";
+				nohud = false;
+			}
+			else
+			{
+				tool["cheats"] = "";
+			}
+		}
+	}
+
+	if ( tool["cheats"] != "" )
+	{
+		if ( multiplayer != CLIENT )
+		{
+			if ( tool["cheats_modify"] == "" )
+			{
+				tool["cheats_modify"] = "0";
+			}
+			int modify_player = std::stoi(tool["cheats_modify"]);
+			processQuickDebug(modify_player, false, SDL_KeyCode::SDLK_END);
+		}
+		return;
 	}
 
 	if ( Input::keys[SDLK_n] )

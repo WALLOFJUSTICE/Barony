@@ -140,12 +140,16 @@ void createChestInventory(Entity* my, int chestType)
 	int lastGeneratedItemType = -1;
 	int lastGeneratedItemSpellType = -1;
 
+	std::vector<std::pair<std::string, int>> spawnModifiers;
+	
 	switch ( chesttype )   //Note that all of this needs to be properly balanced over time.
 	{
 		//TODO: Make all applicable item additions work on a category based search?
 	case 0:
+	{
 		//Completely random.
 		itemcount = (rng.rand() % 5) + 1;
+		std::vector<unsigned int> cat_weights((Category::CATEGORY_MAX - 2), 10); // exclude spell_cat
 		for ( i = 0; i < itemcount; ++i )
 		{
 			//And add the current entity to it.
@@ -156,20 +160,24 @@ void createChestInventory(Entity* my, int chestType)
 			//	itemnum = rng.rand() % NUMITEMS;    //Keep trying until you don't get a spell or invalid item.
 			//}
 			//newItem(static_cast<ItemType>(itemnum), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			int cat = rng.rand() % (Category::CATEGORY_MAX - 2); // exclude spell_cat
-			Item* currentItem = newItem(itemLevelCurve(static_cast<Category>(cat), 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+
+			int cat = rng.discrete(cat_weights.data(), cat_weights.size());
+			cat_weights[cat] = std::max((int)cat_weights[cat] - 5, 0); // lower this categories weighting
+			Item* currentItem = newItem(itemLevelCurveEntity(*my, static_cast<Category>(cat), 0, currentlevel + 5, rng, &spawnModifiers), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 			if ( currentItem )
 			{
 				itemLevelCurvePostProcess(my, currentItem, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				spawnModifiers.emplace_back("exclude", currentItem->type);
 			}
 		}
 		break;
+	}
 	case 1:
 		//Garbage chest
 		if ( rng.rand() % 2 )
 		{
 			//Empty.
-			Item* item = newItem(itemLevelCurve(SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+			Item* item = newItem(itemLevelCurveEntity(*my, SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 			if ( item )
 			{
 				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -186,7 +194,7 @@ void createChestInventory(Entity* my, int chestType)
 				{
 					if ( rng.rand() % 2 == 0 )
 					{
-						Item* item = newItem(itemLevelCurve(SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+						Item* item = newItem(itemLevelCurveEntity(*my, SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 						if ( item )
 						{
 							itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -211,7 +219,7 @@ void createChestInventory(Entity* my, int chestType)
 		for ( i = 0; i < itemcount; ++i )
 		{
 			//newItem(static_cast<ItemType>(FOOD_BREAD + (rng.rand() % 7)), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			Item* item = newItem(itemLevelCurve(FOOD, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+			Item* item = newItem(itemLevelCurveEntity(*my, FOOD, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 			if ( item )
 			{
 				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -247,7 +255,7 @@ void createChestInventory(Entity* my, int chestType)
 			{
 				//Spawn a ring.
 				//newItem(static_cast<ItemType>(RING_ADORNMENT + rng.rand() % 12), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-				Item* item = newItem(itemLevelCurve(RING, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				Item* item = newItem(itemLevelCurveEntity(*my, RING, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 				if ( item )
 				{
 					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -257,7 +265,7 @@ void createChestInventory(Entity* my, int chestType)
 			{
 				//Spawn an amulet.
 				//newItem(static_cast<ItemType>(AMULET_SEXCHANGE + rng.rand() % 6), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-				Item* item = newItem(itemLevelCurve(AMULET, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				Item* item = newItem(itemLevelCurveEntity(*my, AMULET, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 				if ( item )
 				{
 					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -282,158 +290,173 @@ void createChestInventory(Entity* my, int chestType)
 		}
 		break;
 	case 4:
+	{
 		//Weapons, armor, stuff.
 		//Further break this down into either spawning only weapon(s), only armor(s), or a combo, like a set.
 
-		switch ( rng.rand() % 3 )   //TODO: Note, switch to rng.rand()%4 if/when case 3 is implemented.
+		int roll = rng.rand() % 3;
+		if ( rng.rand() % 50 == 0 ) // 2% unique chance
 		{
-		case 0:
-			//Only a weapon. Items 0 - 16.
-		{
-			//int item = rng.rand() % 18;
-			////Since the weapons are not a continuous set, check to see if the weapon is part of the continuous set. If it is not, move on to the next block. In this case, there's only one weapon that is not part of the continous set: the crossbow.
-			//if (item < 16)
-			//	//Almost every weapon.
-			//{
-			//	newItem(static_cast<ItemType>(rng.rand() % 17), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//}
-			//else
-			//	//Crossbow.
-			//{
-			//	newItem(CROSSBOW, static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//}
-			Item* item = newItem(itemLevelCurve(WEAPON, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			if ( item )
-			{
-				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
-			}
+			roll = 3;
 		}
-		break;
-		case 1:
-			//Only a piece of armor.
+		bool forceCombo = false;
+		switch ( roll )
 		{
-			/*
-			 * 0 - 1 are the steel shields, items 17 and 18.
-			 * 2 - 5 are the gauntlets, items 20 - 23.
-			 * 6 - 15 are the boots & shirts (as in, breastplates and all variants), items 28 - 37.
-			 * 16 - 19 are the hats & helmets, items 40 - 43
-			 */
-			 //int item = rng.rand() % 15;
-			 //if (item <= 1)
-			 //	//Steel shields. Items 17 & 18.
-			 //{
-			 //	newItem(static_cast<ItemType>(17 + rng.rand() % 2), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			 //}
-			 //else if (item <= 5)
-			 //	//Gauntlets. Items 20 - 23.
-			 //{
-			 //	if ( rng.rand() % 3 > 0 )
-			 //	{
-			 //		newItem(static_cast<ItemType>(20 + rng.rand() % 4), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			 //	}
-			 //	else
-			 //	{
-			 //		// new gauntlets
-			 //		newItem(static_cast<ItemType>(BRASS_KNUCKLES + rng.rand() % 3), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			 //	}
-			 //}
-			 //else if (item <= 10)
-			 //	//Hats & helmets. Items 40 - 43.
-			 //{
-			 //	newItem(static_cast<ItemType>(40 + rng.rand() % 4), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			 //}
-			 //else if (item <= 15)
-			 //	//Boots & shirts. Items 28 - 37.
-			 //{
-			 //	newItem(static_cast<ItemType>(28 + rng.rand() % 10), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			 //}
-			Item* item = newItem(itemLevelCurve(ARMOR, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			if ( item )
-			{
-				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
-			}
-		}
-		break;
-		case 2:
-			//A weapon and an armor, chance of thrown.
+		case 3:
 		{
-			//int item = rng.rand() % 18;
-			////Since the weapons are not a continuous set, check to see if the weapon is part of the continuous set. If it is not, move on to the next block. In this case, there's only one weapon that is not part of the continous set: the crossbow.
-			//if (item < 16)
-			//	//Almost every weapon.
-			//{
-			//	newItem(static_cast<ItemType>(rng.rand() % 17), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//}
-			//else
-			//	//Crossbow.
-			//{
-			//	newItem(static_cast<ItemType>(19), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//}
-
-			///*
-			// * 0 - 1 are the steel shields, items 17 and 18.
-			// * 2 - 5 are the gauntlets, items 20 - 23.
-			// * 6 - 15 are the boots & shirts (as in, breastplates and all variants), items 28 - 37.
-			// * 16 - 19 are the hats & helmets, items 40 - 43
-			// */
-			//item = rng.rand() % 20;
-			//if (item <= 1)
-			//	//Steel shields. Items 17 & 18.
-			//{
-			//	newItem(static_cast<ItemType>(17 + rng.rand() % 2), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//}
-			//else if (item <= 5)
-			//	//Gauntlets. Items 20 - 23.
-			//{
-			//	if ( rng.rand() % 3 > 0 )
-			//	{
-			//		newItem(static_cast<ItemType>(20 + rng.rand() % 4), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//	}
-			//	else
-			//	{
-			//		// new gauntlets
-			//		newItem(static_cast<ItemType>(BRASS_KNUCKLES + rng.rand() % 3), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//	}
-			//}
-			//else if (item <= 10)
-			//	//Hats & helmets. Items 40 - 43.
-			//{
-			//	newItem(static_cast<ItemType>(40 + rng.rand() % 4), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//}
-			//else if (item <= 15)
-			//	//Boots & shirts. Items 28 - 37.
-			//{
-			//	newItem(static_cast<ItemType>(28 + rng.rand() % 10), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			//}
-
-			Item* item = newItem(itemLevelCurve(WEAPON, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			if ( item )
+			// try for unique
+			spawnModifiers.emplace_back("spawn_unique", ARMOR);
+			spawnModifiers.emplace_back("spawn_unique", WEAPON);
+			ItemType unique = itemLevelCurveEntity(*my, WEAPON, minimumQuality, currentlevel + 5, rng, &spawnModifiers);
+			if ( unique != GEM_ROCK )
 			{
-				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
-			}
-			item = newItem(itemLevelCurve(ARMOR, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			if ( item )
-			{
-				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
-			}
-
-			// try for thrown items.
-			itemcount = 0 + rng.rand() % 2;
-			for ( i = 0; i < itemcount; ++i )
-			{
-				Item* thrown = newItem(itemLevelCurve(THROWN, minimumQuality, currentlevel, rng), WORN, 0, 3 + rng.rand() % 3, rng.rand(), false, inventory);
-				if ( thrown )
+				Item* item = newItem(unique, static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
 				{
-					itemLevelCurvePostProcess(my, thrown, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+				break;
+			}
+			spawnModifiers.clear();
+			forceCombo = true;
+		}
+		// else fall through
+		case 0:
+		{
+			//Only a weapon. Items 0 - 16.
+			if ( forceCombo || rng.rand() % 20 == 0 || (currentlevel >= 10 && rng.rand() % 10 == 0) )
+			{
+				// spawn a combo of weapon and other
+				Item* item = newItem(itemLevelCurveEntity(*my, WEAPON, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+					spawnModifiers.emplace_back("combo_item", item->type);
+				}
+
+				ItemType comboItem = itemLevelCurveEntity(*my, ARMOR, minimumQuality, currentlevel + 5, rng, &spawnModifiers);
+				if ( itemTypeIsQuiver(comboItem) )
+				{
+					// 20-30 ammo
+					item = newItem(comboItem, EXCELLENT, 0, 20 + rng.rand() % 11, ITEM_GENERATED_QUIVER_APPEARANCE, false, inventory);
+				}
+				else if ( items[comboItem].category == THROWN )
+				{
+					// 5-8 throwns
+					item = newItem(comboItem, static_cast<Status>(WORN + rng.rand() % 3), 0, 5 + rng.rand() % 4, rng.rand(), false, inventory);
+				}
+				else
+				{
+					item = newItem(comboItem, static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				}
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+			}
+			else
+			{
+				Item* item = newItem(itemLevelCurveEntity(*my, WEAPON, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
 				}
 			}
 		}
 		break;
-		case 3:
-			//TODO: Rarer. Getting a full set of armor + a weapon.
+		case 1:
+		{
+			//Only a piece of armor.
+			if ( rng.rand() % 20 == 0 || (currentlevel >= 10 && rng.rand() % 10 == 0) )
+			{
+				// spawn a combo of armor and other
+				Item* item = newItem(itemLevelCurveEntity(*my, ARMOR, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+					spawnModifiers.emplace_back("combo_item", item->type);
+				}
+
+				item = newItem(itemLevelCurveEntity(*my, ARMOR, minimumQuality, currentlevel + 5, rng, &spawnModifiers), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+			}
+			else
+			{
+				Item* item = newItem(itemLevelCurveEntity(*my, ARMOR, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+			}
+			break;
+		}
+		case 2:
+		{
+			//A weapon and an armor, chance of thrown.
+			if ( rng.rand() % 20 == 0 || (currentlevel >= 10 && rng.rand() % 5 == 0) ) // 5-20% ish matching set
+			{
+				// spawn a combo of weapon and other
+				Item* item = newItem(itemLevelCurveEntity(*my, WEAPON, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+					spawnModifiers.emplace_back("combo_item", item->type);
+				}
+
+				ItemType comboItem = itemLevelCurveEntity(*my, ARMOR, minimumQuality, currentlevel + 5, rng, &spawnModifiers);
+				if ( itemTypeIsQuiver(comboItem) )
+				{
+					// 20-30 ammo
+					item = newItem(comboItem, EXCELLENT, 0, 20 + rng.rand() % 11, ITEM_GENERATED_QUIVER_APPEARANCE, false, inventory);
+				}
+				else if ( items[comboItem].category == THROWN )
+				{
+					// 5-8 throwns
+					item = newItem(comboItem, static_cast<Status>(WORN + rng.rand() % 3), 0, 5 + rng.rand() % 4, rng.rand(), false, inventory);
+				}
+				else
+				{
+					item = newItem(comboItem, static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				}
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+			}
+			else
+			{
+				Item* item = newItem(itemLevelCurveEntity(*my, WEAPON, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+				item = newItem(itemLevelCurveEntity(*my, ARMOR, minimumQuality, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+
+				// try for thrown items.
+				itemcount = 0 + rng.rand() % 2;
+				for ( i = 0; i < itemcount; ++i )
+				{
+					Item* thrown = newItem(itemLevelCurveEntity(*my, THROWN, minimumQuality, currentlevel, rng), WORN, 0, 3 + rng.rand() % 3, rng.rand(), false, inventory);
+					if ( thrown )
+					{
+						itemLevelCurvePostProcess(my, thrown, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+					}
+				}
+			}
+			break;
+		}
+		default:
 			break;
 		}
 		break;
+	}
 	case 5:
 	{
 		//Tools.
@@ -472,7 +495,7 @@ void createChestInventory(Entity* my, int chestType)
 			itemcount = 1 + rng.rand() % 2;
 			for ( i = 0; i < itemcount; ++i )
 			{
-				Item* thrown = newItem(itemLevelCurve(THROWN, minimumQuality, currentlevel, rng), WORN, 0, 3 + rng.rand() % 3, rng.rand(), false, inventory);
+				Item* thrown = newItem(itemLevelCurveEntity(*my, THROWN, minimumQuality, currentlevel, rng), WORN, 0, 3 + rng.rand() % 3, rng.rand(), false, inventory);
 				if ( thrown )
 				{
 					itemLevelCurvePostProcess(my, thrown, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -505,7 +528,7 @@ void createChestInventory(Entity* my, int chestType)
 			for ( i = 0; i < itemcount; ++i )
 			{
 				//newItem(static_cast<ItemType>(SCROLL_IDENTIFY + rng.rand() % 12), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-				Item* item = newItem(itemLevelCurve(SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				Item* item = newItem(itemLevelCurveEntity(*my, SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 				if ( item )
 				{
 					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -533,7 +556,7 @@ void createChestInventory(Entity* my, int chestType)
 			for ( i = 0; i < itemcount; ++i )
 			{
 				//newItem(static_cast<ItemType>(SPELLBOOK_FORCEBOLT + rng.rand() % 22), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-				Item* item = newItem(itemLevelCurve(SPELLBOOK, 0, currentlevel + 6, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				Item* item = newItem(itemLevelCurveEntity(*my, SPELLBOOK, 0, currentlevel + 6, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 				if ( item )
 				{
 					int spell_level = currentlevel + 6;
@@ -552,12 +575,66 @@ void createChestInventory(Entity* my, int chestType)
 		{
 			//A staff.
 			//newItem(static_cast<ItemType>(MAGICSTAFF_LIGHT + rng.rand() % 10), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			Item* item = newItem(itemLevelCurve(MAGICSTAFF, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+			Item* item = newItem(itemLevelCurveEntity(*my, MAGICSTAFF, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 			if ( item )
 			{
 				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				spawnModifiers.emplace_back("exclude", item->type);
 			}
-			break;
+
+			switch ( rng.rand() % 10 )
+			{
+			case 0:
+				// 10% extra staff
+				item = newItem(itemLevelCurveEntity(*my, MAGICSTAFF, 0, currentlevel + 5, rng, &spawnModifiers), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+				break;
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+				// 40% spellbook
+				item = newItem(itemLevelCurveEntity(*my, SPELLBOOK, 0, currentlevel + 6, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					int spell_level = currentlevel + 6;
+					itemLevelCurvePostProcess(my, item, rng, spell_level, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+				break;
+			case 5:
+			case 6:
+				// 20% cultist/wizard/priest/priest/shawl robes
+				item = newItem((ItemType)(ROBE_CULTIST + rng.rand() % 5), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+				break;
+			case 7:
+				// 10% unique drop
+				spawnModifiers.emplace_back("spawn_unique", ARMOR);
+				item = newItem(itemLevelCurveEntity(*my, ARMOR, 0, currentlevel + 5, rng, &spawnModifiers), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+				break;
+			case 8:
+				// 10% charging scroll
+				item = newItem(SCROLL_CHARGING, static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				if ( item )
+				{
+					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
+				}
+				break;
+			case 9:
+				break;
+			default:
+				break;
+			}
 		}
 		case 3:
 			//So spawn several items at once. A wizard's chest!
@@ -567,7 +644,7 @@ void createChestInventory(Entity* my, int chestType)
 			for ( i = 0; i < itemcount; ++i )
 			{
 				//newItem(static_cast<ItemType>(SCROLL_IDENTIFY + rng.rand() % 12), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-				Item* item = newItem(itemLevelCurve(SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+				Item* item = newItem(itemLevelCurveEntity(*my, SCROLL, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 				if ( item )
 				{
 					itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -575,7 +652,7 @@ void createChestInventory(Entity* my, int chestType)
 			}
 
 			//newItem(static_cast<ItemType>(SPELLBOOK_FORCEBOLT + rng.rand() % 22), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			Item* item = newItem(itemLevelCurve(SPELLBOOK, 0, currentlevel + 6, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+			Item* item = newItem(itemLevelCurveEntity(*my, SPELLBOOK, 0, currentlevel + 6, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 			if ( item )
 			{
 				int spell_level = currentlevel + 6;
@@ -589,7 +666,7 @@ void createChestInventory(Entity* my, int chestType)
 				itemLevelCurvePostProcess(my, item, rng, spell_level, &lastGeneratedItemType, &lastGeneratedItemSpellType);
 			}
 			//newItem(static_cast<ItemType>(MAGICSTAFF_LIGHT + rng.rand() % 10), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			item = newItem(itemLevelCurve(MAGICSTAFF, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+			item = newItem(itemLevelCurveEntity(*my, MAGICSTAFF, 0, currentlevel + 5, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 			if ( item )
 			{
 				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
@@ -719,7 +796,7 @@ void createChestInventory(Entity* my, int chestType)
 		for ( i = 0; i < itemcount; ++i )
 		{
 			//newItem(static_cast<ItemType>(POTION_WATER + (rng.rand() % 15)), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
-			Item* item = newItem(itemLevelCurve(POTION, 0, currentlevel + 7, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
+			Item* item = newItem(itemLevelCurveEntity(*my, POTION, 0, currentlevel + 7, rng), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
 			if ( item )
 			{
 				itemLevelCurvePostProcess(my, item, rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
