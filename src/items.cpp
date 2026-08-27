@@ -761,6 +761,8 @@ int levelCurveComboItemSets(std::vector<unsigned int>& chances, ItemType baseIte
 	}
 
 	std::set<int> uniques;
+	std::pair<std::string, int> shop_pool = { "", 0 };
+	std::map<ItemType, int> weight_halves;
 	if ( spawnModifiers )
 	{
 		for ( auto& pair : *spawnModifiers )
@@ -769,11 +771,86 @@ int levelCurveComboItemSets(std::vector<unsigned int>& chances, ItemType baseIte
 			{
 				uniques.insert(pair.second);
 			}
+			else if ( pair.first == "shop_arms_armor_basic" )
+			{
+				shop_pool = pair;
+			}
+			else if ( pair.first == "weight_halve" )
+			{
+				weight_halves[(ItemType)pair.second]++;
+			}
 		}
-
 	}
 
-	if ( uniques.size() )
+	if ( shop_pool.first != "" )
+	{
+		if ( shop_pool.first == "shop_arms_armor_basic" )
+		{
+			std::vector<Materials> material_set = {
+				MATERIAL_BRONZE,
+				MATERIAL_IRON,
+				MATERIAL_STEEL,
+				MATERIAL_BONE,
+				MATERIAL_QUILT,
+				MATERIAL_CHAIN
+			};
+
+			for ( auto& set : material_set )
+			{
+				for ( auto type : materials[set] )
+				{
+					if ( items[type].category == ARMOR )
+					{
+						chances[type] = 10;
+					}
+					else if ( items[type].category == WEAPON )
+					{
+						chances[type] = 20;
+					}
+				}
+			}
+
+			std::vector<SetGroups> group_set = {
+				SET_TIER_0,
+				SET_TIER_1,
+				SET_TIER_2
+			};
+
+			for ( auto& set : group_set )
+			{
+				for ( auto type : groups[set] )
+				{
+					if ( items[type].category == THROWN || isRangedWeapon(type) || (shop_pool.second == 2 /*extended range armors (wolf hoods etc)*/) )
+					{
+						if ( items[type].category == THROWN )
+						{
+							chances[type] = 20;
+						}
+						else
+						{
+							chances[type] = 10;
+						}
+					}
+				}
+			}
+		}
+
+		for ( int c = 0; c < NUMITEMS; ++c )
+		{
+			if ( chances[c] )
+			{
+				if ( weight_halves.find((ItemType)c) != weight_halves.end() )
+				{
+					while ( weight_halves[(ItemType)c] > 0 )
+					{
+						chances[(ItemType)c] = std::max(1, (int)chances[(ItemType)c] / 2);
+						--weight_halves[(ItemType)c];
+					}
+				}
+			}
+		}
+	}
+	else if ( uniques.size() )
 	{
 		for ( auto cat : uniques )
 		{
@@ -994,8 +1071,10 @@ ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLev
 	//"exclude"
 	//"combo_item"
 	std::set<ItemType> excludes;
+	std::map<ItemType, int> weight_halves;
 	int doUniqueEquipCategory = -1;
 	int doComboItem = -1;
+	int doShopPool = -1;
 	if ( spawnModifiers )
 	{
 		for ( auto& pair : *spawnModifiers )
@@ -1012,12 +1091,28 @@ ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLev
 			{
 				doComboItem = pair.second;
 			}
+			else if ( pair.first == "shop_arms_armor_basic" )
+			{
+				doShopPool = pair.second;
+			}
+			else if ( pair.first == "weight_halve" )
+			{
+				weight_halves[(ItemType)pair.second]++;
+			}
 		}
 	}
 
 	ItemGeneric::ItemRealms realm = gameLevels.getCurrentMapItemRealm(currentlevel, secretleveltype);
 	int customChancesSet = 0;
 	if ( doUniqueEquipCategory >= 0 )
+	{
+		customChancesSet = levelCurveComboItemSets(item_chances, (ItemType)WOODEN_SHIELD, minLevel, maxLevel, realm, excludes, spawnModifiers);
+		if ( customChancesSet == 0 )
+		{
+			return GEM_ROCK;
+		}
+	}
+	else if ( doShopPool >= 0 )
 	{
 		customChancesSet = levelCurveComboItemSets(item_chances, (ItemType)WOODEN_SHIELD, minLevel, maxLevel, realm, excludes, spawnModifiers);
 		if ( customChancesSet == 0 )
@@ -1051,7 +1146,15 @@ ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLev
 				int itemLevel = items[c].getItemCurveLevel(realm);
 				if ( itemLevel != -1 && (itemLevel >= minLevel && itemLevel <= maxLevel) && excludes.find((ItemType)c) == excludes.end() )
 				{
-					item_chances[c] = 1;
+					item_chances[c] = 10;
+					if ( weight_halves.find((ItemType)c) != weight_halves.end() )
+					{
+						while ( weight_halves[(ItemType)c] > 0 )
+						{
+							item_chances[c] = std::max(1, (int)item_chances[c] / 2);
+							--weight_halves[(ItemType)c];
+						}
+					}
 
 					if ( itemLevelCurveType == ITEM_LEVEL_CURVE_TYPE_SHOP )
 					{
@@ -1060,6 +1163,16 @@ ItemType itemLevelCurve(const Category cat, const int minLevel, const int maxLev
 							continue;
 						}
 
+						if ( itemLevelCurveShop == 0 ) // arms store
+						{
+							if ( items[c].category == ARMOR )
+							{
+								if ( !items[c].hasAttribute("AC") || (items[c].hasAttribute("AC") && items[c].attributes["AC"] == 0) )
+								{
+									item_chances[c] = std::max(1, (int)item_chances[c] / 2);
+								}
+							}
+						}
 						if ( itemLevelCurveShop == 1 ) // hat store
 						{
 							if ( !isHatShopItem(static_cast<ItemType>(c)) )
