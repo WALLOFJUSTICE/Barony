@@ -27850,6 +27850,18 @@ bool Entity::backupWithRangedWeapon(Stat& myStats, int dist, int hasrangedweapon
 	{
 		return false;
 	}
+	if ( myStats.type == SHOPKEEPER )
+	{
+		if ( Entity* target = uidToEntity(monsterTarget) )
+		{
+			if ( target->behavior == &actPlayer 
+				&& ShopkeeperPlayerHostility.getWantedLevel(target->skill[2]) != ShopkeeperPlayerHostility_t::NO_WANTED_LEVEL
+				&& ShopkeeperPlayerHostility.getWantedLevel(target->skill[2]) != ShopkeeperPlayerHostility_t::FAILURE_TO_IDENTIFY )
+			{
+				return false;
+			}
+		}
+	}
 	Entity* leader = monsterAllyGetPlayerLeader();
 	if ( leader )
 	{

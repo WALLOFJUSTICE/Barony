@@ -7334,6 +7334,92 @@ namespace ConsoleCommands {
 		messagePlayer(clientnum, MESSAGE_MISC, "Reloaded levels.json");
 	});
 
+	static ConsoleCommand ccmd_item_armor_curve_test("/item_armor_curve_test", "", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+		for ( int realm = ItemGeneric::MORTAL; realm <= ItemGeneric::ETERNAL; ++realm )
+		{
+			for ( int i = 0; i < NUMITEMS; ++i )
+			{
+				if ( items[i].category == WEAPON || items[i].category == ARMOR )
+				{
+					if ( items[i].hasAttribute("MATERIAL") )
+					{
+						if ( items[i].attributes["MATERIAL"] == 0
+							|| items[i].attributes["MATERIAL"] == 1
+							|| items[i].attributes["MATERIAL"] == 2
+							|| items[i].attributes["MATERIAL"] == 7
+							|| items[i].attributes["MATERIAL"] == 8
+							|| items[i].attributes["MATERIAL"] == 9 || items[i].category == WEAPON )
+						{
+							if ( items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm) <= 12 && items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm) != -1 )
+							{
+								messagePlayer(clientnum, MESSAGE_MISC, "LVL: %d Realm %d, %s", items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm), (int)realm, items[i].getIdentifiedName());
+							}
+						}
+					}
+				}
+			}
+		}
+		messagePlayer(clientnum, MESSAGE_MISC, "*************************");
+
+		for ( int realm = ItemGeneric::MORTAL; realm <= ItemGeneric::ETERNAL; ++realm )
+		{
+			for ( int i = 0; i < NUMITEMS; ++i )
+			{
+				if ( items[i].category == WEAPON || items[i].category == ARMOR )
+				{
+					if ( items[i].hasAttribute("MATERIAL") )
+					{
+						if ( items[i].attributes["MATERIAL"] == 0
+							|| items[i].attributes["MATERIAL"] == 1
+							|| items[i].attributes["MATERIAL"] == 2
+							|| items[i].attributes["MATERIAL"] == 7
+							|| items[i].attributes["MATERIAL"] == 8
+							|| items[i].attributes["MATERIAL"] == 9 || items[i].category == WEAPON )
+						{
+							if ( items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm) > 12 && items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm) <= 20 )
+							{
+								messagePlayer(clientnum, MESSAGE_MISC, "LVL: %d Realm %d, %s", items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm), (int)realm, items[i].getIdentifiedName());
+							}
+						}
+					}
+				}
+			}
+		}
+		messagePlayer(clientnum, MESSAGE_MISC, "*************************");
+
+		for ( int realm = ItemGeneric::MORTAL; realm <= ItemGeneric::ETERNAL; ++realm )
+		{
+			for ( int i = 0; i < NUMITEMS; ++i )
+			{
+				if ( items[i].category == WEAPON || items[i].category == ARMOR )
+				{
+					if ( items[i].hasAttribute("MATERIAL") )
+					{
+						if ( items[i].attributes["MATERIAL"] == 0
+							|| items[i].attributes["MATERIAL"] == 1
+							|| items[i].attributes["MATERIAL"] == 2
+							|| items[i].attributes["MATERIAL"] == 7
+							|| items[i].attributes["MATERIAL"] == 8
+							|| items[i].attributes["MATERIAL"] == 9 || items[i].category == WEAPON )
+						{
+							if ( items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm) > 21 )
+							{
+								messagePlayer(clientnum, MESSAGE_MISC, "LVL: %d Realm %d, %s", items[i].getItemCurveLevel((ItemGeneric::ItemRealms)realm), (int)realm, items[i].getIdentifiedName());
+							}
+						}
+					}
+				}
+			}
+		}
+		messagePlayer(clientnum, MESSAGE_MISC, "*************************");
+	});
+
 	static ConsoleCommand ccmd_item_combos_test("/item_combos_test", "", []CCMD{
 		if ( !(svFlags & SV_FLAG_CHEATS) )
 		{

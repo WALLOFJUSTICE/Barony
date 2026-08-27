@@ -3624,11 +3624,13 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 		{
 			// copy old entity attributes to newly created.
 			entityNew->actFloorBuilderTile = entityToCopy->actFloorBuilderTile;
+			entityNew->actFloorBuilderActivationDelay = entityToCopy->actFloorBuilderActivationDelay;
 		}
 		else
 		{
 			// set default new entity attributes.
 			entityNew->actFloorBuilderTile = 0;
+			entityNew->actFloorBuilderActivationDelay = 0;
 		}
 	}
 

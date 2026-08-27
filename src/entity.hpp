@@ -870,6 +870,8 @@ public:
 
 	// actFloorBuild
 	Sint32& actFloorBuilderTile = skill[0];
+	Sint32& actFloorBuilderActivationDelay = skill[1];
+	Sint32& actFloorBuilderDelayCounter = skill[3];
 
 	// actFreeCam
 	Sint32& actFreeCamLight = skill[12];

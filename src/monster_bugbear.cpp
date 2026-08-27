@@ -121,7 +121,7 @@ void initBugbear(Entity* my, Stat* myStats)
 							myStats->weapon = newItem(HEAVY_CROSSBOW, static_cast<Status>(rng.rand() % 2 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							if ( myStats->weapon && rng.rand() % 10 > 0 )
 							{
-								myStats->shield->isDroppable = false;
+								myStats->weapon->isDroppable = false;
 							}
 						}
 					}
@@ -133,7 +133,7 @@ void initBugbear(Entity* my, Stat* myStats)
 						myStats->weapon = newItem(HEAVY_CROSSBOW, static_cast<Status>(rng.rand() % 2 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						if ( myStats->weapon && rng.rand() % 10 > 0 )
 						{
-							myStats->shield->isDroppable = false;
+							myStats->weapon->isDroppable = false;
 						}
 					}
 					else

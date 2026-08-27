@@ -429,6 +429,69 @@ void ShopkeeperPlayerHostility_t::resetPlayerHostility(const int player, bool cl
 	}
 }
 
+std::map<Uint32, MinotaurPaths> minotaurPaths;
+void MinotaurPaths::incrementObjectBusted()
+{
+	objectsBusted++;
+	if ( lastTriggerTick > TICKS_PER_SECOND )
+	{
+		lastTriggerTick = std::max((Uint32)1, lastTriggerTick - TICKS_PER_SECOND);
+	}
+}
+void MinotaurPaths::update(Entity& my)
+{
+	int x = my.x / 16;
+	int y = my.y / 16;
+
+	if ( last_x != x || last_y != y )
+	{
+		last_x = x;
+		last_y = y;
+		int key = x + y * 10000;
+		coords_visited[key]++;
+		tilesVisited++;
+		if ( tilesVisited % 16 == 0 || coords_visited[key] == 2 || coords_visited[key] % 3 == 0 ) // 16 tiles, 3 same steps
+		{
+			if ( lastTriggerTick > TICKS_PER_SECOND )
+			{
+				lastTriggerTick = std::max((Uint32)1, lastTriggerTick - TICKS_PER_SECOND);
+			}
+		}
+
+		Stat* myStats = my.getStats();
+		Uint32 stageTimer = 60 * TICKS_PER_SECOND;
+		stageTimer -= 10 * (currentlevel / 5);
+		stageTimer = std::max((Uint32)10 * TICKS_PER_SECOND, stageTimer);
+
+		if ( my.ticks >= stageTimer || (myStats && myStats->HP < myStats->MAXHP * 0.75) )
+		{
+			if ( tilesVisited >= 16 )
+			{
+				if ( x >= 1 && x < map.width - 1 && y >= 1 && y < map.height - 1 )
+				{
+					int mapIndex = (y)*MAPLAYERS + (x)*MAPLAYERS * map.height;
+					if ( map.tiles[0 + mapIndex] )
+					{
+						/*messagePlayer(0, MESSAGE_MISC, "Minotaur Tick");*/
+						if ( ::ticks - lastTriggerTick >= 15 * TICKS_PER_SECOND )
+						{
+							//messagePlayer(0, MESSAGE_MISC, "Minotaur Cast");
+							lastTriggerTick = ::ticks;
+							tilesVisited = 0;
+							CastSpellProps_t props;
+							props.setToMonsterCast(&my, SPELL_DISRUPT_EARTH);
+							//real_t dist = sqrt(pow(props.caster_x - props.target_x, 2) + pow(props.caster_y - props.target_y, 2));
+							//props.target_x = dist * cos(my.yaw + PI);
+							//props.target_y = dist * sin(my.yaw + PI);
+							castSpell(my.getUID(), getSpellFromID(SPELL_DISRUPT_EARTH), true, false, false, &props);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 bool ShopkeeperPlayerHostility_t::isPlayerEnemy(const int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return false; }
@@ -3024,6 +3087,8 @@ void actMonster(Entity* my)
 			assailant[c] = true; // as long as this is active, combat music doesn't turn off
 			assailantTimer[c] = COMBAT_MUSIC_COOLDOWN;
 		}
+
+		minotaurPaths[my->getUID()].update(*my);
 	}
 
 	if ( myStats->type == SHADOW && my->monsterTarget != 0 )
@@ -3888,9 +3953,23 @@ void actMonster(Entity* my)
 				if ( myStats->type == SHOPKEEPER )
 				{
 					auto& rng = my->entity_rng ? *my->entity_rng : local_rng;
-					if ( rng.rand() % 2 && !items[item->type].hasAttribute("UNVOIDABLE") )
+					if ( !items[item->type].hasAttribute("UNVOIDABLE") )
 					{
-						item->isDroppable = false; // sometimes don't drop inventory
+						if ( rng.rand() % 2 )
+						{
+							item->isDroppable = false; // sometimes don't drop inventory
+						}
+						else
+						{
+							if ( item->isDroppable )
+							{
+								if ( !itemTypeIsQuiver(item->type) )
+								{
+									item->count = 1;
+									c = 1;
+								}
+							}
+						}
 					}
 				}
 				if ( myStats->type == GNOME )
@@ -6562,7 +6641,7 @@ void actMonster(Entity* my)
 							{
 								chaseRange = 20;
 							}
-							if ( myStats->type == GRYPHON )
+							if ( myStats->type == GRYPHON || myStats->type == MINOTAUR )
 							{
 								chaseRange = 20;
 							}
@@ -6761,11 +6840,14 @@ timeToGoAgain:
 										{
 											if ( myStats->type == MINOTAUR )
 											{
+												if ( hit.entity->doorHealth > 0 )
+												{
+													minotaurPaths[my->getUID()].incrementObjectBusted();
+												}
 												hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
 												my->monsterAttack = my->getAttackPose(); // random attack motion
 												my->monsterAttackTime = 0;
 												my->monsterHitTime = 0;
-
 												playSoundEntity(hit.entity, 28, 64);
 												if ( hit.entity->doorHealth <= 0 )
 												{
@@ -6810,6 +6892,10 @@ timeToGoAgain:
 												}
 												if ( myStats->type == MINOTAUR )
 												{
+													if ( hit.entity->doorHealth > 0 )
+													{
+														minotaurPaths[my->getUID()].incrementObjectBusted();
+													}
 													hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
 												}
 												updateEnemyBar(my, hit.entity, hit.entity->behavior == &actIronDoor ? Language::get(6414) : Language::get(674), 
@@ -6832,16 +6918,28 @@ timeToGoAgain:
 									}
 									else if ( hit.entity->behavior == &actFurniture && (myStats->type == MINOTAUR || myStats->type == GRYPHON) )
 									{
+										if ( myStats->type == MINOTAUR && hit.entity->furnitureHealth > 0 )
+										{
+											minotaurPaths[my->getUID()].incrementObjectBusted();
+										}
 										hit.entity->furnitureHealth = 0;
 										playSoundEntity(hit.entity, 28, 64);
 									}
 									else if ( hit.entity->behavior == &actChest && myStats->type == MINOTAUR )
 									{
+										if ( myStats->type == MINOTAUR && hit.entity->skill[3] > 0 )
+										{
+											minotaurPaths[my->getUID()].incrementObjectBusted();
+										}
 										hit.entity->skill[3] = 0; // chestHealth
 										playSoundEntity(hit.entity, 28, 64);
 									}
 									else if ( hit.entity->isDamageableCollider() && (myStats->type == MINOTAUR || myStats->type == GRYPHON) )
 									{
+										if ( myStats->type == MINOTAUR && hit.entity->colliderCurrentHP > 0 )
+										{
+											minotaurPaths[my->getUID()].incrementObjectBusted();
+										}
 										hit.entity->colliderCurrentHP = 0;
 										hit.entity->colliderKillerUid = 0;
 										playSoundEntity(hit.entity, 28, 64);
@@ -6894,6 +6992,7 @@ timeToGoAgain:
 									{
 										// asplode the rock
 										magicDig(nullptr, nullptr, 0, 1);
+										minotaurPaths[my->getUID()].incrementObjectBusted();
 										hit.entity = nullptr;
 									}
 									else
@@ -8073,6 +8172,10 @@ timeToGoAgain:
 									{
 										if ( myStats->type == MINOTAUR )
 										{
+											if ( myStats->type == MINOTAUR && hit.entity->doorHealth > 0 )
+											{
+												minotaurPaths[my->getUID()].incrementObjectBusted();
+											}
 											hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
 											my->monsterAttack = my->getAttackPose(); // random attack motion
 											my->monsterAttackTime = 0;
@@ -8120,6 +8223,10 @@ timeToGoAgain:
 											}
 											if ( myStats->type == MINOTAUR || myStats->type == GRYPHON )
 											{
+												if ( myStats->type == MINOTAUR && hit.entity->doorHealth > 0 )
+												{
+													minotaurPaths[my->getUID()].incrementObjectBusted();
+												}
 												hit.entity->doorHealth = 0;    // minotaurs smash doors instantly
 											}
 											updateEnemyBar(my, hit.entity, hit.entity->behavior == &actIronDoor ? Language::get(6414) : Language::get(674), 
@@ -8158,6 +8265,10 @@ timeToGoAgain:
 										}
 										if ( myStats->type == MINOTAUR || myStats->type == GRYPHON )
 										{
+											if ( myStats->type == MINOTAUR && hit.entity->furnitureHealth > 0 )
+											{
+												minotaurPaths[my->getUID()].incrementObjectBusted();
+											}
 											hit.entity->furnitureHealth = 0;    // minotaurs smash furniture instantly
 										}
 										playSoundEntity(hit.entity, 28, 64);
@@ -8165,6 +8276,10 @@ timeToGoAgain:
 								}
 								else if ( hit.entity->isDamageableCollider() && (myStats->type == MINOTAUR || myStats->type == GRYPHON) )
 								{
+									if ( myStats->type == MINOTAUR && hit.entity->colliderCurrentHP > 0 )
+									{
+										minotaurPaths[my->getUID()].incrementObjectBusted();
+									}
 									hit.entity->colliderCurrentHP = 0;
 									hit.entity->colliderKillerUid = 0;
 								}
@@ -8196,6 +8311,10 @@ timeToGoAgain:
 								}
 								else if ( hit.entity->behavior == &actChest && myStats->type == MINOTAUR )
 								{
+									if ( hit.entity->skill[3] > 0 )
+									{
+										minotaurPaths[my->getUID()].incrementObjectBusted();
+									}
 									hit.entity->skill[3] = 0; // chestHealth
 								}
 								else if ( hit.entity->behavior == &actChest )
@@ -8237,6 +8356,7 @@ timeToGoAgain:
 								{
 									// asplode the rock
 									magicDig(nullptr, nullptr, 0, 1);
+									minotaurPaths[my->getUID()].incrementObjectBusted();
 									hit.entity = nullptr;
 								}
 								else if ( hit.entity->behavior == &actMonster )
@@ -10875,6 +10995,10 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 	if ( myStats->type == GRYPHON )
 	{
 		meleeDist = TOUCHRANGE - 1;
+	}
+	if ( myStats->type == MINOTAUR )
+	{
+		meleeDist = TOUCHRANGE - 4;
 	}
 	if ( myStats->type == HAUNTED_ARMOR )
 	{

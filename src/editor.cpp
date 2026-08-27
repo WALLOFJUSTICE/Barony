@@ -246,9 +246,10 @@ char workStationPropertyNames[1][19] =
 };
 
 
-char floorBuilderPropertyNames[1][20] =
+char floorBuilderPropertyNames[2][50] =
 {
-	"Tile Index (0-9999)"
+	"Tile Index (0-9999)",
+	"Activation delay(0 - 9999 ticks, 50 ticks / sec)"
 };
 
 char furniturePropertyNames[1][19] =
@@ -10128,6 +10129,20 @@ int main(int argc, char** argv)
 													drawImageScaled(tiles[propertyInt], NULL, &pos);
 												}
 											}
+										}
+									}
+								}
+								else if ( i == 1 )
+								{
+									if ( propertyInt > 9999 || propertyInt < 0 )
+									{
+										propertyPageError(i, 0); // reset to default 0.
+									}
+									else
+									{
+										if ( propertyInt == 0 )
+										{
+											printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, "no delay");
 										}
 									}
 								}

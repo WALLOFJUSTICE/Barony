@@ -13,6 +13,7 @@
 
 #include "stat.hpp"
 #include "json.hpp"
+#include <map>
 
 #ifndef EDITOR
 #include "interface/consolecommand.hpp"
@@ -1564,3 +1565,16 @@ extern MimicGenerator mimic_generator;
 bool monsterDebugModels(Entity* my, real_t* dist);
 
 extern double sightranges[NUMMONSTERS];
+
+struct MinotaurPaths
+{
+	int objectsBusted = 0;
+	int last_x = 0;
+	int last_y = 0;
+	std::map<int, int> coords_visited;
+	int tilesVisited = 0;
+	void update(Entity& my);
+	void incrementObjectBusted();
+	Uint32 lastTriggerTick = 0;
+};
+extern std::map<Uint32, MinotaurPaths> minotaurPaths;

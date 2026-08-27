@@ -2629,13 +2629,14 @@ void buttonSpriteProperties(button_t* my)
 				break;
 			case 40:
 				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->actFloorBuilderTile));
+				snprintf(spriteProperties[1], 5, "%d", static_cast<int>(selectedEntity[0]->actFloorBuilderActivationDelay));
 				inputstr = spriteProperties[0];
 				cursorflash = ticks;
 				menuVisible = 0;
 				subwindow = 1;
 				newwindow = 44;
-				subx1 = xres / 2 - 170;
-				subx2 = xres / 2 + 170;
+				subx1 = xres / 2 - 220;
+				subx2 = xres / 2 + 220;
 				suby1 = yres / 2 - 60;
 				suby2 = yres / 2 + 60;
 				strcpy(subtext, "Floor Builder Properties:");
@@ -3824,6 +3825,7 @@ void buttonSpritePropertiesConfirm(button_t* my)
 				break;
 			case 40: //floor builder
 				selectedEntity[0]->actFloorBuilderTile = (Sint32)atoi(spriteProperties[0]);
+				selectedEntity[0]->actFloorBuilderActivationDelay = (Sint32)atoi(spriteProperties[1]);
 				break;
 			case 41: // cauldron
 			case 42: // workbench

@@ -82,6 +82,15 @@ void actFloorBuilder(Entity* my)
 			return;
 		}
 
+		if ( my->actFloorBuilderDelayCounter > 0 )
+		{
+			--my->actFloorBuilderDelayCounter;
+			if ( my->actFloorBuilderDelayCounter != 0 )
+			{
+				return;
+			}
+		}
+
 		playSoundEntity(my, 182, 64, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
 		Uint16 x = std::min<Uint16>(std::max<int>(0.0, my->x / 16), map.width - 1);
 		Uint16 y = std::min<Uint16>(std::max<int>(0.0, my->y / 16), map.height - 1);
@@ -113,6 +122,13 @@ void actFloorBuilder(Entity* my)
 		}
 		generatePathMaps();
 		list_RemoveNode(my->mynode);
+	}
+	else
+	{
+		if ( my->actFloorBuilderActivationDelay > 0 && my->actFloorBuilderDelayCounter == 0 )
+		{
+			my->actFloorBuilderDelayCounter = my->actFloorBuilderActivationDelay;
+		}
 	}
 }
 

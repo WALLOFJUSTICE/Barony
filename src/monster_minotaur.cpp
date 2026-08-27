@@ -59,19 +59,29 @@ void initMinotaur(Entity* my, Stat* myStats)
 			// boss variants
 			if ( strcmp(map.name, "Hell Boss") == 0 )
 			{
+				myStats->HP += 400;
+				myStats->MAXHP += 400;
 				myStats->STR = 50;
 				myStats->DEX = 20;
 				myStats->CON = 20;
 			}
-			else if ( currentlevel >= 25 )
+			else
 			{
-				myStats->HP += 400;
-				myStats->MAXHP += 400;
-				myStats->STR = 60;
-				myStats->DEX = 20;
-				myStats->CON = 20;
-				myStats->setEffectActive(EFF_VAMPIRICAURA, 1);
-				myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
+				if ( currentlevel >= 5 )
+				{
+					myStats->HP += 100 * (1 + (currentlevel - 5) / 5); // 100 HP per 5 lvls
+					myStats->MAXHP += 100 * (1 + (currentlevel - 5) / 5);
+
+					myStats->LVL += 2 * (1 + (currentlevel - 5) / 5); // 2 LVLs per 5 lvls
+					myStats->STR += 5 * (1 + (currentlevel - 5) / 5); // 5 STR per 5 lvls
+					myStats->DEX += 2 * (1 + (currentlevel - 5) / 5); // 2 CON per 5 lvls
+				}
+				if ( currentlevel >= 25 )
+				{
+					myStats->DEX = 20;
+					myStats->setEffectActive(EFF_VAMPIRICAURA, 1);
+					myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
+				}
 			}
 
 
@@ -855,6 +865,8 @@ void actMinotaurCeilingBuster(Entity* my)
 		}
 	}
 
+	static Uint32 lastSfxTick = 0;
+
 	// bust ceilings
 	for ( x = my->x - my->sizex - 1; x <= my->x + my->sizex + 1; x += 1 )
 	{
@@ -880,7 +892,11 @@ void actMinotaurCeilingBuster(Entity* my)
 					map.tiles[index] = 0;
 					if ( multiplayer != CLIENT )
 					{
-						playSoundEntity(my, 67, 128);
+						if ( ::ticks - lastSfxTick > TICKS_PER_SECOND * 0.25 )
+						{
+							playSoundEntity(my, 67, 128);
+							lastSfxTick = ::ticks;
+						}
 						//MONSTER_ATTACK = 1;
 						Stat* myStats = my->getStats();
 						if ( myStats )
@@ -889,10 +905,11 @@ void actMinotaurCeilingBuster(Entity* my)
 							myStats->setEffectActive(EFF_PARALYZED, 1);
 							myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 10;
 						}
+						minotaurPaths[my->getUID()].incrementObjectBusted();
 					}
 
 					// spawn several rock particles (NOT items)
-					int c, i = 6 + local_rng.rand() % 4;
+					int c, i = 2 + local_rng.rand() % 4;
 					for ( c = 0; c < i; c++ )
 					{
 						Entity *entity = nullptr;
@@ -925,7 +942,7 @@ void actMinotaurCeilingBuster(Entity* my)
 					}
 				}
 				node_t* node, *nextnode;
-				std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 2);
+				std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
 				for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
 				{
 					list_t* currentList = *it;
@@ -975,6 +992,10 @@ void actMinotaurCeilingBuster(Entity* my)
 							{
 								if ( multiplayer != CLIENT )
 								{
+									if ( entity->doorHealth > 0 )
+									{
+										minotaurPaths[my->getUID()].incrementObjectBusted();
+									}
 									entity->doorHealth = 0; // destroy the door
 								}
 							}
@@ -1008,11 +1029,16 @@ void actMinotaurCeilingBuster(Entity* my)
 									childEntity->fskill[3] = 0.03;
 								}
 								list_RemoveNode(entity->mynode);
+								minotaurPaths[my->getUID()].incrementObjectBusted();
 							}
 							else if ( entity->isDamageableCollider() )
 							{
 								if ( multiplayer != CLIENT )
 								{
+									if ( entity->colliderCurrentHP > 0 )
+									{
+										minotaurPaths[my->getUID()].incrementObjectBusted();
+									}
 									entity->colliderCurrentHP = 0;
 									entity->colliderKillerUid = 0;
 								}
@@ -1037,6 +1063,7 @@ void actMinotaurCeilingBuster(Entity* my)
 											Compendium_t::Events_t::eventUpdateWorld(i, Compendium_t::CPDM_GATE_MINOTAUR, "portcullis", 1);
 										}
 									}
+									minotaurPaths[my->getUID()].incrementObjectBusted();
 								}
 							}
 							else if ( entity->behavior == &::actDaedalusShrine )
@@ -1045,10 +1072,12 @@ void actMinotaurCeilingBuster(Entity* my)
 								hit.entity = entity;
 								magicDig(my, nullptr, 0, 1);
 								hit.entity = ohitentity;
+								minotaurPaths[my->getUID()].incrementObjectBusted();
 							}
 							else if ( entity->sprite == 1480 ) // daedalus base
 							{
 								list_RemoveNode(entity->mynode);
+								minotaurPaths[my->getUID()].incrementObjectBusted();
 							}
 							else if (	entity->behavior == &actStalagCeiling	||
 										entity->behavior == &actStalagFloor		||
@@ -1089,6 +1118,7 @@ void actMinotaurCeilingBuster(Entity* my)
 									}
 								}
 								list_RemoveNode(entity->mynode);
+								minotaurPaths[my->getUID()].incrementObjectBusted();
 							}
 						}
 					}

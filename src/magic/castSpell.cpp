@@ -628,6 +628,13 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 	{
 		spellBookBonusPercent += castSpellProps->powerBonusPercent;
 	}
+	if ( stat && stat->type == SHOPKEEPER )
+	{
+		if ( currentlevel >= 10 )
+		{
+			spellBookBonusPercent += (1 + (currentlevel - 10) / 5) * 25;
+		}
+	}
 	int spellBookBeatitude = 0;
 	ItemType spellbookType = WOODEN_SHIELD;
 	bool sustainedSpell = false;
@@ -4747,6 +4754,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						castSpellProps->target_x - castSpellProps->caster_x);
 
 					int lifetime = spell->life_time;
+					if ( caster->behavior == &actMonster && caster->getMonsterTypeFromSprite() == MINOTAUR )
+					{
+						lifetime += 30 * TICKS_PER_SECOND;
+					}
 					Entity* spellTimer = createParticleTimer(caster, lifetime + 10, -1);
 					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_MAGIC_WAVE;
 					spellTimer->particleTimerCountdownSprite = spell->ID == SPELL_DISRUPT_EARTH ? 1814 : 1815;
@@ -4810,7 +4821,13 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						}
 					}
 				}
-				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+				if ( caster->behavior == &actMonster && caster->getMonsterTypeFromSprite() == MINOTAUR )
+				{
+				}
+				else
+				{
+					spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+				}
 				playSoundEntity(caster, 799, 128);
 			}
 		}
@@ -9301,7 +9318,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					}
 				}
 
-				if ( casterStats->type == SHOPKEEPER && spell->ID == SPELL_BLEED )
+				if ( casterStats->type == SHOPKEEPER )
 				{
 					if ( node_t* elementNode = ((spell_t*)node->element)->elements.first )
 					{
@@ -9311,7 +9328,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							{
 								if ( element = (spellElement_t*)elementNode->element )
 								{
-									element->setDamage(element->getDamage() * 2);
+									if ( spell->ID == SPELL_BLEED )
+									{
+										element->setDamage(element->getDamage() * 2);
+									}
 								}
 							}
 						}

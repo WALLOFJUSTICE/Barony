@@ -82,6 +82,7 @@ struct HUDFlail_t
 	}
 };
 HUDFlail_t HUDFlail[MAXPLAYERS];
+std::vector<Uint32> magicstaffLastChargeTick(MAXPLAYERS, 0);
 
 #define HUDARM_PLAYERNUM my->skill[11]
 #define HUD_SHAPESHIFT_HIDE my->skill[12]
@@ -880,6 +881,17 @@ void actHudWeapon(Entity* my)
 			|| stats[HUDWEAPON_PLAYERNUM]->weapon->type == FOOD_CREAMPIE || stats[HUDWEAPON_PLAYERNUM]->weapon->type == TOOL_DUCK);
 	bool castStrikeAnimation = (players[HUDWEAPON_PLAYERNUM]->entity->skill[9] == MONSTER_POSE_SPECIAL_WINDUP1);
 	bool flail = !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon && stats[HUDWEAPON_PLAYERNUM]->weapon->type == STEEL_FLAIL;
+	bool magicstaff = false;
+	if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon
+		&& (stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER
+			|| (MAGICSTAFFS_USE_CHARGE && itemCategory(stats[HUDWEAPON_PLAYERNUM]->weapon) == MAGICSTAFF)) )
+	{
+		magicstaff = true;
+	}
+	else
+	{
+		magicstaffLastChargeTick[HUDWEAPON_PLAYERNUM] = 0;
+	}
 
 	// weapon switch animation
 	if ( players[HUDWEAPON_PLAYERNUM]->hud.weaponSwitch )
@@ -2718,11 +2730,23 @@ void actHudWeapon(Entity* my)
 			HUDWEAPON_PITCH = pitchLimit;
 		}
 
-		HUDWEAPON_YAW -= .15;
-		if ( HUDWEAPON_YAW < 2 * PI / 5 )
+		if ( HUDWEAPON_YAW > 2 * PI / 5 )
 		{
-			result = 2 * PI / 5;
-			HUDWEAPON_YAW = result;
+			HUDWEAPON_YAW -= .15;
+			if ( HUDWEAPON_YAW <= 2 * PI / 5 )
+			{
+				result = 2 * PI / 5;
+				HUDWEAPON_YAW = result;
+			}
+		}
+		else
+		{
+			HUDWEAPON_YAW += .15;
+			if ( HUDWEAPON_YAW >= 2 * PI / 5 )
+			{
+				result = 2 * PI / 5;
+				HUDWEAPON_YAW = result;
+			}
 		}
 		HUDWEAPON_ROLL -= .15;
 
@@ -2766,9 +2790,7 @@ void actHudWeapon(Entity* my)
 						{
 							players[HUDWEAPON_PLAYERNUM]->entity->attack(1, HUDWEAPON_CHARGE, nullptr);
 						}
-						else if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon 
-							&& (stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER
-								|| (MAGICSTAFFS_USE_CHARGE && itemCategory(stats[HUDWEAPON_PLAYERNUM]->weapon) == MAGICSTAFF)))
+						else if ( magicstaff )
 						{
 							int chargeAmount = HUDWEAPON_CHARGE;
 							if ( HUDWEAPON_OVERCHARGE >= (Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) - 3) )
@@ -2776,6 +2798,7 @@ void actHudWeapon(Entity* my)
 								int staffCharge = stats[HUDWEAPON_PLAYERNUM]->weapon->appearance % MAGICSTAFF_SCEPTER_CHARGE_MAX;
 								if ( staffCharge > 0 )
 								{
+									magicstaffLastChargeTick[HUDWEAPON_PLAYERNUM] = ticks;
 									int decrement = stats[HUDWEAPON_PLAYERNUM]->weapon->magicstaffGetChargeDepletion(
 										players[HUDWEAPON_PLAYERNUM]->entity, stats[HUDWEAPON_PLAYERNUM], true);
 
@@ -2851,6 +2874,13 @@ void actHudWeapon(Entity* my)
 				else
 				{
 					HUDWEAPON_CHARGE = std::min<real_t>(HUDWEAPON_CHARGE + 1, Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]));
+					if ( magicstaff )
+					{
+						if ( ticks - magicstaffLastChargeTick[HUDWEAPON_PLAYERNUM] < TICKS_PER_SECOND )
+						{
+							HUDWEAPON_CHARGE = std::min<real_t>(HUDWEAPON_CHARGE + 1, Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]));
+						}
+					}
 				}
 			}
 		}
@@ -3780,14 +3810,6 @@ void actHudWeapon(Entity* my)
 		}
 	}
 
-	bool magicstaff = false;
-	if ( !hideWeapon && stats[HUDWEAPON_PLAYERNUM]->weapon
-		&& (stats[HUDWEAPON_PLAYERNUM]->weapon->type == MAGICSTAFF_SCEPTER
-			|| (MAGICSTAFFS_USE_CHARGE && itemCategory(stats[HUDWEAPON_PLAYERNUM]->weapon) == MAGICSTAFF)) )
-	{
-		magicstaff = true;
-	}
-
 	if ( HUDWEAPON_CHARGE == Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) || castStrikeAnimation
 		|| players[HUDWEAPON_PLAYERNUM]->entity->skill[9] == MONSTER_POSE_SPECIAL_WINDUP2
 		|| shakeRangedWeapon )
@@ -3833,6 +3855,16 @@ void actHudWeapon(Entity* my)
 		else
 		{
 			HUDWEAPON_OVERCHARGE++; 
+			if ( magicstaff )
+			{
+				if ( ticks - magicstaffLastChargeTick[HUDWEAPON_PLAYERNUM] < TICKS_PER_SECOND )
+				{
+					if ( HUDWEAPON_OVERCHARGE < (Stat::getMaxAttackCharge(stats[HUDWEAPON_PLAYERNUM]) - 3) ) // don't miss the sfx moment
+					{
+						HUDWEAPON_OVERCHARGE++;
+					}
+				}
+			}
 		}
 	}
 	if ( castStrikeAnimation ) // magic sprite particles around the fist

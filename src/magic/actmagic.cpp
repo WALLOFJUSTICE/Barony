@@ -15233,6 +15233,12 @@ void actParticleTimer(Entity* my)
 								if ( !map.tiles[OBSTACLELAYER + mapIndex] && map.tiles[mapIndex] 
 									&& !swimmingtiles[map.tiles[mapIndex] && !lavatiles[map.tiles[mapIndex]]] )
 								{
+									if ( parent && parent->behavior == &actMonster && parent->getMonsterTypeFromSprite() == MINOTAUR )
+									{
+										data.x = parent->x;
+										data.y = parent->y;
+									}
+
 									Entity* fx = createFloorMagic(data.effectType, my->particleTimerCountdownSprite, data.x, data.y, 7.8, data.yaw, PARTICLE_LIFE + 3 * TICKS_PER_SECOND);
 									fx->parent = my->getUID();
 									if ( my->actmagicSpellbookBonus > 0 )

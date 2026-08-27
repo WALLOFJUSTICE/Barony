@@ -3173,8 +3173,7 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 				case 40:
 				{
 					fp->read(&entity->actFloorBuilderTile, sizeof(Sint32), 1);
-					Sint32 dummy = 0; // some extra future data
-					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&entity->actFloorBuilderActivationDelay, sizeof(Sint32), 1);
 					break;
 				}
 				case 41:
@@ -3792,8 +3791,7 @@ int saveMap(const char* filename2)
 				case 40:
 				{
 					fp->write(&entity->actFloorBuilderTile, sizeof(Sint32), 1);
-					Sint32 dummy = 0; // some extra future data
-					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&entity->actFloorBuilderActivationDelay, sizeof(Sint32), 1);
 					break;
 				}
 				case 41:
