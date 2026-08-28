@@ -558,7 +558,7 @@ void initHuman(Entity* my, Stat* myStats)
 								break;
 							case 6:
 							case 7:
-								myStats->helmet = newItem(LEATHER_HELM, WORN, 0, 1, rng.rand(), false, nullptr);
+								myStats->helmet = newItem((rng.rand() % 10 == 0 ? QUILTED_CAP : (rng.rand() % 10 == 0 ? CHAIN_COIF : LEATHER_HELM)), WORN, 0, 1, rng.rand(), false, nullptr);
 								break;
 							case 8:
 							case 9:
@@ -642,7 +642,7 @@ void initHuman(Entity* my, Stat* myStats)
 						case 5:
 						case 6:
 						case 7:
-							myStats->breastplate = newItem(LEATHER_BREASTPIECE, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->breastplate = newItem((rng.rand() % 10 == 0 ? QUILTED_GAMBESON : (rng.rand() % 10 == 0 ? CHAIN_HAUBERK : LEATHER_BREASTPIECE)), WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 8:
 						case 9:
@@ -667,7 +667,7 @@ void initHuman(Entity* my, Stat* myStats)
 						case 5:
 						case 6:
 						case 7:
-							myStats->gloves = newItem(GLOVES, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->gloves = newItem((rng.rand() % 10 == 0 ? QUILTED_GLOVES : (rng.rand() % 10 == 0 ? CHAIN_GLOVES : GLOVES)), WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 8:
 						case 9:
@@ -692,7 +692,7 @@ void initHuman(Entity* my, Stat* myStats)
 						case 5:
 						case 6:
 						case 7:
-							myStats->shoes = newItem(LEATHER_BOOTS, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->shoes = newItem((rng.rand() % 10 == 0 ? QUILTED_BOOTS : (rng.rand() % 10 == 0 ? CHAIN_BOOTS : LEATHER_BOOTS)), WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 8:
 						case 9:
