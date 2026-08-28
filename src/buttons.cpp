@@ -2637,8 +2637,8 @@ void buttonSpriteProperties(button_t* my)
 				newwindow = 44;
 				subx1 = xres / 2 - 220;
 				subx2 = xres / 2 + 220;
-				suby1 = yres / 2 - 60;
-				suby2 = yres / 2 + 60;
+				suby1 = yres / 2 - 80;
+				suby2 = yres / 2 + 80;
 				strcpy(subtext, "Floor Builder Properties:");
 				break;
 			case 41:

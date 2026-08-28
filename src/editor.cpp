@@ -10119,7 +10119,7 @@ int main(int argc, char** argv)
 												printTextFormattedColor(font8x8_bmp, inputFieldFeedback_x, inputField_y, color, tileEditorNameStrings[propertyInt]);
 											}
 											pos.x = inputField_x - 4;
-											pos.y = inputField_y + 16 + 4;
+											pos.y = inputField_y + 48 + 4;
 											pos.w = TEXTURESIZE;
 											pos.h = TEXTURESIZE;
 											if ( propertyInt < numtiles )
