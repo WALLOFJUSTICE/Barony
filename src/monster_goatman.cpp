@@ -235,13 +235,14 @@ void initGoatman(Entity* my, Stat* myStats)
 					break;
 			}
 
+			auto itemRealm = gameLevels.getCurrentMapItemRealm(currentlevel, secretleveltype);
 
 			//Give weapons.
 			if ( !spawnedBoss )
 			{
 				if ( !isShaman && rng.rand() % 3 > 0 )
 				{
-					newItem(STEEL_CHAKRAM, SERVICABLE, 0, rng.rand()%NUM_GOATMAN_THROWN_WEAPONS + 1, rng.rand(), false, &myStats->inventory);
+					newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_DART : STEEL_CHAKRAM, SERVICABLE, 0, rng.rand()%NUM_GOATMAN_THROWN_WEAPONS + 2, rng.rand(), false, &myStats->inventory);
 				}
 				int numpotions = rng.rand() % NUM_GOATMAN_POTIONS + 2;
 				if ( rng.rand() % 3 == 0 )
@@ -323,7 +324,7 @@ void initGoatman(Entity* my, Stat* myStats)
 							myStats->breastplate = newItem(WIZARD_DOUBLET, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 2:
-							myStats->breastplate = newItem(LEATHER_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->breastplate = newItem((ItemType)(ROBE_CULTIST + rng.rand() % 4), static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						default:
 							break;
@@ -338,10 +339,10 @@ void initGoatman(Entity* my, Stat* myStats)
 						case 1:
 						case 2:
 						case 3:
-							myStats->shoes = newItem(IRON_BOOTS, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->shoes = newItem(BONE_BOOTS, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 19:
-							myStats->shoes = newItem(CRYSTAL_BOOTS, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->shoes = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_BOOTS : CRYSTAL_BOOTS, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						default:
 							myStats->shoes = newItem(STEEL_BOOTS, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
@@ -370,8 +371,6 @@ void initGoatman(Entity* my, Stat* myStats)
 							switch ( rng.rand() % 4 )
 							{
 								case 0:
-									myStats->weapon = newItem(SPELLBOOK_SLOW, static_cast<Status>(rng.rand() % 2 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
-									break;
 								case 1:
 									myStats->weapon = newItem(SPELLBOOK_FIREBALL, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
 									break;
@@ -379,7 +378,7 @@ void initGoatman(Entity* my, Stat* myStats)
 									myStats->weapon = newItem(SPELLBOOK_COLD, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
 									break;
 								case 3:
-									myStats->weapon = newItem(SPELLBOOK_FORCEBOLT, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
+									myStats->weapon = newItem(SPELLBOOK_MAGICMISSILE, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, MONSTER_ITEM_UNDROPPABLE_APPEARANCE, false, nullptr);
 									break;
 							}
 							break;
@@ -391,29 +390,26 @@ void initGoatman(Entity* my, Stat* myStats)
 			}
 			else
 			{
-				////give shield
-				//if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
-				//{
-				//	switch ( rng.rand() % 20 )
-				//	{
-				//	case 0:
-				//	case 1:
-				//	case 2:
-				//	case 3:
-				//	case 4:
-				//	case 5:
-				//	case 6:
-				//	case 7:
-				//		myStats->shield = newItem(TOOL_CRYSTALSHARD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-				//		break;
-				//	case 8:
-				//		myStats->shield = newItem(MIRROR_SHIELD, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-				//		break;
-				//	default:
-				//		myStats->shield = newItem(TOOL_LANTERN, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-				//		break;
-				//	}
-				//}
+				//give shield
+				if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
+				{
+					switch ( rng.rand() % 20 )
+					{
+					case 0:
+					case 1:
+						myStats->shield = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_SHIELD : CRYSTAL_SHIELD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 2:
+					case 3:
+						myStats->shield = newItem(STEEL_SHIELD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 4:
+						myStats->shield = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_SHIELD : STEEL_SHIELD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					default:
+						break;
+					}
+				}
 				// give cloak
 				/*if ( myStats->cloak == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] == 1 )
 				{
@@ -449,18 +445,16 @@ void initGoatman(Entity* my, Stat* myStats)
 					case 0:
 					case 1:
 					case 2:
-						myStats->breastplate = newItem(STEEL_BREASTPIECE, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->breastplate = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_BREASTPIECE : STEEL_BREASTPIECE, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					case 3:
 					case 4:
-						myStats->breastplate = newItem(LEATHER_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-						break;
 					case 5:
 					case 6:
 						myStats->breastplate = newItem(IRON_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					case 19:
-						myStats->breastplate = newItem(CRYSTAL_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->breastplate = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_BREASTPIECE : CRYSTAL_BREASTPIECE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					default:
 						break;
@@ -475,10 +469,10 @@ void initGoatman(Entity* my, Stat* myStats)
 					case 1:
 					case 2:
 					case 3:
-						myStats->shoes = newItem(IRON_BOOTS, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->shoes = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_BOOTS : IRON_BOOTS, static_cast<Status>(rng.rand() % 3 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					case 19:
-						myStats->shoes = newItem(CRYSTAL_BOOTS, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->shoes = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_BOOTS : CRYSTAL_BOOTS, static_cast<Status>(rng.rand() % 4 + DECREPIT), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					default:
 						myStats->shoes = newItem(STEEL_BOOTS, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
@@ -494,17 +488,33 @@ void initGoatman(Entity* my, Stat* myStats)
 					case 1:
 					case 2:
 					case 3:
+						myStats->weapon = newItem(STEEL_AXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
 					case 4:
 					case 5:
 					case 6:
 					case 7:
-						myStats->weapon = newItem(STEEL_AXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(ItemGeneric::HELL ? BLACKIRON_AXE : STEEL_AXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 8:
+					case 9:
+					case 10:
+					case 11:
+						myStats->weapon = newItem(STEEL_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 12:
+					case 13:
+					case 14:
+					case 15:
+						myStats->weapon = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_MACE : STEEL_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						break;
+					case 16:
+					case 17:
+						myStats->weapon = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_AXE : CRYSTAL_BATTLEAXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					case 18:
-						myStats->weapon = newItem(CRYSTAL_BATTLEAXE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
-						break;
 					case 19:
-						myStats->weapon = newItem(CRYSTAL_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon = newItem(itemRealm == ItemGeneric::HELL ? BLACKIRON_MACE : CRYSTAL_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						break;
 					default:
 						myStats->weapon = newItem(STEEL_MACE, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);

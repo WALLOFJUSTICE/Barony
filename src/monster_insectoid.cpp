@@ -146,13 +146,13 @@ void initInsectoid(Entity* my, Stat* myStats)
 					switch ( rng.rand() % 10 )
 					{
 						case 0:
-							myStats->weapon = newItem(IRON_SPEAR, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(rng.rand() % 2 ? BONE_SPEAR : IRON_SPEAR, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 1:
 						case 2:
 						case 3:
 						case 4:
-							myStats->weapon = newItem(SHORTBOW, SERVICABLE, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(rng.rand() % 2 ? BONE_SHORTBOW : SHORTBOW, SERVICABLE, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 5:
 							if ( rng.rand() % 2 )
@@ -161,7 +161,7 @@ void initInsectoid(Entity* my, Stat* myStats)
 							}
 							else
 							{
-								myStats->weapon = newItem(SHORTBOW, SERVICABLE, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								myStats->weapon = newItem(BONE_SHORTBOW, SERVICABLE, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							}
 							break;
 						case 6:
@@ -201,7 +201,7 @@ void initInsectoid(Entity* my, Stat* myStats)
 							case 7:
 							case 8:
 							case 9:
-								myStats->shield = newItem(IRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								myStats->shield = newItem(rng.rand() % 2 ? BONE_SHIELD : IRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 							default:
 								break;
@@ -244,7 +244,7 @@ void initInsectoid(Entity* my, Stat* myStats)
 						case 4:
 						case 5:
 						case 6:
-							myStats->shoes = newItem(IRON_BOOTS, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->shoes = newItem(rng.rand() % 2 ? BONE_BOOTS : IRON_BOOTS, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 7:
 						case 8:
@@ -267,7 +267,7 @@ void initInsectoid(Entity* my, Stat* myStats)
 						case 0:
 						case 1:
 							//10%
-							myStats->weapon = newItem(SHORTBOW, static_cast<Status>(SERVICABLE + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(rng.rand() % 2 ? BONE_SHORTBOW : SHORTBOW, static_cast<Status>(SERVICABLE + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 2:
 						case 3:
@@ -333,7 +333,7 @@ void initInsectoid(Entity* my, Stat* myStats)
 							case 9:
 							case 10:
 							case 11:
-								myStats->shield = newItem(IRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								myStats->shield = newItem(BONE_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 							case 18:
 								myStats->shield = newItem(CRYSTAL_SHIELD, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
@@ -432,7 +432,7 @@ void initInsectoid(Entity* my, Stat* myStats)
 						case 4:
 						case 5:
 						case 6:
-							myStats->shoes = newItem(IRON_BOOTS, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->shoes = newItem(BONE_BOOTS, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 19:
 							myStats->shoes = newItem(CRYSTAL_BOOTS, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);

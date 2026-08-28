@@ -126,6 +126,10 @@ void initRevenantSkull(Entity* my, Stat* myStats)
 				myStats->CON = 5 + std::max(0, (myStats->LVL - 5)) / 4;
 				myStats->PER = 8 + std::max(0, (myStats->LVL - 5)) / 3;
 			}
+			if ( rng.rand() % 20 == 0 )
+			{
+				newItem(BONE_THROWING, DECREPIT, -1, 1, rng.rand(), true, &myStats->inventory);
+			}
 			my->setHardcoreStats(*myStats);
 		}
 	}

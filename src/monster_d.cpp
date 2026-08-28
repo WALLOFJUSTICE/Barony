@@ -312,6 +312,7 @@ void initMonsterD(Entity* my, Stat* myStats)
 					case 3:
 					case 4:
 						myStats->weapon = newItem(BRANCH_BOW, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon->isDroppable = rng.rand() % 4 == 0;
 						break;
 					case 5:
 					case 6:
@@ -328,6 +329,7 @@ void initMonsterD(Entity* my, Stat* myStats)
 				else if ( myStats->getAttribute("monster_d_type") == "watcher" )
 				{
 					myStats->weapon = newItem(BRANCH_STAFF, static_cast<Status>(rng.rand() % 2 + SERVICABLE), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					myStats->weapon->isDroppable = rng.rand() % 4 == 0;
 				}
 			}
 

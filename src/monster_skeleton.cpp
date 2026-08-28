@@ -260,28 +260,57 @@ void initSkeleton(Entity* my, Stat* myStats)
 						//give weapon
 						if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 						{
-							switch ( rng.rand() % 10 )
+							if ( rng.rand() % 20 == 0 )
 							{
+								switch ( rng.rand() % 10 )
+								{
 								case 0:
 								case 1:
-									myStats->weapon = newItem(BRONZE_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+									myStats->weapon = newItem(BONE_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 2:
 								case 3:
-									myStats->weapon = newItem(BRONZE_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+									myStats->weapon = newItem(BONE_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 4:
 								case 5:
-									myStats->weapon = newItem(IRON_SPEAR, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+									myStats->weapon = newItem(BONE_SPEAR, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 6:
 								case 7:
-									myStats->weapon = newItem(IRON_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+									myStats->weapon = newItem(BONE_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
 								case 8:
 								case 9:
-									myStats->weapon = newItem(IRON_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+									myStats->weapon = newItem(BONE_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 									break;
+								}
+							}
+							else
+							{
+								switch ( rng.rand() % 10 )
+								{
+									case 0:
+									case 1:
+										myStats->weapon = newItem(BRONZE_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+										break;
+									case 2:
+									case 3:
+										myStats->weapon = newItem(BRONZE_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+										break;
+									case 4:
+									case 5:
+										myStats->weapon = newItem(IRON_SPEAR, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+										break;
+									case 6:
+									case 7:
+										myStats->weapon = newItem(IRON_AXE, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+										break;
+									case 8:
+									case 9:
+										myStats->weapon = newItem(IRON_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+										break;
+								}
 							}
 						}
 					}
@@ -312,6 +341,10 @@ void initSkeleton(Entity* my, Stat* myStats)
 					case 3:
 					case 2:
 					case 1:
+						if ( rng.rand() % 20 == 0 )
+						{
+							newItem(BONE_THROWING, DECREPIT, -1, 2 + rng.rand() % 2, rng.rand(), true, &myStats->inventory);
+						}
 						break;
 					default:
 						break;
@@ -326,7 +359,7 @@ void initSkeleton(Entity* my, Stat* myStats)
 						case 1:
 						case 2:
 						case 3:
-							myStats->weapon = newItem(SHORTBOW, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(BONE_SHORTBOW, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 							break;
 						case 4:
 						case 5:

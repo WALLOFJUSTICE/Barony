@@ -210,13 +210,35 @@ void initMonsterG(Entity* my, Stat* myStats)
 			{
 				if ( variant == SKIRMISHER )
 				{
-					if ( rng.rand() % 2 )
+					if ( rng.rand() % 8 == 0 )
 					{
-						myStats->weapon = newItem(BONE_SWORD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 5 == 0 )
+						{
+							myStats->weapon = newItem(BLACKIRON_CROSSBOW, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else if ( rng.rand() % 2 )
+						{
+							myStats->weapon = newItem(BLACKIRON_SWORD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->weapon = newItem(BLACKIRON_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 					else
 					{
-						myStats->weapon = newItem(BONE_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 5 == 0 )
+						{
+							myStats->weapon = newItem(BONE_SHORTBOW, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else if ( rng.rand() % 2 )
+						{
+							myStats->weapon = newItem(BONE_SWORD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->weapon = newItem(BONE_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 				else if ( variant == SAPPER )
@@ -227,7 +249,14 @@ void initMonsterG(Entity* my, Stat* myStats)
 					}
 					else
 					{
-						myStats->weapon = newItem(BONE_MACE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 8 == 0 )
+						{
+							myStats->weapon = newItem(BLACKIRON_MACE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->weapon = newItem(BONE_MACE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 					
 				}
@@ -235,27 +264,41 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					if ( rng.rand() % 2 )
 					{
-						myStats->weapon = newItem(BONE_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 8 == 0 )
+						{
+							myStats->weapon = newItem(BLACKIRON_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->weapon = newItem(BONE_AXE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 			}
 
 			if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
 			{
-				if ( variant == SAPPER )
+				if ( myStats->weapon && isRangedWeapon(*myStats->weapon) )
 				{
-					if ( rng.rand() % 2 )
+					my->monsterGenerateQuiverItem(myStats);
+				}
+				else
+				{
+					if ( variant == SAPPER )
 					{
-					}
-					else
-					{
-						if ( rng.rand() % 4 )
+						if ( rng.rand() % 2 )
 						{
-							myStats->shield = newItem(BONE_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						}
 						else
 						{
-							myStats->shield = newItem(BLACKIRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							if ( rng.rand() % 4 )
+							{
+								myStats->shield = newItem(BONE_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
+							else
+							{
+								myStats->shield = newItem(BLACKIRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
 						}
 					}
 				}
@@ -267,11 +310,25 @@ void initMonsterG(Entity* my, Stat* myStats)
 				{
 					myStats->helmet = newItem(HAT_HOOD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 				}
+				else if ( variant == SAPPER )
+				{
+					if ( rng.rand() % 8 == 0 )
+					{
+						myStats->helmet = newItem(BLACKIRON_HELM, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					}
+				}
 				else if ( variant == BERSERKER )
 				{
 					if ( rng.rand() % 3 == 0 )
 					{
-						myStats->helmet = newItem(CHAIN_COIF, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						if ( rng.rand() % 2 == 0 )
+						{
+							myStats->helmet = newItem(CHAIN_COIF, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
+						else
+						{
+							myStats->helmet = newItem(BONE_HELM, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						}
 					}
 				}
 			}

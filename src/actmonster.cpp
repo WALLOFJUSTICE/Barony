@@ -65,7 +65,7 @@ bool swornenemies[NUMMONSTERS][NUMMONSTERS] =
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // INCUBUS
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // VAMPIRE
 	{ 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // SHADOW
-	{ 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // COCKATRICE
+	{ 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // COCKATRICE
 	{ 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // INSECTOID
 	{ 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // GOATMAN
 	{ 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // AUTOMATON
@@ -5083,6 +5083,21 @@ void actMonster(Entity* my)
 				monsterAllyFormations.updateFormation(myStats->leader_uid, my->getUID());
 				monsterAllyFormations.updateFormation(myStats->leader_uid);
 			}
+		}
+	}
+
+	if ( myStats->getAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS") != "" )
+	{
+		int sightTicks = std::stoi(myStats->getAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS"));
+		--sightTicks;
+		if ( sightTicks <= 0 || my->monsterState == MONSTER_STATE_WAIT )
+		{
+			sightTicks = 0;
+			myStats->attributes.erase("FIND_TARGET_OVERRIDE_SIGHT_TICKS");
+		}
+		else
+		{
+			myStats->setAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS", std::to_string(sightTicks));
 		}
 	}
 
@@ -12499,6 +12514,10 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 			{
 				case KOBOLD:
 					node = itemNodeInInventory(myStats, -1, WEAPON); // find weapon to re-equip
+					if ( !node )
+					{
+						node = itemNodeInInventory(myStats, -1, MAGICSTAFF); // find weapon to re-equip
+					}
 					if ( node != nullptr )
 					{
 						swapMonsterWeaponWithInventoryItem(this, myStats, node, false, true);
@@ -15326,7 +15345,7 @@ void Entity::monsterGenerateQuiverItem(Stat* myStats, bool lesserMonster)
 					}
 					else
 					{
-						myStats->shield = newItem(QUIVER_KNOCKBACK, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+						myStats->shield = newItem(QUIVER_BONE, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
 					}
 					break;
 				default:
@@ -15397,12 +15416,54 @@ void Entity::monsterGenerateQuiverItem(Stat* myStats, bool lesserMonster)
 					break;
 			}
 			break;
+		case DRYAD:
+			switch ( rng.rand() % 5 )
+			{
+				case 0:
+				case 1:
+					break;
+				case 2:
+				case 3:
+					if ( myStats->sex == FEMALE && rng.rand() % 2 )
+					{
+						myStats->shield = newItem(QUIVER_HUNTING, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+					}
+					else
+					{
+						myStats->shield = newItem(QUIVER_LIGHTWEIGHT, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+					}
+					break;
+				case 4:
+					myStats->shield = newItem(QUIVER_SILVER, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+					break;
+				default:
+					break;
+			}
+			break;
+		case GREMLIN:
+			switch ( rng.rand() % 5 )
+			{
+			case 0:
+			case 1:
+				myStats->shield = newItem(QUIVER_BLACKIRON, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+				break;
+			case 2:
+				myStats->shield = newItem(QUIVER_HUNTING, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+				break;
+			case 3:
+			case 4:
+				myStats->shield = newItem(QUIVER_BONE, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+				break;
+			default:
+				break;
+			}
+			break;
 		case INCUBUS:
 			switch ( rng.rand() % 5 )
 			{
 				case 0:
 				case 1:
-					myStats->shield = newItem(QUIVER_LIGHTWEIGHT, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+					myStats->shield = newItem(QUIVER_BLACKIRON, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
 					break;
 				case 2:
 				case 3:
@@ -15438,7 +15499,14 @@ void Entity::monsterGenerateQuiverItem(Stat* myStats, bool lesserMonster)
 					break;
 				case 2:
 				case 3:
-					myStats->shield = newItem(QUIVER_LIGHTWEIGHT, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+					if ( rng.rand() % 4 == 0 )
+					{
+						myStats->shield = newItem(QUIVER_LIGHTWEIGHT, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+					}
+					else
+					{
+						myStats->shield = newItem(QUIVER_BONE, SERVICABLE, 0, ammo, ITEM_GENERATED_QUIVER_APPEARANCE, false, nullptr);
+					}
 					break;
 				case 4:
 					if ( currentlevel >= 18 )

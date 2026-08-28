@@ -448,10 +448,15 @@ void initHuman(Entity* my, Stat* myStats)
 					break;
 			}
 
+			auto itemRealm = gameLevels.getCurrentMapItemRealm(currentlevel, secretleveltype);
+
 			if ( specialMonsterVariant == 0 )
 			{
-				// generate random equipment if not a named special human
+				const int silverHellChance = 12;
+				const int silverDepthChance = 6;
 
+				// generate random equipment if not a named special human
+				bool silver = ((itemRealm == ItemGeneric::HELL && (rng.rand() % silverHellChance == 0)) || (currentlevel >= 18 && (rng.rand() % silverDepthChance == 0)));
 
 				//give weapon
 				if ( myStats->weapon == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
@@ -463,19 +468,19 @@ void initHuman(Entity* my, Stat* myStats)
 							myStats->weapon = newItem(SHORTBOW, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 2:
-							myStats->weapon = newItem(BRONZE_AXE, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(silver ? SILVER_AXE : BRONZE_AXE, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 3:
-							myStats->weapon = newItem(BRONZE_MACE, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(silver ? SILVER_MACE : BRONZE_MACE, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 4:
 							myStats->weapon = newItem(IRON_MACE, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 5:
-							myStats->weapon = newItem(BRONZE_SWORD, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(silver ? SILVER_SWORD : BRONZE_SWORD, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 6:
-							myStats->weapon = newItem(IRON_SPEAR, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(silver ? SILVER_GLAIVE : IRON_SPEAR, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 						case 7:
 							myStats->weapon = newItem(IRON_AXE, WORN, 0, 1, rng.rand(), false, nullptr);
@@ -488,6 +493,8 @@ void initHuman(Entity* my, Stat* myStats)
 							break;
 					}
 				}
+
+				silver = ((itemRealm == ItemGeneric::HELL && (rng.rand() % silverHellChance == 0)) || (currentlevel >= 18 && (rng.rand() % silverDepthChance == 0)));
 
 				//give shield
 				if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
@@ -517,11 +524,13 @@ void initHuman(Entity* my, Stat* myStats)
 								myStats->shield = newItem(BRONZE_SHIELD, WORN, 0, 1, rng.rand(), false, nullptr);
 								break;
 							case 9:
-								myStats->shield = newItem(IRON_SHIELD, WORN, 0, 1, rng.rand(), false, nullptr);
+								myStats->shield = newItem(silver ? SILVER_SHIELD : IRON_SHIELD, WORN, 0, 1, rng.rand(), false, nullptr);
 								break;
 						}
 					}
 				}
+
+				silver = ((itemRealm == ItemGeneric::HELL && (rng.rand() % silverHellChance == 0)) || (currentlevel >= 18 && (rng.rand() % silverDepthChance == 0)));
 
 				// give helmet
 				if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
@@ -553,7 +562,7 @@ void initHuman(Entity* my, Stat* myStats)
 								break;
 							case 8:
 							case 9:
-								myStats->helmet = newItem(IRON_HELM, WORN, 0, 1, rng.rand(), false, nullptr);
+								myStats->helmet = newItem(silver ? SILVER_HELM : IRON_HELM, WORN, 0, 1, rng.rand(), false, nullptr);
 								break;
 							case 10:
 							case 11:
@@ -617,6 +626,8 @@ void initHuman(Entity* my, Stat* myStats)
 					}
 				}
 
+				silver = ((itemRealm == ItemGeneric::HELL && (rng.rand() % silverHellChance == 0)) || (currentlevel >= 18 && (rng.rand() % silverDepthChance == 0)));
+
 				// give armor
 				if ( myStats->breastplate == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_ARMOR] == 1 )
 				{
@@ -635,10 +646,12 @@ void initHuman(Entity* my, Stat* myStats)
 							break;
 						case 8:
 						case 9:
-							myStats->breastplate = newItem(IRON_BREASTPIECE, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->breastplate = newItem(silver ? SILVER_BREASTPIECE : IRON_BREASTPIECE, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 					}
 				}
+
+				silver = ((itemRealm == ItemGeneric::HELL && (rng.rand() % silverHellChance == 0)) || (currentlevel >= 18 && (rng.rand() % silverDepthChance == 0)));
 
 				// give gloves
 				if ( myStats->gloves == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] == 1 )
@@ -658,10 +671,12 @@ void initHuman(Entity* my, Stat* myStats)
 							break;
 						case 8:
 						case 9:
-							myStats->gloves = newItem(GAUNTLETS, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->gloves = newItem(silver ? SILVER_GAUNTLETS : GAUNTLETS, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 					}
 				}
+
+				silver = ((itemRealm == ItemGeneric::HELL && (rng.rand() % silverHellChance == 0)) || (currentlevel >= 18 && (rng.rand() % silverDepthChance == 0)));
 
 				// give boots
 				if ( myStats->shoes == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] == 1 )
@@ -681,7 +696,7 @@ void initHuman(Entity* my, Stat* myStats)
 							break;
 						case 8:
 						case 9:
-							myStats->shoes = newItem(IRON_BOOTS, WORN, 0, 1, rng.rand(), false, nullptr);
+							myStats->shoes = newItem(silver ? SILVER_BOOTS : IRON_BOOTS, WORN, 0, 1, rng.rand(), false, nullptr);
 							break;
 					}
 				}

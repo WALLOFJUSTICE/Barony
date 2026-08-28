@@ -197,7 +197,14 @@ void initGoblin(Entity* my, Stat* myStats)
 							    myStats->shield = newItem(BRONZE_SHIELD, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							    break;
 						    case 9:
-							    myStats->shield = newItem(IRON_SHIELD, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								if ( rng.rand() % 5 == 0 )
+								{
+									myStats->shield = newItem(BONE_SHIELD, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								}
+								else
+								{
+									myStats->shield = newItem(IRON_SHIELD, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								}
 							    break;
 					    }
 				    }
@@ -275,7 +282,14 @@ void initGoblin(Entity* my, Stat* myStats)
 					    case 5:
 					    case 6:
 					    case 7:
-						    myStats->breastplate = newItem(LEATHER_BREASTPIECE, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							if ( rng.rand() % 5 == 0 )
+							{
+								myStats->breastplate = newItem(BONE_BREASTPIECE, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
+							else
+							{
+								myStats->breastplate = newItem(LEATHER_BREASTPIECE, DECREPIT, -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
 						    break;
 					    case 8:
 					    case 9:

@@ -1069,6 +1069,50 @@ void spawnBloodVialOnMonsterDeath(Entity* entity, Stat* hitstats, Entity* killer
 			}
 		}
 
+		if ( gibtype[hitstats->type] == 1 )
+		{
+			if ( !entity->isConstructMonster() && !entity->isElementalMonster() )
+			{
+				int qty = 1;
+				switch ( hitstats->type )
+				{
+				case DEVIL:
+					qty = 0;
+					break;
+				case RAT:
+				case BAT_SMALL:
+				case GNOME:
+				case GREMLIN:
+				case KOBOLD:
+					qty = 1;
+					break;
+				case DEMON:
+				case MINOTAUR:
+				case TROLL:
+				case COCKATRICE:
+				case BUGBEAR:
+				case GRYPHON:
+				case STAREMASTER:
+					qty = 3 + local_rng.rand() % 3; // 3-5
+					break;
+				default:
+					qty = 2 + local_rng.rand() % 2; // 2-3
+					break;
+				}
+				if ( qty )
+				{
+					if ( entity->isSmiteWeakMonster() && local_rng.rand() % 25 == 0 )
+					{
+						newItem(BONE_THROWING, DECREPIT, -1, qty, 0, true, &hitstats->inventory);
+					}
+					else if ( local_rng.rand() % 50 == 0 )
+					{
+						newItem(BONE_THROWING, DECREPIT, 0, qty, 0, true, &hitstats->inventory);
+					}
+				}
+			}
+		}
+
 		if ( killer && (killer->behavior == &actMonster || killer->behavior == &actPlayer) )
 		{
 			if ( Stat* killerStats = killer->getStats() )

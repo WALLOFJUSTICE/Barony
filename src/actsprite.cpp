@@ -618,6 +618,28 @@ Entity* spawnSleepZ(Sint16 x, Sint16 y, Sint16 z)
 		}
 	}
 
+	if ( !intro )
+	{
+		bool anyvismap = false;
+		int _x = x / 16.0;
+		int _y = y / 16.0;
+		if ( _x >= 0 && _x < map.width && _y >= 0 && _y < map.height )
+		{
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				if ( !client_disconnected[i] && players[i]->isLocalPlayer() && cameras[i].vismap[_y + _x * map.height] )
+				{
+					anyvismap = true;
+				}
+			}
+		}
+
+		if ( !anyvismap )
+		{
+			return nullptr;
+		}
+	}
+
 	Entity* entity = newEntity(47, 1, map.entities, nullptr); //Sprite entity.
 	entity->behavior = &actSleepZ;
 	entity->x = x;

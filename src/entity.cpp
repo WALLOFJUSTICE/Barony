@@ -652,6 +652,14 @@ int Entity::entityLightAfterReductions(Stat& myStats, Entity* observer)
 	{
 		if ( Stat* observerStats = observer->getStats() )
 		{
+			if ( observerStats->getAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS") != "" )
+			{
+				int sightTicks = std::stoi(observerStats->getAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS"));
+				if ( sightTicks > 0 )
+				{
+					light = std::max(light, 5 * 16);
+				}
+			}
 			if ( myStats.getEffectActive(EFF_DUSTED) )
 			{
 				int increment = 16 * 3;

@@ -8109,6 +8109,8 @@ void assignActions(map_t* map)
 	int lastGeneratedItemType = -1;
 	int lastGeneratedItemSpellType = -1;
 
+	auto itemRealm = levelData.node.itemRealm;
+
 	// assign entity behaviors
     node_t* nextnode;
 	for ( auto node = map->entities->first; node != nullptr; node = nextnode )
@@ -8767,6 +8769,25 @@ void assignActions(map_t* map)
 
 				if ( rolledLevelCurveItem )
 				{
+					if ( entity->skill[10] == GEM_GLASS && map_rng.rand() % 10 == 0 )
+					{
+						if ( itemRealm == ItemGeneric::HELL
+							|| levelData.id.find("mine") != std::string::npos
+							|| levelData.id.find("swamp") != std::string::npos
+							|| levelData.id.find("labyrinth") != std::string::npos
+							|| levelData.id.find("fortress") != std::string::npos )
+						{
+							entity->skill[10] = BONE_THROWING;
+							entity->skill[11] = DECREPIT;
+							if ( entity->skill[13] == 1 )
+							{
+								entity->skill[13] += 1 + map_rng.rand() % 2;
+							}
+							entity->skill[12] = std::max(-1, entity->skill[12]);
+							entity->skill[12] = std::min(0, entity->skill[12]);
+							entity->skill[15] = 1;
+						}
+					}
 					itemLevelCurvePostProcess(entity, nullptr, map_rng, currentlevel, &lastGeneratedItemType, &lastGeneratedItemSpellType);
 				}
 

@@ -142,8 +142,10 @@ void initKobold(Entity* my, Stat* myStats)
 					{
 						case 0:
 						case 1:
-						case 2:
 							myStats->weapon = newItem(STEEL_SWORD, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							break;
+						case 2:
+							myStats->weapon = newItem(BONE_SWORD, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 3:
 						case 4:
@@ -156,7 +158,14 @@ void initKobold(Entity* my, Stat* myStats)
 							myStats->weapon = newItem(CROSSBOW, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 9:
-							myStats->weapon = newItem(IRON_AXE, static_cast<Status>(DECREPIT + rng.rand() % 4), -2 + rng.rand() % 5, 1, rng.rand(), false, nullptr);
+							if ( rng.rand() % 2 )
+							{
+								myStats->weapon = newItem(BONE_AXE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
+							else
+							{
+								myStats->weapon = newItem(BONE_SPEAR, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							}
 							break;
 					}
 				}
@@ -243,7 +252,7 @@ void initKobold(Entity* my, Stat* myStats)
 						{
 							case 0:
 							case 1:
-								myStats->shield = newItem(IRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -2 + rng.rand() % 5, 1, rng.rand(), false, nullptr);
+								myStats->shield = newItem(BONE_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -2 + rng.rand() % 5, 1, rng.rand(), false, nullptr);
 								break;
 							case 2:
 							case 3:
@@ -295,9 +304,54 @@ void initKobold(Entity* my, Stat* myStats)
 			}
 
 			// give helm
-			if ( cultist > 0 && myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
+			if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
 			{
-				myStats->helmet = newItem(HAT_HOOD, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+				if ( cultist > 0 )
+				{
+					myStats->helmet = newItem(HAT_HOOD, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+				}
+				else if ( rng.rand() % 10 == 0 )
+				{
+					myStats->helmet = newItem(BONE_HELM, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+				}
+			}
+
+			if ( myStats->gloves == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] == 1 )
+			{
+				if ( cultist > 0 )
+				{
+					if ( rng.rand() % 8 == 0 )
+					{
+						myStats->gloves = newItem(BONE_BRACERS, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+					}
+				}
+				else if ( rng.rand() % 5 == 0 )
+				{
+					myStats->gloves = newItem(BONE_BRACERS, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+				}
+			}
+
+			if ( myStats->shoes == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] == 1 )
+			{
+				if ( cultist > 0 )
+				{
+					if ( rng.rand() % 5 == 0 )
+					{
+						myStats->shoes = newItem(BONE_BOOTS, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+					}
+				}
+				else if ( rng.rand() % 5 == 0 )
+				{
+					myStats->shoes = newItem(BONE_BOOTS, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+				}
+			}
+
+			if ( myStats->breastplate == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_ARMOR] == 1 )
+			{
+				if ( !cultist && rng.rand() % 5 == 0 )
+				{
+					myStats->breastplate = newItem(BONE_BREASTPIECE, static_cast<Status>(DECREPIT + rng.rand() % 2), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+				}
 			}
 		}
 	}

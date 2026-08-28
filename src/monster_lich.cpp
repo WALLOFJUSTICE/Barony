@@ -106,6 +106,8 @@ void initLich(Entity* my, Stat* myStats)
 					break;
 			}
 
+			newItem(BONE_THROWING, DECREPIT, -1, 5, rng.rand(), true, &myStats->inventory);
+
 			//give weapon
 			if ( myStats->weapon == NULL && myStats->EDITOR_ITEMS[ITEM_SLOT_WEAPON] == 1 )
 			{

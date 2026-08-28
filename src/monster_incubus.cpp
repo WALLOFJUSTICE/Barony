@@ -199,9 +199,13 @@ void initIncubus(Entity* my, Stat* myStats)
 							case 4:
 							case 5:
 							case 6:
-							case 7:
-							case 8:
 								myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								break;
+							case 7:
+								myStats->weapon = newItem(BLACKIRON_TRIDENT, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+								break;
+							case 8:
+								myStats->weapon = newItem(BLACKIRON_CROSSBOW, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 								break;
 							case 9:
 								myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);
@@ -216,17 +220,19 @@ void initIncubus(Entity* my, Stat* myStats)
 						case 0:
 						case 1:
 						case 2:
-						case 3:
 							myStats->weapon = newItem(CRYSTAL_SPEAR, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
+						case 3:
 						case 4:
+							myStats->weapon = newItem(BLACKIRON_TRIDENT, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							break;
 						case 5:
 						case 6:
 							myStats->weapon = newItem(CROSSBOW, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 7:
 						case 8:
-							myStats->weapon = newItem(STEEL_HALBERD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+							myStats->weapon = newItem(BLACKIRON_CROSSBOW, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							break;
 						case 9:
 							myStats->weapon = newItem(MAGICSTAFF_COLD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, generateMagicstaffAppearance(my, myStats, 25, 50, rng), false, nullptr);

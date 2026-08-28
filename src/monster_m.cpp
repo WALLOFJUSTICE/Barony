@@ -170,6 +170,22 @@ void initMonsterM(Entity* my, Stat* myStats)
 						break;
 					}
 				}
+
+				if ( myStats->helmet == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_HELM] == 1 )
+				{
+					if ( rng.rand() % 10 == 0 )
+					{
+						myStats->helmet = newItem(BONE_HELM, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					}
+				}
+
+				if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
+				{
+					if ( rng.rand() % 4 == 0 )
+					{
+						myStats->shield = newItem(BONE_SHIELD, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+					}
+				}
 			}
 			else if ( myStats->getAttribute("monster_m_type") == "discanter" )
 			{
@@ -183,6 +199,7 @@ void initMonsterM(Entity* my, Stat* myStats)
 					case 3:
 					case 4:
 						myStats->weapon = newItem(BONE_SPEAR, static_cast<Status>(rng.rand() % 3 + WORN), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
+						myStats->weapon->isDroppable = false;
 						break;
 					case 5:
 					case 6:

@@ -501,6 +501,10 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_HELM] = 1;
 
+			stats->EDITOR_ITEMS[ITEM_SLOT_ARMOR] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_BOOTS] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_GLOVES] = 1;
+
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 80; //Ranged spellbook
 			stats->EDITOR_ITEMS[ITEM_SLOT_INV_2] = 1;
@@ -874,7 +878,7 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->setProficiency(PRO_AXE, 60);
 			//stats->setProficiency(PRO_POLEARM, 25);
 			stats->setProficiency(PRO_RANGED, 60); //Chuck booze at you.
-			//stats->setProficiency(PRO_SHIELD, 35);
+			stats->setProficiency(PRO_SHIELD, 40);
 			stats->setProficiency(PRO_SORCERY, 60);
 			stats->setProficiency(PRO_MYSTICISM, 60);
 			break;
@@ -999,6 +1003,8 @@ void setDefaultMonsterStats(Stat* stats, int sprite)
 			stats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] = 1;
 			stats->EDITOR_ITEMS[ITEM_SLOT_HELM] = 1;
 
+			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1] = 1;
+			stats->EDITOR_ITEMS[ITEM_SLOT_INV_1 + ITEM_CHANCE] = 5; //Random Items
 			break;
 
 		case 75:

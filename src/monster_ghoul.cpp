@@ -174,7 +174,14 @@ void initGhoul(Entity* my, Stat* myStats)
 				case 1:
 					if ( rng.rand() % 4 == 0 )
 					{
-						newItem(FOOD_MEAT, DECREPIT, -1, 1, rng.rand(), false, &myStats->inventory);
+						if ( rng.rand() % 3 == 0 )
+						{
+							newItem(BONE_THROWING, DECREPIT, -1, 1 + rng.rand() % 2, rng.rand(), true, &myStats->inventory);
+						}
+						else
+						{
+							newItem(FOOD_MEAT, DECREPIT, -1, 1, rng.rand(), false, &myStats->inventory);
+						}
 					}
 					break;
 				default:

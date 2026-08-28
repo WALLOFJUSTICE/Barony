@@ -3936,6 +3936,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						if ( toAttack )
 						{
 							entity->monsterAcquireAttackTarget(*toAttack, MONSTER_STATE_PATH);
+							if ( stats )
+							{
+								stats->setAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS", std::to_string(3 * TICKS_PER_SECOND));
+							}
 						}
 					}
 				}
@@ -3996,6 +4000,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						if ( toAttack )
 						{
 							entity->monsterAcquireAttackTarget(*toAttack, MONSTER_STATE_PATH);
+							if ( stats )
+							{
+								stats->setAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS", std::to_string(3 * TICKS_PER_SECOND));
+							}
 						}
 					}
 				}
