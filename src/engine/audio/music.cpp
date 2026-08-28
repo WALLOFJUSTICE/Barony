@@ -381,7 +381,7 @@ void handleLevelMusic()
 			}
 			else
 			{
-				playMusic(intermissionmusic, true, true, true);
+				playMusic(tutorialmusic, true, true, true);
 			}
 		}
 		else if ( !strcmp(map.name, "Cockatrice Lair") )

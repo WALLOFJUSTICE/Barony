@@ -322,7 +322,6 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, Soun
 	channel->setVolume(vol / 255.f);
 	channel->set3DAttributes(&position, nullptr);
     channel->setMode(FMOD_3D_WORLDRELATIVE);
-	channel->setPaused(false);
 
 	if ( snd == 154 ) // portal hum
 	{
@@ -359,7 +358,14 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, Soun
 				channel->get3DMinMaxDistance(&f1, &f2);
 				channel->set3DMinMaxDistance(*cvar_sfx_trap_magic_distmin, f2);
 			}
-			if ( *cvar_sfx_trap_distmin > 0.01 )
+			if ( !strcmp(map.name, "Sokoban") )
+			{
+				float f1, f2;
+				channel->get3DMinMaxDistance(&f1, &f2);
+				channel->setVolume((vol / 255.f) * 0.5f);
+				channel->set3DMinMaxDistance(0.5, f2);
+			}
+			else if ( *cvar_sfx_trap_distmin > 0.01 )
 			{
 				float f1, f2;
 				channel->get3DMinMaxDistance(&f1, &f2);
@@ -367,6 +373,8 @@ FMOD::Channel* playSoundPosLocal(real_t x, real_t y, Uint16 snd, Uint8 vol, Soun
 			}
 		}
 	}
+
+	channel->setPaused(false);
 
 	return channel;
 }
