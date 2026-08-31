@@ -18,7 +18,9 @@
 #ifdef WINDOWS
 #define USE_NVAPI // Video settings option for NVIDIA OpenGL compatibility stuttering fix
 #if defined(STEAMWORKS) || defined(USE_EOS)
+#ifdef BUILD_DCC
 #define USE_DISCORD
+#endif
 #endif
 #endif
 #endif
