@@ -22,6 +22,7 @@
 
 #include "../ui/Button.hpp"
 #include "../ui/Field.hpp"
+#include "../ui/MainMenu.hpp"
 
 static const char* smallfont_outline = "fonts/pixel_maz_multiline.ttf#16#2";
 static const char* smallfont_no_outline = "fonts/pixel_maz_multiline.ttf#16#0";
@@ -79,9 +80,9 @@ void UIToastNotification::init()
 	actionButton = frame->addButton("action");
 	actionButton->setBorder(0);
 	actionButton->setUserData(this);
-	actionButton->setBackground("*#images/ui/GameOver/UI_GameOver_Button_SpawnAsGhost_02.png");
-	actionButton->setBackgroundHighlighted("*#images/ui/GameOver/UI_GameOver_Button_SpawnAsGhostHigh_02.png");
-	actionButton->setBackgroundActivated("*#images/ui/GameOver/UI_GameOver_Button_SpawnAsGhostPress_02.png");
+	actionButton->setBackground("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonLarge.png");
+	actionButton->setBackgroundHighlighted("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonLargeHigh.png");
+	actionButton->setBackgroundActivated("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonLargePress.png");
 	actionButton->setColor(makeColor(255, 255, 255, 255));
 	actionButton->setHighlightColor(makeColor(255, 255, 255, 255));
 	actionButton->setSize(SDL_Rect{108, 0, 150, 34});
@@ -97,6 +98,30 @@ void UIToastNotification::init()
 		n->lastInteractedTick = ticks;
 		if (n->buttonAction) {
 			n->buttonAction();
+		}
+		});
+
+	actionButton2 = frame->addButton("action2");
+	actionButton2->setBorder(0);
+	actionButton2->setUserData(this);
+	actionButton2->setBackground("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonLarge.png");
+	actionButton2->setBackgroundHighlighted("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonLargeHigh.png");
+	actionButton2->setBackgroundActivated("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonLargePress.png");
+	actionButton2->setColor(makeColor(255, 255, 255, 255));
+	actionButton2->setHighlightColor(makeColor(255, 255, 255, 255));
+	actionButton2->setSize(SDL_Rect{ 108, 0, 150, 34 });
+	actionButton2->setText("X");
+	actionButton2->setFont(smallfont_outline);
+	actionButton2->setHideGlyphs(true);
+	actionButton2->setHideKeyboardGlyphs(true);
+	actionButton2->setHideSelectors(true);
+	actionButton2->setMenuConfirmControlType(0);
+	actionButton2->setTextHighlightColor(makeColor(201, 162, 100, 255));
+	actionButton2->setCallback([](Button& button) {
+		auto n = static_cast<UIToastNotification*>(button.getUserData());
+		n->lastInteractedTick = ticks;
+		if ( n->buttonAction2 ) {
+			n->buttonAction2();
 		}
 		});
 
@@ -117,6 +142,7 @@ void UIToastNotification::draw()
 	progressField->setInvisible(true);
 	closeButton->setInvisible(true);
 	actionButton->setInvisible(true);
+	actionButton2->setInvisible(true);
 	frameImage->disabled = true;
 	progressBar->disabled = true;
 	progressBarBackground->disabled = true;
@@ -321,6 +347,10 @@ void UIToastNotification::drawMainCard()
 	{
 		drawActionButton(r);
 	}
+	if ( actionFlags & ActionFlags::UI_NOTIFICATION_ACTION_BUTTON_SECONDARY )
+	{
+		drawActionButtonSecondary(r);
+	}
 
 	if (temporaryCardHide)
 	{
@@ -454,11 +484,51 @@ void UIToastNotification::drawCloseButton(const SDL_Rect& src)
 
 void UIToastNotification::drawActionButton(const SDL_Rect& src)
 {
+	if ( (actionFlags & UI_NOTIFICATION_ACTION_BUTTON_SECONDARY) && (actionFlags & UI_NOTIFICATION_ACTION_BUTTON) )
+	{
+		if ( actionButton->getSize().w != 112 )
+		{
+			actionButton->setBackground("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonSmall.png");
+			actionButton->setBackgroundHighlighted("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonSmallHigh.png");
+			actionButton->setBackgroundActivated("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonSmallPress.png");
+
+			auto size = actionButton->getSize();
+			size.w = 112;
+			actionButton->setSize(size);
+		}
+	}
+
 	actionButton->setInvisible(false);
 
-	const SDL_Rect r{ 80, src.h - 40, 150, 34 };
+	const SDL_Rect r{ 80, src.h - 40, actionButton->getSize().w, 34 };
 	actionButton->setSize(r);
 	actionButton->setText(actionText.c_str());
+}
+
+void UIToastNotification::drawActionButtonSecondary(const SDL_Rect& src)
+{
+	if ( (actionFlags & UI_NOTIFICATION_ACTION_BUTTON_SECONDARY) && (actionFlags & UI_NOTIFICATION_ACTION_BUTTON) )
+	{
+		if ( actionButton2->getSize().w != 112 )
+		{
+			actionButton2->setBackground("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonSmall.png");
+			actionButton2->setBackgroundHighlighted("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonSmallHigh.png");
+			actionButton2->setBackgroundActivated("*#images/ui/Main Menus/Notifications/UI_Notif_ButtonSmallPress.png");
+
+			auto size = actionButton2->getSize();
+			size.w = 112;
+			actionButton2->setSize(size);
+		}
+	}
+
+	actionButton2->setInvisible(false);
+	SDL_Rect r{ 80, src.h - 40, actionButton2->getSize().w, 34};
+	if ( !actionButton->isInvisible() )
+	{
+		r.x += r.w + 8;
+	}
+	actionButton2->setSize(r);
+	actionButton2->setText(actionText2.c_str());
 }
 
 UIToastNotificationManager_t UIToastNotificationManager;
@@ -667,6 +737,88 @@ void UIToastNotificationManager_t::createEpicLoginNotification()
 			}
 		};
 		n->setIdleSeconds(5);
+	}
+}
+
+void UIToastNotificationManager_t::createInviteCodeNotification(std::string username, std::string invite_code)
+{
+	if ( !intro )
+	{
+		UIToastNotification* n = UIToastNotificationManager.getNotificationSingle(UIToastNotification::CardType::UI_CARD_INVITE_INFO);
+		if ( !n )
+		{
+			n = UIToastNotificationManager.addNotification(nullptr);
+		}
+		n->setHeaderText(Language::get(7201));
+		n->setMainText(Language::get(7204));
+		n->setSecondaryText(invite_code.c_str());
+
+		n->showHeight = 92;
+		n->actionFlags &= ~(UIToastNotification::ActionFlags::UI_NOTIFICATION_ACTION_BUTTON); // unset
+		n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_AUTO_HIDE);
+		n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_REMOVABLE);
+		n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_CLOSE);
+		n->cardType = UIToastNotification::CardType::UI_CARD_INVITE_INFO;
+	}
+
+	
+	{
+		UIToastNotification* n = UIToastNotificationManager.getNotificationSingle(UIToastNotification::CardType::UI_CARD_INVITE_CODE);
+		if ( !n )
+		{
+			n = UIToastNotificationManager.addNotification(nullptr);
+		}
+		n->setHeaderText(Language::get(7201));
+		n->setSecondaryText(invite_code.c_str());
+		n->setActionText(Language::get(5849));
+		n->setActionText2(Language::get(5835));
+		std::string from = username + '\n';
+		n->setMainText(from.c_str());
+		n->setDisplayedText(n->getMainText());
+		n->showMainCard();
+		n->updateCardEvent(true, false);
+		n->setIdleSeconds(15);
+		n->showHeight = 112;
+
+		n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_ACTION_BUTTON);
+		n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_ACTION_BUTTON_SECONDARY);
+		n->actionFlags &= ~(UIToastNotification::ActionFlags::UI_NOTIFICATION_AUTO_HIDE);
+		n->actionFlags &= ~(UIToastNotification::ActionFlags::UI_NOTIFICATION_REMOVABLE);
+		n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_CLOSE);
+
+		n->cardType = UIToastNotification::CardType::UI_CARD_INVITE_CODE;
+
+		n->buttonAction2 = []() {
+			UIToastNotification* n = UIToastNotificationManager.getNotificationSingle(UIToastNotification::CardType::UI_CARD_INVITE_CODE);
+			if ( n )
+			{
+				n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_REMOVABLE);
+				n->setIdleSeconds(0);
+			}
+			};
+		n->buttonAction = []() {
+			UIToastNotification* n = UIToastNotificationManager.getNotificationSingle(UIToastNotification::CardType::UI_CARD_INVITE_CODE);
+			if ( n )
+			{
+				if ( n->secondaryCardText == "" )
+				{
+					n->setSecondaryText(Language::get(7202));
+				}
+				else
+				{
+					MainMenu::receivedInvite(nullptr, n->secondaryCardText);
+					n->setSecondaryText(Language::get(7203));
+				}
+				n->actionFlags &= ~(UIToastNotification::ActionFlags::UI_NOTIFICATION_ACTION_BUTTON); // unset
+				n->actionFlags &= ~(UIToastNotification::ActionFlags::UI_NOTIFICATION_ACTION_BUTTON_SECONDARY); // unset
+				n->actionFlags |= (UIToastNotification::ActionFlags::UI_NOTIFICATION_REMOVABLE);
+
+				n->showMainCard();
+				//n->setDisplayedText(n->getMainText());
+				n->setIdleSeconds(3);
+				n->updateCardEvent(false, true);
+			}
+		};
 	}
 }
 

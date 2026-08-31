@@ -1683,7 +1683,7 @@ void steam_OnLobbyMatchListCallback( void* pCallback, bool bIOFailure )
 	    roomkey_cached = "";
 	    if (numSteamLobbies) {
 	        multiplayer = SINGLE;
-	        MainMenu::receivedInvite(lobbyIDs[0]);
+	        MainMenu::receivedInvite(lobbyIDs[0], "");
 	    }
 		else
 		{
@@ -1776,7 +1776,26 @@ void steam_OnLobbyDataUpdatedCallback( void* pCallback )
 		handlingInvite = false;
 		static CSteamID storedID;
 		storedID = *static_cast<CSteamID*>(tempSteamID);
-		MainMenu::receivedInvite(&storedID);
+
+		const char* roomCode = SteamMatchmaking()->GetLobbyData(storedID, "roomkey");
+		if ( roomCode && strlen(roomCode) )
+		{
+			std::string username = Language::get(7205); // steam lobby
+			auto lobbyOwner = SteamMatchmaking()->GetLobbyOwner(storedID);
+			const char* owner = SteamFriends()->GetFriendPersonaName(lobbyOwner);
+			if ( owner && strcmp(owner, "") )
+			{
+				username += Language::get(7207); // hosted by:\n
+				username += owner;
+			}
+			std::string roomcode_fmt = "s";
+			roomcode_fmt += roomCode;
+			UIToastNotificationManager.createInviteCodeNotification(username, roomcode_fmt);
+		}
+		else
+		{
+			MainMenu::receivedInvite(&storedID, "");
+		}
 	}
 	
 	cpp_Free_CSteamID(tempSteamID);

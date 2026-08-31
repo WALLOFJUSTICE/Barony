@@ -3,6 +3,8 @@
 #include "files.hpp"
 #include "mod_tools.hpp"
 #include "interface/ui.hpp"
+#include "ui/MainMenu.hpp"
+#include "ui/GameUI.hpp"
 #ifdef STEAMWORKS
 #include "steam.hpp"
 #endif
@@ -10,15 +12,429 @@
 #include "eos.hpp"
 #endif
 
-#ifdef USE_PLAYFAB
-
 #ifdef WINDOWS
 #define STRINGIZE2(s) #s
 #define STRINGIZE(s) STRINGIZE2(s)
+#endif
+#ifdef USE_PLAYFAB
 #define BUILD_ENV_PFTID STRINGIZE(BUILD_PFTID)
 #define BUILD_ENV_PFHID STRINGIZE(BUILD_PFHID)
 #endif
 
+#ifdef USE_DISCORD
+#include "lobbies.hpp"
+#define BUILD_ENV_DCC STRINGIZE(BUILD_DCC)
+#ifdef WINDOWS
+#pragma comment(lib, "discord_partner_sdk.lib")
+#endif
+#define DISCORDPP_IMPLEMENTATION
+#include "discord/discordpp.h"
+struct DiscordUser_t
+{
+    bool bInit = false;
+    static std::shared_ptr<discordpp::Client> client;
+    discordpp::Activity activity;
+    discordpp::ActivityAssets assets;
+    discordpp::ActivityParty party;
+    std::string displayName = "";
+    void init();
+    void update();
+    static void logInfo(const char* str, ...)
+    {
+        char newstr[1024] = { 0 };
+        va_list argptr;
+
+        // format the content
+        va_start(argptr, str);
+        vsnprintf(newstr, 1023, str, argptr);
+        va_end(argptr);
+        printlog("[Discord SDK Info]: %s", newstr);
+    }
+    static void logError(const char* str, ...)
+    {
+        char newstr[1024] = { 0 };
+        va_list argptr;
+
+        // format the content
+        va_start(argptr, str);
+        vsnprintf(newstr, 1023, str, argptr);
+        va_end(argptr);
+        printlog("[Discord SDK Error]: %s", newstr);
+    }
+    static int presenceRetry;
+    bool bPresenceSet = false;
+    static Uint32 presenceTimeout;
+    void updatePresence(bool ingame, std::string mapDesc, int lvl, int race, int classnum, int numplayers);
+};
+DiscordUser_t discordUser;
+int DiscordUser_t::presenceRetry = 0;
+Uint32 DiscordUser_t::presenceTimeout = 0;
+std::shared_ptr<discordpp::Client> DiscordUser_t::client;
+
+void DiscordUser_t::init()
+{
+    if ( bInit ) { return; }
+
+    client = std::make_shared<discordpp::Client>();
+    client->SetApplicationId(BUILD_DCC);
+#ifdef STEAMWORKS
+    client->RegisterLaunchSteamApplication(client->GetApplicationId(), STEAM_APPID);
+#else
+    client->RegisterLaunchCommand(client->GetApplicationId(), "");
+#endif
+    client->GetDiscordClientConnectedUser(BUILD_DCC, [](discordpp::ClientResult result,
+        std::optional<discordpp::UserHandle> user) {
+            if ( result.Successful() && user.has_value() )
+            {
+                logInfo("User available: %s", user->DisplayName().c_str());
+                discordUser.displayName = user->DisplayName();
+                discordUser.presenceRetry = 0;
+            }
+        });
+
+    activity.SetType(discordpp::ActivityTypes::Playing);
+    client->AddLogCallback([](auto message, auto severity) {
+        logInfo("Log %s", message.c_str());
+        }, discordpp::LoggingSeverity::Warning);
+
+    client->SetStatusChangedCallback([](discordpp::Client::Status status, discordpp::Client::Error error, int32_t errorDetail) {
+        if ( status == discordpp::Client::Status::Ready )
+        {
+            logInfo("Status ready!");
+        }
+        else
+        {
+            logInfo("Status changed: %d", (int)status);
+        }
+    });
+
+    client->SetActivityJoinCallback([](std::string joinsecret) {
+        logInfo("Join callback %s", joinsecret.c_str());
+        if ( joinsecret[0] == 'S' )
+        {
+            UIToastNotificationManager.createInviteCodeNotification(Language::get(7205), joinsecret); // steam lobby
+        }
+        else if ( joinsecret[0] == 'E' )
+        {
+            UIToastNotificationManager.createInviteCodeNotification(Language::get(7206), joinsecret); // crossplay lobby
+        }
+        });
+
+    client->SetActivityInviteUpdatedCallback([](discordpp::ActivityInvite invite) {
+        if ( invite.ApplicationId() != client->GetApplicationId() )
+        {
+            return;
+        }
+        auto type = invite.Type();
+        auto partyID = invite.PartyId();
+        auto senderID = invite.SenderId();
+        auto channelID = invite.ChannelId();
+
+        auto currentParty = discordUser.activity.Party();
+        logInfo("Received invite type: %d from user: %llu, channel: %llu", type, senderID, channelID);
+    });
+
+    client->SetActivityInviteCreatedCallback([](discordpp::ActivityInvite invite) {
+        if ( invite.ApplicationId() != client->GetApplicationId() )
+        {
+            return;
+        }
+        auto type = invite.Type();
+        auto partyID = invite.PartyId();
+        auto senderID = invite.SenderId();
+        auto channelID = invite.ChannelId();
+
+        if ( type == discordpp::ActivityActionTypes::Join )
+        {
+            client->AcceptActivityInvite(invite, [partyID](discordpp::ClientResult result, std::string joinsecret)
+            {
+                logInfo("Join callback %s", joinsecret.c_str());
+                if ( joinsecret[0] == 'S' )
+                {
+                    std::string username = Language::get(7205); // steam
+                    username += Language::get(7207); // hosted by
+                    std::string user = partyID;
+                    if ( user.length() >= 20 )
+                    {
+                        user = partyID.substr(0, 20);
+                        user += "...";
+                    }
+                    username += user;
+                    UIToastNotificationManager.createInviteCodeNotification(username, joinsecret);
+                }
+                else if ( joinsecret[0] == 'E' )
+                {
+                    std::string username = Language::get(7206); // crossplay
+                    username += Language::get(7207); // hosted by
+                    std::string user = partyID;
+                    if ( user.length() >= 20 )
+                    {
+                        user = partyID.substr(0, 20);
+                        user += "...";
+                    }
+                    username += user;
+                    UIToastNotificationManager.createInviteCodeNotification(username, joinsecret);
+                }
+            });
+        }
+    });
+    client->ClearRichPresence();
+    bInit = true;
+}
+
+void DiscordUser_t::updatePresence(bool ingame, std::string mapDesc, int lvl, int race, int classnum, int numplayers)
+{
+    if ( ingame )
+    {
+        DiscordUser_t::presenceTimeout = std::max(DiscordUser_t::presenceTimeout, (Uint32)(3 * TICKS_PER_SECOND));
+    }
+    else
+    {
+        DiscordUser_t::presenceTimeout = std::max(DiscordUser_t::presenceTimeout, (Uint32)(0.1 * TICKS_PER_SECOND));
+    }
+    activity.SetDetails(mapDesc);
+
+    if ( ingame )
+    {
+        char buf[128];
+        std::string classname = MainMenu::classes_in_order[classnum];
+        std::string racename = MainMenu::RaceDescriptions::getRaceKey(race);
+        assets.SetSmallImage(classname);
+        capitalizeString(classname);
+        capitalizeString(racename);
+        snprintf(buf, sizeof(buf), "LVL %d %s %s", lvl, racename.c_str(), classname.c_str());
+        activity.SetState(buf);
+        //assets.SetSmallImage("barbarian");
+        assets.SetSmallText(buf);
+    }
+    else
+    {
+        activity.SetState(std::nullopt);
+        assets.SetSmallImage(std::nullopt);
+        assets.SetSmallText(std::nullopt);
+    }
+
+
+    if ( !ingame )
+    {
+        assets.SetLargeImage(std::nullopt);
+        assets.SetLargeText(std::nullopt);
+
+        activity.SetTimestamps(std::nullopt);
+    }
+    else
+    {
+        auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+        std::string screenshot_path = levelData.node.save_img;
+        auto find = screenshot_path.find(".png");
+        if ( find != std::string::npos )
+        {
+            screenshot_path.erase(find);
+        }
+        find = screenshot_path.find("save_");
+        if ( find != std::string::npos )
+        {
+            screenshot_path.erase(find, find + strlen("save_"));
+        }
+
+        if ( mapDesc == "In the dungeon" )
+        {
+            screenshot_path = "mines00"; // indev
+        }
+        assets.SetLargeImage(screenshot_path);
+        assets.SetLargeText(mapDesc);
+
+        if ( activity.Timestamps() == std::nullopt )
+        {
+            discordpp::ActivityTimestamps timestamps;
+
+            auto now = std::chrono::system_clock::now();
+            auto msEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+            msEpoch -= (1000) * (completionTime / TICKS_PER_SECOND);
+
+            timestamps.SetStart(msEpoch);
+            activity.SetTimestamps(timestamps);
+        }
+    }
+
+    activity.SetAssets(assets);
+
+    //discordpp::ActivityButton button;
+    //button.SetLabel("Join");
+    //button.SetUrl("asdf");
+    //activity.AddButton(button);
+
+    party.SetId(displayName);
+
+    party.SetCurrentSize(numplayers);
+    party.SetPrivacy(discordpp::ActivityPartyPrivacy::Public);
+
+    activity.SetSecrets(std::nullopt);
+    activity.SetSupportedPlatforms(discordpp::ActivityGamePlatforms::Desktop);
+
+    if ( ingame )
+    {
+        party.SetMaxSize(numplayers);
+    }
+    else
+    {
+        int playerSlots = MAXPLAYERS;
+        if ( MainMenu::richPresence.lobbyInfo.lobbyActive )
+        {
+            for ( int i = 0; i < MAXPLAYERS; ++i )
+            {
+                if ( MainMenu::isPlayerSlotLocked(i) )
+                {
+                    --playerSlots;
+                }
+            }
+            playerSlots = std::max(numplayers, playerSlots);
+        }
+
+        if ( !MainMenu::richPresence.lobbyInfo.lobbyActive )
+        {
+            party.SetMaxSize(playerSlots);
+        }
+        else if ( directConnect )
+        {
+            // no public invites
+            activity.SetState("Private (LAN)");
+            party.SetMaxSize(playerSlots);
+        }
+        else if ( MainMenu::richPresence.lobbyInfo.roomCode[0] == 'S' )
+        {
+            if ( loadingsavegame )
+            {
+                activity.SetState("Continuing save (Steam)");
+            }
+            else if ( MainMenu::richPresence.lobbyInfo.privateRoom )
+            {
+                activity.SetState("Private (Steam)");
+            }
+            else
+            {
+                activity.SetState("Open lobby (Steam)");
+            }
+            discordpp::ActivitySecrets secrets;
+            secrets.SetJoin(MainMenu::richPresence.lobbyInfo.roomCode);
+            activity.SetSecrets(secrets);
+            party.SetMaxSize(playerSlots);
+        }
+        else if ( MainMenu::richPresence.lobbyInfo.roomCode[0] == 'E' )
+        {
+            if ( loadingsavegame )
+            {
+                activity.SetState("Continuing save (Crossplay)");
+            }
+            else if ( MainMenu::richPresence.lobbyInfo.privateRoom )
+            {
+                activity.SetState("Private (Crossplay)");
+            }
+            else
+            {
+                activity.SetState("Open lobby (Crossplay)");
+            }
+            discordpp::ActivitySecrets secrets;
+            secrets.SetJoin(MainMenu::richPresence.lobbyInfo.roomCode);
+            activity.SetSecrets(secrets);
+            party.SetMaxSize(playerSlots);
+        }
+        else if ( loadingsavegame )
+        {
+            activity.SetState("Continuing save");
+            party.SetMaxSize(playerSlots);
+        }
+    }
+
+    if ( !MainMenu::richPresence.enableDiscordPresenceInvites )
+    {
+        activity.SetSecrets(std::nullopt);
+        activity.SetParty(std::nullopt);
+    }
+    else if ( numplayers <= 1 && !ingame && !MainMenu::richPresence.lobbyInfo.lobbyActive )
+    {
+        activity.SetParty(std::nullopt);
+    }
+    else
+    {
+        activity.SetParty(party);
+    }
+
+    bPresenceSet = true;
+}
+
+void DiscordUser_t::update()
+{
+    if ( !bInit ) { return; }
+
+    if ( bPresenceSet )
+    {
+        if ( DiscordUser_t::presenceTimeout > 0 )
+        {
+            --DiscordUser_t::presenceTimeout;
+        }
+        else
+        {
+            if ( !MainMenu::richPresence.enableDiscordRichPresence )
+            {
+                DiscordUser_t::client->ClearRichPresence();
+                DiscordUser_t::presenceTimeout = 10 * 60 * TICKS_PER_SECOND;
+            }
+            else
+            {
+                DiscordUser_t::client->UpdateRichPresence(
+                    activity, [](const discordpp::ClientResult& result) {
+                        if ( !result.Successful() )
+                        {
+                            DiscordUser_t::presenceRetry++;
+                            DiscordUser_t::presenceTimeout = std::min(60 * 10 * TICKS_PER_SECOND, 10 * TICKS_PER_SECOND * DiscordUser_t::presenceRetry);
+                            DiscordUser_t::logInfo("Rich presence error: %s", result.Error().c_str());
+                        }
+                        else
+                        {
+                            DiscordUser_t::presenceRetry = 0;
+                        }
+                    });
+            }
+
+            bPresenceSet = false;
+        }
+    }
+
+    static ConsoleVariable<std::string> cvar_lobby_invite_test_code("/lobby_invite_test_code", "");
+    if ( *cvar_lobby_invite_test_code != "" )
+    {
+        *cvar_lobby_invite_test_code = "";
+        UIToastNotificationManager.createInviteCodeNotification(*cvar_lobby_invite_test_code, *cvar_lobby_invite_test_code);
+    }
+    discordpp::RunCallbacks();
+}
+#endif
+void MainMenu::RichPresence::updateDiscordPresence(bool ingame, std::string mapDesc, int lvl, int race, int classnum, int numplayers)
+{
+#ifdef USE_DISCORD
+    if ( discordCheckLogin )
+    {
+        DiscordUser_t::presenceRetry = 0;
+        DiscordUser_t::presenceTimeout = 0;
+        if ( discordUser.displayName == "" )
+        {
+            DiscordUser_t::client->GetDiscordClientConnectedUser(BUILD_DCC, [](discordpp::ClientResult result,
+                std::optional<discordpp::UserHandle> user) {
+                    if ( result.Successful() && user.has_value() )
+                    {
+                        DiscordUser_t::logInfo("User available: %s", user->DisplayName().c_str());
+                        discordUser.displayName = user->DisplayName();
+                    }
+                });
+        }
+        discordCheckLogin = false;
+    }
+    discordUser.updatePresence(ingame, mapDesc, lvl, race, classnum, numplayers);
+#endif
+}
+
+#ifdef USE_PLAYFAB
 PlayfabUser_t playfabUser;
 
 void PlayfabUser_t::OnEventsWrite(const PlayFab::EventsModels::WriteEventsResponse& result, void* customData)
@@ -1979,6 +2395,10 @@ void PlayfabUser_t::resetLogin()
 
 void PlayfabUser_t::update()
 {
+#ifdef USE_DISCORD
+    discordUser.update();
+#endif
+
     if ( !bInit ) { return; }
     bool tickUpdate = false;
     if ( processedOnTick != ticks )
@@ -2040,6 +2460,10 @@ void PlayfabUser_t::update()
 
 void PlayfabUser_t::init()
 {
+#ifdef USE_DISCORD
+    discordUser.init();
+#endif
+
     if ( bInit ) { return; }
     PlayFab::PlayFabSettings::staticSettings->titleId = BUILD_ENV_PFTID;
     bInit = true;

@@ -7490,4 +7490,20 @@ has been unlocked!#
 7199 You can't drink that. You're breathless!#
 7200 You can't eat that. You're breathless!#
 
+# Invite to game buttons
+7201 Game Invite Received!#
+7202 Invalid invite!#
+7203 Connecting...#
+7204 Visit the Main Menu
+to accept invitation.#
+7205 Steam Lobby#
+7206 Crossplay Lobby#
+7207  hosted by:
+#
+7208 Rich Presence#
+7209 Discord Rich Presence#
+7210 Discord In-Game Invites#
+7211 Toggle the ability to display detailed in-game activity on your Discord profile if available.#
+7212 Toggle the ability to send and receive lobby invites through Discord and in-game notifications.#
+
 7999 END#

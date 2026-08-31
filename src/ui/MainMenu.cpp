@@ -679,6 +679,8 @@ namespace MainMenu {
 		bool extra_life_enabled = false;
 		bool assist_items_enabled = false;
 		bool cheats_enabled = false;
+		bool discord_rich_presence = true;
+		bool discord_invites = true;
 		bool skipintro = true;
 		int port_number = DEFAULT_PORT;
 		bool show_lobby_code = true;
@@ -3050,7 +3052,15 @@ namespace MainMenu {
 			logoutOfEpic();
 	    }
 #endif
-
+#if defined USE_DISCORD
+		if ( richPresence.enableDiscordPresenceInvites != discord_invites
+			|| richPresence.enableDiscordRichPresence != discord_rich_presence )
+		{
+			richPresence.discordCheckLogin = true;
+		}
+		richPresence.enableDiscordPresenceInvites = discord_invites;
+		richPresence.enableDiscordRichPresence = discord_rich_presence;
+#endif
 	    return result;
     }
 
@@ -3142,6 +3152,10 @@ namespace MainMenu {
 		settings.skipintro = true;
 		settings.port_number = ::portnumber;
 		settings.show_lobby_code = !hidden_roomcode;
+
+		settings.discord_invites = richPresence.enableDiscordPresenceInvites;
+		settings.discord_rich_presence = richPresence.enableDiscordRichPresence;
+
 		for ( int i = 0; i < MAX_LOBBY_FILTERS_SAVED; ++i )
 		{
 			settings.lobby_filter_settings[i] = 0;
@@ -3158,7 +3172,7 @@ namespace MainMenu {
 	}
 
 	bool AllSettings::serialize(FileInterface* file) {
-	    int version = 26;
+	    int version = 27;
 	    file->property("version", version);
 	    file->property("mods", mods);
 		file->property("crossplay_enabled", crossplay_enabled);
@@ -3311,6 +3325,8 @@ namespace MainMenu {
 		file->property("port_number", port_number);
 		file->propertyVersion("show_lobby_code", version >= 12, show_lobby_code);
 		file->propertyVersion("lobby_filters", version >= 13, lobby_filter_settings);
+		file->propertyVersion("discord_rich_presence", version >= 27, discord_rich_presence);
+		file->propertyVersion("discord_invites", version >= 27, discord_invites);
 		return true;
 	}
 
@@ -7736,14 +7752,45 @@ bind_failed:
 		y += settingsAddSubHeader(*settings_subwindow, y, "crossplay", Language::get(5247));
 		y += settingsAddBooleanOption(*settings_subwindow, y, "crossplay", Language::get(5248), Language::get(5249),
 		    allSettings.crossplay_enabled, [](Button& button){soundToggleSetting(button); allSettings.crossplay_enabled = button.isPressed();});
-
+#ifdef USE_DISCORD
+		y += settingsAddSubHeader(*settings_subwindow, y, "rich_presence", Language::get(7208));
+		y += settingsAddBooleanOption(*settings_subwindow, y, "discord_rich_presence", Language::get(7209), Language::get(7211),
+			allSettings.discord_rich_presence, [](Button& button) {soundToggleSetting(button); allSettings.discord_rich_presence = button.isPressed(); });
+		y += settingsAddBooleanOption(*settings_subwindow, y, "discord_invites", Language::get(7210), Language::get(7212),
+			allSettings.discord_invites, [](Button& button) {soundToggleSetting(button); allSettings.discord_invites = button.isPressed(); });
 		hookSettings(*settings_subwindow,
 			{
                 {Setting::Type::Boolean, "holiday_themes"},
                 {Setting::Type::Customize, "holiday_credits"},
                 {Setting::Type::Field, "port_number"},
                 {Setting::Type::Boolean, "crossplay"},
+				{Setting::Type::Boolean, "discord_rich_presence"},
+				{Setting::Type::Boolean, "discord_invites"},
             });
+#else
+		hookSettings(*settings_subwindow,
+			{
+				{Setting::Type::Boolean, "holiday_themes"},
+				{Setting::Type::Customize, "holiday_credits"},
+				{Setting::Type::Field, "port_number"},
+				{Setting::Type::Boolean, "crossplay"},
+			});
+#endif
+#else
+#ifdef USE_DISCORD
+		y += settingsAddSubHeader(*settings_subwindow, y, "rich_presence", Language::get(7208));
+		y += settingsAddBooleanOption(*settings_subwindow, y, "discord_rich_presence", Language::get(7209), Language::get(7211),
+			allSettings.discord_rich_presence, [](Button& button) {soundToggleSetting(button); allSettings.discord_rich_presence = button.isPressed(); });
+		y += settingsAddBooleanOption(*settings_subwindow, y, "discord_invites", Language::get(7210), Language::get(7212),
+			allSettings.discord_invites, [](Button& button) {soundToggleSetting(button); allSettings.discord_invites = button.isPressed(); });
+		hookSettings(*settings_subwindow,
+			{
+				{Setting::Type::Boolean, "holiday_themes"},
+				{Setting::Type::Customize, "holiday_credits"},
+				{Setting::Type::Field, "port_number"},
+				{Setting::Type::Boolean, "discord_rich_presence"},
+				{Setting::Type::Boolean, "discord_invites"},
+			});
 #else
 		hookSettings(*settings_subwindow,
 			{
@@ -7751,6 +7798,7 @@ bind_failed:
                 {Setting::Type::Customize, "holiday_credits"},
                 {Setting::Type::Field, "port_number"},
             });
+#endif
 #endif
 #else // defined(NINTENDO)
 		hookSettings(*settings_subwindow,
@@ -13135,9 +13183,12 @@ bind_failed:
 	    multiplayer = CLIENT;
 	    if (loadingsavegame) {
 			auto info = getSaveGameInfo(false);
-			for (int c = 0; c < MAXPLAYERS; ++c) {
-				if (info.players_connected[c]) {
-					loadGame(c, info);
+			if ( info.game_version != -1 )
+			{
+				for (int c = 0; c < MAXPLAYERS; ++c) {
+					if (info.players_connected[c]) {
+						loadGame(c, info);
+					}
 				}
 			}
 	    }
@@ -19700,6 +19751,7 @@ failed:
 			{
 				float_warning_add(lobbyWarnings, "4", "Hardcore Enabled");
 			}
+			bool privateRoom = true;
 			if ( multiplayer == SERVER )
 			{
 				if ( LobbyHandler.getHostingType() == LobbyHandler_t::LobbyServiceType::LOBBY_CROSSPLAY ) {
@@ -19717,6 +19769,7 @@ failed:
 						else
 						{
 							float_warning_add(lobbyWarnings, "3", Language::get(6299));
+							privateRoom = false;
 						}
 					}
 					else
@@ -19745,11 +19798,18 @@ failed:
 							else
 							{
 								float_warning_add(lobbyWarnings, "3", Language::get(6299));
+								privateRoom = false;
 							}
 						}
 					}
 #endif // STEAMWORKS
 				}
+			}
+
+			if ( richPresence.lobbyInfo.privateRoom != privateRoom )
+			{
+				richPresence.lobbyInfo.privateRoom = privateRoom;
+				richPresence.lobbyInfo.needsUpdate = true;
 			}
 
 			int totalWidth = 0;
@@ -26034,7 +26094,7 @@ failed:
 	            playMusic(intromusic[music], true, false, false);
 #endif
 				createTitleScreen();
-
+				MainMenu::currentLobbyType = MainMenu::LobbyType::None;
 #ifndef NINTENDO
 				// unbind controllers
 				for (int c = 1; c < MAX_SPLITSCREEN; ++c) {
@@ -26065,6 +26125,7 @@ failed:
 				playMusic(intromusic[music], true, false, false);
 #endif
 				createMainMenu(false);
+				MainMenu::currentLobbyType = MainMenu::LobbyType::None;
 
 				// join lobby we've been invited to
 				if ( saved_invite_lobby ) {
@@ -26104,7 +26165,7 @@ failed:
 	            playMusic(intromusic[music], true, false, false);
 #endif
 				createMainMenu(false);
-
+				MainMenu::currentLobbyType = MainMenu::LobbyType::None;
 				// join lobby we've been invited to
 				if (saved_invite_lobby) {
 				    connectToServer(nullptr, saved_invite_lobby, LobbyType::LobbyOnline);
@@ -26139,6 +26200,7 @@ failed:
                 playMusic(intromusic[music], true, false, false);
 #endif
                 createMainMenu(false);
+				MainMenu::currentLobbyType = MainMenu::LobbyType::None;
                 if (saved_invite_lobby) {
                     connectToServer(nullptr, saved_invite_lobby, LobbyType::LobbyOnline);
                     saved_invite_lobby = nullptr;
@@ -26166,6 +26228,7 @@ failed:
 				destroyMainMenu();
 				createDummyMainMenu();
 				createCreditsScreen(true);
+				MainMenu::currentLobbyType = MainMenu::LobbyType::None;
 #ifdef SOUND
 	            playMusic(intromusic[0], true, false, false);
 #endif
@@ -26813,13 +26876,16 @@ failed:
         }
     };
     static GetPlayersOnline getPlayersOnline;
+#endif
 
+	RichPresence richPresence;
 	void MainMenu::RichPresence::process()
 	{
 		if ( loading )
 		{
 			return;
 		}
+
 		if ( !init )
 		{
 			needsUpdate = true;
@@ -26832,6 +26898,19 @@ failed:
 		if ( _intro != intro )
 		{
 			_intro = intro;
+			needsUpdate = true;
+		}
+		int players = 0;
+		for ( int i = 0; i < MAXPLAYERS; ++i )
+		{
+			if ( !client_disconnected[i] || (multiplayer == SINGLE && MainMenu::isPlayerSignedIn(i)) )
+			{
+				++players;
+			}
+		}
+		if ( players != _numplayers )
+		{
+			_numplayers = players;
 			needsUpdate = true;
 		}
 		if ( levelStr != map.name )
@@ -26853,39 +26932,94 @@ failed:
 			}
 		}
 
+		bool activeLobby = MainMenu::currentLobbyType != MainMenu::LobbyType::None;
+		if ( lobbyInfo.lobbyActive != activeLobby )
+		{
+			lobbyInfo.lobbyActive = activeLobby;
+			needsUpdate = true;
+		}
+		if ( lobbyInfo.roomCode != LobbyHandler.getCurrentRoomKey() )
+		{
+			lobbyInfo.roomCode = LobbyHandler.getCurrentRoomKey();
+			needsUpdate = true;
+		}
+		if ( lobbyInfo.needsUpdate )
+		{
+			lobbyInfo.needsUpdate = false;
+			needsUpdate = true;
+		}
+
 		if ( needsUpdate )
 		{
 			bool result = false;
 			if ( intro == true )
 			{
+#ifdef STEAMWORKS
 				result = SteamFriends()->SetRichPresence("steam_display", "#Status_AtMainMenu");
+#endif
+#ifdef USE_DISCORD
+				if ( lobbyInfo.roomCode != "" )
+				{
+					if ( multiplayer == SERVER )
+					{
+						updateDiscordPresence(false, "Hosting a lobby", 0, 0, 0, _numplayers);
+					}
+					else
+					{
+						updateDiscordPresence(false, "Joined a lobby", 0, 0, 0, _numplayers);
+					}
+				}
+				else if ( lobbyInfo.lobbyActive )
+				{
+					updateDiscordPresence(false, "Local lobby", 0, 0, 0, _numplayers);
+				}
+				else
+				{
+					updateDiscordPresence(false, "At the Main Menu", 0, 0, 0, _numplayers);
+				}
+#endif
 			}
 			else if ( clientnum >= 0 && clientnum < MAXPLAYERS && stats )
 			{
 				auto find = Player::CharacterSheet_t::mapDisplayNamesDescriptions.find(map.name);
 				if ( find == Player::CharacterSheet_t::mapDisplayNamesDescriptions.end() )
 				{
+#ifdef STEAMWORKS
 					result = SteamFriends()->SetRichPresence("steam_display", "#Status_Nolocation");
+#endif
+#ifdef USE_DISCORD
+					updateDiscordPresence(true, "In the dungeon",
+						stats[clientnum]->LVL, stats[clientnum]->playerRace, client_classes[clientnum], 
+						_numplayers);
+#endif
 				}
 				else
 				{
 					trimmedLevelStr = map.name;
 					trimmedLevelStr.erase(std::remove(trimmedLevelStr.begin(), trimmedLevelStr.end(), ' '), trimmedLevelStr.end()); // trim whitespace
+#ifdef STEAMWORKS
 					result = SteamFriends()->SetRichPresence("location", trimmedLevelStr.c_str());
 					result = SteamFriends()->SetRichPresence("class", std::to_string(client_classes[clientnum]).c_str());
 					result = SteamFriends()->SetRichPresence("level", std::to_string(stats[clientnum]->LVL).c_str());
 					result = SteamFriends()->SetRichPresence("steam_display", "#Status_Ingame");
+#endif
+#ifdef USE_DISCORD
+					updateDiscordPresence(true, find->second.first,
+						stats[clientnum]->LVL, stats[clientnum]->playerRace, client_classes[clientnum],
+						_numplayers);
+#endif
 				}
 			}
 			else
 			{
+#ifdef STEAMWORKS
 				SteamFriends()->ClearRichPresence();
+#endif
 			}
 			needsUpdate = false;
 		}
 		init = true;
 	}
-#endif
 
 	std::string MainMenuBanners_t::updateBannerImg = "";
 	std::string MainMenuBanners_t::updateBannerImgHighlight = "";
@@ -28105,35 +28239,54 @@ failed:
         }
     }
 
-	void receivedInvite(void* lobby) {
+	void receivedInvite(void* lobby, std::string joinCode) {
 	    if (intro) {
 	        if (multiplayer) {
 	            disconnectFromLobby();
 	            destroyMainMenu();
 	            createMainMenu(false);
 	        }
+			loadingsavegame = 0;
+			if ( joinCode != "" )
+			{
+				directConnect = false;
+				connectToServer(joinCode.c_str(), nullptr, LobbyType::LobbyOnline);
+			}
+			else
+			{
 #ifdef STEAMWORKS
-            if (processLobbyInvite(lobby)) { // load any relevant save data
-                connectToServer(nullptr, lobby, LobbyType::LobbyOnline);
-            } else {
-                const auto error = LobbyHandler_t::EResult_LobbyFailures::LOBBY_USING_SAVEGAME;
-                const auto str = LobbyHandler.getLobbyJoinFailedConnectString(error);
-                errorPrompt(str.c_str(), Language::get(5839),
-                [](Button&){
-                soundCancel();
-                closeMono();
-                });
-            }
+				if ( processLobbyInvite(lobby) ) { // load any relevant save data
+					directConnect = false;
+					connectToServer(nullptr, lobby, LobbyType::LobbyOnline);
+				}
+				else {
+					const auto error = LobbyHandler_t::EResult_LobbyFailures::LOBBY_USING_SAVEGAME;
+					if ( joinLobbyWaitingForHostResponse )
+					{
+						connectingToLobbyStatus = error;
+					}
+					const auto str = LobbyHandler.getLobbyJoinFailedConnectString(error);
+					errorPrompt(str.c_str(), Language::get(5839),
+						[](Button&) {
+							soundCancel();
+							closeMono();
+						});
+				}
 #else
-	        connectToServer(nullptr, lobby, LobbyType::LobbyOnline);
+				directConnect = false;
+				connectToServer(nullptr, lobby, LobbyType::LobbyOnline);
 #endif
+			}
 	    } else {
-	        saved_invite_lobby = lobby;
-		    disconnectFromLobby();
-	        destroyMainMenu();
-		    createDummyMainMenu();
-	        beginFade(FadeDestination::RootMainMenu);
-	        pauseGame(2, 0);
+			if ( lobby )
+			{
+				saved_invite_lobby = lobby;
+				disconnectFromLobby();
+				destroyMainMenu();
+				createDummyMainMenu();
+				beginFade(FadeDestination::RootMainMenu);
+				pauseGame(2, 0);
+			}
 	    }
 	}
 

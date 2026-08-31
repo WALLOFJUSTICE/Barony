@@ -32,6 +32,7 @@ public:
 		progressField = nullptr;
 		closeButton = nullptr;
 		actionButton = nullptr;
+		actionButton2 = nullptr;
 		frameImage = nullptr;
 		progressBar = nullptr;
 		progressBarBackground = nullptr;
@@ -56,7 +57,8 @@ public:
 		UI_NOTIFICATION_REMOVABLE = 8,
 		UI_NOTIFICATION_STATISTIC_UPDATE = 16,
 		UI_NOTIFICATION_ACTION_BUTTON = 32,
-		UI_NOTIFICATION_CHALLENGE_UPDATE = 64
+		UI_NOTIFICATION_CHALLENGE_UPDATE = 64,
+		UI_NOTIFICATION_ACTION_BUTTON_SECONDARY = 128
 	};
 	enum class CardType : Uint32
 	{
@@ -65,6 +67,8 @@ public:
 		UI_CARD_CROSSPLAY_ACCOUNT,
 		UI_CARD_ACHIEVEMENT,
 		UI_CARD_ACHIEVEMENTS_DISABLED,
+		UI_CARD_INVITE_CODE,
+		UI_CARD_INVITE_INFO
 	};
 	enum class CardState : Uint32
 	{
@@ -87,6 +91,9 @@ public:
 	}
 	void setActionText(const char* text) {
 		actionText = text;
+	}
+	void setActionText2(const char* text) {
+		actionText2 = text;
 	}
 	void setDisplayedText(const char* text) {
 		displayedText = text;
@@ -127,8 +134,10 @@ public:
 	void drawProgressBar(const SDL_Rect& src);
 	void drawCloseButton(const SDL_Rect& src);
 	void drawActionButton(const SDL_Rect& src);
+	void drawActionButtonSecondary(const SDL_Rect& src);
 
 	void (*buttonAction)() = nullptr;
+	void (*buttonAction2)() = nullptr;
 	
 	int showHeight = 80;
 
@@ -171,6 +180,7 @@ private:
 	std::string secondaryCardText;
 	std::string headerCardText;
 	std::string actionText;
+	std::string actionText2;
 
 	int statisticUpdateCurrent = 0;
 	int statisticUpdateMax = 0;
@@ -186,6 +196,7 @@ private:
 	Field* progressField = nullptr;
 	Button* closeButton = nullptr;
 	Button* actionButton = nullptr;
+	Button* actionButton2 = nullptr;
 	Frame::image_t* frameImage = nullptr;
 	Frame::image_t* progressBar = nullptr;
 	Frame::image_t* progressBarBackground = nullptr;
@@ -260,6 +271,7 @@ public:
 	}
 	void drawNotifications(bool isMoviePlaying, bool beforeFadeout);
 	void createEpicLoginNotification();
+	void createInviteCodeNotification(std::string username, std::string invite_code);
 	void createEpicCrossplayLoginNotification();
 	void createAchievementsDisabledNotification();
 	void createGenericNotification(const char* header, const char* text);

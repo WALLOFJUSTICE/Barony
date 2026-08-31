@@ -117,7 +117,7 @@ namespace MainMenu {
     void openGameoverWindow(int player, bool tutorial = false);     // opens gameover window, used when player dies
 	void openCompendium();
 	void disconnectedFromServer(const char* text);                  // called when the player is disconnected from the server, prompts them to end the game
-	void receivedInvite(void*);                                     // called when a player receives an invite to a lobby (EOS or Steam)
+	void receivedInvite(void* lobby, std::string joinCode);			// called when a player receives an invite to a lobby (EOS or Steam)
 	void setupSplitscreen();                                        // used to resize player game views, for example if a player drops or we change the aspect ratio
 	void crossplayPrompt();                                         // user chose to activate crossplay
 	void timedOut();												// special disconnection event that may display a system error message
@@ -395,13 +395,13 @@ namespace MainMenu {
 		"shaman", "hunter", "bard", "sapper", "scion", "hermit", "paladin"
 	};
 
-#ifdef STEAMWORKS
 	class RichPresence
 	{
 		int _currentlevel = 0;
 		int _secretlevel = 0;
 		int _classnum = 0;
 		int _level = 0;
+		int _numplayers = 0;
 		bool _intro = false;
 		Uint32 lastUpdate = 0;
 		std::string levelStr = "";
@@ -410,8 +410,19 @@ namespace MainMenu {
 		bool needsUpdate = true;
 		bool enabled = true;
 	public:
+		bool enableDiscordRichPresence = true;
+		bool enableDiscordPresenceInvites = true;
+		bool discordCheckLogin = false;
+		struct LobbyInfo
+		{
+			std::string roomCode = "";
+			bool privateRoom = true;
+			bool needsUpdate = false;
+			bool lobbyActive = false;
+		};
+		LobbyInfo lobbyInfo;
 		void process();
+		void updateDiscordPresence(bool ingame, std::string mapDesc, int lvl, int race, int classnum, int numplayers);
 	};
-	static RichPresence richPresence;
-#endif
+	extern RichPresence richPresence;
 }

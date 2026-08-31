@@ -9782,7 +9782,7 @@ void Player::Inventory_t::updateInventory()
 				else if ( eternalShrineGUI.bOpen )
 				{
 					if ( !(eternalShrineGUI.inventoryItemAllowedInGUI(item)
-						&& item->identified && !itemIsEquipped(item, player)) )
+						&& !itemIsEquipped(item, player)) )
 					{
 						updateSlotFrameFromItem(slotFrame, item, true);
 					}
@@ -9793,7 +9793,7 @@ void Player::Inventory_t::updateInventory()
 					}
 					else
 					{
-						updateSlotFrameFromItem(slotFrame, item, !item->identified);
+						updateSlotFrameFromItem(slotFrame, item);
 					}
 				}
 				else

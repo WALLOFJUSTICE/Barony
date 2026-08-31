@@ -9005,7 +9005,11 @@ int Player::PlayerMechanics_t::getDivineFavorFromItem(Item* item, int qty)
 	item->count = qty;
 	int value = item->sellValue(-1);
 	item->count = tmpQty;
-	if ( !item->identified )
+	/*if ( !item->identified )
+	{
+		value /= 100;
+	}*/
+	if ( item->status == BROKEN )
 	{
 		value /= 100;
 	}

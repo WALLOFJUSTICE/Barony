@@ -572,8 +572,29 @@ void EOS_CALL EOSFuncs::OnLobbySearchFinished(const EOS_LobbySearch_FindCallback
 				else if (searchOptions[EOSFuncs::LobbyParameters_t::JOIN_OPTIONS]
 					== static_cast<int>(EOSFuncs::LobbyParameters_t::LOBBY_UPDATE_CURRENTLOBBY))
 				{
-					// TODO need?
-					EOS.setLobbyDetailsFromHandle(LobbyDetails, &EOS.CurrentLobbyData);
+					if ( newLobby.LobbyId == EOS.CurrentLobbyData.LobbyId )
+					{
+						// we can't use the search result handle, so if it's our current lobby we need to make a new details handle
+						// the old search result method was deprecated some time ago...
+						EOS_Lobby_CopyLobbyDetailsHandleOptions opts{};
+						opts.ApiVersion = EOS_LOBBY_COPYLOBBYDETAILSHANDLE_API_LATEST;
+						opts.LobbyId = EOS.CurrentLobbyData.LobbyId.c_str();
+						opts.LocalUserId = EOS.CurrentUserInfo.getProductUserIdHandle();
+
+						EOS_HLobbyDetails resultDetails;
+						EOS_EResult res = EOS_Lobby_CopyLobbyDetailsHandle(EOS.LobbyHandle, &opts, &resultDetails);
+						if ( res == EOS_EResult::EOS_Success )
+						{
+							EOS.setLobbyDetailsFromHandle(resultDetails, &EOS.CurrentLobbyData);
+						}
+
+						EOS_LobbyDetails_Release(resultDetails);
+					}
+					else
+					{
+						// TODO need?
+						EOS.setLobbyDetailsFromHandle(LobbyDetails, &EOS.CurrentLobbyData);
+					}
 
 					// we can release this handle.
 					EOS_LobbyDetails_Release(LobbyDetails);
@@ -2481,6 +2502,11 @@ void EOSFuncs::LobbyData_t::getLobbyMemberInfo(EOS_HLobbyDetails LobbyDetails)
 	{
 		MemberByIndexOptions.MemberIndex = i;
 		EOS_ProductUserId memberId = EOS_LobbyDetails_GetMemberByIndex(LobbyDetails, &MemberByIndexOptions);
+		if ( !memberId )
+		{
+			continue;
+		}
+
 		EOSFuncs::logInfo("getLobbyMemberInfo: Lobby Player ID: %s", EOSFuncs::Helpers_t::shortProductIdToString(memberId).c_str());
 
 		PlayerLobbyData_t newPlayer;
