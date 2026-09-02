@@ -7279,7 +7279,7 @@ namespace ConsoleCommands {
 				{
 					std::string tier_string = argv[2];
 					auto result = ShrineEffects_t::rollResult(pair.second, ShrineEffects_t::SHRINE_RESULT_OUTCOME, clientnum, tier_string, local_rng);
-					messagePlayer(clientnum, MESSAGE_MISC, "%s | '%s' result: %s tier: %d", pair.first.c_str(), tier_string.c_str(), result.first.c_str(), result.second);
+					messagePlayer(clientnum, MESSAGE_MISC, "%s | '%s' result: %s tier: %d", pair.first.c_str(), tier_string.c_str(), result.effect_string.c_str(), result.tier);
 					return;
 				}
 			}

@@ -170,6 +170,7 @@ static const int EFF_ENFEEBLE = 145;
 static const int EFF_BURDENED = 146;
 static const int EFF_RESOLVE = 147;
 static const int EFF_CHOKING = 148;
+static const int EFF_VIGOR = 149;
 static const int NUMEFFECTS = 160;
 
 // stats
@@ -558,6 +559,7 @@ public:
 	MonsterRangedAccuracy monsterRangedAccuracy;
 	std::map<ItemType, Uint32> itemLastDegradeTick;
 	bool isPoisonable();
+	bool isBlitzChargeActive();
 };
 extern Stat* stats[MAXPLAYERS];
 

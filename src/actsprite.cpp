@@ -280,8 +280,8 @@ void actSpriteWorldTooltip(Entity* my)
 			if ( (parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_ASCENSION 
 				|| parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_MUSIC
 				|| parent->itemEternalShrineResult == GUI_TYPE_ETERNALSHRINE_SUPPLICATION)
-				&& (multiplayer != CLIENT && !parent->itemNotMoving)
-				|| (multiplayer == CLIENT && !parent->itemNotMovingClient) )
+				&& ((multiplayer != CLIENT && !parent->itemNotMoving)
+				|| (multiplayer == CLIENT && !parent->itemNotMovingClient)) )
 			{
 				// floating, raise a bit
 				my->z -= 3;

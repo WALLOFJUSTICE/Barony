@@ -4456,7 +4456,7 @@ private:
 class ShrineEffects_t
 {
 public:
-	static std::set<std::string> shrineEffects;
+	static std::map<std::string, int> shrineEffects;
 	static const Uint32 kShrineJsonHash = 11111;
 	static Uint32 shrineJsonHashRead;
 	static void buildShrineEffects();
@@ -4508,7 +4508,14 @@ public:
 		SHRINE_RESULT_REWARD,
 		SHRINE_RESULT_OUTCOME
 	};
-	static std::pair<std::string, int> rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng, Item* item = nullptr);
+	struct RollResult_t
+	{
+		std::string effect_string = "";
+		int tier = 1;
+		int outcomeLang = 0;
+		int negativeTierChange = 0;
+	};
+	static RollResult_t rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng, Item* item = nullptr);
 	struct SkillItemPools_t
 	{
 		std::map<int, std::vector<std::vector<Item>>> pool;
@@ -4538,21 +4545,21 @@ struct ShrinePlayerMessageManager_t
 		std::string lang_str = "";
 		Uint32 tick = 0;
 		std::string tier_string = "";
-		std::pair<std::string, int> result_pair;
+		ShrineEffects_t::RollResult_t result_t;
 
-		ShrinePlayerMessages_t(MessageType _messageType, const int _player, const char* _lang, std::string tierString, std::pair<std::string, int> resultString)
+		ShrinePlayerMessages_t(MessageType _messageType, const int _player, std::string _lang, std::string tierString, ShrineEffects_t::RollResult_t resultString)
 		{
 			messageType = _messageType;
 			player = _player;
-			lang_str = _lang ? _lang : "";
+			lang_str = _lang;
 			tick = ::ticks;
 			tier_string = tierString;
-			result_pair = resultString;
+			result_t = resultString;
 		};
 	};
 	static int processed_on_floor;
 	static std::map<Uint32, std::vector<ShrinePlayerMessages_t>> shrines;
-	static void insert(Uint32 uid, const int player, const char* lang, std::string tierString, std::pair<std::string, int> resultString, int messageDelay);
+	static void insert(Uint32 uid, const int player, const char* lang, std::string tierString, ShrineEffects_t::RollResult_t resultString, int messageDelay);
 	static void insert(MessageType messageType, Uint32 uid, const int player, const char* lang, int messageDelay);
 	static void update(Uint32 uid);
 	static void reset();

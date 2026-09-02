@@ -42,7 +42,7 @@ enum InstrumentOrder {
 	HORN
 };
 
-bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier);
+bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier, int* outLangEntry);
 bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrine);
 void spawnHeatOrbitSpin(Entity* target, int sprite, bool light);
 
@@ -88,54 +88,64 @@ std::vector<std::pair<std::string, ShrineEffects_t::ShrineEffectsPools>> ShrineE
 	{"SONG_5", ShrineEffects_t::ShrineEffectsPools::SONG_5}
 };
 
-std::set<std::string> ShrineEffects_t::shrineEffects = 
+std::map<std::string, int> ShrineEffects_t::shrineEffects = 
 {
-	"WEAKNESS",
-	"SHAPESHIFT",
-	"INCOHERENCE",
-	"ENFEEBLE",
-	"DIVINE_FIRE",
-	"SCAPEGOAT",
-	"DIZZY",
-	"EXORCISED",
-	"DUSTED",
-	"SILENCE",
-	"ADORCISED",
-	"PSYCHIC_SPEAR",
-	"LIGHTNING_BOLT",
-	"EARTH_SPRITE",
-	"LEVEL_DRAIN",
-	"VOID_MP_DRAIN",
-	"DEGENERATION",
-	"DISPIRITED",
-	"BURDENED",
-	"LIGHTEN_LOAD", "GREATER_MIGHT", "STURDINESS", 
-	"STAMINA", "AGILITY",
-	"NIMBLENESS", "COUNSEL", 
-	"MENTALITY", "AGILITY",
-	"SLOW_DIGESTION", "BLESSED_MEALS",
-	"SMOKE_HP", "RESOLVE_HP",
-	"SMOKE_MP", "RESOLVE_MP",
-	"DONATION", "SACRED_PATH",
-	"SCRY_TREASURES", "HIDDEN_KNOWLEDGE",
-	"HEALING_POTION",
-	"MANA_POTION",
-	"ENSEMBLE_1",
-	"ENSEMBLE_1_INSTRUMENT",
-	"ENSEMBLE_1_SCROLL",
-	"ENSEMBLE_2",
-	"ENSEMBLE_2_INSTRUMENT",
-	"ENSEMBLE_2_SCROLL",
-	"ENSEMBLE_3",
-	"ENSEMBLE_3_INSTRUMENT",
-	"ENSEMBLE_3_SCROLL",
-	"ENSEMBLE_4",
-	"ENSEMBLE_4_INSTRUMENT",
-	"ENSEMBLE_4_SCROLL",
-	"ENSEMBLE_5",
-	"ENSEMBLE_5_INSTRUMENT",
-	"ENSEMBLE_5_SCROLL",
-	"TIER_ITEM"
+	{ "WEAKNESS", EFF_WEAKNESS },
+	{ "SHAPESHIFT", EFF_SHAPESHIFT },
+	{ "POLYMORPH", EFF_POLYMORPH },
+	{ "INCOHERENCE", EFF_INCOHERENCE },
+	{ "ENFEEBLE", EFF_ENFEEBLE },
+	{ "DIVINE_FIRE", -1 },
+	{ "SCAPEGOAT", EFF_TABOO },
+	{ "DIZZY", -1 },
+	{ "EXORCISED",  -1 },
+	{ "DUSTED", EFF_DUSTED },
+	{ "SILENCE", EFF_SILENCED },
+	{ "ADORCISED", -1 },
+	{ "PSYCHIC_SPEAR", -1 },
+	{ "LIGHTNING_BOLT", -1 },
+	{ "EARTH_SPRITE", -1 },
+	{ "LEVEL_DRAIN", EFF_LEVEL_DRAIN },
+	{ "VOID_MP_DRAIN", -1 },
+	{ "DEGENERATION", EFF_DEGENERATION },
+	{ "DISPIRITED", EFF_DISPIRITED },
+	{ "BURDENED", EFF_BURDENED },
+	{ "LIGHTEN_LOAD", EFF_LIGHTEN_LOAD },
+	{ "GREATER_MIGHT", EFF_GREATER_MIGHT },
+	{ "STURDINESS", EFF_STURDINESS },
+	{ "STAMINA", EFF_CON_BONUS },
+	{ "AGILITY", EFF_AGILITY },
+	{ "NIMBLENESS", EFF_NIMBLENESS },
+	{ "COUNSEL", EFF_COUNSEL },
+	{ "MENTALITY", EFF_PWR },
+	{ "SLOW_DIGESTION", EFF_SLOW_DIGEST },
+	{ "BLESSED_MEALS", EFF_BLESS_FOOD },
+	{ "SMOKE_HP", EFF_SMOKE_HPMP_RGN },
+	{ "RESOLVE_HP", EFF_RESOLVE },
+	{ "SMOKE_MP", EFF_SMOKE_HPMP_RGN },
+	{ "RESOLVE_MP", EFF_RESOLVE },
+	{ "DONATION", -1 },
+	{ "SACRED_PATH", EFF_SACRED_PATH },
+	{ "SCRY_TREASURES", -1 },
+	{ "HIDDEN_KNOWLEDGE", -1 },
+	{ "HEALING_POTION", -1 },
+	{ "MANA_POTION", -1 },
+	{ "ENSEMBLE_1", -1 },
+	{ "ENSEMBLE_1_INSTRUMENT", -1 },
+	{ "ENSEMBLE_1_SCROLL", -1 },
+	{ "ENSEMBLE_2", -1 },
+	{ "ENSEMBLE_2_INSTRUMENT", -1 },
+	{ "ENSEMBLE_2_SCROLL", -1 },
+	{ "ENSEMBLE_3", -1 },
+	{ "ENSEMBLE_3_INSTRUMENT", -1 },
+	{ "ENSEMBLE_3_SCROLL", -1 },
+	{ "ENSEMBLE_4", -1 },
+	{ "ENSEMBLE_4_INSTRUMENT", -1 },
+	{ "ENSEMBLE_4_SCROLL", -1 },
+	{ "ENSEMBLE_5", -1 },
+	{ "ENSEMBLE_5_INSTRUMENT", -1 },
+	{ "ENSEMBLE_5_SCROLL", -1 },
+	{ "TIER_ITEM", -1 }
 };
 
 int ShrinePlayerMessageManager_t::processed_on_floor = -1;
@@ -144,11 +154,25 @@ void ShrinePlayerMessageManager_t::reset()
 {
 	shrines.clear();
 }
-void ShrinePlayerMessageManager_t::insert(Uint32 uid, const int player, const char* lang, std::string tierString, std::pair<std::string, int> resultString, int messageDelay)
+void ShrinePlayerMessageManager_t::insert(Uint32 uid, const int player, const char* lang, std::string tierString, ShrineEffects_t::RollResult_t resultString, int messageDelay)
 {
 	if ( multiplayer != CLIENT )
 	{
-		shrines[uid].push_back(ShrinePlayerMessages_t(SHRINE_MESSAGE_WARNING, player, lang, tierString, resultString));
+		std::string str = lang ? lang : "";
+		if ( str == Language::get(7130) )
+		{
+			if ( resultString.outcomeLang == 0 )
+			{
+				str += '\n';
+				str += Language::get(7250);
+			}
+			else
+			{
+				str += '\n';
+				str += Language::get(resultString.outcomeLang);
+			}
+		}
+		shrines[uid].push_back(ShrinePlayerMessages_t(SHRINE_MESSAGE_WARNING, player, str, tierString, resultString));
 		shrines[uid].back().tick += messageDelay;
 	}
 }
@@ -156,7 +180,7 @@ void ShrinePlayerMessageManager_t::insert(MessageType messageType, Uint32 uid, c
 {
 	if ( multiplayer != CLIENT )
 	{
-		shrines[uid].push_back(ShrinePlayerMessages_t(messageType, player, lang, "", std::pair<std::string, int>("", 0)));
+		shrines[uid].push_back(ShrinePlayerMessages_t(messageType, player, lang, "", ShrineEffects_t::RollResult_t()));
 		shrines[uid].back().tick += messageDelay;
 	}
 }
@@ -228,9 +252,9 @@ void ShrinePlayerMessageManager_t::update(Uint32 uid)
 							{
 								bool supplication = applySupplicationEffect(it->tier_string, players[it->player]->entity, shrine);
 								bool effect = false;
-								if ( it->result_pair.first != "" )
+								if ( it->result_t.effect_string != "" )
 								{
-									effect = applyShrineEffect(it->result_pair.first, players[it->player]->entity, shrine, it->result_pair.second);
+									effect = applyShrineEffect(it->result_t.effect_string, players[it->player]->entity, shrine, it->result_t.tier, nullptr);
 								}
 								if ( supplication || effect )
 								{
@@ -293,7 +317,7 @@ bool processShrineLockoutOnEffect(Entity* shrine, Entity* target, std::string ti
 			if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
 			{
 				playSoundEntity(shrine, 915, 156);
-				bool effect = applyShrineEffect("DIVINE_FIRE", target, shrine, tier);
+				bool effect = applyShrineEffect("DIVINE_FIRE", target, shrine, tier, nullptr);
 				if ( effect )
 				{
 					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
@@ -304,7 +328,7 @@ bool processShrineLockoutOnEffect(Entity* shrine, Entity* target, std::string ti
 			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
 			{
 				playSoundEntity(shrine, 886, 156);
-				bool effect = applyShrineEffect("LIGHTNING_BOLT", target, shrine, tier);
+				bool effect = applyShrineEffect("LIGHTNING_BOLT", target, shrine, tier, nullptr);
 				if ( effect )
 				{
 					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
@@ -315,7 +339,7 @@ bool processShrineLockoutOnEffect(Entity* shrine, Entity* target, std::string ti
 			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
 			{
 				playSoundEntity(shrine, 884, 156);
-				bool effect = applyShrineEffect("PSYCHIC_SPEAR", target, shrine, tier);
+				bool effect = applyShrineEffect("PSYCHIC_SPEAR", target, shrine, tier, nullptr);
 				if ( effect )
 				{
 					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
@@ -326,7 +350,7 @@ bool processShrineLockoutOnEffect(Entity* shrine, Entity* target, std::string ti
 			else if ( shrine->eternalShrineType == GUI_TYPE_ETERNALSHRINE_MUSIC )
 			{
 				//playSoundEntity(shrine, 915, 156);
-				bool effect = applyShrineEffect("SILENCE", target, shrine, tier);
+				bool effect = applyShrineEffect("SILENCE", target, shrine, tier, nullptr);
 				if ( effect )
 				{
 					ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_REJECT,
@@ -1827,9 +1851,9 @@ std::string ShrineEffects_t::getTierStringFromEffect(const int player, Entity& m
 	return result;
 }
 
-std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng, Item* item)
+ShrineEffects_t::RollResult_t ShrineEffects_t::rollResult(int shrineType, ShrineEffectResults resultType, int player, std::string tierString, BaronyRNG& rng, Item* item)
 {
-	std::pair<std::string, int> result = { "", 1 };
+	RollResult_t result = { "", 1, 0, 0 };
 
 	auto& resultMap = resultType == SHRINE_RESULT_OUTCOME ? shrineOutcomes : shrineRewards;
 
@@ -1987,7 +2011,72 @@ std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEf
 			}
 		}
 
-		chances.push_back(1);
+		chances.push_back(10);
+		auto find = shrineEffects.find(str);
+		if ( find != shrineEffects.end() )
+		{
+			if ( player >= 0 && player < MAXPLAYERS )
+			{
+				if ( find->second >= 0 && find->second < NUMEFFECTS )
+				{
+					if ( resultType == SHRINE_RESULT_REWARD )
+					{
+						if ( stats[player]->getEffectActive(find->second) )
+						{
+							int chance = chances.back();
+							chance = std::max(1, chance / 2);
+							chances.back() = chance;
+						}
+					}
+					else if ( resultType == SHRINE_RESULT_OUTCOME )
+					{
+						if ( stats[player]->getEffectActive(find->second) )
+						{
+							int chance = chances.back();
+							chance = std::max(1, chance / 5);
+							chances.back() = chance;
+						}
+					}
+				}
+				if ( str == "SHAPESHIFT" )
+				{
+					chances.back() = std::min(5, (int)chances.back());
+				}
+				if ( str == "EARTH_SPRITE" )
+				{
+					if ( players[player]->entity )
+					{
+						int x = players[player]->entity->x / 16;
+						int y = players[player]->entity->y / 16;
+						bool noroom = false;
+						if ( x < 0 || x >= map.width || y < 0 || y >= map.height )
+						{
+							noroom = true;
+						}
+						else
+						{
+							int mapIndex = (y)*MAPLAYERS + (x)*MAPLAYERS * map.height;
+							if ( map.tiles[OBSTACLELAYER + mapIndex] )
+							{
+								noroom = true;
+							}
+							else if ( map.skybox != 0 )
+							{
+								if ( !map.tiles[(MAPLAYERS - 1) + mapIndex] )
+								{
+									noroom = true;
+								}
+							}
+						}
+						if ( noroom )
+						{
+							chances.back() = 0;
+						}
+					}
+				}
+			}
+		}
+
 		anychances = true;
 	}
 
@@ -2000,8 +2089,8 @@ std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEf
 	{
 		int pick = rng.discrete(chances.data(), chances.size());
 		std::string effect_string = effects[poolResult][pick];
-		result.first = effect_string;
-		result.second = 1; // tier
+		result.effect_string = effect_string;
+		result.tier = 1; // tier
 		if ( poolResult == ShrineEffectsPools::BODY_2
 			|| poolResult == ShrineEffectsPools::MIND_2
 			|| poolResult == ShrineEffectsPools::BODY_CHALLENGE_2
@@ -2015,7 +2104,7 @@ std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEf
 			|| poolResult == ShrineEffectsPools::MIRACLE_2
 			|| poolResult == ShrineEffectsPools::SONG_2 )
 		{
-			result.second = 2;
+			result.tier = 2;
 		}
 		else if ( poolResult == ShrineEffectsPools::BODY_3
 			|| poolResult == ShrineEffectsPools::MIND_3
@@ -2030,15 +2119,15 @@ std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEf
 			|| poolResult == ShrineEffectsPools::MIRACLE_3
 			|| poolResult == ShrineEffectsPools::SONG_3 )
 		{
-			result.second = 3;
+			result.tier = 3;
 		}
 		else if ( poolResult == ShrineEffectsPools::SONG_4 )
 		{
-			result.second = 4;
+			result.tier = 4;
 		}
 		else if ( poolResult == ShrineEffectsPools::SONG_5 )
 		{
-			result.second = 5;
+			result.tier = 5;
 		}
 
 		if ( resultType == SHRINE_RESULT_OUTCOME )
@@ -2046,23 +2135,28 @@ std::pair<std::string, int> ShrineEffects_t::rollResult(int shrineType, ShrineEf
 			// increase outcomes
 			if ( negativeActionModifier < 0 )
 			{
-				if ( result.second <= 3 )
+				if ( result.tier <= 3 )
 				{
+					int tierStart = result.tier;
 					if ( negativeActionModifier <= -40 )
 					{
-						result.second = std::min(5, result.second + 2);
+						result.tier = std::min(5, result.tier + 2);
 					}
 					else if ( negativeActionModifier <= -30 )
 					{
-						result.second = std::min(4, result.second + 2);
+						result.tier = std::min(4, result.tier + 2);
 					}
 					else if ( negativeActionModifier <= -20 )
 					{
-						result.second = std::min(3, result.second + 2);
+						result.tier = std::min(3, result.tier + 2);
 					}
 					else if ( negativeActionModifier <= -10 )
 					{
-						result.second = std::min(3, result.second + 1);
+						result.tier = std::min(3, result.tier + 1);
+					}
+					if ( result.tier > tierStart )
+					{
+						result.negativeTierChange = result.tier - tierStart;
 					}
 				}
 			}
@@ -3041,9 +3135,9 @@ void actEternalShrineLimb(Entity* my)
 						{
 							divineFavorCost += std::stoi(tierString.substr(0, 1));
 						}
-						if ( result.first != "" )
+						if ( result.effect_string != "" )
 						{
-							divineFavorCost = std::max(0, divineFavorCost - result.second);
+							divineFavorCost = std::max(0, divineFavorCost - result.tier);
 						}
 
 						int blessDiff = item->beatitude - parent->eternalShrineItemBeatitude;
@@ -3097,7 +3191,7 @@ void actEternalShrineLimb(Entity* my)
 						}
 					}
 
-					bool adorcise = result.first == "ADORCISED";
+					bool adorcise = result.effect_string == "ADORCISED";
 					if ( item->count == 0 )
 					{
 						if ( target && target->behavior == &actPlayer )
@@ -3113,6 +3207,7 @@ void actEternalShrineLimb(Entity* my)
 								}
 							}
 
+							messagePlayerColor(target->skill[2], MESSAGE_WORLD, makeColorRGB(255, 255, 0), Language::get(7299));
 							if ( favorTotal >= 2000 )
 							{
 								ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING,
@@ -3167,15 +3262,24 @@ void actEternalShrineLimb(Entity* my)
 						dropped->y += 1.0 * sin(parent->yaw) - 1.0 * sin(parent->yaw + PI / 2);
 						dropped->itemEternalShrineResult = parent->eternalShrineType;
 
-						bool effect = applyShrineEffect(result.first, target, parent, result.second);
-						if ( effect && target && target->behavior == &actPlayer )
+						bool effect = applyShrineEffect(result.effect_string, target, parent, result.tier, &result.outcomeLang);
+						if ( target && target->behavior == &actPlayer )
 						{
-							int tickDelay = 0;
-							if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+							if ( effect )
 							{
-								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
+								int tickDelay = 0;
+								if ( target->getStats() && target->getStats()->EFFECTS_TIMERS[EFF_STASIS] )
+								{
+									tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
+								}
+								ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", result, tickDelay);
 							}
-							ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+							else if ( parent->eternalShrineItemStatus != BROKEN
+								&& dropped->skill[11] == BROKEN )
+							{
+								ShrinePlayerMessageManager_t::insert(ShrinePlayerMessageManager_t::SHRINE_MESSAGE_WARNING,
+									parent->getUID(), target->skill[2], Language::get(7277), 0);
+							}
 						}
 					}
 					else
@@ -3189,7 +3293,7 @@ void actEternalShrineLimb(Entity* my)
 							free(item);
 						}
 
-						bool effect = applyShrineEffect(result.first, target, parent, result.second);
+						bool effect = applyShrineEffect(result.effect_string, target, parent, result.tier, &result.outcomeLang);
 						if ( effect && target && target->behavior == &actPlayer )
 						{
 							int tickDelay = 0;
@@ -3197,7 +3301,7 @@ void actEternalShrineLimb(Entity* my)
 							{
 								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
 							}
-							ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+							ShrinePlayerMessageManager_t::insert(parent->getUID(), target->skill[2], Language::get(7130), "", result, tickDelay);
 						}
 					}
 
@@ -3363,14 +3467,16 @@ void actEternalShrine(Entity* my)
 			{
 				for ( auto& str : ShrineEffects_t::shrineEffects )
 				{
-					if ( strstr(str.c_str(), (*cvar_eternal_shrine_effect).c_str()) )
+					if ( strstr(str.first.c_str(), (*cvar_eternal_shrine_effect).c_str()) )
 					{
-						bool result = applyShrineEffect(str, players[0]->entity, my, tier);
+						int outcomeLang = 0;
+						bool result = applyShrineEffect(str.first, players[0]->entity, my, tier, &outcomeLang);
 						messagePlayer(clientnum, MESSAGE_MISC, "Tier: %d", tier);
-						/*if ( result )
+						if ( result && outcomeLang > 0 )
 						{
-							ShrinePlayerMessageManager_t::insert(my->getUID(), 0, Language::get(7130), "", std::make_pair("", 0), 0);
-						}*/
+							ShrineEffects_t::RollResult_t result1{ "", tier, outcomeLang, 0 };
+							ShrinePlayerMessageManager_t::insert(my->getUID(), 0, Language::get(7130), "", result1, 0);
+						}
 						break;
 					}
 				}
@@ -3727,9 +3833,9 @@ void actEternalShrine(Entity* my)
 						achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
 						tierString, my->entity_rng ? *my->entity_rng : local_rng);
 					bool effect = false;
-					if ( resultOutcome.first != "" )
+					if ( resultOutcome.effect_string != "" )
 					{
-						effect = applyShrineEffect(resultOutcome.first, target, my, resultOutcome.second);
+						effect = applyShrineEffect(resultOutcome.effect_string, target, my, resultOutcome.tier, &resultOutcome.outcomeLang);
 					}
 
 					if ( !effect )
@@ -3748,7 +3854,7 @@ void actEternalShrine(Entity* my)
 							{
 								tickDelay = std::max(0, target->getStats()->EFFECTS_TIMERS[EFF_STASIS] - 3 * TICKS_PER_SECOND);
 							}
-							ShrinePlayerMessageManager_t::insert(my->getUID(), target->skill[2], Language::get(7130), "", std::make_pair("", 0), tickDelay);
+							ShrinePlayerMessageManager_t::insert(my->getUID(), target->skill[2], Language::get(7130), "", resultOutcome, tickDelay);
 						}
 					}
 
@@ -3775,9 +3881,9 @@ void actEternalShrine(Entity* my)
 								if ( auto spell = getSpellFromID(spellID) )
 								{
 									int divineFavorCost = 1 + (spell->difficulty) / 5;
-									if ( resultOutcome.first != "" && effect )
+									if ( resultOutcome.effect_string != "" && effect )
 									{
-										divineFavorCost = std::max(0, divineFavorCost - resultOutcome.second);
+										divineFavorCost = std::max(0, divineFavorCost - resultOutcome.tier);
 									}
 									if ( achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget) >= 0 )
 									{
@@ -4249,9 +4355,9 @@ void actEternalShrine(Entity* my)
 								achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget),
 								tierString, my->entity_rng ? *my->entity_rng : local_rng);
 							bool effect = false;
-							if ( resultOutcome.first != "" )
+							if ( resultOutcome.effect_string != "" )
 							{
-								effect = applyShrineEffect(resultOutcome.first, target, my, resultOutcome.second);
+								effect = applyShrineEffect(resultOutcome.effect_string, target, my, resultOutcome.tier, &resultOutcome.outcomeLang);
 							}
 
 							auto resultReward = ShrineEffects_t::rollResult(my->eternalShrineType, ShrineEffects_t::SHRINE_RESULT_REWARD, 
@@ -4262,7 +4368,7 @@ void actEternalShrine(Entity* my)
 								playSoundEntity(my, 914, 156);
 
 								bool supplication = applySupplicationEffect(tierString, target, my);
-								bool effect = applyShrineEffect(resultReward.first, target, my, resultReward.second);
+								bool effect = applyShrineEffect(resultReward.effect_string, target, my, resultReward.tier, nullptr);
 								if ( supplication || effect )
 								{
 									spawnHeatOrbitSpin(target, 263, false);
@@ -4281,7 +4387,7 @@ void actEternalShrine(Entity* my)
 								ShrinePlayerMessageManager_t::insert(my->getUID(), target->skill[2],
 									nullptr, tierString, resultReward, tickDelay);
 								ShrinePlayerMessageManager_t::insert(my->getUID(), target->skill[2],
-									Language::get(7143), "", resultOutcome, tickDelay);
+									Language::get(7130), "", resultOutcome, tickDelay);
 
 								playSoundEntity(target, 827, 128);
 								spawnHeatOrbitSpin(target, 288, true);
@@ -4292,14 +4398,14 @@ void actEternalShrine(Entity* my)
 							{
 								divineFavorCost += std::stoi(tierString.substr(0, 1));
 							}
-							if ( resultReward.first != "" )
+							if ( resultReward.effect_string != "" )
 							{
-								divineFavorCost = std::max(0, divineFavorCost + resultReward.second);
+								divineFavorCost = std::max(0, divineFavorCost + resultReward.tier);
 								divineFavorCost = std::min(5, divineFavorCost);
 							}
-							if ( resultOutcome.first != "" && effect )
+							if ( resultOutcome.effect_string != "" && effect )
 							{
-								divineFavorCost = std::max(0, divineFavorCost - resultOutcome.second);
+								divineFavorCost = std::max(0, divineFavorCost - resultOutcome.tier);
 							}
 							if ( achievementObserver.checkUidIsFromPlayer(my->eternalShrineTarget) >= 0 )
 							{
@@ -4821,14 +4927,14 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 		(shrine->eternalShrinePlayerLockout >> (player * 2) & 0b11);
 	if ( lockoutStatus > GenericGUIMenu::EternalShrineGUI_t::EternalShrineLockoutStatus::LOCKOUT_NONE )
 	{
-		resultReward.first = "";
+		resultReward.effect_string = "";
 	}
 
 	// calculate reward
-	if ( resultReward.first != "" )
+	if ( resultReward.effect_string != "" )
 	{
 		int numSongs = 0;
-		if ( resultReward.first.find("ENSEMBLE_1") != std::string::npos )
+		if ( resultReward.effect_string.find("ENSEMBLE_1") != std::string::npos )
 		{
 			numSongs = 1;
 			// no solo drum/horn
@@ -4843,23 +4949,23 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 				--numChances;
 			}
 		}
-		else if ( resultReward.first.find("ENSEMBLE_2") != std::string::npos )
+		else if ( resultReward.effect_string.find("ENSEMBLE_2") != std::string::npos )
 		{
 			numSongs = 2;
 		}
-		else if ( resultReward.first.find("ENSEMBLE_3") != std::string::npos )
+		else if ( resultReward.effect_string.find("ENSEMBLE_3") != std::string::npos )
 		{
 			numSongs = 3;
 		}
-		else if ( resultReward.first.find("ENSEMBLE_4") != std::string::npos )
+		else if ( resultReward.effect_string.find("ENSEMBLE_4") != std::string::npos )
 		{
 			numSongs = 4;
 		}
-		else if ( resultReward.first.find("ENSEMBLE_5") != std::string::npos )
+		else if ( resultReward.effect_string.find("ENSEMBLE_5") != std::string::npos )
 		{
 			numSongs = 5;
 		}
-		int tier = resultReward.second;
+		int tier = resultReward.tier;
 		std::vector<InstrumentOrder> newSongs;
 		while ( numSongs > 0 )
 		{
@@ -4902,7 +5008,7 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 
 		int divineFavorCost = 1 + std::max(tier, (int)newSongs.size()) / 2;
 
-		if ( resultReward.first.find("INSTRUMENT") != std::string::npos )
+		if ( resultReward.effect_string.find("INSTRUMENT") != std::string::npos )
 		{
 			receiveItem = true;
 			shrine->eternalShrineItemType = INSTRUMENT_FLUTE + rng.rand() % 5;
@@ -4916,7 +5022,7 @@ bool eternalShrineProcessMusic(const int player, Uint32 shrineUid, int shrineTyp
 
 			++divineFavorCost;
 		}
-		else if ( resultReward.first.find("SCROLL") != std::string::npos )
+		else if ( resultReward.effect_string.find("SCROLL") != std::string::npos )
 		{
 			receiveItem = true;
 
@@ -8789,8 +8895,12 @@ void spawnHeatOrbitSpin(Entity* target, int sprite, bool light)
 	serverSpawnMiscParticles(target, PARTICLE_EFFECT_HEAT_ORBIT_SPIN, sprite, !light ? 1 : 0, TICKS_PER_SECOND / 2);
 }
 
-bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier)
+bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier, int* outLangEntry)
 {
+	if ( outLangEntry )
+	{
+		*outLangEntry = 0;
+	}
 	if ( !target ) { return false; }
 	if ( !shrine ) { return false; }
 	Stat* myStats = target->getStats();
@@ -8801,8 +8911,13 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		return false;
 	}
 
+	int buffDuration = 10 * 60 * TICKS_PER_SECOND;
+	int debuffDuration = std::min(15, tier * 5) * 60 * TICKS_PER_SECOND;
+
 	int player = target->isEntityPlayer();
 	bool result = false;
+	int shrineType = shrine->eternalShrineType;
+	int langEntry = 0;
 
 	if ( effect_str == "DIVINE_FIRE" )
 	{
@@ -8820,17 +8935,37 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			Uint32 color = makeColorRGB(255, 0, 0);
 			if ( player >= 0 )
 			{
-				messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7129));
+				if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7258));
+				}
+				else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7265));
+				}
+				else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7272));
+				}
+				else
+				{
+					messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(7129));
+				}
 			}
 
 			spawnHeatOrbitSpin(target, 288, true);
 			playSoundEntity(target, 164, 128);
 			result = true;
+
+			if ( tier >= 3 && shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				langEntry = 7306;
+			}
 		}
 	}
 	else if ( effect_str == "INCOHERENCE" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		Uint8 effectStrength = 3;
 		if ( tier == 2 )
 		{
@@ -8850,11 +8985,30 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			playSoundEntity(target, 825, 64);
 			spawnMagicEffectParticles(target->x, target->y, target->z, 2355);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7255; }
+				else if ( tier == 2 ) { langEntry = 7283; }
+				else { langEntry = 7304; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				if ( tier == 1 ) { langEntry = 7255; }
+				else if ( tier == 2 ) { langEntry = 7283; }
+				else { langEntry = 7304; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				if ( tier == 1 ) { langEntry = 7269; }
+				else if ( tier == 2 ) { langEntry = 7293; }
+				else { langEntry = 7315; }
+			}
 		}
 	}
 	else if ( effect_str == "SILENCE" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		if ( tier >= 4 )
 		{
 			duration *= 2;
@@ -8873,11 +9027,24 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			createParticleFociDark(target, 0, true);
 			spawnMagicEffectParticles(target->x, target->y, target->z, 1818);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7286; }
+				else if ( tier == 2 ) { langEntry = 7286; }
+				else { langEntry = 7305; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				if ( tier == 1 ) { langEntry = 7270; }
+				else if ( tier == 2 ) { langEntry = 7295; }
+				else { langEntry = 7316; }
+			}
 		}
 	}
 	else if ( effect_str == "LEVEL_DRAIN" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		Uint8 effectStrength = std::min(5, std::max(1, tier)); // -20 to -60%
 		target->setEffect(EFF_STASIS, (Uint8)2, 3 * TICKS_PER_SECOND, true, true, true);  // aesthetic stasis
 		if ( target->setEffect(EFF_LEVEL_DRAIN, effectStrength, duration, true) )
@@ -8890,11 +9057,30 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			playSoundEntity(target, 166, 128);
 			createParticleFociDark(target, 0, true);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7261; }
+				else if ( tier == 2 ) { langEntry = 7287; }
+				else { langEntry = 7307; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				if ( tier == 1 ) { langEntry = 7268; }
+				else if ( tier == 2 ) { langEntry = 7291; }
+				else { langEntry = 7311; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				if ( tier == 1 ) { langEntry = 7275; }
+				else if ( tier == 2 ) { langEntry = 7296; }
+				else { langEntry = 7317; }
+			}
 		}
 	}
 	else if ( effect_str == "BURDENED" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		Uint8 effectStrength = 2; // -10% max movespeed/DEX
 		if ( tier == 2 )
 		{
@@ -8916,6 +9102,19 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			playSoundEntity(target, 166, 128);
 			createParticleFociDark(target, 0, true);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7282; }
+				else if ( tier == 2 ) { langEntry = 7282; }
+				else { langEntry = 7303; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				if ( tier == 1 ) { langEntry = 7290; }
+				else if ( tier == 2 ) { langEntry = 7290; }
+				else { langEntry = 7310; }
+			}
 		}
 	}
 	else if ( effect_str == "VOID_MP_DRAIN" ) // drain MP
@@ -8948,12 +9147,31 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			playSoundEntity(target, 166, 128);
 			createParticleFociDark(target, 0, true);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7262; }
+				else if ( tier == 2 ) { langEntry = 7288; }
+				else { langEntry = 7312; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				if ( tier == 1 ) { langEntry = 7262; }
+				else if ( tier == 2 ) { langEntry = 7288; }
+				else { langEntry = 7312; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				if ( tier == 1 ) { langEntry = 7276; }
+				else if ( tier == 2 ) { langEntry = 7297; }
+				else { langEntry = 7318; }
+			}
 		}
 	}
 	else if ( effect_str == "SMOKE_HP"
 		|| effect_str == "SMOKE_MP" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = buffDuration;
 		Uint8 effectStrength = effect_str == "SMOKE_HP" ? 2 : 1;
 		if ( tier >= 3 )
 		{
@@ -8970,7 +9188,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "RESOLVE_HP"
 		|| effect_str == "RESOLVE_MP" )
 	{
-		int duration = 15 * 60 * TICKS_PER_SECOND;
+		int duration = buffDuration;
 		Uint8 strength = tier;
 		if ( tier == 2 )
 		{
@@ -9012,7 +9230,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "STAMINA" )
 	{
 		int effectStrength = 1;
-		int duration = 5 * TICKS_PER_SECOND * 60;
+		int duration = buffDuration;
 		if ( target->setEffect(EFF_CON_BONUS, (Uint8)effectStrength, duration, false) )
 		{
 			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(7134), Language::get(6282));
@@ -9022,7 +9240,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "AGILITY" )
 	{
 		int effectStrength = 1;
-		int duration = 5 * TICKS_PER_SECOND * 60;
+		int duration = buffDuration;
 		if ( target->setEffect(EFF_AGILITY, (Uint8)effectStrength, duration, false) )
 		{
 			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(7134), Language::get(6283));
@@ -9032,7 +9250,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "MENTALITY" )
 	{
 		int effectStrength = 1;
-		int duration = 5 * TICKS_PER_SECOND * 60;
+		int duration = buffDuration;
 		if ( target->setEffect(EFF_PWR, (Uint8)effectStrength, duration, false) )
 		{
 			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(7134), Language::get(6284));
@@ -9041,7 +9259,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	}
 	else if ( effect_str == "SLOW_DIGESTION" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = buffDuration;
 		Uint8 effectStrength = 3;
 		if ( tier == 2 )
 		{
@@ -9062,7 +9280,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	}
 	else if ( effect_str == "BLESSED_MEALS" )
 	{
-		int duration = 5; // 5 minutes
+		int duration = std::max(1, buffDuration / (TICKS_PER_SECOND * 60)); // 5 minutes
 		CastSpellProps_t props;
 		props.targetUID = target->getUID();
 		props.optionalData = duration; // converts to 5 minutes at spell
@@ -9093,7 +9311,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	{
 		int effectID = effect_str == "DEGENERATION" ? EFF_DEGENERATION : EFF_DISPIRITED;
 
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = buffDuration;
 		Uint8 effectStrength = 3;
 		if ( tier == 2 )
 		{
@@ -9123,10 +9341,36 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			if ( effectID == EFF_DISPIRITED )
 			{
 				spawnMagicEffectParticles(target->x, target->y, target->z, 2355);
+
+				if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+				{
+					if ( tier == 1 ) { langEntry = 7292; }
+					else if ( tier == 2 ) { langEntry = 7292; }
+					else { langEntry = 7314; }
+				}
+				else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+				{
+					if ( tier == 1 ) { langEntry = 7298; }
+					else if ( tier == 2 ) { langEntry = 7298; }
+					else { langEntry = 7319; }
+				}
 			}
 			else
 			{
 				spawnMagicEffectParticles(target->x, target->y, target->z, 2367);
+
+				if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+				{
+					if ( tier == 1 ) { langEntry = 7263; }
+					else if ( tier == 2 ) { langEntry = 7289; }
+					else { langEntry = 7309; }
+				}
+				else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+				{
+					if ( tier == 1 ) { langEntry = 7263; }
+					else if ( tier == 2 ) { langEntry = 7289; }
+					else { langEntry = 7309; }
+				}
 			}
 			playSoundEntity(target, 166, 128);
 			createParticleFociDark(target, 0, true);
@@ -9135,7 +9379,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	}
 	else if ( effect_str == "WEAKNESS" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		Uint8 effectStrength = 3;
 		if ( tier == 2 )
 		{
@@ -9155,11 +9399,24 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			playSoundEntity(target, 824, 64);
 			spawnMagicEffectParticles(target->x, target->y, target->z, 2367);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7252; }
+				else if ( tier == 2 ) { langEntry = 7279; }
+				else { langEntry = 7301; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				if ( tier == 1 ) { langEntry = 7252; }
+				else if ( tier == 2 ) { langEntry = 7279; }
+				else { langEntry = 7301; }
+			}
 		}
 	}
 	else if ( effect_str == "ENFEEBLE" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		Uint8 effectStrength = 1; // 10% per str
 		if ( tier == 2 )
 		{
@@ -9179,21 +9436,49 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			playSoundEntity(target, 824, 64);
 			spawnMagicEffectParticles(target->x, target->y, target->z, 2367);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7254; }
+				else if ( tier == 2 ) { langEntry = 7281; }
+				else { langEntry = 7302; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				if ( tier == 1 ) { langEntry = 7254; }
+				else if ( tier == 2 ) { langEntry = 7281; }
+				else { langEntry = 7302; }
+			}
 		}
 	}
 	else if ( effect_str == "POLYMORPH" )
 	{
-		spellEffectPolymorph(target, shrine, false, 0, SKELETON);
-		if ( target->getStats() && target->getStats()->getEffectActive(EFF_POLYMORPH)
-			&& target->playerGetMonsterRaceFromPolymorph() == SKELETON )
+		if ( target->getStats() && 
+			(target->getStats()->type == SKELETON || target->getStats()->playerRace == SKELETON) )
+		{
+			spellEffectPolymorph(target, shrine, false, 0, local_rng.rand() % 2 ? INCUBUS : SUCCUBUS);
+		}
+		else
+		{
+			spellEffectPolymorph(target, shrine, false, 0, SKELETON);
+		}
+		if ( target->getStats() && target->getStats()->getEffectActive(EFF_POLYMORPH) )
 		{
 			result = true;
+			if ( target->playerGetMonsterRaceFromPolymorph() == SKELETON )
+			{
+				langEntry = 7143;
+			}
+			else
+			{
+				langEntry = 7322;
+			}
 		}
 	}
 	else if ( effect_str == "SHAPESHIFT" )
 	{
 		Monster type = RAT;
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		if ( type != NOTHING && target->setEffect(EFF_SHAPESHIFT, true, duration, true) )
 		{
 			spawnExplosion(target->x, target->y, target->z);
@@ -9229,6 +9514,19 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 
 			Uint32 color = makeColorRGB(0, 255, 0);
 			messagePlayerColor(player, MESSAGE_STATUS, color, Language::get(3419), getMonsterLocalizedName((Monster)target->effectShapeshift).c_str());
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7253; }
+				else if ( tier == 2 ) { langEntry = 7280; }
+				else { langEntry = 7280; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				if ( tier == 1 ) { langEntry = 7264; }
+				else if ( tier == 2 ) { langEntry = 7264; }
+				else { langEntry = 7264; }
+			}
 		}
 		result = true;
 	}
@@ -9238,7 +9536,23 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		props.targetUID = target->getUID();
 
 		castSpell(shrine->getUID(), getSpellFromID(SPELL_TABOO), false, true, false, &props);
-		result = true;
+
+		if ( target && target->getStats() && target->getStats()->getEffectActive(EFF_TABOO) )
+		{
+			result = true;
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				langEntry = 7259;
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				langEntry = 7266;
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				langEntry = 7273;
+			}
+		}
 	}
 	else if ( effect_str == "DIZZY" )
 	{
@@ -9283,21 +9597,49 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7109));
 			playSoundEntity(target, 758, 92);
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7256; }
+				else if ( tier == 2 ) { langEntry = 7284; }
+				else { langEntry = 7284; }
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				if ( tier == 1 ) { langEntry = 7256; }
+				else if ( tier == 2 ) { langEntry = 7284; }
+				else { langEntry = 7284; }
+			}
 		}
 	}
 	else if ( effect_str == "DUSTED" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
+		int duration = debuffDuration;
 		if ( target->setEffect(EFF_DUSTED, true, duration, true) )
 		{
-			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6752));
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7260));
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_SUPPLICATION )
+			{
+				messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7267));
+			}
+			else if ( shrineType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
+			{
+				messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7274));
+				messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6752));
+			}
+			else
+			{
+				messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6752));
+			}
 			playSoundEntity(target, 825, 64);
 			result = true;
 		}
 	}
 	else if ( effect_str == "EARTH_SPRITE" )
 	{
-		int duration = 5 * 60 * TICKS_PER_SECOND;
 		Uint8 effectStrength = 1;
 		if ( tier == 2 )
 		{
@@ -9320,6 +9662,10 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		castSpell(shrine->getUID(), getSpellFromID(SPELL_DISRUPT_EARTH), false, true, false, &props);
 		castSpell(shrine->getUID(), getSpellFromID(SPELL_EARTH_ELEMENTAL), false, true, false, &props);
 		result = true;
+
+		if ( tier == 1 ) { langEntry = 7254; }
+		else if ( tier == 2 ) { langEntry = 7281; }
+		else { langEntry = 7302; }
 	}
 	else if ( effect_str == "LIGHTNING_BOLT" ) // lightning bolt
 	{
@@ -9351,6 +9697,8 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 		spawnMagicEffectParticles(shrine->x, shrine->y, shrine->z, 170);
 		playSoundEntity(target, 806, 128);
 		result = true;
+
+		langEntry = 7320;
 	}
 	else if ( effect_str == "EXORCISED" ) // exorcise
 	{
@@ -9374,6 +9722,17 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 			}
 			fx1->actmagicFromSpellbook = 0;
 			result = true;
+
+			if ( shrineType == GUI_TYPE_ETERNALSHRINE_ANVIL )
+			{
+				if ( tier == 1 ) { langEntry = 7257; }
+				else { langEntry = 7285; }
+			}
+			else
+			{
+				if ( tier == 1 ) { langEntry = 7271; }
+				else { langEntry = 7294; }
+			}
 		}
 
 		serverSpawnMiscParticles(target, PARTICLE_EFFECT_TURN_UNDEAD, 2401);
@@ -9405,6 +9764,8 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 
 			serverSpawnMiscParticles(target, PARTICLE_EFFECT_PSYCHIC_SPEAR, 2362, 0, 5 * TICKS_PER_SECOND, fx->yaw * 256.0);
 			result = true;
+
+			langEntry = 7321;
 		}
 	}
 	else if ( effect_str == "GREATER_MIGHT" || effect_str == "STURDINESS"
@@ -9466,7 +9827,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	else if ( effect_str == "LIGHTEN_LOAD" )
 	{
 		int effectStrength = std::min(3, tier) * 20;
-		int duration = 5 * TICKS_PER_SECOND * 60;
+		int duration = buffDuration;
 		if ( target->setEffect(EFF_LIGHTEN_LOAD, (Uint8)effectStrength, duration, false) )
 		{
 			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(6681));
@@ -9479,6 +9840,12 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	{
 		return false;
 	}
+
+	if ( result && outLangEntry )
+	{
+		*outLangEntry = langEntry;
+	}
+
 	return result;
 }
 
