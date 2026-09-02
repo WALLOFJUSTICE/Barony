@@ -57,31 +57,20 @@ void initMinotaur(Entity* my, Stat* myStats)
 			int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
 			// boss variants
-			if ( strcmp(map.name, "Hell Boss") == 0 )
+			if ( currentlevel >= 5 )
 			{
-				myStats->HP += 400;
-				myStats->MAXHP += 400;
-				myStats->STR = 50;
-				myStats->DEX = 20;
-				myStats->CON = 20;
-			}
-			else
-			{
-				if ( currentlevel >= 5 )
-				{
-					myStats->HP += 100 * (1 + (currentlevel - 5) / 5); // 100 HP per 5 lvls
-					myStats->MAXHP += 100 * (1 + (currentlevel - 5) / 5);
+				myStats->HP += 100 * (1 + (currentlevel - 5) / 5); // 100 HP per 5 lvls
+				myStats->MAXHP += 100 * (1 + (currentlevel - 5) / 5);
 
-					myStats->LVL += 2 * (1 + (currentlevel - 5) / 5); // 2 LVLs per 5 lvls
-					myStats->STR += 5 * (1 + (currentlevel - 5) / 5); // 5 STR per 5 lvls
-					myStats->DEX += 2 * (1 + (currentlevel - 5) / 5); // 2 CON per 5 lvls
-				}
-				if ( currentlevel >= 25 )
-				{
-					myStats->DEX = 20;
-					myStats->setEffectActive(EFF_VAMPIRICAURA, 1);
-					myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
-				}
+				myStats->LVL += 2 * (1 + (currentlevel - 5) / 5); // 2 LVLs per 5 lvls
+				myStats->STR += 5 * (1 + (currentlevel - 5) / 5); // 5 STR per 5 lvls
+				myStats->CON += 2 * (1 + (currentlevel - 5) / 5); // 2 CON per 5 lvls
+			}
+			if ( currentlevel >= 25 )
+			{
+				myStats->DEX = 20;
+				myStats->setEffectActive(EFF_VAMPIRICAURA, 1);
+				myStats->EFFECTS_TIMERS[EFF_VAMPIRICAURA] = -1;
 			}
 
 
