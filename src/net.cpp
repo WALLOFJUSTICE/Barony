@@ -2486,6 +2486,7 @@ static void changeLevel() {
 	AOEIndicators_t::cleanup();
 	ShrinePlayerMessageManager_t::reset();
 	minotaurPaths.clear();
+	monsterAttackSfxTargets.clear();
 	monsterAllyFormations.reset();
 	particleTimerEmitterHitEntities.clear();
 	particleTimerEffects.clear();

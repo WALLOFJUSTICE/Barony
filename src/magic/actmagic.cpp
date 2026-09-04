@@ -16891,10 +16891,10 @@ void actParticlePinpointTarget(Entity* my)
 				{
 					parent->setEffect(EFF_PENANCE, false, 0, true);
 				}
-				else if ( spellID == SPELL_TABOO )
+				/*else if ( spellID == SPELL_TABOO )
 				{
 					parent->setEffect(EFF_TABOO, false, 0, true);
-				}
+				}*/
 				else if ( spellID == SPELL_DETECT_ENEMY || spellID == SPELL_DETECT_ENEMIES )
 				{
 					parent->setEffect(EFF_DETECT_ENEMY, false, 0, true);

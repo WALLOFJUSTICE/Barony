@@ -429,6 +429,7 @@ void ShopkeeperPlayerHostility_t::resetPlayerHostility(const int player, bool cl
 	}
 }
 
+std::map<Uint32, MonsterAttackSfxTarget> monsterAttackSfxTargets;
 std::map<Uint32, MinotaurPaths> minotaurPaths;
 void MinotaurPaths::incrementObjectBusted()
 {
@@ -5756,13 +5757,32 @@ void actMonster(Entity* my)
 									{
 										if ( myStats->type != MINOTAUR )
 										{
-											if ( myStats->type == SENTRYBOT || myStats->type == SPELLBOT )
+											auto& sfx = monsterAttackSfxTargets[my->getUID()];
+											if ( sfx.x == static_cast<int>(my->x) >> 4
+												&& sfx.y == static_cast<int>(my->y) >> 4
+												&& sfx.target == entity->getUID() )
 											{
-												sentrybotPickSpotNoise(my, myStats);
+												sfx.numSfx++;
+												sfx.numSfx = std::min(16, sfx.numSfx);
 											}
 											else
 											{
-												MONSTER_SOUND = playSoundEntity(my, MONSTER_SPOTSND + local_rng.rand() % MONSTER_SPOTVAR, 128);
+												sfx.x = static_cast<int>(my->x) >> 4;
+												sfx.y = static_cast<int>(my->y) >> 4;
+												sfx.target = entity->getUID();
+												sfx.numSfx = 1;
+											}
+
+											if ( sfx.numSfx <= 1 || ((local_rng.rand() % (std::max(1, sfx.numSfx))) == 0) )
+											{
+												if ( myStats->type == SENTRYBOT || myStats->type == SPELLBOT )
+												{
+													sentrybotPickSpotNoise(my, myStats);
+												}
+												else
+												{
+													MONSTER_SOUND = playSoundEntity(my, MONSTER_SPOTSND + local_rng.rand() % MONSTER_SPOTVAR, 128);
+												}
 											}
 										}
 										else

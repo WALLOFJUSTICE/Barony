@@ -3202,6 +3202,10 @@ void actEternalShrineLimb(Entity* my)
 								int divineFavor = players[target->skill[2]]->mechanics.getDivineFavorFromItem(item, 1);
 								if ( divineFavor >= 0 )
 								{
+									if ( divineFavor < 1000 )
+									{
+										divineFavor = std::min(1000, divineFavor * 2);
+									}
 									favorTotal += divineFavor;
 									players[target->skill[2]]->mechanics.divineFavorModItem(divineFavor);
 								}

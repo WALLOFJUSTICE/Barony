@@ -2490,6 +2490,9 @@ void Entity::effectTimes()
 					case EFF_BURDENED:
 						messagePlayer(player, MESSAGE_STATUS, Language::get(7128));
 						break;
+					case EFF_VIGOR:
+						messagePlayer(player, MESSAGE_STATUS, Language::get(7214));
+						break;
 					case EFF_CHOKING:
 						messagePlayer(player, MESSAGE_STATUS, Language::get(7197));
 						break;
@@ -20149,13 +20152,15 @@ bool Entity::checkEnemy(Entity* your)
 	}
 	else if ( (yourStats->getEffectActive(EFF_TABOO) >= 1 && yourStats->getEffectActive(EFF_TABOO) < 1 + MAXPLAYERS
 		&& behavior != &actPlayer && !monsterAllyGetPlayerLeader())
-		|| yourStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS )
+		|| (yourStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS 
+			&& !(your->behavior == &actPlayer && (behavior == &actPlayer || monsterAllyGetPlayerLeader()))) )
 	{
 		return true;
 	}
 	else if ( (myStats->getEffectActive(EFF_TABOO) >= 1 && myStats->getEffectActive(EFF_TABOO) < 1 + MAXPLAYERS
 		&& your->behavior != &actPlayer && !your->monsterAllyGetPlayerLeader())
-		|| myStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS )
+		|| (myStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS
+			&& !(behavior == &actPlayer && (your->behavior == &actPlayer || your->monsterAllyGetPlayerLeader()))) )
 	{
 		return true;
 	}
@@ -20314,10 +20319,16 @@ bool Entity::checkEnemy(Entity* your)
 			else
 			{
 				// look into this more, two player allies hate each other by virtue of leader taboo'd
-				/*if ( yourLeader == myLeader
+				if ( yourLeader == myLeader
 					&& yourLeader->behavior == &actPlayer
-					&& yourLeaderStats->getEffectActive(EFF_TABOO) >= MAXPLAYERS + 1 )*/
-				return checkEnemy(yourLeader);
+					&& yourLeaderStats->getEffectActive(EFF_TABOO) >= MAXPLAYERS + 1 )
+				{
+					result = false;
+				}
+				else
+				{
+					return checkEnemy(yourLeader);
+				}
 			}
 		}
 	}
@@ -20333,7 +20344,16 @@ bool Entity::checkEnemy(Entity* your)
 			}
 			else
 			{
-				return myLeader->checkEnemy(your);
+				if ( yourLeader == myLeader
+					&& myLeader->behavior == &actPlayer
+					&& myLeaderStats->getEffectActive(EFF_TABOO) >= MAXPLAYERS + 1 )
+				{
+					result = false;
+				}
+				else
+				{
+					return myLeader->checkEnemy(your);
+				}
 			}
 		}
 		else
@@ -20821,13 +20841,15 @@ bool Entity::checkFriend(Entity* your)
 	}
 	else if ( (yourStats->getEffectActive(EFF_TABOO) >= 1 && yourStats->getEffectActive(EFF_TABOO) < 1 + MAXPLAYERS
 		&& behavior != &actPlayer && !monsterAllyGetPlayerLeader())
-		|| yourStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS )
+		|| (yourStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS
+			&& !(your->behavior == &actPlayer && (behavior == &actPlayer || monsterAllyGetPlayerLeader()))) )
 	{
 		return false;
 	}
 	else if ( (myStats->getEffectActive(EFF_TABOO) >= 1 && myStats->getEffectActive(EFF_TABOO) < 1 + MAXPLAYERS
 		&& your->behavior != &actPlayer && !your->monsterAllyGetPlayerLeader())
-		|| myStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS )
+		|| (myStats->getEffectActive(EFF_TABOO) >= 1 + MAXPLAYERS
+			&& !(behavior == &actPlayer && (your->behavior == &actPlayer || your->monsterAllyGetPlayerLeader()))) )
 	{
 		return false;
 	}
@@ -32535,6 +32557,10 @@ void Entity::handleKnockbackDamage(Stat& myStats, Entity* knockedInto)
 			{
 				spellID = SPELL_KINETIC_FIELD;
 			}
+			else if ( type == 2 )
+			{
+				spellID = SPELL_BLITZ_CHARGE;
+			}
 			if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
 			{
 				playerSource = effect % (MAXPLAYERS + 1);
@@ -32555,7 +32581,7 @@ void Entity::handleKnockbackDamage(Stat& myStats, Entity* knockedInto)
 
 		int damageOnHit = 0;
 		bool spellEvent = false;
-		bool immuneDamageOnHit = spellID == SPELL_DASH;
+		bool immuneDamageOnHit = spellID == SPELL_DASH || spellID == SPELL_BLITZ_CHARGE;
 		if ( knockedInto->behavior == &actDoor || knockedInto->behavior == &::actIronDoor )
 		{
 			damageOnHit = 5 + local_rng.rand() % 6;

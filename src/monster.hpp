@@ -1578,3 +1578,12 @@ struct MinotaurPaths
 	Uint32 lastTriggerTick = 0;
 };
 extern std::map<Uint32, MinotaurPaths> minotaurPaths;
+
+struct MonsterAttackSfxTarget
+{
+	Uint32 target = 0;
+	int x = 0;
+	int y = 0;
+	int numSfx = 0;
+};
+extern std::map<Uint32, MonsterAttackSfxTarget> monsterAttackSfxTargets;
