@@ -233,6 +233,12 @@ void initSkeleton(Entity* my, Stat* myStats)
 				// generate 6 items max, less if there are any forced items from boss variants
 				int customItemsToGenerate = ITEM_CUSTOM_SLOT_LIMIT;
 
+				int droprate = 1;
+				if ( !strncmp(map.filename, "bastille", 8) )
+				{
+					droprate = 5;
+				}
+
 				// boss variants
 			    const bool boss =
 			        rng.rand() % 50 == 0 &&
@@ -311,6 +317,11 @@ void initSkeleton(Entity* my, Stat* myStats)
 										myStats->weapon = newItem(IRON_SWORD, WORN, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 										break;
 								}
+							}
+
+							if ( myStats->weapon )
+							{
+								myStats->weapon->isDroppable = ((rng.rand() % droprate) == 0);
 							}
 						}
 					}
@@ -395,6 +406,11 @@ void initSkeleton(Entity* my, Stat* myStats)
 							myStats->helmet = newItem(IRON_HELM, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 							break;
 					}
+
+					if ( myStats->helmet )
+					{
+						myStats->helmet->isDroppable = ((rng.rand() % droprate) == 0);
+					}
 				}
 
 				//give shield
@@ -425,6 +441,11 @@ void initSkeleton(Entity* my, Stat* myStats)
 							case 9:
 								myStats->shield = newItem(IRON_SHIELD, DECREPIT, -1 + rng.rand() % 2, 1, rng.rand(), false, nullptr);
 								break;
+						}
+
+						if ( myStats->shield )
+						{
+							myStats->shield->isDroppable = ((rng.rand() % droprate) == 0);
 						}
 					}
 				}

@@ -7509,6 +7509,8 @@ to accept invitation.#
 7213 You set vigor.#
 7214 Unset vigor.#
 7215 You blitz forward!#
+7216 You call forth a totem of healing!#
+7217 The vigor of battle restores you!#
 
 # Shrine texts
 7250 "ALL THINGS ARE TEMPORARY."#

@@ -50,7 +50,7 @@ void initVampire(Entity* my, Stat* myStats)
 		    {
 		        my->sprite = 1137;
 		    }
-		    if ( !strncmp(map.name, "The Ruins", 9) )
+		    if ( !strncmp(map.name, "The Ruins", 9) || !strcmp(map.name, "The Mystic Library") )
 		    {
 				strcpy(myStats->name, "young vampire");
 		    }

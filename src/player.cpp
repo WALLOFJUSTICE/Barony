@@ -7845,6 +7845,8 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			|| spellID == SPELL_HEAL_MINOR
 			|| spellID == SPELL_HEAL_OTHER
 			|| spellID == SPELL_HEAL_PULSE
+			|| spellID == SPELL_TOTEM_HEAL
+			|| spellID == SPELL_VIGOR
 			|| spellID == SPELL_SPEED
 			|| spellID == SPELL_DETECT_FOOD
 			|| spellID == SPELL_COMMAND

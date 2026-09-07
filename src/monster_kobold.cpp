@@ -281,6 +281,7 @@ void initKobold(Entity* my, Stat* myStats)
 				if ( cultist > 0 )
 				{
 					myStats->cloak = newItem(CLOAK, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+					myStats->cloak->isDroppable = ((rng.rand() % 8) == 0);
 				}
 				else
 				{
@@ -309,6 +310,7 @@ void initKobold(Entity* my, Stat* myStats)
 				if ( cultist > 0 )
 				{
 					myStats->helmet = newItem(HAT_HOOD, static_cast<Status>(DECREPIT + rng.rand() % 3), -1 + rng.rand() % 3, 1, cultist - 1, false, nullptr);
+					myStats->helmet->isDroppable = ((rng.rand() % 8) == 0);
 				}
 				else if ( rng.rand() % 10 == 0 )
 				{

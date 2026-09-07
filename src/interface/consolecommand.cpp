@@ -6058,6 +6058,26 @@ namespace ConsoleCommands {
 
 		if ( multiplayer != CLIENT )
 		{
+			{
+				node_t* nextnode2 = nullptr;
+				for ( node_t* node = stats[clientnum]->inventory.first; node; node = nextnode2 )
+				{
+					nextnode2 = node->next;
+					if ( Item* item = (Item*)node->element )
+					{
+						Item** slot = itemSlot(stats[clientnum], item);
+						if ( slot != nullptr )
+						{
+							*slot = nullptr;
+						}
+					}
+					list_RemoveNode(node);
+				}
+			}
+
+			int value = 0;
+			int itemnum = 0;
+
 			node_t* nextnode = nullptr;
 			for ( tmpNode = map.entities->first; tmpNode != NULL; tmpNode = nextnode )
 			{
@@ -6075,10 +6095,46 @@ namespace ConsoleCommands {
 							// item is the new inventory stack for server, free the picked up items
 							free(item2);
 						}
+						itemnum += 1;
+						value += item->getGoldValue();
 						list_RemoveNode(tmpEnt->mynode);
 					}
 				}
+				else if ( tmpEnt->behavior == &actChest )
+				{
+					list_t* inventory = tmpEnt->getChestInventoryList();
+					if ( inventory )
+					{
+						node_t* nextnode2 = nullptr;
+						for ( node_t* node = inventory->first; node; node = nextnode2 )
+						{
+							nextnode2 = node->next;
+							if ( Item* item = (Item*)node->element )
+							{
+								if ( Entity* ent = dropItemMonster(item, tmpEnt, tmpEnt->getStats(), item->count) )
+								{
+									Item* item2 = newItemFromEntity(ent);
+									int pickedUpCount = item2->count;
+									Item* item = itemPickup(clientnum, item2);
+									if ( item )
+									{
+										if ( players[clientnum]->isLocalPlayer() )
+										{
+											// item is the new inventory stack for server, free the picked up items
+											free(item2);
+										}
+										itemnum += 1;
+										value += item->getGoldValue();
+										list_RemoveNode(ent->mynode);
+									}
+								}
+							}
+						}
+					}
+				}
 			}
+
+			messagePlayer(clientnum, MESSAGE_MISC, "%s: Items: %d, value: %dG", map.filename, itemnum, value);
 		}
 	});
 

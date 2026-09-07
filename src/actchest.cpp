@@ -122,6 +122,8 @@ void createChestInventory(Entity* my, int chestType)
 		}
 	}
 
+	bool library = !strcmp(map.name, "The Mystic Library");
+
 	int minimumQuality = 0;
 	if ( currentlevel >= 32 )
 	{
@@ -525,6 +527,10 @@ void createChestInventory(Entity* my, int chestType)
 		case 0:
 			//Have 3-5 scrolls.
 			itemcount = 3 + (rng.rand() % 3);
+			if ( library )
+			{
+				itemcount = 3;
+			}
 			for ( i = 0; i < itemcount; ++i )
 			{
 				//newItem(static_cast<ItemType>(SCROLL_IDENTIFY + rng.rand() % 12), static_cast<Status>(WORN + rng.rand() % 3), 0, 1, rng.rand(), false, inventory);
@@ -635,6 +641,7 @@ void createChestInventory(Entity* my, int chestType)
 			default:
 				break;
 			}
+			break;
 		}
 		case 3:
 			//So spawn several items at once. A wizard's chest!

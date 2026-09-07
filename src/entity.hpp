@@ -1800,7 +1800,7 @@ public:
 	Entity* createScriptEntityInMapGen(int x, int y, const char* text);
 	void addScriptToTextSource(Entity& src, const char* text);
 	void handleTextSourceScript(Entity& src, std::string input);
-	int textSourceProcessScriptTag(std::string& input, std::string findTag, Entity& src);
+	int textSourceProcessScriptTag(std::string& input, std::string findTag, Entity& src, std::string* outstr = nullptr);
 	bool hasClearedInventory = false;
 	int getScriptType(Sint32 skill)
 	{

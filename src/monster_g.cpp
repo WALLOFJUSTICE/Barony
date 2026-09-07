@@ -149,6 +149,12 @@ void initMonsterG(Entity* my, Stat* myStats)
 				}
 			}
 
+			int droprate = 1;
+			if ( !strncmp(map.filename, "warren", 6) && !strcmp(myStats->name, "") )
+			{
+				droprate = 8;
+			}
+
 			if ( myStats->getAttribute("monster_g_type") == "berserker" )
 			{
 				variant = BERSERKER;
@@ -274,6 +280,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 						}
 					}
 				}
+
+				if ( myStats->weapon )
+				{
+					myStats->weapon->isDroppable = ((rng.rand() % droprate) == 0);
+				}
 			}
 
 			if ( myStats->shield == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_SHIELD] == 1 )
@@ -300,6 +311,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 								myStats->shield = newItem(BLACKIRON_SHIELD, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 							}
 						}
+					}
+
+					if ( myStats->shield )
+					{
+						myStats->shield->isDroppable = ((rng.rand() % droprate) == 0);
 					}
 				}
 			}
@@ -330,6 +346,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 							myStats->helmet = newItem(BONE_HELM, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						}
 					}
+				}
+
+				if ( myStats->helmet )
+				{
+					myStats->helmet->isDroppable = ((rng.rand() % droprate) == 0);
 				}
 			}
 
@@ -369,6 +390,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 							myStats->shoes = newItem(LEATHER_BOOTS, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 						}
 					}
+				}
+
+				if ( myStats->shoes )
+				{
+					myStats->shoes->isDroppable = ((rng.rand() % droprate) == 0);
 				}
 			}
 
@@ -420,6 +446,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 						}
 					}
 				}
+
+				if ( myStats->gloves )
+				{
+					myStats->gloves->isDroppable = ((rng.rand() % droprate) == 0);
+				}
 			}
 
 			if ( myStats->cloak == nullptr && myStats->EDITOR_ITEMS[ITEM_SLOT_CLOAK] == 1 )
@@ -430,6 +461,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 					{
 						myStats->cloak = newItem(CLOAK, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					}
+				}
+
+				if ( myStats->cloak )
+				{
+					myStats->cloak->isDroppable = ((rng.rand() % droprate) == 0);
 				}
 			}
 
@@ -468,6 +504,11 @@ void initMonsterG(Entity* my, Stat* myStats)
 					{
 						myStats->breastplate = newItem(BONE_BREASTPIECE, static_cast<Status>(WORN + rng.rand() % 2), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 					}
+				}
+
+				if ( myStats->breastplate )
+				{
+					myStats->breastplate->isDroppable = ((rng.rand() % droprate) == 0);
 				}
 			}
 

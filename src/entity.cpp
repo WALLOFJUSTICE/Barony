@@ -13515,6 +13515,24 @@ fireagain:
 									Compendium_t::Events_t::eventUpdate(hit.entity->skill[2],
 										Compendium_t::CPDM_PARRIES, hitstats->weapon->type, 1);
 								}
+
+								if ( hitstats->getEffectActive(EFF_VIGOR) )
+								{
+									if ( this->behavior == &actMonster && !monsterAllyGetPlayerLeader()
+										&& !(achievementObserver.checkUidIsFromPlayer(myStats->leader_uid) >= 0) )
+									{
+										Uint8 effectStrength = hitstats->getEffectActive(EFF_VIGOR);
+										int counter = (effectStrength >> 4) & 0xF;
+										++counter;
+										int maxCounter = std::min(
+											getSpellDamageSecondaryFromID(SPELL_VIGOR, hit.entity, hitstats, hit.entity),
+											getSpellDamageFromID(SPELL_VIGOR, hit.entity, hitstats, hit.entity));
+										counter = std::min(counter, maxCounter);
+										effectStrength &= ~(0xF0);
+										effectStrength |= (counter << 4) & 0xF0;
+										hitstats->setEffectValueUnsafe(EFF_VIGOR, effectStrength);
+									}
+								}
 							}
 						}
 					}
@@ -14317,14 +14335,14 @@ fireagain:
 									players[player]->mechanics.onItemDegrade(*weaponToBreak);
 								}
 
-								if ( damage > 0 )
+								if ( true /*damage > 0*/ )
 								{
 									if ( (*weaponToBreak)->type == BONE_SWORD
 										|| (*weaponToBreak)->type == BONE_AXE
 										|| (*weaponToBreak)->type == BONE_SPEAR
 										|| (*weaponToBreak)->type == BONE_MACE )
 									{
-										Sint32 breakDamage = std::max(damage, (*weaponToBreak)->weaponGetAttack(myStats));
+										Sint32 breakDamage = std::max(std::max(3, damage), (*weaponToBreak)->weaponGetAttack(myStats));
 										if ( breakDamage > 0 )
 										{
 											Sint32 prevHP = hitstats->HP;
@@ -16516,6 +16534,24 @@ fireagain:
 					{
 						if ( hitstats->defending )
 						{
+							if ( hitstats->getEffectActive(EFF_VIGOR) )
+							{
+								if ( this->behavior == &actMonster && !monsterAllyGetPlayerLeader()
+									&& !(achievementObserver.checkUidIsFromPlayer(myStats->leader_uid) >= 0) )
+								{
+									Uint8 effectStrength = hitstats->getEffectActive(EFF_VIGOR);
+									int counter = (effectStrength >> 4) & 0xF;
+									++counter;
+									int maxCounter = std::min(
+										getSpellDamageSecondaryFromID(SPELL_VIGOR, hit.entity, hitstats, hit.entity),
+										getSpellDamageFromID(SPELL_VIGOR, hit.entity, hitstats, hit.entity));
+									counter = std::min(counter, maxCounter);
+									effectStrength &= ~(0xF0);
+									effectStrength |= (counter << 4) & 0xF0;
+									hitstats->setEffectValueUnsafe(EFF_VIGOR, effectStrength);
+								}
+							}
+
 							bool oldRhythmStatus = achievementStatusRhythmOfTheKnight[playerhit];
 							updateAchievementRhythmOfTheKnight(playerhit, this, true);
 							if ( !oldRhythmStatus && achievementStatusRhythmOfTheKnight[playerhit] )
@@ -19819,6 +19855,35 @@ void Entity::awardXP(Entity* src, bool share, bool root)
 							messagePlayerColor(i, MESSAGE_COMBAT | MESSAGE_HINT, makeColorRGB(255, 0, 0), Language::get(6102));
 						}
 					}
+				}
+			}
+
+			if ( destStats->getEffectActive(EFF_VIGOR) )
+			{
+				Uint8 effectStrength = destStats->getEffectActive(EFF_VIGOR);
+				int caster = (effectStrength & 0xF) - 1;
+				int counter = (effectStrength >> 4) & 0xF;
+				if ( counter > 0 && destStats->HP < destStats->MAXHP )
+				{
+					Sint32 oldHP = destStats->HP;
+					spell_changeHealth(this, counter, false, false);
+					int heal = std::max(destStats->HP - oldHP, 0);
+					if ( heal > 0 )
+					{
+						spawnDamageGib(this, -heal, DamageGib::DMG_HEAL, DamageGibDisplayType::DMG_GIB_NUMBER, true);
+						if ( caster >= 0 && caster < MAXPLAYERS )
+						{
+							serverUpdatePlayerGameplayStats(caster, STATISTICS_HEAL_BOT, heal);
+							messagePlayerColor(player, MESSAGE_COMBAT, makeColorRGB(0, 255, 0), Language::get(7217));
+							playSoundEntity(this, 168, 128);
+
+							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_VIGOR, heal * 5 + 20.0, 1.0, nullptr);
+							Compendium_t::Events_t::eventUpdate(caster, Compendium_t::CPDM_SPELL_HEAL, SPELL_ITEM, heal, false, SPELL_VIGOR);
+							spawnMagicEffectParticles(this->x, this->y, this->z, 169);
+						}
+					}
+					effectStrength &= ~(0xF0);
+					destStats->setEffectValueUnsafe(EFF_VIGOR, effectStrength);
 				}
 			}
 		}

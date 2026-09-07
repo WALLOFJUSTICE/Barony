@@ -145,7 +145,7 @@ void Entity::actPedestalBase()
 			// shake camera if in range.
 			for (int c = 0; c < MAXPLAYERS; ++c) 
 			{
-				if ( !players[c]->isLocalPlayer() || !players[c]->isLocalPlayerAlive() ) 
+				if ( !players[c]->entity || client_disconnected[c] )
 				{
 					continue;
 				}
@@ -155,8 +155,21 @@ void Entity::actPedestalBase()
 					real_t dist = entityDist(player->entity, this);
 					if ( dist < 512 && ticks % 5 == 0 )
 					{
-						cameravars[c].shakex += .02;
-						cameravars[c].shakey += 2;
+						if ( players[c]->isLocalPlayer() )
+						{
+							cameravars[c].shakex += .02;
+							cameravars[c].shakey += 2;
+						}
+						else
+						{
+							strcpy((char*)net_packet->data, "SHAK");
+							net_packet->data[4] = 20; // turns into .2
+							net_packet->data[5] = 2;
+							net_packet->address.host = net_clients[c - 1].host;
+							net_packet->address.port = net_clients[c - 1].port;
+							net_packet->len = 6;
+							sendPacketSafe(net_sock, -1, net_packet, c - 1);
+						}
 					}
 				}
 			}

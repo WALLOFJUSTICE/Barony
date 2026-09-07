@@ -2907,7 +2907,7 @@ void actTextSource(Entity* my)
 
 TextSourceScript textSourceScript;
 
-int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string findTag, Entity& src)
+int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string findTag, Entity& src, std::string* outstr)
 {
 	size_t foundScriptTag = input.find(findTag);
 	if ( foundScriptTag != std::string::npos )
@@ -2946,6 +2946,36 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			input.erase(input.find(tagValue), tagValue.length());
 		}
 
+		if ( findTag.compare("@ccmd=") == 0 )
+		{
+			std::vector<std::string> args;
+			args.push_back("");
+			int index = 0;
+			for ( int c = 0; c < tagValue.size(); ++c )
+			{
+				if ( tagValue[c] == ',' )
+				{
+					args.push_back("");
+					++index;
+					continue;
+				}
+				args[index] += tagValue[c];
+			}
+			
+			if ( outstr )
+			{
+				for ( auto& str : args )
+				{
+					if ( (*outstr) != "" )
+					{
+						(*outstr) += ' ';
+					}
+					(*outstr) += str;
+				}
+			}
+			return 0;
+		}
+
 		size_t foundMapReference = tagValue.find(",");
 		// look for comma or - symbol, e.g @power=15,16 or @power=15-20,16-21
 		if ( foundMapReference != std::string::npos )
@@ -2964,7 +2994,6 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 				}
 				return 0;
 			}
-
 
 			std::string x_str = tagValue.substr(0, foundMapReference);
 			std::string y_str = tagValue.substr(foundMapReference + 1, tagValue.length() - foundMapReference);
@@ -3272,11 +3301,11 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 			int y1 = static_cast<int>(src.y / 16);
 			int y2 = static_cast<int>(src.y / 16);
 
-			// offset for generated dungeons
-			x1 += src.mapGenerationRoomX;
+			// offset for generated dungeons - NOT NEEDED since entity coords are absolute
+			/*x1 += src.mapGenerationRoomX;
 			x2 += src.mapGenerationRoomX;
 			y1 += src.mapGenerationRoomY;
-			y2 += src.mapGenerationRoomY;
+			y2 += src.mapGenerationRoomY;*/
 
 			if ( input.find("@attachrange=") != std::string::npos )
 			{
@@ -3289,6 +3318,10 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 					y2 = (result >> 24) & 0xFF;
 				}
 			}
+			/*else
+			{
+				assert(src.mapGenerationRoomX == 0 && src.mapGenerationRoomY == 0);
+			}*/
 			textSourceScript.setAttachedToEntityType(src.textSourceIsScript, attachTo);
 			for ( node_t* node = map.entities->first; node; node = node->next )
 			{
@@ -4419,6 +4452,17 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 				{
 					printlog("%s | %d", (*it).first.c_str(), (*it).second);
 				}*/
+			}
+		}
+		else if ( (*it).find("@ccmd=") != std::string::npos )
+		{
+			std::string profTag = "@ccmd=";
+			std::string cmdStr = "";
+			int result = textSourceProcessScriptTag(input, profTag, src, &cmdStr);
+			if ( result != k_ScriptError )
+			{
+				cmdStr.insert(cmdStr.begin(), '/');
+				consoleCommand(cmdStr.c_str());
 			}
 		}
 		//else if ( (*it).find("@addtomonster=") != std::string::npos ) // adds entire stack to 1 destination monster
@@ -5728,11 +5772,11 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 		int x2 = static_cast<int>(src.x / 16);
 		int y1 = static_cast<int>(src.y / 16);
 		int y2 = static_cast<int>(src.y / 16);
-		// offset for generated dungeons
-		x1 += src.mapGenerationRoomX;
+		// offset for generated dungeons - NOT NEEDED since entity coords are absolute
+		/*x1 += src.mapGenerationRoomX;
 		x2 += src.mapGenerationRoomX;
 		y1 += src.mapGenerationRoomY;
-		y2 += src.mapGenerationRoomY;
+		y2 += src.mapGenerationRoomY;*/
 		if ( script.find("@attachrange=") != std::string::npos )
 		{
 			int result = textSourceProcessScriptTag(script, "@attachrange=", src);
@@ -5744,6 +5788,10 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 				y2 = (result >> 24) & 0xFF;
 			}
 		}
+		/*else
+		{
+			assert(src.mapGenerationRoomX == 0 && src.mapGenerationRoomY == 0);
+		}*/
 		textSourceScript.setAttachedToEntityType(src.textSourceIsScript, attachTo);
 		for ( node_t* node = map.entities->first; node; node = node->next )
 		{

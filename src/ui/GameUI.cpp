@@ -6346,6 +6346,11 @@ std::string getStatusEffectNumberString(Uint8 effectStrength, std::vector<int> b
 	std::string val = "";
 	if ( effectStrength >= 1 )
 	{
+		if ( effectID == EFF_VIGOR )
+		{
+			return std::to_string(effectStrength);
+		}
+
 		int index = 0;
 		for ( auto point : breakpoints )
 		{
@@ -6439,6 +6444,9 @@ std::map<std::string, std::function<std::string(int)>> statusfx_num_lookup =
 	},
 	{ "lighten_load.png", [](int player)
 		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_LIGHTEN_LOAD) / 20, std::vector<int>{1, 2, 3, 4, 5}); }
+	},
+	{ "vigor.png", [](int player)
+		{ return getStatusEffectNumberString((stats[player]->getEffectActive(EFF_VIGOR) >> 4) & 0xF, std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, EFF_VIGOR); }
 	}
 };
 
@@ -6504,6 +6512,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_DEGENERATION)
 				|| stats[player]->getEffectActive(EFF_DISPIRITED)
 				|| stats[player]->getEffectActive(EFF_LIGHTEN_LOAD)
+				|| ((stats[player]->getEffectActive(EFF_VIGOR) >> 4) & 0xF)
 				|| (cast_animation[player].overcharge > 0 || cast_animation[player].overcharge_init > 0)
 				|| (players[player]->mechanics.gremlinBreakableCounter > 0 && stats[player]->type == GREMLIN)
 				|| players[player]->mechanics.getWealthTier() > 0 )

@@ -279,7 +279,7 @@ void initAdorcisedWeapon(Entity* my, Stat* myStats)
 				{
 					if ( myStats->weapon )
 					{
-						if ( rng.rand() % 10 != 0 )
+						if ( rng.rand() % 4 != 0 )
 						{
 							myStats->weapon->isDroppable = false;
 							myStats->monsterNoDropItems = 1;
