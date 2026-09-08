@@ -79,6 +79,9 @@ button_t* butMonsterItemCancel;
 button_t* butItemOK;
 button_t* butItemCancel;
 button_t* butItemX;
+button_t* butTextCopyScript;
+button_t* butTextPasteScript;
+button_t* butTextPasteShiftScript;
 
 bool exitFromItemWindow = false;
 
@@ -243,6 +246,265 @@ void buttonIconify(button_t* my)
 {
 	// aka minimize
 	SDL_MinimizeWindow(screen);
+}
+
+TextSourceScript textSourceScript;
+std::string TextSourceScript::getScriptFromEntity(Entity& src)
+{
+	// assemble the string.
+	char buf[256] = "";
+	int totalChars = 0;
+	for ( int i = 4; i < 60; ++i )
+	{
+		if ( i == 28 ) // circuit_status
+		{
+			continue;
+		}
+		if ( src.skill[i] != 0 )
+		{
+			for ( int c = 0; c < 4; ++c )
+			{
+				buf[totalChars] = static_cast<char>((src.skill[i] >> (c * 8)) & 0xFF);
+				++totalChars;
+			}
+		}
+	}
+	if ( buf[totalChars] != '\0' )
+	{
+		buf[totalChars] = '\0';
+	}
+
+	return buf;
+}
+
+std::pair<int, std::string> textSourceCopyString = { 0, "" };
+
+void buttonTextSourceCopy(button_t* my)
+{
+	if ( selectedEntity[0] != NULL )
+	{
+		int spriteType = checkSpriteType(selectedEntity[0]->sprite);
+		if ( spriteType != 16 )
+		{
+			return;
+		}
+
+		int x = selectedEntity[0]->x / 16;
+		int y = selectedEntity[0]->y / 16;
+		textSourceCopyString.first = x + (y * 10000);
+		textSourceCopyString.second = "";
+		int totalChars = 0;
+		char checkChr = 'a';
+		const int kMaxCharacters = 220; //55 skills, starting at 4 ending at 59, skipping 28. storing 4 chars each.
+		for ( int i = 4; i < 60 && totalChars < kMaxCharacters; ++i )
+		{
+			for ( int c = 0; c < 4; ++c )
+			{
+				if ( totalChars >= 192 )
+				{
+					textSourceCopyString.second += ((spriteProperties[7][totalChars - 192]));
+					checkChr = spriteProperties[7][totalChars - 192];
+				}
+				else if ( totalChars >= 144 )
+				{
+					textSourceCopyString.second += ((spriteProperties[6][totalChars - 144]));
+					checkChr = spriteProperties[6][totalChars - 144];
+				}
+				else if ( totalChars >= 96 )
+				{
+					textSourceCopyString.second += ((spriteProperties[5][totalChars - 96]));
+					checkChr = spriteProperties[5][totalChars - 96];
+				}
+				else if ( totalChars >= 48 )
+				{
+					textSourceCopyString.second += ((spriteProperties[4][totalChars - 48]));
+					checkChr = spriteProperties[4][totalChars - 48];
+				}
+				else
+				{
+					textSourceCopyString.second += ((spriteProperties[3][totalChars]));
+					checkChr = spriteProperties[3][totalChars];
+				}
+				if ( checkChr == '\0' )
+				{
+					totalChars += (48 - (totalChars % 48));
+				}
+				else
+				{
+					++totalChars;
+				}
+			}
+		}
+		strcpy(message, "Copied script.");
+		messagetime = 60;
+		//textSourceCopyString.second = textSourceScript.getScriptFromEntity(*(selectedEntity[0]));
+	}
+}
+
+void buttonTextSourcePaste(button_t* my)
+{
+	if ( selectedEntity[0] != NULL )
+	{
+		int spriteType = checkSpriteType(selectedEntity[0]->sprite);
+		if ( spriteType != 16 )
+		{
+			return;
+		}
+
+		char buf[256] = "";
+		memset(buf, sizeof(buf), 0);
+		for ( int c = 0; c < textSourceCopyString.second.size() && c < 220; ++c )
+		{
+			buf[c] = textSourceCopyString.second[c];
+		}
+		strncpy(spriteProperties[3], buf, 48);
+		strncpy(spriteProperties[4], buf + 48, 48);
+		strncpy(spriteProperties[5], buf + 96, 48);
+		strncpy(spriteProperties[6], buf + 144, 48);
+		strncpy(spriteProperties[7], buf + 192, 48);
+
+		strcpy(message, "Pasted script.");
+		messagetime = 60;
+	}
+}
+
+void buttonTextSourceShiftPaste(button_t* my)
+{
+	if ( selectedEntity[0] != NULL )
+	{
+		int spriteType = checkSpriteType(selectedEntity[0]->sprite);
+		if ( spriteType != 16 )
+		{
+			return;
+		}
+
+		int x = selectedEntity[0]->x / 16;
+		int y = selectedEntity[0]->y / 16;
+		int oldx = textSourceCopyString.first % 10000;
+		int oldy = textSourceCopyString.first / 10000;
+
+		int shiftx = x - oldx;
+		int shifty = y - oldy;
+
+		std::string shiftBuf = textSourceCopyString.second;
+		std::vector<std::pair<std::pair<size_t, size_t>, std::string>> replacements;
+		// look for comma or - symbol, e.g @power=15,16 or @power=15-20,16-21
+		for ( int c = 0; c < shiftBuf.size(); )
+		{
+			size_t foundEquals = shiftBuf.find("=", c);
+			if ( foundEquals != std::string::npos )
+			{
+				size_t foundMapReference = shiftBuf.find(",", foundEquals);
+				size_t foundEndReference = shiftBuf.find_first_of(" \0", foundEquals);
+				if ( foundMapReference < foundEquals )
+				{
+					c = foundEquals + 1;
+					continue;
+				}
+				if ( foundMapReference > foundEndReference )
+				{
+					c = foundEndReference + 1;
+					continue;
+				}
+
+				if ( foundMapReference != std::string::npos )
+				{
+					std::string x_str = shiftBuf.substr(foundEquals + 1, foundMapReference - foundEquals - 1);
+					std::string y_str = shiftBuf.substr(foundMapReference + 1, foundEndReference - foundMapReference - 1);
+
+					int x1 = 0;
+					int x2 = 0;
+					int y1 = 0;
+					int y2 = 0;
+					try {
+						size_t foundMapRange = x_str.find("-");
+						if ( foundMapRange != std::string::npos )
+						{
+							// found map range reference.
+							x1 = std::stoi(x_str.substr(0, foundMapRange));
+							x2 = std::stoi(x_str.substr(foundMapRange + 1, x_str.length() - foundMapRange));
+						}
+						else
+						{
+							x1 = std::stoi(x_str);
+							x2 = x1;
+						}
+						foundMapRange = y_str.find("-");
+						if ( foundMapRange != std::string::npos )
+						{
+							// found map range reference.
+							y1 = std::stoi(y_str.substr(0, foundMapRange));
+							y2 = std::stoi(y_str.substr(foundMapRange + 1, y_str.length() - foundMapRange));
+						}
+						else
+						{
+							y1 = std::stoi(y_str);
+							y2 = y1;
+						}
+
+						x1 += shiftx;
+						x2 += shiftx;
+						y1 += shifty;
+						y2 += shifty;
+					}
+					catch ( const std::exception& e )
+					{
+						x1 = 0;
+						x2 = 0;
+						y1 = 0;
+						y2 = 0;
+						printlog("Error parsing paste script");
+					}
+
+					x1 = std::min(std::max(0, x1), (int)map.width - 1);
+					y1 = std::min(std::max(0, y1), (int)map.height - 1);
+					x2 = std::min(std::max(x1, x2), (int)map.width - 1);
+					y2 = std::min(std::max(y1, y2), (int)map.height - 1);
+
+					std::string fmt = std::to_string(x1);
+					if ( x1 != x2 )
+					{
+						fmt += '-';
+						fmt += std::to_string(x2);
+					}
+					fmt += ',';
+					fmt += std::to_string(y1);
+					if ( y1 != y2 )
+					{
+						fmt += '-';
+						fmt += std::to_string(y2);
+					}
+
+					shiftBuf.replace(shiftBuf.begin() + foundEquals + 1, shiftBuf.begin() + foundEndReference, fmt);
+					c = foundEndReference + 1;
+					c += fmt.size() - (x_str.size() + y_str.size() + 1);
+				}
+				else
+				{
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		
+		char buf[256] = "";
+		memset(buf, sizeof(buf), 0);
+		for ( int c = 0; c < shiftBuf.size() && c < 240; ++c )
+		{
+			buf[c] = shiftBuf[c];
+		}
+		strncpy(spriteProperties[3], buf, 48);
+		strncpy(spriteProperties[4], buf + 48, 48);
+		strncpy(spriteProperties[5], buf + 96, 48);
+		strncpy(spriteProperties[6], buf + 144, 48);
+		strncpy(spriteProperties[7], buf + 192, 48);
+
+		strcpy(message, "Pasted script with shifted coordinates.");
+		messagetime = 60;
+	}
 }
 
 // Toolbox buttons
@@ -3150,6 +3412,47 @@ void buttonSpriteProperties(button_t* my)
 				butItemX->action = &buttonCloseSpriteSubwindow;
 				butItemX->visible = 1;
 				butItemX->focused = 1;
+				break;
+			case 16:
+				butTextCopyScript = newButton();
+				strcpy(butTextCopyScript->label, "Copy");
+				butTextCopyScript->x = subx1 + 8;
+				butTextCopyScript->y = suby2 - 24;
+				butTextCopyScript->sizex = 48;
+				butTextCopyScript->sizey = 16;
+				butTextCopyScript->action = &buttonTextSourceCopy;
+				butTextCopyScript->visible = 1;
+				butTextCopyScript->focused = 1;
+
+				butTextPasteScript = newButton();
+				strcpy(butTextPasteScript->label, "Paste");
+				butTextPasteScript->x = subx1 + 8 + 48 + 16;
+				butTextPasteScript->y = suby2 - 24;
+				butTextPasteScript->sizex = 48;
+				butTextPasteScript->sizey = 16;
+				butTextPasteScript->action = &buttonTextSourcePaste;
+				butTextPasteScript->visible = 1;
+				butTextPasteScript->focused = 1;
+
+				butTextPasteShiftScript = newButton();
+				strcpy(butTextPasteShiftScript->label, "Paste + Coord Shift");
+				butTextPasteShiftScript->x = subx1 + 24 + 48 + 48 + 16;
+				butTextPasteShiftScript->y = suby2 - 24;
+				butTextPasteShiftScript->sizex = 160;
+				butTextPasteShiftScript->sizey = 16;
+				butTextPasteShiftScript->action = &buttonTextSourceShiftPaste;
+				butTextPasteShiftScript->visible = 1;
+				butTextPasteShiftScript->focused = 1;
+
+				button = newButton();
+				strcpy(button->label, "  OK  ");
+				button->x = subx2 - 64;
+				button->y = suby2 - 48;
+				button->sizex = 56;
+				button->sizey = 16;
+				button->action = &buttonSpritePropertiesConfirm;
+				button->visible = 1;
+				button->focused = 1;
 				break;
 			default:
 				button = newButton();
