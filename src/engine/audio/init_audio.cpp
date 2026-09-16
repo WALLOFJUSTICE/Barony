@@ -58,7 +58,7 @@ bool initSoundEngine()
 	fmod_system->setAdvancedSettings(&settings);
 
 	// default 64
-	fmod_system->setSoftwareChannels(32);
+	fmod_system->setSoftwareChannels(64);
 
 	if (!no_sound)
 	{
