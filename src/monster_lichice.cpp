@@ -868,14 +868,17 @@ void lichIceAnimate(Entity* my, Stat* myStats, double dist)
 									{
 										spellID = SPELL_DRAIN_SOUL;
 									}
-									for ( int i = 0; i < 8; ++i )
+									castSpell(my->getUID(), getSpellFromID(SPELL_REVENANT_PUSH), true, false);
 									{
-										Entity* spell = castSpell(my->getUID(), getSpellFromID(spellID), true, false);
-										// do some minor variations in spell angle
-										spell->yaw += i * PI / 4 + ((PI * (-4 + local_rng.rand() % 9)) / 64);
-										spell->vel_x = 4 * cos(spell->yaw);
-										spell->vel_y = 4 * sin(spell->yaw);
-										spell->skill[5] = 50; // travel time
+										for ( int i = 0; i < 8; ++i )
+										{
+											Entity* spell = castSpell(my->getUID(), getSpellFromID(spellID), true, false);
+											// do some minor variations in spell angle
+											spell->yaw += i * PI / 4 + ((PI * (-4 + local_rng.rand() % 9)) / 64);
+											spell->vel_x = 4 * cos(spell->yaw);
+											spell->vel_y = 4 * sin(spell->yaw);
+											spell->skill[5] = 50; // travel time
+										}
 									}
 								}
 							}

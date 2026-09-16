@@ -3534,11 +3534,16 @@ void actMonster(Entity* my)
 						my->monsterSpecialTimer = 20;
 						my->monsterLichFireMeleePrev = 0;
 						my->monsterLichFireMeleeSeq = LICH_ATK_BASICSPELL_SINGLE;
+
+						myStats->setAttributeInt("LICHFIRE_RANGE_DELAY", 150);
 					}
 					else if ( myStats->OLDHP != myStats->HP )
 					{
-						if ( local_rng.rand() % 4 == 0 )
+						int val = myStats->modifyAttributeInt("LICHFIRE_DAMAGE_DODGE", 1);
+						if ( local_rng.rand() % 4 == 0 || val >= 8 )
 						{
+							myStats->setAttributeInt("LICHFIRE_DAMAGE_DODGE", 0);
+
 							// chance to dodge on hp loss
 							playSoundEntity(my, 180, 128);
 							dir = my->yaw - (PI / 2) + PI * (local_rng.rand() % 2);
@@ -3546,6 +3551,8 @@ void actMonster(Entity* my)
 							MONSTER_VELY = sin(dir) * 3;
 							my->monsterState = MONSTER_STATE_LICHFIRE_DODGE;
 							my->monsterSpecialTimer = 20;
+
+							myStats->setAttributeInt("LICHFIRE_RANGE_DELAY", 150);
 						}
 					}
 					else if ( lichDist > 64 )
@@ -3568,6 +3575,8 @@ void actMonster(Entity* my)
 							MONSTER_VELY = sin(dir) * 3;
 							my->monsterState = MONSTER_STATE_LICHFIRE_DODGE;
 							my->monsterSpecialTimer = 50;
+
+							myStats->clearAttributeInt("LICHFIRE_RANGE_DELAY");
 						}
 					}
 				}
@@ -5508,8 +5517,8 @@ void actMonster(Entity* my)
 		//		break;
 		//	}
 		//	
-		//	messagePlayer(0, MESSAGE_DEBUG, "uid: %d | ticks: %d | %s, ATK: %d hittime:%d, atktime:%d, (%d|%d), timer:%d", 
-		//		my->getUID(), ticks, state_string.c_str(), my->monsterAttack, my->monsterHitTime, MONSTER_ATTACKTIME, devilstate, devilacted, my->monsterSpecialTimer); //Debug message.
+		//	messagePlayer(0, MESSAGE_DEBUG, "uid: %d | ticks: %d | %s, ATK: %d hittime:%d, atktime:%d, (%d| reflex: %d), timer:%d", 
+		//		my->getUID(), ticks, state_string.c_str(), my->monsterAttack, my->monsterHitTime, MONSTER_ATTACKTIME, my->monsterSpecialState, myReflex, my->monsterSpecialTimer); //Debug message.
 		//}
 
 		int linetraceTargetEnemyFlags = LINETRACE_ATK_CHECK_FRIENDLYFIRE;
@@ -5562,6 +5571,20 @@ void actMonster(Entity* my)
 					dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
 					my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
 					my->handleKnockbackDamage(*myStats, hit.entity);
+				}
+			}
+
+			// lich cooldown extra
+			if ( myStats->type == LICH )
+			{
+				int counter = myStats->getAttributeInt("LICH_SINGLE_ATK");
+				int maxCounter = std::max(3, 10 * myStats->HP / myStats->MAXHP); // 3-10
+				if ( counter >= maxCounter )
+				{
+					if ( my->monsterSpecialTimer > 0 )
+					{
+						my->monsterSpecialTimer--;
+					}
 				}
 			}
 
@@ -5850,7 +5873,7 @@ void actMonster(Entity* my)
 			if (myReflex)
 			{
 				if (myStats->type == MINOTAUR 
-					|| myStats->type == LICH 
+					|| (myStats->type == LICH && my->monsterState != MONSTER_STATE_ATTACK) /* fix looping back into wait mode mid-attack*/
 					|| myStats->type == LICH_FIRE 
 					|| myStats->type == LICH_ICE 
 					|| (myStats->type == CREATURE_IMP && strstr(map.name, "Boss") && !my->monsterAllyGetPlayerLeader())
@@ -5891,7 +5914,36 @@ void actMonster(Entity* my)
 							}
 						}
 					}
-					if ( playerToChase >= 0 && players[playerToChase] && players[playerToChase]->entity )
+
+					if ( playerToChase == -1 )
+					{
+						distToPlayer = 0;
+						for ( int c = 0; c < MAXPLAYERS; c++ )
+						{
+							if ( players[c]->entity )
+							{
+								if ( !distToPlayer )
+								{
+									distToPlayer = sqrt(pow(my->x - players[c]->entity->x, 2) + pow(my->y - players[c]->entity->y, 2));
+									playerToChase = c;
+								}
+								else
+								{
+									double newDistToPlayer = sqrt(pow(my->x - players[c]->entity->x, 2) + pow(my->y - players[c]->entity->y, 2));
+									if ( newDistToPlayer < distToPlayer )
+									{
+										distToPlayer = newDistToPlayer;
+										playerToChase = c;
+									}
+								}
+							}
+						}
+						if ( playerToChase >= 0 && players[playerToChase] && players[playerToChase]->entity )
+						{
+							my->lookAtEntity(*players[playerToChase]->entity); // herx fix pathing softlock here
+						}
+					}
+					else if ( playerToChase >= 0 && players[playerToChase] && players[playerToChase]->entity )
 					{
 						if ( myStats->type == SHADOW )
 						{
@@ -8579,7 +8631,16 @@ timeToGoAgain:
 							}
 							else
 							{
-								dir = my->yaw - atan2(MONSTER_VELY, MONSTER_VELX);
+								if ( myStats->type == LICH && entity && entityDist(my, entity) <= 64.0 )
+								{
+									// turn and face target
+									real_t lookTangent = atan2(entity->y - my->y, entity->x - my->x);
+									dir = my->yaw - lookTangent;
+								}
+								else
+								{
+									dir = my->yaw - atan2(MONSTER_VELY, MONSTER_VELX);
+								}
 							}
 
 							if ( myStats->getEffectActive(EFF_SPIN) )
@@ -9193,7 +9254,8 @@ timeToGoAgain:
 			}
 			if ( my->monsterSpecialTimer % 15 == 0 )
 			{
-				spawnExplosion(my->x - 8 + local_rng.rand() % 16, my->y - 8 + local_rng.rand() % 16, my->z -4 + local_rng.rand() % 8);
+				spawnExplosion(my->x - 8 + local_rng.rand() % 16, my->y - 8 + local_rng.rand() % 16, my->z -4 + local_rng.rand() % 8, 
+					SOUND_CHANNEL_GROUP_NO_CHANNEL_PICK, 92);
 			}
 			--my->monsterSpecialTimer;
 			if ( my->monsterSpecialTimer <= 0 )
@@ -10175,7 +10237,7 @@ timeToGoAgain:
 							}
 							else
 							{
-								Entity* spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBALL), true, false);
+								Entity* spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBLAST), true, false);
 								spell->yaw += (PI / 64) * (-1 + local_rng.rand() % 3);
 								spell->vel_x = cos(spell->yaw) * 4;
 								spell->vel_y = sin(spell->yaw) * 4;
@@ -10198,15 +10260,15 @@ timeToGoAgain:
 							}
 							else
 							{
-								Entity* spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBALL), true, false);
+								Entity* spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBLAST), true, false);
 								spell->yaw += PI / 16;
 								spell->vel_x = cos(spell->yaw) * 4;
 								spell->vel_y = sin(spell->yaw) * 4;
-								spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBALL), true, false);
+								spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBLAST), true, false);
 								spell->yaw -= PI / 16;
 								spell->vel_x = cos(spell->yaw) * 4;
 								spell->vel_y = sin(spell->yaw) * 4;
-								spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBALL), true, false);
+								spell = castSpell(my->getUID(), getSpellFromID(SPELL_FIREBLAST), true, false);
 							}
 							++my->monsterLichMagicCastCount;
 						}
@@ -11226,10 +11288,46 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 
 			if ( myStats->type == LICH )
 			{
+				int counter = myStats->getAttributeInt("LICH_SINGLE_ATK");
+				int maxCounter = std::max(1, 5 * myStats->HP / myStats->MAXHP);
+				if ( this->monsterSpecialTimer <= 5 )
+				{
+					myStats->setAttributeInt("LICH_SINGLE_ATK", 0);
+				}
+
 				this->monsterSpecialTimer++;
 				if ( this->monsterSpecialTimer >= 5 )
 				{
-					this->monsterSpecialTimer = 90;
+					if ( this->monsterSpecialTimer >= 6 )
+					{
+						// single blast
+						myStats->modifyAttributeInt("LICH_SINGLE_ATK", 1);
+					}
+
+					if ( counter >= maxCounter && this->monsterSpecialTimer >= 6 )
+					{
+						myStats->setAttribute("LICH_SPELL", std::to_string(SPELL_ARC_LIGHTNING));
+					}
+					else 
+					{
+						if ( this->monsterSpecialTimer >= 60 )
+						{
+							if ( myStats->HP < myStats->MAXHP * 0.8 )
+							{
+								myStats->setAttribute("LICH_SPELL", std::to_string(SPELL_ARC_LIGHTNING));
+							}
+						}
+
+						if ( this->monsterSpecialTimer >= 6 )
+						{
+							// single blasts, reduce next counter by 10 for full blast at 0 timer
+							this->monsterSpecialTimer = std::min(this->monsterSpecialTimer, std::max(30, 90 - counter * 10));
+						}
+						else
+						{
+							this->monsterSpecialTimer = 90;
+						}
+					}
 					this->monsterTarget = 0;
 					this->monsterTargetX = this->x - 50 + local_rng.rand() % 100;
 					this->monsterTargetY = this->y - 50 + local_rng.rand() % 100;
@@ -15260,6 +15358,14 @@ int Entity::monsterGetDexterityForMovement()
 		if ( (myStats->type == MIMIC || myStats->type == MINIMIMIC) && monsterAttack == MONSTER_POSE_MELEE_WINDUP1 )
 		{
 			myDex += 3;
+		}
+
+		if ( myStats->type == LICH_FIRE )
+		{
+			if ( myStats->getAttributeInt("LICHFIRE_RANGE_DELAY") > 0 )
+			{
+				myDex = std::min(5, myDex);
+			}
 		}
 	}
 	return myDex;

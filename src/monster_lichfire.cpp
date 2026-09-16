@@ -368,6 +368,29 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 			}
 		}
 
+		if ( myStats->getAttributeInt("LICHFIRE_RANGE_DELAY") > 0 )
+		{
+			int val = myStats->modifyAttributeInt("LICHFIRE_RANGE_DELAY", -1);
+			if ( val <= 0 )
+			{
+				myStats->clearAttributeInt("LICHFIRE_RANGE_DELAY");
+			}
+		}
+
+		if ( Entity* target = uidToEntity(my->monsterTarget) )
+		{
+			if ( entityDist(target, my) <= 32.0 )
+			{
+				int val = myStats->modifyAttributeInt("LICHFIRE_CHASE_DELAY", 1);
+
+				if ( val >= 8 * TICKS_PER_SECOND )
+				{
+					myStats->setAttributeInt("LICHFIRE_CHASE_DELAY", 0);
+					myStats->setAttributeInt("LICHFIRE_RANGE_DELAY", 200);
+				}
+			}
+		}
+
 		if ( my->monsterLichBattleState == LICH_BATTLE_IMMOBILE )
 		{
 			my->flags[PASSABLE] = true;
@@ -702,8 +725,10 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 						}
 						else
 						{
-							createParticleDropRising(my, 607, 1.0);
+							//createParticleDropRising(my, 607, 1.0);
+							spawnHeatOrbitSpin(my, 233, false);
 						}
+						playSoundEntityLocal(my, 170, 32);
 						if ( multiplayer != CLIENT )
 						{
 							if ( my->monsterState != MONSTER_STATE_LICHFIRE_DIE )
@@ -748,7 +773,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 										real_t targetDist = std::max(8.0, entityDist(my, target) - 48.0);
 										for ( int i = 0; i < 5; ++i )
 										{
-											my->castFallingMagicMissile(SPELL_FIREBALL, targetDist -4 + local_rng.rand() % 9 + i * 16, 0.f, i * 20);
+											my->castFallingMagicMissile(SPELL_FIREBLAST, targetDist -4 + local_rng.rand() % 9 + i * 16, 0.f, i * 50);
 										}
 									}
 								}
@@ -777,18 +802,26 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 									if ( target )
 									{
 										real_t targetDist = std::min(entityDist(my, target), 32.0);
-										for ( int i = 0; i < 8; ++i )
+										/*for ( int i = 0; i < 5; ++i )
 										{
-											my->castFallingMagicMissile(SPELL_FIREBALL, std::max(targetDist - 8 + local_rng.rand() % 8, 4.0), dir + i * PI / 4, 0);
+											my->castFallingMagicMissile(SPELL_FIREBLAST, std::max(targetDist - 8 + local_rng.rand() % 8, 4.0), dir + i * PI / 4, i * 40);
+										}*/
+
+										if ( Entity* spellTimer = createParticleTimer(my, 3 * TICKS_PER_SECOND + 10, -1) )
+										{
+											spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_LICHFIRE_FALLING_TARGET;
+											spellTimer->yaw = my->yaw;
 										}
 									}
 									else
 									{
-										for ( int i = 0; i < 8; ++i )
+										if ( Entity* spellTimer = createParticleTimer(my, 3 * TICKS_PER_SECOND + 10, -1) )
 										{
-											my->castFallingMagicMissile(SPELL_FIREBALL, 16 + local_rng.rand() % 8, dir + i * PI / 4, 0);
+											spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_LICHFIRE_FALLING_TARGET;
+											spellTimer->yaw = my->yaw;
 										}
 									}
+									myStats->setAttributeInt("LICHFIRE_RANGE_DELAY", 200);
 								}
 							}
 						}
@@ -962,7 +995,14 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 								}
 								else
 								{
-									castSpell(my->getUID(), getSpellFromID(SPELL_FIREBALL), true, false);
+									if ( my->monsterLichAllyStatus == LICH_ALLY_DEAD )
+									{
+										castSpell(my->getUID(), getSpellFromID(SPELL_FIREBLAST), true, false);
+									}
+									else
+									{
+										castSpell(my->getUID(), getSpellFromID(SPELL_FIREBALL), true, false);
+									}
 								}
 							}
 							else
@@ -1132,7 +1172,7 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 void Entity::lichFireSetNextAttack(Stat& myStats)
 {
 	monsterLichFireMeleePrev = monsterLichFireMeleeSeq;
-	//messagePlayer(0, "melee: %d, magic %d", monsterLichMeleeSwingCount, monsterLichMagicCastCount);
+	//messagePlayer(0, MESSAGE_MISC, "melee: %d, magic %d", monsterLichMeleeSwingCount, monsterLichMagicCastCount);
 	switch ( monsterLichFireMeleeSeq )
 	{
 		case LICH_ATK_VERTICAL_SINGLE:
