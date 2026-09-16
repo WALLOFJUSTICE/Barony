@@ -2480,3 +2480,8 @@ bool Stat::isPoisonable()
 
 	return true;
 }
+
+bool Stat::isBlitzChargeActive()
+{
+	return (((int)getEffectActive(EFF_DASH) - 2) / (MAXPLAYERS + 1)) == 2;
+}

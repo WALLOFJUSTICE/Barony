@@ -435,6 +435,16 @@ void actFociGib(Entity* my)
 			}
 			else
 			{
+				/*Entity* autohitEntity = nullptr;
+				if ( my->actmagicOrbitHitTargetUID1 != 0 )
+				{
+					autohitEntity = uidToEntity(my->actmagicOrbitHitTargetUID1);
+				}
+				if ( autohitEntity )
+				{
+					real_t tangent = atan2(autohitEntity->y - my->y, autohitEntity->x - my->x);
+				}*/
+
 				real_t dist = clipMove(&my->x, &my->y, my->vel_x, my->vel_y, my);
 				if ( multiplayer != CLIENT )
 				{
@@ -1191,7 +1201,7 @@ Entity* spawnGib(Entity* parentent, int customGibSprite)
 	return entity;
 }
 
-Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBonus, Uint32 parentUid, int sprite, Uint32 seed)
+Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBonus, Uint32 parentUid, int sprite, Uint32 seed, Entity* autoHitTarget)
 {
 	Entity* my = newEntity(sprite, 1, map.entities, nullptr); //Gib entity.
 	if ( !my )
@@ -1419,6 +1429,11 @@ Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBo
 	my->sizex = 3;
 	my->sizey = 3;
 	real_t spread = 0.2 * foci_spread;
+	if ( autoHitTarget )
+	{
+		spread /= 10.0;
+		my->actmagicOrbitHitTargetUID1 = autoHitTarget->getUID();
+	}
 	my->yaw = dir - spread + ((rng.rand() % 21) * (spread / 10));
 	my->pitch = 0.0; //(rng.rand() % 360)* PI / 180.0;
 	my->roll = 0.0; //(rng.rand() % 360)* PI / 180.0;
@@ -1518,9 +1533,17 @@ Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBo
 			SDLNet_Write16((Sint16)(sprite), &net_packet->data[16]);
 			SDLNet_Write32(seed, &net_packet->data[18]);
 			SDLNet_Write16((Sint16)(velocityBonus * 256), &net_packet->data[22]);
+			if ( autoHitTarget )
+			{
+				SDLNet_Write32(autoHitTarget->getUID(), &net_packet->data[24]);
+			}
+			else
+			{
+				SDLNet_Write32(0, &net_packet->data[24]);
+			}
 			net_packet->address.host = net_clients[c - 1].host;
 			net_packet->address.port = net_clients[c - 1].port;
-			net_packet->len = 24;
+			net_packet->len = 28;
 			sendPacketSafe(net_sock, -1, net_packet, c - 1);
 		}
 	}

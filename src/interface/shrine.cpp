@@ -44,7 +44,6 @@ enum InstrumentOrder {
 
 bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, int tier, int* outLangEntry);
 bool applySupplicationEffect(std::string tier_str, Entity* target, Entity* shrine);
-void spawnHeatOrbitSpin(Entity* target, int sprite, bool light);
 
 std::vector<std::pair<std::string, ShrineEffects_t::ShrineEffectsPools>> ShrineEffects_t::shrineEffectsTable =
 {
@@ -7239,6 +7238,11 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 	offeringBtn->setText(Language::get(7000));
 	offeringGlyph->disabled = true;
 
+	auto arrowLeftGlyph = baseFrame->findImage("arrow left glyph");
+	arrowLeftGlyph->disabled = true;
+	auto arrowRightGlyph = baseFrame->findImage("arrow right glyph");
+	arrowRightGlyph->disabled = true;
+
 	auto actionBtn = baseFrame->findButton("action button");
 	actionBtn->setDisabled(true);
 	if ( parentGUI.guiType == GUI_TYPE_ETERNALSHRINE_ASCENSION )
@@ -7302,6 +7306,8 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 
 	auto arrowLeftBtn = baseFrame->findButton("arrow left button");
 	auto arrowRightBtn = baseFrame->findButton("arrow right button");
+	arrowLeftBtn->setBackground("*#images/ui/Shrines/altar_inspiration/ArrowLeft.png");
+	arrowRightBtn->setBackground("*#images/ui/Shrines/altar_inspiration/ArrowRight.png");
 	arrowLeftBtn->setDisabled(true);
 	arrowRightBtn->setDisabled(true);
 	arrowLeftBtn->setInvisible(true);
@@ -7380,14 +7386,14 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 				actionBtn->setBackgroundActivated("*#images/ui/Shrines/HUD_CharSheet_ButtonCompactPress_00.png");
 			}
 
-
+			static ConsoleVariable<int> cvar_eternal_shrine_arrow_y("/eternal_shrine_arrow_y", -8);
 			if ( !arrowLeftBtn->isInvisible() )
 			{
 				arrowLeftBtn->setColor(makeColor(255, 255, 255, color.a));
 				arrowLeftBtn->setHighlightColor(makeColor(255, 255, 255, color.a));
 				SDL_Rect pos = arrowLeftBtn->getSize();
 				pos.x = 46;
-				pos.y = 194;
+				pos.y = 194 + *cvar_eternal_shrine_arrow_y;
 				arrowLeftBtn->setSize(pos);
 			}
 			if ( !arrowRightBtn->isInvisible() )
@@ -7396,7 +7402,7 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 				arrowRightBtn->setHighlightColor(makeColor(255, 255, 255, color.a));
 				SDL_Rect pos = arrowRightBtn->getSize();
 				pos.x = 140;
-				pos.y = 194;
+				pos.y = 194 + *cvar_eternal_shrine_arrow_y;
 				arrowRightBtn->setSize(pos);
 
 				ascensionImg->color = arrowLeftBtn->getColor();
@@ -7470,6 +7476,48 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 				if ( arrowRightBtn->isSelected() )
 				{
 					arrowRightBtn->deselect();
+				}
+
+				static ConsoleVariable<int> cvar_eternal_shrine_shoulder_glyphx("/eternal_shrine_shoulder_glyphx", 0);
+				static ConsoleVariable<int> cvar_eternal_shrine_shoulder_glyphy("/eternal_shrine_shoulder_glyphy", -8);
+
+				if ( !arrowLeftBtn->isInvisible() )
+				{
+					arrowLeftGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageLeft");
+					if ( auto imgGet = Image::get(arrowLeftGlyph->path.c_str()) )
+					{
+						arrowLeftGlyph->pos.w = imgGet->getWidth();
+						arrowLeftGlyph->pos.h = imgGet->getHeight();
+						arrowLeftGlyph->disabled = false;
+					}
+					arrowLeftGlyph->pos.x = arrowLeftBtn->getSize().x + arrowLeftBtn->getSize().w - arrowLeftGlyph->pos.w - *cvar_eternal_shrine_shoulder_glyphx;
+					if ( arrowLeftGlyph->pos.x % 2 == 1 )
+					{
+						++arrowLeftGlyph->pos.x;
+					}
+					arrowLeftGlyph->color = arrowLeftBtn->getColor();
+					arrowLeftGlyph->pos.y = arrowLeftBtn->getSize().y - 4 - arrowLeftGlyph->pos.h + 8 + *cvar_eternal_shrine_shoulder_glyphy;
+
+					arrowLeftBtn->setBackground("*#images/ui/Shrines/altar_inspiration/ArrowLeftHigh.png");
+				}
+				if ( !arrowRightBtn->isInvisible() )
+				{
+					arrowRightGlyph->path = Input::inputs[playernum].getGlyphPathForBinding("MenuPageRight");
+					if ( auto imgGet = Image::get(arrowRightGlyph->path.c_str()) )
+					{
+						arrowRightGlyph->pos.w = imgGet->getWidth();
+						arrowRightGlyph->pos.h = imgGet->getHeight();
+						arrowRightGlyph->disabled = false;
+					}
+					arrowRightGlyph->pos.x = arrowRightBtn->getSize().x + *cvar_eternal_shrine_shoulder_glyphx;
+					if ( arrowRightGlyph->pos.x % 2 == 1 )
+					{
+						++arrowRightGlyph->pos.x;
+					}
+					arrowRightGlyph->color = arrowLeftBtn->getColor();
+					arrowRightGlyph->pos.y = arrowRightBtn->getSize().y - 4 - arrowRightGlyph->pos.h + 8 + *cvar_eternal_shrine_shoulder_glyphy;
+
+					arrowRightBtn->setBackground("*#images/ui/Shrines/altar_inspiration/ArrowRightHigh.png");
 				}
 			}
 
@@ -7589,12 +7637,12 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 						offeringGlyph->pos.h = imgGet->getHeight();
 						offeringGlyph->disabled = false;
 					}
-					offeringGlyph->pos.x = offeringBtn->getSize().x + offeringBtn->getSize().w - 16;
+					offeringGlyph->pos.x = offeringBtn->getSize().x + offeringBtn->getSize().w + 2;
 					if ( offeringGlyph->pos.x % 2 == 1 )
 					{
 						++offeringGlyph->pos.x;
 					}
-					offeringGlyph->pos.y = offeringBtn->getSize().y + offeringBtn->getSize().h - 16;
+					offeringGlyph->pos.y = offeringBtn->getSize().y + offeringBtn->getSize().h - 24;
 				}
 			}
 		}
@@ -7646,7 +7694,8 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 		if ( player->bUseCompactGUIWidth() )
 		{
 			// the inventory tooltip provides the prompt before item is placed
-			if ( !strcmp(activateSelectionPrompt->getText(), Language::get(4172)) )
+			if ( !strcmp(activateSelectionPrompt->getText(), Language::get(4172))
+				|| !strcmp(activateSelectionPrompt->getText(), Language::get(7234)) )
 			{
 				animTooltip = 0.0;
 			}
@@ -7857,8 +7906,17 @@ void GenericGUIMenu::EternalShrineGUI_t::updateEternalShrine()
 						Input::inputs[playernum].consumeBinaryToggle("MenuAlt2");
 					}
 				}
-				else if ( Input::inputs[playernum].binaryToggle("MenuPageRight") || Input::inputs[playernum].binaryToggle("MenuPageLeft") )
+				else if ( Input::inputs[playernum].binary("MenuPageRight") || Input::inputs[playernum].binary("MenuPageLeft") )
 				{
+					if ( Input::inputs[playernum].binary("MenuPageRight") )
+					{
+						arrowRightBtn->setBackground("*#images/ui/Shrines/altar_inspiration/ArrowRightPress.png");
+					}
+					else if ( Input::inputs[playernum].binary("MenuPageLeft") )
+					{
+						arrowLeftBtn->setBackground("*#images/ui/Shrines/altar_inspiration/ArrowLeftPress.png");
+					}
+
 					bool left = Input::inputs[playernum].consumeBinaryToggle("MenuPageLeft");
 					bool right = Input::inputs[playernum].consumeBinaryToggle("MenuPageRight");
 					if ( (left || right)  )
@@ -8491,7 +8549,18 @@ void GenericGUIMenu::EternalShrineGUI_t::createEternalShrine()
 		offeringGlyph->disabled = true;
 		offeringGlyph->ontop = true;
 
+
 		{
+			auto arrowGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "arrow left glyph");
+			arrowGlyph->disabled = true;
+			arrowGlyph->ontop = true;
+
+			arrowGlyph = bgFrame->addImage(SDL_Rect{ 0, 0, 0, 0 },
+				0xFFFFFFFF, "", "arrow right glyph");
+			arrowGlyph->disabled = true;
+			arrowGlyph->ontop = true;
+
 			auto arrowButton = bgFrame->addButton("arrow left button");
 			SDL_Rect btnPos{ 0, 0, 20, 32 };
 			arrowButton->setSize(btnPos);
@@ -8787,11 +8856,27 @@ GenericGUIMenu::EternalShrineGUI_t::EternalItemActions_t GenericGUIMenu::Eternal
 		{
 			if ( item->uid == sendItem1Uid )
 			{
-				activateSelectionPrompt->setText(Language::get(4173));
+				if ( currentView == ASSIST_SHRINE_VIEW_ACTION
+					&& parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ASCENSION )
+				{
+					activateSelectionPrompt->setText(Language::get(7235));
+				}
+				else
+				{
+					activateSelectionPrompt->setText(Language::get(4173));
+				}
 			}
 			else
 			{
-				activateSelectionPrompt->setText(Language::get(4172));
+				if ( currentView == ASSIST_SHRINE_VIEW_ACTION
+					&& parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ASCENSION )
+				{
+					activateSelectionPrompt->setText(Language::get(7234));
+				}
+				else
+				{
+					activateSelectionPrompt->setText(Language::get(4172));
+				}
 			}
 			/*else if ( isTooltipForRecvItem )
 			{
@@ -9830,12 +9915,12 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	}
 	else if ( effect_str == "LIGHTEN_LOAD" )
 	{
-		int effectStrength = std::min(3, tier) * 20;
+		int effectStrength = std::min(3, tier) * 20 + 40;
 		int duration = buffDuration;
-		if ( target->setEffect(EFF_LIGHTEN_LOAD, (Uint8)effectStrength, duration, false) )
+		if ( target->setEffect(EFF_LIGHTEN_LOAD, (Uint8)effectStrength, duration, false, true, true) )
 		{
 			messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(6681));
-			playSoundEntity(target, 178, 128);
+			playSoundEntity(target, 901, 128);
 			spawnMagicEffectParticles(target->x, target->y, target->z, 170);
 			result = true;
 		}

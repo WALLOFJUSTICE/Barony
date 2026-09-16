@@ -328,6 +328,11 @@ bool rangefinderTargetEnemyType(spell_t& spell, Entity& entity)
 	}
 	else if ( spell.ID == SPELL_BOOBY_TRAP )
 	{
+		if ( (entity.behavior == &actMagicMissile || entity.behavior == &actMagicClient) && entity.sprite == 2575 )
+		{
+			return true;
+		}
+
 		return entity.isDamageableCollider() || entity.behavior == &actFurniture
 			|| entity.behavior == &actChest || entity.behavior == &actDoor 
 			|| (entity.behavior == &actMonster 
@@ -801,6 +806,11 @@ void spellcasting_animation_manager_t::setRangeFinderLocation()
 										real_t targetTileDist = 4.0 + sqrt(pow(target_x - entity->x, 2) + pow(target_y - entity->y, 2));
 										crossDist = sqrt(pow(targetTileDist, 2) + pow(crossDist, 2));
 									}
+									else if ( spell->ID == SPELL_BOOBY_TRAP && (entity->behavior == &actMagicMissile || entity->behavior == &actMagicClient) )
+									{
+										real_t targetTileDist = 4.0 + sqrt(pow(target_x - entity->x, 2) + pow(target_y - entity->y, 2));
+										crossDist = sqrt(pow(targetTileDist, 2) + pow(crossDist, 2));
+									}
 									entitiesInRange.push(EntitySpellTargetLocation{entity, dist, crossDist, 0});
 								}
 								hit.entity = ohit;
@@ -914,6 +924,8 @@ void spellcastAnimationUpdateReceive(int player, int attackPose, int castTime)
 	}
 }
 
+void spellcastingAnimationManager_completeSpell(int player, spellcasting_animation_manager_t* animation_manager, bool deactivate);
+
 void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, Uint32 caster_uid, spell_t* spell, bool usingSpellbook, bool usingTome)
 {
 	//This function triggers the spellcasting animation and sets up everything.
@@ -943,10 +955,6 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 
 	bool overchargeRepeat = animation_manager->overcharge > 0;
 
-	if ( !overchargeRepeat )
-	{
-		playSoundEntityLocal(caster, 170, 128 );
-	}
 	Stat* stat = caster->getStats();
 
 	//Save these three very important pieces of data.
@@ -1077,7 +1085,14 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 			//animation_manager->times_to_circle = (spellCost / 20) + 1; //Circle once for every 20 mana the spell costs.
 		}
 	}
-	animation_manager->times_to_circle = std::max(HANDMAGIC_TICKS_PER_CIRCLE / 2, animation_manager->times_to_circle);
+	if ( spell->ID == SPELL_BLITZ_CHARGE )
+	{
+		animation_manager->times_to_circle = std::max(0, animation_manager->times_to_circle);
+	}
+	else
+	{
+		animation_manager->times_to_circle = std::max(HANDMAGIC_TICKS_PER_CIRCLE / 2, animation_manager->times_to_circle);
+	}
 	if ( overchargeRepeat )
 	{
 		animation_manager->times_to_circle = 0;
@@ -1086,6 +1101,15 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 	animation_manager->consume_timer = animation_manager->consume_interval;
 	animation_manager->setRangeFinderLocation();
 
+	if ( spell->ID == SPELL_BLITZ_CHARGE && animation_manager->times_to_circle == 0 )
+	{
+		spellcastingAnimationManager_completeSpell(player, animation_manager, true);
+		return;
+	}
+	if ( !overchargeRepeat )
+	{
+		playSoundEntityLocal(caster, 170, 128);
+	}
 	spellcastAnimationUpdate(player, MONSTER_POSE_MAGIC_WINDUP1, animation_manager->times_to_circle + HANDMAGIC_TICKS_PER_CIRCLE);
 }
 

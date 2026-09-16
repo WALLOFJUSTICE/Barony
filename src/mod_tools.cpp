@@ -3106,6 +3106,21 @@ std::string ItemTooltips_t::getCostOfSpellString(const int player, Item& item)
 		}
 		snprintf(buf, sizeof(buf), str.c_str(), getCostOfSpell(spell), getGoldCostOfSpell(spell, player));
 	}
+	else if ( spell->ID == SPELL_KEG_BOUNCE )
+	{
+		std::string templateName = "template_spell_cost_metal_scrap";
+		std::string str;
+		for ( auto it = templates[templateName].begin();
+			it != templates[templateName].end(); ++it )
+		{
+			str += *it;
+			if ( std::next(it) != ItemTooltips.templates[templateName].end() )
+			{
+				str += '\n';
+			}
+		}
+		snprintf(buf, sizeof(buf), str.c_str(), getCostOfSpell(spell), getScrapCostOfSpell(spell, player).first);
+	}
 	else
 	{
 		std::string templateName = "template_spell_cost";

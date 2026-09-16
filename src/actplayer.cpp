@@ -7056,12 +7056,23 @@ int Player::PlayerMovement_t::getCharacterWeight()
 	return weight;
 }
 
-int Player::PlayerMovement_t::getCharacterModifiedWeight(int* customWeight)
+int Player::PlayerMovement_t::getCharacterModifiedWeight(int* customWeight, bool equippedCustomWeight)
 {
 	int weight = getCharacterWeight();
 	if ( customWeight )
 	{
 		weight = *customWeight;
+	}
+	if ( stats[player.playernum]->getEffectActive(EFF_LIGHTEN_LOAD) > 0
+		&& !customWeight || (customWeight && equippedCustomWeight))
+	{
+		int equippedWeight = getCharacterEquippedWeight();
+		if ( equippedWeight >= 0 )
+		{
+			weight -= equippedWeight;
+			equippedWeight *= (100 - std::min(100, std::max(0, (int)stats[player.playernum]->getEffectActive(EFF_LIGHTEN_LOAD)))) / 100.0;
+			weight += equippedWeight;
+		}
 	}
 
 	if ( gameplayCustomManager.inUse() )
@@ -7072,10 +7083,17 @@ int Player::PlayerMovement_t::getCharacterModifiedWeight(int* customWeight)
 	{
 		weight = weight * 0.5;
 	}
-	if ( stats[player.playernum]->getEffectActive(EFF_LIGHTEN_LOAD) > 0 )
+
+	real_t modifier = 1.0;
+	if ( stats[player.playernum]->getEffectActive(EFF_SPARSITY) > 0 )
 	{
-		weight = weight * (100 - std::min(100, std::max(0, (int)stats[player.playernum]->getEffectActive(EFF_LIGHTEN_LOAD)))) / 100.0;
+		modifier *= (100 - std::min(100, std::max(0, (int)stats[player.playernum]->getEffectActive(EFF_SPARSITY)))) / 100.0;
 	}
+	if ( stats[player.playernum]->getEffectActive(EFF_DENSITY) > 0 )
+	{
+		modifier += (std::min(100, std::max(0, (int)stats[player.playernum]->getEffectActive(EFF_DENSITY)))) / 100.0;
+	}
+	weight *= modifier;
 	return weight;
 }
 
@@ -7387,6 +7405,13 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 					lateralMultiplier = 0.0;
 				}
 			}
+			if ( stats[PLAYER_NUM]->getEffectActive(EFF_ALACRITY) > 0 )
+			{
+				real_t factor = (std::min(100, std::max(0, (int)stats[PLAYER_NUM]->getEffectActive(EFF_ALACRITY)))) / 100.0;
+
+				backpedalMultiplier = std::min(0.75, backpedalMultiplier + (0.75 - std::min(0.75, backpedalMultiplier)) * factor);
+				lateralMultiplier = std::min(1.5, lateralMultiplier + (1.5 - std::min(1.5, lateralMultiplier)) * factor);
+			}
 			if ( stats[PLAYER_NUM]->getEffectActive(EFF_DASH) )
 			{
 				backpedalMultiplier = 1.25;
@@ -7583,8 +7608,8 @@ void Player::PlayerMovement_t::handlePlayerMovement(bool useRefreshRateDelta)
 
 	//if ( keystatus[SDLK_g] )
 	//{
-	//	messagePlayer(0, MESSAGE_DEBUG, "X: %5.5f, Y: %5.5f, Total: %5.5f", PLAYER_VELX, PLAYER_VELY, sqrt(pow(PLAYER_VELX, 2) + pow(PLAYER_VELY, 2)));
-	//	messagePlayer(0, MESSAGE_DEBUG, "Vel: %5.5f", getCurrentMovementSpeed());
+	// messagePlayer(0, MESSAGE_DEBUG, "X: %5.5f, Y: %5.5f, Total: %5.5f", PLAYER_VELX, PLAYER_VELY, sqrt(pow(PLAYER_VELX, 2) + pow(PLAYER_VELY, 2)));
+	// messagePlayer(0, MESSAGE_DEBUG, "Vel: %5.5f", getCurrentMovementSpeed());
 	//}
 
 	for ( int i = 0; i < MAXPLAYERS; ++i )
@@ -9393,6 +9418,7 @@ void actPlayer(Entity* my)
 			//val |= (((Uint16)(spellTimer->particleTimerDuration) & 0xFFF) << 8);
 			//val |= (Uint8)(spellTimer->particleTimerCountdownAction & 0xFF) << 20;
 			//spellTimer->skill[2] = val;
+			castStareBeam(my);
 		}
 		else if ( *cvar_pbaoe == 5 || *cvar_pbaoe == 16 )
 		{
@@ -14348,6 +14374,14 @@ void actPlayer(Entity* my)
 				{
 					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LIGHTEN_LOAD, dist, 0.1, nullptr);
 				}
+				if ( stats[PLAYER_NUM]->getEffectActive(EFF_SPARSITY) )
+				{
+					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_SPARSITY, dist, 0.1, nullptr);
+				}
+				if ( stats[PLAYER_NUM]->getEffectActive(EFF_ALACRITY) )
+				{
+					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_ALACRITY, dist, 0.1, nullptr);
+				}
 				if ( Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) )
 				{
 					int playerSource = PLAYER_NUM;
@@ -14364,12 +14398,16 @@ void actPlayer(Entity* my)
 						{
 							spellID = SPELL_KINETIC_FIELD;
 						}
+						else if ( type == 2 )
+						{
+							spellID = SPELL_BLITZ_CHARGE;
+						}
 						if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
 						{
 							playerSource = effect % (MAXPLAYERS + 1);
 						}
 					}
-					if ( spellID == SPELL_DASH )
+					if ( spellID == SPELL_DASH || spellID == SPELL_BLITZ_CHARGE )
 					{
 						if ( playerSource >= 0 && playerSource < MAXPLAYERS )
 						{
@@ -14488,6 +14526,10 @@ void actPlayer(Entity* my)
 									else if ( type == 1 )
 									{
 										spellID = SPELL_KINETIC_FIELD;
+									}
+									else if ( type == 2 )
+									{
+										spellID = SPELL_BLITZ_CHARGE;
 									}
 									if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
 									{
@@ -14723,6 +14765,14 @@ void actPlayer(Entity* my)
 				{
 					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LIGHTEN_LOAD, dist, 0.1, nullptr);
 				}
+				if ( stats[PLAYER_NUM]->getEffectActive(EFF_SPARSITY) )
+				{
+					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_SPARSITY, dist, 0.1, nullptr);
+				}
+				if ( stats[PLAYER_NUM]->getEffectActive(EFF_ALACRITY) )
+				{
+					players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_ALACRITY, dist, 0.1, nullptr);
+				}
 				if ( Uint8 effectStrength = stats[PLAYER_NUM]->getEffectActive(EFF_DASH) )
 				{
 					int playerSource = PLAYER_NUM;
@@ -14739,12 +14789,16 @@ void actPlayer(Entity* my)
 						{
 							spellID = SPELL_KINETIC_FIELD;
 						}
+						else if ( type == 2 )
+						{
+							spellID = SPELL_BLITZ_CHARGE;
+						}
 						if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
 						{
 							playerSource = effect % (MAXPLAYERS + 1);
 						}
 					}
-					if ( spellID == SPELL_DASH )
+					if ( spellID == SPELL_DASH || spellID == SPELL_BLITZ_CHARGE )
 					{
 						if ( playerSource >= 0 && playerSource < MAXPLAYERS )
 						{
@@ -14844,6 +14898,10 @@ void actPlayer(Entity* my)
 							else if ( type == 1 )
 							{
 								spellID = SPELL_KINETIC_FIELD;
+							}
+							else if ( type == 2 )
+							{
+								spellID = SPELL_BLITZ_CHARGE;
 							}
 							if ( (effect % (MAXPLAYERS + 1)) >= 0 && (effect % (MAXPLAYERS + 1)) < MAXPLAYERS )
 							{

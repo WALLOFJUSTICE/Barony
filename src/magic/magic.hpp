@@ -249,7 +249,24 @@ static const int SPELL_REVENANT_PUSH = 226;
 static const int SPELL_WATER_BOLT = 227;
 static const int SPELL_WATER_ELEMENTAL = 228;
 static const int SPELL_STARE_BEAM = 229;
-static const int NUM_SPELLS = 230;
+static const int SPELL_VIGOR = 230;
+static const int SPELL_TOTEM_HEAL = 231;
+static const int SPELL_BLITZ_CHARGE = 232;
+static const int SPELL_DENSITY = 233;
+static const int SPELL_SPARSITY = 234;
+static const int SPELL_ALACRITY = 235;
+static const int SPELL_HARDENING = 236;
+static const int SPELL_INNOCULATE = 237;
+static const int SPELL_REACTIVITY = 238;
+static const int SPELL_FROSTBALL = 239;
+static const int SPELL_KEG_BOUNCE = 240;
+static const int SPELL_ARC_LIGHTNING = 241;
+static const int SPELL_FORCE_VOLLEY = 242;
+static const int SPELL_FORCE_BOMBARDMENT = 243;
+static const int SPELL_FIRE_TRAP_WALL = 244;
+static const int SPELL_FIREBLAST = 245;
+
+static const int NUM_SPELLS = 260;
 
 #define SPELLELEMENT_CONFUSE_BASE_DURATION 2//In seconds.
 #define SPELLELEMENT_BLEED_BASE_DURATION 10//In seconds.
@@ -397,6 +414,15 @@ static const int PARTICLE_EFFECT_STARE_MESMERIZE = 100;
 static const int PARTICLE_EFFECT_VOID_WIND = 101;
 static const int PARTICLE_EFFECT_BLIND_ORBIT = 102;
 static const int PARTICLE_EFFECT_BELL_BUFF_SOLO = 103;
+static const int PARTICLE_EFFECT_FOCI_SORCERY = 104;
+static const int PARTICLE_EFFECT_HARDENING_ORBIT = 105;
+static const int PARTICLE_EFFECT_REACTIVITY_ORBIT = 106;
+static const int PARTICLE_EFFECT_TRUEBLOOD_ORBIT = 107;
+static const int PARTICLE_EFFECT_FORCE_BOMBARDMENT = 108;
+static const int PARTICLE_EFFECT_FORCE_BOMBARDMENT_ORBIT = 109;
+static const int PARTICLE_EFFECT_MISSILE_BOMBARDMENT_ORBIT = 110;
+static const int PARTICLE_EFFECT_FIREBLAST_ORBIT = 111;
+static const int PARTICLE_EFFECT_LICHFIRE_FALLING_TARGET = 112;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -450,6 +476,11 @@ static const int PARTICLE_TIMER_ACTION_STARE_GAZE = 43;
 static const int PARTICLE_TIMER_ACTION_STAREMASTER_PUSH = 44;
 static const int PARTICLE_TIMER_ACTION_STAREMASTER_MESMERIZE = 45;
 static const int PARTICLE_TIMER_ACTION_LIGHTNING_INSTANT = 46; // so client create their own lightning instantly
+static const int PARTICLE_TIMER_ACTION_BLITZ_CHARGE = 47;
+static const int PARTICLE_TIMER_ACTION_FROSTBALL_AOE = 48;
+static const int PARTICLE_TIMER_ACTION_KEGBOUNCE_AOE = 49;
+static const int PARTICLE_TIMER_ACTION_FORCE_BOMBARDMENT_SPAWNER = 50;
+static const int PARTICLE_TIMER_ACTION_LICHFIRE_FALLING_TARGET = 51;
 
 struct ParticleEmitterHit_t
 {
@@ -480,7 +511,8 @@ struct ParticleTimerEffect_t
 		EFFECT_MYCELIUM,
 		EFFECT_ROOTS_SELF_SUSTAIN,
 		EFFECT_ROOTS_TILE_VOID,
-		EFFECT_WATERSPLASH
+		EFFECT_WATERSPLASH,
+		EFFECT_FIRE_TRAP_WAVE,
 	};
 	struct Effect_t
 	{
@@ -1003,6 +1035,7 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 #endif
 bool isSpellcasterBeginner(int player, Entity* caster, int skillID);
 void actMagicTrap(Entity* my);
+void actMagicSpellMineTrap(Entity* my);
 void actMagicStatusEffect(Entity* my);
 void actMagicMissile(Entity* my);
 void actMagicClient(Entity* my);
@@ -1054,9 +1087,9 @@ void createParticleRock(Entity* parent, int sprite = -1, bool light = false);
 void createParticleShatteredGem(real_t x, real_t y, real_t z, int sprite, Entity* parent);
 void createParticleErupt(Entity* parent, int sprite);
 void createParticleErupt(real_t x, real_t y, int sprite);
-Entity* createParticleBoobyTrapExplode(Entity* caster, real_t x, real_t y);
+Entity* createParticleBoobyTrapExplode(Entity* caster, real_t x, real_t y, Entity* followEntity);
 Entity* createParticleShatterObjects(Entity* caster);
-Entity* createParticleRevenantPush(Entity* caster);
+Entity* createParticleRevenantPush(Entity* caster, Entity* centeredOnEntity = nullptr, int overrideSpell = 0);
 Entity* createParticleIgnite(Entity* caster);
 Entity* createParticleSapCenter(Entity* parent, Entity* target, int spell, int sprite, int endSprite);
 Entity* createParticleTimer(Entity* parent, int duration, int sprite);
@@ -1104,6 +1137,8 @@ Entity* createStareParticle(Entity* caster);
 void createStareAOE(Entity* my, bool updateClients = false);
 bool entityWithinStareAngle(Entity* my, Entity* target);
 void actStareParticle(Entity* my);
+void castStareBeam(Entity* my);
+void spawnHeatOrbitSpin(Entity* target, int sprite, bool light);
 
 void spawnMagicTower(Entity* parent, real_t x, real_t y, int spellID, Entity* autoHitTarget, bool castedSpell = false); // autoHitTarget is to immediate damage an entity, as all 3 tower magics hitting is unreliable
 bool magicDig(Entity* parent, Entity* projectile, int numRocks, int randRocks);
@@ -1121,6 +1156,7 @@ void spellElementDeconstructor(void* data);
 
 int getCostOfSpell(spell_t* spell, Entity* caster = nullptr);
 int getGoldCostOfSpell(spell_t* spell, int player);
+std::pair<int,int> getScrapCostOfSpell(spell_t* spell, int player);
 int getSustainCostOfSpell(spell_t* spell, Entity* caster);
 bool spell_isChanneled(spell_t* spell);
 bool spellElement_isChanneled(spellElement_t* spellElement);
@@ -1238,6 +1274,7 @@ bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity
 void freeSpells();
 void createParticleFociLight(Entity* entity, int spellID, bool updateClients);
 void createParticleFociDark(Entity* entity, int spellID, bool updateClients);
+void createParticleFociSorcery(Entity* entity, int spellID, bool updateClients);
 bool jewelItemRecruit(Entity* parent, Entity* entity, int itemStatus, const char** msg);
 bool entityWantsJewel(int tier, Entity& entity, Stat& stats, bool checkTypeOnly);
 bool spellIsNaturallyLearnedByRaceOrClass(Entity* caster, Stat& stat, int spellID, int player = -1);
@@ -1273,7 +1310,9 @@ struct AOEIndicators_t
 		CACHE_STAREMASTER_STARE,
 		CACHE_STAREMASTER_SWIPE,
 		CACHE_STARE_BEAM,
-		CACHE_ETERNAL_SHRINE
+		CACHE_ETERNAL_SHRINE,
+		CACHE_KEG_BOUNCE,
+		CACHE_SPELL_FLOOR_TRAP
 	};
 	struct Indicator_t
 	{

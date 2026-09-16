@@ -3756,6 +3756,14 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 	{
 		spellID = SPELL_DIVINE_GUARD;
 	}
+	else if ( effectID == EFF_HARDENING )
+	{
+		spellID = SPELL_HARDENING;
+	}
+	else if ( effectID == EFF_REACTIVITY )
+	{
+		spellID = SPELL_REACTIVITY;
+	}
 
 	if ( spellID < 0 ) { return 0; }
 
@@ -3764,15 +3772,19 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 		if ( player >= 0 )
 		{
 			int result = myStats.getEffectActive(effectID);
+			if ( effectID == EFF_HARDENING || effectID == EFF_REACTIVITY )
+			{
+				result = std::max(0, (int)myStats.getEffectActive(effectID) - 1);
+			}
 
 			if ( !checkEffectActiveOnly )
 			{
 				if ( my )
 				{
-					int baseMinValue = (effectID == EFF_GUARD_SPIRIT) ? 1 : 3;
+					int baseMinValue = (effectID == EFF_GUARD_SPIRIT || effectID == EFF_HARDENING || effectID == EFF_REACTIVITY) ? 1 : 3;
 					if ( my->behavior == &actPlayer && !my->getActiveMagicEffect(spellID) )
 					{
-						if ( myStats.shoes && myStats.shoes->type == SILVER_BOOTS )
+						if ( myStats.shoes && myStats.shoes->type == SILVER_BOOTS && effectID == EFF_DIVINE_GUARD )
 						{
 							baseMinValue = 1;
 						}
@@ -3781,19 +3793,47 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 							baseMinValue = 0;
 						}
 					}
-					//int minValue = std::max(baseMinValue, getSpellDamageFromID(spellID, my, nullptr, my));
-					//minValue = std::min(minValue, getSpellEffectDurationSecondaryFromID(spellID, my, nullptr, my));
-					my->setEffect(effectID, (Uint8)std::max(baseMinValue, myStats.getEffectActive(effectID) - 1),
-						myStats.EFFECTS_TIMERS[effectID], true, true, true);
-					if ( my->getActiveMagicEffect(spellID) )
+
+					if ( effectID == EFF_HARDENING || effectID == EFF_REACTIVITY )
 					{
-						if ( result != myStats.getEffectActive(effectID) )
+						int maxValue = std::min(getSpellDamageSecondaryFromID(spellID, my, nullptr, my),
+							getSpellEffectDurationSecondaryFromID(spellID, my, nullptr, my));
+
+						int duration = myStats.EFFECTS_TIMERS[effectID];
+						int maxDuration = 2 * getSpellEffectDurationFromID(spellID, my, nullptr, my);
+						duration = std::min(maxDuration, duration + 25);
+
+						my->setEffect(effectID, (Uint8)std::max(1, std::min(maxValue, myStats.getEffectActive(effectID) + 1)),
+							duration, true, true, true);
+
+						if ( my->getActiveMagicEffect(spellID) )
 						{
-							players[player]->mechanics.updateSustainedSpellEvent(spellID, std::min(150.0, effectID == EFF_GUARD_SPIRIT ? 128.0 : 50.0 + 10 * result), 1.0, attacker);
+							if ( result != std::max(0, (int)myStats.getEffectActive(effectID) - 1) )
+							{
+								players[player]->mechanics.updateSustainedSpellEvent(spellID, std::min(150.0, effectID == EFF_GUARD_SPIRIT ? 128.0 : 50.0 + 10 * result), 1.0, attacker);
+							}
+							else
+							{
+								players[player]->mechanics.updateSustainedSpellEvent(spellID, std::min(150.0, effectID == EFF_GUARD_SPIRIT ? 128.0 : 50.0 + 10 * result) / 10.0, 1.0, attacker);
+							}
 						}
-						else
+					}
+					else
+					{
+						//int minValue = std::max(baseMinValue, getSpellDamageFromID(spellID, my, nullptr, my));
+						//minValue = std::min(minValue, getSpellEffectDurationSecondaryFromID(spellID, my, nullptr, my));
+						my->setEffect(effectID, (Uint8)std::max(baseMinValue, myStats.getEffectActive(effectID) - 1),
+							myStats.EFFECTS_TIMERS[effectID], true, true, true);
+						if ( my->getActiveMagicEffect(spellID) )
 						{
-							players[player]->mechanics.updateSustainedSpellEvent(spellID, std::min(150.0, effectID == EFF_GUARD_SPIRIT ? 128.0 : 50.0 + 10 * result) / 10.0, 1.0, attacker);
+							if ( result != myStats.getEffectActive(effectID) )
+							{
+								players[player]->mechanics.updateSustainedSpellEvent(spellID, std::min(150.0, effectID == EFF_GUARD_SPIRIT ? 128.0 : 50.0 + 10 * result), 1.0, attacker);
+							}
+							else
+							{
+								players[player]->mechanics.updateSustainedSpellEvent(spellID, std::min(150.0, effectID == EFF_GUARD_SPIRIT ? 128.0 : 50.0 + 10 * result) / 10.0, 1.0, attacker);
+							}
 						}
 					}
 				}
@@ -3816,7 +3856,7 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 						result--;
 						if ( result <= 0 )
 						{
-							if ( myStats.shoes && myStats.shoes->type == SILVER_BOOTS )
+							if ( myStats.shoes && myStats.shoes->type == SILVER_BOOTS && effectID == EFF_DIVINE_GUARD )
 							{
 								// keep charge
 							}
@@ -4051,6 +4091,74 @@ bool Entity::mistFormDodge(bool checkEffectActiveOnly, Entity* attacker)
 	return false;
 }
 
+bool Entity::spellEffectInnoculateStatusEffect(int effect, Entity* attacker, bool forceProc)
+{
+	if ( !(effect >= 0 && effect <= NUMEFFECTS) )
+	{
+		return false;
+	}
+
+	if ( Stat* myStats = getStats() )
+	{
+		if ( myStats->getEffectActive(EFF_INNOCULATE) 
+			&& (myStats->statusEffectRemovedByCureAilment(effect, this) || effect == NUMEFFECTS) )
+		{
+			if ( behavior == &actPlayer )
+			{
+				if ( spell_t* spell = getActiveMagicEffect(SPELL_INNOCULATE) )
+				{
+					int chance = 100;// getSpellEffectDurationSecondaryFromID(SPELL_INNOCULATE, this, nullptr, this);
+					if ( local_rng.rand() % 100 < chance )
+					{
+						if ( !forceProc )
+						{
+							if ( ::ticks - players[skill[2]]->mechanics.innoculateEffectsTick[effect] < TICKS_PER_SECOND )
+							{
+								return true;
+							}
+						}
+
+						players[skill[2]]->mechanics.innoculateEffectsTick[effect] = ::ticks;
+
+						int cost = getSpellDamageFromID(SPELL_INNOCULATE, this, nullptr, this);
+						cost = std::max(1, std::max(cost, getSpellDamageSecondaryFromID(SPELL_INNOCULATE, this, nullptr, this)));
+						if ( !safeConsumeMP(cost) )
+						{
+							if ( myStats->MP > 0 )
+							{
+								modMP(-myStats->MP);
+							}
+							spell->sustain = false;
+							if ( behavior == &actPlayer )
+							{
+								playSoundEntity(this, 163, 128);
+								messagePlayerColor(skill[2], MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(7231));
+							}
+							return false;
+						}
+						else
+						{
+							if ( behavior == &actPlayer )
+							{
+								spawnMagicEffectParticles(this->x, this->y, this->z, 169);
+								playSoundEntity(this, 168, 128);
+								messagePlayerColor(skill[2], MESSAGE_COMBAT, makeColorRGB(0, 255, 0), Language::get(7230));
+								magicOnSpellCastEvent(this, this, attacker, SPELL_INNOCULATE, spell_t::SPELL_LEVEL_EVENT_DEFAULT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE, 1);
+							}
+							return true;
+						}
+					}
+					else
+					{
+						return false;
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
 bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSourceProjectile, int spellID, 
 	int damage, bool alertMonsters, bool monsterCollisionOnly, int usingSpellbookID)
 {
@@ -4170,9 +4278,35 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 		int oldHP = targetStats->HP;
 
 		Sint32 preResistanceDamage = damage;
+
+		if ( spellID == SPELL_ARC_LIGHTNING )
+		{
+			if ( targetStats && targetStats->getEffectActive(EFF_STATIC) )
+			{
+				int extraDamage = getSpellDamageSecondaryFromID(spellID, caster, nullptr, &damageSourceProjectile, 
+					damageSourceProjectile.behavior == &actMagicMissile 
+					? (damageSourceProjectile.actmagicSpellbookBonus / 100.f) : 0.f);
+				if ( extraDamage > 0 )
+				{
+					extraDamage *= getSpellDamageFromStatic(spellID, targetStats);
+					if ( damageSourceProjectile.behavior == &actMagicMissile && damageSourceProjectile.actmagicIsOrbiting == 2 )
+					{
+						if ( caster && damageSourceProjectile.actmagicOrbitCastFromSpell == 1 )
+						{
+							// cast through amplify magic effect
+							real_t mult = getSpellDamageFromID(SPELL_AMPLIFY_MAGIC, caster, nullptr, &damageSourceProjectile) / 100.0;
+							mult = std::min(mult, getSpellDamageSecondaryFromID(SPELL_AMPLIFY_MAGIC, caster, nullptr, &damageSourceProjectile) / 100.0);
+							extraDamage *= mult;
+						}
+					}
+					damage += std::max(1, extraDamage);
+				}
+			}
+		}
+
 		damage *= damageMultiplier;
 
-		if ( spellID == SPELL_ICE_WAVE )
+		if ( spellID == SPELL_ICE_WAVE || spellID == SPELL_FROSTBALL )
 		{
 			real_t coldMultiplier = 1.0;
 			if ( targetStats && targetStats->helmet && targetStats->helmet->type == HAT_WARM )
@@ -4676,7 +4810,11 @@ real_t getSpellPropertyFromID(spell_t::SpellBasePropertiesFloat prop, int spellI
 					result *= (1 - bonus);
 				}
 				result *= (1 - std::min(1.0, equipmentModifier));
-				if ( spell->cast_time < 1.01 )
+				if ( spell->ID == SPELL_BLITZ_CHARGE )
+				{
+					result = std::max(0.0, result);
+				}
+				else if ( spell->cast_time < 1.01 )
 				{
 					result = std::max(0.5, result);
 				}

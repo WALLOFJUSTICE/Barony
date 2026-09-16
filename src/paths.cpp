@@ -366,7 +366,7 @@ int pathCheckObstacle(int x, int y, Entity* my, Entity* target, GeneratePathType
 			|| entity->sprite == 108	// stalag column
 			|| entity->sprite == 109	// stalagmite
 			|| entity->sprite == 110	// stalagmite
-			|| entity->sprite == 116	// pedestal
+			|| (entity->sprite == 116 && !entity->flags[PASSABLE])	// pedestal
 			|| entity->sprite == 124	// column
 			|| entity->sprite == 126	// piston
 			|| entity->sprite == 169	// statue
@@ -694,6 +694,7 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 		if (stats && stats->type == MINOTAUR 
 			&& (entity->behavior == &actBoulder 
 				|| entity->behavior == &::actDaedalusShrine
+				|| entity->behavior == &actMonster || entity->behavior == &actPlayer
 				|| entity->behavior == &actIronDoor
 				|| (entity->isDamageableCollider()
 				&& (entity->colliderHasCollision & EditorEntityData_t::COLLIDER_COLLISION_FLAG_MINO))))

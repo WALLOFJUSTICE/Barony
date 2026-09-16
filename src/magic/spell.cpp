@@ -776,6 +776,23 @@ spellElement_t* copySpellElement(spellElement_t* spellElement)
 	return result;
 }
 
+std::pair<int, int> getScrapCostOfSpell(spell_t* spell, int player)
+{
+	std::pair<int, int> result = { 0, 0 };
+	if ( player < 0 || player >= MAXPLAYERS ) { return result; }
+	if ( !spell )
+	{
+		return result;
+	}
+
+	if ( spell->ID == SPELL_KEG_BOUNCE )
+	{
+		result.first = getSpellPropertyFromID(spell_t::SPELLPROP_MODIFIED_RADIUS, SPELL_KEG_BOUNCE, nullptr, nullptr, nullptr);
+	}
+
+	return result;
+}
+
 int getGoldCostOfSpell(spell_t* spell, int player)
 {
 	if ( player < 0 || player >= MAXPLAYERS ) { return 0; }

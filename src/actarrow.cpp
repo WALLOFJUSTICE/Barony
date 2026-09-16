@@ -1292,6 +1292,14 @@ void actArrow(Entity* my)
 					{
 						thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_DIVINE_GUARD);
 					}
+					if ( hitstats && hitstats->getEffectActive(EFF_HARDENING) )
+					{
+						thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_HARDENING);
+					}
+					if ( hitstats && hitstats->getEffectActive(EFF_REACTIVITY) )
+					{
+						thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_REACTIVITY);
+					}
 
 					/*messagePlayer(0, "My damage: %d, AC: %d, Pierce: %d", my->arrowPower, AC(hitstats), my->arrowArmorPierce);
 					messagePlayer(0, "Resolved to %d damage.", damage);*/
@@ -1580,6 +1588,59 @@ void actArrow(Entity* my)
 									{
 										players[parent->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_ENVENOM_WEAPON, 50.0, 1.0, hit.entity);
 									}
+								}
+							}
+						}
+
+						if ( (hitstats->getEffectActive(EFF_SPARSITY) || (parentStats && parentStats->getEffectActive(EFF_DENSITY)))
+							&& hit.entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
+						{
+							real_t pushbackMultiplier = 0.5;
+							if ( !hit.entity->isMobile() )
+							{
+								pushbackMultiplier += 0.3;
+							}
+
+							if ( parentStats && parentStats->getEffectActive(EFF_DENSITY) && parent->behavior == &actPlayer )
+							{
+								players[parent->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_DENSITY, 25.0, 1.0, hit.entity);
+							}
+
+							if ( hit.entity->behavior == &actMonster )
+							{
+								if ( parent )
+								{
+									real_t tangent = atan2(hit.entity->y - parent->y, hit.entity->x - parent->x);
+									hit.entity->vel_x = cos(tangent) * pushbackMultiplier;
+									hit.entity->vel_y = sin(tangent) * pushbackMultiplier;
+									hit.entity->monsterKnockbackVelocity = 0.01;
+									hit.entity->monsterKnockbackUID = my->parent;
+									hit.entity->monsterKnockbackTangentDir = tangent;
+									//hit.entity->lookAtEntity(*parent);
+								}
+								else
+								{
+									real_t tangent = atan2(hit.entity->y - my->y, hit.entity->x - my->x);
+									hit.entity->vel_x = cos(tangent) * pushbackMultiplier;
+									hit.entity->vel_y = sin(tangent) * pushbackMultiplier;
+									hit.entity->monsterKnockbackVelocity = 0.01;
+									hit.entity->monsterKnockbackTangentDir = tangent;
+									//hit.entity->lookAtEntity(*my);
+								}
+							}
+							else if ( hit.entity->behavior == &actPlayer )
+							{
+								if ( !players[hit.entity->skill[2]]->isLocalPlayer() )
+								{
+									hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+									hit.entity->monsterKnockbackTangentDir = my->yaw;
+									serverUpdateEntityFSkill(hit.entity, 11);
+									serverUpdateEntityFSkill(hit.entity, 9);
+								}
+								else
+								{
+									hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+									hit.entity->monsterKnockbackTangentDir = my->yaw;
 								}
 							}
 						}

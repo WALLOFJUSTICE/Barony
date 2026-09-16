@@ -762,6 +762,26 @@ void sustainedSpellProcess(Entity& entity, Stat& myStats, int effectID, std::map
 					sustainCost *= sustainedSpell_hijacked[effectID]->channel_effectStrength - currentStrength;
 				}
 			}
+			else if ( effectID == EFF_HARDENING || effectID == EFF_REACTIVITY )
+			{
+				int spellID = SPELL_HARDENING;
+				if ( effectID == EFF_REACTIVITY )
+				{
+					spellID = SPELL_REACTIVITY;
+				}
+
+				int currentStrength = sustainedSpell_hijacked[effectID]->channel_effectStrength;
+				int strength = sustainedSpell_hijacked[effectID]->channel_effectStrength;
+				int decrement = std::max(1, getSpellDamageFromID(spellID, caster, nullptr, caster));
+				strength -= decrement;
+				strength = std::max(1, strength);
+				if ( strength < currentStrength )
+				{
+					sustainCost += currentStrength - strength;
+				}
+				sustainedSpell_hijacked[effectID]->channel_effectStrength = strength;
+			}
+
 			bool deducted = caster->safeConsumeMP(sustainCost); //Consume X mana ever duration / mana seconds
 			if ( deducted )
 			{
@@ -1295,6 +1315,156 @@ void Entity::effectTimes()
 			case SPELL_LIGHTEN_LOAD:
 				sustainedSpell_hijacked[EFF_LIGHTEN_LOAD] = spell;
 				if ( !myStats->getEffectActive(EFF_LIGHTEN_LOAD) )
+				{
+					for ( int c = 0; c < MAXPLAYERS; ++c )
+					{
+						if ( players[c] && players[c]->entity && players[c]->entity == uidToEntity(spell->caster) )
+						{
+							messagePlayer(c, MESSAGE_COMBAT, Language::get(6503), spell->getSpellName());    //If cure ailments or somesuch bombs the status effects.
+						}
+					}
+					node_t* temp = nullptr;
+					if ( node->prev )
+					{
+						temp = node->prev;
+					}
+					else if ( node->next )
+					{
+						temp = node->next;
+					}
+					unsustain = true;
+					list_RemoveNode(node); //Remove this here node.
+					node = temp;
+				}
+				break;
+			case SPELL_SPARSITY:
+				sustainedSpell_hijacked[EFF_SPARSITY] = spell;
+				if ( !myStats->getEffectActive(EFF_SPARSITY) )
+				{
+					for ( int c = 0; c < MAXPLAYERS; ++c )
+					{
+						if ( players[c] && players[c]->entity && players[c]->entity == uidToEntity(spell->caster) )
+						{
+							messagePlayer(c, MESSAGE_COMBAT, Language::get(6503), spell->getSpellName());    //If cure ailments or somesuch bombs the status effects.
+						}
+					}
+					node_t* temp = nullptr;
+					if ( node->prev )
+					{
+						temp = node->prev;
+					}
+					else if ( node->next )
+					{
+						temp = node->next;
+					}
+					unsustain = true;
+					list_RemoveNode(node); //Remove this here node.
+					node = temp;
+				}
+				break;
+			case SPELL_ALACRITY:
+				sustainedSpell_hijacked[EFF_ALACRITY] = spell;
+				if ( !myStats->getEffectActive(EFF_ALACRITY) )
+				{
+					for ( int c = 0; c < MAXPLAYERS; ++c )
+					{
+						if ( players[c] && players[c]->entity && players[c]->entity == uidToEntity(spell->caster) )
+						{
+							messagePlayer(c, MESSAGE_COMBAT, Language::get(6503), spell->getSpellName());    //If cure ailments or somesuch bombs the status effects.
+						}
+					}
+					node_t* temp = nullptr;
+					if ( node->prev )
+					{
+						temp = node->prev;
+					}
+					else if ( node->next )
+					{
+						temp = node->next;
+					}
+					unsustain = true;
+					list_RemoveNode(node); //Remove this here node.
+					node = temp;
+				}
+				break;
+			case SPELL_HARDENING:
+				sustainedSpell_hijacked[EFF_HARDENING] = spell;
+				if ( !myStats->getEffectActive(EFF_HARDENING) )
+				{
+					for ( int c = 0; c < MAXPLAYERS; ++c )
+					{
+						if ( players[c] && players[c]->entity && players[c]->entity == uidToEntity(spell->caster) )
+						{
+							messagePlayer(c, MESSAGE_COMBAT, Language::get(6503), spell->getSpellName());    //If cure ailments or somesuch bombs the status effects.
+						}
+					}
+					node_t* temp = nullptr;
+					if ( node->prev )
+					{
+						temp = node->prev;
+					}
+					else if ( node->next )
+					{
+						temp = node->next;
+					}
+					unsustain = true;
+					list_RemoveNode(node); //Remove this here node.
+					node = temp;
+				}
+				break;
+			case SPELL_INNOCULATE:
+				sustainedSpell_hijacked[EFF_INNOCULATE] = spell;
+				if ( !myStats->getEffectActive(EFF_INNOCULATE) )
+				{
+					for ( int c = 0; c < MAXPLAYERS; ++c )
+					{
+						if ( players[c] && players[c]->entity && players[c]->entity == uidToEntity(spell->caster) )
+						{
+							messagePlayer(c, MESSAGE_COMBAT, Language::get(6503), spell->getSpellName());    //If cure ailments or somesuch bombs the status effects.
+						}
+					}
+					node_t* temp = nullptr;
+					if ( node->prev )
+					{
+						temp = node->prev;
+					}
+					else if ( node->next )
+					{
+						temp = node->next;
+					}
+					unsustain = true;
+					list_RemoveNode(node); //Remove this here node.
+					node = temp;
+				}
+				break;
+			case SPELL_REACTIVITY:
+				sustainedSpell_hijacked[EFF_REACTIVITY] = spell;
+				if ( !myStats->getEffectActive(EFF_REACTIVITY) )
+				{
+					for ( int c = 0; c < MAXPLAYERS; ++c )
+					{
+						if ( players[c] && players[c]->entity && players[c]->entity == uidToEntity(spell->caster) )
+						{
+							messagePlayer(c, MESSAGE_COMBAT, Language::get(6503), spell->getSpellName());    //If cure ailments or somesuch bombs the status effects.
+						}
+					}
+					node_t* temp = nullptr;
+					if ( node->prev )
+					{
+						temp = node->prev;
+					}
+					else if ( node->next )
+					{
+						temp = node->next;
+					}
+					unsustain = true;
+					list_RemoveNode(node); //Remove this here node.
+					node = temp;
+				}
+				break;
+			case SPELL_DENSITY:
+				sustainedSpell_hijacked[EFF_DENSITY] = spell;
+				if ( !myStats->getEffectActive(EFF_DENSITY) )
 				{
 					for ( int c = 0; c < MAXPLAYERS; ++c )
 					{
@@ -2235,6 +2405,68 @@ void Entity::effectTimes()
 						if ( dissipate )
 						{
 							messagePlayer(player, MESSAGE_STATUS, Language::get(6682));
+							updateClient = true;
+						}
+						break;
+					case EFF_DENSITY:
+						dissipate = true; //Remove the effect by default.
+						sustainedSpellProcess(*this, *myStats, c, sustainedSpell_hijacked, dissipate, unsustainSpell);
+						if ( dissipate )
+						{
+							messagePlayer(player, MESSAGE_STATUS, Language::get(7224));
+							updateClient = true;
+						}
+						break;
+					case EFF_SPARSITY:
+						dissipate = true; //Remove the effect by default.
+						sustainedSpellProcess(*this, *myStats, c, sustainedSpell_hijacked, dissipate, unsustainSpell);
+						if ( dissipate )
+						{
+							messagePlayer(player, MESSAGE_STATUS, Language::get(7225));
+							updateClient = true;
+						}
+						break;
+					case EFF_ALACRITY:
+						dissipate = true; //Remove the effect by default.
+						sustainedSpellProcess(*this, *myStats, c, sustainedSpell_hijacked, dissipate, unsustainSpell);
+						if ( dissipate )
+						{
+							messagePlayer(player, MESSAGE_STATUS, Language::get(7226));
+							updateClient = true;
+						}
+						break;
+					case EFF_HARDENING:
+						dissipate = true; //Remove the effect by default.
+						if ( sustainedSpell_hijacked.find(EFF_HARDENING) != sustainedSpell_hijacked.end() )
+						{
+							sustainedSpell_hijacked[EFF_HARDENING]->channel_effectStrength = effectStrength;
+						}
+						sustainedSpellProcess(*this, *myStats, c, sustainedSpell_hijacked, dissipate, unsustainSpell);
+						if ( dissipate )
+						{
+							messagePlayer(player, MESSAGE_STATUS, Language::get(7227));
+							updateClient = true;
+						}
+						break;
+					case EFF_INNOCULATE:
+						dissipate = true; //Remove the effect by default.
+						sustainedSpellProcess(*this, *myStats, c, sustainedSpell_hijacked, dissipate, unsustainSpell);
+						if ( dissipate )
+						{
+							messagePlayer(player, MESSAGE_STATUS, Language::get(7228));
+							updateClient = true;
+						}
+						break;
+					case EFF_REACTIVITY:
+						dissipate = true; //Remove the effect by default.
+						if ( sustainedSpell_hijacked.find(EFF_REACTIVITY) != sustainedSpell_hijacked.end() )
+						{
+							sustainedSpell_hijacked[EFF_REACTIVITY]->channel_effectStrength = effectStrength;
+						}
+						sustainedSpellProcess(*this, *myStats, c, sustainedSpell_hijacked, dissipate, unsustainSpell);
+						if ( dissipate )
+						{
+							messagePlayer(player, MESSAGE_STATUS, Language::get(7229));
 							updateClient = true;
 						}
 						break;
@@ -5254,14 +5486,42 @@ void Entity::handleEffects(Stat* myStats)
 		}
 	}
 
-	if ( myStats->getEffectActive(EFF_FOCI_LIGHT_PURITY) )
+	if ( myStats->getEffectActive(EFF_FOCI_LIGHT_PURITY) || myStats->getEffectActive(EFF_INNOCULATE) )
 	{
-		int effectStrength = std::min(4, (int)myStats->getEffectActive(EFF_FOCI_LIGHT_PURITY));
-		int interval = getSpellEffectDurationSecondaryFromID(SPELL_FOCI_LIGHT_PURITY, nullptr, nullptr, nullptr);
-		interval -= (effectStrength - 1) * getSpellDamageSecondaryFromID(SPELL_FOCI_LIGHT_PURITY, nullptr, nullptr, nullptr);
-		interval = std::max(1, interval);
+		int interval = 5 * TICKS_PER_SECOND;
+		int effectStrength = 1;
+		bool check = false;
+		bool innoculate = false;
+		if ( myStats->getEffectActive(EFF_FOCI_LIGHT_PURITY) )
+		{
+			int effectStrength = std::min(4, (int)myStats->getEffectActive(EFF_FOCI_LIGHT_PURITY));
+			interval = getSpellEffectDurationSecondaryFromID(SPELL_FOCI_LIGHT_PURITY, nullptr, nullptr, nullptr);
+			interval -= (effectStrength - 1) * getSpellDamageSecondaryFromID(SPELL_FOCI_LIGHT_PURITY, nullptr, nullptr, nullptr);
+			interval = std::max(1, interval);
+		}
+
+		if ( myStats->getEffectActive(EFF_INNOCULATE) )
+		{
+			interval = std::min(interval, getSpellEffectDurationSecondaryFromID(SPELL_INNOCULATE, nullptr, nullptr, nullptr));
+			interval = std::max(1, interval);
+			effectStrength = std::max(effectStrength, 5);
+		}
+
+		if ( (myStats->getEffectActive(EFF_FOCI_LIGHT_PURITY)
+			&& ((myStats->EFFECTS_ACCRETION_TIME[EFF_FOCI_LIGHT_PURITY]) % interval == 0)) )
+		{
+			check = true;
+		}
 		
-		if ( ((myStats->EFFECTS_ACCRETION_TIME[EFF_FOCI_LIGHT_PURITY]) % interval == 0) )
+		if ( (myStats->getEffectActive(EFF_INNOCULATE)
+			&& ((myStats->EFFECTS_ACCRETION_TIME[EFF_INNOCULATE]) % interval == 0)) )
+		{
+			check = true;
+			innoculate = true;
+		}
+
+		
+		if ( check )
 		{
 			std::vector<int> effectsToTry;
 			for ( int i = 0; i < NUMEFFECTS; ++i )
@@ -5288,30 +5548,53 @@ void Entity::handleEffects(Stat* myStats)
 				{
 					unsigned int pick = local_rng.rand() % effectsToTry.size();
 					int effect = effectsToTry[pick];
-					if ( effect == StatusEffectQueue_t::kEffectBurning )
+
+					bool cure = true;
+					if ( innoculate )
 					{
-						this->flags[BURNING] = false;
-						serverUpdateEntityFlag(this, BURNING);
-					}
-					else if ( effect == EFF_WITHDRAWAL )
-					{
-						this->setEffect(EFF_WITHDRAWAL, false, EFFECT_WITHDRAWAL_BASE_TIME, true);
-						serverUpdatePlayerGameplayStats(player, STATISTICS_FUNCTIONAL, 1);
-					}
-					else
-					{
-						myStats->clearEffect(effect);
-						if ( myStats->EFFECTS_TIMERS[effect] > 0 )
+						if ( effect == StatusEffectQueue_t::kEffectBurning )
 						{
-							myStats->EFFECTS_TIMERS[effect] = 1;
+							if ( !this->spellEffectInnoculateStatusEffect(NUMEFFECTS, nullptr, true) )
+							{
+								cure = false;
+							}
+						}
+						else
+						{
+							if ( !this->spellEffectInnoculateStatusEffect(effect, nullptr, true) )
+							{
+								cure = false;
+							}
 						}
 					}
-					cured = true;
-					--numToCure;
+
+					if ( cure )
+					{
+						if ( effect == StatusEffectQueue_t::kEffectBurning )
+						{
+							this->flags[BURNING] = false;
+							serverUpdateEntityFlag(this, BURNING);
+						}
+						else if ( effect == EFF_WITHDRAWAL )
+						{
+							this->setEffect(EFF_WITHDRAWAL, false, EFFECT_WITHDRAWAL_BASE_TIME, true);
+							serverUpdatePlayerGameplayStats(player, STATISTICS_FUNCTIONAL, 1);
+						}
+						else
+						{
+							myStats->clearEffect(effect);
+							if ( myStats->EFFECTS_TIMERS[effect] > 0 )
+							{
+								myStats->EFFECTS_TIMERS[effect] = 1;
+							}
+						}
+						cured = true;
+						--numToCure;
+					}
 					effectsToTry.erase(effectsToTry.begin() + pick);
 				}
 
-				if ( cured )
+				if ( cured && !innoculate )
 				{
 					playSoundEntity(this, 168, 128);
 					spawnMagicEffectParticles(this->x, this->y, this->z, 169);
@@ -7191,7 +7474,11 @@ void Entity::handleEffects(Stat* myStats)
 		}
 	}
 
-	if ( myStats->getEffectActive(EFF_GUARD_BODY) || myStats->getEffectActive(EFF_GUARD_SPIRIT) || myStats->getEffectActive(EFF_DIVINE_GUARD) )
+	if ( myStats->getEffectActive(EFF_GUARD_BODY) 
+		|| myStats->getEffectActive(EFF_GUARD_SPIRIT) 
+		|| myStats->getEffectActive(EFF_DIVINE_GUARD)
+		|| myStats->getEffectActive(EFF_HARDENING) > 1
+		|| myStats->getEffectActive(EFF_REACTIVITY) > 1 )
 	{
 		int interval = 80;
 		if ( ticks % interval == 0 )
@@ -7265,6 +7552,50 @@ void Entity::handleEffects(Stat* myStats)
 			if ( ticks % interval == 60 )
 			{
 				Entity* fx = createParticleAestheticOrbit(this, 282, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_GUARD_DIVINE_ORBIT);
+				fx->flags[SPRITE] = true;
+				fx->z = 4.0 - 2.0 * ((ticks / interval) % 4);
+				fx->vel_z = -0.025;
+				fx->sizex = 4;
+				fx->sizey = 4;
+				fx->flags[GENIUS] = true;
+				fx->scalex = 0.05;
+				fx->scaley = fx->scalex;
+				fx->scalez = fx->scalex;
+				fx->actmagicOrbitDist = 4;
+				fx->fskill[2] = this->yaw + PI;
+				fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+				//fx->fskill[2] += ((ticks / interval) % 3) * 2 * PI / 3;
+				fx->yaw = fx->fskill[2];
+				fx->actmagicNoLight = 1;
+			}
+		}
+		if ( myStats->getEffectActive(EFF_HARDENING) )
+		{
+			if ( ticks % interval == 30 )
+			{
+				Entity* fx = createParticleAestheticOrbit(this, 318, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_HARDENING_ORBIT);
+				fx->flags[SPRITE] = true;
+				fx->z = 4.0 - 2.0 * ((ticks / interval) % 4);
+				fx->vel_z = -0.025;
+				fx->sizex = 4;
+				fx->sizey = 4;
+				fx->flags[GENIUS] = true;
+				fx->scalex = 0.05;
+				fx->scaley = fx->scalex;
+				fx->scalez = fx->scalex;
+				fx->actmagicOrbitDist = 4;
+				fx->fskill[2] = this->yaw + PI;
+				fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+				//fx->fskill[2] += ((ticks / interval) % 3) * 2 * PI / 3;
+				fx->yaw = fx->fskill[2];
+				fx->actmagicNoLight = 1;
+			}
+		}
+		if ( myStats->getEffectActive(EFF_REACTIVITY) )
+		{
+			if ( ticks % interval == 70 )
+			{
+				Entity* fx = createParticleAestheticOrbit(this, 319, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_REACTIVITY_ORBIT);
 				fx->flags[SPRITE] = true;
 				fx->z = 4.0 - 2.0 * ((ticks / interval) % 4);
 				fx->vel_z = -0.025;
@@ -7556,6 +7887,10 @@ void Entity::handleEffects(Stat* myStats)
 		{
 			this->char_fire = 0;
 			this->degradeAmuletProc(myStats, AMULET_BURNINGRESIST);
+		}
+		if ( myStats->getEffectActive(EFF_INNOCULATE) && this->spellEffectInnoculateStatusEffect(NUMEFFECTS, nullptr, false) )
+		{
+			this->char_fire = 0;
 		}
 
 		// Check to see if time has run out
@@ -10930,6 +11265,16 @@ void Entity::attack(int pose, int charge, Entity* target)
 			castSpell(uid, &spell_fireball, true, false, false, &props);
 			return;
 		}
+		if ( myStats->type == LICH && myStats->getAttribute("LICH_SPELL") != "" )
+		{
+			int spellID = std::stoi(myStats->getAttribute("LICH_SPELL"));
+			myStats->setAttribute("LICH_SPELL", "");
+			if ( spellID > 0 && spellID < NUM_SPELLS )
+			{
+				castSpell(uid, getSpellFromID(spellID), true, false, false);
+				return;
+			}
+		}
 		if ( myStats->type == MONSTER_ADORCISED_WEAPON && (myStats->getAttribute("spirit_weapon") != "" || monsterSpecialState == ADORCISED_WEAPON_SPECIAL_CHARGE)
 			&& target == nullptr )
 		{
@@ -12022,6 +12367,7 @@ fireagain:
 				else if ( bat || (hitstats && (hitstats->getEffectActive(EFF_AGILITY) 
 					|| hit.entity->mistFormDodge(true, this)
 					|| (hitstats->getEffectActive(EFF_MAGIC_GREASE) && hitstats->type == GREMLIN)
+					|| (thaumSpellArmorProc(hit.entity, *hitstats, true, nullptr, EFF_REACTIVITY))
 					|| (hitstats && hitstats->type == DRYAD
 						&& hit.entity->behavior == &actPlayer && hitstats->sex == FEMALE)
 					|| hitstats->getEffectActive(EFF_ENSEMBLE_LUTE))) || myStats->getEffectActive(EFF_BLIND) )
@@ -12104,10 +12450,16 @@ fireagain:
 						{
 							baseChance = std::max(baseChance, static_cast<int>(hitstats->getEnsembleEffectBonus(Stat::ENSEMBLE_LUTE_TIER)));
 						}
+						if ( int charges = thaumSpellArmorProc(hit.entity, *hitstats, true, nullptr, EFF_REACTIVITY) )
+						{
+							baseChance = std::max(baseChance, 
+								getSpellPropertyFromID(spell_t::SPELLPROP_MODIFIED_RADIUS, SPELL_REACTIVITY, nullptr, nullptr, nullptr) * charges);
+						}
 						if ( myStats->getEffectActive(EFF_BLIND) )
 						{
 							baseChance = std::max(baseChance, 75);
 						}
+
 						if ( baseChance <= 0 )
 						{
 							miss = false;
@@ -12177,6 +12529,10 @@ fireagain:
 								if ( hitstats->type == DRYAD )
 								{
 									hit.entity->playerShakeGrowthHelmet();
+								}
+								if ( hitstats->getEffectActive(EFF_REACTIVITY) )
+								{
+									thaumSpellArmorProc(hit.entity, *hitstats, false, this, EFF_REACTIVITY);
 								}
 							}
 							else if ( guard )
@@ -14133,6 +14489,14 @@ fireagain:
 					{
 						thaumSpellArmorProc(hit.entity, *hitstats, false, this, EFF_DIVINE_GUARD);
 					}
+					if ( hitstats && hitstats->getEffectActive(EFF_HARDENING) )
+					{
+						thaumSpellArmorProc(hit.entity, *hitstats, false, this, EFF_HARDENING);
+					}
+					if ( hitstats && hitstats->getEffectActive(EFF_REACTIVITY) )
+					{
+						thaumSpellArmorProc(hit.entity, *hitstats, false, this, EFF_REACTIVITY);
+					}
 
 					// write the obituary
 					if ( hit.entity != this )
@@ -14916,9 +15280,12 @@ fireagain:
 						}
 					}
 
-					if ( (hitstats->getEffectActive(EFF_WEBBED) || hitstats->getEffectActive(EFF_MAGIC_GREASE) 
+					if ( (hitstats->getEffectActive(EFF_WEBBED) 
+						|| hitstats->getEffectActive(EFF_MAGIC_GREASE) 
 						|| pose == PLAYER_POSE_GOLEM_SMASH 
 						|| hit.entity->myconidReboundOnHit(this)
+						|| hitstats->getEffectActive(EFF_SPARSITY)
+						|| myStats->getEffectActive(EFF_DENSITY)
 						|| (myStats->type == GNOME && myStats->weapon && !shapeshifted && myStats->weapon->type == TOOL_PICKAXE))
 						&& !hitstats->getEffectActive(EFF_KNOCKBACK) && hit.entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
 					{
@@ -14949,6 +15316,22 @@ fireagain:
 								{
 									baseMultiplier = 0.5;
 								}
+							}
+						}
+						else if ( hitstats->getEffectActive(EFF_SPARSITY) || myStats->getEffectActive(EFF_DENSITY) )
+						{
+							baseMultiplier = 0.7;
+							if ( behavior == &actPlayer )
+							{
+								if ( charge < Stat::getMaxAttackCharge(myStats) / 2 )
+								{
+									baseMultiplier = 0.5;
+								}
+							}
+
+							if ( myStats->getEffectActive(EFF_DENSITY) && behavior == &actPlayer )
+							{
+								players[skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_DENSITY, 25.0, 1.0, hit.entity);
 							}
 						}
 						else if ( hit.entity->myconidReboundOnHit(this) )
@@ -18246,6 +18629,10 @@ int AC(Stat* stat)
 	if ( stat->getEffectActive(EFF_DIVINE_GUARD) )
 	{
 		armor += thaumSpellArmorProc(playerEntity, *stat, true, nullptr, EFF_DIVINE_GUARD);
+	}
+	if ( stat->getEffectActive(EFF_HARDENING) )
+	{
+		armor += thaumSpellArmorProc(playerEntity, *stat, true, nullptr, EFF_HARDENING);
 	}
 	if ( stat->getEffectActive(EFF_DISRUPTED) )
 	{
@@ -25211,7 +25598,11 @@ void Entity::handleEffectsClient()
 		}
 	}
 
-	if ( myStats->getEffectActive(EFF_GUARD_BODY) || myStats->getEffectActive(EFF_GUARD_SPIRIT) || myStats->getEffectActive(EFF_DIVINE_GUARD) )
+	if ( myStats->getEffectActive(EFF_GUARD_BODY) 
+		|| myStats->getEffectActive(EFF_GUARD_SPIRIT) 
+		|| myStats->getEffectActive(EFF_DIVINE_GUARD) 
+		|| myStats->getEffectActive(EFF_HARDENING) > 1
+		|| myStats->getEffectActive(EFF_REACTIVITY) > 1 )
 	{
 		int interval = 80;
 		if ( ticks % interval == 0 )
@@ -25285,6 +25676,50 @@ void Entity::handleEffectsClient()
 			if ( ticks % interval == 60 )
 			{
 				Entity* fx = createParticleAestheticOrbit(this, 282, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_GUARD_DIVINE_ORBIT);
+				fx->flags[SPRITE] = true;
+				fx->z = 4.0 - 2.0 * ((ticks / interval) % 4);
+				fx->vel_z = -0.025;
+				fx->sizex = 4;
+				fx->sizey = 4;
+				fx->flags[GENIUS] = true;
+				fx->scalex = 0.05;
+				fx->scaley = fx->scalex;
+				fx->scalez = fx->scalex;
+				fx->actmagicOrbitDist = 4;
+				fx->fskill[2] = this->yaw + PI;
+				fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+				//fx->fskill[2] += ((ticks / interval) % 3) * 2 * PI / 3;
+				fx->yaw = fx->fskill[2];
+				fx->actmagicNoLight = 1;
+			}
+		}
+		if ( myStats->getEffectActive(EFF_HARDENING) )
+		{
+			if ( ticks % interval == 30 )
+			{
+				Entity* fx = createParticleAestheticOrbit(this, 318, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_HARDENING_ORBIT);
+				fx->flags[SPRITE] = true;
+				fx->z = 4.0 - 2.0 * ((ticks / interval) % 4);
+				fx->vel_z = -0.025;
+				fx->sizex = 4;
+				fx->sizey = 4;
+				fx->flags[GENIUS] = true;
+				fx->scalex = 0.05;
+				fx->scaley = fx->scalex;
+				fx->scalez = fx->scalex;
+				fx->actmagicOrbitDist = 4;
+				fx->fskill[2] = this->yaw + PI;
+				fx->lightBonus = vec4{ 0.f, 0.f, 0.f, 0.f };
+				//fx->fskill[2] += ((ticks / interval) % 3) * 2 * PI / 3;
+				fx->yaw = fx->fskill[2];
+				fx->actmagicNoLight = 1;
+			}
+		}
+		if ( myStats->getEffectActive(EFF_REACTIVITY) )
+		{
+			if ( ticks % interval == 70 )
+			{
+				Entity* fx = createParticleAestheticOrbit(this, 319, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_REACTIVITY_ORBIT);
 				fx->flags[SPRITE] = true;
 				fx->z = 4.0 - 2.0 * ((ticks / interval) % 4);
 				fx->vel_z = -0.025;
@@ -25585,6 +26020,10 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 		{
 			return false;
 		}
+		if ( myStats->getEffectActive(EFF_INNOCULATE) && spellEffectInnoculateStatusEffect(effect, nullptr, false) )
+		{
+			return false;
+		}
 
 		switch ( effect )
 		{
@@ -25691,6 +26130,14 @@ bool Entity::setEffect(int effect, std::variant<bool, Uint8> value, int duration
 			case EFF_MESMERIZED:
 				if ( effect == EFF_MESMERIZED && myStats->getEffectActive(EFF_BLIND) )
 				{
+					return false;
+				}
+				if ( effect == EFF_KNOCKBACK && myStats->getEffectActive(EFF_DENSITY) )
+				{
+					if ( behavior == &actPlayer )
+					{
+						players[skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_DENSITY, 25.0, 1.0, nullptr);
+					}
 					return false;
 				}
 
@@ -29374,6 +29821,10 @@ bool Entity::SetEntityOnFire(Entity* sourceOfFire)
 				if ( myStats->amulet && myStats->amulet->type == AMULET_BURNINGRESIST )
 				{
 					this->degradeAmuletProc(myStats, AMULET_BURNINGRESIST);
+					return false;
+				}
+				if ( myStats->getEffectActive(EFF_INNOCULATE) && this->spellEffectInnoculateStatusEffect(NUMEFFECTS, sourceOfFire, false) )
+				{
 					return false;
 				}
 			}

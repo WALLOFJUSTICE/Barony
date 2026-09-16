@@ -2016,3 +2016,38 @@ void Stat::setAttribute(std::string key, std::string value)
 {
 	attributes[key] = value;
 }
+
+int Stat::getAttributeInt(std::string key)
+{
+	int val = 0;
+	if ( attributes.find(key) != attributes.end() )
+	{
+		try
+		{
+			val = std::stoi(attributes[key]);
+		}
+		catch(...)
+		{
+			val = 0;
+		}
+	}
+	return val;
+}
+
+int Stat::modifyAttributeInt(std::string key, int incr)
+{
+	int val = getAttributeInt(key);
+	val += incr;
+	attributes[key] = std::to_string(val);
+	return val;
+}
+
+void Stat::setAttributeInt(std::string key, int set)
+{
+	attributes[key] = std::to_string(set);
+}
+
+void Stat::clearAttributeInt(std::string key)
+{
+	attributes[key] = std::to_string(0);
+}

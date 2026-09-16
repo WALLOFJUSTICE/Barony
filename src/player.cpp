@@ -3335,6 +3335,11 @@ void Player::init() // for use on new/restart game, UI related
 
 	inventoryUI.appraisal.appraisalProgressionItems.clear();
 	inventoryUI.appraisal.manual_appraised_item = 0;
+
+	for ( int i = 0; i <= NUMEFFECTS; ++i )
+	{
+		mechanics.innoculateEffectsTick[i] = 0;
+	}
 }
 
 void Player::cleanUpOnEntityRemoval()
@@ -3347,6 +3352,7 @@ void Player::cleanUpOnEntityRemoval()
 	}
 	mechanics.enemyRaisedBlockingAgainst.clear();
 	mechanics.enemyRaisedStealthAgainst.clear();
+
 	mechanics.targetsCompelled.clear();
 	mechanics.targetsRefuseCompel.clear();
 	mechanics.ensemblePlaying = -1;
@@ -3375,6 +3381,11 @@ void Player::cleanUpOnEntityRemoval()
 	mechanics.eternalShrineDonationRevealedOnFloor.clear();
 	mechanics.donationClaimed = false;
 	mechanics.client_hunger_score = 0;
+
+	for ( int i = 0; i <= NUMEFFECTS; ++i )
+	{
+		mechanics.innoculateEffectsTick[i] = 0;
+	}
 }
 
 const bool Player::isLocalPlayer() const
@@ -7852,7 +7863,9 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			|| spellID == SPELL_COMMAND
 			|| spellID == SPELL_FLUTTER
 			|| spellID == SPELL_OVERCHARGE
-			|| spellID == SPELL_DIG )
+			|| spellID == SPELL_DIG
+			|| spellID == SPELL_WONDERLIGHT 
+			|| spellID == SPELL_SHADE_BOLT )
 		{
 			sustainedSpellIDCounter[spellID] += value * scaleValue;
 			if ( players[player.playernum]->entity && sustainedSpellIDCounter[spellID] > 8 * 16.0 )

@@ -6350,6 +6350,10 @@ std::string getStatusEffectNumberString(Uint8 effectStrength, std::vector<int> b
 		{
 			return std::to_string(effectStrength);
 		}
+		else if ( effectID == EFF_HARDENING || effectID == EFF_REACTIVITY )
+		{
+			return std::to_string(std::max((int)effectStrength - 1, 1));
+		}
 
 		int index = 0;
 		for ( auto point : breakpoints )
@@ -6447,6 +6451,12 @@ std::map<std::string, std::function<std::string(int)>> statusfx_num_lookup =
 	},
 	{ "vigor.png", [](int player)
 		{ return getStatusEffectNumberString((stats[player]->getEffectActive(EFF_VIGOR) >> 4) & 0xF, std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, EFF_VIGOR); }
+	},
+	{ "hardening.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_HARDENING), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_HARDENING); }
+	},
+	{ "reactivity.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_REACTIVITY), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_REACTIVITY); }
 	}
 };
 
@@ -6481,6 +6491,8 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_GUARD_SPIRIT)
 				|| stats[player]->getEffectActive(EFF_GUARD_BODY)
 				|| stats[player]->getEffectActive(EFF_DIVINE_GUARD)
+				|| stats[player]->getEffectActive(EFF_HARDENING) > 1
+				|| stats[player]->getEffectActive(EFF_REACTIVITY) > 1
 				|| stats[player]->getEffectActive(EFF_MOMENTUM)
 				|| stats[player]->getEffectActive(EFF_DELAY_PAIN)
 				|| stats[player]->getEffectActive(EFF_ABSORB_MAGIC)
@@ -6529,6 +6541,10 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 							if ( val != "" )
 							{
 								alignRight = true;
+								if ( val[0] >= '1' && val[0] <= '9' )
+								{
+									alignRight = false;
+								}
 
 								if ( auto text = Text::get(val.c_str(),
 									"fonts/pixel_maz_multiline.ttf#16#2", 0xFFFFFFFF, 0) )
@@ -11410,6 +11426,10 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 			else if ( target->behavior == &actDoorFrame )
 			{
 				interactText += Language::get(6693);
+			}
+			else if ( (target->behavior == &actMagicMissile || target->behavior == &actMagicClient) && target->sprite == 2575 )
+			{
+				interactText += Language::get(4367);
 			}
 			else if ( target->behavior == &actMagicTrap || target->behavior == &actMagicTrapCeiling )
 			{
@@ -20609,19 +20629,25 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 				{
 					int weight = player.movement.getCharacterModifiedWeight();
 					int equippedWeightTotal = player.movement.getCharacterEquippedWeight();
-					int equippedWeight = player.movement.getCharacterModifiedWeight(&equippedWeightTotal);
+					int equippedWeight = player.movement.getCharacterModifiedWeight(&equippedWeightTotal, true);
+					int goldWeightTotal = stats[player.playernum]->getGoldWeight();
+					int goldWeight = player.movement.getCharacterModifiedWeight(&goldWeightTotal);
 					Sint32 STR = statGetSTR(stats[player.playernum], player.entity);
 					Sint32 DEX = statGetDEX(stats[player.playernum], player.entity);
-					real_t currentEquippedSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(equippedWeight, STR), DEX);
-					//real_t currentSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(weight, STR), DEX);
+					//real_t currentEquippedSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(equippedWeight, STR), DEX);
+					real_t currentSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(weight, STR), DEX);
 					real_t noWeightSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(0, STR), DEX);
 					real_t maxSpeed = player.movement.getMaximumSpeed();
 
-					//real_t currentSpeedPercent = 100.0 * currentSpeed / std::fmax(.01, maxSpeed);
-					real_t currentEquippedSpeedPercent = 100.0 * currentEquippedSpeed / std::fmax(.01, maxSpeed);
+					real_t currentSpeedPercent = 100.0 * currentSpeed / std::fmax(.01, maxSpeed);
+					//real_t currentEquippedSpeedPercent = 100.0 * currentEquippedSpeed / std::fmax(.01, maxSpeed);
 					real_t noWeightSpeedPercent = 100.0 * noWeightSpeed / std::fmax(.01, maxSpeed);
 
-					real_t displayValue = (currentEquippedSpeedPercent - noWeightSpeedPercent);
+					real_t displayValue = (currentSpeedPercent - noWeightSpeedPercent);
+						/*- (currentEquippedSpeedPercent - noWeightSpeedPercent);*/
+
+					real_t factor = equippedWeight / (real_t)weight;
+					displayValue *= factor;
 					if ( displayValue >= 0.0 )
 					{
 						displayValue = -.000001; // so there is a negative sign
@@ -20866,22 +20892,25 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 				{
 					int weight = player.movement.getCharacterModifiedWeight();
 					int equippedWeightTotal = player.movement.getCharacterEquippedWeight();
-					int equippedWeight = player.movement.getCharacterModifiedWeight(&equippedWeightTotal);
+					int equippedWeight = player.movement.getCharacterModifiedWeight(&equippedWeightTotal, true);
 					int goldWeightTotal = stats[player.playernum]->getGoldWeight();
 					int goldWeight = player.movement.getCharacterModifiedWeight(&goldWeightTotal);
 					Sint32 STR = statGetSTR(stats[player.playernum], player.entity);
 					Sint32 DEX = statGetDEX(stats[player.playernum], player.entity);
-					real_t currentEquippedSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(equippedWeight, STR), DEX);
-					real_t currentSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(weight - goldWeight, STR), DEX); // ignore gold
+					//real_t currentEquippedSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(equippedWeight, STR), DEX);
+					real_t currentSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(weight, STR), DEX);
 					real_t noWeightSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(0, STR), DEX);
 					real_t maxSpeed = player.movement.getMaximumSpeed();
 
 					real_t currentSpeedPercent = 100.0 * currentSpeed / std::fmax(.01, maxSpeed);
-					real_t currentEquippedSpeedPercent = 100.0 * currentEquippedSpeed / std::fmax(.01, maxSpeed);
+					//real_t currentEquippedSpeedPercent = 100.0 * currentEquippedSpeed / std::fmax(.01, maxSpeed);
 					real_t noWeightSpeedPercent = 100.0 * noWeightSpeed / std::fmax(.01, maxSpeed);
 
-					real_t displayValue = (currentSpeedPercent - noWeightSpeedPercent)
-						- (currentEquippedSpeedPercent - noWeightSpeedPercent);
+					real_t displayValue = (currentSpeedPercent - noWeightSpeedPercent);
+					/*- (currentEquippedSpeedPercent - noWeightSpeedPercent);*/
+
+					real_t factor = (weight - equippedWeight - goldWeightTotal) / (real_t)weight;
+					displayValue *= factor;
 					if ( displayValue >= 0.0 )
 					{
 						displayValue = -.000001; // so there is a negative sign
@@ -21072,7 +21101,7 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 				{
 					int weight = player.movement.getCharacterModifiedWeight();
 					int equippedWeightTotal = player.movement.getCharacterEquippedWeight();
-					int equippedWeight = player.movement.getCharacterModifiedWeight(&equippedWeightTotal);
+					int equippedWeight = player.movement.getCharacterModifiedWeight(&equippedWeightTotal, true);
 					int goldWeightTotal = stats[player.playernum]->getGoldWeight();
 					int goldWeight = player.movement.getCharacterModifiedWeight(&goldWeightTotal);
 					Sint32 STR = statGetSTR(stats[player.playernum], player.entity);
@@ -21080,18 +21109,17 @@ void Player::CharacterSheet_t::updateCharacterSheetTooltip(SheetElements element
 					//real_t currentEquippedSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(equippedWeight, STR), DEX);
 					real_t currentSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(weight, STR), DEX);
 					real_t noWeightSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(0, STR), DEX);
-					//real_t goldSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(goldWeight, STR), DEX);
-					real_t noGoldSpeed = player.movement.getSpeedFactor(player.movement.getWeightRatio(weight - goldWeight, STR), DEX);
 					real_t maxSpeed = player.movement.getMaximumSpeed();
 
 					real_t currentSpeedPercent = 100.0 * currentSpeed / std::fmax(.01, maxSpeed);
 					//real_t currentEquippedSpeedPercent = 100.0 * currentEquippedSpeed / std::fmax(.01, maxSpeed);
 					real_t noWeightSpeedPercent = 100.0 * noWeightSpeed / std::fmax(.01, maxSpeed);
-					//real_t goldSpeedPercent = 100.0 * goldSpeed / std::fmax(.01, maxSpeed);
-					real_t noGoldSpeedPercent = 100.0 * noGoldSpeed / std::fmax(.01, maxSpeed);
 
-					real_t displayValue = (currentSpeedPercent - noWeightSpeedPercent) 
-						- (noGoldSpeedPercent - noWeightSpeedPercent);
+					real_t displayValue = (currentSpeedPercent - noWeightSpeedPercent);
+					/*- (currentEquippedSpeedPercent - noWeightSpeedPercent);*/
+
+					real_t factor = goldWeight / (real_t)weight;
+					displayValue *= factor;
 					if ( displayValue >= 0.001 )
 					{
 						// do nothing
@@ -23580,6 +23608,48 @@ void updateSlotFrameFromItem(Frame* slotFrame, void* itemPtr, bool forceUnusable
 							qtyColor = hudColors.characterSheetRed;
 						}
 						snprintf(qtybuf, sizeof(qtybuf), "%d", cost);
+						if ( strcmp(qtyText->getText(), qtybuf) )
+						{
+							qtyText->setText(qtybuf);
+						}
+						qtyText->setColor(qtyColor);
+					}
+				}
+			}
+			else if ( item->type == SPELL_ITEM
+				&& (item->appearance == SPELL_KEG_BOUNCE) )
+			{
+				if ( spell_t* spell = getSpellFromItem(player, item, true) )
+				{
+					qtyFrame->setDisabled(false);
+					if ( auto qtyText = qtyFrame->getFields()[SLOTFRAME_QTY_TEXT]/*qtyFrame->findField("quantity text")*/ )
+					{
+						char qtybuf[32] = "";
+						auto cost = getScrapCostOfSpell(spell, player);
+
+						int metalQty = 0;
+						int magicQty = 0;
+						for ( node_t* node = stats[player]->inventory.first; node != nullptr; node = node->next )
+						{
+							Item* item = (Item*)node->element;
+							if ( item )
+							{
+								if ( item->type == TOOL_METAL_SCRAP )
+								{
+									metalQty += item->count;
+								}
+								else if ( item->type == TOOL_MAGIC_SCRAP )
+								{
+									magicQty += item->count;
+								}
+							}
+						}
+
+						if ( cost.first > metalQty || cost.second > magicQty )
+						{
+							qtyColor = hudColors.characterSheetRed;
+						}
+						snprintf(qtybuf, sizeof(qtybuf), "%d", cost.first);
 						if ( strcmp(qtyText->getText(), qtybuf) )
 						{
 							qtyText->setText(qtybuf);
@@ -32297,8 +32367,12 @@ struct enemybarMapLowDurationTick_k {
 		}
 	};
 };
+
+struct enemybarEffectMapFx6_lowDuration_k {
+	std::map<Uint32, enemybarMapLowDurationTick_k> m_efx6_low;
+};
 struct enemybarEffectMapFx5_lowDuration_k {
-	std::map<Uint32, enemybarMapLowDurationTick_k> m_efx5_low;
+	std::map<Uint32, enemybarEffectMapFx6_lowDuration_k> m_efx5_low;
 };
 struct enemybarEffectMapFx4_lowDuration_k {
 	std::map<Uint32, enemybarEffectMapFx5_lowDuration_k> m_efx4_low;
@@ -32312,8 +32386,11 @@ struct enemybarEffectMapFx2_lowDuration_k {
 struct enemybarEffectMapFx1_lowDuration_k {
 	std::map<Uint32, enemybarEffectMapFx2_lowDuration_k> m_efx1_low;
 };
+struct enemybarEffectMapFx6_k {
+	std::map<Uint32, enemybarEffectMapFx1_lowDuration_k> m_efx6;
+};
 struct enemybarEffectMapFx5_k {
-	std::map<Uint32, enemybarEffectMapFx1_lowDuration_k> m_efx5;
+	std::map<Uint32, enemybarEffectMapFx6_k> m_efx5;
 };
 struct enemybarEffectMapFx4_k {
 	std::map<Uint32, enemybarEffectMapFx5_k> m_efx4;
@@ -32328,8 +32405,8 @@ struct enemybarEffectMapFx1_k {
 	std::map<Uint32, enemybarEffectMapFx2_k> m_efx1;
 };
 enemybarEffectMapFx1_k enemyBarEffectMap;
-SDL_Surface* enemyBarEffectMapExists(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5,
-	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5,
+SDL_Surface* enemyBarEffectMapExists(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5, Uint32 fx6,
+	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5, Uint32 fx_lowDuration6,
 	bool lowDurationTicks)
 {
 	if ( enemyBarEffectMap.m_efx1.find(fx1) != enemyBarEffectMap.m_efx1.end() )
@@ -32347,24 +32424,32 @@ SDL_Surface* enemyBarEffectMapExists(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 
 					if ( m4.m_efx5.find(fx5) != m4.m_efx5.end() )
 					{
 						auto& m5 = m4.m_efx5[fx5];
-						if ( m5.m_efx1_low.find(fx_lowDuration1) != m5.m_efx1_low.end() )
+						if ( m5.m_efx6.find(fx6) != m5.m_efx6.end() )
 						{
-							auto& m6 = m5.m_efx1_low[fx_lowDuration1];
-							if ( m6.m_efx2_low.find(fx_lowDuration2) != m6.m_efx2_low.end() )
+							auto& m6 = m5.m_efx6[fx6];
+							if ( m6.m_efx1_low.find(fx_lowDuration1) != m6.m_efx1_low.end() )
 							{
-								auto& m7 = m6.m_efx2_low[fx_lowDuration2];
-								if ( m7.m_efx3_low.find(fx_lowDuration3) != m7.m_efx3_low.end() )
+								auto& m1_low = m6.m_efx1_low[fx_lowDuration1];
+								if ( m1_low.m_efx2_low.find(fx_lowDuration2) != m1_low.m_efx2_low.end() )
 								{
-									auto& m8 = m7.m_efx3_low[fx_lowDuration3];
-									if ( m8.m_efx4_low.find(fx_lowDuration4) != m8.m_efx4_low.end() )
+									auto& m2_low = m1_low.m_efx2_low[fx_lowDuration2];
+									if ( m2_low.m_efx3_low.find(fx_lowDuration3) != m2_low.m_efx3_low.end() )
 									{
-										auto& m9 = m8.m_efx4_low[fx_lowDuration4];
-										if ( m9.m_efx5_low.find(fx_lowDuration5) != m9.m_efx5_low.end() )
+										auto& m3_low = m2_low.m_efx3_low[fx_lowDuration3];
+										if ( m3_low.m_efx4_low.find(fx_lowDuration4) != m3_low.m_efx4_low.end() )
 										{
-											auto& m10 = m9.m_efx5_low[fx_lowDuration5];
-											if ( m10.m_elow_ticks.find(lowDurationTicks) != m10.m_elow_ticks.end() )
+											auto& m4_low = m3_low.m_efx4_low[fx_lowDuration4];
+											if ( m4_low.m_efx5_low.find(fx_lowDuration5) != m4_low.m_efx5_low.end() )
 											{
-												return m10.m_elow_ticks[lowDurationTicks];
+												auto& m5_low = m4_low.m_efx5_low[fx_lowDuration5];
+												if ( m5_low.m_efx6_low.find(fx_lowDuration6) != m5_low.m_efx6_low.end() )
+												{
+													auto& m6_low = m5_low.m_efx6_low[fx_lowDuration6];
+													if ( m6_low.m_elow_ticks.find(lowDurationTicks) != m6_low.m_elow_ticks.end() )
+													{
+														return m6_low.m_elow_ticks[lowDurationTicks];
+													}
+												}
 											}
 										}
 									}
@@ -32378,24 +32463,201 @@ SDL_Surface* enemyBarEffectMapExists(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 
 	}
 	return nullptr;
 }
-void enemyBarEffectMapInsert(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5,
-	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5,
+void enemyBarEffectMapInsert(Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5, Uint32 fx6,
+	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5, Uint32 fx_lowDuration6,
 	bool lowDurationTicks,
 	SDL_Surface* surf)
 {
-	enemyBarEffectMap.m_efx1[fx1].m_efx2[fx2].m_efx3[fx3].m_efx4[fx4].m_efx5[fx5].m_efx1_low[fx_lowDuration1]
-		.m_efx2_low[fx_lowDuration2].m_efx3_low[fx_lowDuration3].m_efx4_low[fx_lowDuration4].m_efx5_low[fx_lowDuration5]
+	enemyBarEffectMap.m_efx1[fx1].m_efx2[fx2].m_efx3[fx3].m_efx4[fx4].m_efx5[fx5].m_efx6[fx6]
+		.m_efx1_low[fx_lowDuration1].m_efx2_low[fx_lowDuration2].m_efx3_low[fx_lowDuration3]
+		.m_efx4_low[fx_lowDuration4].m_efx5_low[fx_lowDuration5].m_efx6_low[fx_lowDuration6]
 			.m_elow_ticks[lowDurationTicks] = surf;
 }
 
+static ConsoleCommand ccmd_debug_nest_hp_map("/debug_nest_hp_map", "", [](int argc, const char** argv) {
+	BaronyRNG rng;
+	Uint32 seed = 0;
+	rng.seedBytes(&seed, sizeof(seed));
+	enemyBarEffectMap.m_efx1.clear();
+
+	size_t numtrials = 10000;
+	struct Trial
+	{
+		Uint32 enemy_statusEffects1 = 0;
+		Uint32 enemy_statusEffects2 = 0;
+		Uint32 enemy_statusEffects3 = 0;
+		Uint32 enemy_statusEffects4 = 0;
+		Uint32 enemy_statusEffects5 = 0;
+		Uint32 enemy_statusEffects6 = 0;
+		Uint32 enemy_statusEffectsLowDuration1 = 0;
+		Uint32 enemy_statusEffectsLowDuration2 = 0;
+		Uint32 enemy_statusEffectsLowDuration3 = 0;
+		Uint32 enemy_statusEffectsLowDuration4 = 0;
+		Uint32 enemy_statusEffectsLowDuration5 = 0;
+		Uint32 enemy_statusEffectsLowDuration6 = 0;
+	};
+	std::vector<Trial> trials(numtrials);
+	SDL_Surface* sprite = SDL_CreateRGBSurface(0, 0, 32, 32,
+		0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+
+	std::map<unsigned long, int> lookup;
+
+	int index = 0;
+	for ( auto& trial : trials )
+	{
+		int fx = 128;
+		++index;
+		std::vector<unsigned int> chances(NUMEFFECTS, 1);
+		while ( fx > 0 )
+		{
+			--fx;
+			int i = rng.discrete(chances.data(), chances.size());
+			chances[i] = 0;
+
+			if ( i < 32 )
+			{
+				trial.enemy_statusEffects1 |= (1 << i);
+				if ( rng.rand() % 2 )
+				{
+					trial.enemy_statusEffectsLowDuration1 |= (1 << (i));
+				}
+			}
+			else if ( i < 64 )
+			{
+				trial.enemy_statusEffects2 |= (1 << (i - 32));
+				if ( rng.rand() % 2 )
+				{
+					trial.enemy_statusEffectsLowDuration2 |= (1 << (i - 32));
+				}
+			}
+			else if ( i < 96 )
+			{
+				trial.enemy_statusEffects3 |= (1 << (i - 64));
+				if ( rng.rand() % 2 )
+				{
+					trial.enemy_statusEffectsLowDuration3 |= (1 << (i - 64));
+				}
+			}
+			else if ( i < 128 )
+			{
+				trial.enemy_statusEffects4 |= (1 << (i - 96));
+				if ( rng.rand() % 2 )
+				{
+					trial.enemy_statusEffectsLowDuration4 |= (1 << (i - 96));
+				}
+			}
+			else if ( i < 160 )
+			{
+				trial.enemy_statusEffects5 |= (1 << (i - 128));
+				if ( rng.rand() % 2 )
+				{
+					trial.enemy_statusEffectsLowDuration5 |= (1 << (i - 128));
+				}
+			}
+			else if ( i < 192 )
+			{
+				trial.enemy_statusEffects6 |= (1 << (i - 160));
+				if ( rng.rand() % 2 )
+				{
+					trial.enemy_statusEffectsLowDuration6 |= (1 << (i - 160));
+				}
+			}
+		}
+
+		enemyBarEffectMapInsert(trial.enemy_statusEffects1, trial.enemy_statusEffects2, trial.enemy_statusEffects3,
+			trial.enemy_statusEffects4, trial.enemy_statusEffects5, trial.enemy_statusEffects6,
+			trial.enemy_statusEffectsLowDuration1, trial.enemy_statusEffectsLowDuration2, trial.enemy_statusEffectsLowDuration3,
+			trial.enemy_statusEffectsLowDuration4, trial.enemy_statusEffectsLowDuration5, trial.enemy_statusEffectsLowDuration6,
+			true, sprite);
+
+		unsigned long hash = 5381;
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects1);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects2);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects3);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects4);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects5);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects6);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration1);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration2);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration3);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration4);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration5);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration6);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(1);
+		lookup[hash] = 0;
+	}
+
+	auto t1 = std::chrono::high_resolution_clock::now();
+	int hits = 0;
+	int hits2 = 0;
+	index = 0;
+	for ( auto& trial : trials )
+	{
+		++index;
+		auto surf = enemyBarEffectMapExists(
+			trial.enemy_statusEffects1,
+			trial.enemy_statusEffects2,
+			trial.enemy_statusEffects3,
+			trial.enemy_statusEffects4,
+			trial.enemy_statusEffects5,
+			trial.enemy_statusEffects6,
+			trial.enemy_statusEffectsLowDuration1,
+			trial.enemy_statusEffectsLowDuration2,
+			trial.enemy_statusEffectsLowDuration3,
+			trial.enemy_statusEffectsLowDuration4,
+			trial.enemy_statusEffectsLowDuration5,
+			trial.enemy_statusEffectsLowDuration6,
+			true);
+		if ( surf ) { ++hits; }
+	}
+	auto t2 = std::chrono::high_resolution_clock::now();
+	float msTotal = 1000 * std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
+	messagePlayer(clientnum, MESSAGE_MISC, "Hits: %d, Duration: %.4fms", hits, msTotal);
+
+	hits = 0;
+	t1 = std::chrono::high_resolution_clock::now();
+	index = 0;
+	for ( auto& trial : trials )
+	{
+		++index;
+		unsigned long hash = 5381;
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects1);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects2);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects3);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects4);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects5);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffects6);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration1);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration2);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration3);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration4);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration5);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(trial.enemy_statusEffectsLowDuration6);
+		hash = ((hash << 5) + hash) + static_cast<unsigned long>(1);
+		if ( lookup.find(hash) != lookup.end() )
+		{
+			if ( lookup[hash] == 0 )
+			{
+				hits++;
+			}
+			++lookup[hash];
+		}
+	}
+	t2 = std::chrono::high_resolution_clock::now();
+	msTotal = 1000 * std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count();
+	messagePlayer(clientnum, MESSAGE_MISC, "Hits2: %d, Duration: %.4fms", hits, msTotal);
+
+	SDL_FreeSurface(sprite);
+});
+
 // to nest deep maps and suppress visual studio warnings
-struct enemybarMapFx5_lowDuration_k {
-	std::map<Uint32, SDL_Surface*> m_fx5low;
-	~enemybarMapFx5_lowDuration_k()
+struct enemybarMapFx6_lowDuration_k {
+	std::map<Uint32, SDL_Surface*> m_fx6low;
+	~enemybarMapFx6_lowDuration_k()
 	{
 		if ( EnemyHPDamageBarHandler::bEnemyBarSimpleBlit )
 		{
-			for ( auto& entry : m_fx5low )
+			for ( auto& entry : m_fx6low )
 			{
 				if ( entry.second )
 				{
@@ -32405,6 +32667,9 @@ struct enemybarMapFx5_lowDuration_k {
 			}
 		}
 	};
+};
+struct enemybarMapFx5_lowDuration_k {
+	std::map<Uint32, enemybarMapFx6_lowDuration_k> m_fx5low;
 };
 struct enemybarMapFx4_lowDuration_k {
 	std::map<Uint32, enemybarMapFx5_lowDuration_k> m_fx4low;
@@ -32418,8 +32683,11 @@ struct enemybarMapFx2_lowDuration_k {
 struct enemybarMapFx1_lowDuration_k {
 	std::map<Uint32, enemybarMapFx2_lowDuration_k> m_fx1low;
 };
+struct enemybarMapFx6_k {
+	std::map<Uint32, enemybarMapFx1_lowDuration_k> m_fx6;
+};
 struct enemybarMapFx5_k {
-	std::map<Uint32, enemybarMapFx1_lowDuration_k> m_fx5;
+	std::map<Uint32, enemybarMapFx6_k> m_fx5;
 };
 struct enemybarMapFx4_k {
 	std::map<Uint32, enemybarMapFx5_k> m_fx4;
@@ -32446,8 +32714,8 @@ struct enemybarMapName_k {
 enemybarMapName_k enemyBarMap;
 SDL_Surface* enemyBarMapExists(std::string name, int baseWidth, int baseHeight,
 	int progressWidth, int damageWidth,
-	Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5,
-	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5)
+	Uint32 fx1, Uint32 fx2, Uint32 fx3, Uint32 fx4, Uint32 fx5, Uint32 fx6,
+	Uint32 fx_lowDuration1, Uint32 fx_lowDuration2, Uint32 fx_lowDuration3, Uint32 fx_lowDuration4, Uint32 fx_lowDuration5, Uint32 fx_lowDuration6)
 {
 	if ( enemyBarMap.m_name.find(name) != enemyBarMap.m_name.end() )
 	{
@@ -32463,37 +32731,45 @@ SDL_Surface* enemyBarMapExists(std::string name, int baseWidth, int baseHeight,
 			m2.lastTouched = ticks;
 			if ( m2.m_progress.find(progressDamageKey) != m2.m_progress.end() )
 			{
-				auto& m3 = m2.m_progress[progressDamageKey];
-				if ( m3.m_fx1.find(fx1) != m3.m_fx1.end() )
+				auto& m1_fx = m2.m_progress[progressDamageKey];
+				if ( m1_fx.m_fx1.find(fx1) != m1_fx.m_fx1.end() )
 				{
-					auto& m4 = m3.m_fx1[fx1];
-					if ( m4.m_fx2.find(fx2) != m4.m_fx2.end() )
+					auto& m2_fx = m1_fx.m_fx1[fx1];
+					if ( m2_fx.m_fx2.find(fx2) != m2_fx.m_fx2.end() )
 					{
-						auto& m5 = m4.m_fx2[fx2];
-						if ( m5.m_fx3.find(fx3) != m5.m_fx3.end() )
+						auto& m3_fx = m2_fx.m_fx2[fx2];
+						if ( m3_fx.m_fx3.find(fx3) != m3_fx.m_fx3.end() )
 						{
-							auto& m6 = m5.m_fx3[fx3];
-							if ( m6.m_fx4.find(fx4) != m6.m_fx4.end() )
+							auto& m4_fx = m3_fx.m_fx3[fx3];
+							if ( m4_fx.m_fx4.find(fx4) != m4_fx.m_fx4.end() )
 							{
-								auto& m7 = m6.m_fx4[fx4];
-								if ( m7.m_fx5.find(fx5) != m7.m_fx5.end() )
+								auto& m5_fx = m4_fx.m_fx4[fx4];
+								if ( m5_fx.m_fx5.find(fx5) != m5_fx.m_fx5.end() )
 								{
-									auto& m8 = m7.m_fx5[fx5];
-									if ( m8.m_fx1low.find(fx_lowDuration1) != m8.m_fx1low.end() )
+									auto& m6_fx = m5_fx.m_fx5[fx5];
+									if ( m6_fx.m_fx6.find(fx6) != m6_fx.m_fx6.end() )
 									{
-										auto& m9 = m8.m_fx1low[fx_lowDuration1];
-										if ( m9.m_fx2low.find(fx_lowDuration2) != m9.m_fx2low.end() )
+										auto& m1_low = m6_fx.m_fx6[fx6];
+										if ( m1_low.m_fx1low.find(fx_lowDuration1) != m1_low.m_fx1low.end() )
 										{
-											auto& m10 = m9.m_fx2low[fx_lowDuration2];
-											if ( m10.m_fx3low.find(fx_lowDuration3) != m10.m_fx3low.end() )
+											auto& m2_low = m1_low.m_fx1low[fx_lowDuration1];
+											if ( m2_low.m_fx2low.find(fx_lowDuration2) != m2_low.m_fx2low.end() )
 											{
-												auto& m11 = m10.m_fx3low[fx_lowDuration3];
-												if ( m11.m_fx4low.find(fx_lowDuration4) != m11.m_fx4low.end() )
+												auto& m3_low = m2_low.m_fx2low[fx_lowDuration2];
+												if ( m3_low.m_fx3low.find(fx_lowDuration3) != m3_low.m_fx3low.end() )
 												{
-													auto& m12 = m11.m_fx4low[fx_lowDuration4];
-													if ( m12.m_fx5low.find(fx_lowDuration5) != m12.m_fx5low.end() )
+													auto& m4_low = m3_low.m_fx3low[fx_lowDuration3];
+													if ( m4_low.m_fx4low.find(fx_lowDuration4) != m4_low.m_fx4low.end() )
 													{
-														return m12.m_fx5low[fx_lowDuration5];
+														auto& m5_low = m4_low.m_fx4low[fx_lowDuration4];
+														if ( m5_low.m_fx5low.find(fx_lowDuration5) != m5_low.m_fx5low.end() )
+														{
+															auto& m6_low = m5_low.m_fx5low[fx_lowDuration5];
+															if ( m6_low.m_fx6low.find(fx_lowDuration6) != m6_low.m_fx6low.end() )
+															{
+																return m6_low.m_fx6low[fx_lowDuration6];
+															}
+														}
 													}
 												}
 											}
@@ -32543,8 +32819,8 @@ void EnemyHPDamageBarHandler::cullCache()
 }
 
 static void  enemyBarMapInsert(std::string name, int baseWidth, int baseHeight, int progressWidth, int damageWidth,
-	Uint32 statusfx1, Uint32 statusfx2, Uint32 statusfx3, Uint32 statusfx4, Uint32 statusfx5,
-	Uint32 statusfx_lowDuration1, Uint32 statusfx_lowDuration2, Uint32 statusfx_lowDuration3, Uint32 statusfx_lowDuration4, Uint32 statusfx_lowDuration5,
+	Uint32 statusfx1, Uint32 statusfx2, Uint32 statusfx3, Uint32 statusfx4, Uint32 statusfx5, Uint32 statusfx6,
+	Uint32 statusfx_lowDuration1, Uint32 statusfx_lowDuration2, Uint32 statusfx_lowDuration3, Uint32 statusfx_lowDuration4, Uint32 statusfx_lowDuration5, Uint32 statusfx_lowDuration6,
 	SDL_Surface* surf)
 {
 	Uint32 totalSizeKey = baseWidth & 0xFFFF;
@@ -32556,8 +32832,9 @@ static void  enemyBarMapInsert(std::string name, int baseWidth, int baseHeight, 
 	auto& m = enemyBarMap.m_name[name].m_totalsize[totalSizeKey];
 	m.lastTouched = ticks;
 	m.m_progress[progressDamageKey]
-		.m_fx1[statusfx1].m_fx2[statusfx2].m_fx3[statusfx3].m_fx4[statusfx4].m_fx5[statusfx5]
-			.m_fx1low[statusfx_lowDuration1].m_fx2low[statusfx_lowDuration2].m_fx3low[statusfx_lowDuration3].m_fx4low[statusfx_lowDuration4].m_fx5low[statusfx_lowDuration5] = surf;
+		.m_fx1[statusfx1].m_fx2[statusfx2].m_fx3[statusfx3].m_fx4[statusfx4].m_fx5[statusfx5].m_fx6[statusfx6]
+			.m_fx1low[statusfx_lowDuration1].m_fx2low[statusfx_lowDuration2].m_fx3low[statusfx_lowDuration3]
+		.m_fx4low[statusfx_lowDuration4].m_fx5low[statusfx_lowDuration5].m_fx6low[statusfx_lowDuration6] = surf;
 }
 
 SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBar(const int player, SDL_Surface* statusEffectSprite)
@@ -32609,11 +32886,13 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBar(const int pla
 			enemy_statusEffects3,
 			enemy_statusEffects4,
 			enemy_statusEffects5,
+			enemy_statusEffects6,
 			enemy_statusEffectsLowDuration1,
 			enemy_statusEffectsLowDuration2,
 			enemy_statusEffectsLowDuration3,
 			enemy_statusEffectsLowDuration4,
-			enemy_statusEffectsLowDuration5);
+			enemy_statusEffectsLowDuration5,
+			enemy_statusEffectsLowDuration6);
 		if ( !hashSurf )
 		{
 			//messagePlayer(0, MESSAGE_DEBUG, "Hash for enemy bar not found!");
@@ -32710,11 +32989,13 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBar(const int pla
 			enemy_statusEffects3,
 			enemy_statusEffects4,
 			enemy_statusEffects5,
+			enemy_statusEffects6,
 			enemy_statusEffectsLowDuration1,
 			enemy_statusEffectsLowDuration2,
 			enemy_statusEffectsLowDuration3,
 			enemy_statusEffectsLowDuration4,
 			enemy_statusEffectsLowDuration5,
+			enemy_statusEffectsLowDuration6,
 			sprite);
 	}
 	return sprite;
@@ -32736,7 +33017,8 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 		&& enemy_statusEffects2 == 0 
 		&& enemy_statusEffects3 == 0
 		&& enemy_statusEffects4 == 0
-		&& enemy_statusEffects5 == 0 )
+		&& enemy_statusEffects5 == 0
+		&& enemy_statusEffects6 == 0 )
 	{
 		return nullptr;
 	}
@@ -32755,11 +33037,13 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 			enemy_statusEffects3,
 			enemy_statusEffects4,
 			enemy_statusEffects5,
+			enemy_statusEffects6,
 			enemy_statusEffectsLowDuration1,
 			enemy_statusEffectsLowDuration2,
 			enemy_statusEffectsLowDuration3,
 			enemy_statusEffectsLowDuration4,
 			enemy_statusEffectsLowDuration5,
+			enemy_statusEffectsLowDuration6,
 			(ticks % 25) >= 12);
 		if ( !hashSurf )
 		{
@@ -33009,6 +33293,45 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 			}
 		}
 	}
+	if ( enemy_statusEffects6 != 0 )
+	{
+		for ( int i = 0; i < 32; ++i )
+		{
+			if ( (enemy_statusEffects6 & (1 << i)) != 0 )
+			{
+				int effectID = i + 160;
+				if ( StatusEffectQueue_t::StatusEffectDefinitions_t::effectDefinitionExists(effectID) )
+				{
+					int variation = -1;
+					SDL_Surface* srcSurf = nullptr;
+					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(effectID);
+					if ( !definition.neverDisplay )
+					{
+						std::string imgPath;
+						/*if ( (effectID == EFF_SALAMANDER_HEART || effectID == EFF_SMOKE_HPMP_RGN || effectID == EFF_RESOLVE) && variation == -1 )
+						{
+							imgPath = "";
+						}
+						else*/
+						{
+							imgPath = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffectImgPath(definition, variation);
+						}
+						if ( imgPath != "" )
+						{
+							srcSurf = const_cast<SDL_Surface*>(Image::get(imgPath.c_str())->getSurf());
+
+							bool blinking = false;
+							if ( (enemy_statusEffectsLowDuration6 & (1 << i)) != 0 )
+							{
+								blinking = true;
+							}
+							statusEffectIcons.push_back(std::make_pair(srcSurf, blinking));
+						}
+					}
+				}
+			}
+		}
+	}
 
 	//const int numIcons = statusEffectIcons.size();
 	//const int iconTotalWidth = iconWidth + 2;
@@ -33058,11 +33381,13 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 			enemy_statusEffects3,
 			enemy_statusEffects4,
 			enemy_statusEffects5,
+			enemy_statusEffects6,
 			enemy_statusEffectsLowDuration1,
 			enemy_statusEffectsLowDuration2,
 			enemy_statusEffectsLowDuration3,
 			enemy_statusEffectsLowDuration4,
 			enemy_statusEffectsLowDuration5,
+			enemy_statusEffectsLowDuration6,
 			(ticks % 25) >= 12,
 			sprite);
 	}

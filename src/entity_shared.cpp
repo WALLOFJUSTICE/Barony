@@ -2169,6 +2169,8 @@ std::vector<std::pair<const char*, const char*>> spriteEditorNameStrings =
 	{ "ASCENSION SHRINE",				"interactables" },
 	{ "FLOOR BUILDER",                  "mech" },
 	{ "SOKOBAN MAN",                    "misc" },
+	{ "NOT USED",						"" },
+	{ "NOT USED",						"" },
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][32] =

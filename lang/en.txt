@@ -4814,6 +4814,7 @@ for accessory to violence!#
 4364 pedestal#
 4365 campfire#
 4366 object#
+4367 keg#
 
 # New main menu strings (5000)
 
@@ -7511,6 +7512,24 @@ to accept invitation.#
 7215 You blitz forward!#
 7216 You call forth a totem of healing!#
 7217 The vigor of battle restores you!#
+7218 You set density.#
+7219 You set sparsity.#
+7220 You set alacrity.#
+7221 You set hardening.#
+7222 You set innoculate.#
+7223 You set reactivity.#
+7224 Unset density.#
+7225 Unset sparsity.#
+7226 Unset alacrity.#
+7227 Unset hardening.#
+7228 Unset innoculate.#
+7229 Unset reactivity.#
+7230 Your innoculation protects you!#
+7231 Your mana could not sustain your innoculation!#
+7232 Insufficient scrap!#
+7233 Your spell fails to seek any targets in range.#
+7234 Select Spell#
+7235 Deselect#
 
 # Shrine texts
 7250 "ALL THINGS ARE TEMPORARY."#

@@ -522,6 +522,142 @@ void Entity::actTeleportShrine()
 	}
 }
 
+void actMagicSpellMineTrap(Entity* my)
+{
+	my->removeLightField();
+	my->light = addLight(my->x / 16, my->y / 16, "magic_floor_trap_red");
+
+
+	if ( multiplayer == CLIENT )
+	{
+		return;
+	}
+
+	if ( my->skill[3] == 0 )
+	{
+		if ( multiplayer != CLIENT )
+		{
+			createRadiusMagic(SPELL_FIRE_TRAP_WALL, my, my->x, my->y, 20.0, my->skill[0], my);
+			my->skill[3] = 1;
+		}
+		//if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, 0.0, 10 * TICKS_PER_SECOND, 32.0) )
+		//{
+		//	//fx->actSpriteFollowUID = 0;
+		//	fx->actSpriteCheckParentExists = 1;
+		//	fx->scalex = 0.8;
+		//	fx->scaley = 0.8;
+		//	if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+		//	{
+		//		//indicator->arc = PI / 2;
+		//		Uint32 color = makeColor(255, 128, 0, 255);
+		//		indicator->indicatorColor = color;
+		//		indicator->loop = false;
+		//		indicator->gradient = 4;
+		//		indicator->framesPerTick = 2;
+		//		indicator->ticksPerUpdate = 1;
+		//		indicator->delayTicks = 0;
+		//		indicator->expireAlphaRate = 0.95;
+		//		indicator->cacheType = AOEIndicators_t::CACHE_SPELL_FLOOR_TRAP;
+		//	}
+		//}
+	}
+
+	--my->skill[0];
+	if ( my->skill[0] <= 0 )
+	{
+		my->removeLightField();
+		list_RemoveNode(my->mynode);
+		return;
+	}
+
+	Entity* caster = uidToEntity(my->parent);
+	if ( my->skill[1] == 0 )
+	{
+		std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
+		std::vector<Entity*> entitiesWithinRadius;
+		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+		{
+			list_t* currentList = *it;
+			node_t* node;
+			for ( node = currentList->first; node != nullptr; node = node->next )
+			{
+				if ( Entity* entity = (Entity*)node->element )
+				{
+					if ( entity->getStats() && entity->monsterIsTargetable() )
+					{
+						if ( !caster || (caster && !caster->checkFriend(entity)) )
+						{
+							if ( achievementObserver.checkUidIsFromPlayer(my->parent) >= 0
+								&& (entity->behavior == &actPlayer 
+									|| entity->monsterAllyGetPlayerLeader()
+									|| (entity->getStats() && entity->getStats()->leader_uid == my->parent)) )
+							{
+								continue;
+							}
+							if ( entityInsideEntity(my, entity) )
+							{
+								my->skill[1] = 1; // trigger
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if ( my->skill[1] != 1 )
+	{
+		return;
+	}
+
+	auto spell = getSpellFromID(SPELL_FIRE_TRAP_WALL);
+	if ( !spell ) { return; }
+
+	int duration = spell->life_time;
+	Entity* spellTimer = createParticleTimer(caster, duration, -1);
+	spellTimer->x = my->x;
+	spellTimer->y = my->y;
+	for ( int i = 0; i < 4; ++i )
+	{
+		bool light = i == 0;
+
+
+		real_t tangent = i * PI / 2;
+
+		Entity* wave = createParticleWave(ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE,
+			1733, my->x + 8.0 * cos(tangent), my->y + 8.0 * sin(tangent), 2.75,
+			-PI / 2 + tangent,
+			duration, light);
+		real_t grouping = 13.75;
+		wave->x -= grouping * cos(tangent);
+		wave->y -= grouping * sin(tangent);
+		real_t scale = 1.0;
+		wave->skill[1] = 6; // frames
+		wave->skill[5] = 4; // frame time
+		wave->ditheringOverride = 6;
+		wave->parent = spellTimer->getUID();
+		real_t startScale = 0.1;
+		wave->scalex = startScale;
+		wave->scaley = startScale;
+		wave->scalez = startScale;
+		wave->focaly = startScale * grouping;
+		wave->fskill[0] = scale; // final scale
+		wave->fskill[1] = grouping; // final grouping
+		wave->skill[6] = 1; // grow to scale
+		/*if ( spellBookBonusPercent > 0 )
+		{
+			wave->actmagicSpellbookBonus = spellBookBonusPercent;
+		}*/
+		wave->actmagicFromSpellbook = 0;
+		wave->flags[UPDATENEEDED] = true;
+	}
+
+	my->removeLightField();
+	list_RemoveNode(my->mynode);
+	return;
+}
+
 void actDaedalusShrine(Entity* my)
 {
 	if ( !my )

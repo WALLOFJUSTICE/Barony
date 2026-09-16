@@ -251,6 +251,21 @@ void actStareParticle(Entity* my)
 	}
 
 	real_t dist = clipMove(&my->x, &my->y, my->vel_x, my->vel_y, my);
+	if ( achievementObserver.checkUidIsFromPlayer(my->parent) >= 0 )
+	{
+		if ( dist != sqrt(my->vel_x * my->vel_x + my->vel_y * my->vel_y) )
+		{
+			++my->skill[1]; // collision count
+			my->vel_x *= 0.0;
+			my->vel_y *= 0.0;
+		}
+
+		if ( abs(my->vel_x) < 0.005 && abs(my->vel_y) < 0.005 )
+		{
+			++my->skill[1]; // collision count
+		}
+	}
+
 	if ( my->skill[0] >= 25 /*|| dist != sqrt(my->vel_x * my->vel_x + my->vel_y * my->vel_y)*/ )
 	{
 		list_RemoveNode(my->mynode);
@@ -260,6 +275,10 @@ void actStareParticle(Entity* my)
 	if ( my->ticks < 25 )
 	{
 		my->scalex = 40.0 * sin(PI * my->ticks / 25.0);
+	}
+	if ( my->skill[1] > 0 )
+	{
+		my->scalex *= pow(0.75, my->skill[1]);
 	}
 	my->roll += 0.25;
 	my->focalx = limbs[STAREMASTER][16][0];
@@ -287,9 +306,18 @@ void actStareParticle(Entity* my)
 
 			if ( multiplayer != CLIENT )
 			{
-				if ( Entity* timer = uidToEntity(my->parent) )
+				Entity* timer = uidToEntity(my->parent);
+				Entity* caster = timer;
+				if ( timer )
 				{
-					Entity* caster = uidToEntity(timer->parent);
+					if ( (timer->behavior == &actPlayer || timer->behavior == &actMonster) )
+					{
+						// timer is caster
+					}
+					else
+					{
+						caster = uidToEntity(timer->parent);
+					}
 					if ( !caster )
 					{
 						caster = timer;
@@ -476,6 +504,12 @@ Entity* createStareParticle(Entity* caster)
 		entity->x = caster->x + 4.0 * cos(caster->yaw) + (local_rng.rand() % size - size / 2) / 20.f;
 		entity->y = caster->y + 4.0 * sin(caster->yaw) + (local_rng.rand() % size - size / 2) / 20.f;
 		entity->z = -4;// +(local_rng.rand() % size - size / 2) / 20.f;
+		entity->parent = 0;
+		if ( caster->behavior == &actPlayer )
+		{
+			entity->z += (caster->z - entity->z);
+			entity->parent = caster->getUID();
+		}
 
 		real_t scale = 1.f;
 		entity->scalex = scale;

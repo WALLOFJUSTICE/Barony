@@ -2307,6 +2307,12 @@ void clientActions(Entity* entity)
 						int dir = (c >> 24) & 0xF;
 						tunnelPortalSetAttributes(entity, duration, dir);
 					}
+					else if ( static_cast<Uint8>(c & 0xFF) == 28 )
+					{
+						entity->behavior = &actMagicSpellMineTrap;
+						entity->skill[2] = c;
+						entity->flags[NOUPDATE] = true;
+					}
 					break;
 			}
 		}
@@ -3227,7 +3233,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		Sint16 x = (Sint16)SDLNet_Read16(&net_packet->data[4]);
 		Sint16 y = (Sint16)SDLNet_Read16(&net_packet->data[6]);
 		Sint16 z = (Sint16)SDLNet_Read16(&net_packet->data[8]);
-		spawnExplosion(x, y, z, (SoundChannelGroupIndex)net_packet->data[10]);
+		spawnExplosion(x, y, z, (SoundChannelGroupIndex)net_packet->data[10], (Uint8)net_packet->data[11]);
 	}},
 
 	// spawn an explosion, custom sprite
@@ -3514,6 +3520,72 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					}
 					break;
 				}
+				case PARTICLE_EFFECT_FORCE_BOMBARDMENT:
+				{
+					int spread = SDLNet_Read32(&net_packet->data[15]) - 100;
+					Sint32 dir = SDLNet_Read32(&net_packet->data[19]);
+					Uint32 targetUid = SDLNet_Read32(&net_packet->data[11]);
+					Entity* target = uidToEntity(targetUid);
+					if ( Entity* fx = createParticleAestheticOrbit(target, 2577, 3 * TICKS_PER_SECOND, PARTICLE_EFFECT_FORCE_BOMBARDMENT) )
+					{
+						fx->yaw = dir / 256.0;
+						fx->flags[INVISIBLE] = true;
+
+						if ( target )
+						{
+							real_t tangent = atan2(target->y - entity->y, target->x - entity->x);
+							fx->fskill[0] = tangent;
+							fx->yaw = tangent;
+						}
+						else
+						{
+							fx->fskill[0] = entity->yaw;
+							fx->yaw = entity->yaw;
+						}
+						fx->skill[3] = entity->getUID(); // caster
+						fx->pitch = PI / 2;
+						fx->fskill[1] = PI / 4 - PI / 8;
+						fx->fskill[3] = spread;
+						fx->fskill[4] = entity->x;
+						fx->fskill[5] = entity->y;
+						fx->x = entity->x;
+						fx->y = entity->y;
+						if ( target )
+						{
+							fx->z = std::min(4.0, std::max(-4.0, target->z));
+							fx->fskill[2] = std::min(4.0, std::max(-4.0, target->z));
+						}
+						else
+						{
+							fx->z = 0;
+							fx->fskill[2] = 0;
+						}
+						fx->scalex = 0.0;
+						fx->scaley = 0.0;
+						fx->scalez = 0.0;
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_MISSILE_BOMBARDMENT_ORBIT:
+				{
+					Sint32 dir = SDLNet_Read32(&net_packet->data[19]);
+
+					Entity* fx = createParticleAestheticOrbit(entity, 2577, 3 * TICKS_PER_SECOND, PARTICLE_EFFECT_MISSILE_BOMBARDMENT_ORBIT);
+					fx->fskill[0] = dir;
+					fx->yaw = dir;
+					fx->pitch = 0.0;
+					fx->fskill[3] = 8.0;
+					fx->fskill[7] = entity->x;
+					fx->fskill[8] = entity->y;
+					fx->x = entity->x;
+					fx->y = entity->y;
+					fx->z = std::min(4.0, std::max(-4.0, entity->z));
+					fx->fskill[2] = std::min(4.0, std::max(-4.0, entity->z));
+					fx->scalex = 0.0;
+					fx->scaley = 0.0;
+					fx->scalez = 0.0;
+					break;
+				}
 				case PARTICLE_EFFECT_PSYCHIC_SPEAR:
 				{
 					int duration = SDLNet_Read32(&net_packet->data[15]);
@@ -3608,8 +3680,21 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					createParticleShatterObjects(entity);
 					break;
 				case PARTICLE_EFFECT_REVENANT_PUSH:
-					createParticleRevenantPush(entity);
+				{
+					Uint32 uid = SDLNet_Read32(&net_packet->data[11]);
+					if ( uid != 0 )
+					{
+						if ( Entity* centeredOn = uidToEntity(uid) )
+						{
+							createParticleRevenantPush(entity, centeredOn, sprite);
+						}
+					}
+					else
+					{
+						createParticleRevenantPush(entity);
+					}
 					break;
+				}
 				case PARTICLE_EFFECT_LIGHTNING_SEQ:
 					floorMagicCreateLightningSequence(entity, entity->ticks + 1);
 					break;
@@ -3799,8 +3884,11 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				createParticleErupt(particle_x, particle_y, sprite);
 				break;
 			case PARTICLE_EFFECT_BOOBY_TRAP:
-				createParticleBoobyTrapExplode(nullptr, particle_x, particle_y);
+			{
+				Uint32 followUid = SDLNet_Read32(&net_packet->data[21]);
+				createParticleBoobyTrapExplode(nullptr, particle_x, particle_y, followUid != 0 ? uidToEntity(followUid) : nullptr);
 				break;
+			}
 			case PARTICLE_EFFECT_MISC_PUDDLE:
 				spawnMiscPuddle(nullptr, particle_x, particle_y, sprite);
 				break;
@@ -4006,7 +4094,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			}
 		}
 		char enemy_name[128] = "";
-		strcpy(enemy_name, (char*)(&net_packet->data[55]));
+		strcpy(enemy_name, (char*)(&net_packet->data[63]));
 		auto details = enemyHPDamageBarHandler[clientnum].addEnemyToList(static_cast<Sint32>(enemy_hp), 
 			static_cast<Sint32>(enemy_maxhp), static_cast<Sint32>(oldhp), uid, enemy_name, lowPriorityTick, gib);
 		if ( details )
@@ -4016,11 +4104,13 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			details->enemy_statusEffects3 = SDLNet_Read32(&net_packet->data[23]);
 			details->enemy_statusEffects4 = SDLNet_Read32(&net_packet->data[27]);
 			details->enemy_statusEffects5 = SDLNet_Read32(&net_packet->data[31]);
-			details->enemy_statusEffectsLowDuration1 = SDLNet_Read32(&net_packet->data[35]);
-			details->enemy_statusEffectsLowDuration2 = SDLNet_Read32(&net_packet->data[39]);
-			details->enemy_statusEffectsLowDuration3 = SDLNet_Read32(&net_packet->data[43]);
-			details->enemy_statusEffectsLowDuration4 = SDLNet_Read32(&net_packet->data[47]);
-			details->enemy_statusEffectsLowDuration5 = SDLNet_Read32(&net_packet->data[51]);
+			details->enemy_statusEffects6 = SDLNet_Read32(&net_packet->data[35]);
+			details->enemy_statusEffectsLowDuration1 = SDLNet_Read32(&net_packet->data[39]);
+			details->enemy_statusEffectsLowDuration2 = SDLNet_Read32(&net_packet->data[43]);
+			details->enemy_statusEffectsLowDuration3 = SDLNet_Read32(&net_packet->data[47]);
+			details->enemy_statusEffectsLowDuration4 = SDLNet_Read32(&net_packet->data[51]);
+			details->enemy_statusEffectsLowDuration5 = SDLNet_Read32(&net_packet->data[55]);
+			details->enemy_statusEffectsLowDuration6 = SDLNet_Read32(&net_packet->data[59]);
 		}
 	}},
 
@@ -6427,9 +6517,28 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			real_t vel = sqrt(pow(players[clientnum]->entity->vel_y, 2) + pow(players[clientnum]->entity->vel_x, 2));
 			players[clientnum]->entity->monsterKnockbackVelocity = std::min(2.25, std::max(1.0, vel));
 			players[clientnum]->entity->monsterKnockbackTangentDir = atan2(players[clientnum]->entity->vel_y, players[clientnum]->entity->vel_x);
-			if ( vel < 0.01 )
+			if ( net_packet->data[4] == 1 ) // blitz charge
 			{
-				players[clientnum]->entity->monsterKnockbackTangentDir = players[clientnum]->entity->yaw + PI;
+				real_t velocityDir = players[clientnum]->entity->monsterKnockbackTangentDir;
+				real_t casterDir = fmod(players[clientnum]->entity->yaw, 2 * PI);
+				real_t yawDiff = velocityDir - casterDir;
+				while ( yawDiff > PI )
+				{
+					yawDiff -= 2 * PI;
+				}
+				while ( yawDiff <= -PI )
+				{
+					yawDiff += 2 * PI;
+				}
+				yawDiff = std::min(PI / 6, std::max(-PI / 6, yawDiff));
+				players[clientnum]->entity->monsterKnockbackTangentDir = players[clientnum]->entity->yaw + (std::min(vel, 0.1) / 0.1) * yawDiff;
+			}
+			else
+			{
+				if ( vel < 0.01 )
+				{
+					players[clientnum]->entity->monsterKnockbackTangentDir = players[clientnum]->entity->yaw + PI;
+				}
 			}
 		}
 	}},
@@ -7041,7 +7150,9 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		int sprite = SDLNet_Read16(&net_packet->data[16]);
 		Uint32 seed = SDLNet_Read32(&net_packet->data[18]);
 		real_t velocityBonus = SDLNet_Read16(&net_packet->data[22]) / 256.0;
-		if ( Entity* gib = spawnFociGib(x, y, z, dir, velocityBonus, uid, sprite, seed) )
+		Uint32 autohitUid = SDLNet_Read32(&net_packet->data[24]);
+		if ( Entity* gib = spawnFociGib(x, y, z, dir, velocityBonus, uid, sprite, seed, 
+			autohitUid != 0 ? uidToEntity(autohitUid) : nullptr) )
 		{
 			gib->setUID(uid);
 		}

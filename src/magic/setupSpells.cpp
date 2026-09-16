@@ -3489,6 +3489,202 @@ void setupSpells()   ///TODO: Verify this function.
 		"spell_stare_beam");
 	spell->hide_from_ui = true;
 
+	spell = createSimpleSpell(
+		SPELL_VIGOR,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_blitz_charge");
+
+	spell = createSimpleSpell(
+		SPELL_TOTEM_HEAL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		1, // damage
+		1, // duration
+		"spell_totem_heal");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_BLITZ_CHARGE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_blitz_charge");
+
+	spell = createSimpleSpell(
+		SPELL_DENSITY,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		750, // duration
+		"spell_density",
+		1);
+	spell->sustainEffectDissipate = EFF_DENSITY;
+
+	spell = createSimpleSpell(
+		SPELL_SPARSITY,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		750, // duration
+		"spell_sparsity",
+		1);
+	spell->sustainEffectDissipate = EFF_SPARSITY;
+
+	spell = createSimpleSpell(
+		SPELL_ALACRITY,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		750, // duration
+		"spell_alacrity",
+		1);
+	spell->sustainEffectDissipate = EFF_ALACRITY;
+
+	spell = createSimpleSpell(
+		SPELL_HARDENING,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		750, // duration
+		"spell_hardening",
+		1);
+	spell->sustainEffectDissipate = EFF_HARDENING;
+
+	spell = createSimpleSpell(
+		SPELL_INNOCULATE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		750, // duration
+		"spell_innoculate",
+		1);
+	spell->sustainEffectDissipate = EFF_INNOCULATE;
+
+	spell = createSimpleSpell(
+		SPELL_REACTIVITY,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		750, // duration
+		"spell_reactivity",
+		1);
+	spell->sustainEffectDissipate = EFF_REACTIVITY;
+
+	spellElementConstructor(SPELL_FROSTBALL,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_frostball");
+	spell = spellConstructor(
+		SPELL_FROSTBALL,										// ID
+		100,												// difficulty
+		"spell_frostball",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_FROSTBALL }
+	);
+
+	spellElementConstructor(SPELL_KEG_BOUNCE,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_keg_bounce");
+	spell = spellConstructor(
+		SPELL_KEG_BOUNCE,										// ID
+		100,												// difficulty
+		"spell_keg_bounce",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_KEG_BOUNCE }
+	);
+
+	spellElementConstructor(SPELL_ARC_LIGHTNING,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_arc_lightning");
+	spell = spellConstructor(
+		SPELL_ARC_LIGHTNING,										// ID
+		100,												// difficulty
+		"spell_arc_lightning",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_ARC_LIGHTNING }
+	);
+
+	spell = createSimpleSpell(
+		SPELL_FORCE_VOLLEY,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_force_volley");
+
+	spell = createSimpleSpell(
+		SPELL_FORCE_BOMBARDMENT,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_force_bombardment");
+
+	spell = createSimpleSpell(
+		SPELL_FIRE_TRAP_WALL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_fire_trap_wall");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spellElementConstructor(SPELL_FIREBLAST,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_fireblast");
+	spell = spellConstructor(
+		SPELL_FIREBLAST,										// ID
+		100,												// difficulty
+		"spell_fireblast",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_FIREBLAST }
+	);
+
 	//static const int SPELL_LIGHTNING_NEXUS = 182;
 	//static const int SPELL_LIFT = 184;
 	//static const int SPELL_IGNITE = 186;

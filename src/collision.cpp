@@ -788,6 +788,7 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 				|| mistFormDodge(true, parent)
 				|| !monsterIsTargetable(true)
 				|| (myStats->type == DRYAD && myStats->sex == FEMALE && behavior == &actPlayer)
+				|| thaumSpellArmorProc(this, *myStats, true, nullptr, EFF_REACTIVITY)
 				|| (parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_BLIND)) )
 			{
 				bool miss = false;
@@ -865,6 +866,11 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 					{
 						baseChance = std::max(baseChance, 5);
 					}
+					if ( int charges = thaumSpellArmorProc(this, *myStats, true, parent, EFF_REACTIVITY) )
+					{
+						baseChance = std::max(baseChance,
+							getSpellPropertyFromID(spell_t::SPELLPROP_MODIFIED_RADIUS, SPELL_REACTIVITY, nullptr, nullptr, nullptr) * charges);
+					}
 					if ( parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_BLIND) )
 					{
 						baseChance = std::max(baseChance, 75);
@@ -915,6 +921,10 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 							if ( myStats->type == DRYAD )
 							{
 								this->playerShakeGrowthHelmet();
+							}
+							if ( myStats->getEffectActive(EFF_REACTIVITY) )
+							{
+								thaumSpellArmorProc(this, *myStats, false, parent, EFF_REACTIVITY);
 							}
 							if ( projectile->behavior == &actMagicMissile )
 							{
@@ -1219,7 +1229,8 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				continue;
 			}
 			if ( ((entity->isDamageableCollider() && (entity->colliderHasCollision & EditorEntityData_t::COLLIDER_COLLISION_FLAG_MINO))
-				|| entity->behavior == &::actDaedalusShrine)
+				|| entity->behavior == &::actDaedalusShrine
+				|| entity->behavior == &actMonster || entity->behavior == &actPlayer)
 				&& my->behavior == &actMonster && type == MINOTAUR )
 			{
 				continue;
@@ -1330,9 +1341,13 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 			}
 			Stat* myStats = stats; //my->getStats();	//SEB <<<
 			Stat* yourStats = entity->getStats();
-			if ( my->behavior == &actPlayer && entity->behavior == &actPlayer )
+			if ( my->behavior == &actPlayer )
 			{
-				continue;
+				if ( entity->behavior == &actPlayer
+					|| (entity->behavior == &actMonster && myStats && myStats->isBlitzChargeActive()) )
+				{
+					continue;
+				}
 			}
 			if ( projectileAttack && my->behavior == &actMagicMissile 
 				&& (my->sprite == 2191 || my->sprite == 2364 || my->sprite == 2407) ) // scepter blast/blood waves/holy beam phases entities
@@ -1352,6 +1367,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				|| yourStats->getEffectActive(EFF_AGILITY) 
 				|| yourStats->getEffectActive(EFF_ENSEMBLE_LUTE)
 				|| entity->mistFormDodge(true, parent)
+				|| thaumSpellArmorProc(entity, *yourStats, true, nullptr, EFF_REACTIVITY)
 				|| (yourStats->type == DRYAD && yourStats->sex == FEMALE && entity->behavior == &actPlayer)
 				|| (yourStats->getEffectActive(EFF_MAGICIANS_ARMOR) && (my->behavior == &actThrown || my->behavior == &actArrow)))) )
 			{

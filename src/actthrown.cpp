@@ -1322,6 +1322,14 @@ void actThrown(Entity* my)
 						{
 							thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_DIVINE_GUARD);
 						}
+						if ( hitstats && hitstats->getEffectActive(EFF_HARDENING) )
+						{
+							thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_HARDENING);
+						}
+						if ( hitstats && hitstats->getEffectActive(EFF_REACTIVITY) )
+						{
+							thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_REACTIVITY);
+						}
 					}
 				}
 				if ( hitstats && !hitstats->defending )

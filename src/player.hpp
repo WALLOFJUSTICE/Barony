@@ -1849,7 +1849,7 @@ public:
 		real_t getWeightRatio(int weight, Sint32 STR);
 		int getCharacterWeight();
 		int getCharacterEquippedWeight();
-		int getCharacterModifiedWeight(int* customWeight = nullptr);
+		int getCharacterModifiedWeight(int* customWeight = nullptr, bool equippedCustomWeight = false);
 		real_t getSpeedFactor(real_t weightratio, Sint32 DEX);
 		real_t getCurrentMovementSpeed();
 		void handlePlayerCameraPosition(bool useRefreshRateDelta);
@@ -2542,6 +2542,7 @@ public:
 		bool donationClaimed = false;
 		std::map<Uint32, std::map<Uint32, Uint32>> targetsCompelled;
 		std::set<Uint32> targetsRefuseCompel;
+		Uint32 innoculateEffectsTick[NUMEFFECTS + 1]; // +1 is burning
 		static void ensembleMusicUpdateServer();
 		static void ensembleMusicUpdate();
 		enum class BreakableEvent

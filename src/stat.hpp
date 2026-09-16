@@ -171,7 +171,14 @@ static const int EFF_BURDENED = 146;
 static const int EFF_RESOLVE = 147;
 static const int EFF_CHOKING = 148;
 static const int EFF_VIGOR = 149;
-static const int NUMEFFECTS = 160;
+static const int EFF_DENSITY = 150;
+static const int EFF_SPARSITY = 151;
+static const int EFF_ALACRITY = 152;
+static const int EFF_FLAME_SHIELD = 153;
+static const int EFF_HARDENING = 154;
+static const int EFF_INNOCULATE = 155;
+static const int EFF_REACTIVITY = 156;
+static const int NUMEFFECTS = 192;
 
 // stats
 static const int STAT_STR = 0;
@@ -514,6 +521,10 @@ public:
 		}
 	}
 	void setAttribute(std::string key, std::string value);
+	int getAttributeInt(std::string key);
+	int modifyAttributeInt(std::string key, int incr);
+	void setAttributeInt(std::string key, int set);
+	void clearAttributeInt(std::string key);
 	bool statusEffectRemovedByCureAilment(const int effect, Entity* my);
 	int numShillelaghDebuffsActive(Entity* my);
 	void addItemToLootingBag(const int player, const real_t x, const real_t y, Item& item);

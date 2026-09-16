@@ -4648,6 +4648,34 @@ namespace ConsoleCommands {
 		}
 		});
 
+	static std::pair<real_t, real_t> ccmd_warp_points{ 0.0, 0.0 };
+	static ConsoleCommand ccmd_setwarp("/setwarp", "set warp point on map (cheat)", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+		if ( players[clientnum] && players[clientnum]->entity )
+		{
+			ccmd_warp_points.first = players[clientnum]->entity->x;
+			ccmd_warp_points.second = players[clientnum]->entity->y;
+		}
+		});
+	static ConsoleCommand ccmd_warp("/warp", "warp to /setwarp (cheat)", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+
+		if ( players[clientnum] && players[clientnum]->entity )
+		{
+			players[clientnum]->entity->x = ccmd_warp_points.first;
+			players[clientnum]->entity->y = ccmd_warp_points.second;
+		}
+		});
+
 	static ConsoleCommand ccmd_loadhudsettings("/loadhudsettings", "", []CCMD{
 		loadHUDSettingsJSON();
 		messagePlayer(clientnum, MESSAGE_MISC, "Reloaded HUD_settings.json");

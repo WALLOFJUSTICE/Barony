@@ -1434,6 +1434,7 @@ public:
 	bool windEffectsEntity(Entity* entity);
 	real_t monsterGetWeightRatio();
 	bool spellEffectPreserveItem(Item* item);
+	bool spellEffectInnoculateStatusEffect(int effect, Entity* attacker, bool forceProc);
 	bool mistFormDodge(bool checkEffectActiveOnly, Entity* attacker);
 	bool defyFleshProc(Entity* attacker);
 	bool pinpointDamageProc(Entity* attacker, int damage);
