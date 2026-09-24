@@ -726,7 +726,10 @@ void lichFireAnimate(Entity* my, Stat* myStats, double dist)
 						else
 						{
 							//createParticleDropRising(my, 607, 1.0);
-							spawnHeatOrbitSpin(my, 233, false);
+							if ( multiplayer != CLIENT )
+							{
+								spawnHeatOrbitSpin(my, 233, false);
+							}
 						}
 						playSoundEntityLocal(my, 170, 32);
 						if ( multiplayer != CLIENT )

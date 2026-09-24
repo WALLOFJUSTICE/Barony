@@ -3354,6 +3354,9 @@ void Player::cleanUpOnEntityRemoval()
 	mechanics.enemyRaisedStealthAgainst.clear();
 
 	mechanics.targetsCompelled.clear();
+	mechanics.targetsConflicted.clear();
+	mechanics.targetsTabood.clear();
+	mechanics.restoreFormPositions.clear();
 	mechanics.targetsRefuseCompel.clear();
 	mechanics.ensemblePlaying = -1;
 	mechanics.ensembleRequireRecast = false;
@@ -4732,6 +4735,10 @@ bool entityBlocksTooltipInteraction(const int player, Entity& entity)
 		return false;
 	}
 	else if ( entity.behavior == &actMailbox )
+	{
+		return false;
+	}
+	else if ( entity.behavior == &actParticleFloorMagic )
 	{
 		return false;
 	}
@@ -7861,18 +7868,22 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			|| spellID == SPELL_SPEED
 			|| spellID == SPELL_DETECT_FOOD
 			|| spellID == SPELL_COMMAND
+			|| spellID == SPELL_TABOO
 			|| spellID == SPELL_FLUTTER
+			|| spellID == SPELL_BUFFET
 			|| spellID == SPELL_OVERCHARGE
 			|| spellID == SPELL_DIG
 			|| spellID == SPELL_WONDERLIGHT 
-			|| spellID == SPELL_SHADE_BOLT )
+			|| spellID == SPELL_SHADE_BOLT
+			|| spellID == SPELL_CONFLICT 
+			|| spellID == SPELL_REPOSE )
 		{
 			sustainedSpellIDCounter[spellID] += value * scaleValue;
 			if ( players[player.playernum]->entity && sustainedSpellIDCounter[spellID] > 8 * 16.0 )
 			{
 				sustainedSpellIDCounter[spellID] = 0.0;
 				Uint32 flags = spell_t::SPELL_LEVEL_EVENT_DEFAULT;
-				if ( spellID == SPELL_FLUTTER )
+				if ( spellID == SPELL_FLUTTER || spellID == SPELL_BUFFET )
 				{
 					flags = spell_t::SPELL_LEVEL_EVENT_EFFECT;
 				}
@@ -7884,7 +7895,9 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			}
 		}
 		else if ( spellID == SPELL_PROF_NIMBLENESS || spellID == SPELL_PROF_STURDINESS
-			|| spellID == SPELL_PROF_GREATER_MIGHT || spellID == SPELL_PROF_COUNSEL )
+			|| spellID == SPELL_PROF_GREATER_MIGHT || spellID == SPELL_PROF_COUNSEL
+			|| spellID == SPELL_PROF_ESPIONAGE || spellID == SPELL_PROF_BRUTE_SQUAD
+			|| spellID == SPELL_PROF_HIGH_COUNCIL || spellID == SPELL_PROF_FRONT_LINE )
 		{
 			sustainedSpellIDCounter[spellID] += value * scaleValue;
 			if ( players[player.playernum]->entity && sustainedSpellIDCounter[spellID] > 8 * 16.0 )
@@ -7902,6 +7915,8 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			|| spellID == SPELL_SCRY_TRAPS
 			|| spellID == SPELL_SCRY_SHRINES
 			|| spellID == SPELL_SCRY_TREASURES
+			|| spellID == SPELL_SCRY_ITEM
+			|| spellID == SPELL_SCRY_AID
 			|| spellID == SPELL_DONATION )
 		{
 			sustainedSpellIDCounter[spellID] += value * scaleValue;

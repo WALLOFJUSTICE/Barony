@@ -167,6 +167,17 @@ void actGib(Entity* my)
 				}
 			}
 		}
+		else if ( my->sprite == 2589 ) // ice block gib
+		{
+			if ( my->ticks > GIB_LIFESPAN )
+			{
+				my->actGibHitGroundEvent = 2;
+				if ( Entity* fx = spawnMiscPuddle(my, my->x, my->y, 2464, false) )
+				{
+					fx->skill[0] = TICKS_PER_SECOND + local_rng.rand() % (1 * TICKS_PER_SECOND);
+				}
+			}
+		}
 	}
 
 	// gravity
@@ -656,6 +667,10 @@ void actFociGib(Entity* my)
 							entity->actmagicReflectionCount = my->actmagicReflectionCount;
 							entity->actmagicSpellbookBonus = my->actmagicSpellbookBonus;
 							entity->actmagicFromSpellbook = my->actmagicFromSpellbook;
+							if ( spell->ID == SPELL_CYCLONE )
+							{
+								entity->actmagicUpdateOLDHPOnHit = 1;
+							}
 
 							node_t* node = list_AddNodeFirst(&entity->children);
 							node->element = copySpell(spell);
@@ -802,7 +817,7 @@ void actFociGib(Entity* my)
 				fx->y -= 2.0 * sin(dir);
 			}
 		}
-		else if ( my->sprite == 2446 )
+		else if ( my->sprite == 2446 || my->sprite == 2634 )
 		{
 			my->roll = fmod(my->roll + 0.1, 2 * PI);
 			//if ( Entity* fx = spawnMagicParticleCustom(my, my->actGibMagicParticle, 1.0, 1.0) )
@@ -1389,9 +1404,16 @@ Entity* spawnFociGib(real_t x, real_t y, real_t z, real_t dir, real_t velocityBo
 		foci_gravity = -0.2;
 		foci_velz = -0.25;
 	}
-	else if ( sprite == 2446 )
+	else if ( sprite == 2446 || sprite == 2634 )
 	{
-		foci_vel = 1.5;
+		if ( sprite == 2634 )
+		{
+			foci_vel = 0.5;
+		}
+		else
+		{
+			foci_vel = 1.5;
+		}
 		foci_vel_decay = 0.99;
 		foci_life = 1.0;
 		foci_spread = 0.5;
@@ -1971,9 +1993,9 @@ void spawnWaterPuddle(Entity* parent, real_t x, real_t y, int duration, int loca
 	}
 }
 
-void spawnGreasePuddle(Entity* parent, real_t x, real_t y, int duration, int location)
+Entity* spawnGreasePuddle(Entity* parent, real_t x, real_t y, int duration, int location)
 {
-	if ( !parent ) { return; }
+	if ( !parent ) { return nullptr; }
 	int ox = x / 16;
 	int oy = y / 16;
 	if ( ox >= 0 && ox < map.width && oy >= 0 && oy < map.height )
@@ -2014,6 +2036,8 @@ void spawnGreasePuddle(Entity* parent, real_t x, real_t y, int duration, int loc
 			--entity_uids;
 		}
 		entity->setUID(-3);
+
+		return entity;
 	}
 }
 
@@ -2259,6 +2283,125 @@ void actGreasePuddleSpawner(Entity* my)
 				spawnGreasePuddle(my, my->x, my->y, 10 * TICKS_PER_SECOND, pick);
 			}
 		}
+	}
+}
+
+void actFlamePuddle(Entity* my)
+{
+	if ( !my ) { return; }
+
+	if ( my->ticks % 10 == 0 )
+	{
+		if ( my->parent == 0 || !uidToEntity(my->parent) )
+		{
+			my->parent = 0;
+			my->skill[0] = 0;
+		}
+
+		if ( Entity* fx = createParticleAestheticOrbit(my, 233, 10, PARTICLE_EFFECT_FLAMES_BURNING_NOPARENT) )
+		{
+			fx->flags[SPRITE] = true;
+			fx->flags[INVISIBLE] = true;
+			fx->x = my->x;
+			fx->y = my->y;
+			fx->z = 7.5;
+			fx->scalex = 1.0;
+			fx->scaley = fx->scalex;
+			fx->scalez = fx->scalex;
+			fx->fskill[0] = fx->x;
+			fx->fskill[1] = fx->y;
+			fx->vel_z = -0.25;
+			fx->actmagicOrbitDist = 1;
+			fx->fskill[2] = my->yaw + (local_rng.rand() % 8) * PI / 4.0;
+			fx->yaw = fx->fskill[2];
+			fx->actmagicNoLight = 1;
+		}
+	}
+
+	if ( my->skill[0] <= 0 )
+	{
+		if ( my->scalex <= 0.0 )
+		{
+			list_RemoveNode(my->mynode);
+			return;
+		}
+
+		my->scalex -= 0.05;
+		my->scalez = my->scalex;
+	}
+	else
+	{
+		if ( multiplayer != CLIENT )
+		{
+			--my->skill[0];
+		}
+
+		if ( my->scalex < my->fskill[0] )
+		{
+			real_t diff = std::max(0.01, (my->fskill[0] - my->scalex) / 10.0);
+			my->scalex = std::min(my->scalex + diff, my->fskill[0]);
+		}
+		my->scalez = my->scalex;
+	}
+}
+
+void spawnFlamePuddle(Entity* parent, real_t x, real_t y, int duration, int location, int sprite)
+{
+	if ( !parent ) { return; }
+	int ox = x / 16;
+	int oy = y / 16;
+	if ( ox >= 0 && ox < map.width && oy >= 0 && oy < map.height )
+	{
+		int mapIndex = oy * MAPLAYERS + ox * MAPLAYERS * map.height;
+		if ( !map.tiles[mapIndex] || swimmingtiles[map.tiles[mapIndex]] )
+		{
+			return;
+		}
+
+		Entity* entity = newEntity(sprite, 1, map.entities, nullptr); //Blood/gib entity.
+		real_t x = ox * 16.0 + 8.0;
+		real_t y = oy * 16.0 + 8.0;
+
+		static const std::vector<float> locations = {
+			0 * PI / 4,
+			5 * PI / 4,
+			2 * PI / 4,
+			3 * PI / 4,
+			4 * PI / 4,
+			7 * PI / 4,
+			1 * PI / 4,
+			6 * PI / 4,
+		};
+
+		x += 4.0 * cos(locations[location]) + 2.0 * (local_rng.rand() % 10) / 10.0;
+		y += 4.0 * sin(locations[location]) + 2.0 * (local_rng.rand() % 10) / 10.0;
+
+		entity->x = x;
+		entity->y = y;
+		entity->z = 8 + (local_rng.rand() % 20) / 100.0;
+		entity->parent = 0;
+		entity->sizex = 2;
+		entity->sizey = 2;
+		entity->behavior = &actFlamePuddle;
+		entity->parent = parent->getUID();
+		entity->yaw = (local_rng.rand() % 360) * PI / 180.0;
+
+		int randomScale = local_rng.rand() % 10;
+		entity->fskill[0] = (100 - randomScale) / 100.f; // end scale
+		entity->skill[0] = duration + TICKS_PER_SECOND;
+		entity->scalex = 0.0;
+		entity->scalez = entity->scalex;
+
+		entity->flags[UPDATENEEDED] = false;
+		entity->flags[NOUPDATE] = true;
+		entity->flags[PASSABLE] = true;
+		entity->flags[UNCLICKABLE] = true;
+		if ( multiplayer != CLIENT )
+		{
+			--entity_uids;
+		}
+		TileEntityList.addEntity(*entity);
+		entity->setUID(-3);
 	}
 }
 

@@ -106,10 +106,11 @@ bool itemProcessReturnItemEffect(Entity* my, bool fallingIntoVoid)
 							{
 								players[returnToParent->skill[2]]->mechanics.sustainedSpellIncrementMP(cost, spell->skillID);
 							}
-							players[returnToParent->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_RETURN_ITEMS, 10.0, 1.0, nullptr);
+							players[returnToParent->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_RETURN_ITEMS, 20.0, 1.0, nullptr);
 						}
-
-						spawnMagicEffectParticles(my->x, my->y, my->z, 170);
+						playSoundEntity(my, 901, 64);
+						playSoundEntity(returnToParent, 35 + local_rng.rand() % 3, 64);
+						spawnMagicEffectParticles(my->x, my->y, my->z, 2204);
 						my->removeLightField();
 						list_RemoveNode(my->mynode);
 						return true;
@@ -1456,7 +1457,8 @@ void Entity::attractItem(Entity& itemEntity)
 	{
 		if ( lastAttractTick != ::ticks )
 		{
-			spawnMagicEffectParticles(itemEntity.x, itemEntity.y, itemEntity.z, 170);
+			spawnMagicEffectParticles(itemEntity.x, itemEntity.y, itemEntity.z, 2204);
+			playSoundEntity(&itemEntity, 901, 32);
 			lastAttractTick = ::ticks;
 		}
 		itemEntity.itemFollowUID = getUID();

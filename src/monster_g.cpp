@@ -1832,7 +1832,7 @@ void Entity::monsterGChooseWeapon(const Entity* target, double dist)
 	if ( myStats->getAttribute("monster_g_type") == "berserker" )
 	{
 		int roll = 10;
-		if ( myStats->getEffectActive(EFF_SLOW) || myStats->HP <= myStats->MAXHP / 2 )
+		if ( myStats->getEffectActive(EFF_SLOW) || myStats->getEffectActive(EFF_SLOW_COLD) || myStats->HP <= myStats->MAXHP / 2 )
 		{
 			roll = 3;
 		}

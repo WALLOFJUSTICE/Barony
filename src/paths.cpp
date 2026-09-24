@@ -642,6 +642,14 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 					continue;
 				}
 			}
+			else if ( entity->behavior == &actParticleFloorMagic && entity->flags[BLOCKSIGHT]
+				&& entity->actfloorMagicType == ParticleTimerEffect_t::EffectType::EFFECT_ICE_BLOCK )
+			{
+				if ( my && (my->x / 16 == entity->x / 16) && (my->y == entity->y / 16) )
+				{
+					continue;
+				}
+			}
 			else
 			{
 				continue;

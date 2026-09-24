@@ -2289,7 +2289,7 @@ void drawEntities3D(view_t* camera, int mode)
 							dither.value + 1;
 #endif
 					}
-					else if ( entity->mistformGLRender >= 0.45 )
+					else if ( entity->mistformGLRender >= 0.45 && entity->mistformGLRender <= 2.1 )
 					{
 #ifndef EDITOR
 						static ConsoleVariable<int> cvar_dither_mistform("/dither_mistform", 6);

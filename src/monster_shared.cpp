@@ -402,6 +402,11 @@ void Entity::actMonsterLimb(bool processLight)
 	{
 		monsterEntityRenderAsTelepath = 0;
 	}
+
+	if ( parentEnt && parentEnt->behavior == &actMonster )
+	{
+		mistformGLRender = parentEnt->mistformGLRender;
+	}
 }
 
 void Entity::removeMonsterDeathNodes()

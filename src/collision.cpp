@@ -1004,6 +1004,13 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 	if ( stats )
 	{
 		levitating = isLevitating(stats);
+		if ( !levitating )
+		{
+			if ( stats->getEffectActive(EFF_LIFT) & (1 << 7) )
+			{
+				levitating = true;
+			}
+		}
 	}
 	bool isMonster = false;
 	if ( my )
@@ -1066,7 +1073,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 						}
 					}
 
-					if ( my->behavior == &actMagicMissile && my->sprite == 2407 ) // holy beam targets allies too
+					if ( my->behavior == &actMagicMissile && (my->sprite == 2407 || my->sprite == 2632) ) // repose/holy beam targets allies too
 					{
 						tryReduceCollisionSize = false;
 					}
@@ -2093,6 +2100,11 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 					{
 						// let doors block tooltips
 					}
+					else if ( entity->behavior == &actParticleFloorMagic && entity->flags[BLOCKSIGHT]
+						&& entity->actfloorMagicType == ParticleTimerEffect_t::EffectType::EFFECT_ICE_BLOCK )
+					{
+						// blocks sight
+					}
 					else
 					{
 						continue;
@@ -2110,7 +2122,7 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 			{
 				continue; // see through furniture cause we'll bust it down
 			}
-			if ( !entity->monsterIsTargetable(true) )
+			if ( !entity->monsterIsTargetable(true) && (entity->behavior == &actMonster || entity->behavior == &actPlayer) )
 			{
 				continue;
 			}

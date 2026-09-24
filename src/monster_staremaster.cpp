@@ -234,9 +234,12 @@ void actStareParticle(Entity* my)
 	my->removeLightField();
 	++my->skill[0];
 
+	int sprite = my->sprite == 2590 ? 2591 : 1866;
+	int spellID = my->sprite == 2590 ? SPELL_PARALYZE_RAY : SPELL_STARE_BEAM;
+
 	if ( my->ticks >= 20 )
 	{
-		if ( Entity* fx = spawnMagicParticleCustom(my, 1866, 0.25, 1.0) )
+		if ( Entity* fx = spawnMagicParticleCustom(my, sprite, 0.25, 1.0) )
 		{
 			fx->yaw = my->yaw;
 			fx->roll = 0;
@@ -290,7 +293,7 @@ void actStareParticle(Entity* my)
 	{
 		if ( my->ticks < 20 )
 		{
-			if ( Entity* fx = spawnMagicParticleCustom(my, 1866, 0.25, 1.0) )
+			if ( Entity* fx = spawnMagicParticleCustom(my, sprite, 0.25, 1.0) )
 			{
 				fx->yaw = my->yaw;
 				fx->roll = 0;
@@ -302,7 +305,14 @@ void actStareParticle(Entity* my)
 		}
 		if ( !my->actmagicNoLight )
 		{
-			my->light = addLight(my->x / 16, my->y / 16, "mistform_glow");
+			if ( sprite == 2591 )
+			{
+				my->light = addLight(my->x / 16, my->y / 16, "magic_paralyze_beam");
+			}
+			else
+			{
+				my->light = addLight(my->x / 16, my->y / 16, "mistform_glow");
+			}
 
 			if ( multiplayer != CLIENT )
 			{
@@ -378,25 +388,80 @@ void actStareParticle(Entity* my)
 										props->tick = ticks;
 										//if ( caster->checkEnemy(entity) )
 										{
-											int duration = getSpellEffectDurationFromID(SPELL_STARE_BEAM, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
-											int slowDuration = std::max(duration, stats->EFFECTS_TIMERS[EFF_SLOW]);
-											if ( entity->setEffect(EFF_SLOW, true, slowDuration, false) )
+											if ( spellID == SPELL_PARALYZE_RAY )
 											{
-
-											}
-
-											bool prevEffect = stats->getEffectActive(EFF_WEAKNESS);
-											int strength = std::min(7, stats->getEffectActive(EFF_WEAKNESS) + 1);
-											int weakDuration = duration + stats->EFFECTS_TIMERS[EFF_WEAKNESS];
-											if ( entity->setEffect(EFF_WEAKNESS, (Uint8)strength, weakDuration, false, true, true) )
-											{
-												if ( !prevEffect )
+												int duration = getSpellEffectDurationSecondaryFromID(spellID, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
+												int maxDuration = getSpellEffectDurationFromID(spellID, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
+												int paralyzeDuration = duration + (stats->getEffectActive(EFF_PARALYZED) ? stats->EFFECTS_TIMERS[EFF_PARALYZED] : 0);
+												paralyzeDuration = std::min(maxDuration, paralyzeDuration);
+												
+												if ( !stats->getEffectActive(EFF_PARALYZED) )
 												{
-													messagePlayerColor(entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7040));
+													if ( entity->setEffect(EFF_PARALYZED, true, paralyzeDuration, false) )
+													{
+														playSoundEntity(entity, 172, 64); //TODO: Paralyze spell sound.
+														spawnMagicEffectParticles(entity->x, entity->y, entity->z, 170);
+														if ( caster )
+														{
+															Uint32 color = makeColorRGB(0, 255, 0);
+															if ( caster->behavior == &actPlayer )
+															{
+																messagePlayerMonsterEvent(caster->skill[2], color, *stats, Language::get(2421), Language::get(2420), MSG_COMBAT);
+															}
+														}
+
+														Uint32 color = makeColorRGB(255, 0, 0);
+														if ( entity->isEntityPlayer() >= 0 )
+														{
+															messagePlayerColor(entity->isEntityPlayer(), MESSAGE_COMBAT, color, Language::get(2422));
+														}
+													}
+													else
+													{
+														if ( caster && props->hits == 1 )
+														{
+															Uint32 color = makeColorRGB(255, 0, 0);
+															if ( caster->behavior == &actPlayer )
+															{
+																messagePlayerMonsterEvent(caster->skill[2], color, *stats, Language::get(2905), Language::get(2906), MSG_COMBAT);
+															}
+														}
+													}
+												}
+												else
+												{
+													stats->EFFECTS_TIMERS[EFF_PARALYZED] = paralyzeDuration;
 												}
 											}
-											int damage = getSpellDamageFromID(SPELL_STARE_BEAM, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
-											applyGenericMagicDamage(caster, entity, *timer, SPELL_STARE_BEAM, damage, true);
+											else if ( spellID == SPELL_STARE_BEAM )
+											{
+												int duration = getSpellEffectDurationFromID(SPELL_STARE_BEAM, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
+												int slowDuration = std::max(duration, stats->EFFECTS_TIMERS[EFF_SLOW_COLD]);
+												if ( !stats->getEffectActive(EFF_SLOW_COLD) )
+												{
+													if ( entity->setEffect(EFF_SLOW_COLD, true, slowDuration, false) )
+													{
+
+													}
+												}
+												else
+												{
+													stats->EFFECTS_TIMERS[EFF_SLOW_COLD] = slowDuration;
+												}
+												bool prevEffect = stats->getEffectActive(EFF_WEAKNESS);
+												int strength = std::min(7, stats->getEffectActive(EFF_WEAKNESS) + 1);
+												int weakDuration = duration + stats->EFFECTS_TIMERS[EFF_WEAKNESS];
+												if ( entity->setEffect(EFF_WEAKNESS, (Uint8)strength, weakDuration, false, true, true) )
+												{
+													if ( !prevEffect )
+													{
+														messagePlayerColor(entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7040));
+													}
+												}
+											}
+
+											int damage = getSpellDamageFromID(spellID, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
+											applyGenericMagicDamage(caster, entity, *timer, spellID, damage, true);
 										}
 									}
 								}
@@ -406,8 +471,8 @@ void actStareParticle(Entity* my)
 									|| entity->behavior == &::actChest
 									|| entity->behavior == &::actIronDoor )
 								{
-									int damage = getSpellDamageFromID(SPELL_STARE_BEAM, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
-									applyGenericMagicDamage(caster, entity, *timer, SPELL_STARE_BEAM, damage, true);
+									int damage = getSpellDamageFromID(spellID, caster, nullptr, timer, timer->actmagicSpellbookBonus / 100.0);
+									applyGenericMagicDamage(caster, entity, *timer, spellID, damage, true);
 									++props->hits;
 									props->tick = ticks;
 								}
@@ -492,13 +557,14 @@ void createStareAOE(Entity* my, bool updateClients)
 	}
 }
 
-Entity* createStareParticle(Entity* caster)
+Entity* createStareParticle(Entity* caster, int spellID)
 {
 	if ( !caster ) { return nullptr; }
 	Entity* particle = nullptr;
 	for ( int i = 0; i < 3; ++i )
 	{
-		Entity* entity = newEntity(1865, 1, map.entities, nullptr); //Particle entity.
+		int sprite = spellID == SPELL_PARALYZE_RAY ? 2590 : 1865;
+		Entity* entity = newEntity(sprite, 1, map.entities, nullptr); //Particle entity.
 
 		int size = 1;
 		entity->x = caster->x + 4.0 * cos(caster->yaw) + (local_rng.rand() % size - size / 2) / 20.f;
@@ -559,7 +625,14 @@ Entity* createStareParticle(Entity* caster)
 
 		if ( i == 0 )
 		{
-			playSoundEntityLocal(entity, 876, 92);
+			if ( spellID == SPELL_PARALYZE_RAY )
+			{
+				playSoundEntityLocal(entity, 817 + local_rng.rand() % 2, 92);
+			}
+			else
+			{
+				playSoundEntityLocal(entity, 876, 92);
+			}
 		}
 
 		entity->vel_x = 4.0 * cos(caster->yaw);
@@ -579,14 +652,16 @@ Entity* createStareParticle(Entity* caster)
 	return particle;
 }
 
-void castStareBeam(Entity* my)
+void castStareBeam(Entity* my, int spellID)
 {
 	if ( !my ) { return; }
 
-	Entity* spellTimer = createParticleTimer(my, TICKS_PER_SECOND + 50, -1);
+	int duration = TICKS_PER_SECOND + 50;
+	Entity* spellTimer = createParticleTimer(my, duration, -1);
 	spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_STARE_GAZE;
 	spellTimer->particleTimerCountdownSprite = -1;
 	spellTimer->particleTimerVariable1 = local_rng.rand() % 3;
+	spellTimer->particleTimerVariable2 = spellID;
 	if ( spellTimer->particleTimerVariable1 == 0 )
 	{
 		spellTimer->yaw = my->yaw - (PI / 64) * 4.0;
@@ -604,7 +679,9 @@ void castStareBeam(Entity* my)
 	
 	if ( multiplayer == SERVER )
 	{
-		serverSpawnMiscParticlesAtLocation(my->x, my->y, 0, PARTICLE_EFFECT_STARE_GAZE, spellTimer->particleTimerVariable1, 0, my->yaw * 256.0, my->getUID());
+		Uint32 dirField = spellTimer->particleTimerVariable1 & 0xF;
+		dirField |= (spellTimer->particleTimerVariable2 & 0xFFF) << 4;
+		serverSpawnMiscParticlesAtLocation(my->x, my->y, 0, PARTICLE_EFFECT_STARE_GAZE, dirField, duration, my->yaw * 256.0, my->getUID());
 	}
 }
 

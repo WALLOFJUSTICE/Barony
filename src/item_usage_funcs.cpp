@@ -493,6 +493,8 @@ bool item_PotionWater(Item*& item, Entity* entity, Entity* usedBy)
 	}
 	else if ( item->beatitude < 0 )
 	{
+		playSoundEntityLocal(players[player]->entity, 902, 128);
+
 		if ( stats->type == VAMPIRE )
 		{
 			Uint32 color = makeColorRGB(255, 0, 0);
@@ -1902,7 +1904,7 @@ bool item_PotionSpeed(Item*& item, Entity* entity, Entity* usedBy)
 	}
 	else
 	{
-		if ( !stats->getEffectActive(EFF_SLOW) )
+		if ( !stats->getEffectActive(EFF_SLOW) && !stats->getEffectActive(EFF_SLOW_COLD) )
 		{
 			messagePlayer(player, MESSAGE_STATUS, Language::get(768));
 			stats->setEffectActive(EFF_FAST, 1);
@@ -1913,6 +1915,8 @@ bool item_PotionSpeed(Item*& item, Entity* entity, Entity* usedBy)
 			messagePlayer(player, MESSAGE_STATUS, Language::get(769));
 			stats->clearEffect(EFF_SLOW);
 			stats->EFFECTS_TIMERS[EFF_SLOW] = 0;
+			stats->clearEffect(EFF_SLOW_COLD);
+			stats->EFFECTS_TIMERS[EFF_SLOW_COLD] = 0;
 		}
 	}
 	serverUpdateEffects(player);
@@ -3442,6 +3446,7 @@ void item_ScrollEnchantWeapon(Item*& item, int player)
 				//messagePlayer(player, "sent server: %d, %d, %d", net_packet->data[4], net_packet->data[5], net_packet->data[6]);
 			}
 		}
+		playSoundEntityLocal(players[player]->entity, 902, 128);
 		onScrollUseAppraisalIncrease(item, player);
 		item->identified = true;
 		consumeItem(item, player);
@@ -3671,6 +3676,7 @@ void item_ScrollEnchantArmor(Item*& item, int player)
 				//messagePlayer(player, "sent server: %d, %d, %d", net_packet->data[4], net_packet->data[5], net_packet->data[6]);
 			}
 		}
+		playSoundEntityLocal(players[player]->entity, 902, 128);
 		onScrollUseAppraisalIncrease(item, player);
 		item->identified = true;
 		consumeItem(item, player);
@@ -3848,6 +3854,7 @@ void item_ScrollRemoveCurse(Item*& item, int player)
 		{
 			messagePlayer(player, MESSAGE_HINT, Language::get(862));
 		}
+		playSoundEntityLocal(players[player]->entity, 902, 128);
 		onScrollUseAppraisalIncrease(item, player);
 		item->identified = true;
 		consumeItem(item, player);
@@ -4221,6 +4228,7 @@ void item_ScrollRepair(Item*& item, int player)
 
 	if ( item->beatitude < 0 )
 	{
+		playSoundEntityLocal(players[player]->entity, 902, 128);
 		messagePlayer(player, MESSAGE_INVENTORY, Language::get(848));
 		int tryIndex = local_rng.rand() % 7;
 		int startIndex = tryIndex;
@@ -6734,17 +6742,28 @@ void item_Spellbook(Item*& item, int player)
 			playSoundPlayer(player, 90, 64);
 			return;
 		}
-		else if ( stats[player] && (stats[player]->type == GOBLIN || (stats[player]->playerRace == RACE_GOBLIN && stats[player]->stat_appearance == 0)) )
+		else if ( itemCategory(item) != TOME_SPELL )
 		{
-			messagePlayer(player, MESSAGE_HINT, Language::get(3444));
-			playSoundPlayer(player, 90, 64);
-			return;
+			if ( stats[player] && (stats[player]->type == GOBLIN 
+				|| (stats[player]->playerRace == RACE_GOBLIN && stats[player]->stat_appearance == 0)) )
+			{
+				messagePlayer(player, MESSAGE_HINT, Language::get(3444));
+				playSoundPlayer(player, 90, 64);
+				return;
+			}
 		}
 	}
 
 	if ( players[player] && players[player]->entity && players[player]->entity->isBlind() )
 	{
 		messagePlayer(player, MESSAGE_HINT, Language::get(970));
+		playSoundPlayer(player, 90, 64);
+		return;
+	}
+
+	if ( itemCategory(item) == TOME_SPELL && !item->identified )
+	{
+		messagePlayer(player, MESSAGE_HINT, Language::get(7378));
 		playSoundPlayer(player, 90, 64);
 		return;
 	}

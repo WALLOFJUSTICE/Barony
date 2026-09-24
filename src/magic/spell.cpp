@@ -428,7 +428,7 @@ bool addSpell(int spell, int player, bool ignoreSkill)
 	if ( !intro )
 	{
 		messagePlayer(player, MESSAGE_PROGRESSION, Language::get(441), new_spell->getSpellName());
-		skillUpAnimation[player].addSpellLearned(new_spell->ID);
+		skillUpAnimation[player].addSpellLearned(new_spell->ID, new_spell->descended_spell_id >= 0);
 	}
 	node = list_AddNodeLast(&players[player]->magic.spellList);
 	node->element = new_spell;
@@ -1097,7 +1097,7 @@ real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spell
 			if ( spellSkillID == PRO_SORCERY
 				|| spellSkillID == PRO_MYSTICISM )
 			{
-				bonus += 0.2 + (0.1 * std::max(0, ((int)(casterStats->getEffectActive(EFF_COUNSEL) & 0xF) - 1)));
+				bonus += 0.2 + (0.1 * std::max(0, ((int)(casterStats->getEffectActive(EFF_COUNSEL) & 0x7) - 1)));
 			}
 		}
 		if ( casterStats->getEffectActive(EFF_RATION_SOUR) )

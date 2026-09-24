@@ -178,6 +178,13 @@ static const int EFF_FLAME_SHIELD = 153;
 static const int EFF_HARDENING = 154;
 static const int EFF_INNOCULATE = 155;
 static const int EFF_REACTIVITY = 156;
+static const int EFF_FEEDBACK = 157;
+static const int EFF_CONDUIT = 158;
+static const int EFF_LETHARGY = 159;
+static const int EFF_SLOW_COLD = 160;
+static const int EFF_TOXIC = 161;
+static const int EFF_TOXIC_WEAPON = 162;
+static const int EFF_SPIRIT_AMMO = 163;
 static const int NUMEFFECTS = 192;
 
 // stats

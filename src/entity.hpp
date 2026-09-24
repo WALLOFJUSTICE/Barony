@@ -1438,6 +1438,7 @@ public:
 	bool mistFormDodge(bool checkEffectActiveOnly, Entity* attacker);
 	bool defyFleshProc(Entity* attacker);
 	bool pinpointDamageProc(Entity* attacker, int damage);
+	bool cycloneDamageProc(Entity* attacker, int damage);
 	static bool modifyDamageMultipliersFromEffects(Entity* hitentity, Entity* attacker, 
 		real_t& damageMultiplier, DamageTableType damageTableType, Entity* projectile = nullptr, int spellID = -1);
 	real_t getHealingSpellPotionModifierFromEffects(bool processLevelup);
@@ -1746,7 +1747,8 @@ public:
 		TO_BELL,
 		TO_SUMMONTRAP,
 		TO_TELEPORTER,
-		TO_BOULDER
+		TO_BOULDER,
+		TO_GRAVE
 	};
 	enum ScriptType : int
 	{

@@ -5171,6 +5171,63 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 	shrine->eternalShrineItemCount = 1;
 	shrine->eternalShrineItemIdentified = false;
 
+	int skillID = 0;
+	if ( item->appearance == NUM_SPELLS )
+	{
+		skillID = PRO_SORCERY;
+	}
+	else if ( item->appearance == NUM_SPELLS + 1 )
+	{
+		skillID = PRO_MYSTICISM;
+	}
+	else if ( item->appearance == NUM_SPELLS + 2 )
+	{
+		skillID = PRO_THAUMATURGY;
+	}
+	else
+	{
+		// ascension spells
+		if ( auto spell = getSpellFromID(item->appearance) )
+		{
+			if ( spell->skillID == PRO_SORCERY )
+			{
+				shrine->eternalShrineItemType = TOME_SORCERY;
+				if ( spell->ascended_spell_id >= 0 )
+				{
+					shrine->eternalShrineItemAppearance = spellTomeIDToAppearance[spell->ascended_spell_id];
+				}
+				else
+				{
+					error = true;
+				}
+			}
+			else if ( spell->skillID == PRO_MYSTICISM )
+			{
+				shrine->eternalShrineItemType = TOME_MYSTICISM;
+				if ( spell->ascended_spell_id >= 0 )
+				{
+					shrine->eternalShrineItemAppearance = spellTomeIDToAppearance[spell->ascended_spell_id];
+				}
+				else
+				{
+					error = true;
+				}
+			}
+			else if ( spell->skillID == PRO_THAUMATURGY )
+			{
+				shrine->eternalShrineItemType = TOME_THAUMATURGY;
+				if ( spell->ascended_spell_id >= 0 )
+				{
+					shrine->eternalShrineItemAppearance = spellTomeIDToAppearance[spell->ascended_spell_id];
+				}
+				else
+				{
+					error = true;
+				}
+			}
+		}
+	}
+
 	if ( error )
 	{
 		if ( shrine )
@@ -5190,43 +5247,6 @@ bool eternalShrineProcessAscensionItem(const int player, Uint32 shrineUid, int s
 			serverUpdateEntitySkill(shrine, 16);
 		}
 		return false;
-	}
-
-
-	int skillID = 0;
-	if ( item->appearance == NUM_SPELLS )
-	{
-		skillID = PRO_SORCERY;
-	}
-	else if ( item->appearance == NUM_SPELLS + 1 )
-	{
-		skillID = PRO_MYSTICISM;
-	}
-	else if ( item->appearance == NUM_SPELLS + 2 )
-	{
-		skillID = PRO_THAUMATURGY;
-	}
-	else
-	{
-		// ascension spells todo
-		if ( auto spell = getSpellFromID(item->appearance) )
-		{
-			if ( spell->skillID == PRO_SORCERY )
-			{
-				shrine->eternalShrineItemType = TOME_SORCERY;
-				shrine->eternalShrineItemAppearance = spellTomeIDToAppearance[spell->ID];
-			}
-			else if ( spell->skillID == PRO_MYSTICISM )
-			{
-				shrine->eternalShrineItemType = TOME_MYSTICISM;
-				shrine->eternalShrineItemAppearance = spellTomeIDToAppearance[spell->ID];
-			}
-			else if ( spell->skillID == PRO_THAUMATURGY )
-			{
-				shrine->eternalShrineItemType = TOME_THAUMATURGY;
-				shrine->eternalShrineItemAppearance = spellTomeIDToAppearance[spell->ID];
-			}
-		}
 	}
 
 	if ( skillID > 0 )
@@ -8720,7 +8740,47 @@ bool GenericGUIMenu::EternalShrineGUI_t::inventoryItemAllowedInGUI(Item* item)
 	{
 		if ( parentGUI.guiType == GUICurrentType::GUI_TYPE_ETERNALSHRINE_ASCENSION )
 		{
-			return true;
+			if ( currentView == ASSIST_SHRINE_VIEW_ACTION && ascensionType == ASCENSION_SPELL )
+			{
+				if ( auto spell = getSpellFromItem(parentGUI.gui_player, item, false) )
+				{
+					if ( spell->ascended_spell_id >= 0
+						&& ( (players[parentGUI.gui_player]->mechanics.getDivineFavorPips() >= Player::DIVINE_FAVOR_PIPS_MAX)
+							|| ((players[parentGUI.gui_player]->mechanics.getDivineFavorPips() - 1) / 2) >= ((spell->difficulty / 20))))
+					{
+						bool learnedSpell = false;
+						for ( auto node = stats[parentGUI.gui_player]->inventory.first; node; node = node->next )
+						{
+							if ( Item* item = (Item*)node->element )
+							{
+								if ( item->type == SPELL_ITEM && item->appearance < 1000 )
+								{
+									if ( item->appearance > 0 && item->appearance < NUM_SPELLS )
+									{
+										if ( auto spell2 = getSpellFromID(item->appearance) )
+										{
+											if ( spell2->ID == spell->ascended_spell_id )
+											{
+												learnedSpell = true;
+												break;
+											}
+										}
+									}
+								}
+							}
+						}
+						if ( !learnedSpell )
+						{
+							return true;
+						}
+					}
+				}
+				return false;
+			}
+			else
+			{
+				return true;
+			}
 		}
 		else
 		{
@@ -8810,7 +8870,11 @@ GenericGUIMenu::EternalShrineGUI_t::EternalItemActions_t GenericGUIMenu::Eternal
 		{
 			if ( ascensionType == ASCENSION_SPELL )
 			{
-				resultAction = ETERNAL_ITEM_OK;
+				resultAction = ETERNAL_ITEM_INVALID;
+				if ( inventoryItemAllowedInGUI(item) )
+				{
+					resultAction = ETERNAL_ITEM_OK;
+				}
 			}
 			else
 			{

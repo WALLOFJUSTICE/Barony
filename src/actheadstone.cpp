@@ -20,6 +20,7 @@
 #include "player.hpp"
 #include "prng.hpp"
 #include "mod_tools.hpp"
+#include "paths.hpp"
 
 /*-------------------------------------------------------------------------------
 
@@ -59,7 +60,43 @@ void actHeadstone(Entity* my)
 					artifact = true;
 				}
 			}
-			if ( goldbags >= 9 && artifact )
+
+			bool somebodyInsideRoom = false;
+			if ( !strcmp(map.name, "The Haunted Castle") )
+			{
+				for ( node = map.creatures->first; node != nullptr; node = node->next )
+				{
+					Entity* entity = (Entity*)node->element;
+					if ( (entity->behavior == &actMonster && !entity->isInertMimic())
+						|| entity->behavior == &actPlayer )
+					{
+						int x = entity->x / 16;
+						int y = entity->y / 16;
+						if ( x >= 27 && x <= 31 && y >= 25 && y <= 31 )
+						{
+							somebodyInsideRoom = true;
+							break;
+						}
+						if ( x >= 27 && x <= 31 && y >= 16 && y <= 20 )
+						{
+							somebodyInsideRoom = true;
+							break;
+						}
+						if ( x >= 16 && x <= 20 && y >= 16 && y <= 20 )
+						{
+							somebodyInsideRoom = true;
+							break;
+						}
+						if ( x >= 16 && x <= 20 && y >= 25 && y <= 31 )
+						{
+							somebodyInsideRoom = true;
+							break;
+						}
+					}
+				}
+			}
+
+			if ( goldbags >= 6 && artifact && !somebodyInsideRoom )
 			{
 				return;
 			}
@@ -215,6 +252,52 @@ void actHeadstone(Entity* my)
 					if ( triggeredPlayer >= 0 )
 					{
 						Compendium_t::Events_t::eventUpdateWorld(triggeredPlayer, Compendium_t::CPDM_GRAVE_GHOULS_ENSLAVED, "gravestone", 1);
+					}
+
+					if ( !strncmp(map.name, "The Haunted Castle", 18) )
+					{
+						real_t shortDistance = 10000.0;
+						Entity* toChase = nullptr;
+						for ( node_t* node = map.creatures->first; node != nullptr; node = node->next )
+						{
+							Entity* entity = (Entity*)node->element;
+							if ( (entity->behavior == &actPlayer || entity->monsterAllyGetPlayerLeader())
+								&& monster->checkEnemy(entity) )
+							{
+								list_t* path = generatePath((int)floor(monster->x / 16), (int)floor(monster->y / 16),
+									(int)floor(entity->x / 16), (int)floor(entity->y / 16), monster, entity,
+									GeneratePathTypes::GENERATE_PATH_TO_HUNT_MONSTER_TARGET);
+								if ( path == nullptr )
+								{
+									continue;
+								}
+								else
+								{
+									list_FreeAll(path);
+									free(path);
+								}
+
+								if ( !toChase )
+								{
+									shortDistance = sqrt(pow(monster->x - entity->x, 2) + pow(monster->y - entity->y, 2));
+									toChase = entity;
+								}
+								else
+								{
+									double newDist = sqrt(pow(monster->x - entity->x, 2) + pow(monster->y - entity->y, 2));
+									if ( newDist < shortDistance )
+									{
+										shortDistance = newDist;
+										toChase = entity;
+									}
+								}
+							}
+						}
+
+						if ( toChase )
+						{
+							monster->monsterAcquireAttackTarget(*toChase, MONSTER_STATE_PATH);
+						}
 					}
 				}
 				else

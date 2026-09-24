@@ -607,6 +607,61 @@ namespace ConsoleCommands {
 		}
 		});
 
+	static ConsoleCommand ccmd_spawnoutfit("/spawnoutfit", "spawn an item (cheat)", []CCMD{
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			messagePlayer(clientnum, MESSAGE_MISC, Language::get(277));
+			return;
+		}
+		
+		std::map<int, std::vector<int>> outfits;
+		ItemGeneric::ItemRealms realm = gameLevels.getCurrentMapItemRealm(currentlevel, secretleveltype);
+		int levelLimit = 99;
+		if ( argc >= 3 )
+		{
+			levelLimit = atoi(argv[2]);
+		}
+		for ( int c = 0; c < NUMITEMS; c++ )
+		{
+			if ( items[c].getItemCurveLevel(realm) >= 0 && items[c].getItemCurveLevel(realm) <= levelLimit )
+			{
+				if ( items[c].category == GEM ) { continue; }
+				if ( items[c].category == FOOD ) { continue; }
+				if ( items[c].category == POTION ) { continue; }
+				if ( items[c].category == SPELLBOOK ) { continue; }
+				if ( items[c].category == TOOL && (items[c].item_slot == EQUIPPABLE_IN_SLOT_WEAPON) ) { continue; }
+				if ( items[c].item_slot != NO_EQUIP && items[c].item_slot != EQUIPPABLE_IN_SLOT_AMULET )
+				{
+					outfits[items[c].item_slot].push_back(c);
+				}
+			}
+		}
+
+		BaronyRNG rng;
+		Uint32 seed = local_rng.getU32();
+		if ( argc >= 2 ) 
+		{
+			seed = atoi(argv[1]);
+		}
+		rng.seedBytes(&seed, sizeof(seed));
+
+		for ( auto& pair : outfits )
+		{
+			if ( pair.second.size() )
+			{
+				int pick = pair.second[rng.rand() % pair.second.size()];
+				if ( itemTypeIsQuiver((ItemType)pick) )
+				{
+					dropItem(newItem(static_cast<ItemType>(pick), EXCELLENT, 0, 50, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+				}
+				else
+				{
+					dropItem(newItem(static_cast<ItemType>(pick), EXCELLENT, 0, 1, local_rng.rand(), true, &stats[clientnum]->inventory), 0);
+				}
+			}
+		}
+	});
+
 	static ConsoleCommand ccmd_spawncursed("/spawncursed", "spawn a cursed item (cheat)", []CCMD{
 		if (!(svFlags & SV_FLAG_CHEATS))
 		{

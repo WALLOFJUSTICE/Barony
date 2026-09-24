@@ -1330,6 +1330,10 @@ void actThrown(Entity* my)
 						{
 							thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_REACTIVITY);
 						}
+						if ( hitstats && hitstats->getEffectActive(EFF_FLAME_SHIELD) )
+						{
+							thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_FLAME_SHIELD);
+						}
 					}
 				}
 				if ( hitstats && !hitstats->defending )
@@ -1380,18 +1384,22 @@ void actThrown(Entity* my)
 				if ( parent )
 				{
 					Stat* parentStats = parent->getStats();
-					if ( parentStats && parentStats->getEffectActive(EFF_ENVENOM_WEAPON) && hitstats )
+					if ( parentStats && 
+						(parentStats->getEffectActive(EFF_ENVENOM_WEAPON) || parentStats->getEffectActive(EFF_TOXIC_WEAPON)) && hitstats )
 					{
 						if ( local_rng.rand() % 2 == 0 )
 						{
+							int spellID = parentStats->getEffectActive(EFF_TOXIC_WEAPON) ? SPELL_TOXIC_ATTACKS : SPELL_ENVENOM_WEAPON;
+
 							int envenomDamage = std::min(
-								getSpellDamageSecondaryFromID(SPELL_ENVENOM_WEAPON, parent, parentStats, parent),
-								getSpellDamageFromID(SPELL_ENVENOM_WEAPON, parent, parentStats, parent));
+								getSpellDamageSecondaryFromID(spellID, parent, parentStats, parent),
+								getSpellDamageFromID(spellID, parent, parentStats, parent));
 
 							hit.entity->modHP(-envenomDamage); // do the damage
 							for ( int tmp = 0; tmp < 3; ++tmp )
 							{
-								Entity* gib = spawnGib(hit.entity, 211);
+								Entity* gib = spawnGib(hit.entity, 
+									parentStats->getEffectActive(EFF_TOXIC_WEAPON) ? 2621 : 211);
 								serverSpawnGibForClient(gib);
 							}
 							if ( !hitstats->getEffectActive(EFF_POISONED) && hitstats->isPoisonable() )
@@ -1402,6 +1410,13 @@ void actThrown(Entity* my)
 								int duration = 160 * envenomDamage;
 								hitstats->EFFECTS_TIMERS[EFF_POISONED] = std::max(200, duration - hit.entity->getCON() * 20);
 								hitstats->poisonKiller = parent->getUID();
+
+								if ( parentStats->getEffectActive(EFF_TOXIC_WEAPON) )
+								{
+									hitstats->setEffectActive(EFF_TOXIC, 1);
+									hitstats->EFFECTS_TIMERS[EFF_TOXIC] = hitstats->EFFECTS_TIMERS[EFF_POISONED];
+								}
+
 								if ( hit.entity->isEntityPlayer() >= 0 )
 								{
 									messagePlayerMonsterEvent(hit.entity->isEntityPlayer(), makeColorRGB(255, 0, 0), *parentStats, Language::get(6531), Language::get(6532), MSG_COMBAT);
@@ -1410,8 +1425,74 @@ void actThrown(Entity* my)
 
 								if ( parent->behavior == &actPlayer )
 								{
-									players[parent->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_ENVENOM_WEAPON, 50.0, 1.0, hit.entity);
+									players[parent->skill[2]]->mechanics.updateSustainedSpellEvent(spellID, 50.0, 1.0, hit.entity);
 								}
+							}
+						}
+					}
+
+					bool lifted = hitstats->getEffectActive(EFF_LIFT) & (1 << 7);
+
+					if ( (hitstats->getEffectActive(EFF_SPARSITY)
+						|| lifted
+						|| (parentStats && parentStats->getEffectActive(EFF_DENSITY)))
+						&& hit.entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
+					{
+						real_t pushbackMultiplier = 0.5;
+						if ( hitstats->getEffectActive(EFF_LIFT) )
+						{
+							pushbackMultiplier = 0.7;
+						}
+						if ( !hit.entity->isMobile() )
+						{
+							pushbackMultiplier += 0.3;
+						}
+
+						if ( parentStats && parentStats->getEffectActive(EFF_DENSITY) && parent->behavior == &actPlayer )
+						{
+							players[parent->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_DENSITY, 25.0, 1.0, hit.entity);
+						}
+
+						if ( hit.entity->behavior == &actMonster )
+						{
+							if ( parent )
+							{
+								real_t tangent = atan2(hit.entity->y - parent->y, hit.entity->x - parent->x);
+								hit.entity->vel_x = cos(tangent) * pushbackMultiplier;
+								hit.entity->vel_y = sin(tangent) * pushbackMultiplier;
+								hit.entity->monsterKnockbackVelocity = 0.01;
+								hit.entity->monsterKnockbackUID = my->parent;
+								hit.entity->monsterKnockbackTangentDir = tangent;
+								//hit.entity->lookAtEntity(*parent);
+							}
+							else
+							{
+								real_t tangent = atan2(hit.entity->y - my->y, hit.entity->x - my->x);
+								hit.entity->vel_x = cos(tangent) * pushbackMultiplier;
+								hit.entity->vel_y = sin(tangent) * pushbackMultiplier;
+								hit.entity->monsterKnockbackVelocity = 0.01;
+								hit.entity->monsterKnockbackTangentDir = tangent;
+								//hit.entity->lookAtEntity(*my);
+							}
+						}
+						else if ( hit.entity->behavior == &actPlayer )
+						{
+							real_t tangent = atan2(hit.entity->y - my->y, hit.entity->x - my->x);
+							if ( parent )
+							{
+								tangent = atan2(hit.entity->y - parent->y, hit.entity->x - parent->x);
+							}
+							if ( !players[hit.entity->skill[2]]->isLocalPlayer() )
+							{
+								hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+								hit.entity->monsterKnockbackTangentDir = tangent;
+								serverUpdateEntityFSkill(hit.entity, 11);
+								serverUpdateEntityFSkill(hit.entity, 9);
+							}
+							else
+							{
+								hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
+								hit.entity->monsterKnockbackTangentDir = tangent;
 							}
 						}
 					}
@@ -1433,6 +1514,10 @@ void actThrown(Entity* my)
 								hit.entity->defyFleshProc(parent);
 							}
 							hit.entity->pinpointDamageProc(parent, damageTaken);
+						}
+						if ( hitstats->getEffectActive(EFF_LIFT) )
+						{
+							hit.entity->cycloneDamageProc(parent, damageTaken);
 						}
 					}
 
@@ -2496,7 +2581,14 @@ void actThrown(Entity* my)
 				if ( parent && parent->behavior == &actPlayer && envenomWeapon && hitstats && hitstats->HP > 0 )
 				{
 					Uint32 color = makeColorRGB(0, 255, 0);
-					messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(6533), Language::get(6534), MSG_COMBAT);
+					if ( parent->getStats() && parent->getStats()->getEffectActive(EFF_TOXIC_WEAPON) )
+					{
+						messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7368), Language::get(7369), MSG_COMBAT);
+					}
+					else
+					{
+						messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(6533), Language::get(6534), MSG_COMBAT);
+					}
 				}
 			}
 			else

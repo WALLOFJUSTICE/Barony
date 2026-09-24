@@ -1381,7 +1381,7 @@ void glDrawVoxel(view_t* camera, Entity* entity, int mode) {
     auto& shader = !entity->flags[BRIGHT] && !telepath ?
         (dither.value < Entity::Dither::MAX ? voxelDitheredShader : voxelShader) :
         ((((entity->flags[INVISIBLE] && entity->flags[INVISIBLE_DITHER])
-            || entity->mistformGLRender >= 0.45
+            || (entity->mistformGLRender >= 0.45 && entity->mistformGLRender <= 2.1)
             || entity->flags[INVISIBLE_DITHER])
             && dither.value < Entity::Dither::MAX) 
                 ? voxelBrightDitheredShader : voxelBrightShader);

@@ -3134,6 +3134,10 @@ int TextSourceScript::textSourceProcessScriptTag(std::string& input, std::string
 			{
 				return TO_BELL;
 			}
+			else if ( !tagValue.compare("grave") )
+			{
+				return TO_GRAVE;
+			}
 			else if ( !tagValue.compare("boulder") )
 			{
 				return TO_BOULDER;
@@ -3333,6 +3337,7 @@ void TextSourceScript::handleTextSourceScript(Entity& src, std::string input)
 						|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
 						|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
 						|| (entity->behavior == &actBell && attachTo == TO_BELL)
+						|| (entity->behavior == &actHeadstone && attachTo == TO_GRAVE)
 						|| (entity->behavior == &actBoulder && attachTo == TO_BOULDER)
 						|| (entity->behavior == &actTeleporter && attachTo == TO_TELEPORTER && entity->teleporterType != 3)
 						|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)
@@ -5367,6 +5372,27 @@ void Entity::actTextSource()
 						powered = true;
 					}
 				}
+				else if ( textSourceScript.getAttachedToEntityType(textSourceIsScript) == textSourceScript.TO_GRAVE )
+				{
+					bool doEffect = false;
+					for ( node_t* node = children.first; node; node = node->next )
+					{
+						Uint32 entityUid = *((Uint32*)node->element);
+						Entity* child = uidToEntity(entityUid);
+						if ( child )
+						{
+							if ( child->behavior == &::actHeadstone && child->skill[3] != 0 )
+							{
+								doEffect = true;
+							}
+						}
+					}
+					if ( doEffect )
+					{
+						textSourceScript.setScriptType(textSourceIsScript, textSourceScript.SCRIPT_ATTACHED_FIRED);
+						powered = true;
+					}
+				}
 			}
 
 			if ( textSourceScript.getTriggerType(textSourceIsScript) == textSourceScript.TRIGGER_ATTACHED_EXISTS )
@@ -5803,6 +5829,7 @@ void TextSourceScript::parseScriptInMapGeneration(Entity& src)
 					|| (entity->behavior == &actItem && attachTo == TO_ITEMS)
 					|| (entity->behavior == &actGoldBag && attachTo == TO_GOLD)
 					|| (entity->behavior == &actBell && attachTo == TO_BELL)
+					|| (entity->behavior == &actHeadstone && attachTo == TO_GRAVE)
 					|| (entity->behavior == &actBoulder && attachTo == TO_BOULDER)
 					|| (entity->behavior == &actTeleporter && attachTo == TO_TELEPORTER && entity->teleporterType != 3)
 					|| (entity->isColliderBreakableContainer() && attachTo == TO_BREAKABLE)

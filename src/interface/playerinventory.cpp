@@ -9633,31 +9633,53 @@ void Player::Inventory_t::updateInventory()
 			if ( auto slotFrame = getItemSlotFrame(item, itemx, itemy) )
 			{
 				slotFrame->setUserData(&GAMEUI_FRAMEDATA_SPELL_LEARNABLE);
-				if ( spellPanel.spellFilterBySkill > 0 )
+
+				if ( eternalShrineGUI.bOpen )
 				{
-					bool greyBackground = false;
-					if ( auto spell = getSpellFromItem(player, item, true) )
+					if ( !eternalShrineGUI.inventoryItemAllowedInGUI(item) )
 					{
-						if ( spell->skillID != spellPanel.spellFilterBySkill )
-						{
-							greyBackground = true;
-						}
+						updateSlotFrameFromItem(slotFrame, item, true);
 					}
-					updateSlotFrameFromItem(slotFrame, item, greyBackground);
+					else if ( (eternalShrineGUI.sendItem1Uid == item->uid) )
+					{
+						slotFrame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_ITEM);
+						updateSlotFrameFromItem(slotFrame, item);
+					}
+					else
+					{
+						bool greyBackground = false;
+						if ( spellPanel.spellFilterBySkill > 0 )
+						{
+							if ( auto spell = getSpellFromItem(player, item, true) )
+							{
+								if ( spell->skillID != spellPanel.spellFilterBySkill )
+								{
+									greyBackground = true;
+								}
+							}
+						}
+						updateSlotFrameFromItem(slotFrame, item, greyBackground);
+					}
 				}
 				else
 				{
-					bool greyBackground = false;
-					/*if ( eternalShrineGUI.bOpen )
+					if ( spellPanel.spellFilterBySkill > 0 )
 					{
-						if ( GenericGUI[player].getGuiType() == GUI_TYPE_ETERNALSHRINE_ASCENSION
-							&& eternalShrineGUI.currentView != GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_OFFERING
-							&& eternalShrineGUI.ascensionType != GenericGUIMenu::EternalShrineGUI_t::ASCENSION_SPELL )
+						bool greyBackground = false;
+						if ( auto spell = getSpellFromItem(player, item, true) )
 						{
-							greyBackground = true;
+							if ( spell->skillID != spellPanel.spellFilterBySkill )
+							{
+								greyBackground = true;
+							}
 						}
-					}*/
-					updateSlotFrameFromItem(slotFrame, item, greyBackground);
+						updateSlotFrameFromItem(slotFrame, item, greyBackground);
+					}
+					else
+					{
+						bool greyBackground = false;
+						updateSlotFrameFromItem(slotFrame, item, greyBackground);
+					}
 				}
 			}
 		}
@@ -11265,31 +11287,52 @@ void Player::Inventory_t::updateInventory()
 				{
 					if ( auto slotFrame = getItemSlotFrame(item, itemx, itemy) )
 					{
-						if ( spellPanel.spellFilterBySkill > 0 )
+						if ( eternalShrineGUI.bOpen )
 						{
-							bool greyBackground = false;
-							if ( auto spell = getSpellFromItem(player, item, true) )
+							if ( !eternalShrineGUI.inventoryItemAllowedInGUI(item) )
 							{
-								if ( spell->skillID != spellPanel.spellFilterBySkill )
-								{
-									greyBackground = true;
-								}
+								updateSlotFrameFromItem(slotFrame, item, true);
 							}
-							updateSlotFrameFromItem(slotFrame, item, greyBackground);
+							else if ( (eternalShrineGUI.sendItem1Uid == item->uid) )
+							{
+								slotFrame->setUserData(&GAMEUI_FRAMEDATA_ALCHEMY_ITEM);
+								updateSlotFrameFromItem(slotFrame, item);
+							}
+							else
+							{
+								bool greyBackground = false;
+								if ( spellPanel.spellFilterBySkill > 0 )
+								{
+									if ( auto spell = getSpellFromItem(player, item, true) )
+									{
+										if ( spell->skillID != spellPanel.spellFilterBySkill )
+										{
+											greyBackground = true;
+										}
+									}
+								}
+								updateSlotFrameFromItem(slotFrame, item, greyBackground);
+							}
 						}
 						else
 						{
-							bool greyBackground = false;
-							/*if ( eternalShrineGUI.bOpen )
+							if ( spellPanel.spellFilterBySkill > 0 )
 							{
-								if ( GenericGUI[player].getGuiType() == GUI_TYPE_ETERNALSHRINE_ASCENSION
-									&& eternalShrineGUI.currentView != GenericGUIMenu::EternalShrineGUI_t::ASSIST_SHRINE_VIEW_OFFERING
-									&& eternalShrineGUI.ascensionType != GenericGUIMenu::EternalShrineGUI_t::ASCENSION_SPELL )
+								bool greyBackground = false;
+								if ( auto spell = getSpellFromItem(player, item, true) )
 								{
-									greyBackground = true;
+									if ( spell->skillID != spellPanel.spellFilterBySkill )
+									{
+										greyBackground = true;
+									}
 								}
-							}*/
-							updateSlotFrameFromItem(slotFrame, item, greyBackground);
+								updateSlotFrameFromItem(slotFrame, item, greyBackground);
+							}
+							else
+							{
+								bool greyBackground = false;
+								updateSlotFrameFromItem(slotFrame, item, greyBackground);
+							}
 						}
 					}
 				}

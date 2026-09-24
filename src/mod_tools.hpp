@@ -2738,6 +2738,9 @@ private:
 		real_t radius = 0;
 		real_t radius_mult = 0.0;
 		int drop_table = -1;
+		std::string ascended_spell_str = "";
+		int ascended_spell_id = -1;
+		int descended_spell_id = -1;
 	};
 
 	Uint32 defaultHeadingTextColor = 0xFFFFFFFF;

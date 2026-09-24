@@ -3724,6 +3724,51 @@ bool Entity::spellEffectPreserveItem(Item* item)
 	return false;
 }
 
+void onFireShieldProc(Entity* my, Stat& myStats, Entity* attacker)
+{
+	if ( !my ) { return; }
+
+	real_t tangent = my->yaw;
+	if ( attacker )
+	{
+		tangent = atan2(attacker->y - my->y, attacker->x - my->x);
+	}
+	if ( Entity* gib = spawnFociGib(my->x, my->y, 1.0, tangent, 2.0, my->getUID(), 233, local_rng.rand(), attacker) )
+	{
+		node_t* node = list_AddNodeFirst(&gib->children);
+		node->element = copySpell(getSpellFromID(SPELL_FOCI_FIRE));
+		((spell_t*)node->element)->caster = my->getUID();
+		((spell_t*)node->element)->ID = SPELL_FLAME_SHIELD;
+		if ( node_t* elementNode = ((spell_t*)node->element)->elements.first )
+		{
+			if ( auto element = (spellElement_t*)elementNode->element )
+			{
+				if ( elementNode = element->elements.first )
+				{
+					element = (spellElement_t*)elementNode->element;
+					if ( element )
+					{
+						element->setDamage(getSpellDamageSecondaryFromID(SPELL_FLAME_SHIELD, my, nullptr, my));
+						element->setDamageMult(0.02);
+						element->duration = 5 * TICKS_PER_SECOND;
+					}
+				}
+			}
+		}
+		node->deconstructor = &spellDeconstructor;
+		node->size = sizeof(spell_t);
+
+		gib->collisionIgnoreTargets.insert(my->getUID());
+		auto hitprops = getParticleEmitterHitProps(gib->getUID(), my);
+		if ( hitprops )
+		{
+			hitprops->hits++;
+		}
+		spawnHeatOrbitSpin(my, 233, true);
+		//particleTimerEmitterHitEntities[my->getUID()][autohitEntity->getUID()].hits++;
+	}
+}
+
 int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, Entity* attacker, int effectID)
 {
 	int player = -1;
@@ -3764,6 +3809,10 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 	{
 		spellID = SPELL_REACTIVITY;
 	}
+	else if ( effectID == EFF_FLAME_SHIELD )
+	{
+		spellID = SPELL_FLAME_SHIELD;
+	}
 
 	if ( spellID < 0 ) { return 0; }
 
@@ -3781,7 +3830,10 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 			{
 				if ( my )
 				{
-					int baseMinValue = (effectID == EFF_GUARD_SPIRIT || effectID == EFF_HARDENING || effectID == EFF_REACTIVITY) ? 1 : 3;
+					int baseMinValue = (effectID == EFF_GUARD_SPIRIT
+						|| effectID == EFF_HARDENING 
+						|| effectID == EFF_FLAME_SHIELD
+						|| effectID == EFF_REACTIVITY) ? 1 : 3;
 					if ( my->behavior == &actPlayer && !my->getActiveMagicEffect(spellID) )
 					{
 						if ( myStats.shoes && myStats.shoes->type == SILVER_BOOTS && effectID == EFF_DIVINE_GUARD )
@@ -3829,6 +3881,10 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 							if ( result != myStats.getEffectActive(effectID) )
 							{
 								players[player]->mechanics.updateSustainedSpellEvent(spellID, std::min(150.0, effectID == EFF_GUARD_SPIRIT ? 128.0 : 50.0 + 10 * result), 1.0, attacker);
+								if ( effectID == EFF_FLAME_SHIELD )
+								{
+									onFireShieldProc(my, myStats, attacker);
+								}
 							}
 							else
 							{
@@ -3849,6 +3905,11 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 					if ( myStats.EFFECTS_TIMERS[effectID] > 0 )
 					{
 						myStats.EFFECTS_TIMERS[effectID] = std::max(1, myStats.EFFECTS_TIMERS[effectID] - TICKS_PER_SECOND);
+
+						if ( effectID == EFF_FLAME_SHIELD )
+						{
+							onFireShieldProc(my, myStats, attacker);
+						}
 					}
 					else
 					{
@@ -3877,6 +3938,116 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 	}
 
 	return 0;
+}
+
+bool Entity::cycloneDamageProc(Entity* attacker, int damage)
+{
+	return false;
+	// unused
+	if ( multiplayer == CLIENT || !attacker || damage == 0 ) { return false; }
+	if ( Stat* myStats = getStats() )
+	{
+		if ( myStats->HP == 0 ) { return false; }
+		/*if ( !(attacker->behavior == &actPlayer || (attacker->behavior == &actMonster && attacker->monsterAllyGetPlayerLeader())) )
+		{
+			return false;
+		}*/
+
+		if ( myStats->getEffectActive(EFF_LIFT) & (1 << 7) )
+		{
+			Uint8 hitStrength = (myStats->getEffectActive(EFF_LIFT) & 0x70) >> 4;
+			if ( hitStrength < 7 )
+			{
+				++hitStrength;
+				Uint8 effectStrength = myStats->getEffectActive(EFF_LIFT);
+				effectStrength &= ~(0x70);
+				effectStrength |= (hitStrength << 4);
+				myStats->setEffectActive(EFF_LIFT, effectStrength);
+				return true;
+			}
+		}
+
+		//if ( myStats->getEffectActive(EFF_PINPOINT) || myStats->getEffectActive(EFF_PINPOINT_DAMAGE) )
+		//{
+		//	if ( damage > 0 )
+		//	{
+		//		// find particle to update
+		//		bool found = false;
+		//		auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(this, 1);
+		//		for ( auto it : entLists )
+		//		{
+		//			node_t* node;
+		//			for ( node = it->first; node != nullptr && !found; node = node->next )
+		//			{
+		//				if ( Entity* entity = (Entity*)node->element )
+		//				{
+		//					if ( entity->behavior == &actParticleAestheticOrbit
+		//						&& entity->parent == this->getUID()
+		//						&& entity->skill[1] == PARTICLE_EFFECT_SMITE_PINPOINT
+		//						&& entity->actmagicNoLight == 0 )
+		//					{
+		//						Entity* caster = uidToEntity(entity->skill[3]);
+		//						real_t damageMult = getSpellDamageSecondaryFromID(SPELL_PINPOINT, caster, caster ? caster->getStats() : nullptr,
+		//							entity, entity->actmagicSpellbookBonus / 100.0) / 100.0;
+		//						entity->skill[4] += std::max(0, (damage)) * damageMult;
+		//						found = true;
+		//						break;
+		//					}
+		//					else if ( entity->behavior == &actParticlePinpointTarget
+		//						&& entity->skill[4] == SPELL_PINPOINT
+		//						&& entity->parent == this->getUID()
+		//						&& entity->skill[0] >= 0 )
+		//					{
+		//						Uint32 casterUid = static_cast<Uint32>(entity->skill[2]);
+		//						Entity* caster = uidToEntity(casterUid);
+
+		//						for ( int i = 0; i < 3; ++i )
+		//						{
+		//							Entity* fx1 = createParticleAestheticOrbit(this, 2401, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_SMITE_PINPOINT);
+		//							fx1->yaw = this->yaw + PI / 2 + 2 * i * PI / 3;
+		//							fx1->fskill[4] = this->x;
+		//							fx1->fskill[5] = this->y;
+		//							fx1->x = this->x;
+		//							fx1->y = this->y;
+		//							fx1->fskill[6] = fx1->yaw;
+		//							fx1->skill[3] = caster ? caster->getUID() : 0;
+		//							if ( i != 0 )
+		//							{
+		//								fx1->actmagicNoLight = 1;
+		//							}
+		//							if ( i == 0 )
+		//							{
+		//								fx1->actmagicSpellbookBonus = entity->actmagicSpellbookBonus;
+		//								real_t damageMult = getSpellDamageSecondaryFromID(SPELL_PINPOINT, caster, caster ? caster->getStats() : nullptr,
+		//									entity, entity->actmagicSpellbookBonus / 100.0) / 100.0;
+		//								fx1->skill[4] += std::max(0, (damage)) * damageMult;
+		//								fx1->actmagicFromSpellbook = entity->actmagicFromSpellbook;
+		//							}
+		//						}
+
+		//						setEffect(EFF_PINPOINT_DAMAGE, true, 2 * TICKS_PER_SECOND, false);
+		//						serverSpawnMiscParticles(this, PARTICLE_EFFECT_SMITE_PINPOINT, 2401, 0, 0);
+
+		//						entity->skill[0] = -1; // expire this
+		//						found = true;
+		//						break;
+		//					}
+		//				}
+		//			}
+		//			if ( found )
+		//			{
+		//				break;
+		//			}
+		//		}
+
+		//		if ( found )
+		//		{
+		//			return true;
+		//		}
+		//	}
+		//}
+	}
+	return false;
 }
 
 bool Entity::pinpointDamageProc(Entity* attacker, int damage)
@@ -4268,7 +4439,8 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 			|| spellID == SPELL_SEEK_FOE
 			|| spellID == SPELL_COMMAND
 			|| spellID == SPELL_CURSE_FLESH
-			|| spellID == SPELL_REVENANT_CURSE )
+			|| spellID == SPELL_REVENANT_CURSE
+			|| spellID == SPELL_STASIS )
 		{
 			// alert entities only
 			return true;
@@ -4325,7 +4497,20 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 			}
 			damage *= coldMultiplier;
 		}
-		else if ( spellID == SPELL_FIRE_WALL )
+		else if ( 
+			spellID == SPELL_FIREBALL
+			|| spellID == SPELL_FLAMES
+			|| spellID == SPELL_FOCI_FIRE
+			|| spellID == SPELL_SLIME_FIRE
+			|| spellID == SPELL_FLAME_SHIELD
+			|| spellID == SPELL_BREATHE_FIRE
+			|| spellID == SPELL_METEOR
+			|| spellID == SPELL_METEOR_SHOWER
+			|| spellID == SPELL_NOVA_FLAME
+			|| spellID == SPELL_IGNITE
+			|| spellID == SPELL_FIRE_WALL
+			|| spellID == SPELL_FIRE_TRAP_WALL
+			|| spellID == SPELL_FLAME_ELEMENTAL )
 		{
 			real_t fireMultiplier = 1.0;
 			if ( targetStats && targetStats->type == DRYAD )
@@ -4349,6 +4534,10 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 					fireMultiplier *= 0.5;
 				}
 			}
+			if ( targetStats->getEffectActive(EFF_FLAME_SHIELD) > 0 )
+			{
+				fireMultiplier *= std::max(0.0, (1.0 - (targetStats->getEffectActive(EFF_FLAME_SHIELD)) * 0.2));
+			}
 			damage *= fireMultiplier;
 		}
 		else if ( spellID == SPELL_WATER_BOLT )
@@ -4363,7 +4552,14 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 			damage = std::max(1, damage);
 		}
 
-		hitentity->modHP(-damage);
+		if ( spellID == SPELL_CYCLONE && damage >= 10000 )
+		{
+			hitentity->setHP(-9999);
+		}
+		else
+		{
+			hitentity->modHP(-damage);
+		}
 		if ( damage > 0 )
 		{
 			Entity* gib = spawnGib(hitentity);
@@ -4821,6 +5017,10 @@ real_t getSpellPropertyFromID(spell_t::SpellBasePropertiesFloat prop, int spellI
 				else
 				{
 					result = std::max(1.0, result);
+				}
+				if ( myStats->getEffectActive(EFF_CONDUIT) )
+				{
+					result *= 0.5;
 				}
 			}
 		}

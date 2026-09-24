@@ -1485,12 +1485,40 @@ void ItemTooltips_t::readItemsFromFile()
 			}
 		}
 
+		if ( spell_itr->value.HasMember("ascended") )
+		{
+			t.ascended_spell_str = spell_itr->value["ascended"].GetString();
+		}
+
 		spellNameStringToSpellID[t.internalName] = t.id;
 		assert(spellItems.find(t.id) == spellItems.end()); // check we haven't got duplicate key
 		spellItems.insert(std::make_pair(t.id, t));
 		++spellsRead;
 	}
 	printlog("[JSON]: Successfully read %d spells from '%s'", spellsRead, inputPath.c_str());
+
+	for ( int i = 0; i < NUM_SPELLS; ++i )
+	{
+		auto find = spellItems.find(i);
+		if ( find != spellItems.end() )
+		{
+			if ( find->second.ascended_spell_str != "" )
+			{
+				bool found = false;
+				for ( auto& s : ItemTooltips.spellItems )
+				{
+					if ( s.second.internalName == find->second.ascended_spell_str )
+					{
+						find->second.ascended_spell_id = s.second.id;
+						s.second.descended_spell_id = i;
+						found = true;
+						break;
+					}
+				}
+				assert(found);
+			}
+		}
+	}
 
 	for ( int i = 0; i < NUM_SPELLS; ++i )
 	{
@@ -1533,6 +1561,8 @@ void ItemTooltips_t::readItemsFromFile()
 			hashSpellProp(hash, shift, t.sustain_duration);
 			hashSpellProp(hash, shift, t.sustain_mult);
 			hashSpellProp(hash, shift, t.drop_table);
+			hashSpellProp(hash, shift, t.ascended_spell_id);
+			hashSpellProp(hash, shift, t.descended_spell_id);
 
 			if ( t.skillID >= 0 )
 			{

@@ -765,6 +765,10 @@ void daedalusShrineInteract(Entity* my, Entity* touched)
 					{
 						touched->setEffect(EFF_SLOW, false, 0, true);
 					}
+					if ( myStats->getEffectActive(EFF_SLOW_COLD) )
+					{
+						touched->setEffect(EFF_SLOW_COLD, false, 0, true);
+					}
 					if ( touched->setEffect(EFF_FAST, true, std::max(TICKS_PER_SECOND * 15, myStats->EFFECTS_TIMERS[EFF_FAST]), true) )
 					{
 						playSoundEntity(touched, 178, 128);
@@ -901,6 +905,10 @@ void Entity::actDaedalusShrine()
 						if ( myStats->getEffectActive(EFF_SLOW) )
 						{
 							touched->setEffect(EFF_SLOW, false, 0, true);
+						}
+						if ( myStats->getEffectActive(EFF_SLOW_COLD) )
+						{
+							touched->setEffect(EFF_SLOW_COLD, false, 0, true);
 						}
 						if ( touched->setEffect(EFF_FAST, true, std::max(TICKS_PER_SECOND * 15, myStats->EFFECTS_TIMERS[EFF_FAST]), true) )
 						{

@@ -2958,6 +2958,18 @@ void setupSpells()   ///TODO: Verify this function.
 	spell->distance = 64.0;
 
 	spell = createSimpleSpell(
+		SPELL_ICE_BLOCK,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_ice_block");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
 		SPELL_SLAM,
 		100, // difficulty
 		1, // mana
@@ -3685,12 +3697,271 @@ void setupSpells()   ///TODO: Verify this function.
 		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_FIREBLAST }
 	);
 
-	//static const int SPELL_LIGHTNING_NEXUS = 182;
-	//static const int SPELL_LIFT = 184;
-	//static const int SPELL_IGNITE = 186;
-	//static const int SPELL_SHATTER_OBJECTS = 187;
-	//static const int SPELL_KINETIC_FIELD = 188;
-	//static const int SPELL_ICE_BLOCK = 189;
+	spell = createSimpleSpell(
+		SPELL_NOVA_FLAME,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_nova_flame");
+
+	spell = createSimpleSpell(
+		SPELL_PARALYZE_RAY,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_paralyze_ray");
+
+	spell = createSimpleSpell(
+		SPELL_BUFFET,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_buffet");
+
+	spell = createSimpleSpell(
+		SPELL_SCRY_AID,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_scry_aid");
+
+	spell = createSimpleSpell(
+		SPELL_SCRY_ITEM,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_scry_item");
+
+	spellElementConstructor(SPELL_ENFEEBLE,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_enfeeble");
+	spell = spellConstructor(
+		SPELL_ENFEEBLE,										// ID
+		100,												// difficulty
+		"spell_enfeeble",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_ENFEEBLE });
+
+	spellElementConstructor(SPELL_FEEDBACK,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_feedback");
+	spell = spellConstructor(
+		SPELL_FEEDBACK,										// ID
+		100,												// difficulty
+		"spell_feedback",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_FEEDBACK });
+
+	spell = createSimpleSpell(
+		SPELL_CONDUIT,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		750, // duration
+		"spell_conduit",
+		1);
+	spell->sustainEffectDissipate = EFF_CONDUIT;
+
+	spell = createSimpleSpell(
+		SPELL_CONFLICT,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_conflict");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spellElementConstructor(SPELL_LETHARGY,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_lethargy");
+	spell = spellConstructor(
+		SPELL_LETHARGY,										// ID
+		100,												// difficulty
+		"spell_lethargy",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_LETHARGY });
+
+	spell = createSimpleSpell(
+		SPELL_RESTORE_FORM,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_restore_form");
+
+	spell = createSimpleSpell(
+		SPELL_GREATER_SIGIL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_greater_sigil");
+
+	spell = createSimpleSpell(
+		SPELL_TOXIC_ATTACKS,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		50, // duration
+		"spell_toxic_attacks",
+		1);
+	spell->sustainEffectDissipate = EFF_TOXIC_WEAPON;
+
+	spellElementConstructor(SPELL_TOXIC_BOMB,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_toxic_bomb");
+	spell = spellConstructor(
+		SPELL_TOXIC_BOMB,										// ID
+		100,												// difficulty
+		"spell_toxic_bomb",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_TOXIC_BOMB });
+
+	spell = createSimpleSpell(
+		SPELL_SPIRIT_AMMO,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		50, // duration
+		"spell_spirit_ammo",
+		1);
+	spell->sustainEffectDissipate = EFF_SPIRIT_AMMO;
+
+	spellElementConstructor(SPELL_SUBJUGATE_FLESH,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_subjugate_flesh");
+	spell = spellConstructor(
+		SPELL_SUBJUGATE_FLESH,										// ID
+		100,												// difficulty
+		"spell_subjugate_flesh",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_SUBJUGATE_FLESH });
+
+	spell = createSimpleSpell(
+		SPELL_PROF_ESPIONAGE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_prof_espionage");
+
+	spell = createSimpleSpell(
+		SPELL_PROF_BRUTE_SQUAD,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_prof_brute_squad");
+
+	spell = createSimpleSpell(
+		SPELL_PROF_HIGH_COUNCIL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_prof_high_council");
+
+	spell = createSimpleSpell(
+		SPELL_PROF_FRONT_LINE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_prof_front_line");
+
+	spell = createSimpleSpell(
+		SPELL_STASIS,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_stasis");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH;
+	spell->distance = 64.0;
+
+	spellElementConstructor(SPELL_REPOSE,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_repose");
+	spell = spellConstructor(
+		SPELL_REPOSE,										// ID
+		100,												// difficulty
+		"spell_repose",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_REPOSE });
+
+	spell = createSimpleSpell(
+		SPELL_CYCLONE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_cyclone");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
 
 	std::vector<node_t*> subElementsToCopy;
 	std::map<int, int> spellSchoolCounters;
@@ -3725,6 +3996,8 @@ void setupSpells()   ///TODO: Verify this function.
 				{
 					spell->hide_from_ui = true;
 				}
+				spell->ascended_spell_id = info.ascended_spell_id;
+				spell->descended_spell_id = info.descended_spell_id;
 				spellTomeAppearanceToID[spell->skillID][spellSchoolCounters[spell->skillID]] = i;
 				spellTomeIDToAppearance[i] = spellSchoolCounters[spell->skillID];
 				++spellSchoolCounters[spell->skillID];

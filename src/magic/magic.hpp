@@ -203,7 +203,7 @@ static const int SPELL_DISRUPT_EARTH = 180;
 static const int SPELL_EARTH_SPINES = 181;
 static const int SPELL_LIGHTNING_NEXUS = 182;
 static const int SPELL_FIRE_WALL = 183;
-static const int SPELL_LIFT = 184;
+static const int SPELL_CYCLONE = 184;
 static const int SPELL_SLAM = 185;
 static const int SPELL_IGNITE = 186;
 static const int SPELL_SHATTER_OBJECTS = 187;
@@ -265,8 +265,30 @@ static const int SPELL_FORCE_VOLLEY = 242;
 static const int SPELL_FORCE_BOMBARDMENT = 243;
 static const int SPELL_FIRE_TRAP_WALL = 244;
 static const int SPELL_FIREBLAST = 245;
+static const int SPELL_NOVA_FLAME = 246;
+static const int SPELL_PARALYZE_RAY = 247;
+static const int SPELL_BUFFET = 248;
+static const int SPELL_SCRY_AID = 249;
+static const int SPELL_SCRY_ITEM = 250;
+static const int SPELL_ENFEEBLE = 251;
+static const int SPELL_FEEDBACK = 252;
+static const int SPELL_CONDUIT = 253;
+static const int SPELL_CONFLICT = 254;
+static const int SPELL_LETHARGY = 255;
+static const int SPELL_RESTORE_FORM = 256;
+static const int SPELL_GREATER_SIGIL = 257;
+static const int SPELL_TOXIC_ATTACKS = 258;
+static const int SPELL_TOXIC_BOMB = 259;
+static const int SPELL_SPIRIT_AMMO = 260;
+static const int SPELL_SUBJUGATE_FLESH = 261;
+static const int SPELL_PROF_ESPIONAGE = 262;
+static const int SPELL_PROF_BRUTE_SQUAD = 263;
+static const int SPELL_PROF_HIGH_COUNCIL = 264;
+static const int SPELL_PROF_FRONT_LINE = 265;
+static const int SPELL_STASIS = 266;
+static const int SPELL_REPOSE = 267;
 
-static const int NUM_SPELLS = 260;
+static const int NUM_SPELLS = 350;
 
 #define SPELLELEMENT_CONFUSE_BASE_DURATION 2//In seconds.
 #define SPELLELEMENT_BLEED_BASE_DURATION 10//In seconds.
@@ -423,6 +445,11 @@ static const int PARTICLE_EFFECT_FORCE_BOMBARDMENT_ORBIT = 109;
 static const int PARTICLE_EFFECT_MISSILE_BOMBARDMENT_ORBIT = 110;
 static const int PARTICLE_EFFECT_FIREBLAST_ORBIT = 111;
 static const int PARTICLE_EFFECT_LICHFIRE_FALLING_TARGET = 112;
+static const int PARTICLE_EFFECT_FLAMES_BURNING_NOPARENT = 113;
+static const int PARTICLE_EFFECT_ICE_BLOCK_FRAGMENT = 114;
+static const int PARTICLE_EFFECT_RESTORE_FORM_TELEPORT = 115;
+static const int PARTICLE_EFFECT_SUBJUGATE_FLESH_ORBIT = 116;
+static const int PARTICLE_EFFECT_SUBJUGATE_FLESH = 117;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -481,6 +508,11 @@ static const int PARTICLE_TIMER_ACTION_FROSTBALL_AOE = 48;
 static const int PARTICLE_TIMER_ACTION_KEGBOUNCE_AOE = 49;
 static const int PARTICLE_TIMER_ACTION_FORCE_BOMBARDMENT_SPAWNER = 50;
 static const int PARTICLE_TIMER_ACTION_LICHFIRE_FALLING_TARGET = 51;
+static const int PARTICLE_TIMER_ACTION_FLAME_PUDDLE = 52;
+static const int PARTICLE_TIMER_ACTION_ICE_BLOCK = 53;
+static const int PARTICLE_TIMER_ACTION_ICE_BLOCK_AOE = 54;
+static const int PARTICLE_TIMER_ACTION_BUFFET_AOE = 55;
+static const int PARTICLE_TIMER_ACTION_VORTEX_BLUE = 56;
 
 struct ParticleEmitterHit_t
 {
@@ -513,6 +545,9 @@ struct ParticleTimerEffect_t
 		EFFECT_ROOTS_TILE_VOID,
 		EFFECT_WATERSPLASH,
 		EFFECT_FIRE_TRAP_WAVE,
+		EFFECT_FLAME_PUDDLE,
+		EFFECT_ICE_BLOCK,
+		EFFECT_ROOTS_SELF_SUSTAIN_EXPAND,
 	};
 	struct Effect_t
 	{
@@ -875,6 +910,8 @@ typedef struct spell_t
 	int radius = 0;
 	real_t radius_mult = 0.0;
 	int drop_table = -1;
+	int ascended_spell_id = -1;
+	int descended_spell_id = -1;
 	int life_time = 0; // for floor based effects
 	real_t life_time_mult = 1.0;
 	int sustainEffectDissipate = -1; // when the spell is unsustained, clear this effect from the player (unique spell effects)
@@ -1089,7 +1126,7 @@ void createParticleErupt(Entity* parent, int sprite);
 void createParticleErupt(real_t x, real_t y, int sprite);
 Entity* createParticleBoobyTrapExplode(Entity* caster, real_t x, real_t y, Entity* followEntity);
 Entity* createParticleShatterObjects(Entity* caster);
-Entity* createParticleRevenantPush(Entity* caster, Entity* centeredOnEntity = nullptr, int overrideSpell = 0);
+Entity* createParticleRevenantPush(Entity* caster, Entity* centeredOnEntity = nullptr, int overrideSpell = 0, CastSpellProps_t* props = nullptr);
 Entity* createParticleIgnite(Entity* caster);
 Entity* createParticleSapCenter(Entity* parent, Entity* target, int spell, int sprite, int endSprite);
 Entity* createParticleTimer(Entity* parent, int duration, int sprite);
@@ -1115,7 +1152,7 @@ void floorMagicCreateLightningSequence(Entity* spellTimer, int startTickOffset);
 void floorMagicCreateSpores(Entity* spawnOnEntity, real_t x, real_t y, Entity* caster, int damage, int spellID, bool magicstaff = false);
 Entity* floorMagicCreateSplash(Entity* spawnOnEntity, real_t x, real_t y, Entity* caster, int damage, int spellID, int volume, bool magicstaff = false, int duration = 6 * TICKS_PER_SECOND);
 Entity* createParticleRain(Entity* caster, real_t x, real_t y, int spellID);
-Entity* floorMagicCreateRoots(real_t x, real_t y, Entity* caster, int damage, int spellID, int duration, int particleTimerAction);
+Entity* floorMagicCreateRoots(real_t x, real_t y, Entity* caster, int damage, int spellID, int duration, int particleTimerAction, bool magicstaff);
 Entity* createVortexMagic(int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime);
 Entity* createParticleWave(ParticleTimerEffect_t::EffectType particleType, int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime, bool light);
 Entity* createParticleRoot(int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime);
@@ -1133,11 +1170,11 @@ void actLeafParticle(Entity* my);
 void actLeafPile(Entity* my);
 Entity* spawnLeafPile(real_t x, real_t y, bool trap);
 int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, Entity* attacker, int effectID);
-Entity* createStareParticle(Entity* caster);
+Entity* createStareParticle(Entity* caster, int spellID);
 void createStareAOE(Entity* my, bool updateClients = false);
 bool entityWithinStareAngle(Entity* my, Entity* target);
 void actStareParticle(Entity* my);
-void castStareBeam(Entity* my);
+void castStareBeam(Entity* my, int spellID = 0);
 void spawnHeatOrbitSpin(Entity* target, int sprite, bool light);
 
 void spawnMagicTower(Entity* parent, real_t x, real_t y, int spellID, Entity* autoHitTarget, bool castedSpell = false); // autoHitTarget is to immediate damage an entity, as all 3 tower magics hitting is unreliable
@@ -1302,7 +1339,7 @@ struct AOEIndicators_t
 		CACHE_MAGICIANS_ARMOR,
 		CACHE_THAUM_ARMOR,
 		CACHE_PSYCHIC_SPEAR,
-		CACHE_RADIUS_MAGIC_GENERIC,
+		CACHE_RADIUS_MAGIC_GENERIC_16,
 		CACHE_VORTEX_AESTHETIC,
 		CACHE_VORTEX_AESTHETIC2,
 		CACHE_REVENANT_PUSH,
@@ -1312,7 +1349,14 @@ struct AOEIndicators_t
 		CACHE_STARE_BEAM,
 		CACHE_ETERNAL_SHRINE,
 		CACHE_KEG_BOUNCE,
-		CACHE_SPELL_FLOOR_TRAP
+		CACHE_SPELL_FLOOR_TRAP,
+		CACHE_ICE_BLOCK,
+		CACHE_BEAM_PARALYZE,
+		CACHE_BUFFET,
+		CACHE_TOXIC_BOMB,
+		CACHE_SUBJUGATE,
+		CACHE_RADIUS_MAGIC_GENERIC_32,
+		CACHE_RADIUS_MAGIC_GENERIC_OTHER
 	};
 	struct Indicator_t
 	{

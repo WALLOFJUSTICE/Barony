@@ -1069,7 +1069,7 @@ void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist)
 
 									if ( dist < TOUCHRANGE )
 									{
-										if ( floorMagicCreateRoots(my->x, my->y, my, 0, SPELL_ROOTS, 5 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS1) )
+										if ( floorMagicCreateRoots(my->x, my->y, my, 0, SPELL_ROOTS, 5 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS1, true) )
 										{
 											spawnMagicEffectParticles(my->x, my->y, my->z, 171);
 											playSoundEntity(my, 171, 128);
@@ -1077,7 +1077,7 @@ void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist)
 									}
 									else
 									{
-										if ( floorMagicCreateRoots(my->x, my->y, my, 0, SPELL_ROOTS, 5 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_PATH) )
+										if ( floorMagicCreateRoots(my->x, my->y, my, 0, SPELL_ROOTS, 5 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_PATH, true) )
 										{
 											spawnMagicEffectParticles(my->x, my->y, my->z, 171);
 											playSoundEntity(my, 171, 128);

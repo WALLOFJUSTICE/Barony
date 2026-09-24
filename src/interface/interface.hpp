@@ -482,6 +482,10 @@ public:
 	bool isItemVoidable(const Item* item);
 	void sendItemToVoid(Item* item);
 
+	// scry
+	bool isItemScryable(const Item* item);
+	void scryItem(Item* item);
+
 	// adorcise
 	bool isItemAdorcisable(const Item* item);
 	void adorciseItem(Item* item);
@@ -758,7 +762,8 @@ public:
 			ITEMFX_MODE_SANCTIFY_WATER,
 			ITEMFX_MODE_CLEANSE_FOOD,
 			ITEMFX_MODE_ADORCISE_INSTRUMENT,
-			ITEMFX_MODE_SCEPTER_CHARGE
+			ITEMFX_MODE_SCEPTER_CHARGE,
+			ITEMFX_MODE_SCRY_ITEM
 		};
 		void openItemEffectMenu(ItemEffectModes mode);
 		ItemEffectModes currentMode = ITEMFX_MODE_NONE;

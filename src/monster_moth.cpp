@@ -639,7 +639,7 @@ void mothAnimate(Entity* my, Stat* myStats, double dist)
 		entity->x = my->x;
 		entity->y = my->y;
 		entity->z = my->z;
-		entity->mistformGLRender = my->mistformGLRender;
+		//entity->mistformGLRender = my->mistformGLRender;
 		if ( (bodypart - MOTH_BODY) % 3 == 0 ) // bodies
 		{
 			body = entity;

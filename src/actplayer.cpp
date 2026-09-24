@@ -6564,7 +6564,7 @@ void Player::PlayerMovement_t::handlePlayerCameraUpdate(bool useRefreshRateDelta
 			}
 		}
 	}
-	else if ( stats[player.playernum]->getEffectActive(EFF_SPIN) )
+	else if ( stats[player.playernum]->getEffectActive(EFF_SPIN) || (stats[player.playernum]->getEffectActive(EFF_LIFT) & (1 << 7)) )
 	{
 		my->yaw += .15 * refreshRateDelta;
 	}
@@ -7079,7 +7079,9 @@ int Player::PlayerMovement_t::getCharacterModifiedWeight(int* customWeight, bool
 	{
 		weight = weight * (gameplayCustomManager.playerWeightPercent / 100.f);
 	}
-	if ( stats[player.playernum]->getEffectActive(EFF_FAST) && !stats[player.playernum]->getEffectActive(EFF_SLOW) )
+	if ( stats[player.playernum]->getEffectActive(EFF_FAST) 
+		&& !stats[player.playernum]->getEffectActive(EFF_SLOW)
+		&& !stats[player.playernum]->getEffectActive(EFF_SLOW_COLD) )
 	{
 		weight = weight * 0.5;
 	}
@@ -7122,7 +7124,8 @@ real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 {
 	real_t slowSpeedPenalty = 0.0;
 	real_t maxSpeed = getMaximumSpeed();
-	if ( !stats[player.playernum]->getEffectActive(EFF_FAST) && stats[player.playernum]->getEffectActive(EFF_SLOW) )
+	if ( !stats[player.playernum]->getEffectActive(EFF_FAST) 
+		&& (stats[player.playernum]->getEffectActive(EFF_SLOW) || stats[player.playernum]->getEffectActive(EFF_SLOW_COLD)) )
 	{
 		DEX = std::min(DEX - 3, -2);
 		slowSpeedPenalty = 2.0;
@@ -7142,6 +7145,7 @@ real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 	}
 	else if ( stats[player.playernum]->getEffectActive(EFF_FAST) 
 		&& !stats[player.playernum]->getEffectActive(EFF_SLOW)
+		&& !stats[player.playernum]->getEffectActive(EFF_SLOW_COLD)
 		&& !stats[player.playernum]->getEffectActive(EFF_DISRUPTED) )
 	{
 		maxSpeed += 1.0;
@@ -7177,7 +7181,7 @@ real_t Player::PlayerMovement_t::getSpeedFactor(real_t weightratio, Sint32 DEX)
 	if ( stats[player.playernum]->getEffectActive(EFF_BASTION_MUSHROOM)
 		|| stats[player.playernum]->getEffectActive(EFF_BASTION_ROOTS) )
 	{
-		speedFactor *= 0.3;
+		speedFactor *= 0.4;
 	}
 	if ( stats[player.playernum]->type == SALAMANDER && stats[player.playernum]->getEffectActive(EFF_SALAMANDER_HEART) )
 	{
@@ -9290,9 +9294,9 @@ void actPlayer(Entity* my)
 		else if ( *cvar_pbaoe == 6 )
 		{
 			Entity* spellTimer = createParticleTimer(my, 4 * TICKS_PER_SECOND, -1);
-			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_VORTEX;
+			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_VORTEX_BLUE;
 			spellTimer->particleTimerCountdownSprite = -1;
-			spellTimer->particleTimerVariable2 = SPELL_LIFT;
+			spellTimer->particleTimerVariable2 = SPELL_CYCLONE;
 			spellTimer->flags[UPDATENEEDED] = true;
 			spellTimer->flags[NOUPDATE] = false;
 			spellTimer->yaw = my->yaw;
@@ -9584,6 +9588,27 @@ void actPlayer(Entity* my)
 			spellTimer->skill[2] = val;
 			spellTimer->particleTimerEffectLifetime = lifetime;
 			floorMagicCreateLightningSequence(spellTimer, 0);
+		}
+		else if ( *cvar_particle_test == ParticleTimerEffect_t::EffectType::EFFECT_ICE_BLOCK )
+		{
+			Entity* spellTimer = createParticleTimer(my, 5 * TICKS_PER_SECOND + 10, -1);
+			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_ICE_BLOCK;
+			spellTimer->particleTimerCountdownSprite = -1;
+			spellTimer->flags[UPDATENEEDED] = true;
+			spellTimer->flags[NOUPDATE] = false;
+			spellTimer->yaw = my->yaw;
+			spellTimer->x = my->x + 32.0 * cos(my->yaw);
+			spellTimer->y = my->y + 32.0 * sin(my->yaw);
+			Sint32 val = (1 << 31);
+			val |= (Uint8)(19);
+			val |= (((Uint16)(spellTimer->particleTimerDuration) & 0xFFF) << 8);
+			val |= (Uint8)(spellTimer->particleTimerCountdownAction & 0xFF) << 20;
+			spellTimer->skill[2] = val;
+
+			spellTimer->particleTimerVariable1 = 0;// damage;
+			spellTimer->particleTimerVariable2 = SPELL_ICE_BLOCK;
+			spellTimer->particleTimerVariable4 = 0;
+			//spellTimer->actmagicCastByMagicstaff = magicstaff ? 1 : 0;
 		}
 		else
 		{
@@ -10075,6 +10100,16 @@ void actPlayer(Entity* my)
 			{
 				my->effectPolymorph = NOTHING;
 				serverUpdateEntitySkill(my, 50);
+			}
+		}
+
+		if ( my->ticks % 25 == 1 )
+		{
+			players[PLAYER_NUM]->mechanics.restoreFormPositions.emplace_back(::ticks, 
+				Player::PlayerMechanics_t::RestoreFormPos_t{my->x, my->y, my->yaw, stats[PLAYER_NUM]->HP});
+			while ( players[PLAYER_NUM]->mechanics.restoreFormPositions.size() > 50 )
+			{
+				players[PLAYER_NUM]->mechanics.restoreFormPositions.pop_front();
 			}
 		}
 	}
@@ -14365,7 +14400,14 @@ void actPlayer(Entity* my)
 							players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LEVITATION, dist, 0.5, nullptr);
 							if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) )
 							{
-								players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+								if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) == 2 )
+								{
+									players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_BUFFET, dist, 0.5, nullptr);
+								}
+								else
+								{
+									players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+								}
 							}
 						}
 					}
@@ -14433,7 +14475,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_NIMBLENESS, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_NIMBLENESS) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_ESPIONAGE, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_NIMBLENESS, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}
@@ -14444,7 +14493,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_GREATER_MIGHT, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_GREATER_MIGHT) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_BRUTE_SQUAD, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_GREATER_MIGHT, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}
@@ -14455,7 +14511,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_COUNSEL, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_COUNSEL) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_HIGH_COUNCIL, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_COUNSEL, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}
@@ -14466,7 +14529,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_STURDINESS, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_STURDINESS) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_FRONT_LINE, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_STURDINESS, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}
@@ -14756,7 +14826,14 @@ void actPlayer(Entity* my)
 							players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_LEVITATION, dist, 0.5, nullptr);
 							if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) )
 							{
-								players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+								if ( stats[PLAYER_NUM]->getEffectActive(EFF_FLUTTER) == 2 )
+								{
+									players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_BUFFET, dist, 0.5, nullptr);
+								}
+								else
+								{
+									players[PLAYER_NUM]->mechanics.updateSustainedSpellEvent(SPELL_FLUTTER, dist, 0.5, nullptr);
+								}
 							}
 						}
 					}
@@ -14824,7 +14901,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_NIMBLENESS, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_NIMBLENESS) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_ESPIONAGE, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_NIMBLENESS, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}
@@ -14835,7 +14919,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_GREATER_MIGHT, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_GREATER_MIGHT) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_BRUTE_SQUAD, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_GREATER_MIGHT, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}
@@ -14846,7 +14937,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_COUNSEL, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_COUNSEL) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_HIGH_COUNCIL, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_COUNSEL, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}
@@ -14857,7 +14955,14 @@ void actPlayer(Entity* my)
 					{
 						if ( players[caster]->entity )
 						{
-							players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_STURDINESS, dist, 0.002, nullptr);
+							if ( stats[PLAYER_NUM]->getEffectActive(EFF_STURDINESS) & 0b1000 )
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_FRONT_LINE, dist, 0.002 * 0.25, nullptr);
+							}
+							else
+							{
+								players[caster]->mechanics.updateSustainedSpellEvent(SPELL_PROF_STURDINESS, dist, 0.002, nullptr);
+							}
 						}
 					}
 				}

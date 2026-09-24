@@ -471,8 +471,9 @@ struct SkillUpAnimation_t
 			currentSkill = _currentSkill;
 			increaseSkill = _increaseSkill;
 		};
-		SkillUp_t(const int _spellID)
+		SkillUp_t(const int _spellID, const bool _ascended)
 		{
+			isAscendedSpell = _ascended;
 			spellID = _spellID;
 			isSpell = true;
 		};
@@ -520,12 +521,13 @@ struct SkillUpAnimation_t
 		real_t fadeout = 0.0;
 		bool expired = false;
 		bool isSpell = false;
+		bool isAscendedSpell = false;
 	};
 
 	real_t animFrameFadeIn = 1.0;
 	std::deque<SkillUp_t> skillUps;
 	void addSkillUp(const int _numSkill, const int _currentSkill, const int _increaseSkill);
-	void addSpellLearned(const int _spellID);
+	void addSpellLearned(const int _spellID, const bool _ascendedSpell);
 	size_t getSkillUpIndexToDisplay();
 	SkillUp_t& getSkillUpToDisplay();
 	static bool soundIndexUsedForNotification(const int index);

@@ -2541,6 +2541,16 @@ public:
 		std::set<Uint32> eternalShrineDonationRevealedOnFloor;
 		bool donationClaimed = false;
 		std::map<Uint32, std::map<Uint32, Uint32>> targetsCompelled;
+		std::map<Uint32, std::map<Uint32, Uint32>> targetsConflicted;
+		std::map<Uint32, std::map<Uint32, Uint32>> targetsTabood;
+		struct RestoreFormPos_t
+		{
+			real_t x = 0.0;
+			real_t y = 0.0;
+			real_t yaw = 0.0;
+			Sint32 hp = 0;
+		};
+		std::deque<std::pair<Uint32, RestoreFormPos_t>> restoreFormPositions;
 		std::set<Uint32> targetsRefuseCompel;
 		Uint32 innoculateEffectsTick[NUMEFFECTS + 1]; // +1 is burning
 		static void ensembleMusicUpdateServer();

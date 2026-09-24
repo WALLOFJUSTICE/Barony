@@ -5250,6 +5250,12 @@ void GenericGUIMenu::blessWater(Item* item)
 
 	item->beatitude = item->beatitude + 1;
 	item->status = SERVICABLE;
+
+	for ( int i = 0; i < item->count && i < 5; ++i )
+	{
+		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_SANCTIFY_WATER,
+			spell_t::SPELL_LEVEL_EVENT_DEFAULT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE, 1);
+	}
 	messagePlayer(gui_player, MESSAGE_HINT, Language::get(859), item->getName()); // glows blue
 
 	closeGUI();
@@ -5409,7 +5415,11 @@ void GenericGUIMenu::cleanseFood(Item* item)
 	}*/
 	if ( statusModified )
 	{
-		magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_CLEANSE_FOOD, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+		for ( int i = 0; i < item->count && i < 5; ++i )
+		{
+			magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_CLEANSE_FOOD, 
+				spell_t::SPELL_LEVEL_EVENT_DEFAULT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE, 1);
+		}
 
 		messagePlayer(gui_player, MESSAGE_HINT, Language::get(6725), item->getName()); // looks fresher
 	}
@@ -5431,6 +5441,20 @@ bool GenericGUIMenu::isItemVoidable(const Item* item)
 	{
 		return false;
 	}
+	return true;
+}
+
+bool GenericGUIMenu::isItemScryable(const Item* item)
+{
+	if ( !item )
+	{
+		return false;
+	}
+	if ( !item->identified )
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -5676,7 +5700,7 @@ bool GenericGUIMenu::isItemAlterable(const Item* item)
 		int metal = 0;
 		int magic = 0;
 		GenericGUIMenu::tinkeringGetItemValue(item, &metal, &magic);
-		if ( metal > 0 )
+		if ( metal > 0 && itemCategory(item) == GEM )
 		{
 			if ( item->getGoldValue() > 0 )
 			{
@@ -6562,6 +6586,10 @@ bool GenericGUIMenu::shouldDisplayItemInGUI(Item* item)
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_PUNCTURE_VOID )
 		{
 			return isItemVoidable(item);
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCRY_ITEM )
+		{
+			return isItemScryable(item);
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCEPTER_CHARGE )
 		{
@@ -7837,6 +7865,10 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_INSTRUMENT;
 		}
+		else if ( usingSpellID == SPELL_SCRY_ITEM )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCRY_ITEM;
+		}
 		else if ( itemEffectItemType == SCROLL_CHARGING )
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCROLL_CHARGING;
@@ -8208,6 +8240,32 @@ void GenericGUIMenu::sendItemToVoid(Item* item)
 	closeGUI();
 }
 
+void GenericGUIMenu::scryItem(Item* item)
+{
+	if ( !item || gui_player < 0 )
+	{
+		return;
+	}
+	if ( !shouldDisplayItemInGUI(item) )
+	{
+		messagePlayer(gui_player, MESSAGE_MISC, Language::get(6514), item->getName());
+		closeGUI();
+		return;
+	}
+	if ( !itemfxGUI.consumeResourcesForTransmute() )
+	{
+		closeGUI();
+		return;
+	}
+
+	CastSpellProps_t props;
+	props.optionalData = 3;
+	props.targetUID = (Uint32)item->type;
+	castSpell(players[gui_player]->entity->getUID(), getSpellFromID(SPELL_SCRY_TREASURES), true, true, false, &props);
+
+	closeGUI();
+}
+
 void GenericGUIMenu::adorciseItem(Item* item)
 {
 	if ( !item || gui_player < 0 )
@@ -8355,11 +8413,20 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
 				consumeItem(itemEffectScrollItem, gui_player);
 			}
+			if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCROLL_CHARGING )
+			{
+				playSoundEntityLocal(players[gui_player]->entity, 167, 128);
+			}
+			else
+			{
+				playSoundEntityLocal(players[gui_player]->entity, 895, 128);
+			}
 			repairItem(item);
 			return true;
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESTORE )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 895, 128);
 			repairItem(item);
 			return true;
 		}
@@ -8371,6 +8438,7 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
 				consumeItem(itemEffectScrollItem, gui_player);
 			}
+			playSoundEntityLocal(players[gui_player]->entity, 903, 128);
 			uncurseItem(item);
 			return true;
 		}
@@ -8382,6 +8450,7 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
 				consumeItem(itemEffectScrollItem, gui_player);
 			}
+			playSoundEntityLocal(players[gui_player]->entity, 167, 128);
 			identifyItem(item);
 			return true;
 		}
@@ -8395,37 +8464,50 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_VANDALISE )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 895, 128);
 			alterItem(item);
 			return true;
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_PUNCTURE_VOID )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 902, 128);
 			sendItemToVoid(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SCRY_ITEM )
+		{
+			playSoundEntityLocal(players[gui_player]->entity, 167, 128);
+			scryItem(item);
 			return true;
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_DESECRATE )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 902, 128);
 			desecrateItem(item);
 			return true;
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY_WATER )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 903, 128);
 			blessWater(item);
 			return true;
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SANCTIFY )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 904, 128);
 			sanctifyItem(item);
 			return true;
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_CLEANSE_FOOD )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 903, 128);
 			cleanseFood(item);
 			return true;
 		}
 		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_WEAPON
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ADORCISE_INSTRUMENT )
 		{
+			playSoundEntityLocal(players[gui_player]->entity, 895, 128);
 			adorciseItem(item);
 			return true;
 		}
@@ -8442,6 +8524,7 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 				messagePlayer(gui_player, MESSAGE_INVENTORY, Language::get(848)); // as you read the scroll it disappears...
 				consumeItem(itemEffectScrollItem, gui_player);
 			}
+			playSoundEntityLocal(players[gui_player]->entity, 904, 128);
 			enchantItem(item);
 			return true;
 		}
@@ -24468,9 +24551,25 @@ void GenericGUIMenu::ItemEffectGUI_t::getItemEffectCost(Item* itemUsedWith, int&
 	{
 		if ( parentGUI.isItemBlessWaterable(itemUsedWith) )
 		{
-			manaCost = 2 * itemUsedWith->count;
+			manaCost = 8 + 2 * itemUsedWith->count;
 			manaCost += 2 * itemUsedWith->count * std::max(0, (int)itemUsedWith->beatitude);
 		}
+	}
+	else if ( currentMode == ITEMFX_MODE_CLEANSE_FOOD )
+	{
+		if ( parentGUI.isItemCleaseFoodable(itemUsedWith) )
+		{
+			manaCost = 5 + 2 * itemUsedWith->count;
+			manaCost += 2 * itemUsedWith->count * std::max(0, (int)itemUsedWith->beatitude);
+		}
+	}
+	else if ( currentMode == ITEMFX_MODE_SCRY_ITEM )
+	{
+		int minMana = getSpellEffectDurationSecondaryFromID(SPELL_SCRY_ITEM,
+			players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+		int mana = getSpellDamageSecondaryFromID(SPELL_SCRY_ITEM,
+			players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+		manaCost = std::max(minMana, mana);
 	}
 	else if ( currentMode == ITEMFX_MODE_SCROLL_ENCHANT_ARMOR )
 	{
@@ -25072,6 +25171,29 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 				}
 			}
 		}
+		else if ( currentMode == ITEMFX_MODE_SCRY_ITEM )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				int goldCost = 0;
+				int manaCost = 0;
+				getItemEffectCost(item, goldCost, manaCost);
+				if ( !checkResultOnly )
+				{
+					costEffectGoldAmount = goldCost;
+					costEffectMPAmount = manaCost;
+				}
+				result = ITEMFX_ACTION_OK;
+			}
+		}
 		else if ( currentMode == ITEMFX_MODE_SANCTIFY_WATER )
 		{
 			if ( itemCategory(item) == SPELL_CAT )
@@ -25099,7 +25221,7 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 					{
 						result = ITEMFX_ACTION_CANT_AFFORD_MANA;
 					}
-					if ( itemIsEquipped(item, parentGUI.gui_player) )
+					else if ( itemIsEquipped(item, parentGUI.gui_player) )
 					{
 						result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
 					}
@@ -25128,12 +25250,25 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 			{
 				if ( parentGUI.isItemCleaseFoodable(item) )
 				{
+					int goldCost = 0;
+					int manaCost = 0;
+					getItemEffectCost(item, goldCost, manaCost);
+					if ( !checkResultOnly )
+					{
+						costEffectGoldAmount = goldCost;
+						costEffectMPAmount = manaCost;
+					}
+
 					/*if ( item->status == EXCELLENT && item->beatitude >= 1 )
 					{
 						result = ITEMFX_ACTION_AT_MAX_BLESSING;
 					}
 					else */
-					if ( itemIsEquipped(item, parentGUI.gui_player) )
+					if ( manaCost > 0 && manaCost > stats[parentGUI.gui_player]->MP && stats[parentGUI.gui_player]->type != VAMPIRE )
+					{
+						result = ITEMFX_ACTION_CANT_AFFORD_MANA;
+					}
+					else if ( itemIsEquipped(item, parentGUI.gui_player) )
 					{
 						result = ITEMFX_ACTION_MUST_BE_UNEQUIPPED;
 					}
@@ -25492,6 +25627,8 @@ void GenericGUIMenu::ItemEffectGUI_t::openItemEffectMenu(GenericGUIMenu::ItemEff
 		modeHasCostEffect = COST_EFFECT_GOLD;
 		break;
 	case ITEMFX_MODE_SANCTIFY_WATER:
+	case ITEMFX_MODE_CLEANSE_FOOD:
+	case ITEMFX_MODE_SCRY_ITEM:
 		modeHasCostEffect = COST_EFFECT_MANA;
 		break;
 	case ITEMFX_MODE_FORGE_KEY:
@@ -26667,6 +26804,9 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 					case ITEMFX_MODE_ADORCISE_INSTRUMENT:
 						actionPromptTxt->setText(Language::get(6616));
 						break;
+					case ITEMFX_MODE_SCRY_ITEM:
+						actionPromptTxt->setText(Language::get(7238));
+						break;
 					case ITEMFX_MODE_SCEPTER_CHARGE:
 						actionPromptTxt->setText(Language::get(6831));
 						if ( confirmActionOnItemSteps.second > 0 )
@@ -26976,6 +27116,9 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			case ITEMFX_MODE_SCEPTER_CHARGE:
 				actionPromptUnselectedTxt->setText(Language::get(6832));
 				break;
+			case ITEMFX_MODE_SCRY_ITEM:
+				actionPromptUnselectedTxt->setText(Language::get(7237));
+				break;
 			default:
 				actionPromptUnselectedTxt->setText("");
 				break;
@@ -27200,7 +27343,6 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 							else
 							{
 								Player::soundActivate();
-								playSoundEntityLocal(players[parentGUI.gui_player]->entity, 167, 128);
 								parentGUI.executeOnItemClick(item);
 							}
 						}

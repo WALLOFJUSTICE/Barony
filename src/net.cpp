@@ -3384,6 +3384,14 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					spellTimer->particleTimerPreDelay = 0;
 				}
 				break;
+				case PARTICLE_EFFECT_RESTORE_FORM_TELEPORT:
+				{
+					Entity* spellTimer = createParticleTimer(entity, 100, sprite);
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SHOOT_PARTICLES;
+					spellTimer->particleTimerCountdownSprite = sprite;
+					spellTimer->particleTimerPreDelay = 0;
+				}
+				break;
 				case PARTICLE_EFFECT_DESTINY_TELEPORT:
 				{
 					Uint32 duration = SDLNet_Read32(&net_packet->data[11]);
@@ -3446,6 +3454,19 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				case PARTICLE_EFFECT_SPELL_WEB_ORBIT:
 					createParticleAestheticOrbit(entity, 863, 400, PARTICLE_EFFECT_SPELL_WEB_ORBIT);
 					break;
+				case PARTICLE_EFFECT_SUBJUGATE_FLESH_ORBIT:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					int charges = SDLNet_Read32(&net_packet->data[19]);
+					if ( Entity* fx = createParticleAestheticOrbit(entity, 2624, duration, PARTICLE_EFFECT_SUBJUGATE_FLESH_ORBIT) )
+					{
+						fx->skill[3] = 0;
+						fx->flags[INVISIBLE] = true;
+						fx->skill[7] = charges;
+						fx->skill[8] = 50; // first delay
+					}
+					break;
+				}
 				case PARTICLE_EFFECT_SMITE_PINPOINT:
 				{
 					for ( int i = 0; i < 3; ++i )
@@ -3614,6 +3635,11 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				case PARTICLE_EFFECT_FOCI_DARK:
 				{
 					createParticleFociDark(entity, sprite, false);
+					break;
+				}
+				case PARTICLE_EFFECT_FOCI_SORCERY:
+				{
+					createParticleFociSorcery(entity, sprite, false);
 					break;
 				}
 				case PARTICLE_EFFECT_PORTAL_SPAWN:
@@ -3892,20 +3918,32 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			case PARTICLE_EFFECT_MISC_PUDDLE:
 				spawnMiscPuddle(nullptr, particle_x, particle_y, sprite);
 				break;
+			case PARTICLE_EFFECT_REVENANT_PUSH:
+			{
+				Uint32 uid = SDLNet_Read32(&net_packet->data[21]);
+				CastSpellProps_t props;
+				props.target_x = particle_x;
+				props.target_y = particle_y;
+				Entity* caster = uidToEntity(uid);
+				createParticleRevenantPush(caster, caster, sprite, &props);
+				break;
+			}
 			case PARTICLE_EFFECT_STARE_GAZE:
 			{
 				Sint32 dir = SDLNet_Read32(&net_packet->data[17]);
 				Uint32 casterUid = SDLNet_Read32(&net_packet->data[21]);
-				Entity* spellTimer = createParticleTimer(uidToEntity(casterUid), TICKS_PER_SECOND + 50, -1);
+				Uint32 duration = SDLNet_Read32(&net_packet->data[13]);
+				Entity* spellTimer = createParticleTimer(uidToEntity(casterUid), duration, -1);
 				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_STARE_GAZE;
 				spellTimer->particleTimerCountdownSprite = -1;
 				spellTimer->yaw = dir / 256.0;
-				spellTimer->particleTimerVariable1 = sprite;
-				if ( sprite == 0 )
+				spellTimer->particleTimerVariable1 = sprite & 0xF;
+				spellTimer->particleTimerVariable2 = (sprite >> 4) & 0xFFF;
+				if ( spellTimer->particleTimerVariable1 == 0 )
 				{
 					spellTimer->yaw -= (PI / 64) * 4.0;
 				}
-				else if ( sprite == 2 )
+				else if ( spellTimer->particleTimerVariable1 == 2 )
 				{
 					spellTimer->yaw += (PI / 64) * 4.0;
 				}

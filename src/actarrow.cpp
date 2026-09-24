@@ -86,6 +86,9 @@ void actArrow(Entity* my)
 		return;
 	}
 
+	bool spiritAmmo = my->arrowShotByWeapon & 0x800;
+	bool spiritParticle = spiritAmmo && my->ticks % 2 != 0;
+
 	if ( my->sprite == PROJECTILE_SEED_ROOT_SPRITE
 		|| my->sprite == PROJECTILE_SEED_POISON_SPRITE )
 	{
@@ -120,7 +123,7 @@ void actArrow(Entity* my)
 			if ( ARROW_STUCK == 0 )
 			{
 				my->removeLightField();
-				Entity* particle = spawnMagicParticleCustom(my, 1816, 0.5, 4);
+				Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 1816, 0.5, 4);
 				if ( particle )
 				{
 					particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -134,7 +137,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 158, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 158, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -172,7 +175,7 @@ void actArrow(Entity* my)
 
 			if ( ARROW_STUCK != 0 )
 			{
-				if ( Entity* entity = spawnFlame(my, SPRITE_FLAME) )
+				if ( Entity* entity = spawnFlame(my, spiritAmmo ? SPRITE_CRYSTALFLAME : SPRITE_FLAME) )
 				{
 					if ( ARROW_STUCK == 1 )
 					{
@@ -189,7 +192,7 @@ void actArrow(Entity* my)
 			}
 			else
 			{
-				Entity* flame = spawnMagicParticleCustom(my, SPRITE_FLAME, 0.5, 4); // this looks nicer than the spawnFlame :)
+				Entity* flame = spawnMagicParticleCustom(my, spiritAmmo ? SPRITE_CRYSTALFLAME : SPRITE_FLAME, 0.5, 4); // this looks nicer than the spawnFlame :)
 				if ( flame )
 				{
 					flame->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -203,7 +206,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 159, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 159, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -216,7 +219,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 160, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 160, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -229,7 +232,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 155, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 155, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -242,7 +245,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 156, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 156, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -255,7 +258,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 157, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 157, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -268,7 +271,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 311, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 311, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -281,7 +284,7 @@ void actArrow(Entity* my)
 	{
 		if ( ARROW_STUCK == 0 )
 		{
-			Entity* particle = spawnMagicParticleCustom(my, 310, 0.5, 4);
+			Entity* particle = spawnMagicParticleCustom(my, spiritParticle ? 225 : 310, 0.5, 4);
 			if ( particle )
 			{
 				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
@@ -291,14 +294,17 @@ void actArrow(Entity* my)
 		}
 	}
 
-	if ( my->arrowArmorPierce > 0 && ARROW_STUCK == 0 && !(my->arrowQuiverType == QUIVER_PIERCE || my->sprite == PROJECTILE_PIERCE_SPRITE) )
+	if ( ARROW_STUCK == 0 && !(my->arrowQuiverType == QUIVER_PIERCE || my->sprite == PROJECTILE_PIERCE_SPRITE) )
 	{
-		Entity* particle = spawnMagicParticleCustom(my, 158, 0.5, 4);
-		if ( particle )
+		if ( my->arrowArmorPierce > 0 || spiritAmmo )
 		{
-			particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
-			particle->flags[SPRITE] = true;
-			particle->ditheringDisabled = true;
+			Entity* particle = spawnMagicParticleCustom(my, (my->arrowArmorPierce == 0 || spiritParticle) ? 225 : 158, 0.5, 4);
+			if ( particle )
+			{
+				particle->lightBonus = vec4(0.5f, 0.5f, 0.5f, 0.f);
+				particle->flags[SPRITE] = true;
+				particle->ditheringDisabled = true;
+			}
 		}
 	}
 
@@ -339,13 +345,34 @@ void actArrow(Entity* my)
 		}
 	}
 
+	spiritAmmo = my->arrowShotByWeapon & 0x800;
+	if ( spiritAmmo )
+	{
+		my->mistformGLRender = 1.0;
+		if ( ARROW_LIGHTING == 1 )
+		{
+			my->removeLightField();
+			my->light = addLight(my->x / 16, my->y / 16, "magic_foci_blue");
+		}
+		else
+		{
+			my->removeLightField();
+			my->light = addLight(my->x / 16, my->y / 16, "magic_foci_blue_flicker");
+		}
+	}
+	else
+	{
+		my->mistformGLRender = 0.0;
+	}
+	int arrowShotWeaponType = my->arrowShotByWeapon & 0x7FF;
+
 	if ( ARROW_STUCK == 0 )
 	{
 		if ( my->arrowFallSpeed > 0 )
 		{
 			real_t pitchChange = 0.02;
-			if ( my->arrowShotByWeapon == LONGBOW || my->arrowShotByWeapon == BRANCH_BOW 
-				|| my->arrowShotByWeapon == BRANCH_BOW_INFECTED )
+			if ( arrowShotWeaponType == LONGBOW || arrowShotWeaponType == BRANCH_BOW
+				|| arrowShotWeaponType == BRANCH_BOW_INFECTED )
 			{
 				pitchChange = 0.005;
 			}
@@ -552,7 +579,7 @@ void actArrow(Entity* my)
 			}
 
 			int arrowVolume = 64;
-			if ( my->arrowShotByWeapon == BLACKIRON_CROSSBOW )
+			if ( arrowShotWeaponType == BLACKIRON_CROSSBOW )
 			{
 				arrowVolume = 32;
 				if ( my->sprite == PROJECTILE_BONE_SPRITE )
@@ -953,7 +980,7 @@ void actArrow(Entity* my)
 						}
 					}
 
-					if ( (my->arrowShotByWeapon == BONE_SHORTBOW || my->arrowQuiverType == QUIVER_BONE)
+					if ( (arrowShotWeaponType == BONE_SHORTBOW || my->arrowQuiverType == QUIVER_BONE)
 						&& hit.entity->isBeastMonster() )
 					{
 						// more damage to these creatures
@@ -965,7 +992,7 @@ void actArrow(Entity* my)
 							multWeapon += items[my->arrowQuiverType].attributes["BONE_DAMAGE_BASE"] / 100.0;
 						}
 
-						if ( my->arrowShotByWeapon == BONE_SHORTBOW )
+						if ( arrowShotWeaponType == BONE_SHORTBOW )
 						{
 							if ( parent && parent->getStats() && parent->getStats()->weapon && parent->getStats()->weapon->type == BONE_SHORTBOW )
 							{
@@ -998,7 +1025,7 @@ void actArrow(Entity* my)
 							}
 						}
 					}
-					else if ( (my->arrowShotByWeapon == BLACKIRON_CROSSBOW || my->arrowQuiverType == QUIVER_BLACKIRON)
+					else if ( (arrowShotWeaponType == BLACKIRON_CROSSBOW || my->arrowQuiverType == QUIVER_BLACKIRON)
 						&& (hit.entity->isConstructMonster() || hit.entity->isElementalMonster()) )
 					{
 						// more damage to these creatures
@@ -1018,7 +1045,7 @@ void actArrow(Entity* my)
 							}
 						}
 
-						if ( my->arrowShotByWeapon == BLACKIRON_CROSSBOW )
+						if ( arrowShotWeaponType == BLACKIRON_CROSSBOW )
 						{
 							if ( parent && parent->getStats() && parent->getStats()->weapon && parent->getStats()->weapon->type == BLACKIRON_CROSSBOW )
 							{
@@ -1041,7 +1068,7 @@ void actArrow(Entity* my)
 						if ( particle )
 						{
 							int numParticles = 5;
-							if ( my->arrowShotByWeapon == BLACKIRON_CROSSBOW )
+							if ( arrowShotWeaponType == BLACKIRON_CROSSBOW )
 							{
 								numParticles = 2;
 							}
@@ -1075,7 +1102,7 @@ void actArrow(Entity* my)
 						// normal damage.
 					}
 
-					/*if ( my->arrowShotByWeapon == BONE_SHORTBOW )
+					/*if ( arrowShotWeaponType == BONE_SHORTBOW )
 					{
 						enemyAC *= 0.8;
 					}*/
@@ -1233,13 +1260,14 @@ void actArrow(Entity* my)
 							}
 						}
 					}
-					real_t damageMultiplier = Entity::getDamageTableMultiplier(hit.entity, *hitstats, DAMAGE_TABLE_RANGED);
+
+					real_t damageMultiplier = Entity::getDamageTableMultiplier(hit.entity, *hitstats, spiritAmmo ? DAMAGE_TABLE_MAGIC : DAMAGE_TABLE_RANGED);
 					if ( huntingDamage || silverDamage || beastArrowDamage || constructArrowDamage )
 					{
 						damageMultiplier = std::max(0.75, damageMultiplier);
 					}
 
-					Entity::modifyDamageMultipliersFromEffects(hit.entity, parent, damageMultiplier, DAMAGE_TABLE_RANGED, my);
+					Entity::modifyDamageMultipliersFromEffects(hit.entity, parent, damageMultiplier, spiritAmmo ? DAMAGE_TABLE_MAGIC : DAMAGE_TABLE_RANGED, my);
 
 					if ( my->arrowArmorPierce > 0 && parent && parent->behavior == &actPlayer )
 					{
@@ -1300,6 +1328,10 @@ void actArrow(Entity* my)
 					{
 						thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_REACTIVITY);
 					}
+					if ( hitstats && hitstats->getEffectActive(EFF_FLAME_SHIELD) )
+					{
+						thaumSpellArmorProc(hit.entity, *hitstats, false, parent, EFF_FLAME_SHIELD);
+					}
 
 					/*messagePlayer(0, "My damage: %d, AC: %d, Pierce: %d", my->arrowPower, AC(hitstats), my->arrowArmorPierce);
 					messagePlayer(0, "Resolved to %d damage.", damage);*/
@@ -1316,6 +1348,10 @@ void actArrow(Entity* my)
 								hit.entity->defyFleshProc(parent);
 							}
 							hit.entity->pinpointDamageProc(parent, damageTaken);
+						}
+						if ( hitstats->getEffectActive(EFF_LIFT) )
+						{
+							hit.entity->cycloneDamageProc(parent, damageTaken);
 						}
 						if ( hitstats->getEffectActive(EFF_SPORES) )
 						{
@@ -1398,9 +1434,9 @@ void actArrow(Entity* my)
 								{
 									Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_RANGED_DMG_TOTAL, (ItemType)my->arrowQuiverType, oldHP - hitstats->HP);
 								}
-								if ( isRangedWeapon((ItemType)my->arrowShotByWeapon) )
+								if ( isRangedWeapon((ItemType)arrowShotWeaponType) )
 								{
-									Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_RANGED_DMG_TOTAL, (ItemType)my->arrowShotByWeapon, oldHP - hitstats->HP);
+									Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_RANGED_DMG_TOTAL, (ItemType)arrowShotWeaponType, oldHP - hitstats->HP);
 								}
 								Compendium_t::Events_t::eventUpdateCodex(parent->skill[2], Compendium_t::CPDM_RANGED_DMG_TOTAL, "missiles", oldHP - hitstats->HP);
 								Compendium_t::Events_t::eventUpdateCodex(parent->skill[2], Compendium_t::CPDM_RANGED_HITS, "missiles", 1);
@@ -1412,14 +1448,14 @@ void actArrow(Entity* my)
 								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_DMG_MAX, (ItemType)my->arrowQuiverType, damage);
 								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_AMMO_HIT, (ItemType)my->arrowQuiverType, 1);
 							}
-							if ( isRangedWeapon((ItemType)my->arrowShotByWeapon) )
+							if ( isRangedWeapon((ItemType)arrowShotWeaponType) )
 							{
-								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_DMG_MAX, (ItemType)my->arrowShotByWeapon, damage);
-								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_SHOTS_HIT, (ItemType)my->arrowShotByWeapon, 1);
+								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_DMG_MAX, (ItemType)arrowShotWeaponType, damage);
+								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_SHOTS_HIT, (ItemType)arrowShotWeaponType, 1);
 							}
-							if ( my->arrowShotByWeapon == SLING && damage == 0 )
+							if ( arrowShotWeaponType == SLING && damage == 0 )
 							{
-								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_DMG_0, (ItemType)my->arrowShotByWeapon, 1);
+								Compendium_t::Events_t::eventUpdate(parent->skill[2], Compendium_t::CPDM_DMG_0, (ItemType)arrowShotWeaponType, 1);
 							}
 						}
 						else if ( parent->behavior == &actMonster )
@@ -1447,7 +1483,7 @@ void actArrow(Entity* my)
 								achievementObserver.awardAchievement(parent->skill[2], AchievementObserver::BARONY_ACH_FELL_BEAST);
 							}
 							if ( my->arrowQuiverType == QUIVER_LIGHTWEIGHT
-								&& my->arrowShotByWeapon == COMPOUND_BOW )
+								&& arrowShotWeaponType == COMPOUND_BOW )
 							{
 								achievementObserver.updatePlayerAchievement(parent->skill[2], AchievementObserver::BARONY_ACH_STRUNG_OUT, AchievementObserver::ACH_EVENT_NONE);
 							}
@@ -1556,18 +1592,22 @@ void actArrow(Entity* my)
 					if ( parent )
 					{
 						Stat* parentStats = parent->getStats();
-						if ( parentStats && parentStats->getEffectActive(EFF_ENVENOM_WEAPON) && hitstats )
+						if ( parentStats && 
+							(parentStats->getEffectActive(EFF_ENVENOM_WEAPON) || parentStats->getEffectActive(EFF_TOXIC_WEAPON)) && hitstats )
 						{
 							if ( local_rng.rand() % 2 == 0 )
 							{
+								int spellID = parentStats->getEffectActive(EFF_TOXIC_WEAPON) ? SPELL_TOXIC_ATTACKS : SPELL_ENVENOM_WEAPON;
+
 								int envenomDamage = std::min(
-									getSpellDamageSecondaryFromID(SPELL_ENVENOM_WEAPON, parent, parentStats, parent),
-									getSpellDamageFromID(SPELL_ENVENOM_WEAPON, parent, parentStats, parent));
+									getSpellDamageSecondaryFromID(spellID, parent, parentStats, parent),
+									getSpellDamageFromID(spellID, parent, parentStats, parent));
 
 								hit.entity->modHP(-envenomDamage); // do the damage
 								for ( int tmp = 0; tmp < 3; ++tmp )
 								{
-									Entity* gib = spawnGib(hit.entity, 211);
+									Entity* gib = spawnGib(hit.entity, 
+										parentStats->getEffectActive(EFF_TOXIC_WEAPON) ? 2621 : 211);
 									serverSpawnGibForClient(gib);
 								}
 								if ( !hitstats->getEffectActive(EFF_POISONED) && hitstats->isPoisonable() )
@@ -1578,6 +1618,13 @@ void actArrow(Entity* my)
 									int duration = TICKS_PER_SECOND * envenomDamage + 10;
 									hitstats->EFFECTS_TIMERS[EFF_POISONED] = std::max(160, duration - hit.entity->getCON() * 20);
 									hitstats->poisonKiller = parent->getUID();
+
+									if ( parentStats->getEffectActive(EFF_TOXIC_WEAPON) )
+									{
+										hitstats->setEffectActive(EFF_TOXIC, 1);
+										hitstats->EFFECTS_TIMERS[EFF_TOXIC] = hitstats->EFFECTS_TIMERS[EFF_POISONED];
+									}
+
 									if ( hit.entity->isEntityPlayer() >= 0 )
 									{
 										messagePlayerMonsterEvent(hit.entity->isEntityPlayer(), makeColorRGB(255, 0, 0), *parentStats, Language::get(6531), Language::get(6532), MSG_COMBAT);
@@ -1586,16 +1633,24 @@ void actArrow(Entity* my)
 
 									if ( parent->behavior == &actPlayer )
 									{
-										players[parent->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_ENVENOM_WEAPON, 50.0, 1.0, hit.entity);
+										players[parent->skill[2]]->mechanics.updateSustainedSpellEvent(spellID, 50.0, 1.0, hit.entity);
 									}
 								}
 							}
 						}
 
-						if ( (hitstats->getEffectActive(EFF_SPARSITY) || (parentStats && parentStats->getEffectActive(EFF_DENSITY)))
+						bool lifted = hitstats->getEffectActive(EFF_LIFT) & (1 << 7);
+
+						if ( (hitstats->getEffectActive(EFF_SPARSITY) 
+							|| lifted
+							|| (parentStats && parentStats->getEffectActive(EFF_DENSITY)))
 							&& hit.entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
 						{
 							real_t pushbackMultiplier = 0.5;
+							if ( hitstats->getEffectActive(EFF_LIFT) )
+							{
+								pushbackMultiplier = 0.7;
+							}
 							if ( !hit.entity->isMobile() )
 							{
 								pushbackMultiplier += 0.3;
@@ -1630,17 +1685,22 @@ void actArrow(Entity* my)
 							}
 							else if ( hit.entity->behavior == &actPlayer )
 							{
+								real_t tangent = atan2(hit.entity->y - my->y, hit.entity->x - my->x); 
+								if ( parent )
+								{
+									tangent = atan2(hit.entity->y - parent->y, hit.entity->x - parent->x);
+								}
 								if ( !players[hit.entity->skill[2]]->isLocalPlayer() )
 								{
 									hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
-									hit.entity->monsterKnockbackTangentDir = my->yaw;
+									hit.entity->monsterKnockbackTangentDir = tangent;
 									serverUpdateEntityFSkill(hit.entity, 11);
 									serverUpdateEntityFSkill(hit.entity, 9);
 								}
 								else
 								{
 									hit.entity->monsterKnockbackVelocity = pushbackMultiplier;
-									hit.entity->monsterKnockbackTangentDir = my->yaw;
+									hit.entity->monsterKnockbackTangentDir = tangent;
 								}
 							}
 						}
@@ -1802,7 +1862,7 @@ void actArrow(Entity* my)
 					}
 					else if ( my->sprite == PROJECTILE_SEED_ROOT_SPRITE )
 					{
-						floorMagicCreateRoots(hit.entity->x, hit.entity->y, parent, 3, SPELL_ROOTS, 3 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_SINGLE_TILE);
+						floorMagicCreateRoots(hit.entity->x, hit.entity->y, parent, 3, SPELL_ROOTS, 3 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_SINGLE_TILE, true);
 					}
 
 					bool statusEffectApplied = false;
@@ -2047,7 +2107,14 @@ void actArrow(Entity* my)
 							if ( parent && parent->behavior == &actPlayer )
 							{
 								Uint32 color = makeColorRGB(0, 255, 0);
-								messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(6533), Language::get(6534), MSG_COMBAT);
+								if ( parent->getStats() && parent->getStats()->getEffectActive(EFF_TOXIC_WEAPON) )
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(7368), Language::get(7369), MSG_COMBAT);
+								}
+								else
+								{
+									messagePlayerMonsterEvent(parent->skill[2], color, *hitstats, Language::get(6533), Language::get(6534), MSG_COMBAT);
+								}
 							}
 						}
 
@@ -2383,7 +2450,7 @@ void actArrow(Entity* my)
 					{
 						if ( !hitstats || hit.entity->isInertMimic() )
 						{
-							floorMagicCreateRoots(hit.entity->x, hit.entity->y, parent, 3, SPELL_ROOTS, 3 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_SINGLE_TILE);
+							floorMagicCreateRoots(hit.entity->x, hit.entity->y, parent, 3, SPELL_ROOTS, 3 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_SINGLE_TILE, true);
 						}
 					}
 
@@ -2404,7 +2471,7 @@ void actArrow(Entity* my)
 			}
 			else if ( my->sprite == PROJECTILE_SEED_ROOT_SPRITE )
 			{
-				floorMagicCreateRoots(my->x, my->y, uidToEntity(my->parent), 3, SPELL_ROOTS, 3 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_SINGLE_TILE);
+				floorMagicCreateRoots(my->x, my->y, uidToEntity(my->parent), 3, SPELL_ROOTS, 3 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_SINGLE_TILE, true);
 				my->removeLightField();
 				list_RemoveNode(my->mynode); // rocks don't stick to walls...
 			}

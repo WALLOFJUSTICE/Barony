@@ -6350,7 +6350,8 @@ std::string getStatusEffectNumberString(Uint8 effectStrength, std::vector<int> b
 		{
 			return std::to_string(effectStrength);
 		}
-		else if ( effectID == EFF_HARDENING || effectID == EFF_REACTIVITY )
+		else if ( effectID == EFF_HARDENING || effectID == EFF_REACTIVITY
+			|| effectID == EFF_FLAME_SHIELD )
 		{
 			return std::to_string(std::max((int)effectStrength - 1, 1));
 		}
@@ -6457,6 +6458,12 @@ std::map<std::string, std::function<std::string(int)>> statusfx_num_lookup =
 	},
 	{ "reactivity.png", [](int player)
 		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_REACTIVITY), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_REACTIVITY); }
+	},
+	{ "flame_shield.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_FLAME_SHIELD), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_HARDENING); }
+	},
+	{ "demesne_door.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_DEMESNE_DOOR), std::vector<int>{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_DEMESNE_DOOR); }
 	}
 };
 
@@ -6491,6 +6498,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_GUARD_SPIRIT)
 				|| stats[player]->getEffectActive(EFF_GUARD_BODY)
 				|| stats[player]->getEffectActive(EFF_DIVINE_GUARD)
+				|| stats[player]->getEffectActive(EFF_FLAME_SHIELD) > 1
 				|| stats[player]->getEffectActive(EFF_HARDENING) > 1
 				|| stats[player]->getEffectActive(EFF_REACTIVITY) > 1
 				|| stats[player]->getEffectActive(EFF_MOMENTUM)
@@ -6523,6 +6531,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_SLOW_DIGEST)
 				|| stats[player]->getEffectActive(EFF_DEGENERATION)
 				|| stats[player]->getEffectActive(EFF_DISPIRITED)
+				|| stats[player]->getEffectActive(EFF_DEMESNE_DOOR)
 				|| stats[player]->getEffectActive(EFF_LIGHTEN_LOAD)
 				|| ((stats[player]->getEffectActive(EFF_VIGOR) >> 4) & 0xF)
 				|| (cast_animation[player].overcharge > 0 || cast_animation[player].overcharge_init > 0)
@@ -7072,7 +7081,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 						else if ( img->path.find("sigil.png") != std::string::npos )
 						{
 							alignRight = true;
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SIGIL) & 0xF;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SIGIL) & 0b0111;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
@@ -7103,7 +7112,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 						else if ( img->path.find("sigil_npc.png") != std::string::npos )
 						{
 							alignRight = true;
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SIGIL_NPC) & 0xF;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SIGIL_NPC) & 0b0111;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
@@ -7131,14 +7140,19 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 								}
 							}
 						}
-						else if ( img->path.find("greater_might.png") != std::string::npos )
+						else if ( img->path.find("greater_might.png") != std::string::npos
+							|| img->path.find("brute_squad.png") != std::string::npos )
 						{
 							alignRight = true;
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_GREATER_MIGHT) & 0xF;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_GREATER_MIGHT) & 0x7;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
-								if ( effectStrength >= 4 )
+								if ( effectStrength >= 5 )
+								{
+									val = "V";
+								}
+								else if ( effectStrength >= 4 )
 								{
 									val = "IV";
 								}
@@ -7162,14 +7176,19 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 								}
 							}
 						}
-						else if ( img->path.find("counsel.png") != std::string::npos )
+						else if ( img->path.find("counsel.png") != std::string::npos 
+							|| img->path.find("high_council.png") != std::string::npos )
 						{
 							alignRight = true;
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_COUNSEL) & 0xF;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_COUNSEL) & 0x7;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
-								if ( effectStrength >= 4 )
+								if ( effectStrength >= 5 )
+								{
+									val = "V";
+								}
+								else if ( effectStrength >= 4 )
 								{
 									val = "IV";
 								}
@@ -7193,14 +7212,19 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 								}
 							}
 						}
-						else if ( img->path.find("nimbleness.png") != std::string::npos )
+						else if ( img->path.find("nimbleness.png") != std::string::npos 
+							|| img->path.find("espionage.png") != std::string::npos )
 						{
 							alignRight = true;
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_NIMBLENESS) & 0xF;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_NIMBLENESS) & 0x7;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
-								if ( effectStrength >= 4 )
+								if ( effectStrength >= 5 )
+								{
+									val = "V";
+								}
+								else if ( effectStrength >= 4 )
 								{
 									val = "IV";
 								}
@@ -7224,14 +7248,19 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 								}
 							}
 						}
-						else if ( img->path.find("sturdiness.png") != std::string::npos )
+						else if ( img->path.find("sturdiness.png") != std::string::npos
+							|| img->path.find("front_line.png") != std::string::npos )
 						{
 							alignRight = true;
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_STURDINESS) & 0xF;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_STURDINESS) & 0x7;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
-								if ( effectStrength >= 4 )
+								if ( effectStrength >= 5 )
+								{
+									val = "V";
+								}
+								else if ( effectStrength >= 4 )
 								{
 									val = "IV";
 								}
@@ -8107,9 +8136,17 @@ bool StatusEffectQueue_t::doStatusEffectTooltip(StatusEffectQueueEntry_t& entry,
 				{
 					variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
 				}
+				else if ( effectID == EFF_FLUTTER )
+				{
+					variation = std::min(1, std::max(0, (int)entry.customVariable - 1));
+				}
 				else if ( effectID == EFF_RESOLVE )
 				{
 					variation = std::min(2, std::max(0, (int)entry.customVariable - 1));
+				}
+				else if ( effectID == EFF_NIMBLENESS || effectID == EFF_GREATER_MIGHT || effectID == EFF_COUNSEL || effectID == EFF_STURDINESS )
+				{
+					variation = std::min(1, std::max(0, (int)entry.customVariable - 1));
 				}
 				else if ( effectID == EFF_GROWTH )
 				{
@@ -9038,6 +9075,34 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 					}
 				}
 			}
+			else if ( i == EFF_FLUTTER )
+			{
+				for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); ++it )
+				{
+					if ( (*it).effect == EFF_FLUTTER )
+					{
+						if ( (*it).customVariable != stats[player]->getEffectActive(i) )
+						{
+							deleteEffect(EFF_FLUTTER);
+							break;
+						}
+					}
+				}
+			}
+			else if ( i == EFF_NIMBLENESS || i == EFF_GREATER_MIGHT || i == EFF_COUNSEL || i == EFF_STURDINESS )
+			{
+				for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); ++it )
+				{
+					if ( (*it).effect == i )
+					{
+						if ( (*it).customVariable != ((stats[player]->getEffectActive(i) & 0b1000) ? 2 : 1) )
+						{
+							deleteEffect(i);
+							break;
+						}
+					}
+				}
+			}
 			else if ( i == EFF_RESOLVE )
 			{
 				for ( auto it = effectQueue.rbegin(); it != effectQueue.rend(); ++it )
@@ -9152,6 +9217,22 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 						{
 							effectQueue.back().customVariable = stats[player]->getEffectActive(EFF_SMOKE_HPMP_RGN);
 							notificationQueue.back().customVariable = stats[player]->getEffectActive(EFF_SMOKE_HPMP_RGN);
+						}
+					}
+					else if ( i == EFF_FLUTTER )
+					{
+						if ( insertEffect(i, -1) )
+						{
+							effectQueue.back().customVariable = stats[player]->getEffectActive(EFF_FLUTTER);
+							notificationQueue.back().customVariable = stats[player]->getEffectActive(EFF_FLUTTER);
+						}
+					}
+					else if ( i == EFF_NIMBLENESS || i == EFF_GREATER_MIGHT || i == EFF_COUNSEL || i == EFF_STURDINESS )
+					{
+						if ( insertEffect(i, -1) )
+						{
+							effectQueue.back().customVariable = (stats[player]->getEffectActive(i) & 0b1000) ? 2 : 1;
+							notificationQueue.back().customVariable = (stats[player]->getEffectActive(i) & 0b1000) ? 2 : 1;
 						}
 					}
 					else if ( i == EFF_RESOLVE )
@@ -9706,6 +9787,14 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 						{
 							variation = std::min(3, std::max(0, (int)notif.customVariable - 1));
 						}
+						else if ( effectID == EFF_FLUTTER )
+						{
+							variation = std::min(1, std::max(0, (int)notif.customVariable - 1));
+						}
+						else if ( effectID == EFF_NIMBLENESS || effectID == EFF_GREATER_MIGHT || effectID == EFF_COUNSEL || effectID == EFF_STURDINESS )
+						{
+							variation = std::min(1, std::max(0, (int)notif.customVariable - 1));
+						}
 						else if ( effectID == EFF_RESOLVE )
 						{
 							variation = std::min(2, std::max(0, (int)notif.customVariable - 1));
@@ -10230,6 +10319,16 @@ void StatusEffectQueue_t::updateEntryImage(StatusEffectQueueEntry_t& entry, Fram
 					else if ( effectID == EFF_SMOKE_HPMP_RGN )
 					{
 						variation = std::min(3, std::max(0, (int)entry.customVariable - 1));
+						img->path = StatusEffectDefinitions_t::getEffectImgPath(StatusEffectDefinitions_t::getEffect(effectID), variation);
+					}
+					else if ( effectID == EFF_FLUTTER )
+					{
+						variation = std::min(1, std::max(0, (int)entry.customVariable - 1));
+						img->path = StatusEffectDefinitions_t::getEffectImgPath(StatusEffectDefinitions_t::getEffect(effectID), variation);
+					}
+					else if ( effectID == EFF_NIMBLENESS || effectID == EFF_GREATER_MIGHT || effectID == EFF_COUNSEL || effectID == EFF_STURDINESS )
+					{
+						variation = std::min(1, std::max(0, (int)entry.customVariable - 1));
 						img->path = StatusEffectDefinitions_t::getEffectImgPath(StatusEffectDefinitions_t::getEffect(effectID), variation);
 					}
 					else if ( effectID == EFF_RESOLVE )
@@ -33098,6 +33197,15 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 							}
 						}
 					}
+
+					if ( i == EFF_POISONED )
+					{
+						if ( enemy_statusEffects6 & (1 << (EFF_TOXIC % 32)) )
+						{
+							continue;
+						}
+					}
+
 					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(i);
 					if ( !definition.neverDisplay )
 					{
@@ -33136,6 +33244,14 @@ SDL_Surface* EnemyHPDamageBarHandler::EnemyHPDetails::blitEnemyBarStatusEffects(
 				if ( StatusEffectQueue_t::StatusEffectDefinitions_t::effectDefinitionExists(effectID) )
 				{
 					int variation = -1;
+					if ( effectID == EFF_FLUTTER )
+					{
+						variation = 0;
+					}
+					else if ( effectID == EFF_NIMBLENESS || effectID == EFF_GREATER_MIGHT || effectID == EFF_COUNSEL || effectID == EFF_STURDINESS )
+					{
+						variation = 0;
+					}
 					SDL_Surface* srcSurf = nullptr;
 					auto& definition = StatusEffectQueue_t::StatusEffectDefinitions_t::getEffect(effectID);
 					if ( !definition.neverDisplay )
@@ -43539,6 +43655,7 @@ static ConsoleVariable<int> cvar_skill_ding_sfx("/skill_sfx_ding", 554);
 static ConsoleVariable<int> cvar_lvl_ding_sfx("/lvl_sfx_ding", 555);
 static ConsoleVariable<int> cvar_skill_sfx_volume("/skill_sfx_volume", 128);
 static ConsoleVariable<int> cvar_skill_newspell_sfx("/skill_sfx_newspell", 560);
+static ConsoleVariable<int> cvar_skill_newspell_sfx_asc("/skill_sfx_newspell_asc", 937);
 
 bool SkillUpAnimation_t::soundIndexUsedForNotification(const int index)
 {
@@ -43561,7 +43678,7 @@ bool SkillUpAnimation_t::soundIndexUsedForNotification(const int index)
 	{
 		return true;
 	}
-	else if ( index == *cvar_skill_newspell_sfx )
+	else if ( index == *cvar_skill_newspell_sfx || *cvar_skill_newspell_sfx_asc )
 	{
 		return true;
 	}
@@ -44446,9 +44563,9 @@ size_t SkillUpAnimation_t::getSkillUpIndexToDisplay()
 	return priority.top().second;
 }
 
-void SkillUpAnimation_t::addSpellLearned(const int _spellID)
+void SkillUpAnimation_t::addSpellLearned(const int _spellID, bool _ascendedSpell)
 {
-	skillUps.push_back(SkillUp_t(_spellID));
+	skillUps.push_back(SkillUp_t(_spellID, _ascendedSpell));
 	skillUps.at(skillUps.size() - 1).ticksToLive = 5 * TICKS_PER_SECOND;
 }
 
@@ -44953,7 +45070,14 @@ void updateSkillUpFrame(const int player)
 
 			if ( skillUp.isSpell )
 			{
-				playSound(*cvar_skill_newspell_sfx, *cvar_skill_sfx_volume);
+				if ( skillUp.isAscendedSpell )
+				{
+					playSound(*cvar_skill_newspell_sfx_asc, *cvar_skill_sfx_volume + 32);
+				}
+				else
+				{
+					playSound(*cvar_skill_newspell_sfx, *cvar_skill_sfx_volume);
+				}
 			}
 			else
 			{
@@ -44988,25 +45112,30 @@ void updateSkillUpFrame(const int player)
 
 			if ( skillUp.isSpell )
 			{
-				skillGleam->path = "*#images/ui/HUD/HUD_NewSpell_Gleam_00.png";
+				skillGleam->path = skillUp.isAscendedSpell ? "*#images/ui/HUD/HUD_NewSpell_Asc_Gleam_00.png" : "*#images/ui/HUD/HUD_NewSpell_Gleam_00.png";
 				skillGleam->pos = skillBorderImg->pos;
 				const int gleam = ((ticks % TICKS_PER_SECOND) / 5) % 5;
 				switch ( gleam )
 				{
 					case 0:
-						skillGleam->path = "*#images/ui/HUD/HUD_NewSpell_Gleam_00.png";
+						skillGleam->path = skillUp.isAscendedSpell ?  "*#images/ui/HUD/HUD_NewSpell_Asc_Gleam_00.png"
+							: "*#images/ui/HUD/HUD_NewSpell_Gleam_00.png";
 						break;
 					case 1:
-						skillGleam->path = "*#images/ui/HUD/HUD_NewSpell_Gleam_01.png";
+						skillGleam->path = skillUp.isAscendedSpell ? "*#images/ui/HUD/HUD_NewSpell_Asc_Gleam_01.png" 
+							: "*#images/ui/HUD/HUD_NewSpell_Gleam_01.png";
 						break;
 					case 2:
-						skillGleam->path = "*#images/ui/HUD/HUD_NewSpell_Gleam_02.png";
+						skillGleam->path = skillUp.isAscendedSpell ? "*#images/ui/HUD/HUD_NewSpell_Asc_Gleam_02.png" 
+							: "*#images/ui/HUD/HUD_NewSpell_Gleam_02.png";
 						break;
 					case 3:
-						skillGleam->path = "*#images/ui/HUD/HUD_NewSpell_Gleam_03.png";
+						skillGleam->path = skillUp.isAscendedSpell ? "*#images/ui/HUD/HUD_NewSpell_Asc_Gleam_03.png" 
+							: "*#images/ui/HUD/HUD_NewSpell_Gleam_03.png";
 						break;
 					case 4:
-						skillGleam->path = "*#images/ui/HUD/HUD_NewSpell_Gleam_04.png";
+						skillGleam->path = skillUp.isAscendedSpell ? "*#images/ui/HUD/HUD_NewSpell_Asc_Gleam_04.png" 
+							: "*#images/ui/HUD/HUD_NewSpell_Gleam_04.png";
 						break;
 					default:
 						break;

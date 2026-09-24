@@ -6730,10 +6730,10 @@ Host to enable the game setting.
 6473 You ward your body against physical harm!#
 6474 You ward your spirit against harmful magics!#
 6475 You ward youself against mundane and magical attack!#
-6476 Your joints are filled with nimble grace.#
-6477 Your muscles swell with greater might.#
-6478 Your mind stirs deeply with wise counsel.#
-6479 Your body hardens with sturdy toughness.#
+6476 Your joints are filled with nimble grace!#
+6477 Your muscles swell with greater might!#
+6478 Your mind stirs deeply with wise counsel!#
+6479 Your body hardens with sturdy toughness!#
 6480 Your magic calls for a target of holy wrath!#
 6481 You detect an ally!#
 6482 You divine the location of a nearby shrine.#
@@ -6801,8 +6801,8 @@ Host to enable the game setting.
 6542 Select an item to transmute:#
 6543 Select a jewel to transmute:#
 6544 Transmutes Into:#
-6545 Metallurgy#
-6546 Geomancy#
+6545 Transmute#
+6546 Transmute#
 6547 Forge Key#
 6548 Forge Jewel#
 6549 Enhance Weapon#
@@ -7530,6 +7530,19 @@ to accept invitation.#
 7233 Your spell fails to seek any targets in range.#
 7234 Select Spell#
 7235 Deselect#
+7236 Buffeting winds propel you into the air!#
+7237 Select an item to scry:#
+7238 Scry Item#
+7239 This %s
+ is unable to be scried.#
+7240 You are unable to scry any similiar items nearby.#
+7241 You are unable to scry any other similar items nearby.#
+7242 The location of nearby items emerge in your mind...#
+7243 You are unable to scry any aid nearby.#
+7244 You are unable to scry any other aid nearby.#
+7245 The location of nearby aid emerges in your mind...#
+7246 You are enveloped by shielding flames!#
+7247 Your flame shield fades to embers.#
 
 # Shrine texts
 7250 "ALL THINGS ARE TEMPORARY."#
@@ -7624,5 +7637,35 @@ to accept invitation.#
 7323 #
 7324 #
 7325 #
+
+7350 %s's defenses are crippled!#
+7351 The %s's defenses are crippled!#
+7352 %s's spell resistance is fractured!#
+7353 The %s's spell resistance is fractured!#
+7354 Your spell resistance is fractured!#
+7355 Your spell resistance returns to normal.#
+7356 Unset conduit.#
+7357 You set conduit.#
+7358 You create an arena of conflict!#
+7359 %s becomes lethargic!#
+7360 The %s becomes lethargic!#
+7361 You feel lethargic!#
+7362 You have a sense of deja vu.#
+7363 You surround yourself with a divine sigil!#
+7364 You surround yourself with divine sanctuary!#
+7365 Your weapons are imbued with toxicity!#
+7366 The toxicity evaporates from your weapons.#
+7367 The toxicity subsides.#
+7368 The %s is intoxicated with poison!#
+7369 %s is intoxicated with poison!#
+7370 Your ammunition is imbued with spiritual force!#
+7371 Your ammunition returns back to its natural form.#
+7372 You hold the %s in stasis!#
+7373 You hold %s in stasis!#
+7374 You are held in stasis!#
+7375 You fall into a restful slumber!#
+7376 %s falls into a restful slumber!#
+7377 The %s falls into a restful slumber!#
+7378 You are unable to decipher the unidentified tome.#
 
 7999 END#

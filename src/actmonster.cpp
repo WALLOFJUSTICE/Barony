@@ -5466,7 +5466,7 @@ void actMonster(Entity* my)
 			myStats->defending = false;
 		}
 
-		if ( myStats->getEffectActive(EFF_SPIN) )
+		if ( myStats->getEffectActive(EFF_SPIN) || (myStats->getEffectActive(EFF_LIFT) & (1 << 7)) )
 		{
 			my->monsterLookTime = 1;
 			my->monsterLookDir += PI / 16;
@@ -5666,7 +5666,9 @@ void actMonster(Entity* my)
 							{
 								monsterVisionRange = 64.0;
 							}
-							if ( hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM )
+							if ( hitstats->type == DUMMYBOT 
+								|| hitstats->type == HOLOGRAM
+								|| hitstats->getEffectActive(EFF_TABOO) )
 							{
 								monsterVisionRange = std::max(monsterVisionRange, 96.0);
 							}
@@ -5720,7 +5722,11 @@ void actMonster(Entity* my)
 							{
 								visiontest = true;
 							}
-							else if ( hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM || myStats->type == SENTRYBOT || myStats->type == SPELLBOT
+							else if ( hitstats->type == DUMMYBOT 
+								|| hitstats->type == HOLOGRAM 
+								|| hitstats->getEffectActive(EFF_TABOO)
+								|| myStats->type == SENTRYBOT 
+								|| myStats->type == SPELLBOT
 								|| (ringConflictHolder && ringConflictHolder == entity) )
 							{
 								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
@@ -6148,7 +6154,8 @@ void actMonster(Entity* my)
 			{
 				my->monsterLookTime = 0;
 				my->monsterMoveTime--;
-				if ( myStats->type != GHOUL && (myStats->type != SPIDER || (myStats->type == SPIDER && my->monsterAllyGetPlayerLeader()))
+				if ( (myStats->type != GHOUL || (myStats->type == GHOUL && !strncmp(map.name, "The Haunted Castle", 18)))
+					&& (myStats->type != SPIDER || (myStats->type == SPIDER && my->monsterAllyGetPlayerLeader()))
 					&& !myStats->getEffectActive(EFF_FEAR) && !isIllusionTaunt )
 				{
 					if ( monsterIsImmobileTurret(my, myStats) )
@@ -6511,7 +6518,9 @@ void actMonster(Entity* my)
 				{
 					monsterVisionRange = 64.0;
 				}
-				if ( hitstats && (hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM) )
+				if ( hitstats && (hitstats->type == DUMMYBOT 
+					|| hitstats->type == HOLOGRAM
+					|| hitstats->getEffectActive(EFF_TABOO)) )
 				{
 					monsterVisionRange = std::max(monsterVisionRange, 96.0);
 				}
@@ -7325,7 +7334,7 @@ timeToGoAgain:
 								dir = my->yaw - atan2( MONSTER_VELY, MONSTER_VELX );
 							}
 
-							if ( myStats->getEffectActive(EFF_SPIN) )
+							if ( myStats->getEffectActive(EFF_SPIN) || (myStats->getEffectActive(EFF_LIFT) & (1 << 7)) )
 							{
 								dir += my->monsterLookDir;
 							}
@@ -7338,7 +7347,12 @@ timeToGoAgain:
 							{
 								dir += PI * 2;
 							}
-							if ( myStats->type == SLIME )
+
+							if ( myStats->getEffectActive(EFF_LETHARGY) )
+							{
+								my->yaw -= dir / 4;
+							}
+							else if ( myStats->type == SLIME )
 							{
 								if ( my->monsterAttack == MONSTER_POSE_MAGIC_WINDUP2 )
 								{
@@ -7698,7 +7712,9 @@ timeToGoAgain:
 							{
 								monsterVisionRange = 64.0;
 							}
-							if ( hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM )
+							if ( hitstats->type == DUMMYBOT 
+								|| hitstats->type == HOLOGRAM
+								|| hitstats->getEffectActive(EFF_TABOO) )
 							{
 								monsterVisionRange = std::max(monsterVisionRange, 96.0);
 							}
@@ -7752,7 +7768,9 @@ timeToGoAgain:
 							{
 								visiontest = true;
 							}
-							else if ( hitstats->type == DUMMYBOT || hitstats->type == HOLOGRAM 
+							else if ( hitstats->type == DUMMYBOT 
+								|| hitstats->type == HOLOGRAM 
+								|| hitstats->getEffectActive(EFF_TABOO)
 								|| myStats->type == SENTRYBOT || myStats->type == SPELLBOT )
 							{
 								if ( dir >= -13 * PI / 16 && dir <= 13 * PI / 16 )
@@ -8643,7 +8661,7 @@ timeToGoAgain:
 								}
 							}
 
-							if ( myStats->getEffectActive(EFF_SPIN) )
+							if ( myStats->getEffectActive(EFF_SPIN) || (myStats->getEffectActive(EFF_LIFT) & (1 << 7)) )
 							{
 								dir += my->monsterLookDir;
 							}
@@ -8669,13 +8687,55 @@ timeToGoAgain:
 					else
 					{
 						Entity* target = uidToEntity(my->monsterTarget);
-						if ( target )
+
+						if ( myStats->getEffectActive(EFF_SPIN) || (myStats->getEffectActive(EFF_LIFT) & (1 << 7)) )
+						{
+							if ( target )
+							{
+								double tangent = atan2(target->y - my->y, target->x - my->x);
+								dir = my->yaw - atan2(MONSTER_VELY, MONSTER_VELX);
+								dir += my->monsterLookDir;
+							}
+							else
+							{
+								dir = my->monsterLookDir;
+							}
+							while ( dir >= PI )
+							{
+								dir -= PI * 2;
+							}
+							while ( dir < -PI )
+							{
+								dir += PI * 2;
+							}
+							my->yaw -= dir / 2;
+							while ( my->yaw < 0 )
+							{
+								my->yaw += 2 * PI;
+							}
+							while ( my->yaw >= 2 * PI )
+							{
+								my->yaw -= 2 * PI;
+							}
+						}
+						else if ( target )
 						{
 							my->lookAtEntity(*target);
 							/*if ( myStats->type == SHADOW )
 							{
 								messagePlayer(0, "[SHADOW] No path #1: Resetting to wait state.");
 							}*/
+						}
+
+						if ( myStats->getEffectActive(EFF_ROOTED) && myStats->getEffectActive(EFF_KNOCKBACK) )
+						{
+							my->monsterHandleKnockbackVelocity(my->monsterKnockbackTangentDir + PI, weightratio);
+							if ( abs(MONSTER_VELX) > 0.01 || abs(MONSTER_VELY) > 0.01 )
+							{
+								dist2 = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+								my->processWalkEquipmentEffects(MONSTER_VELX, MONSTER_VELY, dist2);
+								my->handleKnockbackDamage(*myStats, hit.entity);
+							}
 						}
 
 						if ( path->first != NULL && myStats->getEffectActive(EFF_ROOTED) )
@@ -9003,7 +9063,7 @@ timeToGoAgain:
 					dir += PI * 2;
 				}
 
-				if ( myStats->getEffectActive(EFF_SPIN) )
+				if ( myStats->getEffectActive(EFF_SPIN) || (myStats->getEffectActive(EFF_LIFT) & (1 << 7)) )
 				{
 					dir += my->monsterLookDir;
 				}
@@ -10043,7 +10103,7 @@ timeToGoAgain:
 				dir += PI * 2;
 			}
 
-			if ( myStats->getEffectActive(EFF_SPIN) )
+			if ( myStats->getEffectActive(EFF_SPIN) || (myStats->getEffectActive(EFF_LIFT) & (1 << 7)) )
 			{
 				dir += my->monsterLookDir;
 			}
@@ -11123,11 +11183,14 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 	{
 		// increment the hit time, don't attack until this reaches the hitrate of the weapon
 		this->monsterHitTime++;
+
+		bool hitTimeMod = false;
 		if ( myStats->type == SALAMANDER )
 		{
 			if ( this->monsterAttack == MONSTER_POSE_MAGIC_WINDUP3 )
 			{
 				this->monsterHitTime--;
+				hitTimeMod = true;
 			}
 		}
 		if ( myStats->type == EARTH_ELEMENTAL )
@@ -11136,10 +11199,24 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 				|| this->monsterAttack == MONSTER_POSE_RANGED_WINDUP3 )
 			{
 				this->monsterHitTime--;
+				hitTimeMod = true;
 			}
 			else if ( this->monsterAttack == MONSTER_POSE_MELEE_WINDUP1 )
 			{
 				this->monsterHitTime = std::min(HITRATE / 2, this->monsterHitTime);
+				hitTimeMod = true;
+			}
+		}
+
+		if ( !hitTimeMod )
+		{
+			if ( myStats->getEffectActive(EFF_LETHARGY) )
+			{
+				int val = myStats->modifyAttributeInt("lethargy_timer", 1);
+				if ( val % 2 == 0 )
+				{
+					--this->monsterHitTime;
+				}
 			}
 		}
 
@@ -15311,9 +15388,15 @@ void Entity::monsterHandleKnockbackVelocity(real_t monsterFacingTangent, real_t 
 {
 	// this function makes the monster accelerate to running forwards or 0 movement speed after being knocked back.
 	// vel_x, vel_y are set on knockback impact and this slowly accumulates speed from the knocked back movement by a factor of monsterKnockbackVelocity.
-	real_t maxVelX = cos(monsterFacingTangent) * .045 * (std::max(0, monsterGetDexterityForMovement()) + 10) * weightratio;
-	real_t maxVelY = sin(monsterFacingTangent) * .045 * (std::max(0, monsterGetDexterityForMovement()) + 10) * weightratio;
+	int dex = monsterGetDexterityForMovement();
 	bool mobile = ((monsterState == MONSTER_STATE_WAIT) || isMobile()); // if immobile, the intended max speed is 0 (stopped).
+	if ( getStats() && getStats()->getEffectActive(EFF_ROOTED) )
+	{
+		mobile = false;
+	}
+
+	real_t maxVelX = cos(monsterFacingTangent) * .045 * (std::max(0, dex) + 10) * weightratio;
+	real_t maxVelY = sin(monsterFacingTangent) * .045 * (std::max(0, dex) + 10) * weightratio;
 	
 	if ( maxVelX > 0 )
 	{
@@ -15331,7 +15414,7 @@ void Entity::monsterHandleKnockbackVelocity(real_t monsterFacingTangent, real_t 
 	{
 		this->vel_y = std::max(this->vel_y + (this->monsterKnockbackVelocity * maxVelY), mobile ? maxVelY : 0.0);
 	}
-	if ( getStats() && getStats()->getEffectActive(EFF_MAGIC_GREASE) )
+	if ( getStats() && (getStats()->getEffectActive(EFF_MAGIC_GREASE) || getStats()->getEffectActive(EFF_LIFT)) )
 	{
 		//this->monsterKnockbackVelocity *= 1.005;
 	}
@@ -15368,6 +15451,10 @@ int Entity::monsterGetDexterityForMovement()
 			}
 		}
 	}
+	/*if ( myStats->getEffectActive(EFF_SPIN) || (myStats->getEffectActive(EFF_LIFT) & (1 << 7)) )
+	{
+		return -9;
+	}*/
 	return myDex;
 }
 

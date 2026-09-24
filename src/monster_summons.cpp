@@ -636,7 +636,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 
 		my->creatureHandleLiftZ();
 
-		real_t renderSetpoint = 0.0;
+		/*real_t renderSetpoint = 0.0;
 		if ( myStats && myStats->getEffectActive(EFF_MIST_FORM) )
 		{
 			renderSetpoint = 1.0;
@@ -646,7 +646,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 		{
 			my->mistformGLRender = renderSetpoint;
 			serverUpdateEntityFSkill(my, 22);
-		}
+		}*/
 
 		if ( monsterType == REVENANT_SKULL && myStats )
 		{
@@ -790,7 +790,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 		entity->y = my->y;
 		entity->z = my->z;
 		entity->yaw = my->yaw;
-		entity->mistformGLRender = my->mistformGLRender;
+		//entity->mistformGLRender = my->mistformGLRender;
 
 		if ( bodypart == REVENANT_SKULL_BODY )
 		{
@@ -1644,7 +1644,7 @@ void hologramAnimate(Entity* my, Stat* myStats, double dist)
 		{
 			entity->flags[INVISIBLE] = true;
 			entity->flags[INVISIBLE_DITHER] = false;
-			entity->mistformGLRender = my->mistformGLRender;
+			//entity->mistformGLRender = my->mistformGLRender;
 			myLimbs.push_back(entity);
 		}
 	}
