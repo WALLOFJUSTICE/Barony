@@ -377,7 +377,7 @@ void actSignalGateAND(Entity* my);
 void actWallLock(Entity* my);
 void actWallButton(Entity* my);
 void actWind(Entity* my);
-void createWaterSplash(real_t x, real_t y, int lifetime, bool ignoreTileCentering = false);
+void createWaterSplash(real_t x, real_t y, int lifetime, bool ignoreTileCentering = false, bool grease = false);
 void actWaterSplashParticle(Entity* my);
 
 void startMessages();

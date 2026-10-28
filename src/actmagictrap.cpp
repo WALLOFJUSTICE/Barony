@@ -749,12 +749,13 @@ void daedalusShrineInteract(Entity* my, Entity* touched)
 	}
 	else if ( my->shrineDaedalusState == 2 )
 	{
-		shrineDaedalusRevealMap(*my);
+		shrineDaedalusRevealMap(*my, MinimapHighlight_t::REVEAL_DAEDALUS);
 
 		if ( multiplayer != CLIENT )
 		{
 			SHRINE_LAST_TOUCHED = touched ? touched->getUID() : 0;
-			spawnMagicEffectParticles(my->x, my->y, my->z, 174);
+			//spawnMagicEffectParticles(my->x, my->y, my->z, 174);
+			createParticleFociLight(my, SPELL_NONE, true);
 
 			if ( my->ticks >= (getMinotaurTimeToArrive() - TICKS_PER_SECOND * 30) && my->ticks <= getMinotaurTimeToArrive() )
 			{
@@ -772,7 +773,8 @@ void daedalusShrineInteract(Entity* my, Entity* touched)
 					if ( touched->setEffect(EFF_FAST, true, std::max(TICKS_PER_SECOND * 15, myStats->EFFECTS_TIMERS[EFF_FAST]), true) )
 					{
 						playSoundEntity(touched, 178, 128);
-						spawnMagicEffectParticles(touched->x, touched->y, touched->z, 174);
+						//spawnMagicEffectParticles(touched->x, touched->y, touched->z, 174);
+						createParticleFociLight(touched, SPELL_NONE, true);
 						if ( touched->behavior == &actPlayer )
 						{
 							messagePlayerColor(touched->skill[2], MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(768));
@@ -886,11 +888,12 @@ void Entity::actDaedalusShrine()
 		if ( limbAnimateToLimit(this, ANIMATE_YAW, speed, targetDir, false, 0.0) )
 		{
 			shrineDaedalusState = 2;
-			shrineDaedalusRevealMap(*this);
+			shrineDaedalusRevealMap(*this, MinimapHighlight_t::REVEAL_DAEDALUS);
 
 			if ( multiplayer != CLIENT )
 			{
-				spawnMagicEffectParticles(x, y, z, 174);
+				//spawnMagicEffectParticles(x, y, z, 174);
+				createParticleFociLight(this, SPELL_NONE, true);
 				Entity* touched = nullptr;
 				if ( skill[15] != 0 )
 				{
@@ -913,7 +916,8 @@ void Entity::actDaedalusShrine()
 						if ( touched->setEffect(EFF_FAST, true, std::max(TICKS_PER_SECOND * 15, myStats->EFFECTS_TIMERS[EFF_FAST]), true) )
 						{
 							playSoundEntity(touched, 178, 128);
-							spawnMagicEffectParticles(touched->x, touched->y, touched->z, 174);
+							//spawnMagicEffectParticles(touched->x, touched->y, touched->z, 174);
+							createParticleFociLight(touched, SPELL_NONE, true);
 							if ( touched->behavior == &actPlayer )
 							{
 								messagePlayerColor(touched->skill[2], MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(768));

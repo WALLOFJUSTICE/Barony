@@ -7205,6 +7205,10 @@ int Item::getAutomatonFoodSatiation(ItemType type)
 		return 50;
 	case TOOL_MAGIC_SCRAP:
 		return 100;
+	case TOOL_COMPACT_METAL_SCRAP:
+		return 50 * GenericGUIMenu::TinkerGUI_t::COMPACT_SCRAP_QTY;
+	case TOOL_COMPACT_MAGIC_SCRAP:
+		return 500 * GenericGUIMenu::TinkerGUI_t::COMPACT_SCRAP_QTY;
 	default:
 		break;
 	}
@@ -7239,7 +7243,8 @@ void item_FoodAutomaton(Item*& item, int player)
 	}
 
 	// consumption message
-	if ( item->type != TOOL_MAGIC_SCRAP && item->type != TOOL_METAL_SCRAP )
+	if ( item->type != TOOL_MAGIC_SCRAP && item->type != TOOL_METAL_SCRAP
+		&& item->type != TOOL_COMPACT_MAGIC_SCRAP && item->type != TOOL_COMPACT_METAL_SCRAP )
 	{
 		int oldcount = item->count;
 		item->count = 1;
@@ -7414,6 +7419,7 @@ void item_FoodAutomaton(Item*& item, int player)
 			break;
 		}
 		case TOOL_METAL_SCRAP:
+		case TOOL_COMPACT_METAL_SCRAP:
 			if ( stats[player]->playerRace == RACE_AUTOMATON && stats[player]->stat_appearance == 0 )
 			{
 				achievementObserver.playerAchievements[player].trashCompactor += 1;
@@ -7432,6 +7438,7 @@ void item_FoodAutomaton(Item*& item, int player)
 			}
 			break;
 		case TOOL_MAGIC_SCRAP:
+		case TOOL_COMPACT_MAGIC_SCRAP:
 			if ( stats[player]->playerRace == RACE_AUTOMATON && stats[player]->stat_appearance == 0 )
 			{
 				achievementObserver.playerAchievements[player].trashCompactor += 1;
@@ -7587,6 +7594,8 @@ bool itemIsConsumableByAutomaton(const Item& item)
 		case SCROLL_AGILITY:
 		case TOOL_MAGIC_SCRAP:
 		case TOOL_METAL_SCRAP:
+		case TOOL_COMPACT_MAGIC_SCRAP:
+		case TOOL_COMPACT_METAL_SCRAP:
 			return true;
 			break;
 		default:

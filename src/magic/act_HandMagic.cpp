@@ -209,7 +209,7 @@ bool spellcasting_animation_manager_t::spellIgnoreAttack()
 	return false;
 }
 
-bool rangefinderTargetEnemyType(spell_t& spell, Entity& entity)
+bool rangefinderTargetEnemyType(int caster, spell_t& spell, Entity& entity)
 {
 	if ( entity.behavior == &actMonster && !entity.monsterIsTargetable(true) )
 	{
@@ -343,9 +343,13 @@ bool rangefinderTargetEnemyType(spell_t& spell, Entity& entity)
 	{
 		return entity.behavior == &actMonster || entity.behavior == &actPlayer || entity.behavior == &actChest;
 	}
-	else if ( spell.ID == SPELL_DISARM || spell.ID == SPELL_STRIP || spell.ID == SPELL_COMMAND )
+	else if ( spell.ID == SPELL_DISARM || spell.ID == SPELL_STRIP || spell.ID == SPELL_COMMAND || spell.ID == SPELL_PHASE_OTHER )
 	{
 		return entity.behavior == &actMonster;
+	}
+	else if ( spell.ID == SPELL_ENTHRALL )
+	{
+		return (entity.behavior == &actMonster && entity.monsterAllyGetPlayerLeader() == players[caster]->entity);
 	}
 	else if ( spell.ID == SPELL_DEFACE )
 	{
@@ -392,6 +396,13 @@ void spellcasting_animation_manager_t::setRangeFinderLocation()
 	}
 
 	rangefinder = spell->rangefinder;
+	if ( spell->ID == SPELL_PHASE_OTHER )
+	{
+		if ( stats[player]->getEffectActive(EFF_PHASED) >= 1 && stats[player]->getEffectActive(EFF_PHASED) <= 2 )
+		{
+			rangefinder = RANGEFINDER_TOUCH_FLOOR_TILE;
+		}
+	}
 
 	if ( stage == ANIM_SPELL_TOUCH_THROW || stage == ANIM_SPELL_OVERCHARGE_THROW )
 	{
@@ -630,7 +641,7 @@ void spellcasting_animation_manager_t::setRangeFinderLocation()
 		{
 			entityList = map.entities;
 		}
-		else if ( spell->ID == SPELL_HEAL_OTHER )
+		else if ( spell->ID == SPELL_HEAL_OTHER || spell->ID == SPELL_ENTHRALL )
 		{
 			interactBonusWidthAllies = true;
 			interactBonusWidthEnemies = false;
@@ -657,7 +668,7 @@ void spellcasting_animation_manager_t::setRangeFinderLocation()
 		{
 			if ( Entity* entity = (Entity*)node->element )
 			{
-				if ( rangefinderTargetEnemyType(*spell, *entity) )
+				if ( rangefinderTargetEnemyType(caster->skill[2], *spell, *entity) )
 				{
 					real_t dist = entityDist(caster, entity);
 					if ( dist > minDist && dist < maxDist 
@@ -984,20 +995,23 @@ void fireOffSpellAnimation(spellcasting_animation_manager_t* animation_manager, 
 		players[player]->hud.magicRightHand->flags[INVISIBLE_DITHER] = false;
 		if ( stat->type != RAT )
 		{
-			if ( !usingSpellbook )
+			if ( !(players[player]->entity && players[player]->entity->skill[3] != 0) )
 			{
-				players[player]->hud.magicLeftHand->flags[INVISIBLE] = false;
+				if ( !usingSpellbook )
+				{
+					players[player]->hud.magicLeftHand->flags[INVISIBLE] = false;
+					if ( caster->isInvisible() )
+					{
+						players[player]->hud.magicLeftHand->flags[INVISIBLE] = true;
+						players[player]->hud.magicLeftHand->flags[INVISIBLE_DITHER] = true;
+					}
+				}
+				players[player]->hud.magicRightHand->flags[INVISIBLE] = false;
 				if ( caster->isInvisible() )
 				{
-					players[player]->hud.magicLeftHand->flags[INVISIBLE] = true;
-					players[player]->hud.magicLeftHand->flags[INVISIBLE_DITHER] = true;
+					players[player]->hud.magicRightHand->flags[INVISIBLE] = true;
+					players[player]->hud.magicRightHand->flags[INVISIBLE_DITHER] = true;
 				}
-			}
-			players[player]->hud.magicRightHand->flags[INVISIBLE] = false;
-			if ( caster->isInvisible() )
-			{
-				players[player]->hud.magicRightHand->flags[INVISIBLE] = true;
-				players[player]->hud.magicRightHand->flags[INVISIBLE_DITHER] = true;
 			}
 		}
 	}

@@ -339,7 +339,7 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 	},
 	//REVENANT_SKULL
 	{
-		1796
+		1796, 2673
 	},
 	//MINIMIMIC
 	{
@@ -371,7 +371,7 @@ static std::vector<Sint32> monsterSprites[NUMMONSTERS] = {
 	},
 	//WATER_ELEMENTAL
 	{
-		2411
+		2411, 2657
 	},
 	//GRYPHON
 	{

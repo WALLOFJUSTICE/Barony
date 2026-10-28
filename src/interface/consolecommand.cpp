@@ -2743,7 +2743,7 @@ namespace ConsoleCommands {
 		if ( Player::getPlayerInteractEntity(clientnum) )
 		{
 			messagePlayer(clientnum, MESSAGE_MISC, Language::get(412));
-			shrineDaedalusRevealMap(*Player::getPlayerInteractEntity(clientnum));
+			shrineDaedalusRevealMap(*Player::getPlayerInteractEntity(clientnum), MinimapHighlight_t::REVEAL_SCRY);
 		}
 		});
 

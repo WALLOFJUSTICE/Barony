@@ -2188,6 +2188,14 @@
 		"scroll_agility": {
             "name_identified": "scroll of agility",
             "name_unidentified": "scroll"
+        },
+		"tool_compact_metal_scrap": {
+            "name_identified": "compacted metal scrap",
+            "name_unidentified": "compacted metal scrap"
+        },
+		"tool_compact_magic_scrap": {
+            "name_identified": "condensed magic scrap",
+            "name_unidentified": "condensed magic scrap"
         }
     },
 	"spell_names": {
@@ -2357,7 +2365,7 @@
 			"name": "Ghostbolt"
 		},
 		"spell_slime_acid": {
-			"name": "Slime Spray (Acid)"
+			"name": "Acid Gout"
 		},
 		"spell_slime_water": {
 			"name": "Slime Spray (Water)"

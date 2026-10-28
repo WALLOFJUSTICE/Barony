@@ -3177,11 +3177,29 @@ void actMonster(Entity* my)
 					Uint32 color = makeColorRGB(255, 0, 255);
 					messagePlayerColor(c, MESSAGE_WORLD, color, Language::get(512));
 				}
+
+				playSoundEntity(my, 180, 128);
+				my->monsterState = MONSTER_STATE_LICH_DODGE; // dodge state
+				double dir = my->yaw - (PI / 2) + PI * (local_rng.rand() % 2);
+				MONSTER_VELX = cos(dir) * 5;
+				MONSTER_VELY = sin(dir) * 5;
+				my->monsterSpecialTimer = 0;
+				myStats->setAttributeInt("LICH_DODGE_DELAY", TICKS_PER_SECOND * 2);
 			}
 		}
-		// dodging away
-		if ( ( ( local_rng.rand() % 4 == 0 && my->monsterState != 6 ) || ( local_rng.rand() % 10 == 0 && my->monsterState == MONSTER_STATE_LICH_SUMMON) ) && myStats->OLDHP != myStats->HP )
+
+		int dodgeTimer = myStats->getAttributeInt("LICH_DODGE_DELAY");
+		if ( dodgeTimer > 0 )
 		{
+			dodgeTimer = myStats->modifyAttributeInt("LICH_DODGE_DELAY", -1);
+		}
+
+		// dodging away
+		if ( ( ( local_rng.rand() % 4 == 0 && my->monsterState != MONSTER_STATE_LICH_SUMMON) || ( local_rng.rand() % 25 == 0 && my->monsterState == MONSTER_STATE_LICH_SUMMON) )
+			&& myStats->OLDHP != myStats->HP && dodgeTimer <= 0 )
+		{
+			myStats->setAttributeInt("LICH_DODGE_DELAY", TICKS_PER_SECOND * 4);
+
 			playSoundEntity(my, 180, 128);
 			my->monsterState = MONSTER_STATE_LICH_DODGE; // dodge state
 			double dir = my->yaw - (PI / 2) + PI * (local_rng.rand() % 2);
@@ -3283,6 +3301,12 @@ void actMonster(Entity* my)
 					my->lichIceTeleport();
 				}
 			}
+		}
+
+		int dodgeTimer = myStats->getAttributeInt("LICH_DODGE_DELAY");
+		if ( dodgeTimer > 0 )
+		{
+			dodgeTimer = myStats->modifyAttributeInt("LICH_DODGE_DELAY", -1);
 		}
 
 		if ( my->monsterState != MONSTER_STATE_ATTACK && my->monsterState <= MONSTER_STATE_HUNT )
@@ -3540,9 +3564,10 @@ void actMonster(Entity* my)
 					else if ( myStats->OLDHP != myStats->HP )
 					{
 						int val = myStats->modifyAttributeInt("LICHFIRE_DAMAGE_DODGE", 1);
-						if ( local_rng.rand() % 4 == 0 || val >= 8 )
+						if ( (local_rng.rand() % 4 == 0 || val >= 8) && dodgeTimer <= 0 )
 						{
 							myStats->setAttributeInt("LICHFIRE_DAMAGE_DODGE", 0);
+							myStats->setAttributeInt("LICH_DODGE_DELAY", TICKS_PER_SECOND * 4);
 
 							// chance to dodge on hp loss
 							playSoundEntity(my, 180, 128);
@@ -3590,8 +3615,10 @@ void actMonster(Entity* my)
 					}
 					if ( myStats->OLDHP != myStats->HP )
 					{
-						if ( local_rng.rand() % 3 == 0 )
+						if ( dodgeTimer <= 0 && local_rng.rand() % 3 == 0 )
 						{
+							myStats->setAttributeInt("LICH_DODGE_DELAY", TICKS_PER_SECOND * 4);
+
 							// chance to dodge on hp loss
 							playSoundEntity(my, 180, 128);
 							dir = my->yaw - (PI / 2) + PI * (local_rng.rand() % 2);
@@ -3607,10 +3634,12 @@ void actMonster(Entity* my)
 							}
 						}
 					}
-					else if ( (lichDist < 32) || (enemiesInMelee > 1) )
+					else if ( (lichDist < 32) || (enemiesInMelee > 1) && dodgeTimer <= 0 )
 					{
 						if ( (target && ticks % 10 == 0 && local_rng.rand() % 100 == 0) || (enemiesInMelee > 1 && local_rng.rand() % 8 == 0) )
 						{
+							myStats->setAttributeInt("LICH_DODGE_DELAY", TICKS_PER_SECOND * 4);
+
 							// chance to dodge away from target if distance is low enough.
 							playSoundEntity(my, 180, 128);
 							if ( target )
@@ -3853,9 +3882,14 @@ void actMonster(Entity* my)
 						messagePlayer(player, MESSAGE_STATUS, Language::get(6808), Language::get(6807));
 					}
 
+					monster->z = 13.0;
+					monster->setEffect(EFF_PARALYZED, true, 75, false);
+					//createParticleFociDark(monster, SPELL_REVENANT_CURSE, true);
 					playSoundEntity(monster, 167, 128);
-					createParticleDropRising(monster, 2354, 1.f);
-					serverSpawnMiscParticles(monster, PARTICLE_EFFECT_RISING_DROP, 2354);
+					playSoundEntity(monster, 912, 128);
+					createParticleFociDark(monster, SPELL_SUMMON_SKULL, true);
+					//createParticleDropRising(monster, 2354, 1.f);
+					//serverSpawnMiscParticles(monster, PARTICLE_EFFECT_RISING_DROP, 2354);
 				}
 				return;
 			}
@@ -4047,7 +4081,7 @@ void actMonster(Entity* my)
 							if ( *((Uint32*)allyNode->element) == my->getUID() )
 							{
 								list_RemoveNode(allyNode);
-								if ( myStats->monsterIsCharmed == 1 && client_classes[c] == CLASS_MESMER )
+								if ( myStats->monsterIsCharmed >= 1 && client_classes[c] == CLASS_MESMER )
 								{
 									steamStatisticUpdateClient(c, STEAM_STAT_SURROGATES, STEAM_STAT_INT, 1);
 								}
@@ -4424,8 +4458,9 @@ void actMonster(Entity* my)
 					}
 
 					playSoundEntity(monster, 167, 128);
-					createParticleDropRising(monster, 2354, 1.f);
-					serverSpawnMiscParticles(monster, PARTICLE_EFFECT_RISING_DROP, 2354);
+					createParticleFociDark(monster, SPELL_SUMMON_SKULL, true);
+					//createParticleDropRising(monster, 2354, 1.f);
+					//serverSpawnMiscParticles(monster, PARTICLE_EFFECT_RISING_DROP, 2354);
 				}
 			}
 		}
@@ -5108,6 +5143,25 @@ void actMonster(Entity* my)
 		else
 		{
 			myStats->setAttribute("FIND_TARGET_OVERRIDE_SIGHT_TICKS", std::to_string(sightTicks));
+		}
+	}
+
+	if ( myStats->type == SKELETON && myStats->getAttribute("revenant_skeleton") != "" )
+	{
+		if ( my->z > -.5 )
+		{
+			my->z -= .25;
+			if ( my->z < -.25 )
+			{
+				my->z = -.25;
+			}
+			if ( my->ticks % 2 == 0 ) {
+				const int x = my->x + local_rng.uniform(-3, 3);
+				const int y = my->y + local_rng.uniform(-3, 3);
+				auto poof = spawnPoof(x, y, 6, 0.33, true);
+			}
+			skeletonMoveBodyparts(my, myStats, 0);
+			return;
 		}
 	}
 
@@ -8773,7 +8827,8 @@ timeToGoAgain:
 						}
 						if ( myStats->type == WATER_ELEMENTAL )
 						{
-							if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 )
+							if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 
+								&& !(myStats->getAttribute("special_npc") == "grease elemental") )
 							{
 								my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
 								my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
@@ -8914,7 +8969,8 @@ timeToGoAgain:
 
 					if ( myStats->type == WATER_ELEMENTAL )
 					{
-						if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 )
+						if ( my->monsterSpecialState == 0 && local_rng.rand() % 2 == 0 
+							&& !(myStats->getAttribute("special_npc") == "grease elemental") )
 						{
 							my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
 							my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
@@ -9115,10 +9171,31 @@ timeToGoAgain:
 		{
 			double dist = 0;
 			dist = clipMove(&my->x, &my->y, MONSTER_VELX, MONSTER_VELY, my);
+
+			int numSummonStates = myStats->getAttributeInt("LICH_NUM_SUMMON_STATES");
+			real_t hpLeft = myStats->HP / (real_t)myStats->MAXHP;
+			int targetSummonStates = 0;
+			if ( hpLeft <= 0.35 )
+			{
+				targetSummonStates = 3;
+			}
+			else if ( hpLeft <= 0.55 )
+			{
+				targetSummonStates = 2;
+			}
+			else if ( hpLeft <= 0.85 )
+			{
+				targetSummonStates = 1;
+			}
+
 			if ( dist != sqrt(MONSTER_VELX * MONSTER_VELX + MONSTER_VELY * MONSTER_VELY) )   // hit obstacle
 			{
 				my->monsterSpecialTimer = 60;
-				if ( local_rng.rand() % 2 )
+				if ( targetSummonStates > numSummonStates )
+				{
+					my->monsterState = MONSTER_STATE_LICH_SUMMON; // summoning state
+				}
+				else if ( local_rng.rand() % 2 )
 				{
 					my->monsterState = MONSTER_STATE_WAIT; // wait state
 				}
@@ -9133,7 +9210,11 @@ timeToGoAgain:
 				if ( my->monsterSpecialTimer > 20 )
 				{
 					my->monsterSpecialTimer = 60;
-					if ( local_rng.rand() % 2 )
+					if ( targetSummonStates > numSummonStates )
+					{
+						my->monsterState = MONSTER_STATE_LICH_SUMMON; // summoning state
+					}
+					else if ( local_rng.rand() % 2 )
 					{
 						my->monsterState = MONSTER_STATE_WAIT; // wait state
 					}
@@ -9157,6 +9238,8 @@ timeToGoAgain:
 				my->monsterSpecialTimer = 60;
 				my->monsterState = MONSTER_STATE_WAIT; // wait state
 				playSoundEntity(my, 166, 128);
+
+				myStats->modifyAttributeInt("LICH_NUM_SUMMON_STATES", 1);
 
 				Monster creature = NOTHING;
 				switch ( local_rng.rand() % 5 )
@@ -11004,6 +11087,10 @@ void Entity::handleMonsterAttack(Stat* myStats, Entity* target, double dist)
 		{
 			lichRangeCheckOverride = true;
 		}
+		if ( myStats->type == FLAME_ELEMENTAL )
+		{
+			hasrangedweapon = true;
+		}
 
 		if ( (myStats->type == MONSTER_ADORCISED_WEAPON && myStats->getAttribute("spirit_weapon") != "") )
 		{
@@ -12412,9 +12499,9 @@ bool Entity::handleMonsterSpecialAttack(Stat* myStats, Entity* target, double di
 					break;
 				case FLAME_ELEMENTAL:
 					// magic
-					specialRoll = local_rng.rand() % 10;
-					if ( specialRoll == 0 )
+					if ( monsterSpecialState == SKULL_CAST )
 					{
+						// special handled in flameElementalChooseWeapon()
 						monsterSpecialTimer = MONSTER_SPECIAL_COOLDOWN_SKULL_CAST;
 					}
 					break;
@@ -13469,6 +13556,10 @@ void Entity::monsterAllySendCommand(int command, int destX, int destY, Uint32 ui
 		{
 			skillLVL = tinkeringLVL;
 		}
+		if ( myStats->getEffectActive(EFF_ENTHRALL) )
+		{
+			skillLVL = std::max(SKILL_LEVEL_LEGENDARY, skillLVL);
+		}
 		if ( compelSpell )
 		{
 			skillLVL = std::max(skillLVL, stats[playerLeader]->getModifiedProficiency(PRO_MYSTICISM) + statGetCHR(stats[playerLeader], players[playerLeader]->entity));
@@ -13530,6 +13621,15 @@ void Entity::monsterAllySendCommand(int command, int destX, int destY, Uint32 ui
 			{
 				setHP(0);
 				setObituary(Language::get(6673));
+			}
+			else if ( myStats->type == REVENANT_SKULL && myStats->getAttribute("summon_skull") != "" )
+			{
+				setHP(0);
+				myStats->setAttribute("skip_obituary", "1");
+				if ( stats[playerLeader] && stats[playerLeader]->MP == 0 )
+				{
+					steamAchievementClient(playerLeader, "BARONY_ACH_EXTERNAL_BATTERY");
+				}
 			}
 			break;
 		case ALLY_CMD_ATTACK_CONFIRM:
@@ -15796,6 +15896,15 @@ int Entity::getMonsterEffectiveDistanceOfRangedWeapon(Item* weapon)
 			}
 			return distance;
 		}
+		if ( myStats->type == FLAME_ELEMENTAL )
+		{
+			distance = 64;
+			if ( monsterSpecialState == SKULL_CAST )
+			{
+				distance = 128;
+			}
+			return distance;
+		}
 		if ( myStats->type == GRYPHON )
 		{
 			if ( monsterSpecialState == GRYPHON_FLY )
@@ -15948,6 +16057,10 @@ bool Entity::monsterIsTargetable(bool targetInertMimics) const
 			return false;
 		}
 		else if ( (type == MIMIC || type == MINIMIMIC) && !targetInertMimics && isInertMimic() )
+		{
+			return false;
+		}
+		if ( getStats() && getStats()->getEffectActive(EFF_PHASED) )
 		{
 			return false;
 		}

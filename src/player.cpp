@@ -3336,10 +3336,31 @@ void Player::init() // for use on new/restart game, UI related
 	inventoryUI.appraisal.appraisalProgressionItems.clear();
 	inventoryUI.appraisal.manual_appraised_item = 0;
 
+	for ( auto stat_ptr : mechanics.phaseOtherStats )
+	{
+		Stat* phase_stats = stat_ptr;
+		statDeconstructor(phase_stats);
+	}
+	mechanics.phaseOtherStats.clear();
+
 	for ( int i = 0; i <= NUMEFFECTS; ++i )
 	{
 		mechanics.innoculateEffectsTick[i] = 0;
+		if ( i < NUMEFFECTS )
+		{
+			mechanics.trueBloodEffectsTick[i] = 0;
+		}
 	}
+}
+
+Player::PlayerMechanics_t::~PlayerMechanics_t()
+{
+	for ( auto stat_ptr : phaseOtherStats )
+	{
+		Stat* phase_stats = stat_ptr;
+		statDeconstructor(phase_stats);
+	}
+	phaseOtherStats.clear();
 }
 
 void Player::cleanUpOnEntityRemoval()
@@ -3388,6 +3409,10 @@ void Player::cleanUpOnEntityRemoval()
 	for ( int i = 0; i <= NUMEFFECTS; ++i )
 	{
 		mechanics.innoculateEffectsTick[i] = 0;
+		if ( i < NUMEFFECTS )
+		{
+			mechanics.trueBloodEffectsTick[i] = 0;
+		}
 	}
 }
 
@@ -3583,6 +3608,11 @@ real_t Player::WorldUI_t::tooltipInRange(Entity& tooltip)
 
 	Entity* playerEntity = Player::getPlayerInteractEntity(player.playernum);
 	if ( !playerEntity )
+	{
+		return 0.0;
+	}
+
+	if ( playerEntity && playerEntity == players[player.playernum]->entity && players[player.playernum]->entity->skill[3] == 4 )
 	{
 		return 0.0;
 	}
@@ -5017,6 +5047,9 @@ void Player::WorldUI_t::handleTooltips()
 							|| parent->getMonsterTypeFromSprite() == EARTH_ELEMENTAL
 							|| parent->getMonsterTypeFromSprite() == WATER_ELEMENTAL
 							|| parent->getMonsterTypeFromSprite() == MONSTER_ADORCISED_WEAPON
+							|| parent->getMonsterTypeFromSprite() == HAUNTED_ARMOR
+							|| parent->getMonsterTypeFromSprite() == STAREMASTER
+							|| parent->getMonsterTypeFromSprite() == DRAGON
 							|| parent->getMonsterTypeFromSprite() == MOTH_SMALL
 							|| parent->getMonsterTypeFromSprite() == BAT_SMALL
 							|| parent->getMonsterTypeFromSprite() == GRYPHON)) )
@@ -7853,11 +7886,13 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 		else if ( spellID == SPELL_PINPOINT || spellID == SPELL_PENANCE || spellID == SPELL_TURN_UNDEAD
 			|| spellID == SPELL_SIGIL
 			|| spellID == SPELL_SANCTUARY
+			|| spellID == SPELL_SACRED_GROUND
 			|| spellID == SPELL_HEALING
 			|| spellID == SPELL_EXTRAHEALING
 			|| spellID == SPELL_HOLY_BEAM 
 			|| spellID == SPELL_MAGICMAPPING
 			|| spellID == SPELL_WINDGATE
+			|| spellID == SPELL_VORTEX
 			|| spellID == SPELL_DEMON_ILLUSION
 			|| spellID == SPELL_DASH
 			|| spellID == SPELL_HEAL_MINOR
@@ -7876,7 +7911,14 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			|| spellID == SPELL_WONDERLIGHT 
 			|| spellID == SPELL_SHADE_BOLT
 			|| spellID == SPELL_CONFLICT 
-			|| spellID == SPELL_REPOSE )
+			|| spellID == SPELL_REPOSE
+			|| spellID == SPELL_FORTIFY_HP
+			|| spellID == SPELL_FORTIFY_MP
+			|| spellID == SPELL_RUPTURE
+			|| spellID == SPELL_VAMPIRIC_TOUCH 
+			|| spellID == SPELL_MANIFEST_DESTINY 
+			|| spellID == SPELL_PILGRIMAGE
+			|| spellID == SPELL_FISTS_OF_FORCE )
 		{
 			sustainedSpellIDCounter[spellID] += value * scaleValue;
 			if ( players[player.playernum]->entity && sustainedSpellIDCounter[spellID] > 8 * 16.0 )
@@ -7887,6 +7929,36 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 				{
 					flags = spell_t::SPELL_LEVEL_EVENT_EFFECT;
 				}
+				if ( magicOnSpellCastEvent(players[player.playernum]->entity, players[player.playernum]->entity,
+					nullptr, spellID, flags, 1) )
+				{
+					return true;
+				}
+			}
+		}
+		else if ( spellID == SPELL_WALK_MP )
+		{
+			real_t prevValue = sustainedSpellIDCounter[spellID];
+			sustainedSpellIDCounter[spellID] += value * scaleValue;
+			real_t newValue = sustainedSpellIDCounter[spellID];
+			for ( int i = 0; i < 8; ++i )
+			{
+				real_t interval = (i * 2.0) * 16.0;
+				if ( (prevValue <= interval && newValue > interval) )
+				{
+					if ( players[player.playernum]->entity )
+					{
+						int mpAmount = players[player.playernum]->entity->modMP(1);
+						players[player.playernum]->entity->playerInsectoidIncrementHungerToMP(mpAmount);
+					}
+					break;
+				}
+			}
+
+			if ( players[player.playernum]->entity && sustainedSpellIDCounter[spellID] > 16.0 * 16.0 )
+			{
+				sustainedSpellIDCounter[spellID] = 0.0;
+				Uint32 flags = spell_t::SPELL_LEVEL_EVENT_DEFAULT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE;
 				if ( magicOnSpellCastEvent(players[player.playernum]->entity, players[player.playernum]->entity,
 					nullptr, spellID, flags, 1) )
 				{
@@ -7917,6 +7989,7 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 			|| spellID == SPELL_SCRY_TREASURES
 			|| spellID == SPELL_SCRY_ITEM
 			|| spellID == SPELL_SCRY_AID
+			|| spellID == SPELL_SCRY_EXIT
 			|| spellID == SPELL_DONATION )
 		{
 			sustainedSpellIDCounter[spellID] += value * scaleValue;
@@ -7956,7 +8029,7 @@ bool Player::PlayerMechanics_t::updateSustainedSpellEvent(int spellID, real_t va
 						}
 
 						bool resetOnProc = false;
-						if ( spellID == SPELL_BLOOD_WARD )
+						if ( spellID == SPELL_BLOOD_WARD || spellID == SPELL_TRUE_BLOOD )
 						{
 							resetOnProc = true;
 						}

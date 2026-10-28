@@ -789,7 +789,7 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 				|| !monsterIsTargetable(true)
 				|| (myStats->type == DRYAD && myStats->sex == FEMALE && behavior == &actPlayer)
 				|| thaumSpellArmorProc(this, *myStats, true, nullptr, EFF_REACTIVITY)
-				|| (parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_BLIND)) )
+				|| (parent && parent->getStats() && (parent->getStats()->getEffectActive(EFF_BLIND) || parent->getStats()->getEffectActive(EFF_DUSTED))) )
 			{
 				bool miss = false;
 				if ( !monsterIsTargetable(true) )
@@ -874,6 +874,10 @@ bool Entity::collisionProjectileMiss(Entity* parent, Entity* projectile)
 					if ( parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_BLIND) )
 					{
 						baseChance = std::max(baseChance, 75);
+					}
+					if ( parent && parent->getStats() && parent->getStats()->getEffectActive(EFF_DUSTED) )
+					{
+						baseChance = std::max(baseChance, 25);
 					}
 					if ( baseChance <= 0 )
 					{
@@ -1057,7 +1061,7 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 				{
 					if ( Stat* tmpStats = parent->getStats() )
 					{
-						parentDodgeChance = tmpStats->getEffectActive(EFF_BLIND);
+						parentDodgeChance = (tmpStats->getEffectActive(EFF_BLIND) || tmpStats->getEffectActive(EFF_DUSTED));
 
 						if ( parent && parent->behavior == &actPlayer )
 						{
@@ -1231,7 +1235,11 @@ int barony_clear(real_t tx, real_t ty, Entity* my)
 					continue;
 				}
 			}
-			if ( entity->behavior == &actParticleTimer && static_cast<Uint32>(entity->particleTimerTarget) == my->getUID() )
+			if ( entity->behavior == &actParticleTimer 
+				&& (my 
+					&& ((static_cast<Uint32>(entity->particleTimerTarget) == my->getUID()) 
+						|| (entity->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_PHASE_OTHER_RELEASE 
+							&& my && (my->behavior == &actPlayer || my->behavior == &actMonster) && entityInsideEntity(entity, my)))) )
 			{
 				continue;
 			}
@@ -1890,6 +1898,10 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 	{
 		return nullptr;
 	}
+	if ( my->behavior == &actDeathCam )
+	{
+		return nullptr;
+	}
 	int originx = static_cast<int>(my->x) >> 4;
 	int originy = static_cast<int>(my->y) >> 4;
 	std::vector<list_t*> entLists; // stores the possible entities to look through depending on the quadrant.
@@ -2031,6 +2043,7 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 									&& entity->sprite != 2527
 									&& entity->sprite != 1408
 									&& entity->sprite != 1796
+									&& entity->sprite != 2673
 									&& entity->sprite != 1797
 									&& entity->sprite != 2529
 									&& entity->sprite != 1803
@@ -2046,6 +2059,7 @@ Entity* findEntityInLine( Entity* my, real_t x1, real_t y1, real_t angle, int en
 									&& entity->sprite != 2237
 									&& entity->sprite != 2238
 									&& entity->sprite != 2411
+									&& entity->sprite != 2657
 									&& entity->sprite != 2414
 									&& entity->sprite != 2430
 									&& entity->sprite != 2468
@@ -2990,10 +3004,15 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 						{
 							continue;
 						}
-						if ( my && entity->behavior == &actParticleTimer && static_cast<Uint32>(entity->particleTimerTarget) == my->getUID() )
+						if ( entity->behavior == &actParticleTimer
+							&& (my
+								&& ((static_cast<Uint32>(entity->particleTimerTarget) == my->getUID())
+									|| (entity->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_PHASE_OTHER_RELEASE 
+										&& my && (my->behavior == &actPlayer || my->behavior == &actMonster) && entityInsideEntity(entity, my)))) )
 						{
 							continue;
 						}
+
 						if ( isMonster && my->getMonsterTypeFromSprite() == MINOTAUR 
 							&& ((entity->isDamageableCollider()
 									&& (entity->colliderHasCollision & EditorEntityData_t::COLLIDER_COLLISION_FLAG_MINO))

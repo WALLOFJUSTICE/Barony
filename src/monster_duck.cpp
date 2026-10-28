@@ -409,11 +409,11 @@ void actWaterSplash(Entity* my)
 		return;
 	}
 	--my->skill[0];
-	if ( my->sprite == 2246 )
+	if ( my->sprite == 2246 || my->sprite == 2661 )
 	{
 		my->z = std::max(8.05, my->z - 0.1);
 	}
-	if ( my->sprite == 2247 && my->ticks > 20 )
+	if ( (my->sprite == 2247 || my->sprite == 2662) && my->ticks > 20 )
 	{
 		my->z += 0.1;
 	}
@@ -422,6 +422,11 @@ void actWaterSplash(Entity* my)
 		if ( my->sprite == 2246 )
 		{
 			my->sprite = 2247;
+			my->z += 0.2;
+		}
+		if ( my->sprite == 2661 )
+		{
+			my->sprite = 2662;
 			my->z += 0.2;
 		}
 	}
@@ -441,10 +446,11 @@ void actWaterSplashParticle(Entity* my)
 	my->vel_z += 0.04;
 }
 
-void createWaterSplash(real_t x, real_t y, int lifetime, bool ignoreTileCentering)
+void createWaterSplash(real_t x, real_t y, int lifetime, bool ignoreTileCentering, bool grease)
 {
+	int splashSprite = grease ? 2661 : 2246;
 	{
-		Entity* splash = newEntity(2246, 1, map.entities, nullptr); //Gib entity.
+		Entity* splash = newEntity(splashSprite, 1, map.entities, nullptr); //Gib entity.
 		if ( !ignoreTileCentering )
 		{
 			real_t centerx = static_cast<int>(x / 16) * 16.0 + 8.0;
@@ -475,7 +481,7 @@ void createWaterSplash(real_t x, real_t y, int lifetime, bool ignoreTileCenterin
 	real_t offsetYaw = ((local_rng.rand() % 9) / 8.0) * PI / 4;
 	for ( int i = 0; i < 4; ++i )
 	{
-		Entity* splashParticle = newEntity(2248, 1, map.entities, nullptr); //Gib entity.
+		Entity* splashParticle = newEntity(grease ? 2663 : 2248, 1, map.entities, nullptr); //Gib entity.
 		splashParticle->yaw = offsetYaw + i * (PI / 2);
 		if ( !ignoreTileCentering )
 		{

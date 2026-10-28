@@ -2170,6 +2170,10 @@ std::vector<Entity*> getAllOtherFollowersForSendAllCommand(const int gui_player,
 				{
 					skillLVL2 = SKILL_LEVEL_LEGENDARY;
 				}
+				if ( follower2->getStats() && follower2->getStats()->getEffectActive(EFF_ENTHRALL) )
+				{
+					skillLVL2 = std::max(SKILL_LEVEL_LEGENDARY, skillLVL2);
+				}
 				int disableOption2 = FollowerMenu[gui_player].optionDisabledForCreature(skillLVL2, follower2Type, optionSelected, follower2);
 				if ( disableOption2 == 0 )
 				{
@@ -2368,9 +2372,16 @@ void FollowerRadialMenu::drawFollowerMenu()
 				{
 					skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity);
 				}
-				if ( followerToCommand->monsterAllySummonRank != 0 )
+				else
 				{
-					skillLVL = SKILL_LEVEL_LEGENDARY;
+					if ( followerToCommand->monsterAllySummonRank != 0 )
+					{
+						skillLVL = SKILL_LEVEL_LEGENDARY;
+					}
+					if ( followerToCommand->getStats() && followerToCommand->getStats()->getEffectActive(EFF_ENTHRALL) )
+					{
+						skillLVL = std::max(SKILL_LEVEL_LEGENDARY, skillLVL);
+					}
 				}
 				if ( optionSelected == ALLY_CMD_ATTACK_SELECT )
 				{
@@ -2450,7 +2461,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 			}
 			else if ( (followerToCommand->monsterAllySummonRank != 0 
 				|| followerStats->type == MONSTER_ADORCISED_WEAPON
-				|| followerStats->type == FLAME_ELEMENTAL) && optionSelected == ALLY_CMD_CLASS_TOGGLE )
+				|| followerStats->type == FLAME_ELEMENTAL
+				|| (followerStats->type == REVENANT_SKULL && followerToCommand->sprite == 2673)) && optionSelected == ALLY_CMD_CLASS_TOGGLE )
 			{
 				optionSelected = ALLY_CMD_RETURN_SOUL;
 			}
@@ -2729,9 +2741,16 @@ void FollowerRadialMenu::drawFollowerMenu()
 			{
 				skillLVL = stats[gui_player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[gui_player], players[gui_player]->entity);
 			}
-			else if ( followerToCommand->monsterAllySummonRank != 0 )
+			else
 			{
-				skillLVL = SKILL_LEVEL_LEGENDARY;
+				if ( followerToCommand->monsterAllySummonRank != 0 )
+				{
+					skillLVL = SKILL_LEVEL_LEGENDARY;
+				}
+				if ( followerToCommand->getStats() && followerToCommand->getStats()->getEffectActive(EFF_ENTHRALL) )
+				{
+					skillLVL = std::max(SKILL_LEVEL_LEGENDARY, skillLVL);
+				}
 			}
 		}
 
@@ -3094,7 +3113,8 @@ void FollowerRadialMenu::drawFollowerMenu()
 					else if ( followerToCommand 
 						&& (followerToCommand->monsterAllySummonRank != 0 
 							|| followerStats->type == MONSTER_ADORCISED_WEAPON
-							|| followerStats->type == FLAME_ELEMENTAL) )
+							|| followerStats->type == FLAME_ELEMENTAL
+							|| (followerStats->type == REVENANT_SKULL && followerToCommand->sprite == 2673)) )
 					{
 						getSizeOfText(ttf12, "Relinquish ", &width, nullptr);
 						(*cvar_showoldwheel) ? ttfPrintText(ttf12, txt.x - width / 2, txt.y - 12, Language::get(3196)) : SDL_Rect{};
@@ -4274,6 +4294,10 @@ bool FollowerRadialMenu::allowedInteractEntity(Entity& selectedEntity, bool upda
 	{
 		skillLVL = SKILL_LEVEL_LEGENDARY;
 	}
+	if ( followerToCommand->getStats() && followerToCommand->getStats()->getEffectActive(EFF_ENTHRALL) )
+	{
+		skillLVL = std::max(SKILL_LEVEL_LEGENDARY, skillLVL);
+	}
 
 	if ( followerToCommand )
 	{
@@ -4740,7 +4764,8 @@ int FollowerRadialMenu::optionDisabledForCreature(int playerSkillLVL, int monste
 		case ALLY_CMD_CLASS_TOGGLE:
 			if ( follower && (follower->monsterAllySummonRank != 0 
 				|| monsterType == MONSTER_ADORCISED_WEAPON
-				|| monsterType == FLAME_ELEMENTAL) )
+				|| monsterType == FLAME_ELEMENTAL
+				|| (monsterType == REVENANT_SKULL && follower->sprite == 2673)) )
 			{
 				return 0;
 			}
@@ -5864,6 +5889,8 @@ bool GenericGUIMenu::isItemRepairable(const Item* item, int repairScroll)
 				case TOOL_TINOPENER:
 				case TOOL_METAL_SCRAP:
 				case TOOL_MAGIC_SCRAP:
+				case TOOL_COMPACT_METAL_SCRAP:
+				case TOOL_COMPACT_MAGIC_SCRAP:
 				case TOOL_TINKERING_KIT:
 				case TOOL_SENTRYBOT:
 				case TOOL_DETONATOR_CHARGE:
@@ -6595,6 +6622,14 @@ bool GenericGUIMenu::shouldDisplayItemInGUI(Item* item)
 		{
 			return isItemScepterChargeable(item);
 		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_COMPACT_SCRAP )
+		{
+			return (item->type == TOOL_METAL_SCRAP || item->type == TOOL_MAGIC_SCRAP) && item->count >= 5;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SHAPECHANGE )
+		{
+			return item == &itemfxGUI.shapechangeTargetItem;
+		}
 		return false;
 	}
 	else if ( guiType == GUI_TYPE_ALCHEMY )
@@ -6880,7 +6915,43 @@ int GenericGUIMenu::getAlterItemResultAtCycle(Item* item)
 	}
 
 	std::vector<int> targetItems;
-	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON )
+
+	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SHAPECHANGE )
+	{
+		targetItems.push_back(SALAMANDER);
+		targetItems.push_back(HUMAN);
+		targetItems.push_back(SKELETON);
+		targetItems.push_back(VAMPIRE);
+		targetItems.push_back(SUCCUBUS);
+		targetItems.push_back(GOATMAN);
+		targetItems.push_back(AUTOMATON);
+		targetItems.push_back(INCUBUS);
+		targetItems.push_back(GOBLIN);
+		targetItems.push_back(INSECTOID);
+		//targetItems.push_back(RAT);
+		//targetItems.push_back(TROLL);
+		//targetItems.push_back(SPIDER);
+		//targetItems.push_back(CREATURE_IMP);
+		targetItems.push_back(GNOME);
+		targetItems.push_back(GREMLIN);
+		targetItems.push_back(DRYAD);
+		targetItems.push_back(MYCONID);
+
+		/*int currentType = stats[gui_player]->type;
+		for ( auto it = targetItems.begin(); it != targetItems.end(); )
+		{
+			if ( *it == currentType )
+			{
+				it = targetItems.erase(it);
+				break;
+			}
+			else
+			{
+				++it;
+			}
+		}*/
+	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON )
 	{
 		switch ( item->type )
 		{
@@ -6962,7 +7033,16 @@ int GenericGUIMenu::getAlterItemResultAtCycle(Item* item)
 
 	if ( targetItems.size() == 0 ) { return -1; }
 
-	auto find = std::find(targetItems.begin(), targetItems.end(), item->type);
+	int findType = item->type;
+	/*if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SHAPECHANGE )
+	{
+		findType = getMonsterFromPlayerRace(stats[gui_player]->playerRace);
+		if ( stats[gui_player]->stat_appearance != 0 )
+		{
+			findType = HUMAN;
+		}
+	}*/
+	auto find = std::find(targetItems.begin(), targetItems.end(), findType);
 	{
 		bool inList = find != targetItems.end();
 		if ( !inList )
@@ -6981,7 +7061,7 @@ int GenericGUIMenu::getAlterItemResultAtCycle(Item* item)
 				{
 					find = targetItems.begin();
 				}
-				if ( *find == item->type )
+				if ( *find == findType )
 				{
 					++find;
 					if ( find == targetItems.end() )
@@ -6999,7 +7079,7 @@ int GenericGUIMenu::getAlterItemResultAtCycle(Item* item)
 			{
 				find = targetItems.begin();
 			}
-			if ( *find == item->type )
+			if ( *find == findType )
 			{
 				++find;
 				if ( find == targetItems.end() )
@@ -7032,6 +7112,42 @@ void GenericGUIMenu::alterItem(Item* item)
 	}
 	if ( !itemfxGUI.consumeResourcesForTransmute() )
 	{
+		closeGUI();
+		return;
+	}
+
+	if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SHAPECHANGE )
+	{
+		int result = getAlterItemResultAtCycle(item);
+		if ( result >= 1 && result < NUMMONSTERS )
+		{
+			if ( players[gui_player] && players[gui_player]->entity )
+			{
+				if ( multiplayer != CLIENT )
+				{
+					spellEffectPolymorph(players[gui_player]->entity, players[gui_player]->entity, true, 
+						getSpellEffectDurationFromID(SPELL_SHAPECHANGE, nullptr, nullptr, nullptr),
+						(Monster)result);
+					if ( stats[gui_player] )
+					{
+						if ( stats[gui_player]->getEffectActive(EFF_POLYMORPH) )
+						{
+							magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_SHAPECHANGE, spell_t::SPELL_LEVEL_EVENT_EFFECT, 1);
+						}
+					}
+				}
+				else
+				{
+					strcpy((char*)net_packet->data, "POLY");
+					net_packet->data[4] = gui_player;
+					net_packet->data[5] = result;
+					net_packet->address.host = net_server.host;
+					net_packet->address.port = net_server.port;
+					net_packet->len = 6;
+					sendPacketSafe(net_sock, -1, net_packet, 0);
+				}
+			}
+		}
 		closeGUI();
 		return;
 	}
@@ -7261,6 +7377,43 @@ void GenericGUIMenu::alterItem(Item* item)
 			return;
 		}
 	}
+	else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_COMPACT_SCRAP )
+	{
+		if ( item->type == TOOL_METAL_SCRAP || item->type == TOOL_MAGIC_SCRAP )
+		{
+			int result = 0;
+			int consumed = 0;
+			ItemType type = ((item->type == TOOL_METAL_SCRAP) ? TOOL_COMPACT_METAL_SCRAP : TOOL_COMPACT_MAGIC_SCRAP);
+			while ( item->count >= TinkerGUI_t::COMPACT_SCRAP_QTY )
+			{
+				for ( int i = 0; i < TinkerGUI_t::COMPACT_SCRAP_QTY; ++i )
+				{
+					consumeItem(item, gui_player);
+					++consumed;
+				}
+
+				Item* itemToPickup = newItem(type, DECREPIT, 0, 1, 0, true, nullptr);
+				Item* pickedUp = itemPickup(gui_player, itemToPickup);
+				free(itemToPickup);
+
+				++result;
+
+				magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity,
+					nullptr, SPELL_COMPACT_SCRAP, spell_t::SPELL_LEVEL_EVENT_DEFAULT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE, 1);
+
+				if ( !item )
+				{
+					break;
+				}
+			}
+
+			messagePlayer(gui_player, MESSAGE_MISC, Language::get(7417), result, consumed, items[type].getIdentifiedName());
+		}
+
+		closeGUI();
+		return;
+	}
+
 	messagePlayer(gui_player, MESSAGE_HINT, Language::get(6515), prevItem.c_str(), item->description());
 
 	std::unordered_set<Uint32> appearancesOfSimilarItems;
@@ -7869,6 +8022,14 @@ void GenericGUIMenu::openGUI(int type, Item* effectItem, int effectBeatitude, in
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCRY_ITEM;
 		}
+		else if ( usingSpellID == SPELL_SHAPECHANGE )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SHAPECHANGE;
+		}
+		else if ( usingSpellID == SPELL_COMPACT_SCRAP )
+		{
+			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_COMPACT_SCRAP;
+		}
 		else if ( itemEffectItemType == SCROLL_CHARGING )
 		{
 			itemfxGUI.currentMode = ItemEffectGUI_t::ITEMFX_MODE_SCROLL_CHARGING;
@@ -8463,6 +8624,18 @@ bool GenericGUIMenu::executeOnItemClick(Item* item)
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_RESHAPE_WEAPON
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_ALTER_ARROW
 			|| itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_VANDALISE )
+		{
+			playSoundEntityLocal(players[gui_player]->entity, 895, 128);
+			alterItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_SHAPECHANGE )
+		{
+			playSoundEntityLocal(players[gui_player]->entity, 893, 128);
+			alterItem(item);
+			return true;
+		}
+		else if ( itemfxGUI.currentMode == ItemEffectGUI_t::ITEMFX_MODE_COMPACT_SCRAP )
 		{
 			playSoundEntityLocal(players[gui_player]->entity, 895, 128);
 			alterItem(item);
@@ -11015,30 +11188,34 @@ bool GenericGUIMenu::tinkeringSalvageItem(Item* item, bool outsideInventory, int
 	{
    		skillLVL = (stats[player]->getModifiedProficiency(PRO_LOCKPICKING) + statGetPER(stats[player], players[player]->entity)) / 20;
 		skillLVL = std::min(skillLVL, 5);
-		switch ( skillLVL )
+
+		if ( item->type != TOOL_COMPACT_METAL_SCRAP && item->type != TOOL_COMPACT_MAGIC_SCRAP )
 		{
-			case 5:
-				bonusMetalScrap = (1 + ((local_rng.rand() % 2 == 0) ? 1 : 0)) * metal; // 2x or 50% 3x extra scrap
-				bonusMagicScrap = (1 + ((local_rng.rand() % 2 == 0) ? 1 : 0)) * magic; // 2x or 50% 3x extra scrap
-				break;
-			case 4:
-				bonusMetalScrap = (1 + ((local_rng.rand() % 4 == 0) ? 1 : 0)) * metal; // 2x or 25% 3x extra scrap
-				bonusMagicScrap = (1 + ((local_rng.rand() % 4 == 0) ? 1 : 0)) * magic; // 2x or 25% 3x extra scrap
-				break;
-			case 3:
-				bonusMetalScrap = ((local_rng.rand() % 2 == 0) ? 1 : 0) * metal; // 50% 2x scrap value
-				bonusMagicScrap = ((local_rng.rand() % 2 == 0) ? 1 : 0) * magic; // 50% 2x scrap value
-				break;
-			case 2:
-				bonusMetalScrap = ((local_rng.rand() % 4 == 0) ? 1 : 0) * metal; // 25% 2x scrap value
-				bonusMagicScrap = ((local_rng.rand() % 4 == 0) ? 1 : 0) * magic; // 25% 2x scrap value
-				break;
-			case 1:
-				bonusMetalScrap = ((local_rng.rand() % 8 == 0) ? 1 : 0) * metal; // 12.5% 2x scrap value
-				bonusMagicScrap = ((local_rng.rand() % 8 == 0) ? 1 : 0) * magic; // 12.5% 2x scrap value
-				break;
-			default:
-				break;
+			switch ( skillLVL )
+			{
+				case 5:
+					bonusMetalScrap = (1 + ((local_rng.rand() % 2 == 0) ? 1 : 0)) * metal; // 2x or 50% 3x extra scrap
+					bonusMagicScrap = (1 + ((local_rng.rand() % 2 == 0) ? 1 : 0)) * magic; // 2x or 50% 3x extra scrap
+					break;
+				case 4:
+					bonusMetalScrap = (1 + ((local_rng.rand() % 4 == 0) ? 1 : 0)) * metal; // 2x or 25% 3x extra scrap
+					bonusMagicScrap = (1 + ((local_rng.rand() % 4 == 0) ? 1 : 0)) * magic; // 2x or 25% 3x extra scrap
+					break;
+				case 3:
+					bonusMetalScrap = ((local_rng.rand() % 2 == 0) ? 1 : 0) * metal; // 50% 2x scrap value
+					bonusMagicScrap = ((local_rng.rand() % 2 == 0) ? 1 : 0) * magic; // 50% 2x scrap value
+					break;
+				case 2:
+					bonusMetalScrap = ((local_rng.rand() % 4 == 0) ? 1 : 0) * metal; // 25% 2x scrap value
+					bonusMagicScrap = ((local_rng.rand() % 4 == 0) ? 1 : 0) * magic; // 25% 2x scrap value
+					break;
+				case 1:
+					bonusMetalScrap = ((local_rng.rand() % 8 == 0) ? 1 : 0) * metal; // 12.5% 2x scrap value
+					bonusMagicScrap = ((local_rng.rand() % 8 == 0) ? 1 : 0) * magic; // 12.5% 2x scrap value
+					break;
+				default:
+					break;
+			}
 		}
 		int metalCraftCost = 0;
 		int magicCraftCost = 0;
@@ -12380,6 +12557,15 @@ bool GenericGUIMenu::tinkeringGetItemValue(const Item* item, int* metal, int* ma
 		case KEY_GOLD:
 			*metal = 2;
 			*magic = 0;
+			break;
+
+		case TOOL_COMPACT_METAL_SCRAP:
+			*metal = TinkerGUI_t::COMPACT_SCRAP_QTY;
+			*magic = 0;
+			break;
+		case TOOL_COMPACT_MAGIC_SCRAP:
+			*metal = 0;
+			*magic = TinkerGUI_t::COMPACT_SCRAP_QTY;
 			break;
 
 		//case XXX:
@@ -24563,6 +24749,23 @@ void GenericGUIMenu::ItemEffectGUI_t::getItemEffectCost(Item* itemUsedWith, int&
 			manaCost += 2 * itemUsedWith->count * std::max(0, (int)itemUsedWith->beatitude);
 		}
 	}
+	else if ( currentMode == ITEMFX_MODE_COMPACT_SCRAP )
+	{
+		if ( (itemUsedWith->type == TOOL_METAL_SCRAP || itemUsedWith->type == TOOL_MAGIC_SCRAP) && itemUsedWith->count >= 5 )
+		{
+			int minMana = getSpellDamageSecondaryFromID(SPELL_COMPACT_SCRAP,
+				players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+			int mana = getSpellDamageFromID(SPELL_COMPACT_SCRAP,
+				players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+
+			int perScrapMP = getSpellEffectDurationFromID(SPELL_COMPACT_SCRAP,
+				players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+
+			real_t ratio = std::max(minMana, mana) / 100.0;
+			int qty = itemUsedWith->count / TinkerGUI_t::COMPACT_SCRAP_QTY;
+			manaCost = std::max(2.0, perScrapMP * qty * ratio);
+		}
+	}
 	else if ( currentMode == ITEMFX_MODE_SCRY_ITEM )
 	{
 		int minMana = getSpellEffectDurationSecondaryFromID(SPELL_SCRY_ITEM,
@@ -24570,6 +24773,31 @@ void GenericGUIMenu::ItemEffectGUI_t::getItemEffectCost(Item* itemUsedWith, int&
 		int mana = getSpellDamageSecondaryFromID(SPELL_SCRY_ITEM,
 			players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
 		manaCost = std::max(minMana, mana);
+	}
+	else if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+	{
+		int minMana = getSpellDamageSecondaryFromID(SPELL_SHAPECHANGE,
+			players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+		int mana = getSpellDamageFromID(SPELL_SHAPECHANGE,
+			players[parentGUI.gui_player]->entity, stats[parentGUI.gui_player], players[parentGUI.gui_player]->entity);
+		manaCost = std::max(minMana, mana);
+
+		int race = getMonsterFromPlayerRace(stats[parentGUI.gui_player]->playerRace);
+		if ( stats[parentGUI.gui_player]->stat_appearance != 0 )
+		{
+			race = HUMAN;
+		}
+
+		if ( parentGUI.getAlterItemResultAtCycle(&shapechangeTargetItem) == race )
+		{
+			manaCost = 0;
+		}
+
+		if ( itemUsedWith == &shapechangeTargetItem )
+		{
+			shapechangeTargetItem.appearance = parentGUI.getAlterItemResultAtCycle(&shapechangeTargetItem);
+			shapechangeLastAppearanceScroll = parentGUI.transmuteItemScroll;
+		}
 	}
 	else if ( currentMode == ITEMFX_MODE_SCROLL_ENCHANT_ARMOR )
 	{
@@ -24887,7 +25115,8 @@ bool GenericGUIMenu::ItemEffectGUI_t::modeHasTransmuteMenu()
 	if ( currentMode == ITEMFX_MODE_ALTER_ARROW
 		|| currentMode == ITEMFX_MODE_ALTER_INSTRUMENT
 		|| currentMode == ITEMFX_MODE_RESHAPE_WEAPON
-		|| currentMode == ITEMFX_MODE_FORGE_KEY )
+		|| currentMode == ITEMFX_MODE_FORGE_KEY
+		|| currentMode == ITEMFX_MODE_SHAPECHANGE )
 	{
 		return true;
 	}
@@ -25078,6 +25307,34 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 				}
 			}
 		}
+		else if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+		{
+			if ( item != &shapechangeTargetItem )
+			{
+				result = ITEMFX_ACTION_NONE;
+			}
+			else
+			{
+				int goldCost = 0;
+				int manaCost = 0;
+				getItemEffectCost(item, goldCost, manaCost);
+
+				if ( !checkResultOnly )
+				{
+					costEffectGoldAmount = goldCost;
+					costEffectMPAmount = manaCost;
+				}
+
+				if ( manaCost > 0 && manaCost > stats[parentGUI.gui_player]->MP && stats[parentGUI.gui_player]->type != VAMPIRE )
+				{
+					result = ITEMFX_ACTION_CANT_AFFORD_MANA;
+				}
+				else
+				{
+					result = ITEMFX_ACTION_OK;
+				}
+			}
+		}
 		else if ( currentMode == ITEMFX_MODE_ALTER_INSTRUMENT
 			|| currentMode == ITEMFX_MODE_METALLURGY
 			|| currentMode == ITEMFX_MODE_GEOMANCY
@@ -25192,6 +25449,48 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 					costEffectMPAmount = manaCost;
 				}
 				result = ITEMFX_ACTION_OK;
+			}
+		}
+		else if ( currentMode == ITEMFX_MODE_COMPACT_SCRAP )
+		{
+			if ( itemCategory(item) == SPELL_CAT )
+			{
+				result = ITEMFX_ACTION_INVALID_ITEM;
+			}
+			else if ( !item->identified )
+			{
+				result = ITEMFX_ACTION_NOT_IDENTIFIED_YET;
+			}
+			else
+			{
+				if ( item->type == TOOL_METAL_SCRAP || item->type == TOOL_MAGIC_SCRAP )
+				{
+					int goldCost = 0;
+					int manaCost = 0;
+					getItemEffectCost(item, goldCost, manaCost);
+					if ( !checkResultOnly )
+					{
+						costEffectGoldAmount = goldCost;
+						costEffectMPAmount = manaCost;
+					}
+
+					if ( item->count < TinkerGUI_t::COMPACT_SCRAP_QTY )
+					{
+						result = ITEMFX_ACTION_TOO_FEW_QTY;
+					}
+					else if ( manaCost > 0 && manaCost > stats[parentGUI.gui_player]->MP && stats[parentGUI.gui_player]->type != VAMPIRE )
+					{
+						result = ITEMFX_ACTION_CANT_AFFORD_MANA;
+					}
+					else
+					{
+						result = ITEMFX_ACTION_OK;
+					}
+				}
+				else
+				{
+					result = ITEMFX_ACTION_INVALID_ITEM;
+				}
 			}
 		}
 		else if ( currentMode == ITEMFX_MODE_SANCTIFY_WATER )
@@ -25439,7 +25738,11 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 		if ( result != ITEMFX_ACTION_NONE && item )
 		{
 			ItemType prevItemType = item->type;
-			if ( parentGUI.transmuteItemTarget == item )
+			if ( &shapechangeTargetItem == item )
+			{
+				// no change
+			}
+			else if ( parentGUI.transmuteItemTarget == item )
 			{
 				int result = parentGUI.getAlterItemResultAtCycle(item);
 				if ( result >= 0 )
@@ -25449,7 +25752,20 @@ GenericGUIMenu::ItemEffectGUI_t::ItemEffectActions_t GenericGUIMenu::ItemEffectG
 			}
 
 			char buf[1024];
-			if ( item->type == SPELL_ITEM )
+			if ( &shapechangeTargetItem == item )
+			{
+				if ( shapechangeTargetItem.appearance > 0 && shapechangeTargetItem.appearance < NUMMONSTERS )
+				{
+					std::string str = getMonsterLocalizedName((Monster)shapechangeTargetItem.appearance);
+					capitalizeString(str);
+					snprintf(buf, sizeof(buf), "%s", str.c_str());
+				}
+				else
+				{
+					snprintf(buf, sizeof(buf), "");
+				}
+			}
+			else if ( item->type == SPELL_ITEM )
 			{
 				if ( auto spell = getSpellFromItem(parentGUI.gui_player, item, false) )
 				{
@@ -25537,6 +25853,11 @@ bool GenericGUIMenu::ItemEffectGUI_t::isItemSelectedToEffect(Item* item)
 		|| (itemCategory(item) != SPELL_CAT && currentMode == ITEMFX_MODE_SCEPTER_CHARGE) )
 	{
 		return false;
+	}
+
+	if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+	{
+		return item == &shapechangeTargetItem;
 	}
 
 	if ( !parentGUI.isNodeFromPlayerInventory(item->node) )
@@ -25629,6 +25950,10 @@ void GenericGUIMenu::ItemEffectGUI_t::openItemEffectMenu(GenericGUIMenu::ItemEff
 	case ITEMFX_MODE_SANCTIFY_WATER:
 	case ITEMFX_MODE_CLEANSE_FOOD:
 	case ITEMFX_MODE_SCRY_ITEM:
+	case ITEMFX_MODE_COMPACT_SCRAP:
+		modeHasCostEffect = COST_EFFECT_MANA;
+		break;
+	case ITEMFX_MODE_SHAPECHANGE:
 		modeHasCostEffect = COST_EFFECT_MANA;
 		break;
 	case ITEMFX_MODE_FORGE_KEY:
@@ -25677,6 +26002,10 @@ void GenericGUIMenu::ItemEffectGUI_t::openItemEffectMenu(GenericGUIMenu::ItemEff
 	confirmActionOnItemSteps.second = 0;
 	parentGUI.transmuteItemTarget = nullptr;
 	parentGUI.transmuteItemScroll = 0;
+	if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+	{
+		parentGUI.transmuteItemScroll = shapechangeLastAppearanceScroll;
+	}
 }
 
 void GenericGUIMenu::ItemEffectGUI_t::closeItemEffectMenu()
@@ -25990,6 +26319,12 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		messagePlayer(playernum, MESSAGE_MISC, Language::get(4159));
 		parentGUI.closeGUI();
 		return; // I can't see!
+	}
+
+	if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+	{
+		shapechangeTargetItem.appearance = std::max((Uint32)1, shapechangeTargetItem.appearance);
+		parentGUI.transmuteItemTarget = &shapechangeTargetItem;
 	}
 
 	// item effect status
@@ -26348,7 +26683,11 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 	displayItemName->setSize(displayItemNamePos);
 	static ConsoleVariable<int> cvar_itemfxPromptY("/itemfx_action_prompt_y", -2);
 	SDL_Rect actionPromptTxtPos{ 0, 205 + *cvar_itemfxPromptY + heightOffsetCompact, baseFrame->getSize().w - 18 - 8, 24 };
-	if ( modeHasCostEffect == COST_EFFECT_GOLD
+	if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+	{
+		actionPromptTxtPos.y += 52;
+	}
+	else if ( modeHasCostEffect == COST_EFFECT_GOLD
 		|| modeHasCostEffect == COST_EFFECT_MANA )
 	{
 		actionPromptTxtPos.y += 26;
@@ -26387,6 +26726,11 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			|| modeHasCostEffect == COST_EFFECT_MANA_RETURN_GOLD
 			|| modeHasCostEffect == COST_EFFECT_MANA_AND_GOLD )
 		{
+			if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+			{
+				align_y += 16;
+			}
+
 			costBg2->pos.x = align_x;
 			costBg2->pos.y = align_y;
 			costBg2->disabled = false;
@@ -26561,7 +26905,9 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			//auto closeGlyph = baseFrame->findImage("close itemfx glyph");
 			actionButtonCancel->setDisabled(true);
 			//closeGlyph->disabled = true;
-			if ( inputs.getVirtualMouse(playernum)->draw_cursor && parentGUI.transmuteItemTarget && isInteractable )
+
+			if ( inputs.getVirtualMouse(playernum)->draw_cursor && parentGUI.transmuteItemTarget 
+				&& isInteractable && !(currentMode == ITEMFX_MODE_SHAPECHANGE) )
 			{
 				actionButtonCancel->setDisabled(!isInteractable);
 				if ( isInteractable )
@@ -26578,7 +26924,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 
 			if ( usingGamepad )
 			{
-				if ( parentGUI.transmuteItemTarget && isInteractable )
+				if ( parentGUI.transmuteItemTarget && isInteractable && !(currentMode == ITEMFX_MODE_SHAPECHANGE) )
 				{
 					actionButtonCancel->setInvisible(false);
 					actionButtonCancel->setDisabled(true);
@@ -26807,6 +27153,12 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 					case ITEMFX_MODE_SCRY_ITEM:
 						actionPromptTxt->setText(Language::get(7238));
 						break;
+					case ITEMFX_MODE_SHAPECHANGE:
+						actionPromptTxt->setText(Language::get(7405));
+						break;
+					case ITEMFX_MODE_COMPACT_SCRAP:
+						actionPromptTxt->setText(Language::get(7416));
+						break;
 					case ITEMFX_MODE_SCEPTER_CHARGE:
 						actionPromptTxt->setText(Language::get(6831));
 						if ( confirmActionOnItemSteps.second > 0 )
@@ -26821,7 +27173,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 						break;
 				}
 
-				if ( modeHasTransmuteMenu() )
+				if ( modeHasTransmuteMenu() && !(currentMode == ITEMFX_MODE_SHAPECHANGE) )
 				{
 					if ( parentGUI.transmuteItemTarget )
 					{
@@ -26875,6 +27227,12 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 							break;
 						case ITEMFX_ACTION_AT_MAX_BLESSING:
 							actionPromptTxt->setText(Language::get(6726));
+							break;
+						case ITEMFX_ACTION_TOO_FEW_QTY:
+							if ( currentMode == ITEMFX_MODE_COMPACT_SCRAP )
+							{
+								actionPromptTxt->setText(Language::get(7418));
+							}
 							break;
 						case ITEMFX_ACTION_NEED_SKILL_LVLS:
 							if ( currentMode == ITEMFX_MODE_RESHAPE_WEAPON )
@@ -26998,7 +27356,7 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 				}
 				costEffectManaText->setText(buf);
 
-				if ( modeHasTransmuteMenu() )
+				if ( modeHasTransmuteMenu() && !(currentMode == ITEMFX_MODE_SHAPECHANGE) )
 				{
 					if ( !parentGUI.transmuteItemTarget )
 					{
@@ -27119,12 +27477,18 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 			case ITEMFX_MODE_SCRY_ITEM:
 				actionPromptUnselectedTxt->setText(Language::get(7237));
 				break;
+			case ITEMFX_MODE_SHAPECHANGE:
+				actionPromptUnselectedTxt->setText(Language::get(7406));
+				break;
+			case ITEMFX_MODE_COMPACT_SCRAP:
+				actionPromptUnselectedTxt->setText(Language::get(7415));
+				break;
 			default:
 				actionPromptUnselectedTxt->setText("");
 				break;
 		}
 
-		if ( modeHasTransmuteMenu() )
+		if ( modeHasTransmuteMenu() && !(currentMode == ITEMFX_MODE_SHAPECHANGE) )
 		{
 			if ( parentGUI.transmuteItemTarget )
 			{
@@ -27272,7 +27636,20 @@ void GenericGUIMenu::ItemEffectGUI_t::updateItemEffectMenu()
 		bool foundItem = false;
 		bool checkConsumedItem = false;
 		bool itemActionOK = itemActionType == ITEMFX_ACTION_OK;
-		if ( player_inventory )
+
+		if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+		{
+			if ( transmuteActivate && parentGUI.transmuteItemTarget == &shapechangeTargetItem )
+			{
+				foundItem = true;
+				if ( itemActionOK )
+				{
+					Player::soundActivate();
+					parentGUI.executeOnItemClick(parentGUI.transmuteItemTarget);
+				}
+			}
+		}
+		else if ( player_inventory )
 		{
 			for ( node_t* node = player_inventory->first; node != NULL; node = nextnode )
 			{
@@ -27406,7 +27783,12 @@ void GenericGUIMenu::ItemEffectGUI_t::createItemEffectMenu()
 
 	SDL_Rect basePos{ 0, 0, itemEffectBaseWidth, 242 };
 	const char* baseWindow = "*images/ui/ScrollSpells/Scroll_Window_00.png";
-	if ( modeHasCostEffect == COST_EFFECT_GOLD
+	if ( currentMode == ITEMFX_MODE_SHAPECHANGE )
+	{
+		baseWindow = "*images/ui/ScrollSpells/Scroll_Window_GoldManaCost_00.png";
+		basePos.h = 296;
+	}
+	else if ( modeHasCostEffect == COST_EFFECT_GOLD
 		|| modeHasCostEffect == COST_EFFECT_MANA )
 	{
 		baseWindow = "*images/ui/ScrollSpells/Scroll_Window_GoldCost_00.png";

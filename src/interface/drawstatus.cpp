@@ -63,6 +63,7 @@ void updateEnemyBar(Entity* source, Entity* target, const char* name, Sint32 hp,
 			{
 				if ( Uint8 effectStrength = stats->getEffectActive(EFF_DETECT_ENEMY) )
 				{
+					effectStrength = (effectStrength & 0x7F);
 					if ( effectStrength >= 1 && effectStrength < 1 + MAXPLAYERS )
 					{
 						player = effectStrength - 1;
@@ -3416,7 +3417,8 @@ void drawStatusNew(const int player)
 					if ( !(isItemEquippableInShieldSlot(item) && cast_animation[player].active_spellbook) )
 					{
 						if ( stats[player] && stats[player]->type == AUTOMATON
-							&& (item->type == TOOL_METAL_SCRAP || item->type == TOOL_MAGIC_SCRAP) )
+							&& (item->type == TOOL_METAL_SCRAP || item->type == TOOL_MAGIC_SCRAP
+								|| item->type == TOOL_COMPACT_METAL_SCRAP || item->type == TOOL_COMPACT_MAGIC_SCRAP) )
 						{
 							// consume item
 							if ( multiplayer == CLIENT )

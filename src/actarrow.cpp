@@ -1347,6 +1347,10 @@ void actArrow(Entity* my)
 							{
 								hit.entity->defyFleshProc(parent);
 							}
+							if ( hitstats->getEffectActive(EFF_MARK_SPIRIT) || hitstats->getEffectActive(EFF_VAMPIRIC_TOUCH) )
+							{
+								hit.entity->markSpiritProc(parent, damageTaken, spiritAmmo ? DAMAGE_TABLE_MAGIC : DAMAGE_TABLE_RANGED);
+							}
 							hit.entity->pinpointDamageProc(parent, damageTaken);
 						}
 						if ( hitstats->getEffectActive(EFF_LIFT) )

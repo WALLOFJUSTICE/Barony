@@ -509,6 +509,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 							int numSummonedAllies = 0;
 							int firstManaToRefund = 0;
 							int secondManaToRefund = 0;
+							int skullManaToRefund = 0;
 							for ( node_t* node = stats->FOLLOWERS.first; node != nullptr; node = node->next )
 							{
 								Uint32* c = (Uint32*)node->element;
@@ -517,34 +518,41 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 								{
 									mySummon = uidToEntity(*c);
 								}
-								if ( mySummon && mySummon->monsterAllySummonRank != 0 )
+								if ( mySummon )
 								{
 									Stat* mySummonStats = mySummon->getStats();
-									if ( mySummonStats && mySummonStats->type == SKELETON )
+									if ( mySummon && mySummon->monsterAllySummonRank != 0 )
 									{
-										int mp = (mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
-										if ( numSummonedAllies == 0 )
+										if ( mySummonStats && mySummonStats->type == SKELETON )
 										{
-											firstManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
-											if ( mySummonStats->getAttribute("summon_overcharge") != "" )
+											int mp = (mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
+											if ( numSummonedAllies == 0 )
 											{
-												int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
-												firstManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
+												firstManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
+												if ( mySummonStats->getAttribute("summon_overcharge") != "" )
+												{
+													int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
+													firstManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
+												}
+												++numSummonedAllies;
 											}
-											++numSummonedAllies;
-										}
-										else if ( numSummonedAllies == 1 )
-										{
-											mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
-											secondManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
-											if ( mySummonStats->getAttribute("summon_overcharge") != "" )
+											else if ( numSummonedAllies == 1 )
 											{
-												int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
-												secondManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
+												mySummon->setMP(mySummonStats->MAXMP * (mySummonStats->HP / static_cast<float>(mySummonStats->MAXHP)));
+												secondManaToRefund += std::min(spellCost, static_cast<int>((mp / static_cast<float>(mySummonStats->MAXMP)) * spellCost)); // MP to restore
+												if ( mySummonStats->getAttribute("summon_overcharge") != "" )
+												{
+													int manaDiscountPercent = std::stoi(mySummonStats->getAttribute("summon_overcharge"));
+													secondManaToRefund *= std::max(0, (100 - manaDiscountPercent)) / 100.0;
+												}
+												++numSummonedAllies;
 											}
-											++numSummonedAllies;
-											break;
 										}
+									}
+									if ( mySummonStats && mySummonStats->type == REVENANT_SKULL
+										&& mySummonStats->getAttribute("summon_skull") != "" )
+									{
+										skullManaToRefund += mySummonStats->getAttributeInt("summon_skull");
 									}
 								}
 							}
@@ -555,7 +563,7 @@ int boulderCheckAgainstEntity(Entity* my, Entity* entity, bool ignoreInsideEntit
 								secondManaToRefund /= 2;
 							}
 
-							int manaTotal = stats->MP + firstManaToRefund + secondManaToRefund;
+							int manaTotal = stats->MP + firstManaToRefund + secondManaToRefund + skullManaToRefund;
 							if ( manaTotal >= 75 )
 							{
 								lifeSaving = true;

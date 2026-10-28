@@ -385,6 +385,82 @@ void actHudArm(Entity* my)
 		my->yaw = -2 * PI / 32;
 		my->pitch = -17 * PI / 32;
 	}
+
+	if ( stats[HUDARM_PLAYERNUM]->getEffectActive(EFF_FISTS_OF_FORCE) && !(my->flags[INVISIBLE] && !my->flags[INVISIBLE_DITHER]) )
+	{
+		int interval = 15;
+		bool charging = false;
+		if ( parent->skill[3] > 0 )
+		{
+			// charge
+			charging = true;
+			interval = 5;
+		}
+		if ( ticks % interval == 0 )
+		{
+			Entity* particle = spawnGib(my, 16);
+			particle->flags[INVISIBLE] = false;
+			particle->flags[SPRITE] = true;
+			particle->flags[NOUPDATE] = true;
+			particle->flags[UPDATENEEDED] = false;
+			particle->flags[OVERDRAW] = true;
+			particle->lightBonus = vec4(0.2f, 0.2f, 0.2f, 0.f);
+			particle->scalex = 0.25f; //MAKE 'EM SMALL PLEASE!
+			particle->scaley = 0.25f;
+			particle->scalez = 0.25f;
+
+			particle->x = my->x;
+			particle->y = my->y;
+			particle->z = my->z;
+			particle->sprite = 320;
+			if ( charging )
+			{
+				particle->sprite = 320;
+			}
+
+			particle->yaw = ((local_rng.rand() % 6) * 60) * PI / 180.0;
+			particle->pitch = (local_rng.rand() % 360) * PI / 180.0;
+			particle->roll = (local_rng.rand() % 360) * PI / 180.0;
+			particle->vel_x = cos(particle->yaw) * .1;
+			particle->vel_y = sin(particle->yaw) * .1;
+			particle->vel_z = -.05;
+			particle->fskill[3] = 0.01;
+			particle->skill[11] = HUDARM_PLAYERNUM;
+
+			real_t focalx = my->focalx - 1;
+			real_t focaly = my->focaly;
+			real_t focalz = (my->focalz + 3);
+			if ( playerRace == RAT )
+			{
+				focalx += 3;
+				focalz += -5;
+
+				particle->scalex *= 0.5; //MAKE 'EM SMALL PLEASE!
+				particle->scaley *= 0.5;
+				particle->scalez *= 0.5;
+			}
+			else if ( playerRace == SPIDER )
+			{
+				focalx += 5;
+				focalz += -4;
+			}
+
+			// magic code to translate focals into pure coords (doesn't include focaly)
+			real_t xoffset = focalz * sin(my->pitch + PI) * cos(my->roll) * cos(my->yaw);
+			real_t yoffset = focalz * sin(my->pitch + PI) * cos(my->roll) * sin(my->yaw);
+			xoffset += focalz * sin(my->roll + PI) * cos(my->yaw + PI / 2);
+			yoffset += focalz * sin(my->roll + PI) * sin(my->yaw + PI / 2);
+
+			xoffset += focalx * cos(my->yaw) * sin(my->pitch + PI / 2) + focaly * cos(my->yaw + PI / 2);
+			yoffset += focalx * sin(my->yaw) * sin(my->pitch + PI / 2) + focaly * sin(my->yaw + PI / 2);
+
+			real_t zoffset = focalz * cos(my->pitch) * cos(my->roll);
+			zoffset += focalx * sin(my->pitch);
+			particle->x += xoffset;
+			particle->y += yoffset;
+			particle->z += zoffset;
+		}
+	}
 }
 
 #define HUDWEAPON_CHOP my->skill[0]

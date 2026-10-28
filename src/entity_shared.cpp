@@ -105,7 +105,7 @@ Entity::Entity(Sint32 in_sprite, Uint32 pos, list_t* entlist, list_t* creatureli
 	monsterAllySummonRank(skill[50]),
 	monsterKnockbackVelocity(fskill[9]),
 	monsterKnockbackUID(skill[51]),
-	creatureWebbedSlowCount(skill[52]),
+	//creatureWebbedSlowCount(skill[52]),
 	monsterFearfulOfUid(skill[53]),
 	creatureShadowTaggedThisUid(skill[54]),
 	monsterIllusionTauntingThisUid(skill[55]),
@@ -2169,6 +2169,8 @@ std::vector<std::pair<const char*, const char*>> spriteEditorNameStrings =
 	{ "ASCENSION SHRINE",				"interactables" },
 	{ "FLOOR BUILDER",                  "mech" },
 	{ "SOKOBAN MAN",                    "misc" },
+	{ "NOT USED",						"" },
+	{ "NOT USED",						"" },
 	{ "NOT USED",						"" },
 	{ "NOT USED",						"" },
 };

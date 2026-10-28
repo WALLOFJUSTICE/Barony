@@ -492,7 +492,7 @@ void incubusDie(Entity* my)
 		createParticleErupt(my, 983);
 		serverSpawnMiscParticles(my, PARTICLE_EFFECT_ERUPT, 983);
 		//playSoundEntity(my, 279 + local_rng.rand() % 3, 128);
-		playSoundEntity(my, 178, 128);
+		playSoundEntity(my, 902, 128);
 		my->removeMonsterDeathNodes();
 		list_RemoveNode(my->mynode);
 		return;
@@ -606,7 +606,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			{
 				myStats->HP = 0;
 			}
-			else if ( my->ticks > TICKS_PER_SECOND * 5 )
+			else if ( my->ticks > TICKS_PER_SECOND * 8 )
 			{
 				myStats->HP = 0;
 			}
@@ -798,7 +798,7 @@ void incubusMoveBodyparts(Entity* my, Stat* myStats, double dist)
 								myStats->setEffectActive(EFF_PARALYZED, 1);
 								if ( my->monsterAttack == MONSTER_POSE_INCUBUS_TAUNT )
 								{
-									myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 250;
+									myStats->EFFECTS_TIMERS[EFF_PARALYZED] = 500;
 								}
 								else
 								{

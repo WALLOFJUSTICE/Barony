@@ -8260,7 +8260,7 @@ void assignActions(map_t* map)
 						}
 					}
 
-					if ( !revived )
+					if ( !revived && !players[numplayers]->initFromLoadingSavedGame )
 					{
 						int hpMod = Entity::getHPRestoreOnLevelUp(entity, stats[numplayers], 0, true);
 						int mpMod = Entity::getMPRestoreOnLevelUp(entity, stats[numplayers], 0, true);
@@ -8284,7 +8284,7 @@ void assignActions(map_t* map)
 							}
 						}
 					}
-
+					players[numplayers]->initFromLoadingSavedGame = false;
 					++numplayers;
 				}
 				if ( balance > 4 )

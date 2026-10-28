@@ -250,8 +250,15 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap);
 struct MinimapHighlight_t
 {
 	Uint32 ticks = 0;
+	enum RevealType
+	{
+		REVEAL_DAEDALUS,
+		REVEAL_SCRY
+	};
+	RevealType revealType = REVEAL_DAEDALUS;
 };
 extern std::map<int, MinimapHighlight_t> minimapHighlights;
+void shrineDaedalusRevealMap(Entity& my, MinimapHighlight_t::RevealType revealType, Entity* targetExit = nullptr);
 void handleDamageIndicatorTicks();
 void drawStatus(const int player);
 void drawStatusNew(const int player);
@@ -705,7 +712,7 @@ public:
 		bool warpMouseToSelectedTinkerItem(Item* snapToItem, Uint32 flags);
 		void clearItemDisplayed();
 		void updateTinkerScrapHeld(void* metalHeldText, void* magicHeldText, int realMetalScrap, int realMagicScrap);
-
+		static const int COMPACT_SCRAP_QTY = 5;
 		static int heightOffsetWhenNotCompact;
 	};
 	TinkerGUI_t tinkerGUI;
@@ -715,7 +722,19 @@ public:
 		GenericGUIMenu& parentGUI;
 		ItemEffectGUI_t(GenericGUIMenu& g) :
 			parentGUI(g)
-		{}
+		{
+			shapechangeTargetItem.type = POTION_POLYMORPH;
+			shapechangeTargetItem.appearance = 0;
+			shapechangeTargetItem.count = 1;
+			shapechangeTargetItem.beatitude = 0;
+			shapechangeTargetItem.node = nullptr;
+			shapechangeTargetItem.status = EXCELLENT;
+			shapechangeTargetItem.identified = true;
+			shapechangeTargetItem.uid = 0;
+			shapechangeTargetItem.isDroppable = false;
+			shapechangeTargetItem.x = 0;
+			shapechangeTargetItem.y = 0;
+		}
 
 		Frame* itemEffectFrame = nullptr;
 		real_t animx = 0.0;
@@ -763,7 +782,9 @@ public:
 			ITEMFX_MODE_CLEANSE_FOOD,
 			ITEMFX_MODE_ADORCISE_INSTRUMENT,
 			ITEMFX_MODE_SCEPTER_CHARGE,
-			ITEMFX_MODE_SCRY_ITEM
+			ITEMFX_MODE_SCRY_ITEM,
+			ITEMFX_MODE_SHAPECHANGE,
+			ITEMFX_MODE_COMPACT_SCRAP
 		};
 		void openItemEffectMenu(ItemEffectModes mode);
 		ItemEffectModes currentMode = ITEMFX_MODE_NONE;
@@ -777,6 +798,10 @@ public:
 		int itemType = -1;
 		int itemRequirement = -1;
 		int confirmActionSteps = 0;
+
+		Item shapechangeTargetItem;
+		int shapechangeLastAppearanceScroll = 0;
+
 		enum ItemEffectActions_t : int
 		{
 			ITEMFX_ACTION_NONE,
@@ -793,7 +818,8 @@ public:
 			ITEMFX_ACTION_UNVOIDABLE,
 			ITEMFX_ACTION_AT_MAX_BLESSING,
 			ITEMFX_ACTION_NEED_SKILL_LVLS,
-			ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD
+			ITEMFX_ACTION_CANT_AFFORD_MANA_AND_GOLD,
+			ITEMFX_ACTION_TOO_FEW_QTY
 		};
 		std::pair<Uint32, int> confirmActionOnItemSteps;
 		ItemEffectActions_t itemActionType = ITEMFX_ACTION_NONE;

@@ -3963,6 +3963,313 @@ void setupSpells()   ///TODO: Verify this function.
 	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
 	spell->distance = 64.0;
 
+	spell = createSimpleSpell(
+		SPELL_FORTIFY_HP,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_fortify_hp");
+
+	spell = createSimpleSpell(
+		SPELL_FORTIFY_MP,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_fortify_mp");
+
+	spellElementConstructor(SPELL_MARK_SPIRIT,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_mark_spirit");
+	spell = spellConstructor(
+		SPELL_MARK_SPIRIT,										// ID
+		100,												// difficulty
+		"spell_mark_spirit",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_MARK_SPIRIT });
+
+	spellElementConstructor(SPELL_WEB_BOMB,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_web_bomb");
+	spell = spellConstructor(
+		SPELL_WEB_BOMB,										// ID
+		100,												// difficulty
+		"spell_web_bomb",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_WEB_BOMB });
+
+	spell = createSimpleSpell(
+		SPELL_LIGHTNING_NEXUS,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		20, // damage
+		1, // duration
+		"spell_lightning_nexus");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spellElementConstructor(SPELL_PUNISH,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		50,		// damage
+		0,		// duration
+		"spell_element_punish");
+	spell = spellConstructor(
+		SPELL_PUNISH,										// ID
+		100,												// difficulty
+		"spell_punish",										// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_PUNISH });
+
+	spell = createSimpleSpell(
+		SPELL_RUPTURE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_rupture");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_VAMPIRIC_TOUCH,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_vampiric_touch");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_PILGRIMAGE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_pilgrimage");
+
+	spell = createSimpleSpell(
+		SPELL_SCRY_EXIT,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_scry_exit");
+
+	spell = createSimpleSpell(
+		SPELL_ENTHRALL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		5, // damage
+		1, // duration
+		"spell_enthrall");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_SHAPECHANGE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_shapechange");
+
+	spell = createSimpleSpell(
+		SPELL_EXORCISED_GROUND,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		20, // damage
+		1, // duration
+		"spell_exorcised_ground");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_WALK_MP,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_walk_mp");
+
+	spell = createSimpleSpell(
+		SPELL_DUST_STORM,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		20, // damage
+		1, // duration
+		"spell_dust_storm");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_SACRED_GROUND,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_sacred_ground");
+
+	spell = createSimpleSpell(
+		SPELL_ENEMY_VISION,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_enemy_vision");
+
+	spell = createSimpleSpell(
+		SPELL_COMPACT_SCRAP,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_compact_scrap");
+
+	spell = createSimpleSpell(
+		SPELL_VORTEX,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_vortex");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_GREASE_ELEMENTAL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		20, // damage
+		1, // duration
+		"spell_grease_elemental");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE;
+	spell->distance = 64.0;
+
+	spellElementConstructor(SPELL_GREASE_BOLT,
+		1,		// mana
+		1,		// base mana
+		1,		// overload
+		0,		// damage
+		100,	// duration
+		"spell_element_grease_bolt");
+	spell = spellConstructor(
+		SPELL_GREASE_BOLT,											// ID
+		100,														// difficulty
+		"spell_grease_bolt",											// internal name
+		// elements
+		{ SPELL_ELEMENT_PROPULSION_MISSILE, SPELL_GREASE_BOLT }
+	);
+	spell->hide_from_ui = true;
+
+	spell = createSimpleSpell(
+		SPELL_FISTS_OF_FORCE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_fists_of_force");
+
+	spell = createSimpleSpell(
+		SPELL_REGROWTH,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_regrowth");
+
+	spell = createSimpleSpell(
+		SPELL_PHASE_OTHER,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		20, // damage
+		1, // duration
+		"spell_phase_other");
+	spell->rangefinder = SpellRangefinderType::RANGEFINDER_TOUCH_INTERACT;
+	spell->distance = 64.0;
+
+	spell = createSimpleSpell(
+		SPELL_LIFESAVING_PARTICLE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_lifesaving_particle");
+	spell->hide_from_ui = true;
+
+	spell = createSimpleSpell(
+		SPELL_SUMMON_SKULL,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_summon_skull");
+
+	spell = createSimpleSpell(
+		SPELL_DECONSTRUCT,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_deconstruct");
+
 	std::vector<node_t*> subElementsToCopy;
 	std::map<int, int> spellSchoolCounters;
 	for ( int i = 0; i < NUM_SPELLS; ++i )

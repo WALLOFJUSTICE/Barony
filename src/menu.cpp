@@ -8896,6 +8896,14 @@ void doNewGame(bool makeHighscore) {
 			players[c]->compendiumProgress.itemEvents.clear();
 			players[c]->compendiumProgress.floorEvents.clear();
 		}
+		if ( loadingsavegame )
+		{
+			players[c]->initFromLoadingSavedGame = true;
+		}
+		else
+		{
+			players[c]->initFromLoadingSavedGame = false;
+		}
 	}
 
 	// load dungeon

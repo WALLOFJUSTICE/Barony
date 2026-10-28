@@ -279,7 +279,7 @@ public:
 	Sint32& monsterAllySummonRank; //skill[50]
 	real_t& monsterKnockbackVelocity; //fskill[9]
 	Sint32& monsterKnockbackUID; //skill[51]
-	Sint32& creatureWebbedSlowCount; //skill[52]
+	//Sint32& creatureWebbedSlowCount; //skill[52] -- free slot
 	Sint32& monsterFearfulOfUid; //skill[53]
 	Sint32& creatureShadowTaggedThisUid; //skill[54]
 	Sint32& monsterIllusionTauntingThisUid; //skill[55]
@@ -789,7 +789,8 @@ public:
 		SHOW_MAP_SCRY = 3,
 		SHOW_MAP_DONATION = 4,
 		SHOW_MAP_PINPOINT = 5,
-		SHOW_MAP_DETECT_MONSTER = 6
+		SHOW_MAP_DETECT_MONSTER_BLINK = 6,
+		SHOW_MAP_DETECT_MONSTER_NOBLINK = 7,
 	};
 	void setEntityShowOnMap(EntityShowMapSource source, int duration)
 	{
@@ -1282,6 +1283,9 @@ public:
 			case MONSTER_ADORCISED_WEAPON:
 				adorcisedWeaponChooseWeapon(target, dist);
 				break;
+			case FLAME_ELEMENTAL:
+				flameElementalChooseWeapon(target, dist);
+				break;
 			default:
 				break;
 		}
@@ -1304,6 +1308,7 @@ public:
 	void stareMasterChooseWeapon(const Entity* target, double dist);
 	void salamanderChooseWeapon(const Entity* target, double dist);
 	void adorcisedWeaponChooseWeapon(const Entity* target, double dist);
+	void flameElementalChooseWeapon(const Entity* target, double dist);
 	void skeletonSummonSetEquipment(Stat* myStats, int rank);
 	static void tinkerBotSetStats(Stat* myStats, int rank);
 	static void mimicSetStats(Stat* myStats);
@@ -1385,6 +1390,7 @@ public:
 	void playerStatIncrease(int playerClass, int chosenStats[3]);
 	bool isBossMonster(); // return true if boss map (hell boss, boss etc or shopkeeper/shadow/other boss
 	bool isSmiteWeakMonster();
+	bool isUndeadMonster(Monster type = NOTHING);
 	bool isBeastMonster(Monster type = NOTHING, bool includeBeastFolk = true);
 	bool isConstructMonster(Monster type = NOTHING);
 	bool isElementalMonster(Monster type = NOTHING);
@@ -1435,10 +1441,13 @@ public:
 	real_t monsterGetWeightRatio();
 	bool spellEffectPreserveItem(Item* item);
 	bool spellEffectInnoculateStatusEffect(int effect, Entity* attacker, bool forceProc);
+	bool spellEffectTrueBloodStatusEffect(int effect, Entity* attacker, bool forceProc);
 	bool mistFormDodge(bool checkEffectActiveOnly, Entity* attacker);
 	bool defyFleshProc(Entity* attacker);
+	bool spellPunishProc();
 	bool pinpointDamageProc(Entity* attacker, int damage);
 	bool cycloneDamageProc(Entity* attacker, int damage);
+	bool markSpiritProc(Entity* attacker, int damage, DamageTableType type);
 	static bool modifyDamageMultipliersFromEffects(Entity* hitentity, Entity* attacker, 
 		real_t& damageMultiplier, DamageTableType damageTableType, Entity* projectile = nullptr, int spellID = -1);
 	real_t getHealingSpellPotionModifierFromEffects(bool processLevelup);
@@ -1639,7 +1648,6 @@ bool weaponSpriteAllowedImpForm(int sprite);
 bool playerRequiresBloodToSustain(int player); // vampire type or accursed class
 void spawnBloodVialOnMonsterDeath(Entity* entity, Stat* hitstats, Entity* killer);
 
-void shrineDaedalusRevealMap(Entity& my);
 void daedalusShrineInteract(Entity* my, Entity* touched);
 bool eternalShrineProcessOfferingItem(const int player, Uint32 shrineUid, int shrineType, Item* item);
 bool eternalShrineProcessAnvilItem(const int player, Uint32 shrineUid, int shrineType, Item* item);

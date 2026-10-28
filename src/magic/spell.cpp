@@ -885,6 +885,23 @@ int getCostOfSpell(spell_t* spell, Entity* caster)
 			cost /= 2;
 		}
 	}
+	else if ( spell->ID == SPELL_ENEMY_VISION && caster )
+	{
+		Stat* casterStats = caster->getStats();
+		if ( casterStats 
+			&& (casterStats->getEffectActive(EFF_ENEMY_VISION) || players[caster->skill[2]]->entity->skill[3] == 4) )
+		{
+			cost = 1;
+		}
+	}
+	else if ( spell->ID == SPELL_PHASE_OTHER && caster )
+	{
+		if ( caster->getStats()
+			&& caster->getStats()->getEffectActive(EFF_PHASED) >= 1 && caster->getStats()->getEffectActive(EFF_PHASED) <= 2 )
+		{
+			cost = 5;
+		}
+	}
 
 	return cost;
 }
@@ -1033,6 +1050,14 @@ real_t getBonusFromCasterOfSpellElement(Entity* caster, Stat* casterStats, spell
 			{
 				real_t mult = std::min(0.9, 0.2 + (effectStrength - 1) * 0.1);
 				bonus += -mult;
+			}
+
+			if ( Uint8 effectStrength = casterStats->getEffectActive(EFF_HOLY_FIRE) )
+			{
+				if ( effectStrength & (1 << 7) )
+				{
+					bonus += -0.5;
+				}
 			}
 
 			if ( casterStats->type == SALAMANDER )

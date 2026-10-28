@@ -185,6 +185,18 @@ static const int EFF_SLOW_COLD = 160;
 static const int EFF_TOXIC = 161;
 static const int EFF_TOXIC_WEAPON = 162;
 static const int EFF_SPIRIT_AMMO = 163;
+static const int EFF_FORTIFY_HP = 164;
+static const int EFF_FORTIFY_MP = 165;
+static const int EFF_MARK_SPIRIT = 166;
+static const int EFF_PUNISHMENT = 167;
+static const int EFF_RUPTURE = 168;
+static const int EFF_VAMPIRIC_TOUCH = 169;
+static const int EFF_ENTHRALL = 170;
+static const int EFF_ENEMY_VISION = 171;
+static const int EFF_FISTS_OF_FORCE = 172;
+static const int EFF_REGROWTH = 173;
+static const int EFF_PHASED = 174;
+static const int EFF_WALK_MP = 175;
 static const int NUMEFFECTS = 192;
 
 // stats
@@ -459,6 +471,7 @@ public:
 	Sint32& burningInflictedBy; // MISC_FLAGS[18]
 	Sint32& monsterNoDropItems; // MISC_FLAGS[19]
 	Sint32& monsterForceAllegiance; // MISC_FLAGS[20]
+	Sint32& monsterRequireClientStatUpdate; // MISC_FLAGS[21]
 
 	// group think
 	Uint32 leader_uid;

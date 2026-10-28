@@ -277,7 +277,7 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 							if ( !minimap[y][x] )
 							{
 								minimap[y][x] = 3;
-								if ( !checkedDaedalusEvent )
+								if ( !checkedDaedalusEvent && find->second.revealType == MinimapHighlight_t::REVEAL_DAEDALUS )
 								{
 									for ( auto ent : entityPointsOfInterest )
 									{
@@ -351,10 +351,23 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 						Uint8 r, g, b, a;
 						int r2, g2, b2, a2;
 						getColor(color, &r, &g, &b, &a);
-						r2 = std::min(255, std::max(0, (int)(r + 255.0 * percent)));
-						g2 = std::min(255, std::max(0, (int)(g - 128.0 * percent)));
-						b2 = std::min(255, std::max(0, (int)(b + 255.0 * percent)));
-						a2 = std::min(255, std::max(64, (int)(a - 64 * percent)));
+						if ( find->second.revealType == MinimapHighlight_t::REVEAL_DAEDALUS )
+						{
+							r2 = std::min(255, std::max(0, (int)(r + 255.0 * percent)));
+							g2 = std::min(255, std::max(0, (int)(g - 128.0 * percent)));
+							b2 = std::min(255, std::max(0, (int)(b + 255.0 * percent)));
+							a2 = std::min(255, std::max(64, (int)(a - 64 * percent)));
+						}
+						else if ( find->second.revealType == MinimapHighlight_t::REVEAL_SCRY )
+						{
+							//r2 = std::min(255, std::max(0, (int)(r + 255.0 * percent)));
+							//g2 = std::min(255, std::max(0, (int)(g + 255.0 * percent)));
+							//b2 = std::min(255, std::max(0, (int)(b + 255.0 * percent)));
+							r2 = std::min(255, std::max(0, (int)(r + (200 - r) * percent)));
+							g2 = std::min(255, std::max(0, (int)(g + (200 - g) * percent)));
+							b2 = std::min(255, std::max(0, (int)(b + (255 - b) * percent)));
+							a2 = std::min(255, std::max(128, (int)(a - 64 * percent)));
+						}
 						color = makeColor(r2, g2, b2, a2);
 					}
 				}
@@ -617,6 +630,16 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 				|| (entity->isDamageableCollider() && entity->colliderHideMonster != 0) )
 			{
 				bool warningEffect = false;
+				bool blink = false;
+				if ( (entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_DETECT_MONSTER_BLINK) )
+				{
+					if ( (::ticks % 10 >= 5) )
+					{
+						blink = true;
+					}
+				}
+
+				if ( !blink )
 				{
 					if ( drawingSharedMap )
 					{
@@ -836,6 +859,16 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 					// boulder
 					drawCircleMesh((real_t)x + 0.5, (real_t)y + 0.5, (real_t)1.0, rect, makeColor(140, 220, 255, 255));
 				}
+				else
+				{
+					if ( (ticks % 40 - ticks % 20) )
+					{
+						if ( entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_SCRY )
+						{
+							drawCircleMesh((real_t)x + 0.5, (real_t)y + 0.5, (real_t)1.0, rect, makeColor(200, 200, 255, 255));
+						}
+					}
+				}
 			}
 			else if ( entity->behavior == &actTeleporter )
 			{
@@ -893,9 +926,14 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 			{
 				int x = std::min<int>(std::max<int>(0, entity->x / 16), map.width - 1);
 				int y = std::min<int>(std::max<int>(0, entity->y / 16), map.height - 1);
-				if ( entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_DETECT_MONSTER )
+				if ( entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_DETECT_MONSTER_NOBLINK
+					|| (entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_DETECT_MONSTER_BLINK) )
 				{
-					drawCircleMesh((real_t)x + 0.5, (real_t)y + 0.5, (real_t)1.0, rect, makeColor(191, 127, 191, 255));
+					if ( entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_DETECT_MONSTER_NOBLINK
+						|| (entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_DETECT_MONSTER_BLINK && (::ticks % 10 < 5)) )
+					{
+						drawCircleMesh((real_t)x + 0.5, (real_t)y + 0.5, (real_t)1.0, rect, makeColor(191, 127, 191, 255));
+					}
 				}
 				else if ( entity->getEntityShowOnMapSource() == Entity::SHOW_MAP_PINPOINT )
 				{
@@ -1390,26 +1428,33 @@ void minimapPingAdd(const int srcPlayer, const int destPlayer, MinimapPing newPi
 }
 
 static ConsoleVariable<float> cvar_shrine_reveal_steps("/shrine_reveal_steps", 8.0);
-void shrineDaedalusRevealMap(Entity& my)
+void shrineDaedalusRevealMap(Entity& my, MinimapHighlight_t::RevealType revealType, Entity* targetExit)
 {
 	Entity* exitEntity = nullptr;
-	for ( node_t* node = map.entities->first; node; node = node->next )
+	if ( targetExit )
 	{
-		Entity* entity = (Entity*)node->element;
-		if ( !entity ) { continue; }
-
-		if ( (entity->behavior == &actLadder && strcmp(map.name, "Hell"))
-			|| (entity->behavior == &actPortal && !strcmp(map.name, "Hell")) )
+		exitEntity = targetExit;
+	}
+	else
+	{
+		for ( node_t* node = map.entities->first; node; node = node->next )
 		{
-			if ( entity->behavior == &actLadder && entity->skill[3] != 1 )
+			Entity* entity = (Entity*)node->element;
+			if ( !entity ) { continue; }
+
+			if ( (entity->behavior == &actLadder && strcmp(map.name, "Hell"))
+				|| (entity->behavior == &actPortal && !strcmp(map.name, "Hell")) )
 			{
-				exitEntity = entity;
-				break;
-			}
-			if ( entity->behavior == &actPortal && entity->portalNotSecret == 1 )
-			{
-				exitEntity = entity;
-				break;
+				if ( entity->behavior == &actLadder && entity->skill[3] != 1 )
+				{
+					exitEntity = entity;
+					break;
+				}
+				if ( entity->behavior == &actPortal && entity->portalNotSecret == 1 )
+				{
+					exitEntity = entity;
+					break;
+				}
 			}
 		}
 	}
@@ -1423,7 +1468,7 @@ void shrineDaedalusRevealMap(Entity& my)
 
 	real_t tangent = atan2(exitEntity->y - my.y, exitEntity->x - my.x);
 
-	if ( Entity* lightball = newEntity(1482, 1, map.entities, nullptr) )
+	if ( Entity* lightball = newEntity(revealType == MinimapHighlight_t::REVEAL_DAEDALUS ? 1482 : 2644, 1, map.entities, nullptr) )
 	{
 		lightball->x = my.x;
 		lightball->y = my.y;
@@ -1431,7 +1476,14 @@ void shrineDaedalusRevealMap(Entity& my)
 		lightball->vel_x = 0.33 * *cvar_shrine_reveal_steps * cos(tangent);
 		lightball->vel_y = 0.33 * *cvar_shrine_reveal_steps * sin(tangent);
 		lightball->yaw = tangent;
-		lightball->parent = my.getUID();
+		if ( revealType == MinimapHighlight_t::REVEAL_SCRY )
+		{
+			lightball->parent = exitEntity->getUID();
+		}
+		else
+		{
+			lightball->parent = my.getUID();
+		}
 		lightball->behavior = &actMagiclightMoving;
 		lightball->skill[0] = TICKS_PER_SECOND * 10;
 		lightball->skill[1] = 1;
@@ -1481,6 +1533,7 @@ void shrineDaedalusRevealMap(Entity& my)
 				{
 					visited.insert(x + 10000 * y);
 					minimapHighlights[x + 10000 * y].ticks = tickOffset;
+					minimapHighlights[x + 10000 * y].revealType = revealType;
 				}
 			}
 		}

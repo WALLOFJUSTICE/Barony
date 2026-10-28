@@ -674,6 +674,7 @@ public:
 	SplitScreenTypes splitScreenType = SPLITSCREEN_DEFAULT;
 	bool bControlEnabled = true; // disabled if dead waiting for gameover prompt etc
 	bool was_connected_to_game = false;
+	bool initFromLoadingSavedGame = false; // true if going from main menu loading a savegame, to not replay on-spawn hp/mp regain effects
 	static bool cinemaMode;
 	Player(int playernum = 0, bool local_host = true);
 	~Player();
@@ -2553,6 +2554,7 @@ public:
 		std::deque<std::pair<Uint32, RestoreFormPos_t>> restoreFormPositions;
 		std::set<Uint32> targetsRefuseCompel;
 		Uint32 innoculateEffectsTick[NUMEFFECTS + 1]; // +1 is burning
+		Uint32 trueBloodEffectsTick[NUMEFFECTS];
 		static void ensembleMusicUpdateServer();
 		static void ensembleMusicUpdate();
 		enum class BreakableEvent
@@ -2568,9 +2570,10 @@ public:
 		void updateBreakableCounterServer();
 		void updateBreakableCounterClient(BreakableEvent eventType);
 		Uint32 ensembleDataUpdate = 0;
+		std::vector<Stat*> phaseOtherStats;
 		PlayerMechanics_t(Player& p) : player(p)
 		{};
-		~PlayerMechanics_t() {};
+		~PlayerMechanics_t();
 	} mechanics;
 
 	static void soundMovement();

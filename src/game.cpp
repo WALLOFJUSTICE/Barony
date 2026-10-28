@@ -392,7 +392,8 @@ void TimerExperiments::renderCameras(view_t& camera, int player)
 	camera.roll_ang = 0.0;
 	if ( players[player]->entity )
 	{
-		if ( players[player]->entity->skill[3] == 2 || players[player]->entity->skill[3] == 3 )
+		if ( players[player]->entity->skill[3] == 2 || players[player]->entity->skill[3] == 3
+			|| players[player]->entity->skill[3] == 4 )
 		{
 			camera.x = TimerExperiments::cameraRenderState[player].x.position;
 			camera.y = TimerExperiments::cameraRenderState[player].y.position;
@@ -6949,7 +6950,12 @@ void drawAllPlayerCameras() {
 				DebugStats.drawWorldT3 = std::chrono::high_resolution_clock::now();
 				if ( !players[c]->entity->isBlind() )
 				{
-				    raycast(camera, minimap, true); // update minimap
+					bool fillWithColor = true;
+					if ( players[c]->entity->skill[3] == 4 ) // enemy vision spell
+					{
+						fillWithColor = false;
+					}
+				    raycast(camera, minimap, fillWithColor); // update minimap
 				}
 				DebugStats.drawWorldT4 = std::chrono::high_resolution_clock::now();
 				glDrawWorld(&camera, REALCOLORS);

@@ -2424,6 +2424,11 @@ void updateAllyBarFrame(const int player, Frame* baseFrame, int activeBars, int 
 							followerName = MonsterData_t::monsterDataEntries[SKELETON].specialNPCs["skeleton knight"].shortname;
 							followerBar.customPortraitPath = MonsterData_t::monsterDataEntries[SKELETON].specialNPCs["skeleton knight"].uniqueIcon;
 						}
+						else if ( MonsterData_t::nameMatchesSpecialNPCName(*followerStats, "skeleton revenant") )
+						{
+							followerName = MonsterData_t::monsterDataEntries[SKELETON].specialNPCs["skeleton revenant"].shortname;
+							followerBar.customPortraitPath = MonsterData_t::monsterDataEntries[SKELETON].specialNPCs["skeleton revenant"].uniqueIcon;
+						}
 						else
 						{
 							followerName = followerStats->name;
@@ -6350,6 +6355,18 @@ std::string getStatusEffectNumberString(Uint8 effectStrength, std::vector<int> b
 		{
 			return std::to_string(effectStrength);
 		}
+		else if ( effectID == EFF_FORTIFY_HP )
+		{
+			return std::to_string(effectStrength);
+		}
+		else if ( effectID == EFF_FORTIFY_MP )
+		{
+			return std::to_string(effectStrength);
+		}
+		else if ( effectID == EFF_FISTS_OF_FORCE )
+		{
+			return std::to_string(effectStrength);
+		}
 		else if ( effectID == EFF_HARDENING || effectID == EFF_REACTIVITY
 			|| effectID == EFF_FLAME_SHIELD )
 		{
@@ -6413,7 +6430,7 @@ std::string getStatusEffectNumberString(Uint8 effectStrength, std::vector<int> b
 std::map<std::string, std::function<std::string(int)>> statusfx_num_lookup =
 {
 	{ "holy_burn.png", [](int player)
-		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_HOLY_FIRE), std::vector<int>{2, 3, 4}); }
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_HOLY_FIRE) & 0x7F, std::vector<int>{2, 3, 4}); }
 	},
 	{ "incoherence.png", [](int player)
 		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_INCOHERENCE), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}); }
@@ -6460,11 +6477,20 @@ std::map<std::string, std::function<std::string(int)>> statusfx_num_lookup =
 		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_REACTIVITY), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_REACTIVITY); }
 	},
 	{ "flame_shield.png", [](int player)
-		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_FLAME_SHIELD), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_HARDENING); }
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_FLAME_SHIELD), std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_FLAME_SHIELD); }
 	},
 	{ "demesne_door.png", [](int player)
 		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_DEMESNE_DOOR), std::vector<int>{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, EFF_DEMESNE_DOOR); }
-	}
+	},
+	{ "fortify.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_FORTIFY_HP) & 0x7F, std::vector<int>{}, EFF_FORTIFY_HP); }
+	},
+	{ "healing_word.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_FORTIFY_MP) & 0x7F, std::vector<int>{}, EFF_FORTIFY_MP); }
+	},
+	{ "fists_of_force.png", [](int player)
+		{ return getStatusEffectNumberString(stats[player]->getEffectActive(EFF_FISTS_OF_FORCE), std::vector<int>{}, EFF_FISTS_OF_FORCE); }
+	},
 };
 
 std::string statusfx_num_lookup_exists(std::string& path)
@@ -6533,6 +6559,9 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 				|| stats[player]->getEffectActive(EFF_DISPIRITED)
 				|| stats[player]->getEffectActive(EFF_DEMESNE_DOOR)
 				|| stats[player]->getEffectActive(EFF_LIGHTEN_LOAD)
+				|| stats[player]->getEffectActive(EFF_FORTIFY_HP)
+				|| stats[player]->getEffectActive(EFF_FORTIFY_MP)
+				|| stats[player]->getEffectActive(EFF_FISTS_OF_FORCE)
 				|| ((stats[player]->getEffectActive(EFF_VIGOR) >> 4) & 0xF)
 				|| (cast_animation[player].overcharge > 0 || cast_animation[player].overcharge_init > 0)
 				|| (players[player]->mechanics.gremlinBreakableCounter > 0 && stats[player]->type == GREMLIN)
@@ -7050,7 +7079,7 @@ void draw_status_effect_numbers_fn(const Widget& widget, SDL_Rect pos) {
 						else if ( img->path.find("divine_sanctuary.png") != std::string::npos )
 						{
 							alignRight = true;
-							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SANCTUARY) & 0xF;
+							Uint8 effectStrength = stats[player]->getEffectActive(EFF_SANCTUARY) & 0x7;
 							if ( effectStrength >= 1 )
 							{
 								std::string val = "I";
@@ -9177,6 +9206,11 @@ void StatusEffectQueue_t::updateAllQueuedEffects()
 			else if ( i == EFF_STASIS && stats[player]->getEffectActive(EFF_STASIS) >= 2 )
 			{
 				effectActive = false;
+			}
+			else if ( (i == EFF_SLOW || i == EFF_SLOW_COLD) && stats[player]->getEffectActive(EFF_TRUE_BLOOD) )
+			{
+				skipAnim = true;
+				effectsToSkipAnim.insert(i);
 			}
 			
 			if ( !players[player]->entity )
@@ -11567,7 +11601,15 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 		}
 		else
 		{
-			textSpellTarget->setText(Language::get(6499));
+			if ( cast_animation[player.playernum].spell && cast_animation[player.playernum].spell->ID == SPELL_PHASE_OTHER
+				&& cast_animation[player.playernum].rangefinder == SpellRangefinderType::RANGEFINDER_TOUCH_FLOOR_TILE )
+			{
+				textSpellTarget->setText(Language::get(7430));
+			}
+			else
+			{
+				textSpellTarget->setText(Language::get(6499));
+			}
 		}
 
 		textPos.w = textSpellTarget->getTextObject()->getWidth();

@@ -609,7 +609,7 @@ void actFociGib(Entity* my)
 
 							if ( parent && parent->behavior == &actMonster )
 							{
-								if ( parent->checkFriend(entity) )
+								if ( entity->getUID() != parent->monsterTarget && parent->checkFriend(entity) )
 								{
 									if ( hitprops )
 									{
@@ -2027,6 +2027,13 @@ Entity* spawnGreasePuddle(Entity* parent, real_t x, real_t y, int duration, int 
 		entity->behavior = &actGreasePuddle;
 		entity->parent = parent->getUID();
 		entity->yaw = (local_rng.rand() % 360) * PI / 180.0;
+
+		int randomScale = local_rng.rand() % 10;
+		entity->fskill[0] = (100 - randomScale) / 100.f; // end scale
+		entity->skill[0] = 1;// duration + TICKS_PER_SECOND;
+		entity->scalex = 0.0;
+		entity->scalez = entity->scalex;
+
 		entity->flags[UPDATENEEDED] = false;
 		entity->flags[NOUPDATE] = true;
 		entity->flags[PASSABLE] = true;
@@ -2047,9 +2054,32 @@ void actGreasePuddle(Entity* my)
 	{
 		if ( my->parent == 0 || !uidToEntity(my->parent) )
 		{
+			//list_RemoveNode(my->mynode);
+			//return;
+			my->parent = 0;
+			my->skill[0] = 0;
+		}
+	}
+
+	if ( my->skill[0] <= 0 )
+	{
+		if ( my->scalex <= 0.0 )
+		{
 			list_RemoveNode(my->mynode);
 			return;
 		}
+
+		my->scalex -= 0.05;
+		my->scalez = my->scalex;
+	}
+	else
+	{
+		if ( my->scalex < my->fskill[0] )
+		{
+			real_t diff = std::max(0.01, (my->fskill[0] - my->scalex) / 10.0);
+			my->scalex = std::min(my->scalex + diff, my->fskill[0]);
+		}
+		my->scalez = my->scalex;
 	}
 }
 

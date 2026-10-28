@@ -287,6 +287,31 @@ static const int SPELL_PROF_HIGH_COUNCIL = 264;
 static const int SPELL_PROF_FRONT_LINE = 265;
 static const int SPELL_STASIS = 266;
 static const int SPELL_REPOSE = 267;
+static const int SPELL_FORTIFY_HP = 268;
+static const int SPELL_FORTIFY_MP = 269;
+static const int SPELL_MARK_SPIRIT = 270;
+static const int SPELL_WEB_BOMB = 271;
+static const int SPELL_PUNISH = 272;
+static const int SPELL_RUPTURE = 273;
+static const int SPELL_VAMPIRIC_TOUCH = 274;
+static const int SPELL_PILGRIMAGE = 275;
+static const int SPELL_SCRY_EXIT = 276;
+static const int SPELL_ENTHRALL = 277;
+static const int SPELL_SHAPECHANGE = 278;
+static const int SPELL_EXORCISED_GROUND = 279;
+static const int SPELL_WALK_MP = 280;
+static const int SPELL_DUST_STORM = 281;
+static const int SPELL_SACRED_GROUND = 282;
+static const int SPELL_ENEMY_VISION = 283;
+static const int SPELL_COMPACT_SCRAP = 284;
+static const int SPELL_GREASE_ELEMENTAL = 285;
+static const int SPELL_GREASE_BOLT = 286;
+static const int SPELL_FISTS_OF_FORCE = 287;
+static const int SPELL_REGROWTH = 288;
+static const int SPELL_PHASE_OTHER = 289;
+static const int SPELL_LIFESAVING_PARTICLE = 290;
+static const int SPELL_SUMMON_SKULL = 291;
+static const int SPELL_DECONSTRUCT = 292;
 
 static const int NUM_SPELLS = 350;
 
@@ -450,6 +475,24 @@ static const int PARTICLE_EFFECT_ICE_BLOCK_FRAGMENT = 114;
 static const int PARTICLE_EFFECT_RESTORE_FORM_TELEPORT = 115;
 static const int PARTICLE_EFFECT_SUBJUGATE_FLESH_ORBIT = 116;
 static const int PARTICLE_EFFECT_SUBJUGATE_FLESH = 117;
+static const int PARTICLE_EFFECT_MARK_SPIRIT = 118;
+static const int PARTICLE_EFFECT_MARK_SPIRIT_PROC_HP = 119;
+static const int PARTICLE_EFFECT_MARK_SPIRIT_PROC_MP = 120;
+static const int PARTICLE_EFFECT_PUNISH_ORBIT = 121;
+static const int PARTICLE_EFFECT_PUNISH = 122;
+static const int PARTICLE_EFFECT_RUPTURE = 123;
+static const int PARTICLE_EFFECT_VAMPIRIC_TOUCH = 124;
+static const int PARTICLE_EFFECT_SCRY_EXIT = 125;
+static const int PARTICLE_EFFECT_ENTHRALL_FADE = 126;
+static const int PARTICLE_EFFECT_HOLY_FIRE_EXORCISED_GROUND = 127;
+static const int PARTICLE_EFFECT_IGNITE_NOFOLLOW = 128;
+static const int PARTICLE_EFFECT_PHASE_OTHER_FRAGMENT = 129;
+static const int PARTICLE_EFFECT_PHASE_OTHER_FRAGMENT_RELEASE = 130;
+static const int PARTICLE_EFFECT_SUMMON_SKULL = 131;
+static const int PARTICLE_EFFECT_SUMMON_SKULL_HEAD = 132;
+static const int PARTICLE_EFFECT_SUMMON_SKULL_DEATH = 133;
+static const int PARTICLE_EFFECT_DECONSTRUCT_MP = 134;
+static const int PARTICLE_EFFECT_DECONSTRUCT_SPLINTER = 135;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -513,6 +556,16 @@ static const int PARTICLE_TIMER_ACTION_ICE_BLOCK = 53;
 static const int PARTICLE_TIMER_ACTION_ICE_BLOCK_AOE = 54;
 static const int PARTICLE_TIMER_ACTION_BUFFET_AOE = 55;
 static const int PARTICLE_TIMER_ACTION_VORTEX_BLUE = 56;
+static const int PARTICLE_TIMER_ACTION_LIGHTNING_NEXUS = 57;
+static const int PARTICLE_TIMER_ACTION_VORTEX_DUST = 58;
+static const int PARTICLE_TIMER_ACTION_GREASE_ELEMENTAL = 59;
+static const int PARTICLE_TIMER_ACTION_GREASE_ELEMENTAL_DIE = 60;
+static const int PARTICLE_TIMER_ACTION_GREASESPLASH = 61;
+static const int PARTICLE_TIMER_ACTION_IGNITE_NOFOLLOW = 62;
+static const int PARTICLE_TIMER_ACTION_PHASE_OTHER = 63;
+static const int PARTICLE_TIMER_ACTION_PHASE_OTHER_RELEASE = 64;
+static const int PARTICLE_TIMER_ACTION_SUMMON_SKULL_HEAD = 65;
+static const int PARTICLE_TIMER_ACTION_DECONSTRUCT_SHATTER = 66;
 
 struct ParticleEmitterHit_t
 {
@@ -1140,7 +1193,7 @@ static const int FOLLOWER_TARGET_PARTICLE = 1230;
 void createParticleCharmMonster(Entity* parent);
 void createParticleShadowTag(Entity* parent, Uint32 casterUid, int duration);
 static const int PINPOINT_PARTICLE_START = 1767;
-static const int PINPOINT_PARTICLE_END = 1782;
+static const int PINPOINT_PARTICLE_END = 1783;
 Entity* createParticleSpellPinpointTarget(Entity* parent, Uint32 casterUid, int sprite, int duration, int spellID);
 Entity* createFloorMagic(ParticleTimerEffect_t::EffectType particleType, int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime);
 Entity* createRadiusMagic(int spellID, Entity* caster, real_t x, real_t y, real_t radius, Uint32 lifetime, Entity* follow);
@@ -1158,6 +1211,7 @@ Entity* createParticleWave(ParticleTimerEffect_t::EffectType particleType, int s
 Entity* createParticleRoot(int sprite, real_t x, real_t y, real_t z, real_t dir, Uint32 lifetime);
 void createMushroomSpellEffect(Entity* caster, real_t x, real_t y);
 Entity* createWindMagic(Uint32 casterUID, int x, int y, int duration, int dir, int length);
+Entity* createWindMagicNoWall(Uint32 casterUID, real_t x, real_t y, int duration, real_t yaw, int length);
 void createParticleDemesneDoor(real_t x, real_t y, real_t dir);
 Entity* createTunnelPortal(real_t x, real_t y, int duration, int dir, Entity* caster);
 void tunnelPortalSetAttributes(Entity* portal, int duration, int dir);
@@ -1283,7 +1337,7 @@ int getCharmMonsterDifficulty(Entity& my, Stat& myStats);
 void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent, int resistance, bool magicstaff);
 Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell, int customDuration = 0, Monster customMonster = NOTHING); // returns nullptr if target was monster, otherwise returns pointer to new creature
 void spellEffectPoison(Entity& my, spellElement_t& element, Entity* parent, int damage, int resistance);
-void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, int resistance);
+void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, int resistance, int duration, Entity* hitentity);
 bool spellEffectFear(Entity* my, spellElement_t& element, Entity* forceParent, Entity* target, int resistance);
 bool spellEffectTeleportPull(Entity* my, spellElement_t& element, Entity* parent, Entity* target, int resistance);
 void spellEffectShadowTag(Entity& my, spellElement_t& element, Entity* parent, int resistance);
@@ -1356,7 +1410,15 @@ struct AOEIndicators_t
 		CACHE_TOXIC_BOMB,
 		CACHE_SUBJUGATE,
 		CACHE_RADIUS_MAGIC_GENERIC_32,
-		CACHE_RADIUS_MAGIC_GENERIC_OTHER
+		CACHE_RADIUS_MAGIC_GENERIC_OTHER,
+		CACHE_LIGHTNING_NEXUS,
+		CACHE_LIGHTNING_BOLT,
+		CACHE_ETERNALS_GAZE,
+		CACHE_ETERNALS_GAZE2,
+		CACHE_VORTEX_DUST,
+		CACHE_WINDGATE,
+		CACHE_VORTEX_WIND1,
+		CACHE_VORTEX_WIND2
 	};
 	struct Indicator_t
 	{

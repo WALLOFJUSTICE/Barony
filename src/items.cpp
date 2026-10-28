@@ -4060,6 +4060,17 @@ void useItem(Item* item, const int player, Entity* usedBy, bool unequipForDroppi
 				consumeItem(item, player);
 			}
 			break;
+		case TOOL_COMPACT_MAGIC_SCRAP:
+		case TOOL_COMPACT_METAL_SCRAP:
+			if ( players[player]->isLocalPlayer() )
+			{
+				messagePlayer(player, MESSAGE_HINT, Language::get(7420));
+			}
+			if ( !players[player]->isLocalPlayer() )
+			{
+				consumeItem(item, player);
+			}
+			break;
 		case KEY_STONE:
 		case KEY_BONE:
 		case KEY_BRONZE:
@@ -4523,11 +4534,13 @@ Item* itemPickup(const int player, Item* const item, Item* addToSpecificInventor
 			if (!itemCompare(item, item2, false))
 			{
 				if ( ((itemTypeIsQuiver(item2->type) || itemTypeIsThrownBall(item2->type)) && (item->count + item2->count) >= QUIVER_MAX_AMMO_QTY)
-					|| ((item2->type == TOOL_MAGIC_SCRAP || item2->type == TOOL_METAL_SCRAP)
+					|| ((item2->type == TOOL_MAGIC_SCRAP || item2->type == TOOL_METAL_SCRAP
+						|| item2->type == TOOL_COMPACT_MAGIC_SCRAP || item2->type == TOOL_COMPACT_METAL_SCRAP)
 						&& (item->count + item2->count) >= SCRAP_MAX_STACK_QTY) )
 				{
 					int maxStack = QUIVER_MAX_AMMO_QTY;
-					if ( item2->type == TOOL_MAGIC_SCRAP || item2->type == TOOL_METAL_SCRAP )
+					if ( item2->type == TOOL_MAGIC_SCRAP || item2->type == TOOL_METAL_SCRAP
+						|| item2->type == TOOL_COMPACT_MAGIC_SCRAP || item2->type == TOOL_COMPACT_METAL_SCRAP )
 					{
 						maxStack = SCRAP_MAX_STACK_QTY;
 					}
@@ -4681,7 +4694,8 @@ int Item::getMaxStackLimit(int player) const
 	{
 		maxStack = QUIVER_MAX_AMMO_QTY - 1;
 	}
-	else if ( type == TOOL_METAL_SCRAP || type == TOOL_MAGIC_SCRAP )
+	else if ( type == TOOL_METAL_SCRAP || type == TOOL_MAGIC_SCRAP 
+		|| type == TOOL_COMPACT_MAGIC_SCRAP || type == TOOL_COMPACT_METAL_SCRAP )
 	{
 		maxStack = SCRAP_MAX_STACK_QTY - 1;
 	}
@@ -4702,11 +4716,13 @@ ItemStackResult getItemStackingBehaviorIndividualItemCheck(const int player, Ite
 	if ( !itemCompare(itemToCheck, itemDestinationStack, false) )
 	{
 		if ( ((itemTypeIsQuiver(itemDestinationStack->type) || itemTypeIsThrownBall(itemDestinationStack->type)) && (itemToCheck->count + itemDestinationStack->count) >= QUIVER_MAX_AMMO_QTY)
-			|| ((itemDestinationStack->type == TOOL_MAGIC_SCRAP || itemDestinationStack->type == TOOL_METAL_SCRAP)
+			|| ((itemDestinationStack->type == TOOL_MAGIC_SCRAP || itemDestinationStack->type == TOOL_METAL_SCRAP
+				|| itemDestinationStack->type == TOOL_COMPACT_MAGIC_SCRAP || itemDestinationStack->type == TOOL_COMPACT_METAL_SCRAP)
 				&& (itemToCheck->count + itemDestinationStack->count) >= SCRAP_MAX_STACK_QTY) )
 		{
 			int maxStack = QUIVER_MAX_AMMO_QTY;
-			if ( itemDestinationStack->type == TOOL_MAGIC_SCRAP || itemDestinationStack->type == TOOL_METAL_SCRAP )
+			if ( itemDestinationStack->type == TOOL_MAGIC_SCRAP || itemDestinationStack->type == TOOL_METAL_SCRAP
+				|| itemDestinationStack->type == TOOL_COMPACT_MAGIC_SCRAP || itemDestinationStack->type == TOOL_COMPACT_METAL_SCRAP )
 			{
 				maxStack = SCRAP_MAX_STACK_QTY;
 			}
@@ -6970,7 +6986,8 @@ bool Item::shouldItemStack(const int player, bool ignoreStackLimit) const
 				}
 				return true;
 			}
-			else if ( type == TOOL_METAL_SCRAP || type == TOOL_MAGIC_SCRAP )
+			else if ( type == TOOL_METAL_SCRAP || type == TOOL_MAGIC_SCRAP 
+				|| type == TOOL_COMPACT_METAL_SCRAP || type == TOOL_COMPACT_MAGIC_SCRAP )
 			{
 				if ( !ignoreStackLimit && count >= SCRAP_MAX_STACK_QTY - 1 )
 				{

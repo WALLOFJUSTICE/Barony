@@ -221,6 +221,11 @@ bool spellEffectDominate(Entity& my, spellElement_t& element, Entity& caster, En
 		{
 			hit.entity->getStats()->setAttribute("DOMINATED_CREATURE", "1");
 			hit.entity->getStats()->monsterIsCharmed = 0;
+			serverUpdateEntityStatFlag(hit.entity, 12);
+			if ( hit.entity->getStats()->getEffectActive(EFF_ENTHRALL) )
+			{
+				hit.entity->setEffect(EFF_ENTHRALL, false, 0, true);
+			}
 		}
 
 		hit.entity->flags[USERFLAG2] = true;
@@ -726,23 +731,23 @@ bool spellEffectFear(Entity* my, spellElement_t& element, Entity* forceParent, E
 	return true;
 }
 
-void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, int resistance)
+void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, int resistance, int duration, Entity* hitentity)
 {
-	if ( hit.entity )
+	if ( hitentity )
 	{
-		if ( (hit.entity->behavior == &actMonster && !hit.entity->isInertMimic()) || hit.entity->behavior == &actPlayer )
+		if ( (hitentity->behavior == &actMonster && !hitentity->isInertMimic()) || hitentity->behavior == &actPlayer )
 		{
 			Entity* parent = uidToEntity(my.parent);
 			if ( !(svFlags & SV_FLAG_FRIENDLYFIRE) )
 			{
 				// test for friendly fire
-				if ( parent && parent->checkFriend(hit.entity) && parent->friendlyFireProtection(hit.entity) )
+				if ( parent && parent->checkFriend(hitentity) && parent->friendlyFireProtection(hitentity) )
 				{
 					return;
 				}
 			}
 
-			Stat* hitstats = hit.entity->getStats();
+			Stat* hitstats = hitentity->getStats();
 			if ( !hitstats )
 			{
 				return;
@@ -753,25 +758,42 @@ void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, in
 			{
 				spawnParticles = false;
 			}
-			int previousDuration = hitstats->EFFECTS_TIMERS[EFF_WEBBED];
-			int duration = 400;
-			duration = convertResistancePointsToMagicValue(duration, resistance);
-			if ( hit.entity->setEffect(EFF_WEBBED, true, duration, true) ) // 8 seconds.
+
+			int spellID = SPELL_SPRAY_WEB;
+			if ( !strcmp(element.element_internal_name, spellElementMap[SPELL_WEB_BOMB].element_internal_name) )
 			{
-				magicOnEntityHit(parent, &my, hit.entity, hitstats, 0, 0, 0, SPELL_SPRAY_WEB);
-				if ( abs(duration - previousDuration) > 10 )
+				spellID = SPELL_WEB_BOMB;
+			}
+
+			int previousDuration = hitstats->EFFECTS_TIMERS[EFF_WEBBED];
+			duration = convertResistancePointsToMagicValue(duration, resistance);
+
+			Uint8 effectStrength = hitstats->getEffectActive(EFF_WEBBED);
+			if ( spellID == SPELL_SPRAY_WEB )
+			{
+				effectStrength = std::min(3, effectStrength + 1);
+			}
+			else if ( spellID == SPELL_WEB_BOMB )
+			{
+				effectStrength = 4;
+			}
+
+			if ( hitentity->setEffect(EFF_WEBBED, effectStrength, duration, true) ) // 8 seconds.
+			{
+				if ( spellID == SPELL_SPRAY_WEB )
 				{
-					playSoundEntity(hit.entity, 396 + local_rng.rand() % 3, 64); // play sound only if not recently webbed. (triple shot makes many noise)
+					magicOnEntityHit(parent, &my, hitentity, hitstats, 0, 0, 0, SPELL_SPRAY_WEB);
 				}
-				hit.entity->creatureWebbedSlowCount = std::min(3, hit.entity->creatureWebbedSlowCount + 1);
-				if ( hit.entity->behavior == &actPlayer )
+				static Uint32 lastTickPlayed = 0;
+				if ( abs(duration - previousDuration) > 10 && (ticks - lastTickPlayed) > 10 )
 				{
-					serverUpdateEntitySkill(hit.entity, 52); // update player.
+					playSoundEntity(hitentity, 396 + local_rng.rand() % 3, 64); // play sound only if not recently webbed. (triple shot makes many noise)
+					lastTickPlayed = ticks;
 				}
 				if ( spawnParticles )
 				{
-					createParticleAestheticOrbit(hit.entity, 863, 400, PARTICLE_EFFECT_SPELL_WEB_ORBIT);
-					serverSpawnMiscParticles(hit.entity, PARTICLE_EFFECT_SPELL_WEB_ORBIT, 863);
+					createParticleAestheticOrbit(hitentity, 863, 400, PARTICLE_EFFECT_SPELL_WEB_ORBIT);
+					serverSpawnMiscParticles(hitentity, PARTICLE_EFFECT_SPELL_WEB_ORBIT, 863);
 				}
 			}
 			else
@@ -804,9 +826,9 @@ void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, in
 			Uint32 color = makeColorRGB(255, 0, 0);
 
 			int player = -1;
-			if ( hit.entity->behavior == &actPlayer )
+			if ( hitentity->behavior == &actPlayer )
 			{
-				player = hit.entity->skill[2];
+				player = hitentity->skill[2];
 			}
 			if ( player >= 0 )
 			{
@@ -816,7 +838,7 @@ void spellEffectSprayWeb(Entity& my, spellElement_t& element, Entity* parent, in
 				}
 			}
 		}
-		spawnMagicEffectParticles(hit.entity->x, hit.entity->y, hit.entity->z, 863);
+		spawnMagicEffectParticles(hitentity->x, hitentity->y, hitentity->z, 863);
 	}
 	else
 	{
@@ -1550,6 +1572,7 @@ void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent
 						) ) 
 				&& player < 0 
 				&& hitstats->type != SHOPKEEPER
+				&& !hitstats->getEffectActive(EFF_ENTHRALL)
 				&& currentCharmedFollowerCount == 0
 				)
 			{
@@ -1624,6 +1647,7 @@ void spellEffectCharmMonster(Entity& my, spellElement_t& element, Entity* parent
 					hit.entity->flags[USERFLAG2] = true;
 					serverUpdateEntityFlag(hit.entity, USERFLAG2);
 					hitstats->monsterIsCharmed = 1;
+					serverUpdateEntityStatFlag(hit.entity, 12);
 					if ( monsterChangesColorWhenAlly(hitstats) )
 					{
 						int bodypart = 0;
@@ -2075,6 +2099,7 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 		summonedStats->MISC_FLAGS[STAT_FLAG_MONSTER_DISABLE_HC_SCALING] = 1;
 		summonedStats->leader_uid = targetStats->leader_uid;
 		summonedStats->monsterIsCharmed = targetStats->monsterIsCharmed;
+		summonedStats->monsterRequireClientStatUpdate = targetStats->monsterRequireClientStatUpdate;
 		summonedStats->setAttribute("DOMINATED_CREATURE", targetStats->getAttribute("DOMINATED_CREATURE"));
 		Entity* leader = nullptr;
 		if ( summonedStats->leader_uid != 0 && summonedStats->type != SHADOW )
@@ -2671,7 +2696,6 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 					target->effectPolymorph = 100 + local_rng.rand() % NUMAPPEARANCES;
 				}
 			}
-			serverUpdateEntitySkill(target, 50);
 
 			Uint32 color = makeColorRGB(0, 255, 0);
 			Monster race = target->playerGetMonsterRaceFromPolymorph();
@@ -2680,6 +2704,21 @@ Entity* spellEffectPolymorph(Entity* target, Entity* parent, bool fromMagicSpell
 			// change player's type here, don't like this.. will get auto reset in actPlayer() though
 			// otherwise the below aggro check will still assume previous race since actPlayer() hasn't run yet.
 			targetStats->type = race;
+
+			{
+				int originalRace = target->getMonsterFromPlayerRace(targetStats->playerRace);
+				if ( targetStats->stat_appearance != 0 )
+				{
+					originalRace = HUMAN;
+				}
+				if ( race == originalRace )
+				{
+					target->effectPolymorph = 0;
+					target->setEffect(EFF_POLYMORPH, false, 0, true);
+				}
+			}
+
+			serverUpdateEntitySkill(target, 50);
 
 			for ( node_t* node = map.creatures->first; node != nullptr; node = node->next )
 			{
@@ -3617,6 +3656,8 @@ Entity* spellEffectFlameSprite(Entity& caster, spellElement_t& element, real_t x
 						monsterStats->monsterNoDropItems = 1;
 						monsterStats->MISC_FLAGS[STAT_FLAG_MONSTER_DISABLE_HC_SCALING] = 1;
 
+						monsterStats->setAttribute("SUMMONED_CREATURE", "1");
+
 						int lvl = getSpellDamageFromID(SPELL_FLAME_ELEMENTAL, &caster, nullptr, &caster);
 						int maxlvl = getSpellDamageSecondaryFromID(SPELL_FLAME_ELEMENTAL, &caster, nullptr, &caster);
 						lvl = std::min(lvl, maxlvl);
@@ -3940,6 +3981,105 @@ int thaumSpellArmorProc(Entity* my, Stat& myStats, bool checkEffectActiveOnly, E
 	return 0;
 }
 
+bool Entity::markSpiritProc(Entity* attacker, int damage, DamageTableType type)
+{
+	if ( multiplayer == CLIENT || !attacker || damage == 0 ) { return false; }
+
+	if ( Stat* myStats = getStats() )
+	{
+		/*if ( myStats->HP <= 0 ) { return false; }
+		if ( !(attacker->behavior == &actPlayer || (attacker->behavior == &actMonster && attacker->monsterAllyGetPlayerLeader())) )
+		{
+			return false;
+		}*/
+
+		if ( myStats->getEffectActive(EFF_VAMPIRIC_TOUCH) )
+		{
+			if ( damage > 0 )
+			{
+				// find particle to update
+				bool found = false;
+				auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(this, 1);
+				for ( auto it : entLists )
+				{
+					node_t* node;
+					for ( node = it->first; node != nullptr && !found; node = node->next )
+					{
+						if ( Entity* entity = (Entity*)node->element )
+						{
+							if ( entity->behavior == &actRadiusMagic
+								/*&& entity->parent == this->getUID()*/
+								&& entity->actRadiusMagicID == SPELL_VAMPIRIC_TOUCH
+								&& entity->actRadiusMagicFollowUID == this->getUID() )
+							{
+								Entity* caster = uidToEntity(entity->parent);
+								int increment = getSpellDamageSecondaryFromID(SPELL_VAMPIRIC_TOUCH, caster, nullptr, entity);
+								if ( entity->actRadiusMagicEffectPower % (increment * 5) == 0 )
+								{
+									createParticleFociDark(entity, entity->actRadiusMagicID, true);
+								}
+								entity->actRadiusMagicEffectPower += increment;
+								if ( myStats->getEffectActive(EFF_BLEEDING) )
+								{
+									entity->actRadiusMagicEffectPower += increment;
+								}
+								found = true;
+							}
+						}
+					}
+					if ( found )
+					{
+						break;
+					}
+				}
+			}
+		}
+
+		if ( myStats->getEffectActive(EFF_MARK_SPIRIT) )
+		{
+			if ( damage > 0 )
+			{
+				// find particle to update
+				bool found = false;
+				auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(this, 1);
+				for ( auto it : entLists )
+				{
+					node_t* node;
+					for ( node = it->first; node != nullptr && !found; node = node->next )
+					{
+						if ( Entity* entity = (Entity*)node->element )
+						{
+							if ( entity->behavior == &actParticleAestheticOrbit
+								&& entity->parent == this->getUID()
+								&& entity->skill[1] == PARTICLE_EFFECT_MARK_SPIRIT )
+							{
+								if ( entity->skill[8] == 0 ) // cooldown timer
+								{
+									if ( type == DAMAGE_TABLE_MAGIC )
+									{
+										entity->skill[7] = 2;
+									}
+									else
+									{
+										entity->skill[7] = 1;
+									}
+								}
+								found = true;
+							}
+						}
+					}
+					if ( found )
+					{
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 bool Entity::cycloneDamageProc(Entity* attacker, int damage)
 {
 	return false;
@@ -3947,7 +4087,7 @@ bool Entity::cycloneDamageProc(Entity* attacker, int damage)
 	if ( multiplayer == CLIENT || !attacker || damage == 0 ) { return false; }
 	if ( Stat* myStats = getStats() )
 	{
-		if ( myStats->HP == 0 ) { return false; }
+		if ( myStats->HP <= 0 ) { return false; }
 		/*if ( !(attacker->behavior == &actPlayer || (attacker->behavior == &actMonster && attacker->monsterAllyGetPlayerLeader())) )
 		{
 			return false;
@@ -4144,6 +4284,58 @@ bool Entity::pinpointDamageProc(Entity* attacker, int damage)
 	return false;
 }
 
+bool Entity::spellPunishProc()
+{
+	if ( multiplayer == CLIENT ) { return false; }
+	if ( Stat* myStats = getStats() )
+	{
+		if ( myStats->getEffectActive(EFF_PUNISHMENT) )
+		{
+			// find particle to update
+			auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(this, 1);
+			for ( auto it : entLists )
+			{
+				node_t* node;
+				for ( node = it->first; node != nullptr; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( entity->behavior == &actParticleAestheticOrbit
+							&& entity->parent == this->getUID()
+							&& entity->skill[1] == PARTICLE_EFFECT_PUNISH_ORBIT )
+						{
+							if ( entity->skill[8] == 0 ) // cooldown timer
+							{
+								entity->skill[7] = 1;
+								Uint8 charges = myStats->getEffectActive(EFF_PUNISHMENT) & 0xF;
+								if ( charges == 0 )
+								{
+									int caster = ((myStats->getEffectActive(EFF_PUNISHMENT) >> 4) & 0xF) - 1;
+									if ( caster >= 0 && caster < MAXPLAYERS )
+									{
+										messagePlayerMonsterEvent(caster, makeColorRGB(255, 255, 255),
+											*myStats, Language::get(7386), Language::get(7387), MSG_COMBAT);
+									}
+									setEffect(EFF_PUNISHMENT, false, 0, true);
+								}
+								else
+								{
+									--charges;
+									charges |= (myStats->getEffectActive(EFF_PUNISHMENT) & 0xF0);
+									setEffect(EFF_PUNISHMENT, charges, myStats->EFFECTS_TIMERS[EFF_PUNISHMENT], true, true, true);
+								}
+							}
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 bool Entity::defyFleshProc(Entity* attacker)
 {
 	if ( multiplayer == CLIENT ) { return false; }
@@ -4262,6 +4454,49 @@ bool Entity::mistFormDodge(bool checkEffectActiveOnly, Entity* attacker)
 	return false;
 }
 
+bool Entity::spellEffectTrueBloodStatusEffect(int effect, Entity* attacker, bool forceProc)
+{
+	if ( !(effect >= 0 && effect < NUMEFFECTS) )
+	{
+		return false;
+	}
+
+	if ( Stat* myStats = getStats() )
+	{
+		if ( myStats->getEffectActive(EFF_TRUE_BLOOD) 
+			&& (effect == EFF_SLOW || effect == EFF_SLOW_COLD || effect == EFF_PARALYZED || effect == EFF_POISONED
+				|| effect == EFF_BLEEDING) )
+		{
+			if ( behavior == &actPlayer )
+			{
+				if ( spell_t* spell = getActiveMagicEffect(SPELL_TRUE_BLOOD) )
+				{
+					if ( !forceProc )
+					{
+						if ( ::ticks - players[skill[2]]->mechanics.trueBloodEffectsTick[effect] < 3 * TICKS_PER_SECOND )
+						{
+							return true;
+						}
+					}
+
+					players[skill[2]]->mechanics.trueBloodEffectsTick[effect] = ::ticks;
+
+					messagePlayerColor(skill[2], MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7431));
+					players[skill[2]]->mechanics.updateSustainedSpellEvent(
+						SPELL_TRUE_BLOOD, 64.0, 1.0, nullptr);
+					this->safeConsumeMP(1);
+					playSoundEntity(this, 168, 128);
+					spawnMagicEffectParticles(this->x, this->y, this->z, 169);
+					return true;
+				}
+			}
+		}
+	}
+
+
+	return false;
+}
+
 bool Entity::spellEffectInnoculateStatusEffect(int effect, Entity* attacker, bool forceProc)
 {
 	if ( !(effect >= 0 && effect <= NUMEFFECTS) )
@@ -4375,11 +4610,11 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 		resistance = 0;
 		trapResist = 0;
 	}
-	if ( spellID == SPELL_HOLY_FIRE )
+	if ( spellID == SPELL_HOLY_FIRE || spellID == SPELL_EXORCISED_GROUND || spellID == SPELL_ETERNALS_GAZE )
 	{
 		// pure dmg
 		dmgGib = DMG_STRONGER;
-		damageMultiplier = 1.0;
+		damageMultiplier = std::max(damageMultiplier, 1.0);
 		resistance = 0;
 		trapResist = 0;
 	}
@@ -4440,7 +4675,9 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 			|| spellID == SPELL_COMMAND
 			|| spellID == SPELL_CURSE_FLESH
 			|| spellID == SPELL_REVENANT_CURSE
-			|| spellID == SPELL_STASIS )
+			|| spellID == SPELL_STASIS
+			|| spellID == SPELL_VAMPIRIC_TOUCH
+			|| spellID == SPELL_ENTHRALL )
 		{
 			// alert entities only
 			return true;
@@ -4522,6 +4759,11 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 					fireMultiplier += 0.05 * bonus;
 				}
 			}
+			if ( targetStats && targetStats->getEffectActive(EFF_WEBBED) >= 4 )
+			{
+				fireMultiplier += 0.5;
+			}
+
 			if ( targetStats->type == SALAMANDER )
 			{
 				if ( targetStats->getEffectActive(EFF_SALAMANDER_HEART) == 1
@@ -5204,7 +5446,14 @@ int getSpellFromSummonedEntityForSpellEvent(Entity* summon)
 	}
 	else if ( destStats->type == REVENANT_SKULL && destStats->getAttribute("revenant_skull") != "" )
 	{
-		return SPELL_CURSE_FLESH;
+		if ( destStats->getAttribute("summon_skull") != "" )
+		{
+			return SPELL_SUMMON_SKULL;
+		}
+		else
+		{
+			return SPELL_CURSE_FLESH;
+		}
 	}
 
 	return SPELL_NONE;

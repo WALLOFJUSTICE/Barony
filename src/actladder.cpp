@@ -40,6 +40,34 @@ Uint32 mpPokeCooldown[MAXPLAYERS] = { 0 };
 #define LADDER_AMBIENCE my->skill[1]
 #define LADDER_SECRET_ENTRANCE my->skill[3]
 
+bool ladderProcessScryExitBuff(Entity* my)
+{
+	return false; // unused for now
+	if ( !my ) { return false; }
+
+	std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
+	for ( auto it : entLists )
+	{
+		node_t* node;
+		for ( node = it->first; node != nullptr; node = node->next )
+		{
+			if ( Entity* entity2 = (Entity*)node->element )
+			{
+				if ( entity2->behavior == &actParticlePinpointTarget
+					&& entity2->parent == my->getUID() )
+				{
+					if ( entity2->skill[4] == SPELL_SCRY_EXIT )
+					{
+						return true;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 void actLadder(Entity* my)
 {
 	int playercount = 0;
@@ -157,6 +185,8 @@ void actLadder(Entity* my)
 							}
 						}
 					}
+
+					ladderProcessScryExitBuff(my);
 					return;
 				}
 			}
@@ -382,6 +412,8 @@ void actPortal(Entity* my)
 						}
 					}
 				}
+
+				ladderProcessScryExitBuff(my);
 				return;
 			}
 		}
@@ -1465,6 +1497,8 @@ void actCustomPortal(Entity* my)
 				Compendium_t::Events_t::previousCurrentLevel = currentlevel;
 				Compendium_t::Events_t::previousSecretleveltype = secretleveltype;
 				skipLevelsOnLoad = 0;
+
+				ladderProcessScryExitBuff(my);
 
 				if ( gameModeManager.getMode() == GameModeManager_t::GAME_MODE_TUTORIAL )
 				{

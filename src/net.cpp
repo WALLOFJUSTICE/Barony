@@ -3501,9 +3501,10 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					break;
 				}
 				case PARTICLE_EFFECT_HOLY_FIRE:
+				case PARTICLE_EFFECT_HOLY_FIRE_EXORCISED_GROUND:
 				{
 					int duration = SDLNet_Read32(&net_packet->data[15]);
-					if ( Entity* fx = createParticleAestheticOrbit(entity, 288, duration, PARTICLE_EFFECT_HOLY_FIRE) )
+					if ( Entity* fx = createParticleAestheticOrbit(entity, 288, duration, particleType) )
 					{
 						fx->flags[SPRITE] = true;
 						fx->flags[INVISIBLE] = true;
@@ -3514,6 +3515,15 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				{
 					int duration = SDLNet_Read32(&net_packet->data[15]);
 					if ( Entity* fx = createParticleAestheticOrbit(entity, 2363, duration, PARTICLE_EFFECT_DEFY_FLESH_ORBIT) )
+					{
+						fx->flags[INVISIBLE] = true;
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_PUNISH_ORBIT:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					if ( Entity* fx = createParticleAestheticOrbit(entity, 2363, duration, PARTICLE_EFFECT_PUNISH_ORBIT) )
 					{
 						fx->flags[INVISIBLE] = true;
 					}
@@ -3538,6 +3548,90 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 						fx->scalex = 0.0;
 						fx->scaley = 0.0;
 						fx->scalez = 0.0;
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_PUNISH:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					Sint32 dir = SDLNet_Read32(&net_packet->data[19]);
+					if ( Entity* fx = createParticleAestheticOrbit(entity, 2363, duration, PARTICLE_EFFECT_PUNISH) )
+					{
+						fx->yaw = dir / 256.0;
+						fx->flags[INVISIBLE] = true;
+
+						fx->pitch = PI / 2;
+						fx->fskill[0] = fx->yaw;
+						fx->fskill[1] = PI / 4 - PI / 8;
+						fx->fskill[2] = entity->z;
+						fx->x = entity->x - 8.0 * cos(fx->yaw);
+						fx->y = entity->y - 8.0 * sin(fx->yaw);
+						fx->z = entity->z;
+						fx->scalex = 0.0;
+						fx->scaley = 0.0;
+						fx->scalez = 0.0;
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_RUPTURE:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					if ( Entity* fx = createParticleAestheticOrbit(entity, sprite, duration, particleType) )
+					{
+						fx->flags[INVISIBLE] = true;
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_VAMPIRIC_TOUCH:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					for ( int i = 0; i < 3; ++i )
+					{
+						if ( Entity* fx = createParticleAestheticOrbit(entity, 2363, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_VAMPIRIC_TOUCH) )
+						{
+							fx->fskill[2] += i * 2 * PI / 3;
+							fx->yaw = fx->fskill[2];
+							fx->z = 7.5;
+						}
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_MARK_SPIRIT:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					if ( Entity* fx = createParticleAestheticOrbit(entity, sprite, duration, particleType) )
+					{
+						fx->flags[INVISIBLE] = true;
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_MARK_SPIRIT_PROC_HP:
+				case PARTICLE_EFFECT_MARK_SPIRIT_PROC_MP:
+				{
+					int duration = SDLNet_Read32(&net_packet->data[15]);
+					Sint32 dir = SDLNet_Read32(&net_packet->data[19]);
+					if ( Entity* fx = createParticleAestheticOrbit(entity, sprite, duration, particleType) )
+					{
+						fx->yaw = dir / 256.0;
+						fx->flags[INVISIBLE] = true;
+
+						//fx->pitch = PI / 2;
+						fx->fskill[0] = fx->yaw;
+						fx->fskill[1] = PI / 4 - PI / 8;
+						fx->fskill[2] = entity->z;
+						fx->fskill[3] = 4.0; // top height
+
+						fx->vel_z = -0.8;
+						fx->scalex = 0.1;
+						fx->scaley = 0.1;
+						fx->scalez = 0.1;
+
+						fx->x = entity->x - 8.0 * cos(fx->yaw);
+						fx->y = entity->y - 8.0 * sin(fx->yaw);
+						fx->z = entity->z;
+						/*fx->scalex = 0.0;
+						fx->scaley = 0.0;
+						fx->scalez = 0.0;*/
 					}
 					break;
 				}
@@ -3705,6 +3799,18 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				case PARTICLE_EFFECT_SHATTER_OBJECTS:
 					createParticleShatterObjects(entity);
 					break;
+				case PARTICLE_EFFECT_SCRY_EXIT:
+				{
+					Uint32 uid = SDLNet_Read32(&net_packet->data[11]);
+					if ( uid != 0 )
+					{
+						if ( Entity* ent = uidToEntity(uid) )
+						{
+							shrineDaedalusRevealMap(*entity, MinimapHighlight_t::REVEAL_SCRY, ent);
+						}
+					}
+					break;
+				}
 				case PARTICLE_EFFECT_REVENANT_PUSH:
 				{
 					Uint32 uid = SDLNet_Read32(&net_packet->data[11]);
@@ -3718,6 +3824,39 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					else
 					{
 						createParticleRevenantPush(entity);
+					}
+					break;
+				}
+				case PARTICLE_EFFECT_ENTHRALL_FADE:
+				{
+					real_t yaw = 0;
+					int numParticles = 8;
+					for ( int c = 0; c < numParticles; c++ )
+					{
+						Entity* fx = newEntity(576, 1, map.entities, nullptr); //Particle entity.
+						fx->sizex = 1;
+						fx->sizey = 1;
+						fx->x = entity->x;
+						fx->y = entity->y;
+						fx->z = -10;
+						fx->yaw = yaw;
+						fx->vel_x = 0.2;
+						fx->vel_y = 0.2;
+						fx->vel_z = -0.02;
+						fx->skill[0] = 100;
+						fx->skill[1] = 0; // direction.
+						fx->fskill[0] = 0.1;
+						fx->behavior = &actParticleErupt;
+						fx->flags[PASSABLE] = true;
+						fx->flags[NOUPDATE] = true;
+						fx->flags[UNCLICKABLE] = true;
+						fx->lightBonus = vec4(0.25, 0.25, 0.25, 0.f);
+						if ( multiplayer != CLIENT )
+						{
+							entity_uids--;
+						}
+						fx->setUID(-3);
+						yaw += 2 * PI / numParticles;
 					}
 					break;
 				}
@@ -3835,6 +3974,43 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					createParticleBolas(entity, sprite, duration, nullptr);
 				}
 				break;
+				case PARTICLE_EFFECT_SUMMON_SKULL:
+				{
+					Uint32 timerUid = SDLNet_Read32(&net_packet->data[15]);
+					Uint32 dir = SDLNet_Read32(&net_packet->data[19]);
+					Uint32 uid = SDLNet_Read32(&net_packet->data[11]);
+					Entity* target = uidToEntity(uid);
+					int index = sprite;
+					
+					Entity* spellTimer = createParticleTimer(entity, 1.25 * TICKS_PER_SECOND, -1);
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SUMMON_SKULL_HEAD;
+					spellTimer->particleTimerCountdownSprite = -1;
+					spellTimer->sprite = 2671;
+					spellTimer->flags[INVISIBLE] = true;
+					spellTimer->actmagicDelayMove = index * 10;
+					spellTimer->setUID(timerUid);
+					spellTimer->yaw = dir / 256.0;
+
+					if ( target )
+					{
+						spellTimer->particleTimerTarget = target->getUID();
+						real_t tangent = atan2(target->y - entity->y, target->x - entity->x);
+						spellTimer->yaw = tangent;
+					}
+
+					spellTimer->x = entity->x;
+					spellTimer->y = entity->y;
+					spellTimer->fskill[0] = spellTimer->x;
+					spellTimer->fskill[1] = spellTimer->y;
+
+					// failsafe target
+					real_t dist = lineTrace(entity, entity->x, entity->y, spellTimer->yaw, 128.0, LINETRACE_ATK_CHECK_FRIENDLYFIRE | LINETRACE_TELEKINESIS, false);
+					spellTimer->fskill[4] = spellTimer->x + dist * cos(spellTimer->yaw);
+					spellTimer->fskill[5] = spellTimer->y + dist * sin(spellTimer->yaw);
+
+					spellTimer->particleTimerVariable3 = index; // index of cast
+					break;
+				}
 				case PARTICLE_EFFECT_STARE_MESMERIZE:
 				{
 					createStareAOE(entity);
@@ -3995,13 +4171,112 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				break;
 			case PARTICLE_EFFECT_WINDGATE:
 			{
-				int duration = static_cast<int>(SDLNet_Read32(&net_packet->data[13]));
-				Uint32 data = SDLNet_Read32(&net_packet->data[17]);
+				if ( sprite == 2632 )
+				{
+					Uint32 casterUid = SDLNet_Read32(&net_packet->data[21]);
+					int duration = static_cast<int>(SDLNet_Read32(&net_packet->data[13]));
+					Sint32 dir = SDLNet_Read32(&net_packet->data[17]);
+					real_t yaw = dir / 256.0;
+					Sint32 length = SDLNet_Read32(&net_packet->data[21]);
+					createWindMagicNoWall(casterUid, particle_x, particle_y, duration, yaw, length);
+				}
+				else
+				{
+					int duration = static_cast<int>(SDLNet_Read32(&net_packet->data[13]));
+					Uint32 data = SDLNet_Read32(&net_packet->data[17]);
 
-				int wallDir = (data & 0xF);
-				int length = (data >> 4) & 0xF;
-				Uint32 casterUid = SDLNet_Read32(&net_packet->data[21]);
-				createWindMagic(casterUid, particle_x, particle_y, duration, wallDir, length);
+					int wallDir = (data & 0xF);
+					int length = (data >> 4) & 0xF;
+					Uint32 casterUid = SDLNet_Read32(&net_packet->data[21]);
+					createWindMagic(casterUid, particle_x, particle_y, duration, wallDir, length);
+				}
+				break;
+			}
+			case PARTICLE_EFFECT_SUMMON_SKULL_DEATH:
+			{
+				int duration = static_cast<int>(SDLNet_Read32(&net_packet->data[13]));
+				int data = SDLNet_Read32(&net_packet->data[17]);
+				Uint32 uid = SDLNet_Read32(&net_packet->data[21]);
+				if ( Entity* fx = createParticleAestheticOrbit(nullptr, 2670, duration, PARTICLE_EFFECT_SUMMON_SKULL_DEATH) )
+				{
+					fx->x = particle_x;
+					fx->y = particle_y;
+					fx->z = particle_z;
+					fx->fskill[0] = fx->x;
+					fx->fskill[1] = fx->y;
+					fx->fskill[2] = fx->z;
+					fx->pitch = PI / 2;
+					real_t dir = (local_rng.rand() % 360) * PI / 180.f;
+					if ( uid != 0 )
+					{
+						if ( Entity* leader = uidToEntity(uid) )
+						{
+							dir = atan2(leader->y - fx->y, leader->x - fx->x);
+							fx->parent = uid;
+						}
+					}
+					fx->fskill[4] = dir;
+					fx->fskill[3] = dir;
+					fx->skill[3] = 1;
+					if ( data == 1 )
+					{
+						fx->fskill[5] = 0.1; // rotation speed
+					}
+					else
+					{
+						fx->fskill[5] = 0.15; // rotation speed
+					}
+					real_t scale = 0.5;
+					fx->scalex = scale;
+					fx->scaley = scale;
+					fx->scalez = scale;
+					fx->skill[5] = data;
+				}
+				break;
+			}
+			case PARTICLE_EFFECT_DECONSTRUCT_SPLINTER:
+			case PARTICLE_EFFECT_DECONSTRUCT_MP:
+			{
+				Uint32 xyPos = static_cast<Uint32>(SDLNet_Read32(&net_packet->data[13]));
+				int data = SDLNet_Read32(&net_packet->data[17]);
+				Uint32 uid = SDLNet_Read32(&net_packet->data[21]);
+				real_t tx = xyPos & 0xFFFF;
+				real_t ty = (xyPos >> 16) & 0xFFFF;
+
+				if ( Entity* fx = createParticleAestheticOrbit(
+					particleType == PARTICLE_EFFECT_DECONSTRUCT_SPLINTER ? nullptr : uidToEntity(uid), sprite, TICKS_PER_SECOND + 20, particleType) )
+				{
+					fx->x = particle_x;
+					fx->y = particle_y;
+					fx->z = particle_z;
+					fx->fskill[0] = fx->x;
+					fx->fskill[1] = fx->y;
+					fx->fskill[2] = fx->z;
+					fx->pitch = PI / 2;
+
+					if ( Entity* target = uidToEntity(uid) )
+					{
+						real_t tangent = atan2(target->y - fx->y, target->x - fx->x);
+						fx->fskill[4] = tangent;
+						fx->fskill[10] = target->x;
+						fx->fskill[11] = target->y;
+					}
+					else
+					{
+						real_t tangent = atan2(ty - fx->y, tx - fx->x);
+						fx->fskill[4] = tangent;
+						fx->fskill[10] = tx;
+						fx->fskill[11] = ty;
+					}
+					fx->fskill[3] = (local_rng.rand() % 12) * 2 * PI / 12;
+					fx->skill[3] = 1;
+					fx->fskill[5] = 0.1; // rotation speed
+					real_t scale = 0.5;
+					fx->scalex = scale;
+					fx->scaley = scale;
+					fx->scalez = scale;
+					fx->skill[5] = 1; // return to parent
+				}
 				break;
 			}
 			case PARTICLE_EFFECT_DEMESNE_DOOR:
@@ -4040,7 +4315,14 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				spellTimer->x = particle_x;
 				spellTimer->y = particle_y;
 				spellTimer->z = particle_z;
-				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE;
+				if ( sprite == 2657 )
+				{
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_GREASE_ELEMENTAL_DIE;
+				}
+				else
+				{
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE;
+				}
 				break;
 			}
 			case PARTICLE_EFFECT_DUCK_SPAWN_FEATHER:
@@ -4101,6 +4383,78 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					fx->z = particle_z;
 					fx->yaw = (dir / 256.0) - PI / 4;
 				}
+				break;
+			}
+			case PARTICLE_EFFECT_IGNITE_NOFOLLOW:
+			{
+				Entity* spellTimer = createParticleTimer(nullptr, 25, -1);
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_IGNITE_NOFOLLOW;
+				spellTimer->particleTimerCountdownSprite = -1;
+				spellTimer->x = particle_x;
+				spellTimer->y = particle_y;
+
+				Uint32 color = makeColor(255, 128, 0, 255);
+				if ( Entity* fx = createParticleAOEIndicator(nullptr, spellTimer->x, spellTimer->y, 0.0, 1.25 * TICKS_PER_SECOND, 32) )
+				{
+					fx->actSpriteCheckParentExists = 0;
+					if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+					{
+						Uint8 r, g, b, a;
+						getColor(color, &r, &g, &b, &a);
+						a *= 0.5;
+						indicator->indicatorColor = makeColor(r, g, b, a);
+						indicator->loop = false;
+						indicator->framesPerTick = 2;
+						indicator->ticksPerUpdate = 1;
+						indicator->delayTicks = 0;
+						indicator->cacheType = AOEIndicators_t::CACHE_IGNITE;
+					}
+				}
+				for ( int i = 0; i < 2; ++i )
+				{
+					if ( Entity* fx = createParticleAOEIndicator(nullptr, spellTimer->x, spellTimer->y, -7.5, 1.25 * TICKS_PER_SECOND, 32) )
+					{
+						fx->actSpriteCheckParentExists = 0;
+						if ( i == 1 )
+						{
+							fx->pitch = PI;
+						}
+						if ( auto indicator = AOEIndicators_t::getIndicator(fx->skill[10]) )
+						{
+							indicator->indicatorColor = color;
+							indicator->loop = false;
+							indicator->framesPerTick = 2;
+							indicator->ticksPerUpdate = 1;
+							indicator->delayTicks = 15;
+							indicator->cacheType = AOEIndicators_t::CACHE_IGNITE2;
+						}
+					}
+				}
+				break;
+			}
+			case PARTICLE_EFFECT_PHASE_OTHER_FRAGMENT:
+			{
+				int duration = static_cast<int>(SDLNet_Read32(&net_packet->data[13]));
+				Entity* spellTimer = createParticleTimer(nullptr, duration, -1);
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_PHASE_OTHER;
+				spellTimer->particleTimerCountdownSprite = -1;
+				spellTimer->yaw = 0.0;
+				spellTimer->x = particle_x;
+				spellTimer->y = particle_y;
+				break;
+			}
+			case PARTICLE_EFFECT_PHASE_OTHER_FRAGMENT_RELEASE:
+			{
+				int duration = static_cast<int>(SDLNet_Read32(&net_packet->data[13]));
+				Entity* spellTimer = createParticleTimer(nullptr, duration, -1);
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_PHASE_OTHER_RELEASE;
+				spellTimer->particleTimerCountdownSprite = -1;
+				spellTimer->flags[PASSABLE] = false;
+				spellTimer->yaw = 0.0;
+				spellTimer->x = particle_x;
+				spellTimer->y = particle_y;
+				spellTimer->sizex = 4;
+				spellTimer->sizey = 4;
 				break;
 			}
 			default:
@@ -7241,6 +7595,53 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			}
 		}
 	} },
+
+	// enemy vision state
+	{ 'DTCT', []() {
+		node_t* nextnode = nullptr;
+		for ( node_t* node = map.entities->first; node; node = nextnode )
+		{
+			nextnode = node->next;
+
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actDeathCam && entity->skill[2] == clientnum
+					&& entity->skill[7] == 1 )
+				{
+					entity->removeLightField();
+					list_RemoveNode(entity->mynode);
+				}
+			}
+		}
+		if ( players[clientnum]->entity )
+		{
+			cameras[clientnum].globalLightModifier = 0.f;
+			cameras[clientnum].globalLightModifierEntities = 0.f;
+
+			players[clientnum]->entity->skill[3] = 4;
+			Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Deathcam entity.
+			entity->x = players[clientnum]->entity->x;
+			entity->y = players[clientnum]->entity->y;
+			entity->z = -2;
+			entity->flags[NOUPDATE] = true;
+			entity->flags[UPDATENEEDED] = false;
+			entity->flags[PASSABLE] = true;
+			entity->flags[INVISIBLE] = true;
+			entity->sizex = 1;
+			entity->sizey = 1;
+			entity->behavior = &actDeathCam;
+			entity->skill[1] = players[clientnum]->entity->getUID(); // default entity uid
+			entity->skill[7] = 1; // denote vision cam
+			entity->skill[2] = clientnum;
+			entity->yaw = players[clientnum]->entity->yaw;
+			entity->pitch = PI / 8;
+			if ( multiplayer != CLIENT )
+			{
+				entity_uids--;
+			}
+			entity->setUID(-3);
+		}
+	} }
 };
 
 void clientHandlePacket()
@@ -10322,6 +10723,91 @@ static std::unordered_map<Uint32, void(*)()> serverPacketHandlers = {
 			}
 		}
 	} },
+
+	// shapechange poly
+	{ 'POLY', []() {
+		const int gui_player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
+		int result = net_packet->data[5];
+		if ( players[gui_player]->entity
+			&& result >= 1 && result < NUMMONSTERS )
+		{
+			spellEffectPolymorph(players[gui_player]->entity, players[gui_player]->entity, true,
+				getSpellEffectDurationFromID(SPELL_SHAPECHANGE, nullptr, nullptr, nullptr),
+				(Monster)result);
+			if ( stats[gui_player] )
+			{
+				if ( stats[gui_player]->getEffectActive(EFF_POLYMORPH) )
+				{
+					magicOnSpellCastEvent(players[gui_player]->entity, players[gui_player]->entity, nullptr, SPELL_SHAPECHANGE, spell_t::SPELL_LEVEL_EVENT_EFFECT, 1);
+				}
+			}
+		}
+	} },
+
+	// client cycled detect monsters
+	{ 'DTCT', []() {
+		const int player = std::min(net_packet->data[4], (Uint8)(MAXPLAYERS - 1));
+		if ( players[player]->entity )
+		{
+			Uint32 uid = SDLNet_Read32(&net_packet->data[5]);
+			if ( Entity* entity = uidToEntity(uid) )
+			{
+				Uint8 effectStrength = (player + 1);
+				effectStrength |= (1 << 7);
+
+				std::vector<std::pair<int, Entity*>> existingEffects;
+				for ( auto node = map.creatures->first; node; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( Stat* stats = entity->getStats() )
+						{
+							if ( stats->getEffectActive(EFF_DETECT_ENEMY) & (1 << 7) )
+							{
+								existingEffects.push_back(std::make_pair(-stats->EFFECTS_TIMERS[EFF_DETECT_ENEMY], entity));
+							}
+						}
+					}
+				}
+
+				/*messagePlayerColor(DEATHCAM_PLAYERNUM,
+					MESSAGE_HINT, makeColorRGB(255, 255, 255), Language::get(6495));*/
+
+				int duration = getSpellEffectDurationFromID(SPELL_ENEMY_VISION, nullptr, nullptr, nullptr);
+
+				if ( entity->setEffect(EFF_DETECT_ENEMY,
+					effectStrength, duration, true, true, true) )
+				{
+					Entity* caster = players[player]->entity;
+					createParticleSpellPinpointTarget(entity, caster->getUID(), 1782, duration, SPELL_ENEMY_VISION);
+					serverSpawnMiscParticles(entity, PARTICLE_EFFECT_PINPOINT, 1782, caster->getUID(), duration, SPELL_ENEMY_VISION);
+
+					if ( Stat* stats = entity->getStats() )
+					{
+						if ( !strcmp(stats->name, "") )
+						{
+							updateEnemyBar(caster, entity, getMonsterLocalizedName(stats->type).c_str(), stats->HP, stats->MAXHP,
+								false, DMG_DETECT_MONSTER);
+						}
+						else
+						{
+							updateEnemyBar(caster, entity, stats->name, stats->HP, stats->MAXHP,
+								false, DMG_DETECT_MONSTER);
+						}
+					}
+				}
+				std::sort(existingEffects.begin(), existingEffects.end());
+				if ( existingEffects.size() >= 5 )
+				{
+					for ( auto it = existingEffects.begin() + 4; it != existingEffects.end(); )
+					{
+						it->second->setEffect(EFF_DETECT_ENEMY, false, 0, true);
+						it = existingEffects.erase(it);
+					}
+				}
+			}
+		}
+	} }
 };
 
 void serverHandlePacket()

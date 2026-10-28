@@ -605,6 +605,12 @@ struct SaveGameInfo {
 				bool identified = false;
 				int x = 0;
 				int y = 0;
+				int playerSoldItemToShop = false;
+				bool itemHiddenFromShop = false;
+				int itemRequireTradingSkillInShop = 0;
+				bool itemSpecialShopConsumable = false;
+				bool isDroppable = true;
+				int serialize_type = 0;
 				bool serialize(FileInterface* fp) {
 					fp->property("type", type);
 					fp->property("status", status);
@@ -614,6 +620,22 @@ struct SaveGameInfo {
 					fp->property("identified", identified);
 					fp->property("x", x);
 					fp->property("y", y);
+					if ( fp->isReading() )
+					{
+						fp->property("serialize_type", serialize_type);
+					}
+					if ( serialize_type == 1 ) // extra storage
+					{
+						if ( !fp->isReading() )
+						{
+							fp->property("serialize_type", serialize_type);
+						}
+						fp->property("droppable", isDroppable);
+						fp->property("shop_item_player_sold", playerSoldItemToShop);
+						fp->property("shop_item_hidden", itemHiddenFromShop);
+						fp->property("shop_item_trading_skill", itemRequireTradingSkillInShop);
+						fp->property("shop_item_special_consumable", itemSpecialShopConsumable);
+					}
 					return true;
 				}
 				void computeHash(Uint32& hash, Uint32& shift);
@@ -718,6 +740,7 @@ struct SaveGameInfo {
 
 		stat_t stats;
 		std::vector<stat_t> followers;
+		std::vector<stat_t> phase_other_storage;
 		
 		bool serialize(FileInterface* fp) {
 			int version = 1;
@@ -804,6 +827,7 @@ struct SaveGameInfo {
 			fp->property("divine_favor", divine_favor);
 			fp->property("divine_events", divineOfferingsHistory);
 			fp->property("bounties_claimed", bountiesClaimed);
+			fp->property("phase_other_storage", phase_other_storage);
 			return true;
 		}
 
@@ -1035,6 +1059,8 @@ public:
 		std::unordered_set<Uint32> bountyTargets;
 		std::vector<Uint32> manifestDestinyChests;
 		Uint32 manifestDestinyChestSequence = 0;
+		std::vector<Uint32> manifestDestinyShrines;
+		Uint32 manifestDestinyShrineSequence = 0;
 		bool updatedBountyTargets = false;
 		bool wearingBountyHat = false;
 		static std::set<ItemType> startingClassItems;

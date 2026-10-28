@@ -179,6 +179,15 @@ void castSpellInit(Uint32 caster_uid, spell_t* spell, bool usingSpellbook, bool 
 	}
 
 	// Entity cannot cast Spells while Paralyzed or Asleep
+	if ( player >= 0 && players[player]->entity && players[player]->entity->skill[3] == 4 ) // enemy vision camera
+	{
+		if ( spell->ID != SPELL_ENEMY_VISION )
+		{
+			messagePlayer(player, MESSAGE_COMBAT, Language::get(7411));
+			playSoundEntityLocal(players[player]->entity, 163, 64);
+			return;
+		}
+	}
 	if ( stat->getEffectActive(EFF_PARALYZED) || stat->getEffectActive(EFF_ASLEEP) )
 	{
 		return;
@@ -1575,6 +1584,13 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 		else if ( !strcmp(element->element_internal_name, spellElement_strike.element_internal_name) )
 		{
 			caster->attack(MONSTER_POSE_SPECIAL_WINDUP1, MAXCHARGE, nullptr); // this is server only, tells client to attack.
+			createParticleFociLight(caster, SPELL_STRIKE, true);
+			if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+				caster->x, caster->y, 16, 1 * TICKS_PER_SECOND, caster) )
+			{
+
+			}
+			playSoundEntity(caster, 887, 128);
 		}
 		else if ( !strcmp(element->element_internal_name, spellElement_fear.element_internal_name) )
 		{
@@ -1779,7 +1795,9 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			|| spell->ID == SPELL_SANCTIFY_WATER
 			|| spell->ID == SPELL_CLEANSE_FOOD
 			|| spell->ID == SPELL_ADORCISE_INSTRUMENT
-			|| spell->ID == SPELL_SCRY_ITEM )
+			|| spell->ID == SPELL_SCRY_ITEM
+			|| spell->ID == SPELL_SHAPECHANGE
+			|| spell->ID == SPELL_COMPACT_SCRAP )
 		{
 			for ( int i = 0; i < MAXPLAYERS; ++i )
 			{
@@ -1788,6 +1806,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					if ( spell->skillID == PRO_MYSTICISM )
 					{
 						spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+						if ( spell->ID == SPELL_SHAPECHANGE )
+						{
+							createParticleFociDark(caster, spell->ID, true);
+						}
 					}
 					else
 					{
@@ -2631,12 +2653,16 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
 			}
 		}
-		else if ( spell->ID == SPELL_MANIFEST_DESTINY )
+		else if ( spell->ID == SPELL_MANIFEST_DESTINY || spell->ID == SPELL_PILGRIMAGE )
 		{
 			if ( caster && caster->behavior == &actPlayer )
 			{
-				auto& chests = achievementObserver.playerAchievements[caster->skill[2]].manifestDestinyChests;
-				auto& sequence = achievementObserver.playerAchievements[caster->skill[2]].manifestDestinyChestSequence;
+				auto& chests = spell->ID == SPELL_MANIFEST_DESTINY 
+					? achievementObserver.playerAchievements[caster->skill[2]].manifestDestinyChests
+					: achievementObserver.playerAchievements[caster->skill[2]].manifestDestinyShrines;
+				auto& sequence = spell->ID == SPELL_MANIFEST_DESTINY
+					? achievementObserver.playerAchievements[caster->skill[2]].manifestDestinyChestSequence
+					: achievementObserver.playerAchievements[caster->skill[2]].manifestDestinyShrineSequence;
 				bool found = false;
 				if ( chests.size() )
 				{
@@ -2665,28 +2691,40 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 				if ( found )
 				{
-					Entity* spellTimer = createParticleTimer(caster, 50, 625);
+					Entity* spellTimer = createParticleTimer(caster, 2 * TICKS_PER_SECOND, 1866);
 					spellTimer->particleTimerPreDelay = 0; // wait x ticks before animation.
 					spellTimer->particleTimerEndAction = PARTICLE_EFFECT_SHRINE_TELEPORT; // teleport behavior of timer.
-					spellTimer->particleTimerEndSprite = 625; // sprite to use for end of timer function.
+					spellTimer->particleTimerEndSprite = 1866; // sprite to use for end of timer function.
 					spellTimer->particleTimerCountdownAction = 1;
-					spellTimer->particleTimerCountdownSprite = 625;
+					spellTimer->particleTimerCountdownSprite = 1866;
 					spellTimer->particleTimerTarget = static_cast<Sint32>(chests[sequence]); // get the target to teleport around.
 					spellTimer->particleTimerVariable1 = 1; // distance of teleport in tiles
 					spellTimer->particleTimerVariable2 = caster->getUID(); // which player to teleport
+					spellTimer->particleTimerVariable3 = spell->ID;
 					if ( multiplayer == SERVER )
 					{
-						serverSpawnMiscParticles(caster, PARTICLE_EFFECT_DESTINY_TELEPORT, 625, spellTimer->particleTimerDuration);
+						serverSpawnMiscParticles(caster, PARTICLE_EFFECT_DESTINY_TELEPORT, 1866, spellTimer->particleTimerDuration);
 					}
 					//shrineActivateDelay = 250;
 					//serverUpdateEntitySkill(this, 7);
-					messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6494));
+					createParticleFociLight(caster, spell->ID, true);
+					playSoundEntity(caster, 909, 128);
+					if ( spell->ID == SPELL_MANIFEST_DESTINY )
+					{
+						messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6494));
+					}
+					else
+					{
+						messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(7398));
+					}
 				}
 				else if ( !found )
 				{
 					messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(3715));
+					spawnMagicEffectParticles(caster->x, caster->y, caster->z, 174);
+					playSoundEntity(caster, 163, 128);
 				}
-				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+				//spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
 			}
 		}
 		else if ( spell->ID == SPELL_SCRY_TRAPS )
@@ -4797,7 +4835,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						}
 					}
 				}
-				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 2207);
 				playSoundEntity(caster, 164, 128);
 			}
 		}
@@ -4885,7 +4923,112 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				{
 					found = true;
 
-					Entity* spellTimer = createParticleTimer(caster, 3 * TICKS_PER_SECOND + 10, -1);
+					real_t ox = castSpellProps->target_x;
+					real_t oy = castSpellProps->target_y;
+
+					auto compFunc = [](std::pair<std::pair<Sint32, real_t>, Entity*>& lhs, std::pair<std::pair<Sint32, real_t>, Entity*>& rhs)
+						{
+							int lhs_dist = 16 * ((int)(lhs.first.second) / 16);
+							int rhs_dist = 16 * ((int)(rhs.first.second) / 16);
+							if ( lhs_dist == rhs_dist )
+							{
+								return lhs.first.first > rhs.first.first;
+							}
+							return lhs_dist > rhs_dist;
+						};
+					std::vector<std::pair<std::pair<Sint32, real_t>, Entity*>> enemies;
+					real_t maxDist = 256.0;
+					for ( node_t* node = map.creatures->first; node; node = node->next )
+					{
+						if ( Entity* entity = (Entity*)node->element )
+						{
+							Stat* entitystats = entity->getStats();
+							if ( !entitystats )
+							{
+								continue;
+							}
+							if ( entity == caster )
+							{
+								continue;
+							}
+							if ( !entity->monsterIsTargetable() )
+							{
+								if ( entitystats->type != BAT_SMALL )
+								{
+									continue;
+								}
+							}
+							real_t dist = sqrt(pow(castSpellProps->target_x - entity->x, 2) + pow(castSpellProps->target_y - entity->y, 2));
+							if ( dist > maxDist )
+							{
+								continue;
+							}
+							if ( caster->checkFriend(entity) )
+							{
+								continue;
+							}
+
+							real_t old_x = caster->x;
+							real_t old_y = caster->y;
+							caster->x = ox;
+							caster->y = oy;
+							TileEntityList.updateEntity(*caster);
+							real_t tangent = atan2(caster->y - entity->y, caster->x - entity->x);
+							lineTraceTarget(entity, entity->x, entity->y, tangent, maxDist, 0, false, caster);
+							caster->x = old_x;
+							caster->y = old_y;
+							TileEntityList.updateEntity(*caster);
+							if ( hit.entity != caster )
+							{
+								continue;
+							}
+
+							enemies.push_back(std::make_pair(std::make_pair(entitystats->HP, -dist), entity));
+						}
+					}
+					std::sort(enemies.begin(), enemies.end(), compFunc);
+
+
+					int maxInstances = 3;
+					if ( caster->behavior == &actPlayer )
+					{
+						maxInstances = (players[caster->skill[2]]->mechanics.getDivineFavorPips() + 1) / 2;
+					}
+					Entity* spellTimer = createParticleTimer(caster, 3 * TICKS_PER_SECOND + 10 + (maxInstances - 1) * 0.5 * TICKS_PER_SECOND, -1);
+					Uint32 targetUid = 0;
+					if ( auto props = getParticleEmitterHitProps(spellTimer->getUID(), spellTimer) )
+					{
+						props->hits = 1;
+						props->tick = maxInstances;
+					}
+
+					if ( enemies.size() )
+					{
+						players[caster->skill[2]]->mechanics.divineFavorModPips(-1);
+					}
+
+					int enemyIndex = 0;
+					for ( int i = 0; i < maxInstances; ++i )
+					{
+						if ( enemies.size() )
+						{
+							if ( targetUid == 0 )
+							{
+								targetUid = enemies.at(enemyIndex).second->getUID();
+							}
+							auto props = getParticleEmitterHitProps(spellTimer->getUID(), enemies.at(enemyIndex).second);
+							if ( props )
+							{
+								props->hits = i + 1; // hit sequence
+							}
+							enemies.erase(enemies.begin());
+							/*++enemyIndex;
+							if ( enemyIndex >= enemies.size() )
+							{
+								enemyIndex = 0;
+							}*/
+						}
+					}
 					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_ETERNALS_GAZE;
 					spellTimer->particleTimerCountdownSprite = -1;
 					spellTimer->yaw = caster->yaw;
@@ -4893,14 +5036,30 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					spellTimer->y = castSpellProps->target_y;
 					spellTimer->flags[NOUPDATE] = false; // spawn for client
 					spellTimer->flags[UPDATENEEDED] = true;
+					if ( maxInstances == 0 )
+					{
+						spellTimer->actmagicOrbitHitTargetUID1 = 0;
+					}
+					else
+					{
+						spellTimer->actmagicOrbitHitTargetUID1 = targetUid;
+					}
+					spellTimer->actmagicSpellbookBonus = maxInstances * 25;
 					Sint32 val = (1 << 31);
 					val |= (Uint8)(19);
 					val |= (((Uint16)(spellTimer->particleTimerDuration) & 0xFFF) << 8);
 					val |= (Uint8)(spellTimer->particleTimerCountdownAction & 0xFF) << 20;
 					spellTimer->skill[2] = val;
+					for ( int i = 0; i < MAXPLAYERS; ++i )
+					{
+						playSoundPlayer(i, 803, 128);
+					}
 				}
-				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
-				playSoundEntity(caster, 171, 128);
+
+				messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(7409));
+				//spawnMagicEffectParticles(caster->x, caster->y, caster->z, 171);
+				createParticleFociLight(caster, SPELL_ETERNALS_GAZE, true);
+				//playSoundEntity(caster, 884, 128);
 			}
 		}
 		else if ( spell->ID == SPELL_SHATTER_EARTH )
@@ -4967,7 +5126,9 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				}
 			}
 		}
-		else if ( spell->ID == SPELL_EARTH_ELEMENTAL || spell->ID == SPELL_WATER_ELEMENTAL )
+		else if ( spell->ID == SPELL_EARTH_ELEMENTAL 
+			|| spell->ID == SPELL_WATER_ELEMENTAL
+			|| spell->ID == SPELL_GREASE_ELEMENTAL )
 		{
 			if ( caster )
 			{
@@ -5006,7 +5167,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						found = true;
 						Entity* spellTimer = createParticleTimer(caster, 5 * TICKS_PER_SECOND, -1);
 						spellTimer->particleTimerCountdownAction = spell->ID == SPELL_EARTH_ELEMENTAL ? PARTICLE_TIMER_ACTION_EARTH_ELEMENTAL
-							: PARTICLE_TIMER_ACTION_WATER_ELEMENTAL;
+							: (spell->ID == SPELL_WATER_ELEMENTAL ? PARTICLE_TIMER_ACTION_WATER_ELEMENTAL : PARTICLE_TIMER_ACTION_GREASE_ELEMENTAL);
 						spellTimer->particleTimerCountdownSprite = -1;
 						spellTimer->yaw = caster->yaw;
 						spellTimer->x = x * 16.0 + 8.0;
@@ -5371,9 +5532,6 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				{
 					found = true;
 
-					real_t tangent = atan2(castSpellProps->target_y - castSpellProps->caster_y,
-						castSpellProps->target_x - castSpellProps->caster_x);
-
 					int duration = getSpellEffectDurationFromID(spell->ID, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
 					Entity* spellTimer = createParticleTimer(caster, duration, -1);
 					spellTimer->particleTimerCountdownAction = spell->ID == SPELL_CYCLONE ? PARTICLE_TIMER_ACTION_VORTEX_BLUE : PARTICLE_TIMER_ACTION_VORTEX;
@@ -5381,7 +5539,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					spellTimer->particleTimerVariable2 = spell->ID;
 					spellTimer->flags[UPDATENEEDED] = true;
 					spellTimer->flags[NOUPDATE] = false;
-					spellTimer->yaw = tangent;
+					spellTimer->yaw = caster->yaw;
 					spellTimer->x = castSpellProps->target_x;
 					spellTimer->y = castSpellProps->target_y;
 					if ( spellBookBonusPercent > 0 )
@@ -5392,6 +5550,9 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 					if ( caster->behavior == &actMonster )
 					{
+						real_t tangent = atan2(castSpellProps->target_y - castSpellProps->caster_y,
+							castSpellProps->target_x - castSpellProps->caster_x);
+						spellTimer->yaw = tangent;
 						spellTimer->x = castSpellProps->caster_x + 8.0 * cos(tangent);
 						spellTimer->y = castSpellProps->caster_y + 8.0 * sin(tangent);
 						spellTimer->vel_x = 4.0 * cos(spellTimer->yaw);
@@ -7689,8 +7850,23 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				if ( caster->setEffect(EFF_BLOOD_WARD, true, duration, true) )
 				{
 					messagePlayerColor(caster->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(6502));
-					playSoundEntity(caster, 178, 128);
-					spawnMagicEffectParticles(caster->x, caster->y, caster->z, 2207);
+					playSoundEntity(caster, 901, 128);
+					createParticleFociLight(caster, spell->ID, true);
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+					{
+					}
+
+					for ( node_t* node = caster->getStats()->magic_effects.first; node; node = node->next )
+					{
+						if ( spell_t* spell = (spell_t*)node->element )
+						{
+							if ( spell->ID == SPELL_TRUE_BLOOD )
+							{
+								spell->sustain = false;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -7714,11 +7890,26 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				{
 					duration = element->duration;
 				}
-				if ( caster->setEffect(EFF_TRUE_BLOOD, true, duration, false) )
+				if ( caster->setEffect(EFF_TRUE_BLOOD, true, duration, true) )
 				{
 					messagePlayerColor(caster->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(6506));
-					playSoundEntity(caster, 178, 128);
-					spawnMagicEffectParticles(caster->x, caster->y, caster->z, 170);
+					playSoundEntity(caster, 907, 128);
+					createParticleFociLight(caster, spell->ID, true);
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+					{
+					}
+
+					for ( node_t* node = caster->getStats()->magic_effects.first; node; node = node->next )
+					{
+						if ( spell_t* spell = (spell_t*)node->element )
+						{
+							if ( spell->ID == SPELL_BLOOD_WARD )
+							{
+								spell->sustain = false;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -8940,7 +9131,10 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 									++numAlliesEffectsCured;
 									++entityEffectsCured;
 									entity->setEffect(EFF_WITHDRAWAL, false, EFFECT_WITHDRAWAL_BASE_TIME, true);
-									serverUpdatePlayerGameplayStats(i, STATISTICS_FUNCTIONAL, 1);
+									if ( entity->behavior == &actPlayer )
+									{
+										serverUpdatePlayerGameplayStats(entity->skill[2], STATISTICS_FUNCTIONAL, 1);
+									}
 								}
 								if ( regenEffect )
 								{
@@ -9866,15 +10060,15 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				//playSoundEntity(caster, 167, 64);
 			}
 		}
-		else if ( spell->ID == SPELL_SANCTUARY )
+		else if ( spell->ID == SPELL_SANCTUARY || spell->ID == SPELL_SACRED_GROUND )
 		{
 			if ( caster )
 			{
 				bool found = false;
 				bool effect = false;
-				if ( castSpellProps )
+				if ( castSpellProps || spell->ID == SPELL_SACRED_GROUND )
 				{
-					bool follow = caster->behavior == &actMonster;
+					bool follow = caster->behavior == &actMonster || spell->ID == SPELL_SACRED_GROUND;
 
 					if ( follow )
 					{
@@ -9897,12 +10091,21 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 						}
 					}
 
-					if ( Entity* fx = createRadiusMagic(SPELL_SANCTUARY, caster,
-						castSpellProps->target_x, castSpellProps->target_y, 32,
-						getSpellEffectDurationFromID(SPELL_SANCTUARY, caster, nullptr, caster), follow ? caster : nullptr) )
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						spell->ID == SPELL_SACRED_GROUND ? caster->x : castSpellProps->target_x,
+						spell->ID == SPELL_SACRED_GROUND ? caster->y : castSpellProps->target_y,
+						32,
+						getSpellEffectDurationFromID(spell->ID, caster, nullptr, caster), follow ? caster : nullptr) )
 					{
 						playSoundEntity(fx, 907, 128);
-						messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6953));
+						if ( spell->ID == SPELL_SACRED_GROUND )
+						{
+							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(7408));
+						}
+						else
+						{
+							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6953));
+						}
 					}
 				}
 				/*if ( !found )
@@ -10477,6 +10680,1346 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				}
 			}
 		}
+		else if ( spell->ID == SPELL_FORTIFY_HP || spell->ID == SPELL_FORTIFY_MP )
+		{
+			if ( caster )
+			{
+				int effectStrength = getSpellDamageFromID(spell->ID, caster, nullptr, caster);
+				effectStrength = std::min(effectStrength, getSpellEffectDurationSecondaryFromID(spell->ID, caster, nullptr, caster));
+				int duration = element->duration;
+
+				auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(caster, 1);
+				for ( auto it : entLists )
+				{
+					node_t* node;
+					for ( node = it->first; node != nullptr; node = node->next )
+					{
+						if ( Entity* entity2 = (Entity*)node->element )
+						{
+							if ( entity2->behavior == &actRadiusMagic
+								&& entity2->actRadiusMagicID == spell->ID
+								&& entity2->actRadiusMagicFollowUID == caster->getUID() )
+							{
+								entity2->skill[0] = -1; // dispel the previous effect
+							}
+						}
+					}
+				}
+
+				effectStrength |= 1 << 7; // denote the caster as this for levelling chances
+
+				if ( caster->setEffect(spell->ID == SPELL_FORTIFY_HP ? EFF_FORTIFY_HP : EFF_FORTIFY_MP, 
+					(Uint8)(effectStrength), duration, false, true, true))
+				{
+					playSoundEntity(caster, 906, 128);
+					if ( spell->ID == SPELL_FORTIFY_HP )
+					{
+						messagePlayerColor(caster->isEntityPlayer(),
+							MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(7248));
+					}
+					else
+					{
+						messagePlayerColor(caster->isEntityPlayer(),
+							MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(7249));
+					}
+
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						caster->x, caster->y,
+						32, 2 * TICKS_PER_SECOND, caster) )
+					{
+						fx->actRadiusMagicEffectPower = 0;
+						fx->actRadiusMagicEffectPower |= (effectStrength & 0x7F);
+						fx->actRadiusMagicEffectPower |= (((Uint32)duration) & 0xFFFFFF) << 8;
+					}
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_LIGHTNING_NEXUS )
+		{
+			if ( caster )
+			{
+				bool found = false;
+				bool effect = false;
+				if ( castSpellProps )
+				{
+					if ( Entity* fx = createRadiusMagic(SPELL_LIGHTNING_NEXUS, caster,
+						castSpellProps->target_x, castSpellProps->target_y, spell->radius,
+						spell->life_time, nullptr) )
+					{
+						fx->yaw = caster->yaw;
+						playSoundEntity(fx, 806, 128);
+						if ( spellBookBonusPercent > 0 )
+						{
+							fx->actmagicSpellbookBonus = spellBookBonusPercent;
+						}
+						fx->actmagicFromSpellbook = usingSpellbook ? 1 : 0;
+					}
+				}
+				/*if ( !found )
+				{
+					messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6498));
+				}*/
+				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 170);
+				playSoundEntity(caster, 806, 64);
+			}
+		}
+		else if ( spell->ID == SPELL_RUPTURE )
+		{
+			if ( caster )
+			{
+				if ( castSpellProps )
+				{
+					if ( Entity* target = uidToEntity(castSpellProps->targetUID) )
+					{
+						createParticleFociDark(caster, spell->ID, true);
+						if ( Stat* targetStats = target->getStats() )
+						{
+							Uint8 effectStrength = (Uint8)(caster->behavior != &actPlayer ? MAXPLAYERS + 1 : caster->skill[2] + 1);
+
+							if ( !(gibtype[targetStats->type] == 0 || gibtype[targetStats->type] == 5)
+								&& target->setEffect(EFF_RUPTURE, effectStrength, element->duration, false, true, true) )
+							{
+								playSoundEntity(target, 891, 128);
+
+								createParticleFociDark(target, spell->ID, true);
+
+								int damage = getSpellDamageFromID(SPELL_RUPTURE, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+								if ( applyGenericMagicDamage(caster, target, *caster, spell->ID, damage, true, false) )
+								{
+
+								}
+
+								if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+									caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, target) )
+								{
+
+								}
+
+								if ( Entity* gib = spawnGib(target) )
+								{
+									if ( gib->sprite >= 0 )
+									{
+										if ( Entity* fx = createParticleAestheticOrbit(target, gib->sprite, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_RUPTURE) )
+										{
+											fx->flags[INVISIBLE] = true;
+										}
+										serverSpawnMiscParticles(target, PARTICLE_EFFECT_RUPTURE, gib->sprite, 0, 2 * TICKS_PER_SECOND);
+									}
+								}
+
+								if ( target->isEntityPlayer() >= 0 )
+								{
+									messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 255, 255), Language::get(7391));
+								}
+								messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(0, 255, 0),
+									*target->getStats(), Language::get(7389), Language::get(7390), MSG_COMBAT);
+							}
+							else
+							{
+								playSoundEntity(caster, 163, 128);
+								messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(255, 0, 0),
+									*target->getStats(), Language::get(2905), Language::get(2906), MSG_COMBAT);
+								applyGenericMagicDamage(caster, target, *caster, spell->ID, 0, true, false); // alert the target
+							}
+						}
+					}
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_VAMPIRIC_TOUCH )
+		{
+			if ( caster )
+			{
+				if ( castSpellProps )
+				{
+					if ( Entity* target = uidToEntity(castSpellProps->targetUID) )
+					{
+						createParticleFociDark(caster, spell->ID, true);
+
+						if ( Stat* targetStats = target->getStats() )
+						{
+							Uint8 effectStrength = (Uint8)(caster->behavior != &actPlayer ? MAXPLAYERS + 1 : caster->skill[2] + 1);
+
+							if ( !(gibtype[targetStats->type] == 0 || gibtype[targetStats->type] == 5) && !targetStats->getEffectActive(EFF_VAMPIRIC_TOUCH)
+								&& target->setEffect(EFF_VAMPIRIC_TOUCH, effectStrength, element->duration, false, true, true) )
+							{
+								playSoundEntity(target, 891, 128);
+
+								createParticleFociDark(target, spell->ID, true);
+
+								applyGenericMagicDamage(caster, target, *caster, spell->ID, 0, true, false); // alert the target
+								magicOnEntityHit(caster, caster, target, targetStats, 0, 0, 0, spell ? spell->ID : SPELL_NONE);
+
+								if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+									caster->x, caster->y, 16, element->duration + 2, target) )
+								{
+
+								}
+
+								for ( int i = 0; i < 3; ++i )
+								{
+									if ( Entity* fx = createParticleAestheticOrbit(target, 2363, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_VAMPIRIC_TOUCH) )
+									{
+										fx->fskill[2] += i * 2 * PI / 3;
+										fx->yaw = fx->fskill[2];
+										fx->z = 7.5;
+									}
+								}
+
+								serverSpawnMiscParticles(target, PARTICLE_EFFECT_VAMPIRIC_TOUCH, 2363, 0, 2 * TICKS_PER_SECOND);
+
+								if ( target->isEntityPlayer() >= 0 )
+								{
+									messagePlayerColor(target->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 255, 255), Language::get(7394));
+								}
+								messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(0, 255, 0),
+									*target->getStats(), Language::get(7392), Language::get(7393), MSG_COMBAT);
+							}
+							else
+							{
+								playSoundEntity(caster, 163, 128);
+								if ( targetStats->getEffectActive(EFF_VAMPIRIC_TOUCH) )
+								{
+									messagePlayerColor(caster->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(6908));
+								}
+								else
+								{
+									messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(255, 0, 0),
+										*target->getStats(), Language::get(2905), Language::get(2906), MSG_COMBAT);
+								}
+								applyGenericMagicDamage(caster, target, *caster, spell->ID, 0, true, false); // alert the target
+							}
+						}
+					}
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_SCRY_EXIT )
+		{
+			if ( caster )
+			{
+				std::vector<Entity*> exits;
+				bool found = false;
+				bool foundExisting = false;
+				for ( node_t* node = map.entities->first; node; node = node->next )
+				{
+					if ( Entity* ent = (Entity*)node->element )
+					{
+						if ( ent->behavior == &actLadder || ent->behavior == &actPortal || ent->behavior == &actCustomPortal )
+						{
+							if ( ent->flags[INVISIBLE] ) { continue; }
+
+							bool skip = false;
+							std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(ent, 1);
+							for ( auto it : entLists )
+							{
+								node_t* node;
+								for ( node = it->first; node != nullptr; node = node->next )
+								{
+									if ( Entity* entity2 = (Entity*)node->element )
+									{
+										if ( entity2->behavior == &actParticlePinpointTarget
+											&& entity2->parent == ent->getUID() )
+										{
+											if ( entity2->skill[4] == spell->ID )
+											{
+												foundExisting = true;
+												skip = true;
+											}
+										}
+									}
+								}
+							}
+
+							if ( !skip )
+							{
+								found = true;
+								int duration = element->duration;
+								createParticleSpellPinpointTarget(ent, caster->getUID(), 1779, duration, spell->ID);
+								serverSpawnMiscParticles(ent, PARTICLE_EFFECT_PINPOINT, 1779, caster->getUID(), duration, spell->ID);
+
+								serverSpawnMiscParticles(caster, PARTICLE_EFFECT_SCRY_EXIT, 0, ent->getUID());
+								shrineDaedalusRevealMap(*caster, MinimapHighlight_t::REVEAL_SCRY, ent);
+
+								playSoundEntity(ent, 909, 128);
+								createParticleFociLight(ent, spell->ID, true);
+
+								if ( caster->behavior == &actPlayer )
+								{
+									players[caster->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_SCRY_EXIT, 150.0, 1.0, nullptr);
+								}
+								break;
+							}
+						}
+					}
+				}
+
+				/*if ( caster->isEntityPlayer() >= 0 )
+				{
+					int pingx = caster->x / 16;
+					int pingy = caster->y / 16;
+					sendMinimapPing(caster->isEntityPlayer(), pingx, pingy, 0, true);
+				}*/
+
+				if ( !found )
+				{
+					if ( foundExisting )
+					{
+						messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(7400));
+					}
+					else
+					{
+						messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(7400));
+					}
+					playSoundEntity(caster, 167, 128);
+					spawnMagicEffectParticles(caster->x, caster->y, caster->z, 174);
+				}
+				else
+				{
+					messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(7399));
+					playSoundEntity(caster, 909, 128);
+					createParticleFociLight(caster, spell->ID, true);
+				}
+
+				if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+					caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+				{
+
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_SCRY_SHRINES )
+		{
+			if ( caster )
+			{
+				std::vector<Entity*> traps;
+				bool found = false;
+				bool foundExisting = false;
+				for ( node_t* node = map.entities->first; node; node = node->next )
+				{
+					if ( Entity* ent = (Entity*)node->element )
+					{
+						if ( ent->behavior == &actEternalShrine )
+						{
+							/*if ( entityDist(caster, ent) >= TOUCHRANGE * 8 )
+							{
+								continue;
+							}*/
+
+							bool skip = false;
+							std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(ent, 1);
+							for ( auto it : entLists )
+							{
+								node_t* node;
+								for ( node = it->first; node != nullptr; node = node->next )
+								{
+									if ( Entity* entity2 = (Entity*)node->element )
+									{
+										if ( entity2->behavior == &actParticlePinpointTarget
+											&& entity2->parent == ent->getUID() )
+										{
+											if ( entity2->skill[4] == spell->ID )
+											{
+												foundExisting = true;
+												skip = true;
+											}
+										}
+									}
+								}
+							}
+
+							if ( !skip )
+							{
+								found = true;
+								int duration = element->duration;
+								createParticleSpellPinpointTarget(ent, caster->getUID(), 1770, duration, spell->ID);
+								serverSpawnMiscParticles(ent, PARTICLE_EFFECT_PINPOINT, 1770, caster->getUID(), duration, spell->ID);
+
+								if ( caster->behavior == &actPlayer )
+								{
+									players[caster->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_SCRY_SHRINES, 150.0, 1.0, nullptr);
+								}
+							}
+						}
+					}
+				}
+
+				if ( caster->isEntityPlayer() >= 0 )
+				{
+					int pingx = caster->x / 16;
+					int pingy = caster->y / 16;
+					sendMinimapPing(caster->isEntityPlayer(), pingx, pingy, 0, true);
+				}
+
+				if ( !found )
+				{
+					if ( foundExisting )
+					{
+						messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(7397));
+					}
+					else
+					{
+						messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(7396));
+					}
+				}
+				else
+				{
+					messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(6482));
+				}
+
+				if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+					caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+				{
+
+				}
+				playSoundEntity(caster, 167, 128);
+				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 174);
+			}
+		}
+		else if ( spell->ID == SPELL_ENTHRALL )
+		{
+			if ( caster )
+			{
+				if ( castSpellProps )
+				{
+					if ( Entity* target = uidToEntity(castSpellProps->targetUID) )
+					{
+						if ( Stat* targetStats = target->getStats() )
+						{
+							createParticleFociDark(caster, spell->ID, true);
+
+							if ( !target->monsterAllyGetPlayerLeader() || target->monsterAllyGetPlayerLeader() != caster )
+							{
+								playSoundEntity(caster, 163, 128);
+								messagePlayerColor(caster->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7401));
+								if ( !target->monsterAllyGetPlayerLeader() )
+								{
+									applyGenericMagicDamage(caster, target, *caster, spell->ID, 0, true, false); // alert the target
+								}
+							}
+							else if ( target->monsterAllyGetPlayerLeader() == caster )
+							{
+								Uint8 effectStrength = (Uint8)(caster->behavior != &actPlayer ? MAXPLAYERS + 1 : caster->skill[2] + 1);
+
+								int strength = getSpellDamageFromID(spell->ID, caster, nullptr, caster);
+								strength = std::min(strength, getSpellDamageSecondaryFromID(spell->ID, caster, nullptr, caster));
+								strength = std::min(15, strength);
+								effectStrength |= (strength & 0xF) << 4;
+
+								if ( target->setEffect(EFF_ENTHRALL, effectStrength, 0, true, true, true) )
+								{
+									for ( node = stats[caster->skill[2]]->FOLLOWERS.first; node != nullptr; node = node->next )
+									{
+										Entity* follower = nullptr;
+										if ( (Uint32*)(node)->element )
+										{
+											if ( follower = uidToEntity(*((Uint32*)(node)->element)) )
+											{
+												if ( Stat* followerStats = follower->getStats() )
+												{
+													if ( follower != target )
+													{
+														bool fade = false;
+														if ( followerStats->monsterIsCharmed == 2 )
+														{
+															fade = true;
+															followerStats->monsterIsCharmed = 1;
+															serverUpdateEntityStatFlag(follower, 12);
+														}
+														if ( followerStats->getEffectActive(EFF_ENTHRALL) )
+														{
+															fade = true;
+															follower->setEffect(EFF_ENTHRALL, false, 0, true);
+														}
+
+														if ( fade )
+														{
+															messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(7402));
+
+															serverSpawnMiscParticles(follower, PARTICLE_EFFECT_ENTHRALL_FADE, 0);
+
+															real_t yaw = 0;
+															int numParticles = 8;
+															for ( int c = 0; c < numParticles; c++ )
+															{
+																Entity* fx = newEntity(576, 1, map.entities, nullptr); //Particle entity.
+																fx->sizex = 1;
+																fx->sizey = 1;
+																fx->x = follower->x;
+																fx->y = follower->y;
+																fx->z = -10;
+																fx->yaw = yaw;
+																fx->vel_x = 0.2;
+																fx->vel_y = 0.2;
+																fx->vel_z = -0.02;
+																fx->skill[0] = 100;
+																fx->skill[1] = 0; // direction.
+																fx->fskill[0] = 0.1;
+																fx->behavior = &actParticleErupt;
+																fx->flags[PASSABLE] = true;
+																fx->flags[NOUPDATE] = true;
+																fx->flags[UNCLICKABLE] = true;
+																fx->lightBonus = vec4(0.25, 0.25, 0.25, 0.f);
+																if ( multiplayer != CLIENT )
+																{
+																	entity_uids--;
+																}
+																fx->setUID(-3);
+																yaw += 2 * PI / numParticles;
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+
+									playSoundEntity(target, 887, 128);
+
+									magicOnSpellCastEvent(caster, caster, nullptr, SPELL_ENTHRALL, spell_t::SPELL_LEVEL_EVENT_EFFECT | spell_t::SPELL_LEVEL_EVENT_MINOR_CHANCE, 1);
+
+									messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(0, 255, 0), *target->getStats(),
+										Language::get(7403), Language::get(7404), MSG_COMBAT);
+
+									if ( targetStats->monsterIsCharmed == 1 )
+									{
+										targetStats->monsterIsCharmed = 2;
+										serverUpdateEntityStatFlag(target, 12);
+									}
+
+									if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+										caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, target) )
+									{
+
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_EXORCISED_GROUND )
+		{
+			if ( caster )
+			{
+				bool found = false;
+				bool effect = false;
+				if ( castSpellProps )
+				{
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						castSpellProps->target_x,
+						castSpellProps->target_y,
+						32, getSpellEffectDurationFromID(spell->ID, caster, nullptr, caster), nullptr) )
+					{
+						//playSoundEntity(fx, 907, 128);
+						playSoundEntity(fx, 914, 128);
+						spawnHeatOrbitSpin(fx, 288, true);
+						//messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(7407));
+					}
+				}
+				/*if ( !found )
+				{
+					messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6498));
+				}*/
+				spawnMagicEffectParticles(caster->x, caster->y, caster->z, 174);
+				//playSoundEntity(caster, 167, 64);
+			}
+		}
+		else if ( spell->ID == SPELL_ENEMY_VISION )
+		{
+			if ( caster && caster->behavior == &actPlayer )
+			{
+				if ( stats[caster->skill[2]]->getEffectActive(EFF_ENEMY_VISION) )
+				{
+					caster->setEffect(EFF_ENEMY_VISION, false, 0, false);
+				}
+				else if ( caster->setEffect(EFF_ENEMY_VISION, true, element->duration, false) )
+				{
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+					{
+
+					}
+
+					messagePlayerColor(caster->isEntityPlayer(),
+						MESSAGE_HINT, makeColorRGB(255, 255, 255), Language::get(7412));
+
+					createParticleFociLight(caster, spell->ID, true);
+					playSoundEntity(caster, 167, 128);
+					magicOnSpellCastEvent(caster, caster, nullptr, spell->ID, spell_t::SPELL_LEVEL_EVENT_DEFAULT | spellEventFlags, 1, allowedSkillup);
+
+					if ( !players[caster->skill[2]]->isLocalPlayer() )
+					{
+						if ( !client_disconnected[caster->skill[2]] && multiplayer == SERVER )
+						{
+							strcpy((char*)net_packet->data, "DTCT");
+							net_packet->address.host = net_clients[caster->skill[2] - 1].host;
+							net_packet->address.port = net_clients[caster->skill[2] - 1].port;
+							net_packet->len = 4;
+							sendPacketSafe(net_sock, -1, net_packet, caster->skill[2] - 1);
+						}
+					}
+					else if ( players[caster->skill[2]]->isLocalPlayer() )
+					{
+						node_t* nextnode = nullptr;
+						for ( node_t* node = map.entities->first; node; node = nextnode )
+						{
+							nextnode = node->next;
+
+							if ( Entity* entity = (Entity*)node->element )
+							{
+								if ( entity->behavior == &actDeathCam && entity->skill[2] == caster->skill[2]
+									&& entity->skill[7] == 1 )
+								{
+									entity->removeLightField();
+									list_RemoveNode(entity->mynode);
+								}
+							}
+						}
+
+						cameras[caster->skill[2]].globalLightModifier = 0.f;
+						cameras[caster->skill[2]].globalLightModifierEntities = 0.f;
+
+						players[caster->skill[2]]->entity->skill[3] = 4;
+						Entity* entity = newEntity(-1, 1, map.entities, nullptr); //Deathcam entity.
+						entity->x = caster->x;
+						entity->y = caster->y;
+						entity->z = -2;
+						entity->flags[NOUPDATE] = true;
+						entity->flags[UPDATENEEDED] = false;
+						entity->flags[PASSABLE] = true;
+						entity->flags[INVISIBLE] = true;
+						entity->sizex = 1;
+						entity->sizey = 1;
+						entity->behavior = &actDeathCam;
+						entity->skill[1] = caster->getUID(); // default entity uid
+						entity->skill[7] = 1; // denote vision cam
+						entity->skill[2] = caster->skill[2];
+						entity->yaw = caster->yaw;
+						entity->pitch = PI / 8;
+						if ( multiplayer != CLIENT )
+						{
+							entity_uids--;
+						}
+						entity->setUID(-3);
+					}
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_DUST_STORM )
+		{
+			if ( caster )
+			{
+				bool found = false;
+				bool effect = false;
+				if ( castSpellProps )
+				{
+					real_t tangent = atan2(castSpellProps->target_y - castSpellProps->caster_y,
+						castSpellProps->target_x - castSpellProps->caster_x);
+
+					int duration = getSpellEffectDurationFromID(spell->ID, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+					Entity* spellTimer = createParticleTimer(caster, duration, -1);
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_VORTEX_DUST;
+					spellTimer->particleTimerCountdownSprite = -1;
+					spellTimer->particleTimerVariable2 = spell->ID;
+					spellTimer->flags[UPDATENEEDED] = true;
+					spellTimer->flags[NOUPDATE] = false;
+					spellTimer->yaw = tangent;
+					spellTimer->x = castSpellProps->target_x;
+					spellTimer->y = castSpellProps->target_y;
+					if ( spellBookBonusPercent > 0 )
+					{
+						spellTimer->actmagicSpellbookBonus = spellBookBonusPercent;
+					}
+					spellTimer->actmagicFromSpellbook = usingSpellbook ? 1 : 0;
+
+					if ( caster->behavior == &actMonster )
+					{
+						spellTimer->x = castSpellProps->caster_x + 8.0 * cos(tangent);
+						spellTimer->y = castSpellProps->caster_y + 8.0 * sin(tangent);
+						spellTimer->vel_x = 4.0 * cos(spellTimer->yaw);
+						spellTimer->vel_y = 4.0 * sin(spellTimer->yaw);
+					}
+
+					spellTimer->particleTimerDuration = std::min(spellTimer->particleTimerDuration, 0xFFF);
+					Sint32 val = (1 << 31);
+					val |= (Uint8)(19);
+					val |= (((Uint16)(spellTimer->particleTimerDuration) & 0xFFF) << 8);
+					val |= (Uint8)(spellTimer->particleTimerCountdownAction & 0xFF) << 20;
+					spellTimer->skill[2] = val;
+
+
+				}
+
+				messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(7414));
+				//spawnMagicEffectParticles(caster->x, caster->y, caster->z, 174);
+				createParticleFociDark(caster, SPELL_DUST_STORM, true);
+				//playSoundEntity(caster, 167, 64);
+			}
+		}
+		else if ( spell->ID == SPELL_VORTEX )
+		{
+			if ( caster )
+			{
+				bool found = false;
+				if ( castSpellProps )
+				{
+					found = true;
+
+					int duration = element->duration;
+					int maxLen = getSpellEffectDurationSecondaryFromID(SPELL_VORTEX, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+					int length = std::max(2, std::min(std::min(0xF, maxLen), getSpellDamageFromID(SPELL_VORTEX, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0)));
+
+					real_t tangent = atan2(castSpellProps->target_y - castSpellProps->caster_y,
+						castSpellProps->target_x - castSpellProps->caster_x);
+					tangent = normaliseAngle2PI(tangent);
+					createWindMagicNoWall(caster->getUID(), castSpellProps->target_x, castSpellProps->target_y, duration, tangent, length);
+					Sint32 dir = tangent * 256.0;
+					serverSpawnMiscParticlesAtLocation(castSpellProps->target_x, castSpellProps->target_y, 0,
+						PARTICLE_EFFECT_WINDGATE, 2632, duration, dir, length);
+				}
+				if ( !found )
+				{
+					messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6498));
+				}
+				//spawnMagicEffectParticles(caster->x, caster->y, caster->z, 982);
+				createParticleFociSorcery(caster, spell->ID, true);
+				playSoundEntity(caster, 758, 128);
+			}
+		}
+		else if ( spell->ID == SPELL_FISTS_OF_FORCE )
+		{
+			if ( caster && caster->behavior == &actPlayer )
+			{
+				int charges = getSpellDamageSecondaryFromID(SPELL_FISTS_OF_FORCE, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+				int maxCharges = getSpellEffectDurationSecondaryFromID(SPELL_FISTS_OF_FORCE, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+				charges = std::min(charges, maxCharges);
+
+				if ( caster->setEffect(EFF_FISTS_OF_FORCE, (Uint8)charges, 0, true, true, true) )
+				{
+					messagePlayerColor(caster->isEntityPlayer(), MESSAGE_STATUS, uint32ColorGreen, Language::get(7421));
+					playSoundEntity(caster, 913, 128);
+					createParticleFociLight(caster, spell->ID, true);
+
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+					{
+					}
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_REGROWTH )
+		{
+			if ( caster )
+			{
+				int amount = element->duration;
+				if ( overdrewIntoHP )
+				{
+					amount /= 4;
+					messagePlayerColor(player, MESSAGE_COMBAT, makeColorRGB(255, 255, 255), Language::get(3400));
+				}
+
+				if ( caster->setEffect(EFF_REGROWTH, true, amount, true) )
+				{
+					messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(0, 255, 0), Language::get(7423));
+					playSoundEntity(caster, 912, 128);
+					playSoundEntity(caster, 906, 128);
+					createParticleFociLight(caster, spell->ID, true);
+
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+					{
+					}
+
+					magicOnSpellCastEvent(caster, caster, nullptr, spell->ID, spell_t::SPELL_LEVEL_EVENT_EFFECT | spellEventFlags, 1, allowedSkillup);
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_PHASE_OTHER )
+		{
+			if ( caster && caster->behavior == &actPlayer )
+			{
+				if ( castSpellProps )
+				{
+					bool found = false;
+					bool busy = false;
+					if ( castSpellProps->targetUID == 0 )
+					{
+						Stat* targetStats = nullptr;
+						if ( players[caster->skill[2]]->mechanics.phaseOtherStats.size() )
+						{
+							targetStats = players[caster->skill[2]]->mechanics.phaseOtherStats[0];
+						}
+
+						bool found = false;
+						if ( targetStats )
+						{
+							int tx = castSpellProps->target_x;
+							int ty = castSpellProps->target_y;
+							int ox = tx / 16;
+							int oy = ty / 16;
+
+							bool lev = false;
+							bool waterwalk = false;
+							bool lavawalk = false;
+							if ( targetStats->getAttribute("PHASE_OTHER_LEVITATING") != "" )
+							{
+								lev = targetStats->getAttributeInt("PHASE_OTHER_LEVITATING") > 0 ? true : false;
+							}
+							if ( targetStats->getAttribute("PHASE_OTHER_WATERWALKING") != "" )
+							{
+								waterwalk = targetStats->getAttributeInt("PHASE_OTHER_WATERWALKING") > 0 ? true : false;
+							}
+							if ( targetStats->getAttribute("PHASE_OTHER_LAVAWALKING") != "" )
+							{
+								lavawalk = targetStats->getAttributeInt("PHASE_OTHER_LAVAWALKING") > 0 ? true : false;
+							}
+
+
+							std::set<int> goodSpots;
+							for ( int y = oy - 1; y <= oy + 1; ++y )
+							{
+								for ( int x = ox - 1; x <= ox + 1; ++x )
+								{
+									if ( x > 0 && y > 0 && x < map.width - 1 && y < map.height - 1 )
+									{
+										int mapIndex = (y)*MAPLAYERS + (x)*MAPLAYERS * map.height;
+										if ( map.tiles[OBSTACLELAYER + mapIndex] )
+										{
+											continue;
+										}
+										if ( !map.tiles[mapIndex] )
+										{
+											if ( !lev )
+											{
+												continue;
+											}
+										}
+										if ( swimmingtiles[map.tiles[mapIndex]] )
+										{
+											if ( !(lev || waterwalk) )
+											{
+												continue;
+											}
+										}
+										if ( lavatiles[map.tiles[mapIndex]] )
+										{
+											if ( !(lev || lavawalk) )
+											{
+												continue;
+											}
+										}
+										goodSpots.insert(x + y * 10000);
+									}
+								}
+							}
+
+							if ( goodSpots.size() )
+							{
+								std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadius(ox, oy, 1);
+								for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+								{
+									list_t* currentList = *it;
+									for ( node_t* node = currentList->first; node != nullptr; node = node->next )
+									{
+										Entity* testEntity = (Entity*)node->element;
+										if ( testEntity->flags[PASSABLE] )
+										{
+											continue;
+										}
+
+										if ( testEntity->behavior == &actPlayer
+											|| testEntity->behavior == &actMonster
+											|| testEntity->isDamageableCollider()
+											|| testEntity->behavior == &actDoor
+											|| testEntity->behavior == &actFurniture
+											|| testEntity->behavior == &actChest )
+										{
+											// allowed collision entities
+											continue;
+										}
+										int test_x = testEntity->x / 16;
+										int test_y = testEntity->y / 16;
+										if ( goodSpots.find(test_x + test_y * 10000) != goodSpots.end() )
+										{
+											goodSpots.erase(test_x + test_y * 10000);
+										}
+									}
+								}
+							}
+
+							int pick_x = -1;
+							int pick_y = -1;
+							if ( goodSpots.size() )
+							{
+								if ( goodSpots.find(ox + oy * 10000) != goodSpots.end() )
+								{
+									pick_x = ox;
+									pick_y = oy;
+								}
+								else
+								{
+									std::vector<int> chances;
+									for ( auto val : goodSpots )
+									{
+										chances.push_back(val);
+									}
+									int pick = chances[local_rng.rand() % chances.size()];
+									pick_x = pick % 10000;
+									pick_y = pick / 10000;
+								}
+							}
+
+							if ( pick_x >= 0 && pick_y >= 0 )
+							{
+								Entity* spellTimer = createParticleTimer(caster, 100, -1);
+								spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_PHASE_OTHER_RELEASE;
+								spellTimer->particleTimerCountdownSprite = -1;
+								spellTimer->yaw = 0.0;
+								spellTimer->flags[PASSABLE] = false;
+								TileEntityList.addEntity(*spellTimer);
+								spellTimer->sizex = 4;
+								spellTimer->sizey = 4;
+								spellTimer->x = pick_x * 16.0 + 8.0;
+								spellTimer->y = pick_y * 16.0 + 8.0;
+
+								serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, 0,
+									PARTICLE_EFFECT_PHASE_OTHER_FRAGMENT_RELEASE, 0, spellTimer->particleTimerDuration);
+
+								caster->setEffect(EFF_PHASED, Uint8(3), 100, false, true, true);
+								found = true;
+							}
+							else
+							{
+								// no room
+								found = true;
+								playSoundEntity(caster, 163, 128);
+								messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(255, 0, 0), Language::get(3453));
+							}
+						}
+						if ( !found )
+						{
+							// catch all
+							playSoundEntity(caster, 163, 128);
+							messagePlayerColor(caster->isEntityPlayer(), MESSAGE_HINT, makeColorRGB(255, 0, 0), Language::get(7429));
+						}
+					}
+					else if ( castSpellProps->targetUID != 0 )
+					{
+						Entity* target = nullptr;
+						if ( target = uidToEntity(castSpellProps->targetUID) )
+						{
+							for ( node_t* node = map.creatures->first; node; node = node->next )
+							{
+								if ( Entity* entity = (Entity*)node->element )
+								{
+									if ( Stat* stats = entity->getStats() )
+									{
+										if ( entity->behavior == &actMonster )
+										{
+											if ( stats->getEffectActive(EFF_PHASED) == (caster->isEntityPlayer() + 1) )
+											{
+												busy = true;
+											}
+										}
+									}
+								}
+							}
+
+							if ( !busy )
+							{
+								if ( Stat* targetStats = target->getStats() )
+								{
+									if ( !targetStats->getEffectActive(EFF_PHASED) )
+									{
+										if ( target->behavior == &actMonster )
+										{
+											Uint8 effectStrength = caster->isEntityPlayer() + 1;
+											if ( target->setEffect(EFF_PHASED, effectStrength, element->duration, false, true, true) )
+											{
+												found = true;
+
+												Entity* spellTimer = createParticleTimer(caster, spell->life_time + 10, -1);
+												spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_PHASE_OTHER;
+												spellTimer->particleTimerCountdownSprite = -1;
+												spellTimer->yaw = 0.0;
+												spellTimer->x = target->x;
+												spellTimer->y = target->y;
+												spellTimer->particleTimerTarget = target->getUID();
+												if ( spellBookBonusPercent > 0 )
+												{
+													spellTimer->actmagicSpellbookBonus = spellBookBonusPercent;
+												}
+
+												serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, 0,
+													PARTICLE_EFFECT_PHASE_OTHER_FRAGMENT, 0, spellTimer->particleTimerDuration);
+
+												createParticleFociDark(caster, spell->ID, true);
+												spawnMagicEffectParticles(spellTimer->x, spellTimer->y, spellTimer->z, 2212);
+												playSoundEntity(caster, 911, 128);
+
+												caster->setEffect(EFF_PHASED, Uint8(1), spellTimer->particleTimerDuration, false, true, true);
+
+
+												magicOnEntityHit(caster, caster, target, target->getStats(), 0, 0, 0, spell ? spell->ID : SPELL_NONE);
+											}
+										}
+									}
+									else
+									{
+										busy = true;
+									}
+								}
+							}
+						}
+
+						if ( !found )
+						{
+							playSoundEntity(caster, 163, 128);
+							if ( !target )
+							{
+								messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6498));
+							}
+							else if ( busy )
+							{
+								messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(6908));
+							}
+							else
+							{
+								if ( target && target->getStats() )
+								{
+									messagePlayerMonsterEvent(caster->isEntityPlayer(), makeColorRGB(255, 0, 0),
+										*target->getStats(), Language::get(2905), Language::get(2906), MSG_COMBAT);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_SUMMON_SKULL )
+		{
+			if ( caster )
+			{
+				struct EntitySpellTarget
+				{
+					Entity* entity = nullptr;
+					real_t dist = 0.0;
+					real_t crossDist = 0.0;
+				};
+				auto compFunc = [](EntitySpellTarget& lhs, EntitySpellTarget& rhs)
+					{
+						if ( abs(lhs.crossDist - rhs.crossDist) <= 0.00001 )
+						{
+							return lhs.dist > rhs.dist;
+						}
+						return lhs.crossDist > rhs.crossDist;
+					};
+				std::priority_queue<EntitySpellTarget, std::vector<EntitySpellTarget>, decltype(compFunc)> entitiesInRange(compFunc);
+
+				for ( auto node = map.creatures->first; node; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( entity == caster ) { continue; }
+						if ( entity->behavior == &actMonster && entity->monsterIsTargetable() )
+						{
+							if ( entityDist(caster, entity) <= 128.0 )
+							{
+								if ( caster->checkEnemy(entity) )
+								{
+									{
+										real_t visionTangent = atan2(entity->y - caster->y, entity->x - caster->x);
+										real_t dir = caster->yaw - visionTangent;
+										while ( dir >= PI )
+										{
+											dir -= PI * 2;
+										}
+										while ( dir < -PI )
+										{
+											dir += PI * 2;
+										}
+										if ( !(dir >= -PI / 4 && dir <= PI / 4) )
+										{
+											continue;
+										}
+									}
+
+									real_t tangent = atan2(entity->y - caster->y, entity->x - caster->x);
+									bool oldPassable = entity->flags[PASSABLE];
+									entity->flags[PASSABLE] = false;
+									real_t d = lineTraceTarget(caster, caster->x, caster->y, tangent, 128.0, LINETRACE_TELEKINESIS, false, entity);
+									entity->flags[PASSABLE] = oldPassable;
+									if ( hit.entity != entity )
+									{
+										continue;
+									}
+
+									real_t crossDist = abs(d * sin(tangent - caster->yaw));
+									entitiesInRange.push({ entity, d, crossDist });
+								}
+							}
+						}
+					}
+				}
+
+				int discountedAmount = 0;
+				int spellFullCost = 0;
+				if ( caster->behavior == &actPlayer )
+				{
+					spellFullCost = getCostOfSpell(spell, caster);
+					if ( multiplayer == SINGLE )
+					{
+						discountedAmount = 100 - std::min(100, std::max(0, (int)(100.0 * cast_animation[player].mana_cost / (real_t)spellFullCost)));
+					}
+					else
+					{
+						discountedAmount = 100 - std::min(100, std::max(0, (int)(100.0 * magiccost / (real_t)spellFullCost)));
+					}
+				}
+
+				if ( Stat* casterStats = caster->getStats() )
+				{
+					for ( node_t* node = casterStats->FOLLOWERS.first; node != nullptr; node = node->next )
+					{
+						Entity* follower = nullptr;
+						if ( (Uint32*)(node)->element )
+						{
+							follower = uidToEntity(*((Uint32*)(node)->element));
+						}
+						if ( follower )
+						{
+							Stat* followerStats = follower->getStats();
+							if ( followerStats )
+							{
+								if ( followerStats->type == REVENANT_SKULL
+									&& followerStats->getAttribute("summon_skull") != "" )
+								{
+									follower->setHP(0);
+									followerStats->setAttribute("skip_obituary", "1");
+								}
+							}
+						}
+					}
+				}
+
+				playSoundEntity(caster, 887, 128);
+
+				int numSkulls = (caster->getINT() + stats[caster->skill[2]]->getModifiedProficiency(spell->skillID)) / 20;
+				int maxSkulls = getSpellDamageSecondaryFromID(SPELL_SUMMON_SKULL, caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+				numSkulls = std::max(1, std::min(maxSkulls, numSkulls));
+
+				for ( int i = 0; i < numSkulls; ++i )
+				{
+					Entity* spellTimer = createParticleTimer(caster, 1.25 * TICKS_PER_SECOND, -1);
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_SUMMON_SKULL_HEAD;
+					spellTimer->particleTimerCountdownSprite = -1;
+					spellTimer->sprite = 2671;
+					spellTimer->flags[INVISIBLE] = true;
+					spellTimer->actmagicDelayMove = i * 10;
+
+					spellTimer->yaw = caster->yaw;
+					if ( i == 1 ) { spellTimer->yaw += PI / 24; }
+					if ( i == 2 ) { spellTimer->yaw -= PI / 24; }
+					if ( i == 3 ) { spellTimer->yaw += PI / 16; }
+					if ( i == 4 ) { spellTimer->yaw -= PI / 16; }
+
+					Entity* target = nullptr;
+					if ( entitiesInRange.size() )
+					{
+						target = entitiesInRange.top().entity;
+						entitiesInRange.pop();
+						spellTimer->particleTimerTarget = target->getUID();
+						real_t tangent = atan2(target->y - caster->y, target->x - caster->x);
+						spellTimer->yaw = tangent;
+					}
+
+					spellTimer->x = caster->x;
+					spellTimer->y = caster->y;
+					spellTimer->fskill[0] = spellTimer->x;
+					spellTimer->fskill[1] = spellTimer->y;
+
+					// failsafe target
+					real_t dist = lineTrace(caster, caster->x, caster->y, spellTimer->yaw, 128.0, LINETRACE_ATK_CHECK_FRIENDLYFIRE | LINETRACE_TELEKINESIS, false);
+					spellTimer->fskill[4] = spellTimer->x + dist * cos(spellTimer->yaw);
+					spellTimer->fskill[5] = spellTimer->y + dist * sin(spellTimer->yaw);
+
+					spellTimer->particleTimerVariable2 = 0.5 * (spellFullCost / numSkulls) * std::max(0, (100 - discountedAmount)) / 100.0;
+					spellTimer->particleTimerVariable3 = i; // index of cast
+
+					real_t dir = normaliseAngle2PI(spellTimer->yaw) * 256.0;
+					serverSpawnMiscParticles(caster, PARTICLE_EFFECT_SUMMON_SKULL, i, spellTimer->particleTimerTarget, spellTimer->getUID(), dir);
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_DECONSTRUCT )
+		{
+			if ( caster )
+			{
+				struct EntitySpellTarget
+				{
+					Entity* entity = nullptr;
+					real_t dist = 0.0;
+					real_t crossDist = 0.0;
+				};
+				auto compFunc = [](EntitySpellTarget& lhs, EntitySpellTarget& rhs)
+					{
+						if ( abs(lhs.crossDist - rhs.crossDist) <= 0.00001 )
+						{
+							return lhs.dist > rhs.dist;
+						}
+						return lhs.crossDist > rhs.crossDist;
+					};
+				std::priority_queue<EntitySpellTarget, std::vector<EntitySpellTarget>, decltype(compFunc)> entitiesInRange(compFunc);
+
+				auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(caster, 9);
+				for ( auto it : entLists )
+				{
+					node_t* node;
+					for ( node = it->first; node != nullptr; node = node->next )
+					{
+						if ( Entity* entity = (Entity*)node->element )
+						{
+							if ( entity == caster ) { continue; }
+
+							if ( entity->behavior == &actMonster )
+							{
+								if ( Stat* myStats = entity->getStats() )
+								{
+									if ( myStats->type == MIMIC || myStats->type == MINIMIMIC )
+									{
+										if ( !caster->checkEnemy(entity) )
+										{
+											continue;
+										}
+									}
+									else
+									{
+										continue;
+									}
+								}
+								else
+								{
+									continue;
+								}
+								if ( !entity->monsterIsTargetable(true) )
+								{
+									continue;
+								}
+							}
+							else if ( !(entity->isDamageableCollider()
+								|| entity->behavior == &actDoor
+								|| entity->behavior == &actFurniture
+								|| entity->behavior == &actChest) )
+							{
+								continue;
+							}
+
+							if ( entityDist(caster, entity) <= 128.0 )
+							{
+								{
+									{
+										real_t visionTangent = atan2(entity->y - caster->y, entity->x - caster->x);
+										real_t dir = caster->yaw - visionTangent;
+										while ( dir >= PI )
+										{
+											dir -= PI * 2;
+										}
+										while ( dir < -PI )
+										{
+											dir += PI * 2;
+										}
+										if ( !(dir >= -PI / 4 && dir <= PI / 4) )
+										{
+											continue;
+										}
+									}
+
+									real_t tangent = atan2(entity->y - caster->y, entity->x - caster->x);
+									bool oldPassable = entity->flags[PASSABLE];
+									entity->flags[PASSABLE] = false;
+									real_t d = lineTraceTarget(caster, caster->x, caster->y, tangent, 128.0, LINETRACE_TELEKINESIS, false, entity);
+									entity->flags[PASSABLE] = oldPassable;
+									if ( hit.entity != entity )
+									{
+										continue;
+									}
+
+									real_t crossDist = abs(d * sin(tangent - caster->yaw));
+									entitiesInRange.push({ entity, d, crossDist });
+								}
+							}
+						}
+					}
+				}
+
+				bool found = false;
+				if ( entitiesInRange.size() )
+				{
+					playSoundEntity(caster, 887, 128);
+					createParticleFociSorcery(caster, spell->ID, true);
+
+					found = true;
+
+					Entity* spellTimer = createParticleTimer(caster, 1.5 * TICKS_PER_SECOND * entitiesInRange.size(), -1);
+					spellTimer->z = 0.0;
+					spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_DECONSTRUCT_SHATTER;
+					spellTimer->particleTimerCountdownSprite = -1;
+					spellTimer->particleTimerVariable1 = getSpellDamageFromID(SPELL_DECONSTRUCT, 
+						caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+					spellTimer->particleTimerVariable2 = getSpellDamageSecondaryFromID(SPELL_DECONSTRUCT,
+						caster, nullptr, caster, usingSpellbook ? spellBookBonusPercent / 100.0 : 0.0);
+
+					int index = 0;
+					int maxParticles = element->duration;
+					while ( entitiesInRange.size() )
+					{
+						Entity* target = entitiesInRange.top().entity;
+						entitiesInRange.pop();
+
+						if ( target )
+						{
+							++index;
+							if ( auto props = getParticleEmitterHitProps(spellTimer->getUID(), target) )
+							{
+								props->hits = index;
+							}
+							if ( auto props = getParticleEmitterHitProps(spellTimer->getUID(), spellTimer) )
+							{
+								props->tick = index;
+							}
+						}
+						if ( index >= maxParticles )
+						{
+							break;
+						}
+					}
+				}
+
+				if ( !found )
+				{
+					playSoundEntity(caster, 163, 128);
+					messagePlayer(caster->isEntityPlayer(), MESSAGE_HINT, Language::get(7233));
+				}
+			}
+		}
+		else if ( spell->ID == SPELL_WALK_MP )
+		{
+			if ( caster )
+			{
+				if ( caster->setEffect(EFF_WALK_MP, true, element->duration, true) )
+				{
+					playSoundEntity(caster, 906, 128);
+					createParticleFociLight(caster, spell->ID, true);
+					messagePlayerColor(caster->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(0, 255, 0), Language::get(7432));
+					if ( Entity* fx = createRadiusMagic(spell->ID, caster,
+						caster->x, caster->y, 16, 2 * TICKS_PER_SECOND, caster) )
+					{
+					}
+				}
+			}
+		}
 
 		// intentional separate from else/if chain.
 		// disables propulsion if found a marked target.
@@ -10658,9 +12201,11 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 
 			if ( spell->ID == SPELL_SPORE_BOMB || spell->ID == SPELL_MYCELIUM_BOMB 
 				|| spell->ID == SPELL_WATER_BOLT
-				|| spell->ID == SPELL_TOXIC_BOMB )
+				|| spell->ID == SPELL_GREASE_BOLT
+				|| spell->ID == SPELL_TOXIC_BOMB
+				|| spell->ID == SPELL_WEB_BOMB )
 			{
-				if ( spell->ID == SPELL_WATER_BOLT )
+				if ( spell->ID == SPELL_WATER_BOLT || spell->ID == SPELL_GREASE_BOLT )
 				{
 					missile_speed *= 0.75;
 				}
@@ -10720,7 +12265,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				Stat* casterStats = caster->getStats();
 				if ( casterStats->type == FLAME_ELEMENTAL )
 				{
-					traveltime = 15;
+					traveltime = 25;
 					missileEntity->skill[5] = traveltime;
 					if ( node_t* elementNode = ((spell_t*)node->element)->elements.first )
 					{
@@ -10729,9 +12274,20 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 							if ( elementNode = element->elements.first )
 							{
 								element = (spellElement_t*)elementNode->element;
-								if ( element )
+
+								if ( spell->ID == SPELL_FIREBALL )
 								{
-									element->setDamage(element->getDamage() / 2);
+									if ( element )
+									{
+										element->setDamage(std::max(1, casterStats->INT) * 2);
+									}
+								}
+								else if ( !strcmp(innerElement->element_internal_name, "spell_element_flames") )
+								{
+									if ( element )
+									{
+										element->setDamage(std::max(1, casterStats->INT));
+									}
 								}
 							}
 						}
@@ -10846,7 +12402,8 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			}
 
 			int sound = spellGetCastSound(spell);
-			if ( spell->ID == SPELL_WATER_BOLT && castSpellProps && castSpellProps->optionalData == 1 )
+			if ( (spell->ID == SPELL_WATER_BOLT || spell->ID == SPELL_GREASE_BOLT)
+				&& castSpellProps && castSpellProps->optionalData == 1 )
 			{
 				sound = 872;
 			}
@@ -11173,6 +12730,13 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					missileEntity->sprite = 2614;
 				}
 			}
+			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_WEB_BOMB].element_internal_name) )
+			{
+				if ( propulsion == PROPULSION_MISSILE )
+				{
+					missileEntity->sprite = arachnophobia_filter ? 996 : 861;
+				}
+			}
 			else if ( !strcmp(innerElement->element_internal_name, spellElement_poison.element_internal_name) )
 			{
 				if ( propulsion == PROPULSION_MISSILE )
@@ -11232,7 +12796,7 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			{
 				if ( propulsion == PROPULSION_MISSILE )
 				{
-					missileEntity->sprite = 173;
+					missileEntity->sprite = 2648;
 				}
 			}
 			else if ( !strcmp(innerElement->element_internal_name, spellElement_telePull.element_internal_name) )
@@ -11312,7 +12876,8 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 					missileEntity->sprite = 2356;
 				}
 			}
-			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_DEFY_FLESH].element_internal_name) )
+			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_DEFY_FLESH].element_internal_name)
+				|| !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_PUNISH].element_internal_name) )
 			{
 				if ( propulsion == PROPULSION_MISSILE )
 				{
@@ -11324,6 +12889,13 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				if ( propulsion == PROPULSION_MISSILE )
 				{
 					missileEntity->sprite = 2623;
+				}
+			}
+			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_MARK_SPIRIT].element_internal_name) )
+			{
+				if ( propulsion == PROPULSION_MISSILE )
+				{
+					missileEntity->sprite = 1825;
 				}
 			}
 			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_PSYCHIC_SPEAR].element_internal_name) )
@@ -11354,6 +12926,13 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 				if ( propulsion == PROPULSION_MISSILE )
 				{
 					missileEntity->sprite = 2459;
+				}
+			}
+			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_GREASE_BOLT].element_internal_name) )
+			{
+				if ( propulsion == PROPULSION_MISSILE )
+				{
+					missileEntity->sprite = 2665;
 				}
 			}
 			else if ( !strcmp(innerElement->element_internal_name, spellElementMap[SPELL_FROSTBALL].element_internal_name) )
@@ -11853,6 +13432,12 @@ Entity* castSpell(Uint32 caster_uid, spell_t* spell, bool using_magicstaff, bool
 			}
 		}
 	}
+
+	if ( caster )
+	{
+		caster->spellPunishProc();
+	}
+
 	return result;
 }
 
@@ -11909,7 +13494,7 @@ int spellGetCastSound(spell_t* spell)
 	{
 		return 814;
 	}
-	else if ( spell->ID == SPELL_WATER_BOLT )
+	else if ( spell->ID == SPELL_WATER_BOLT || spell->ID == SPELL_GREASE_BOLT )
 	{
 		return 873;
 	}
@@ -12092,6 +13677,10 @@ void createParticleFociLight(Entity* entity, int spellID, bool updateClients)
 	if ( !entity ) { return; }
 
 	int sprite = 1866;
+	if ( spellID == SPELL_FISTS_OF_FORCE )
+	{
+		sprite = 2596;
+	}
 	if ( updateClients )
 	{
 		serverSpawnMiscParticles(entity, PARTICLE_EFFECT_FOCI_LIGHT, spellID);
@@ -12123,13 +13712,20 @@ void createParticleFociDark(Entity* entity, int spellID, bool updateClients)
 	for ( int i = 0; i < 4; ++i )
 	{
 		int sprite = 2374;
-		if ( spellID == SPELL_FEEDBACK || spellID == SPELL_CONFLICT || spellID == SPELL_TABOO || spellID == SPELL_SUBJUGATE_FLESH )
+		if ( spellID == SPELL_FEEDBACK || spellID == SPELL_CONFLICT || spellID == SPELL_TABOO 
+			|| spellID == SPELL_SUBJUGATE_FLESH || spellID == SPELL_PUNISH || spellID == SPELL_RUPTURE 
+			|| spellID == SPELL_VAMPIRIC_TOUCH
+			|| spellID == SPELL_CHARM_MONSTER || spellID == SPELL_ENTHRALL )
 		{
 			sprite = 2596;
 		}
 		else if ( spellID == SPELL_ENFEEBLE || spellID == SPELL_CONDUIT || spellID == SPELL_OVERCHARGE )
 		{
 			sprite = 2597;
+		}
+		else if ( spellID == SPELL_SUMMON || spellID == SPELL_SUMMON_SKULL )
+		{
+			sprite = 2672;
 		}
 		Entity* fx = createParticleAestheticOrbit(entity, sprite, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_FOCI_DARK);
 		fx->yaw = i * PI / 2 + 3 * PI / 4;
@@ -12162,6 +13758,10 @@ void createParticleFociSorcery(Entity* entity, int spellID, bool updateClients)
 		else if ( spellID == SPELL_PARALYZE_RAY )
 		{
 			sprite = 2591;
+		}
+		else if ( spellID == SPELL_DECONSTRUCT )
+		{
+			sprite = 2678;
 		}
 		Entity* fx = createParticleAestheticOrbit(entity, sprite, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_FOCI_SORCERY);
 		fx->yaw = i * PI / 2 + 3 * PI / 4;

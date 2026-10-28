@@ -312,6 +312,7 @@ void initShopkeeper(Entity* my, Stat* myStats)
 
 			int customShopkeeperInUse = ((myStats->MISC_FLAGS[STAT_FLAG_SHOPKEEPER_CUSTOM_PROPERTIES] >> 12) & 0xF);
 			int oldMonsterStoreType = my->monsterStoreType;
+			myStats->setAttributeInt("SHOPKEEPER_TYPE", my->monsterStoreType);
 			if ( customShopkeeperInUse == MonsterStatCustomManager::StatEntry::ShopkeeperCustomFlags::ENABLE_GEN_ITEMS )
 			{
 				if ( (myStats->MISC_FLAGS[STAT_FLAG_SHOPKEEPER_CUSTOM_PROPERTIES] & 0xFF) > 1 )

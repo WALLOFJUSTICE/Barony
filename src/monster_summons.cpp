@@ -64,6 +64,13 @@ void initRevenantSkull(Entity* my, Stat* myStats)
 	my->z = 0;
 	my->flags[BURNABLE] = false;
 	my->initMonster(1796);
+	if ( multiplayer != CLIENT )
+	{
+		if ( myStats->getAttribute("summon_skull") != "" )
+		{
+			my->sprite = 2673;
+		}
+	}
 	my->flags[INVISIBLE] = true; // hide the "AI" bodypart
 	if ( multiplayer != CLIENT )
 	{
@@ -135,7 +142,7 @@ void initRevenantSkull(Entity* my, Stat* myStats)
 	}
 
 	// body
-	Entity* entity = newEntity(1796, 1, map.entities, nullptr); //Limb entity.
+	Entity* entity = newEntity(my->sprite, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 2;
 	entity->sizey = 2;
 	entity->skill[2] = my->getUID();
@@ -358,6 +365,19 @@ void initFlameElemental(Entity* my, Stat* myStats)
 			int defaultItems = countDefaultItems(myStats);
 
 			my->setHardcoreStats(*myStats);
+
+			if ( myStats->getAttribute("SUMMONED_CREATURE") == "1" )
+			{
+				// min 5, max 20
+				myStats->HP = 50 + std::max(0, (myStats->LVL - 5)) * 7; //50 - 155
+				myStats->MAXHP = myStats->HP;
+				myStats->OLDHP = myStats->HP;
+				myStats->STR = 10;
+				myStats->DEX = 7 + myStats->LVL / 5; // 7-12
+				myStats->INT = myStats->LVL; // 5-20
+				myStats->CON = 3 + myStats->LVL / 4; // 3-8
+				myStats->PER = 10 + myStats->LVL / 4; // 10-15
+			}
 		}
 	}
 
@@ -460,6 +480,86 @@ void revenantSkullDie(Entity* my)
 		break;
 	}
 
+	bool anyLeader = false;
+	if ( Stat* myStats = my->getStats() )
+	{
+		if ( myStats->getAttribute("summon_skull") != "" )
+		{
+			int mpRefund = myStats->getAttributeInt("summon_skull");
+			if ( mpRefund )
+			{
+				if ( Entity* leader = uidToEntity(myStats->leader_uid) )
+				{
+					if ( Entity* fx = createParticleAestheticOrbit(leader, 2670, TICKS_PER_SECOND + 20, PARTICLE_EFFECT_SUMMON_SKULL) )
+					{
+						anyLeader = true;
+						fx->x = gibx;
+						fx->y = giby;
+						fx->z = 0.0;
+						fx->fskill[0] = fx->x;
+						fx->fskill[1] = fx->y;
+						fx->fskill[2] = 0.0;
+						fx->pitch = PI / 2;
+						real_t tangent = atan2(leader->y - fx->y, leader->x - fx->x);
+						real_t dir = tangent;
+						fx->fskill[4] = dir;
+						fx->fskill[3] = (local_rng.rand() % 12) * 2 * PI / 12;
+						fx->skill[3] = 1;
+						fx->fskill[5] = 0.1; // rotation speed
+						real_t scale = 0.5;
+						fx->scalex = scale;
+						fx->scaley = scale;
+						fx->scalez = scale;
+						fx->skill[5] = 1; // return to parent
+						fx->skill[6] = mpRefund;
+
+						serverSpawnMiscParticlesAtLocation(fx->x, fx->y, fx->z, PARTICLE_EFFECT_SUMMON_SKULL_DEATH, 2670, TICKS_PER_SECOND + 20, 1, leader->getUID());
+
+						if ( myStats->getAttribute("skip_obituary") != "" )
+						{
+							if ( leader->behavior == &actPlayer )
+							{
+								static Uint32 lastMessageTick[MAXPLAYERS] = { 0 };
+								if ( ticks - lastMessageTick[leader->skill[2]] > 10 )
+								{
+									messagePlayerMonsterEvent(leader->isEntityPlayer(), 
+										0xFFFFFFFF, *myStats, Language::get(3194), Language::get(3195), MSG_COMBAT);
+									lastMessageTick[leader->skill[2]] = ticks;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if ( !anyLeader )
+	{
+		if ( Entity* fx = createParticleAestheticOrbit(nullptr, 2670, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_SUMMON_SKULL_DEATH) )
+		{
+			fx->x = gibx;
+			fx->y = giby;
+			fx->z = gibz;
+			fx->fskill[0] = fx->x;
+			fx->fskill[1] = fx->y;
+			fx->fskill[2] = gibz;
+			fx->pitch = PI / 2;
+			real_t tangent = my->yaw;
+			real_t dir = tangent;
+			fx->fskill[4] = dir;
+			fx->fskill[3] = dir;
+			fx->skill[3] = 1;
+			fx->fskill[5] = 0.15; // rotation speed
+			real_t scale = 0.5;
+			fx->scalex = scale;
+			fx->scaley = scale;
+			fx->scalez = scale;
+			fx->skill[5] = 2; // float up
+
+			serverSpawnMiscParticlesAtLocation(fx->x, fx->y, fx->z, PARTICLE_EFFECT_SUMMON_SKULL_DEATH, 2670, 2 * TICKS_PER_SECOND, 2);
+		}
+	}
+
 	my->removeMonsterDeathNodes();
 
 	int c;
@@ -486,7 +586,7 @@ void revenantSkullDie(Entity* my)
 		}
 	}
 	playSoundEntity(my, 935, 128);
-	playSoundEntity(my, 94, 64);
+	playSoundEntity(my, 94, 32);
 	list_RemoveNode(my->mynode);
 	return;
 }
@@ -535,12 +635,62 @@ void flameElementalDie(Entity* my)
 		damage += getSpellDamageFromID(SPELL_FIREBALL, caster, nullptr, caster);
 		real_t radius = getSpellEffectDurationFromID(SPELL_FLAME_ELEMENTAL, caster, nullptr, caster);
 		createSpellExplosionArea(SPELL_FIREBALL, caster, my->x, my->y, 0.0, radius, damage, my);
+
+		if ( Entity* spellTimer = createParticleIgnite(my) )
+		{
+			spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_IGNITE_NOFOLLOW;
+			spellTimer->particleTimerVariable4 = SPELL_NOVA_FLAME;
+			spellTimer->parent = caster ? caster->getUID() : 0;
+			serverSpawnMiscParticlesAtLocation(my->x, my->y, 0, PARTICLE_EFFECT_IGNITE_NOFOLLOW, 0);
+		}
+		spawnMagicEffectParticles(my->x, my->y, my->z, 2207);
 	}
 
 	my->removeMonsterDeathNodes();
 	spawnPoof(my->x, my->y, my->z, 1.0, true);
 	list_RemoveNode(my->mynode);
 	return;
+}
+
+void Entity::flameElementalChooseWeapon(const Entity* target, double dist)
+{
+	Stat* myStats = getStats();
+	if ( !myStats )
+	{
+		return;
+	}
+
+	if ( monsterSpecialState != 0 && monsterSpecialTimer != 0 )
+	{
+		return;
+	}
+
+	if ( monsterSpecialTimer == 0
+		&& (ticks % 10 == 0)
+		&& dist < 128 )
+	{
+		Stat* targetStats = target->getStats();
+		if ( !targetStats )
+		{
+			return;
+		}
+
+		int specialRoll = -1;
+		int bonusFromHP = 0;
+		specialRoll = local_rng.rand() % 10;
+		if ( specialRoll < 15 )
+		{
+			myStats->setAttribute("npc_spell_id", "");
+			if ( dist < TOUCHRANGE )
+			{
+				if ( local_rng.rand() % 2 == 0 )
+				{
+					myStats->setAttribute("npc_spell_id", std::to_string(SPELL_NOVA_FLAME));
+				}
+			}
+			monsterSpecialState = SKULL_CAST;
+		}
+	}
 }
 
 #define REVENANT_SKULL_BODY 2
@@ -650,7 +800,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 
 		if ( monsterType == REVENANT_SKULL && myStats )
 		{
-			if ( myStats->getAttribute("revenant_skull") != "" )
+			if ( myStats->getAttribute("revenant_skull") != "" && myStats->getAttribute("summon_skull") == "" )
 			{
 				if ( my->parent != 0 )
 				{
@@ -1010,7 +1160,8 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 						{
 							my->setEffect(EFF_STUNNED, true, delay, false);
 						}
-						createParticleDot(my);
+						//createParticleDot(my);
+						 createParticleFociDark(my, SPELL_SUMMON_SKULL, false);
 						// play casting sound
 						playSoundEntityLocal(my, 170, 64);
 						if ( SKULL_CIRCLES == 0 )
@@ -1523,6 +1674,7 @@ void revenantSkullAnimate(Entity* my, Stat* myStats, double dist)
 void hologramDie(Entity* my)
 {
 	my->removeMonsterDeathNodes();
+	playSoundEntity(my, 512, 128);
 	spawnPoof(my->x, my->y, my->z, 1.0, true);
 	list_RemoveNode(my->mynode);
 	return;
@@ -2468,6 +2620,17 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 									}
 								}
 							}
+							else if ( spellID == SPELL_DUST_STORM )
+							{
+								if ( MONSTER_ATTACKTIME == 20 )
+								{
+									CastSpellProps_t props;
+									props.target_x = my->x;
+									props.target_y = my->y;
+									props.powerBonusPercent = 100;
+									castSpell(my->getUID(), getSpellFromID(SPELL_DUST_STORM), true, false, false, &props);
+								}
+							}
 							else if ( MONSTER_ATTACKTIME == 20 
 								|| MONSTER_ATTACKTIME == 35
 								|| MONSTER_ATTACKTIME == 50 )
@@ -2659,7 +2822,14 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 						}
 						else
 						{
-							myStats->setAttribute("npc_spell_id", std::to_string(SPELL_DISRUPT_EARTH));
+							if ( local_rng.rand() % 4 == 0 || ((myStats->HP < myStats->MAXHP * 0.5) && local_rng.rand() % 2 == 0) )
+							{
+								myStats->setAttribute("npc_spell_id", std::to_string(SPELL_DUST_STORM));
+							}
+							else
+							{
+								myStats->setAttribute("npc_spell_id", std::to_string(SPELL_DISRUPT_EARTH));
+							}
 						}
 					}
 				}
@@ -3233,17 +3403,46 @@ void earthElementalAnimate(Entity* my, Stat* myStats, double dist)
 
 void waterElementalDie(Entity* my)
 {
-	if ( multiplayer != CLIENT )
+	if ( my->sprite == 2657 )
 	{
-		Entity* timer = floorMagicCreateSplash(my, my->x, my->y, my, 0, SPELL_WATER_BOLT, 64);
-	}
+		if ( multiplayer != CLIENT )
+		{
+			Entity* timer = floorMagicCreateSplash(my, my->x, my->y, my, 0, SPELL_GREASE_BOLT, 64);
+		}
 
-	Entity* spellTimer = createParticleTimer(nullptr, TICKS_PER_SECOND, -1);
-	spellTimer->x = my->x;
-	spellTimer->y = my->y;
-	spellTimer->z = my->z;
-	spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE;
-	serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, spellTimer->z, PARTICLE_EFFECT_WATER_ELEMENTAL_DIE, 0);
+		Entity* spellTimer = createParticleTimer(nullptr, TICKS_PER_SECOND, -1);
+		spellTimer->x = my->x;
+		spellTimer->y = my->y;
+		spellTimer->z = my->z;
+		spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_GREASE_ELEMENTAL_DIE;
+		serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, spellTimer->z, PARTICLE_EFFECT_WATER_ELEMENTAL_DIE, 2657);
+
+		if ( my->flags[BURNING] )
+		{
+			if ( Stat* myStats = my->getStats() )
+			{
+				int damage = 0;
+				Entity* caster = uidToEntity(myStats->leader_uid);
+				damage += getSpellDamageFromID(SPELL_FIREBALL, caster, nullptr, caster);
+				real_t radius = getSpellEffectDurationFromID(SPELL_GREASE_ELEMENTAL, caster, nullptr, caster);
+				createSpellExplosionArea(SPELL_FIREBALL, caster, my->x, my->y, 0.0, radius, damage, my);
+			}
+		}
+	}
+	else
+	{
+		if ( multiplayer != CLIENT )
+		{
+			Entity* timer = floorMagicCreateSplash(my, my->x, my->y, my, 0, SPELL_WATER_BOLT, 64);
+		}
+
+		Entity* spellTimer = createParticleTimer(nullptr, TICKS_PER_SECOND, -1);
+		spellTimer->x = my->x;
+		spellTimer->y = my->y;
+		spellTimer->z = my->z;
+		spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_WATER_ELEMENTAL_DIE;
+		serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, spellTimer->z, PARTICLE_EFFECT_WATER_ELEMENTAL_DIE, 0);
+	}
 	
 	playSoundEntity(my, 864 + local_rng.rand() % 2, 64);
 
@@ -3264,16 +3463,12 @@ void initWaterElemental(Entity* my, Stat* myStats)
 
 	my->z = 0;
 
-	int sprite = 2411; // default sprite, summon anim
-	if ( multiplayer != CLIENT )
-	{
-		//if ( MONSTER_INIT )
-		//{
-		//	sprite = 1876; // no summon anim
-		//}
-	}
-	my->initMonster(sprite);
 	my->flags[BURNABLE] = false;
+	if ( my->sprite != 2411 )
+	{
+		my->flags[BURNABLE] = true;
+	}
+	my->initMonster(2411);
 	my->flags[INVISIBLE] = true; // hide the "AI" bodypart
 	my->flags[PASSABLE] = true;
 	if ( multiplayer != CLIENT )
@@ -3335,7 +3530,7 @@ void initWaterElemental(Entity* my, Stat* myStats)
 	}
 
 	// body
-	Entity* entity = newEntity(2412, 1, map.entities, nullptr); //Limb entity.
+	Entity* entity = newEntity(my->sprite == 2657 ? 2658 : 2412, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 2;
 	entity->sizey = 2;
 	entity->skill[2] = my->getUID();
@@ -3357,7 +3552,7 @@ void initWaterElemental(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// eyes
-	entity = newEntity(2413, 1, map.entities, nullptr); //Limb entity.
+	entity = newEntity(my->sprite == 2657 ? 2659 : 2413, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 2;
 	entity->sizey = 2;
 	entity->skill[2] = my->getUID();
@@ -3404,10 +3599,39 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 	my->focaly = limbs[WATER_ELEMENTAL][0][1];
 	my->focalz = limbs[WATER_ELEMENTAL][0][2];
 
+	bool grease = my->sprite == 2657;
+
 	if ( multiplayer != CLIENT )
 	{
 		real_t percentHP = myStats->HP / (real_t)std::max(1, myStats->MAXHP);
-		if ( percentHP < 0.25 )
+		if ( grease )
+		{
+			// no specials
+			if ( !my->flags[BURNING] )
+			{
+				auto entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
+				for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+				{
+					list_t* currentList = *it;
+					for ( node_t* node = currentList->first; node != nullptr; node = node->next )
+					{
+						if ( Entity* entity = (Entity*)node->element )
+						{
+							if ( (entity->behavior == &actCampfire && entity->skill[3] > 0)
+								|| entity->behavior == &actTorch )
+							{
+								if ( entityDist(my, entity) < 10.0 )
+								{
+									my->SetEntityOnFire(nullptr);
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		else if ( percentHP < 0.25 )
 		{
 			if ( myStats->getAttribute("water_elemental_state") != "3" )
 			{
@@ -3820,7 +4044,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 				WATER_STATE_ANIM += 0.03;
 				if ( prevAnim < 0.25 && WATER_STATE_ANIM >= 0.25 )
 				{
-					createWaterSplash(body->x, body->y, 30, true);
+					createWaterSplash(body->x, body->y, 30, true, grease);
 					playSoundEntityLocal(my, 868, 128);
 					if ( multiplayer != CLIENT )
 					{
@@ -3838,7 +4062,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 				WATER_STATE_ANIM -= 0.03;
 				if ( prevAnim > 0.9 && WATER_STATE_ANIM <= 0.9 )
 				{
-					createWaterSplash(body->x, body->y, 30, true);
+					createWaterSplash(body->x, body->y, 30, true, grease);
 					playSoundEntityLocal(my, 869, 128);
 					if ( my->flags[PASSABLE] )
 					{
@@ -3848,7 +4072,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 				}
 				if ( prevAnim > 0.3 && WATER_STATE_ANIM <= 0.3 )
 				{
-					createWaterSplash(body->x, body->y, 30, true);
+					createWaterSplash(body->x, body->y, 30, true, grease);
 				}
 				WATER_STATE_ANIM = std::max(WATER_STATE_ANIM, 0.0);
 
@@ -3857,7 +4081,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 					real_t offsetYaw = ((local_rng.rand() % 9) / 8.0) * PI / 4;
 					for ( int i = 0; i < 1; ++i )
 					{
-						Entity* splashParticle = newEntity(2461, 1, map.entities, nullptr); //Gib entity.
+						Entity* splashParticle = newEntity(grease ? 2664 : 2461, 1, map.entities, nullptr); //Gib entity.
 						splashParticle->yaw = offsetYaw + i * (PI / 2);
 						splashParticle->x = body->x + 0.5 * cos(splashParticle->yaw);
 						splashParticle->y = body->y + 0.5 * sin(splashParticle->yaw);
@@ -3905,7 +4129,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 				{
 					if ( MONSTER_ATTACKTIME % 30 == 1 )
 					{
-						createWaterSplash(body->x, body->y, 30, true);
+						createWaterSplash(body->x, body->y, 30, true, grease);
 					}
 				}
 				if ( MONSTER_ATTACKTIME >= 35 )
@@ -3927,11 +4151,14 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 				{
 					if ( multiplayer != CLIENT )
 					{
-						if ( my->monsterSpecialState != WATER_ELEMENTAL_DIVE )
+						if ( !grease )
 						{
-							for ( int i = 0; i < 3; ++i )
+							if ( my->monsterSpecialState != WATER_ELEMENTAL_DIVE )
 							{
-								my->castOrbitingMagicMissile(SPELL_WATER_BOLT, 20.0, i * 2 * PI / 3, 5 * TICKS_PER_SECOND);
+								for ( int i = 0; i < 3; ++i )
+								{
+									my->castOrbitingMagicMissile(SPELL_WATER_BOLT, 20.0, i * 2 * PI / 3, 5 * TICKS_PER_SECOND);
+								}
 							}
 						}
 					}
@@ -3940,7 +4167,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 				{
 					if ( MONSTER_ATTACKTIME % 30 == 1 )
 					{
-						createWaterSplash(body->x, body->y, 30, true);
+						createWaterSplash(body->x, body->y, 30, true, grease);
 					}
 				}
 				if ( MONSTER_ATTACKTIME >= 100 )
@@ -3959,7 +4186,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 				{
 					if ( MONSTER_ATTACKTIME % 30 == 1 )
 					{
-						createWaterSplash(body->x, body->y, 30, true);
+						createWaterSplash(body->x, body->y, 30, true, grease);
 					}
 
 					if ( multiplayer != CLIENT )
@@ -3975,7 +4202,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 
 							if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][15][0] )
 							{
-								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								missileEntity = castSpell(my->getUID(), getSpellFromID(grease ? SPELL_GREASE_BOLT : SPELL_WATER_BOLT), true, false);
 								straightProjectile = true;
 							}
 							else if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][15][1] )
@@ -3983,7 +4210,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 								CastSpellProps_t props;
 								props.optionalData = 1;
 								props.powerBonusPercent = 100;
-								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false, false, &props);
+								missileEntity = castSpell(my->getUID(), getSpellFromID(grease ? SPELL_GREASE_BOLT : SPELL_WATER_BOLT), true, false, false, &props);
 							}
 						}
 						else if ( MONSTER_ATTACK == MONSTER_POSE_MAGIC_WINDUP3 )
@@ -4013,7 +4240,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 								CastSpellProps_t props;
 								props.optionalData = 1;
 								props.powerBonusPercent = 100;
-								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false, false, &props);
+								missileEntity = castSpell(my->getUID(), getSpellFromID(grease ? SPELL_GREASE_BOLT : SPELL_WATER_BOLT), true, false, false, &props);
 								my->yaw = yaw;
 							}
 						}
@@ -4026,17 +4253,17 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 
 							if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][16][0] )
 							{
-								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								missileEntity = castSpell(my->getUID(), getSpellFromID(grease ? SPELL_GREASE_BOLT : SPELL_WATER_BOLT), true, false);
 								straightProjectile = true;
 							}
 							else if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][16][1] )
 							{
-								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								missileEntity = castSpell(my->getUID(), getSpellFromID(grease ? SPELL_GREASE_BOLT : SPELL_WATER_BOLT), true, false);
 								straightProjectile = true;
 							}
 							else if ( MONSTER_ATTACKTIME == limbs[WATER_ELEMENTAL][16][2] )
 							{
-								missileEntity = castSpell(my->getUID(), getSpellFromID(SPELL_WATER_BOLT), true, false);
+								missileEntity = castSpell(my->getUID(), getSpellFromID(grease ? SPELL_GREASE_BOLT : SPELL_WATER_BOLT), true, false);
 								straightProjectile = true;
 							}
 						}
@@ -4060,7 +4287,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 						MONSTER_ATTACK = 0;
 						if ( multiplayer != CLIENT )
 						{
-							if ( my->monsterSpecialState == 0 )
+							if ( my->monsterSpecialState == 0 && !grease )
 							{
 								my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
 								my->monsterSpecialTimer = 3 * TICKS_PER_SECOND;
@@ -4082,7 +4309,7 @@ void waterElementalAnimate(Entity* my, Stat* myStats, double dist)
 								roll -= hp / 3;
 								if ( roll <= 0 )
 								{
-									if ( my->monsterSpecialState == 0 )
+									if ( my->monsterSpecialState == 0 && !grease )
 									{
 										my->monsterSpecialState = WATER_ELEMENTAL_DIVE;
 										my->monsterSpecialTimer = 2 * TICKS_PER_SECOND;

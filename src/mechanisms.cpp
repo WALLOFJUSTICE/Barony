@@ -2322,6 +2322,7 @@ void Entity::actWind()
 		--actWindLifetime;
 		if ( actWindLifetime <= 0 )
 		{
+			this->removeLightField();
 			list_RemoveNode(this->mynode);
 			return;
 		}
@@ -2352,6 +2353,7 @@ void Entity::actWind()
 	{
 		int map_x = static_cast<int>(x / 16);
 		int map_y = static_cast<int>(y / 16);
+
 		std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadius(map_x, map_y, actWindTileBonusLength + 2);
 		for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
 		{
@@ -2380,20 +2382,20 @@ void Entity::actWind()
 								{
 									if ( entity->behavior == &actArrow )
 									{
-										entity->arrowPower += getSpellDamageSecondaryFromID(SPELL_WINDGATE, caster, nullptr, caster);
+										entity->arrowPower += getSpellDamageSecondaryFromID(actWindParticleEffect == 2 ? SPELL_VORTEX : SPELL_WINDGATE, caster, nullptr, caster);
 									}
 									else if ( entity->behavior == &actThrown )
 									{
-										entity->thrownProjectilePower += getSpellDamageSecondaryFromID(SPELL_WINDGATE, caster, nullptr, caster);
+										entity->thrownProjectilePower += getSpellDamageSecondaryFromID(actWindParticleEffect == 2 ? SPELL_VORTEX : SPELL_WINDGATE, caster, nullptr, caster);
 									}
 									else if ( entity->behavior == &actMagicMissile )
 									{
-										entity->actmagicAdditionalDamage += getSpellDamageSecondaryFromID(SPELL_WINDGATE, caster, nullptr, caster);
+										entity->actmagicAdditionalDamage += getSpellDamageSecondaryFromID(actWindParticleEffect == 2 ? SPELL_VORTEX : SPELL_WINDGATE, caster, nullptr, caster);
 									}
 
 									if ( caster->behavior == &actPlayer )
 									{
-										players[caster->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_WINDGATE, 10.0, 1.0, nullptr);
+										players[caster->skill[2]]->mechanics.updateSustainedSpellEvent(actWindParticleEffect == 2 ? SPELL_VORTEX : SPELL_WINDGATE, 10.0, 1.0, nullptr);
 									}
 								}
 							}
@@ -2407,10 +2409,10 @@ void Entity::actWind()
 					{
 						if ( Entity* caster = uidToEntity(this->parent) )
 						{
-							//magicOnSpellCastEvent(caster, caster, entity, SPELL_WINDGATE, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
+							//magicOnSpellCastEvent(caster, caster, entity, actWindParticleEffect == 2 ? SPELL_VORTEX : SPELL_WINDGATE, spell_t::SPELL_LEVEL_EVENT_DEFAULT, 1);
 							if ( caster->behavior == &actPlayer )
 							{
-								players[caster->skill[2]]->mechanics.updateSustainedSpellEvent(SPELL_WINDGATE, 20.0, 1.0, nullptr);
+								players[caster->skill[2]]->mechanics.updateSustainedSpellEvent(actWindParticleEffect == 2 ? SPELL_VORTEX : SPELL_WINDGATE, 20.0, 1.0, nullptr);
 							}
 						}
 					}
@@ -2448,6 +2450,46 @@ void Entity::actWind()
 			fx->parent = getUID();
 			fx->behavior = &actMagiclightMoving;
 			fx->skill[0] = std::max(20, (1 + actWindTileBonusLength) * 10);
+			fx->skill[3] = 1;
+			fx->flags[NOUPDATE] = true;
+			fx->flags[PASSABLE] = true;
+			fx->flags[UNCLICKABLE] = true;
+			//fx->flags[NOCLIP_WALLS] = true;
+			fx->flags[INVISIBLE] = true;
+			fx->flags[INVISIBLE_DITHER] = true;
+			if ( multiplayer != CLIENT )
+			{
+				entity_uids--;
+			}
+			fx->setUID(-3);
+		}
+	}
+	else if ( actWindParticleEffect == 2 )
+	{
+		if ( !this->light )
+		{
+			this->light = addLight(x / 16, y / 16, "magic_wind_blue");
+		}
+
+		real_t eff_x = x;
+		real_t eff_y = y;
+
+		if ( ticks % 10 == 0 )
+		{
+			Entity* fx = newEntity(2632, 1, map.entities, nullptr);
+			fx->x = eff_x - 8.0 * cos(yaw) + (-4.0 + local_rng.rand() % 9) * cos(yaw + PI / 2);
+			fx->y = eff_y - 8.0 * sin(yaw) + (-4.0 + local_rng.rand() % 9) * sin(yaw + PI / 2);
+			fx->z = 4.0 - local_rng.rand() % 9;
+			fx->vel_x = 1.5 * cos(yaw);
+			fx->vel_y = 1.5 * sin(yaw);
+			fx->scalex = 0.5;
+			fx->scaley = fx->scalex;
+			fx->scalez = fx->scalex;
+			fx->yaw = yaw;
+			fx->parent = getUID();
+			fx->behavior = &actMagiclightMoving;
+			fx->skill[0] = std::max(20, (1 + actWindTileBonusLength) * 10);
+			fx->skill[1] = 1; // lighting
 			fx->skill[3] = 1;
 			fx->flags[NOUPDATE] = true;
 			fx->flags[PASSABLE] = true;

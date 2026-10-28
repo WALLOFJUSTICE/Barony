@@ -9076,7 +9076,7 @@ bool applyShrineEffect(std::string effect_str, Entity* target, Entity* shrine, i
 	{
 		int damageTicks = 8;
 		int burnDuration = damageTicks * 40 + 20;
-		if ( target->setEffect(EFF_HOLY_FIRE, (Uint8)(1 + tier), burnDuration, true, true, true) )
+		if ( target->setEffect(EFF_HOLY_FIRE, (Uint8)(1 + tier), burnDuration, true, true, true, true) )
 		{
 			if ( Entity* fx = createParticleAestheticOrbit(target, 288, burnDuration + 20, PARTICLE_EFFECT_HOLY_FIRE) )
 			{

@@ -403,6 +403,10 @@ const char* itemUseString(int player, const Item& item)
 			case TOOL_MAGIC_SCRAP:
 				return Language::get(1881);
 				break;
+			case TOOL_COMPACT_METAL_SCRAP:
+			case TOOL_COMPACT_MAGIC_SCRAP:
+				return Language::get(7419);
+				break;
 			default:
 				break;
 		}
@@ -2366,6 +2370,28 @@ void select_inventory_slot(int player, int currentx, int currenty, int diffx, in
 
 std::string getItemSpritePath(const int player, Item& item)
 {
+	if ( player >= 0 && player < MAXPLAYERS )
+	{
+		if ( &item == &GenericGUI[player].itemfxGUI.shapechangeTargetItem )
+		{
+			if ( item.appearance > 0 && item.appearance < NUMMONSTERS )
+			{
+				if ( item.appearance == HUMAN )
+				{
+					return monsterData.getAllyIconFromSprite(stats[player]->sex == MALE ? 113 : 125, item.appearance);
+				}
+				else
+				{
+					return monsterData.getAllyIconFromSprite(-1, item.appearance);
+				}
+			}
+			else
+			{
+				return "";
+			}
+		}
+	}
+
 	if ( item.type == SPELL_ITEM )
 	{
 		return ItemTooltips.getSpellIconPath(player, item, -1);
@@ -11997,6 +12023,13 @@ std::vector<ItemContextMenuPrompts> getContextMenuOptionsForItem(const int playe
 		{
 			options.push_back(PROMPT_CONSUME_ALTERNATE);
 			options.push_back(PROMPT_INSPECT);
+			options.push_back(PROMPT_APPRAISE);
+			options.push_back(PROMPT_DROP);
+		}
+		else if ( item->type == TOOL_COMPACT_METAL_SCRAP || item->type == TOOL_COMPACT_MAGIC_SCRAP )
+		{
+			options.push_back(PROMPT_CONSUME_ALTERNATE);
+			options.push_back(PROMPT_INTERACT);
 			options.push_back(PROMPT_APPRAISE);
 			options.push_back(PROMPT_DROP);
 		}

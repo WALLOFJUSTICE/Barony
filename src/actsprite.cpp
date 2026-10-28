@@ -111,7 +111,7 @@ void actSprite(Entity* my)
 	{
 		my->yaw += SPRITE_ROTATE;
 	}
-	if ( my->actSpritePitchRotate > 0.0001 )
+	if ( abs(my->actSpritePitchRotate) > 0.0001 )
 	{
 		my->pitch += my->actSpritePitchRotate;
 	}

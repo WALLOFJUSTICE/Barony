@@ -32,7 +32,10 @@ void initSkeleton(Entity* my, Stat* myStats)
 
 	//Sprite 229 = Skeleton head model
 	my->initMonster(229);
-	my->z = -0.5;
+	if ( my->z < 10 ) {
+		// this if check allows skeleton to rise out of ground
+		my->z = -0.5;
+	}
 
 	if ( multiplayer != CLIENT )
 	{
@@ -683,6 +686,10 @@ void actSkeletonLimb(Entity* my)
 			{
 				lightName = "summoned_skeleton_glow";
 			}
+			else if ( MonsterData_t::nameMatchesSpecialNPCName(*stats, "skeleton revenant") )
+			{
+				lightName = "summoned_skeleton_glow";
+			}
 
 			if ( my->light )
 			{
@@ -760,6 +767,37 @@ void skeletonDie(Entity* my)
 						}
 					}
 				}
+			}
+		}
+	}
+
+	if ( Stat* myStats = my->getStats() )
+	{
+		if ( myStats->getAttribute("revenant_skeleton") != "" )
+		{
+			playSoundEntity(my, 935, 128);
+			if ( Entity* fx = createParticleAestheticOrbit(nullptr, 2670, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_SUMMON_SKULL_DEATH) )
+			{
+				fx->x = my->x;
+				fx->y = my->y;
+				fx->z = 0.0;
+				fx->fskill[0] = fx->x;
+				fx->fskill[1] = fx->y;
+				fx->fskill[2] = fx->z;
+				fx->pitch = PI / 2;
+				real_t tangent = my->yaw;
+				real_t dir = tangent;
+				fx->fskill[4] = dir;
+				fx->fskill[3] = dir;
+				fx->skill[3] = 1;
+				fx->fskill[5] = 0.15; // rotation speed
+				real_t scale = 0.5;
+				fx->scalex = scale;
+				fx->scaley = scale;
+				fx->scalez = scale;
+				fx->skill[5] = 2; // float up
+
+				serverSpawnMiscParticlesAtLocation(fx->x, fx->y, fx->z, PARTICLE_EFFECT_SUMMON_SKULL_DEATH, 2670, 2 * TICKS_PER_SECOND, 2);
 			}
 		}
 	}
@@ -904,19 +942,26 @@ void skeletonMoveBodyparts(Entity* my, Stat* myStats, double dist)
 			}
 		}
 
-		// sleeping
-		if ( myStats->getEffectActive(EFF_ASLEEP) )
+		if ( myStats->getAttribute("revenant_skeleton") != "" && my->ticks < 75 )
 		{
-			my->z = 2;
-			my->pitch = PI / 4;
+			// no z changes, rise out of ground
 		}
 		else
 		{
-			my->z = -.5;
-			my->pitch = 0;
-		}
+			// sleeping
+			if ( myStats->getEffectActive(EFF_ASLEEP) )
+			{
+				my->z = 2;
+				my->pitch = PI / 4;
+			}
+			else
+			{
+				my->z = -.5;
+				my->pitch = 0;
+			}
 
-		my->creatureHandleLiftZ();
+			my->creatureHandleLiftZ();
+		}
 
 		if ( myStats->getAttribute("revenant_skeleton") != "" )
 		{

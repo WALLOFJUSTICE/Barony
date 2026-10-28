@@ -38,7 +38,8 @@ Stat::Stat(Sint32 sprite) :
 	bleedInflictedBy(MISC_FLAGS[17]),
 	burningInflictedBy(MISC_FLAGS[18]),
 	monsterNoDropItems(MISC_FLAGS[19]),
-	monsterForceAllegiance(MISC_FLAGS[20])
+	monsterForceAllegiance(MISC_FLAGS[20]),
+	monsterRequireClientStatUpdate(MISC_FLAGS[21])
 {
 	this->type = NOTHING;
 	strcpy(this->name, "");
