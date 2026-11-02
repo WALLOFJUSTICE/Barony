@@ -2917,7 +2917,12 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		Entity *entity = uidToEntity((int)SDLNet_Read32(&net_packet->data[4]));
 		if ( entity )
 		{
-			entity->skill[net_packet->data[8]] = SDLNet_Read32(&net_packet->data[9]);
+			int skill = net_packet->data[8];
+			assert(skill >= 0 && skill < NUMENTITYSKILLS);
+			if ( skill >= 0 && skill < NUMENTITYSKILLS )
+			{
+				entity->skill[skill] = SDLNet_Read32(&net_packet->data[9]);
+			}
 		}
 	}},
 
@@ -2926,7 +2931,12 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 		Entity *entity = uidToEntity((int)SDLNet_Read32(&net_packet->data[4]));
 		if ( entity )
 		{
-			entity->fskill[net_packet->data[8]] = static_cast<Sint16>(SDLNet_Read16(&net_packet->data[9])) / 256.0;
+			int fskill = net_packet->data[8];
+			assert(fskill >= 0 && fskill < NUMENTITYFSKILLS);
+			if ( fskill >= 0 && fskill < NUMENTITYFSKILLS )
+			{
+				entity->fskill[fskill] = static_cast<Sint16>(SDLNet_Read16(&net_packet->data[9])) / 256.0;
+			}
 		}
 	}},
 
