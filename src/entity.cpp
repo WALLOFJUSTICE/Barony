@@ -5732,7 +5732,7 @@ void Entity::handleEffects(Stat* myStats)
 					myStats->HUNGER -= 40;
 					if ( myStats->HUNGER <= 50 )
 					{
-						myStats->HUNGER = std::min(myStats->HUNGER, 50);
+						myStats->HUNGER = std::max(0, std::min(myStats->HUNGER, 50));
 						myStats->EFFECTS_TIMERS[EFF_VOMITING] = 1;
 					}
 				}
