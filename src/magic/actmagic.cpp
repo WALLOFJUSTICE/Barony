@@ -2168,33 +2168,46 @@ void magicTrapOnHit(Entity* parent, Entity* hitentity, Stat* hitstats, Sint32 ol
 {
 	if ( !parent || !hitentity || !hitstats ) { return; }
 	if ( spellID == SPELL_NONE ) { return; }
-	if ( parent->behavior == &actMagicTrap || parent->behavior == &actMagicTrapCeiling )
+	if ( parent->behavior == &actMagicTrap || parent->behavior == &actMagicTrapCeiling 
+		|| parent->behavior == &actSawTrapBlade || parent->behavior == &actSawTrapStart
+		|| parent->behavior == &actSawTrapMid || parent->behavior == &actSawTrapEnd )
 	{
-		const char* category = parent->behavior == &actMagicTrap ? "magic trap" : "ceiling trap";
-		if ( oldHP == 0 )
+		const char* category = nullptr;
+		if ( parent->behavior == &actMagicTrap )
 		{
-			if ( hitentity->behavior == &actPlayer )
-			{
-				Compendium_t::Events_t::eventUpdateWorld(hitentity->skill[2], Compendium_t::CPDM_TRAP_MAGIC_STATUSED, category, 1);
-			}
+			category = "magic trap";
 		}
-		else if ( oldHP > hitstats->HP )
+		else if ( parent->behavior == &actMagicTrapCeiling )
 		{
-			if ( hitentity->behavior == &actPlayer )
+			category = "ceiling trap";
+		}
+		if ( category )
+		{
+			if ( oldHP == 0 )
 			{
-				Compendium_t::Events_t::eventUpdateWorld(hitentity->skill[2], Compendium_t::CPDM_TRAP_DAMAGE, category, oldHP - hitstats->HP);
-				if ( hitstats->HP <= 0 )
+				if ( hitentity->behavior == &actPlayer )
 				{
-					Compendium_t::Events_t::eventUpdateWorld(hitentity->skill[2], Compendium_t::CPDM_TRAP_KILLED_BY, category, 1);
+					Compendium_t::Events_t::eventUpdateWorld(hitentity->skill[2], Compendium_t::CPDM_TRAP_MAGIC_STATUSED, category, 1);
 				}
 			}
-			else if ( hitentity->behavior == &actMonster )
+			else if ( oldHP > hitstats->HP )
 			{
-				if ( auto leader = hitentity->monsterAllyGetPlayerLeader() )
+				if ( hitentity->behavior == &actPlayer )
 				{
+					Compendium_t::Events_t::eventUpdateWorld(hitentity->skill[2], Compendium_t::CPDM_TRAP_DAMAGE, category, oldHP - hitstats->HP);
 					if ( hitstats->HP <= 0 )
 					{
-						Compendium_t::Events_t::eventUpdateWorld(hitentity->monsterAllyIndex, Compendium_t::CPDM_TRAP_FOLLOWERS_KILLED, category, 1);
+						Compendium_t::Events_t::eventUpdateWorld(hitentity->skill[2], Compendium_t::CPDM_TRAP_KILLED_BY, category, 1);
+					}
+				}
+				else if ( hitentity->behavior == &actMonster )
+				{
+					if ( auto leader = hitentity->monsterAllyGetPlayerLeader() )
+					{
+						if ( hitstats->HP <= 0 )
+						{
+							Compendium_t::Events_t::eventUpdateWorld(hitentity->monsterAllyIndex, Compendium_t::CPDM_TRAP_FOLLOWERS_KILLED, category, 1);
+						}
 					}
 				}
 			}
@@ -2289,7 +2302,14 @@ void magicSetResistance(Entity* entity, Entity* parent, int& resistance, real_t&
 			}
 		}
 
-		if ( parent && (parent->behavior == &actMagicTrap || parent->behavior == &actMagicTrapCeiling) )
+		if ( spellID == SPELL_SAW_TRAP_BLADE )
+		{
+			damageMultiplier = 1.0;
+		}
+
+		if ( parent && (parent->behavior == &actMagicTrap || parent->behavior == &actMagicTrapCeiling 
+			|| parent->behavior == &actSawTrapBlade || parent->behavior == &actSawTrapStart
+			|| parent->behavior == &actSawTrapMid || parent->behavior == &actSawTrapEnd) )
 		{
 			trapResist = entity ? entity->getEntityBonusTrapResist() : 0;
 			if ( trapResist != 0 )
@@ -10092,7 +10112,10 @@ Entity* createParticleAestheticOrbit(Entity* parent, int sprite, int duration, i
 		|| effectType == PARTICLE_EFFECT_BLOOD_BUBBLE
 		|| effectType == PARTICLE_EFFECT_FORCE_BOMBARDMENT
 		|| effectType == PARTICLE_EFFECT_SUMMON_SKULL_DEATH
-		|| effectType == PARTICLE_EFFECT_DECONSTRUCT_SPLINTER )
+		|| effectType == PARTICLE_EFFECT_DECONSTRUCT_SPLINTER
+		|| effectType == PARTICLE_EFFECT_FOCI_SORCERY
+		|| effectType == PARTICLE_EFFECT_FOCI_DARK
+		|| effectType == PARTICLE_EFFECT_FOCI_LIGHT)
 	{
 		// no need parent
 	}
@@ -11214,7 +11237,12 @@ void actParticleAestheticOrbit(Entity* my)
 			/*if ( my->ticks % 10 == 0 )
 			{
 			}*/
-
+			if ( my->ticks % 40 == 21 )
+			{
+				if ( Entity* fx = spawnFlameSprites(parent, 288) )
+				{
+				}
+			}
 			if ( my->ticks % 40 == 1 )
 			{
 				if ( Entity* fx = spawnFlameSprites(parent, 288) )
@@ -11245,7 +11273,18 @@ void actParticleAestheticOrbit(Entity* my)
 							burnDamage = std::max(1.0, (parent->getStats()->MAXHP * totalPercent / 100.0) / 8.0);
 						}
 					}
-					applyGenericMagicDamage(caster, parent, *my, my->skill[4] == SPELL_EXORCISED_GROUND ? SPELL_EXORCISED_GROUND : SPELL_HOLY_FIRE, burnDamage, true, true);
+
+					if ( applyGenericMagicDamage(caster, parent, *my, my->skill[4] == SPELL_EXORCISED_GROUND ? SPELL_EXORCISED_GROUND : SPELL_HOLY_FIRE, burnDamage, true, true) )
+					{
+						if ( caster && (caster->behavior == &actSawTrapStart || caster->behavior == &actSawTrapMid || caster->behavior == &actSawTrapEnd) )
+						{
+							if ( parent->getStats() )
+							{
+								parent->getStats()->killer = KilledBy::SAW_FIREWALL;
+								parent->setObituary(Language::get(7449));
+							}
+						}
+					}
 				}
 			}
 		}
@@ -11538,6 +11577,18 @@ void actParticleAestheticOrbit(Entity* my)
 							{
 								//fx->flags[BRIGHT] = true;
 								fx->lightBonus = my->lightBonus;
+							}
+							else if ( my->skill[1] == PARTICLE_EFFECT_IGNITE_ORBIT )
+							{
+								if ( parent &&
+									(parent->behavior == &actSawTrapStart
+										|| parent->behavior == &actSawTrapMid
+										|| parent->behavior == &actSawTrapEnd) )
+								{
+									fx->scalex = my->scalex;
+									fx->scaley = fx->scalex;
+									fx->scalez = fx->scalex;
+								}
 							}
 							/*if ( my->skill[1] == PARTICLE_EFFECT_IGNITE_ORBIT || my->skill[1] == PARTICLE_EFFECT_IGNITE_ORBIT_LOOP )
 							{
@@ -16639,6 +16690,41 @@ void actParticleTimer(Entity* my)
 			//		}
 			//	}
 			//}
+			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_FIREWALL_FADE )
+			{
+				my->x += my->vel_x;
+				my->y += my->vel_y;
+
+				if ( my->ticks == 1 )
+				{
+					playSoundEntity(my, 827, 64);
+				}
+				if ( my->ticks % 4 == 1 )
+				{
+					if ( Entity* fx = createParticleAestheticOrbit(my, my->particleTimerCountdownSprite, 15, PARTICLE_EFFECT_IGNITE_ORBIT) )
+					{
+						int i = my->ticks % 16;
+						fx->parent = 0;
+						fx->x = my->x;
+						fx->y = my->y;
+						fx->fskill[0] = fx->x;
+						fx->fskill[1] = fx->y;
+						fx->flags[SPRITE] = true;
+						fx->fskill[2] = (i / 8.0) * 2 * PI + PI / 8;
+						fx->fskill[3] += (local_rng.rand() % 10) * PI / 10.0;
+						fx->z = 7.5;
+						fx->vel_z = 1 * (-0.1 + (local_rng.rand() % 10) * -.025);
+						fx->actmagicOrbitDist = 1;
+					}
+				}
+			}
+			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_KEEP_EXIT_WALL )
+			{
+				if ( PARTICLE_LIFE > TICKS_PER_SECOND - 5 )
+				{
+					PARTICLE_LIFE = std::max(TICKS_PER_SECOND, PARTICLE_LIFE);
+				}
+			}
 			else if ( my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_IGNITE
 				|| my->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_IGNITE_NOFOLLOW )
 			{
@@ -27396,12 +27482,19 @@ void particleWaveClientReceive(Entity* my)
 	my->actParticleWaveMagicType = (my->skill[2] >> 20) & 0xFF;
 	my->actParticleWaveLight = (my->skill[2] >> 28) & 1;
 	if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE
+		|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP
+		|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT
 		|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE )
 	{
 		my->skill[1] = 6; // frames
 		my->skill[5] = 4; // frame time
 		my->ditheringOverride = 6;
 		real_t startScale = 0.1;
+		if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+		{
+			startScale = 1.0;
+		}
 		my->scalex = startScale;
 		my->scaley = startScale;
 		my->scalez = startScale;
@@ -27410,6 +27503,21 @@ void particleWaveClientReceive(Entity* my)
 		my->focaly = startScale * grouping;
 		my->fskill[0] = scale; // final scale
 		my->fskill[1] = grouping; // final grouping
+		my->skill[6] = 1; // grow to scale
+	}
+	else if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_GENERIC_WAVE )
+	{
+		real_t scale = 0.5;
+		my->skill[1] = 12; // frames
+		my->skill[5] = 4; // frame time
+		my->ditheringOverride = 6;
+		real_t startScale = 0.1;
+		my->scalex = startScale;
+		my->scaley = startScale;
+		my->scalez = startScale;
+		my->focaly = 0.0;
+		my->fskill[0] = scale; // final scale
+		my->fskill[1] = 0.0; // final grouping
 		my->skill[6] = 1; // grow to scale
 	}
 	else if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_KINETIC_FIELD )
@@ -27670,6 +27778,36 @@ void actParticleWave(Entity* my)
 
 	if ( multiplayer != CLIENT && my->scalex >= my->fskill[0] * .9 )
 	{
+		if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE )
+		{
+			if ( PARTICLE_LIFE == 5 )
+			{
+				real_t yaw = my->yaw + PI / 2;
+				real_t x = my->x + my->focaly * cos(yaw) - 8.0 * cos(yaw + PI / 2);
+				real_t y = my->y + my->focaly * sin(yaw) - 8.0 * sin(yaw + PI / 2);
+
+				real_t tangent = yaw + PI / 2;
+				tangent = normaliseAngle2PI(tangent);
+
+				Entity* spellTimer = createParticleTimer(nullptr, 25, -1);
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_FIREWALL_FADE;
+				spellTimer->particleTimerCountdownSprite = 233;
+				if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+				{
+					spellTimer->particleTimerCountdownSprite = 288;
+				}
+				spellTimer->x = x;
+				spellTimer->y = y;
+				spellTimer->vel_x = 0.5 * cos(tangent);
+				spellTimer->vel_y = 0.5 * sin(tangent);
+
+				serverSpawnMiscParticlesAtLocation(spellTimer->x, spellTimer->y, tangent * 256.0, PARTICLE_EFFECT_FIREWALL_FADE, spellTimer->particleTimerCountdownSprite);
+			}
+		}
+
 		Entity* caster = uidToEntity(parentTimer->parent);
 		if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_CHRONOMIC_FIELD )
 		{
@@ -27856,6 +27994,8 @@ void actParticleWave(Entity* my)
 			}
 		}
 		else if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT
 			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE )
 		{
 			int spellID = SPELL_FIRE_WALL;
@@ -27894,9 +28034,36 @@ void actParticleWave(Entity* my)
 							continue;
 						}
 
+						bool isTrapBehavior = false;
+						bool isTrap = false;
 						if ( spellID == SPELL_FIRE_WALL )
 						{
-							if ( particleEmitterHitProps->hits >= 5 || (particleEmitterHitProps->hits > 0 && ((ticks - particleEmitterHitProps->tick) < 20)) )
+							if ( caster
+								&& (caster->behavior == &actSawTrapStart || caster->behavior == &actSawTrapMid || caster->behavior == &actSawTrapEnd) )
+							{
+								isTrap = true;
+								if ( entity->getStats() )
+								{
+									if ( entity->getRace() == STAREMASTER )
+									{
+										continue;
+									}
+								}
+
+								if ( entity->behavior == &actPlayer || entity->monsterAllyGetPlayerLeader() )
+								{
+									isTrapBehavior = true;
+									if ( /*particleEmitterHitProps->hits >= 5 || */(particleEmitterHitProps->hits > 0 && ((ticks - particleEmitterHitProps->tick) < 15)) )
+									{
+										continue;
+									}
+								}
+								else if ( particleEmitterHitProps->hits >= 5 || (particleEmitterHitProps->hits > 0 && ((ticks - particleEmitterHitProps->tick) < 20)) )
+								{
+									continue;
+								}
+							}
+							else if ( particleEmitterHitProps->hits >= 5 || (particleEmitterHitProps->hits > 0 && ((ticks - particleEmitterHitProps->tick) < 20)) )
 							{
 								continue;
 							}
@@ -27914,6 +28081,26 @@ void actParticleWave(Entity* my)
 							if ( caster == entity || caster->checkFriend(entity) )
 							{
 								continue;
+							}
+						}
+
+						if ( Stat* stats = entity->getStats() )
+						{
+							if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+							{
+								// can't pass this
+							}
+							else
+							{
+								if ( stats->type == SALAMANDER && stats->getEffectActive(EFF_SALAMANDER_HEART) >= 1
+									&& stats->getEffectActive(EFF_SALAMANDER_HEART) <= 2 )
+								{
+									continue;
+								}
+								else if ( stats->type == FLAME_ELEMENTAL )
+								{
+									continue;
+								}
 							}
 						}
 
@@ -27969,13 +28156,30 @@ void actParticleWave(Entity* my)
 												bool doDamage = true;
 												bool burn = false;
 
-												if ( particleEmitterHitProps->hits >= 5 && spellID == SPELL_FIRE_WALL )
+												if ( particleEmitterHitProps->tick > ticks )
 												{
-													continue;
+													// sacred path allow extended immunity
+													break;
 												}
-												if ( particleEmitterHitProps->hits >= 3 )
+
+												if ( isTrapBehavior )
 												{
-													doDamage = false;
+													// no damage limit
+													if ( (particleEmitterHitProps->hits > 0 && ((ticks - particleEmitterHitProps->tick) < 10)) )
+													{
+														doDamage = false;
+													}
+												}
+												else
+												{
+													if ( particleEmitterHitProps->hits >= 5 && spellID == SPELL_FIRE_WALL )
+													{
+														continue;
+													}
+													if ( particleEmitterHitProps->hits >= 3 )
+													{
+														doDamage = false;
+													}
 												}
 
 												if ( spellID == SPELL_FIRE_TRAP_WALL )
@@ -28000,34 +28204,106 @@ void actParticleWave(Entity* my)
 													}
 												}
 
-												if ( doDamage && applyGenericMagicDamage(caster, entity, *my, spellID, damage, true, true) )
+												if ( doDamage && isTrap && entity->onEntityTrapHitSacredPath(my) )
 												{
+													if ( entity->behavior == &actPlayer )
+													{
+														messagePlayerColor(entity->skill[2], MESSAGE_COMBAT, makeColorRGB(0, 255, 0),
+															Language::get(7453));
+													}
+													playSoundEntity(entity, 166, 128);
+													particleEmitterHitProps->hits++;
+													particleEmitterHitProps->tick = ticks + 25;
+												}
+												else if ( doDamage && applyGenericMagicDamage(caster, entity, *my, spellID, damage, true, true) )
+												{
+													if ( isTrap )
+													{
+														stats->killer = KilledBy::SAW_FIREWALL;
+														entity->setObituary(Language::get(7449));
+													}
+
+													if ( particleEmitterHitProps->hits == 0 )
+													{
+														messagePlayerColor(entity->isEntityPlayer(), MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(7452));
+													}
+
 													particleEmitterHitProps->hits++;
 													particleEmitterHitProps->tick = ticks;
+
+													if ( stats->getEffectActive(EFF_FLAME_SHIELD)
+														&& my->actParticleWaveMagicType != ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+													{
+														particleEmitterHitProps->tick = ticks + 15;
+													}
 
 													burn = true;
 												}
 
-												if ( burn && entity->flags[BURNABLE] && !entity->flags[BURNING] )
+												if ( burn && my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
 												{
-													int chance = 10;
-													if ( spellID == SPELL_FIRE_TRAP_WALL )
+													int burnDuration = 8 * TICKS_PER_SECOND;
+													if ( !stats->getEffectActive(EFF_HOLY_FIRE) && entity->setEffect(EFF_HOLY_FIRE, true, burnDuration, true, true, false, false) )
 													{
-														chance = 3;
-													}
-													if ( local_rng.rand() % chance < (particleEmitterHitProps->hits + 1) )
-													{
-														if ( entity->SetEntityOnFire(caster) )
+														if ( Entity* fx = createParticleAestheticOrbit(entity, 288, burnDuration, PARTICLE_EFFECT_HOLY_FIRE) )
 														{
-															if ( caster )
+															fx->flags[SPRITE] = true;
+															fx->flags[INVISIBLE] = true;
+															fx->skill[3] = caster ? caster->getUID() : 0;
+														}
+														messagePlayerColor(entity->isEntityPlayer(), MESSAGE_COMBAT, makeColorRGB(255, 0, 0), Language::get(4324));
+														serverSpawnMiscParticles(entity, PARTICLE_EFFECT_HOLY_FIRE, 288, 0, burnDuration);
+
+														if ( auto hitProps = getParticleEmitterHitProps(my->getUID(), my) )
+														{
+															if ( hitProps->hits == 0 || (hitProps->hits > 0 && (ticks - hitProps->tick >= 50)) )
 															{
-																stats->burningInflictedBy = caster->getUID();
+																++hitProps->hits;
+																hitProps->tick = ticks;
+																playSoundEntity(entity, 164, 92);
 															}
-															entity->char_fire = std::min(entity->char_fire, getSpellEffectDurationFromID(spellID, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0));
 														}
 													}
 												}
-												if ( doKnockback && !stats->getEffectActive(EFF_KNOCKBACK)
+												else
+												{
+													if ( burn && entity->flags[BURNABLE] && !entity->flags[BURNING] )
+													{
+														int chance = 10;
+														if ( spellID == SPELL_FIRE_TRAP_WALL )
+														{
+															chance = 3;
+														}
+														if ( local_rng.rand() % chance < (particleEmitterHitProps->hits + 1) )
+														{
+															if ( entity->SetEntityOnFire(caster) )
+															{
+																if ( caster )
+																{
+																	stats->burningInflictedBy = caster->getUID();
+																}
+
+																int duration = getSpellEffectDurationFromID(spellID, caster, nullptr, my, my->actmagicSpellbookBonus / 100.0);
+																if ( isTrap )
+																{
+																	duration = 8 * TICKS_PER_SECOND;
+																}
+																entity->char_fire = std::min(entity->char_fire, duration);
+
+																if ( auto hitProps = getParticleEmitterHitProps(my->getUID(), my) )
+																{
+																	if ( hitProps->hits == 0 || (hitProps->hits > 0 && (ticks - hitProps->tick >= 50)) )
+																	{
+																		++hitProps->hits;
+																		hitProps->tick = ticks;
+																		playSoundEntity(entity, 164, 92);
+																	}
+																}
+															}
+														}
+													}
+												}
+												if ( doKnockback && (!stats->getEffectActive(EFF_KNOCKBACK) || isTrapBehavior)
 													/*&& !entity->flags[BURNING]*/
 													&& entity->setEffect(EFF_KNOCKBACK, true, 20, false) )
 												{
@@ -28051,7 +28327,7 @@ void actParticleWave(Entity* my)
 														dir = yawDiff >= 0 ? yaw : yaw + PI;
 													}
 
-													real_t pushback = 0.3;
+													real_t pushback = 0.3 + isTrapBehavior ? 0.3 : 0.0;
 													if ( entity->behavior == &actPlayer )
 													{
 														entity->monsterKnockbackVelocity = pushback;
@@ -28091,6 +28367,15 @@ void actParticleWave(Entity* my)
 		}*/
 	}
 
+	if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+	{
+		my->mistformGLRender = 1.0;
+	}
+	else if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_GENERIC_WAVE )
+	{
+		my->mistformGLRender = 0.5;
+	}
+
 	//my->yaw += 0.025;
 	if ( my->skill[6] == 1 ) // grow to scale
 	{
@@ -28111,6 +28396,8 @@ void actParticleWave(Entity* my)
 		//}
 
 		if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT
 			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE )
 		{
 			if ( my->ticks == 1 )
@@ -28141,8 +28428,22 @@ void actParticleWave(Entity* my)
 			{
 				if ( !my->light )
 				{
-					playSoundEntityLocal(my, 164, 128);
-					my->light = addLight(my->x / 16, my->y / 16, "explosion");
+					if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+					{
+						// no sound cast
+					}
+					else
+					{
+						if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP )
+						{
+							playSoundEntityLocal(my, 164, 92, SoundChannelGroupIndex::SOUND_CHANNEL_GROUP_TRAP);
+						}
+						else
+						{
+							playSoundEntityLocal(my, 164, 128);
+						}
+						my->light = addLight(my->x / 16, my->y / 16, "explosion");
+					}
 				}
 			}
 		}
@@ -28192,10 +28493,21 @@ void actParticleWave(Entity* my)
 				color_flicker = "magic_purple_flicker";
 			}
 			else if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE
+				|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP
 				|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE )
 			{
 				color = "campfire";
 				color_flicker = "campfire_flicker";
+			}
+			else if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+			{
+				color = "magic_foci_blue";
+				color_flicker = "magic_foci_blue_flicker";
+			}
+			else if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_GENERIC_WAVE )
+			{
+				color = "magic_shield_purple";
+				color_flicker = "magic_shield_purple_flicker";
 			}
 			if ( flickerLights )
 			{
@@ -28220,7 +28532,11 @@ void actParticleWave(Entity* my)
 		}
 	}
 
-	if ( my->skill[7] == 1 && (my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE || my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE) )
+	if ( my->skill[7] == 1 
+		&& (my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE 
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP
+			/*|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT*/
+			|| my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_TRAP_WAVE) )
 	{
 #ifdef USE_FMOD
 		if ( my->skill[8] == 0 )
@@ -28258,7 +28574,15 @@ void actParticleWave(Entity* my)
 
 	if ( multiplayer != CLIENT )
 	{
-		--PARTICLE_LIFE;
+		if ( my->actParticleWaveMagicType == ParticleTimerEffect_t::EFFECT_FIRE_WAVE_SAWTRAP_EXIT )
+		{
+			// wait for parent to trigger countdown
+			PARTICLE_LIFE = std::max(0, parentTimer->skill[0] - 10);
+		}
+		else
+		{
+			--PARTICLE_LIFE;
+		}
 	}
 	if ( ::ticks % my->skill[5] == 0 )
 	{

@@ -784,6 +784,10 @@ int monsterCurve(int level)
 	}
 	else if ( !strncmp(map.filename, "keep", 4) )
 	{
+		if ( map_rng.rand() % 20 == 0 )
+		{
+			return FLAME_ELEMENTAL;
+		}
 		return SALAMANDER;
 		/*switch ( map_rng.rand() % 10 )
 		{
@@ -1415,6 +1419,8 @@ struct GroupSubRooms_t
 {
 	std::string rootMapFileName = "";
 	int count = 0;
+	int miscData = 0;
+	int generatedRooms = 0;
 	std::vector<bool> possibleRooms;
 	list_t list;
 	std::map<int, GroupSubRooms_t> innerSubRooms;
@@ -1816,6 +1822,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 	};
 	GroupSubRooms_t treasureRooms[TREASURE_ROOM_MAX];
 	GroupSubRooms_t specialMapRooms;
+	GroupSubRooms_t miscMapRooms;
 	GroupSubRooms_t* treasureRoomLevel = nullptr;
 
 	// load shop room
@@ -2402,6 +2409,36 @@ int generateDungeon(char* levelset, Uint32 seed)
 				doorNode = node->next;
 				tempMap = (map_t*)node->element;
 			}
+			else if ( c == 5 && miscMapRooms.count > 0 )
+			{
+				// generate a special room
+				levelnum = 0;
+				levelnum2 = -1;
+
+				levelnum = map_rng.rand() % (miscMapRooms.count); // draw randomly from the pool
+
+				// traverse the map list to the picked level
+				node = miscMapRooms.list.first;
+				i = 0;
+				j = -1;
+				while ( 1 )
+				{
+					if ( miscMapRooms.possibleRooms[i] )
+					{
+						++j;
+						if ( j == levelnum )
+						{
+							break;
+						}
+					}
+					node = node->next;
+					++i;
+				}
+				levelnum2 = i;
+				node = ((list_t*)node->element)->first;
+				doorNode = node->next;
+				tempMap = (map_t*)node->element;
+			}
 			else
 			{
 				if ( !numlevels )
@@ -2535,6 +2572,21 @@ int generateDungeon(char* levelset, Uint32 seed)
 					continue;
 				}
 			}
+			else if ( c == 5 && miscMapRooms.count > 0 )
+			{
+				if ( numpossiblelocations <= 0 )
+				{
+					if ( levelnum2 >= 0 && levelnum2 < miscMapRooms.count )
+					{
+						miscMapRooms.possibleRooms[levelnum2] = false;
+					}
+					--miscMapRooms.count;
+					--c;
+					continue;
+				}
+
+				miscMapRooms.generatedRooms++;
+			}
 			else if ( numpossiblelocations <= 0 )
 			{
 				if ( levelnum2 >= 0 && levelnum2 < numlevels )
@@ -2577,6 +2629,11 @@ int generateDungeon(char* levelset, Uint32 seed)
 					}
 					list_FreeAll(&specialMapRooms.list);
 					for ( auto& r : specialMapRooms.innerSubRooms )
+					{
+						list_FreeAll(&r.second.list);
+					}
+					list_FreeAll(&miscMapRooms.list);
+					for ( auto& r : miscMapRooms.innerSubRooms )
 					{
 						list_FreeAll(&r.second.list);
 					}
@@ -2708,6 +2765,19 @@ int generateDungeon(char* levelset, Uint32 seed)
 							y = 2 + (map_rng.rand() % tempMap->height) * tempMap->height;
 						}
 					}
+					else if ( c == 4 && specialMapRooms.count > 0 && levelData.node.custom_exit != "" )
+					{
+						x = 2 + (map_rng.rand() % tempMap->width) * tempMap->width;
+						y = 2 + (map_rng.rand() % tempMap->height) * tempMap->height;
+						while ( x + tempMap->width >= map.width )
+						{
+							x = 2 + (map_rng.rand() % tempMap->width) * tempMap->width;
+						}
+						while ( y + tempMap->height >= map.height )
+						{
+							y = 2 + (map_rng.rand() % tempMap->height) * tempMap->height;
+						}
+					}
 				}
 
 				while ( 1 )
@@ -2818,6 +2888,32 @@ int generateDungeon(char* levelset, Uint32 seed)
 				&& specialMapRooms.innerSubRooms[levelnum2].count > 0 )
 			{
 				auto& innerSubRooms = specialMapRooms.innerSubRooms[levelnum2];
+				pickSubRoom = map_rng.rand() % innerSubRooms.count;
+				subRoomNode = innerSubRooms.list.first;
+				int k = 0;
+				while ( 1 )
+				{
+					if ( k == pickSubRoom )
+					{
+						break;
+					}
+					subRoomNode = subRoomNode->next;
+					k++;
+				}
+				subRoomNode = ((list_t*)subRoomNode->element)->first;
+				subRoomMap = (map_t*)subRoomNode->element;
+				subRoomDoorNode = subRoomNode->next;
+
+				subroomLogCount = innerSubRooms.count;
+
+				snprintf(submapLogMsg, sizeof(submapLogMsg),
+					"Picked level: %d from %d possible rooms in submap %s at x:%d y:%d", pickSubRoom + 1, subroomLogCount, tempMap->filename, x, y);
+			}
+			else if ( c == 5 && miscMapRooms.count > 0
+				&& miscMapRooms.innerSubRooms.find(levelnum2) != miscMapRooms.innerSubRooms.end()
+				&& miscMapRooms.innerSubRooms[levelnum2].count > 0 )
+			{
+				auto& innerSubRooms = miscMapRooms.innerSubRooms[levelnum2];
 				pickSubRoom = map_rng.rand() % innerSubRooms.count;
 				subRoomNode = innerSubRooms.list.first;
 				int k = 0;
@@ -2984,6 +3080,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 							{
 								firstroomtile[y0 + x0 * map.height] = true;
 								startRoomInfo.addCoord(x0, y0);
+								map.tileAttributes[(y0)*MAPLAYERS + (x0)*MAPLAYERS * map.height] |= map_t::TILE_ATTRIBUTE_START_ROOM;
 							}
 							else if ( c == 1 && secretlevelexit && !strncmp(map.name, "Hell", 4) )
 							{
@@ -3021,6 +3118,12 @@ int generateDungeon(char* levelset, Uint32 seed)
 								{
 									map.tileAttributes[(y0)*MAPLAYERS + (x0)*MAPLAYERS * map.height] |= map_t::TILE_ATTRIBUTE_TREASURE_ROOM;
 								}
+							}
+							if ( c == 5 && miscMapRooms.count > 0 )
+							{
+								decorationexcludelocations[x0 + y0 * map.width] = true;
+								treasureRoomLocations[x0 + y0 * map.width] = true;
+								map.tileAttributes[(y0)*MAPLAYERS + (x0)*MAPLAYERS * map.height] |= map_t::TILE_ATTRIBUTE_TREASURE_ROOM;
 							}
 						}
 
@@ -3185,6 +3288,11 @@ int generateDungeon(char* levelset, Uint32 seed)
 		{
 			list_FreeAll(&r.second.list);
 		}
+		list_FreeAll(&miscMapRooms.list);
+		for ( auto& r : miscMapRooms.innerSubRooms )
+		{
+			list_FreeAll(&r.second.list);
+		}
 		free(possiblerooms);
 		free(possiblelocations2);
 	}
@@ -3200,6 +3308,11 @@ int generateDungeon(char* levelset, Uint32 seed)
 		}
 		list_FreeAll(&specialMapRooms.list);
 		for ( auto& r : specialMapRooms.innerSubRooms )
+		{
+			list_FreeAll(&r.second.list);
+		}
+		list_FreeAll(&miscMapRooms.list);
+		for ( auto& r : miscMapRooms.innerSubRooms )
 		{
 			list_FreeAll(&r.second.list);
 		}
@@ -5213,6 +5326,11 @@ int generateDungeon(char* levelset, Uint32 seed)
 				// return to normal generation
 				if ( map_rng.rand() % 2 || nodecoration )
 				{
+					if ( !strncmp(map.filename, "keep", 4) )
+					{
+						continue;
+					}
+
 					// balance for total number of players
 					int balance = 0;
 					for ( i = 0; i < MAXPLAYERS; i++ )
@@ -5323,7 +5441,8 @@ int generateDungeon(char* levelset, Uint32 seed)
 						if ( !strncmp(map.filename, "fortress", 8)
 							|| !strncmp(map.filename, "keep", 4) )
 						{
-							switch ( map_rng.rand() % 4 )
+							int roll = !strncmp(map.filename, "keep", 4) ? (map_rng.rand() % 3) : (map_rng.rand() % 4);
+							switch ( roll )
 							{
 							case 0:
 								entity = newEntity(12, 1, map.entities, nullptr); //Firecamp.
@@ -5335,10 +5454,12 @@ int generateDungeon(char* levelset, Uint32 seed)
 								entity = newEntity(15, 1, map.entities, nullptr); //Sink.
 								break; //Sink
 							case 3:
+							{
 								entity = newEntity(21, 1, map.entities, nullptr); //Chest.
 								setSpriteAttributes(entity, nullptr, nullptr);
 								entity->chestLocked = -1;
 								break; //Chest
+							}
 							}
 						}
 						else
@@ -5438,18 +5559,74 @@ int generateDungeon(char* levelset, Uint32 seed)
 		Uint32 hauntedTrapSeed = map_rng.getU32();
 		BaronyRNG tmpRng;
 		tmpRng.seedBytes(&hauntedTrapSeed, sizeof(hauntedTrapSeed));
-		int numHauntedArmors = 5 + tmpRng.rand() % 3;
+		int numHauntedArmors = 5 + tmpRng.rand() % 4;
 
 		std::vector<Entity*> possibleArmors;
+		std::vector<Entity*> possibleContainers;
+		std::set<std::string> otherContainers;
+
+		//WEAPON,
+		//ARMOR,
+		//AMULET,
+		//POTION,
+		//SCROLL,
+		//MAGICSTAFF,
+		//RING,
+		//SPELLBOOK,
+		//GEM,
+		//THROWN,
+		//TOOL,
+		//FOOD,
+		//BOOK,
+		//SPELL_CAT,
+		//TOME_SPELL,
+		//CATEGORY_MAX
+
+		std::map<std::string, std::vector<std::pair<int, int>>> allowedItemContainers =
+		{
+			{"blackiron_armor_stand",	{	{WEAPON, 10}, {ARMOR, 30}		}},
+			{"cart",					{	{CATEGORY_MAX, 10} 				}},
+			{"crate",					{	{CATEGORY_MAX, 10}, {FOOD, 10}	}},
+			{"drawer",					{	{SPELLBOOK, 30}, {SCROLL, 10}, {ARMOR, 10}, {RING, 5}, {AMULET, 5}, {TOOL, 5}	}},
+			{"dresser",					{	{SPELLBOOK, 30}, {SCROLL, 10}, {ARMOR, 10}, {RING, 5}, {AMULET, 5}, {TOOL, 5}	}},
+			{"footlocker",				{	{CATEGORY_MAX, 10}, {WEAPON, 15}, {MAGICSTAFF, 10}	}},
+			{"keep_bed",				{	{SPELLBOOK, 5}, {SCROLL, 5}, {RING, 5}, {AMULET, 5}		}},
+			{"keg",						{	{CATEGORY_MAX, 10}, {FOOD, 10}		}},
+			{"pallets",					{	{CATEGORY_MAX, 10}, {FOOD, 10}		}},
+			{"pallets_sacks",			{	{CATEGORY_MAX, 10}, {FOOD, 10}		}},
+			{"sacks",					{	{CATEGORY_MAX, 10}, {FOOD, 10}		}},
+			{"silver_armor_stand",		{	{WEAPON, 10}, {ARMOR, 30}			}},
+			{"tarp_crate",				{	{CATEGORY_MAX, 10}					}},
+			{"vase",					{	{SCROLL, 10}, {GEM, 5}				}},
+			{"weapon_rack",				{	{WEAPON, 50}, {MAGICSTAFF, 10}		}},
+		};
+
 		for ( node_t* node = map.entities->first; node != NULL; node = node->next )
 		{
 			if ( (entity2 = (Entity*)node->element) )
 			{
-				if ( entity2->sprite == 179 && entity2->colliderDamageTypes > 0
-					&& (entity2->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["blackiron_armor_stand"]
-						|| entity2->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["silver_armor_stand"]) )
+				if ( entity2->sprite == 179 && entity2->colliderDamageTypes > 0 )
 				{
-					possibleArmors.push_back(entity2);
+					if ( (entity2->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["blackiron_armor_stand"]
+							|| entity2->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["silver_armor_stand"]) )
+					{
+						possibleArmors.push_back(entity2);
+					}
+					else
+					{
+						auto find = EditorEntityData_t::colliderData.find(entity2->colliderDamageTypes);
+						if ( find != EditorEntityData_t::colliderData.end() )
+						{
+							if ( allowedItemContainers.find(find->second.name) == allowedItemContainers.end() )
+							{
+								otherContainers.insert(find->second.name);
+							}
+							else
+							{
+								possibleContainers.push_back(entity2);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -5464,6 +5641,98 @@ int generateDungeon(char* levelset, Uint32 seed)
 			}
 			possibleArmors.erase(possibleArmors.begin() + pick);
 			--numHauntedArmors;
+		}
+
+		for ( auto armor : possibleArmors )
+		{
+			possibleContainers.push_back(armor);
+		}
+
+		int numQty = 20 + tmpRng.rand() % 11; // 20 - 30
+
+		auto doItemFunc = [](int category, Entity* breakable, int& numGenItems, std::vector<unsigned int>& itemsGeneratedList)
+		{
+			Entity* entity = newEntity(8, 1, map.entities, nullptr);  // item
+			itemsGeneratedList.push_back(entity->getUID());
+			setSpriteAttributes(entity, nullptr, nullptr);
+			entity->x = breakable->x;
+			entity->y = breakable->y;
+			entity->flags[INVISIBLE] = true;
+			entity->itemContainer = breakable->getUID();
+			entity->yaw = breakable->yaw;
+			if ( category != CATEGORY_MAX )
+			{
+				entity->skill[16] = category + 1;
+			}
+			breakable->colliderContainedEntity = entity->getUID();
+			numGenItems++;
+		};
+
+		auto doGoldFunc = [](Entity* breakable, int& numGenGold)
+		{
+			Entity*entity = newEntity(9, 1, map.entities, nullptr);  // gold
+			entity->goldAmount = 0;
+			entity->x = breakable->x;
+			entity->y = breakable->y;
+			entity->flags[INVISIBLE] = true;
+			entity->yaw = breakable->yaw;
+			entity->goldInContainer = breakable->getUID();
+			breakable->colliderContainedEntity = entity->getUID();
+			numGenGold++;
+		};
+
+		while ( numQty > 0 && possibleContainers.size() )
+		{
+			int pick = tmpRng.rand() % possibleContainers.size();
+			Entity* breakable = possibleContainers[pick];
+			possibleContainers.erase(possibleContainers.begin() + pick);
+
+			if ( breakable->colliderHideMonster != 0 || breakable->colliderContainedEntity != 0 )
+			{
+				continue;
+			}
+			--numQty;
+
+			auto find = EditorEntityData_t::colliderData.find(breakable->colliderDamageTypes);
+			if ( find != EditorEntityData_t::colliderData.end() )
+			{
+				auto find2 = allowedItemContainers.find(find->second.name);
+				if ( find2 != allowedItemContainers.end() )
+				{
+					std::vector<unsigned int> chances;
+					bool anyChances = false;
+					for ( auto& chance : find2->second )
+					{
+						chances.push_back(chance.second);
+						if ( chance.second )
+						{
+							anyChances = true;
+						}
+					}
+
+					if ( anyChances )
+					{
+						int pick = tmpRng.discrete(chances.data(), chances.size());
+						int category = find2->second[pick].first;
+
+						if ( category == GEM || category == RING || category == AMULET )
+						{
+							if ( tmpRng.rand() % 8 == 0 )
+							{
+								doGoldFunc(breakable, numGenGold);
+							}
+							else
+							{
+								doItemFunc(category, breakable, numGenItems, itemsGeneratedList);
+							}
+						}
+						else
+						{
+							doItemFunc(category, breakable, numGenItems, itemsGeneratedList);
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -5633,9 +5902,184 @@ int generateDungeon(char* levelset, Uint32 seed)
 		}
 	}
 
+	if ( !strncmp(map.filename, "keep", 4) )
 	{
-		static ConsoleVariable<int> cvar_keep_forcefield("/map_keep_forcefield", 0);
-		static ConsoleVariable<int> cvar_keep_forcefield_min("/map_keep_forcefield_min", 3);
+		{
+			BaronyRNG shrineRng;
+			Uint32 shrineSeed = map_rng.getU32();
+			shrineRng.seedBytes(&shrineSeed, sizeof(shrineSeed));
+
+			std::vector<int> allGoodSpots[4];
+			for ( int x = 0; x < map.width; ++x )
+			{
+				for ( int y = 0; y < map.height; ++y )
+				{
+					if ( possiblelocations[y + x * map.height] == true
+						&& !map.trapexcludelocations[x + y * map.width]
+						&& !map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_EXIT_ROOM) && !map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_TREASURE_ROOM) )
+					{
+						if ( x < map.width / 2 && y < map.height / 2 )
+						{
+							// top left
+							allGoodSpots[0].push_back(x + 10000 * y);
+						}
+						else if ( x >= map.width / 2 && y < map.height / 2 )
+						{
+							// top right
+							allGoodSpots[1].push_back(x + 10000 * y);
+						}
+						else if ( x < map.width / 2 && y >= map.height / 2 )
+						{
+							// bottom left
+							allGoodSpots[2].push_back(x + 10000 * y);
+						}
+						else
+						{
+							// bottom right
+							allGoodSpots[3].push_back(x + 10000 * y);
+						}
+					}
+				}
+			}
+
+			std::vector<Entity*> generatedShrines;
+			for ( auto& goodSpots : allGoodSpots )
+			{
+				while ( goodSpots.size() )
+				{
+					// choose a random location from those available
+					int pick = shrineRng.rand() % goodSpots.size();
+					int x = goodSpots[pick] % 10000;
+					int y = goodSpots[pick] / 10000;
+
+					goodSpots.erase(goodSpots.begin() + pick);
+
+					bool spot = true;
+					int freeSpots = 8;
+					int wallDir = -1;
+					for ( int x2 = -1; x2 <= 1; x2++ )
+					{
+						for ( int y2 = -1; y2 <= 1; y2++ )
+						{
+							int checkx = x + x2;
+							int checky = y + y2;
+							if ( checkx >= 0 && checkx < map.width )
+							{
+								if ( checky >= 0 && checky < map.height )
+								{
+									if ( x2 == 0 && y2 == 0 )
+									{
+										continue;
+									}
+
+									if ( map.tiles[OBSTACLELAYER + checky * MAPLAYERS + checkx * MAPLAYERS * map.height] )
+									{
+										--freeSpots;
+										if ( x2 == 0 || y2 == 0 )
+										{
+											if ( x2 == -1 ) { wallDir = 0; }
+											else if ( x2 == 1 ) { wallDir = 2; }
+											else if ( y2 == -1 ) { wallDir = 1; }
+											else if ( y2 == 1 ) { wallDir = 3; }
+										}
+									}
+									else if ( !possiblelocations[checky + checkx * map.height] )
+									{
+										--freeSpots;
+									}
+									else if ( checkObstacle((checkx) * 16, (checky) * 16, NULL, NULL, false, false) )
+									{
+										--freeSpots;
+									}
+								}
+							}
+						}
+					}
+					if ( spot && freeSpots >= 5 && wallDir >= 0 )
+					{
+						Entity* breakable = newEntity(179, 1, map.entities, nullptr);
+						breakable->x = x * 16.0;
+						breakable->y = y * 16.0;
+						breakable->colliderDecorationRotation = wallDir * 2;
+						breakable->colliderIsMapGenerated = 1;
+						breakable->colliderDamageTypes = 81;
+
+						generatedShrines.push_back(breakable);
+						possiblelocations[y + x * map.height] = false;
+						numpossiblelocations--;
+						break;
+					}
+				}
+			}
+
+			for ( auto breakable : generatedShrines )
+			{
+				if ( shrineRng.rand() % 5 == 0 )
+				{
+					if ( shrineRng.rand() % 2 == 0 )
+					{
+						Entity* entity = newEntity(8, 1, map.entities, nullptr);  // item
+						itemsGeneratedList.push_back(entity->getUID());
+						setSpriteAttributes(entity, nullptr, nullptr);
+						entity->x = breakable->x;
+						entity->y = breakable->y;
+						entity->flags[INVISIBLE] = true;
+						entity->itemContainer = breakable->getUID();
+						entity->yaw = breakable->yaw;
+						entity->skill[16] = (int)GEM + 1;
+						breakable->colliderContainedEntity = entity->getUID();
+						numGenItems++;
+					}
+					else
+					{
+						if ( shrineRng.rand() % 2 == 0 )
+						{
+							breakable->colliderHideMonster = FLAME_ELEMENTAL;
+						}
+						else
+						{
+							breakable->colliderHideMonster = WATER_ELEMENTAL;
+						}
+					}
+				}
+			}
+		}
+
+		static ConsoleVariable<int> cvar_keep_forcefield("/map_keep_forcefield", 7);
+		static ConsoleVariable<int> cvar_keep_forcefield_min("/map_keep_forcefield_min", 1);
+
+		BaronyRNG sawRng;
+		Uint32 sawSeed = map_rng.getU32();
+		sawRng.seedBytes(&sawSeed, sizeof(sawSeed));
+
+		std::set<int> wireSpots;
+		for ( auto node = map.entities->first; node; node = node->next )
+		{
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->sprite < spriteEditorNameStrings.size() )
+				{
+					if ( !strcmp(spriteEditorNameStrings[entity->sprite].second, "mech") || !strcmp(spriteEditorNameStrings[entity->sprite].second, "doors") )
+					{
+						if ( entity->sprite == 131 && entity->lightSourceAlwaysOn == 1 )
+						{
+							// ignore since always powered
+							continue;
+						}
+
+						int x = entity->x / 16;
+						int y = entity->y / 16;
+						wireSpots.insert(x + 10000 * y);
+					}
+				}
+			}
+		}
+
+		if ( !(svFlags & SV_FLAG_CHEATS) )
+		{
+			*cvar_keep_forcefield_min = 1;
+			*cvar_keep_forcefield = 7;
+		}
 		if ( !strncmp(map.filename, "keep", 4) && *cvar_keep_forcefield > 0 )
 		{
 			std::vector<int> goodSpots;
@@ -5643,9 +6087,20 @@ int generateDungeon(char* levelset, Uint32 seed)
 			{
 				for ( int y = 0; y < map.height; ++y )
 				{
-					if ( possiblelocations[y + x * map.height] == true )
+					if ( possiblelocations[y + x * map.height] == true && !map.trapexcludelocations[x + y * map.width]
+						&& !map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_EXIT_ROOM) && !map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_TREASURE_ROOM) )
 					{
-						goodSpots.push_back(x + 10000 * y);
+						if ( (x > 0 && wireSpots.find((x - 1) + 10000 * y) != wireSpots.end())
+							|| wireSpots.find((x + 1) + 10000 * y) != wireSpots.end()
+							|| (y > 0 && wireSpots.find(x + 10000 * (y - 1)) != wireSpots.end())
+							|| wireSpots.find(x + 10000 * (y + 1)) != wireSpots.end() )
+						{
+							continue;
+						}
+						else
+						{
+							goodSpots.push_back(x + 10000 * y);
+						}
 					}
 				}
 			}
@@ -5655,11 +6110,45 @@ int generateDungeon(char* levelset, Uint32 seed)
 				CORRIDOR_VERTICAL,
 				CORRIDOR_HORIZONTAL
 			};
+			enum class TrapFacingDir
+			{
+				EAST,
+				SOUTH,
+				WEST,
+				NORTH
+			};
+			enum class TrapQuadrant
+			{
+				NORTHEAST,
+				SOUTHEAST,
+				SOUTHWEST,
+				NORTHWEST
+			};
+			struct CorridorTile
+			{
+				int dir = (int)TrapFacingDir::EAST;
+				int coord = 0;
+				bool start = false;
+				bool end = false;
+				int id = 0;
+			};
 
-			for ( int c = 0; c < (int)goodSpots.size(); ++c )
+			std::map<TrapQuadrant, int> quadrantsGenerated;
+			std::map<TrapQuadrant, std::vector<std::vector<CorridorTile>>> allFieldSpots;
+			int corridorIds = 1;
+			//std::vector<bool> temp_possiblelocations(possiblelocations, possiblelocations + sizeof(bool) * map.width * map.height);
+			/*for ( int x = 0; x < map.width; ++x )
+			{
+				for ( int y = 0; y < map.height; ++y )
+				{
+					assert(temp_possiblelocations[y + x * map.height] == possiblelocations[y + x * map.height]);
+				}
+			}*/
+
+			while ( goodSpots.size() )
 			{
 				// choose a random location from those available
-				int pick = map_rng.rand() % goodSpots.size();
+				int pick = sawRng.rand() % goodSpots.size();
 				int key = goodSpots[pick];
 				int x = key % 10000;
 				int y = key / 10000;
@@ -5667,13 +6156,44 @@ int generateDungeon(char* levelset, Uint32 seed)
 				goodSpots.erase(goodSpots.begin() + pick);
 				if ( !possiblelocations[y + x * map.height] )
 				{
+					//--c;
 					continue;
 				}
 
-				std::vector<std::pair<int, int>> fieldSpots;
-				for ( int i = CorridorDir::CORRIDOR_VERTICAL; i <= CorridorDir::CORRIDOR_HORIZONTAL; ++i )
+				if ( (x > 0 && wireSpots.find((x - 1) + 10000 * y) != wireSpots.end())
+					|| wireSpots.find((x + 1) + 10000 * y) != wireSpots.end()
+					|| (y > 0 && (wireSpots.find(x + 10000 * (y - 1)) != wireSpots.end()))
+					|| wireSpots.find(x + 10000 * (y + 1)) != wireSpots.end() )
 				{
-					if ( i == CorridorDir::CORRIDOR_VERTICAL )
+					//--c;
+					continue;
+				}
+
+				TrapQuadrant quad = TrapQuadrant::NORTHEAST;
+				{
+					if ( x < map.width / 2 && y < map.height / 2 )
+					{
+						quad = TrapQuadrant::NORTHWEST;
+					}
+					else if ( x < map.width / 2 && y >= map.height / 2 )
+					{
+						quad = TrapQuadrant::SOUTHWEST;
+					}
+					else if ( x >= map.width / 2 && y >= map.height / 2 )
+					{
+						quad = TrapQuadrant::SOUTHEAST;
+					}
+				}
+
+				std::vector<int> dirOrder = { (int)CorridorDir::CORRIDOR_VERTICAL, (int)CorridorDir::CORRIDOR_HORIZONTAL };
+				/*if ( corridorIds % 2 == 1 )
+				{
+					dirOrder = {(int)CorridorDir::CORRIDOR_HORIZONTAL, (int)CorridorDir::CORRIDOR_VERTICAL};
+				}*/
+				for ( auto i : dirOrder )
+				{
+					bool found = false;
+					if ( i == CorridorDir::CORRIDOR_VERTICAL /*&& fieldSpots.size() == 0*/ )
 					{
 						int checkx = x;
 						int checky = y;
@@ -5685,14 +6205,24 @@ int generateDungeon(char* levelset, Uint32 seed)
 								bool right = map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx + 1) * MAPLAYERS * map.height];
 								if ( left && right )
 								{
-									//fieldSpots.push_back(checkx + 10000 * checky);
+									// 1x1 gap
+									if ( *cvar_keep_forcefield_min >= 1 )
+									{
+										auto facingDir = TrapFacingDir::EAST;
+										found = true;
+										bool first = true;
+										bool end = true;
+										allFieldSpots[quad].push_back({});
+										auto& fieldSpots = allFieldSpots[quad].back();
+										fieldSpots.emplace_back(CorridorTile{ (int)facingDir, (x) + 10000 * y, first, end, corridorIds });
+									}
 								}
 								else if ( left || right )
 								{
 									bool left2 = false;
 									int currentWidth = 1;
 									int foundWidth = 0;
-									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									for ( int w = 1; w <= *cvar_keep_forcefield && !left; ++w )
 									{
 										checkx = x - w;
 										if ( checkx > 0 && checkx < map.width - 1 )
@@ -5720,7 +6250,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 									bool right2 = false;
 									currentWidth = 1;
-									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									for ( int w = 1; w <= *cvar_keep_forcefield && !right; ++w )
 									{
 										checkx = x + w;
 										if ( map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx) * MAPLAYERS * map.height] )
@@ -5746,23 +6276,52 @@ int generateDungeon(char* levelset, Uint32 seed)
 										}
 									}
 
-									while ( foundWidth > 0 )
+									if ( foundWidth )
 									{
-										--foundWidth;
-										if ( left && right2 )
+										bool first = true;
+										bool end = false;
+										int tileIndex = -1;
+										TrapFacingDir facingDir = TrapFacingDir::EAST;
+
+										while ( foundWidth > 0 )
 										{
-											fieldSpots.push_back(std::make_pair(i, (x + (foundWidth)) + 10000 * y));
-										}
-										else if ( right && left2 )
-										{
-											fieldSpots.push_back(std::make_pair(i, (x - (foundWidth)) + 10000 * y));
+											++tileIndex;
+											--foundWidth;
+											if ( foundWidth == 0 )
+											{
+												end = true;
+											}
+											if ( left && right2 )
+											{
+												if ( tileIndex == 0 )
+												{
+													allFieldSpots[quad].push_back({});
+													facingDir = TrapFacingDir::WEST;
+												}
+												auto& fieldSpots = allFieldSpots[quad].back();
+												fieldSpots.emplace_back(CorridorTile{ (int)facingDir, (x + (foundWidth)) + 10000 * y, first, end, corridorIds });
+												found = true;
+												first = false;
+											}
+											else if ( right && left2 )
+											{
+												if ( tileIndex == 0 )
+												{
+													allFieldSpots[quad].push_back({});
+													facingDir = TrapFacingDir::EAST;
+												}
+												auto& fieldSpots = allFieldSpots[quad].back();
+												fieldSpots.emplace_back(CorridorTile{ (int)facingDir, (x - (foundWidth)) + 10000 * y, first, end, corridorIds });
+												found = true;
+												first = false;
+											}
 										}
 									}
 								}
 							}
 						}
 					}
-					else if ( i == CorridorDir::CORRIDOR_HORIZONTAL && fieldSpots.size() == 0 )
+					else if ( i == CorridorDir::CORRIDOR_HORIZONTAL /*&& fieldSpots.size() == 0*/ )
 					{
 						int checkx = x;
 						int checky = y;
@@ -5774,14 +6333,24 @@ int generateDungeon(char* levelset, Uint32 seed)
 								bool down = map.tiles[OBSTACLELAYER + (checky + 1) * MAPLAYERS + (checkx) * MAPLAYERS * map.height];
 								if ( up && down )
 								{
-									//fieldSpots.push_back(checkx + 10000 * checky);
+									// 1x1 gap
+									if ( *cvar_keep_forcefield_min >= 1 )
+									{
+										auto facingDir = TrapFacingDir::SOUTH;
+										found = true;
+										bool first = true;
+										bool end = true;
+										allFieldSpots[quad].push_back({});
+										auto& fieldSpots = allFieldSpots[quad].back();
+										fieldSpots.emplace_back(CorridorTile{ (int)facingDir, (x)+10000 * y, first, end, corridorIds });
+									}
 								}
 								else if ( up || down )
 								{
 									bool up2 = false;
 									int currentWidth = 1;
 									int foundWidth = 0;
-									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									for ( int w = 1; w <= *cvar_keep_forcefield && !up; ++w )
 									{
 										checky = y - w;
 										if ( checkx > 0 && checkx < map.width - 1 )
@@ -5809,7 +6378,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 									bool down2 = false;
 									currentWidth = 1;
-									for ( int w = 1; w <= *cvar_keep_forcefield; ++w )
+									for ( int w = 1; w <= *cvar_keep_forcefield && !down; ++w )
 									{
 										checky = y + w;
 										if ( map.tiles[OBSTACLELAYER + checky * MAPLAYERS + (checkx)*MAPLAYERS * map.height] )
@@ -5835,46 +6404,402 @@ int generateDungeon(char* levelset, Uint32 seed)
 										}
 									}
 
-									while ( foundWidth > 0 )
+									if ( foundWidth )
 									{
-										--foundWidth;
-										if ( up && down2 )
+										bool first = true;
+										bool end = false;
+										int tileIndex = -1;
+										TrapFacingDir facingDir = TrapFacingDir::SOUTH;
+
+										while ( foundWidth > 0 )
 										{
-											fieldSpots.push_back(std::make_pair(i, x + 10000 * (y + foundWidth)));
-										}
-										else if ( down && up2 )
-										{
-											fieldSpots.push_back(std::make_pair(i, x + 10000 * (y - foundWidth)));
+											++tileIndex;
+											--foundWidth;
+											if ( foundWidth == 0 )
+											{
+												end = true;
+											}
+											if ( up && down2 )
+											{
+												if ( tileIndex == 0 )
+												{
+													allFieldSpots[quad].push_back({});
+													facingDir = TrapFacingDir::NORTH;
+												}
+												auto& fieldSpots = allFieldSpots[quad].back();
+												fieldSpots.push_back(CorridorTile{ (int)facingDir, x + 10000 * (y + foundWidth), first, end, corridorIds });
+												first = false;
+												found = true;
+											}
+											else if ( down && up2 )
+											{
+												if ( tileIndex == 0 )
+												{
+													allFieldSpots[quad].push_back({});
+													facingDir = TrapFacingDir::SOUTH;
+												}
+												auto& fieldSpots = allFieldSpots[quad].back();
+												fieldSpots.push_back(CorridorTile{ (int)facingDir, x + 10000 * (y - foundWidth), first, end, corridorIds });
+												first = false;
+												found = true;
+											}
 										}
 									}
 								}
 							}
 						}
 					}
-				}
 
-				if ( fieldSpots.size() )
-				{
-					while ( fieldSpots.size() )
+					if ( allFieldSpots[quad].size() && allFieldSpots[quad].back().size() && found )
 					{
-						int x = fieldSpots[0].second % 10000;
-						int y = fieldSpots[0].second / 10000;
-						Entity* field = newEntity(305, 1, map.entities, nullptr);
-						field->x = x * 16.0;
-						field->y = y * 16.0;
-						field->flags[PASSABLE] = true;
-						field->yaw = fieldSpots[0].first == CORRIDOR_VERTICAL ? 1.0 : 0.0;
+						++corridorIds;
 
-						possiblelocations[y + x * map.height] = false;
-						numpossiblelocations--;
-
-						fieldSpots.erase(fieldSpots.begin());
+						for ( auto& spot : allFieldSpots[quad].back() )
+						{
+							int x = spot.coord % 10000;
+							int y = spot.coord / 10000;
+							if ( (x > 0 && wireSpots.find((x - 1) + 10000 * y) != wireSpots.end())
+								|| wireSpots.find((x + 1) + 10000 * y) != wireSpots.end()
+								|| (y > 0 && (wireSpots.find(x + 10000 * (y - 1)) != wireSpots.end()))
+								|| wireSpots.find(x + 10000 * (y + 1)) != wireSpots.end() )
+							{
+								//fieldSpots.clear();
+								allFieldSpots[quad].pop_back();
+								break;
+							}
+						}
 					}
 				}
-				else
+
+				//if ( fieldSpots.size() )
+				//{
+				//}
+				//else
+				//{
+				//	//--c;
+				//	continue;
+				//}
+			}
+
+			for ( auto& quadrant : allFieldSpots )
+			{
+				std::map<int, int> numLengths;
+				std::vector<unsigned int> chances(quadrant.second.size());
+				std::fill(chances.begin(), chances.end(), 1);
+
+				int index = -1;
+				for ( auto& fieldSpots : quadrant.second )
 				{
-					--c;
-					continue;
+					++index;
+					numLengths[fieldSpots.size()]++;
+					if ( chances[index] )
+					{
+						chances[index] = (fieldSpots.size() - 1) * 5;
+						// try generate large ones first
+						if ( fieldSpots.size() >= 5 )
+						{
+							chances[index] = 100;
+						}
+					}
+				}
+
+				int numFieldsGenerate = 5 + sawRng.rand() % 3;
+				int numBordersGenerate = 2;
+				while ( numFieldsGenerate > 0 || numBordersGenerate > 0 )
+				{
+					bool anychances = false;
+					int chanceIndex = -1;
+					for ( auto& val : chances )
+					{
+						++chanceIndex;
+						if ( numFieldsGenerate <= 0 ) // fill in borders
+						{
+							auto& fieldSpots = quadrant.second[chanceIndex];
+							if ( fieldSpots.size() > 2 )
+							{
+								val = 0; // nothing larger than 2
+							}
+							else if ( val > 0 )
+							{
+								bool anyBorder = false;
+								int borderx = 0;
+								int bordery = 0;
+								for ( auto& spot : fieldSpots )
+								{
+									int x = spot.coord % 10000;
+									int y = spot.coord / 10000;
+									if ( x == 1 || x == map.width - 2 || y == 1 || y == map.height - 2 )
+									{
+										borderx = x;
+										bordery = y;
+										anyBorder = true;
+										break;
+									}
+								}
+								if ( anyBorder )
+								{
+									int weighting = fieldSpots.size();
+									auto weight_func = [](bool alignedAxis, int pos, int center) {
+										int wgt = 0;
+										if ( alignedAxis )
+										{
+											wgt += 20;
+											int dist = abs(pos - center);
+											wgt += std::max(50 - dist * 5, 0); // closer to center weighted higher
+										}
+										return wgt;
+									};
+									if ( numBordersGenerate == 2 )
+									{
+										switch ( quadrant.first )
+										{
+										case TrapQuadrant::NORTHWEST:
+											weighting += weight_func(bordery == 1, borderx, map.width / 4);
+											break;
+										case TrapQuadrant::NORTHEAST:
+											weighting += weight_func(bordery == 1, borderx, 3 * map.width / 4);
+											break;
+										case TrapQuadrant::SOUTHWEST:
+											weighting += weight_func(bordery == map.height - 2, borderx, map.width / 4);
+											break;
+										case TrapQuadrant::SOUTHEAST:
+											weighting += weight_func(bordery == map.height - 2, borderx, 3 * map.width / 4);
+											break;
+										default:
+											break;
+										}
+									}
+									else
+									{
+										switch ( quadrant.first )
+										{
+										case TrapQuadrant::NORTHWEST:
+											weighting += weight_func(borderx == 1, bordery, map.height / 4);
+											break;
+										case TrapQuadrant::NORTHEAST:
+											weighting += weight_func(borderx == map.width - 2, bordery, map.height / 4);
+											break;
+										case TrapQuadrant::SOUTHWEST:
+											weighting += weight_func(borderx == 1, bordery, 3 * map.height / 4);
+											break;
+										case TrapQuadrant::SOUTHEAST:
+											weighting += weight_func(borderx == map.width - 2, bordery, 3 * map.height / 4);
+											break;
+										default:
+											break;
+										}
+									}
+									val = weighting;
+								}
+								else
+								{
+									val = 0;
+								}
+							}
+						}
+						else
+						{
+							if ( quadrantsGenerated[quadrant.first] > 1 )
+							{
+								// remove weighting on large ones
+								if ( val )
+								{
+									val = quadrant.second[chanceIndex].size();
+								}
+							}
+						}
+						if ( val > 0 ) { anychances = true; }
+					}
+
+					if ( !anychances ) { break; }
+
+					int pick = sawRng.discrete(chances.data(), chances.size());
+					auto& fieldSpots = quadrant.second[pick];
+					chances[pick] = 0;
+					{
+						if ( !fieldSpots.size() ) { continue; }
+
+						bool noroom = false;
+						bool anyentrytile = false;
+						bool anyexittile = false;
+						for ( auto& spot : fieldSpots )
+						{
+							int x = spot.coord % 10000;
+							int y = spot.coord / 10000;
+
+							if ( !possiblelocations[y + x * map.height] )
+							{
+								noroom = true;
+								break;
+							}
+
+							if ( spot.dir == (int)TrapFacingDir::SOUTH || spot.dir == (int)TrapFacingDir::NORTH )
+							{
+								if ( x < map.width - 1 )
+								{
+									if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + (x + 1)*MAPLAYERS * map.height] )
+									{
+										anyentrytile = true;
+									}
+								}
+								if ( x > 0 )
+								{
+									if ( !map.tiles[OBSTACLELAYER + y * MAPLAYERS + (x - 1) * MAPLAYERS * map.height] )
+									{
+										anyexittile = true;
+									}
+								}
+							}
+							else
+							{
+								if ( y < map.height - 1 )
+								{
+									if ( !map.tiles[OBSTACLELAYER + (y + 1) * MAPLAYERS + (x) * MAPLAYERS * map.height] )
+									{
+										anyentrytile = true;
+									}
+								}
+								if ( y > 0 )
+								{
+									if ( !map.tiles[OBSTACLELAYER + (y - 1) * MAPLAYERS + (x) * MAPLAYERS * map.height] )
+									{
+										anyexittile = true;
+									}
+								}
+							}
+
+							if ( (x > 0 && wireSpots.find((x - 1) + 10000 * y) != wireSpots.end())
+								|| wireSpots.find((x + 1) + 10000 * y) != wireSpots.end()
+								|| (y > 0 && (wireSpots.find(x + 10000 * (y - 1)) != wireSpots.end()))
+								|| wireSpots.find(x + 10000 * (y + 1)) != wireSpots.end() )
+							{
+								noroom = true;
+								break;
+							}
+						}
+
+						if ( noroom || !(anyentrytile && anyexittile) )
+						{
+							continue;
+						}
+
+						std::vector<Entity::SawTrapType> typeChances { Entity::SAWTRAP_BLADE, Entity::SAWTRAP_BLADE_INVERTED, Entity::SAWTRAP_FIRE_WALL };
+						Entity::SawTrapType sawtrapType = typeChances[sawRng.rand() % typeChances.size()];
+						std::vector<Entity*> list;
+
+						bool isBorder = false;
+						while ( fieldSpots.size() )
+						{
+							int x = fieldSpots[0].coord % 10000;
+							int y = fieldSpots[0].coord / 10000;
+							if ( list.size() == 0 )
+							{
+								if ( x < map.width / 2 && y < map.height / 2 )
+								{
+									quadrantsGenerated[TrapQuadrant::NORTHWEST]++;
+								}
+								else if ( x < map.width / 2 && y >= map.height / 2 )
+								{
+									quadrantsGenerated[TrapQuadrant::SOUTHWEST]++;
+								}
+								else if ( x >= map.width / 2 && y >= map.height / 2 )
+								{
+									quadrantsGenerated[TrapQuadrant::SOUTHEAST]++;
+								}
+								else
+								{
+									quadrantsGenerated[TrapQuadrant::NORTHEAST]++;
+								}
+								if ( numFieldsGenerate > 0 )
+								{
+									--numFieldsGenerate;
+									if ( numFieldsGenerate == 0 )
+									{
+										// repopulate the 1x1 and 2x1 for borders
+										int chanceIndex = -1;
+										for ( auto& val : chances )
+										{
+											++chanceIndex;
+											auto& fieldSpots = quadrant.second[chanceIndex];
+											if ( fieldSpots.size() == 1 || fieldSpots.size() == 2 )
+											{
+												val = std::max(val, (unsigned int)1);
+											}
+										}
+									}
+								}
+								else if ( numBordersGenerate > 0 )
+								{
+									isBorder = true;
+									--numBordersGenerate;
+								}
+							}
+
+							int sprite = fieldSpots[0].start ? 322 : (fieldSpots[0].end ? 324 : (323));
+							Entity* field = newEntity(sprite, 1, map.entities, nullptr);
+							field->x = x * 16.0;
+							field->y = y * 16.0;
+							field->sawtrapDir = fieldSpots[0].dir;
+							field->sawtrapType = sawtrapType;
+							field->sawtrapMapGen = 1;
+
+							if ( isBorder )
+							{
+								field->sawtrapType = Entity::SawTrapType::SAWTRAP_BORDER_WALL;
+								if ( list.size() == 0 && fieldSpots[0].start && fieldSpots[0].end && fieldSpots.size() == 1 )
+								{
+									if ( sawRng.rand() % 8 == 0 )
+									{
+										field->sawtrapType = Entity::SawTrapType::SAWTRAP_BORDER_1X_BLADE;
+									}
+									else
+									{
+										field->sawtrapType = Entity::SawTrapType::SAWTRAP_BORDER_1X_WALL;
+									}
+								}
+							}
+							field->sawtrapSignalDelay = 0 + list.size();
+							if ( field->sawtrapType == Entity::SawTrapType::SAWTRAP_FIRE_WALL )
+							{
+								field->sawtrapSignalDelay = 0 + list.size() * 10;
+							}
+
+							possiblelocations[y + x * map.height] = false;
+							numpossiblelocations--;
+
+							list.push_back(field);
+							fieldSpots.erase(fieldSpots.begin());
+
+							{
+								Entity* wire = newEntity(18, 1, map.entities, nullptr); // electricity node
+								wire->x = x * 16;
+								wire->y = y * 16;
+
+								wireSpots.insert(x + 10000 * y);
+
+								Entity* plate = newEntity(33, 1, map.entities, nullptr); // pressure plate
+								plate->x = x * 16;
+								plate->y = y * 16;
+								plate->pressurePlateTriggerType = Entity::PressurePlateTriggerTypes::PRESSURE_PLATE_PLAYERS_OR_ALLIES;
+							}
+						}
+
+						if ( list.size() )
+						{
+							Entity* prev = nullptr;
+							for ( auto field : list )
+							{
+								field->sawtrapFirst = list.front()->getUID();
+								field->sawtrapLast = list.back()->getUID();
+								if ( prev )
+								{
+									prev->sawtrapLinkNext = field->getUID();
+									field->sawtrapLinkPrev = prev->getUID();
+								}
+								prev = field;
+							}
+						}
+					}
 				}
 			}
 		}
@@ -5904,7 +6829,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 	static ConsoleVariable<bool> cvar_debug_station_spawn("/debug_station_spawn", false);
 	if ( treasure_room_generator.bForceStationSpawnForCurrentFloor(secretlevelexit)
-		&& !levelData.node.disable_gen_stations )
+		&& !levelData.node.disable_gen_stations || !strncmp(map.filename, "keep", 4) )
 	{
 		bool* possibleLocationsStations = (bool*)malloc(sizeof(bool) * map.width * map.height);
 		memcpy(possibleLocationsStations, possiblelocations, map.width * map.height * sizeof(bool));
@@ -6208,6 +7133,22 @@ int generateDungeon(char* levelset, Uint32 seed)
 		{
 			posChances.push_back(b.walls);
 		}
+
+		if ( !strncmp(map.filename, "keep", 4) )
+		{
+			int index = -1;
+			for ( auto& b : stationLocations )
+			{
+				++index;
+				if ( b.x > 2 && b.x < map.width - 3
+					&& b.y > 2 && b.y < map.height - 3 )
+				{
+					// border locations are low priority, inner areas higher
+					posChances[index] *= 100;
+				}
+			}
+		}
+
 		auto& station = treasure_room_generator.station_floors[(int)secretleveltype];
 		auto station_it = station[currentlevel].begin();
 		while ( !stationLocations.empty() )
@@ -6382,6 +7323,35 @@ int generateDungeon(char* levelset, Uint32 seed)
 				}
 			}
 			++station_it;
+		}
+
+		if ( !strncmp(map.filename, "keep", 4) )
+		{
+			int numChests = 4 + map_rng.rand() % 5;
+
+			while ( stationLocations.size() && numChests > 0 )
+			{
+				int pickedPos = map_rng.discrete(posChances.data(), posChances.size());
+				posChances[pickedPos] = 0;
+
+				auto& top = stationLocations.at(pickedPos);
+				int x = top.x;
+				int y = top.y;
+
+				numBreakables = numpossiblelocations;// 4 + map_rng.rand() % 4;
+				Entity* chest = newEntity(21, 1, map.entities, nullptr);
+				setSpriteAttributes(chest, nullptr, nullptr);
+				chest->x = x * 16.0;
+				chest->y = y * 16.0;
+				chest->yaw = top.dir / 2;
+
+				stationLocations.erase(stationLocations.begin() + pickedPos);
+				posChances.erase(posChances.begin() + pickedPos);
+				possiblelocations[y + x * map.height] = false;
+				--numpossiblelocations;
+
+				--numChests;
+			}
 		}
 	}
 
@@ -6683,6 +7653,7 @@ int generateDungeon(char* levelset, Uint32 seed)
 	bool* possibleLocationsBreakables = (bool*)malloc(sizeof(bool) * map.width * map.height);
 	memcpy(possibleLocationsBreakables, possiblelocations, map.width * map.height * sizeof(bool));
 	int numpossibleBreakableLocations = numpossiblelocations;
+
 	for ( int c = 0; c < std::min(numBreakables, numpossibleBreakableLocations); ++c )
 	{
 		// choose a random location from those available
@@ -7418,6 +8389,64 @@ int generateDungeon(char* levelset, Uint32 seed)
 
 				areas.erase(areas.begin() + picked);
 				continue;
+			}
+		}
+	}
+
+	if ( !strncmp(map.filename, "keep", 4) )
+	{
+		Entity* playerStart = nullptr;
+		std::vector<Entity*> shrines;
+		//std::vector<Entity*> sawblades;
+		for ( node = map.entities->first; node != NULL; node = node->next )
+		{
+			entity2 = (Entity*)node->element;
+
+			if ( !playerStart )
+			{
+				if ( entity2->sprite == 1 )
+				{
+					playerStart = entity2;
+				}
+			}
+
+			//if ( entity2->sprite == 322 && entity2->sawtrapType == Entity::SAWTRAP_EXIT_WALL ) // sawtrap
+			//{
+			//	sawblades.push_back(entity2);
+			//}
+			if ( entity2->sprite == 179 && entity2->colliderDamageTypes == 81 )
+			{
+				shrines.push_back(entity2);
+			}
+		}
+
+		if ( playerStart )
+		{
+			for ( auto it = shrines.begin(); it != shrines.end(); )
+			{
+				Entity* ent = *it;
+				int entx = ent->x / 16;
+				int enty = ent->y / 16;
+				list_t* path = generatePath(entx, enty, playerStart->x / 16, playerStart->y / 16,
+					ent, playerStart, GeneratePathTypes::GENERATE_PATH_CHECK_KEY_ACCESS, true);
+				if ( path == NULL )
+				{
+					if ( ent->colliderContainedEntity != 0 )
+					{
+						if ( Entity* item = uidToEntity(ent->colliderContainedEntity) )
+						{
+							list_RemoveNode(item->mynode);
+						}
+						ent->colliderContainedEntity = 0;
+					}
+					list_RemoveNode(ent->mynode);
+					it = shrines.erase(it);
+					consoleCommand("/levelgentest 0");
+					continue; // no path
+				}
+				list_FreeAll(path);
+				free(path);
+				++it;
 			}
 		}
 	}
@@ -12102,6 +13131,50 @@ void assignActions(map_t* map)
 				entity->flags[PASSABLE] = true;
 				entity->flags[NOUPDATE] = true;
 				entity->skill[28] = 1; // is a mechanism
+				break;
+			case 322:
+			case 323:
+			case 324:
+				entity->sizex = 4;
+				entity->sizey = 4;
+				entity->x += 8;
+				entity->y += 8;
+				entity->z = 7.5001;
+				entity->flags[PASSABLE] = true;
+				entity->yaw = entity->sawtrapDir * 90 * (PI / 180.f);
+				if ( entity->sprite == 322 )
+				{
+					entity->skill[28] = 1; // is a mechanism
+					entity->behavior = &actSawTrapStart;
+
+					if ( entity->sawtrapType == Entity::SawTrapType::SAWTRAP_BORDER_1X_WALL
+						|| entity->sawtrapType == Entity::SawTrapType::SAWTRAP_BORDER_1X_BLADE )
+					{
+						entity->sprite = 2680; // 1x1 plate
+					}
+					else
+					{
+						entity->sprite = 1852;
+						entity->x += 0.001 * cos(entity->yaw);
+						entity->y += 0.001 * sin(entity->yaw);
+					}
+				}
+				else if ( entity->sprite == 323 )
+				{
+					//entity->flags[UNCLICKABLE] = true;
+					entity->behavior = &actSawTrapMid;
+					entity->sprite = 2680;
+				}
+				else if ( entity->sprite == 324 )
+				{
+					entity->behavior = &actSawTrapEnd;
+					entity->yaw += PI;
+					entity->sprite = 1852;
+					entity->x -= 0.001 * cos(entity->yaw);
+					entity->y -= 0.001 * sin(entity->yaw);
+				}
+				// rotate as set in editor
+				entity->seedEntityRNG(map_rng.getU32());
 				break;
             default:
                 break;

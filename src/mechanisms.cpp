@@ -2505,3 +2505,840 @@ void Entity::actWind()
 		}
 	}
 }
+
+int getSawTrapBonusSpellPower(Entity* my, int spellID)
+{
+	if ( !my ) { return 0; }
+
+	if ( spellID == SPELL_FIRE_WALL )
+	{
+		int powerBonusPercent = 100;
+		if ( gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_STRONG_TRAPS) )
+		{
+			powerBonusPercent *= 2;
+		}
+		return powerBonusPercent;
+	}
+	else if ( spellID == SPELL_SAW_TRAP_BLADE )
+	{
+		if ( gameModeManager.currentSession.challengeRun.isActive(GameModeManager_t::CurrentSession_t::ChallengeRun_t::CHEVENT_STRONG_TRAPS) )
+		{
+			return 100;
+		}
+	}
+
+	return 0;
+}
+
+void sawTrapOnDestroy(Entity* my)
+{
+	if ( !my ) { return; }
+
+	if ( (my->actTrapSabotaged & (1 << 31)) )
+	{
+		return;
+	}
+
+	my->actTrapSabotaged |= (1 << 31);
+
+	if ( multiplayer != CLIENT )
+	{
+		if ( my->sawtrapType == Entity::SAWTRAP_EXIT_WALL )
+		{
+			auto entLists = TileEntityList.getEntitiesWithinRadius(my->x / 16, my->y / 16, 0);
+			for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+			{
+				list_t* currentList = *it;
+				for ( node_t* node = currentList->first; node != nullptr; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( static_cast<int>(entity->x / 16) == static_cast<int>(my->x / 16)
+							&& static_cast<int>(entity->y / 16) == static_cast<int>(my->y / 16) )
+						{
+							if ( entity->behavior == &actParticleTimer && entity->particleTimerCountdownAction == PARTICLE_TIMER_ACTION_KEEP_EXIT_WALL )
+							{
+								if ( entity->parent == my->getUID() )
+								{
+									entity->skill[0] = 20;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void sawTrapAmbientEffects(Entity* my)
+{
+	if ( !my ) { return; }
+
+	if ( my->actTrapSabotaged > 0 )
+	{
+		return;
+	}
+
+	/*if ( my->sawtrapType == Entity::SAWTRAP_FIRE_WALL
+		|| my->sawtrapType == Entity::SAWTRAP_BORDER_WALL
+		|| my->sawtrapType == Entity::SAWTRAP_EXIT_WALL
+		|| my->sawtrapType == Entity::SAWTRAP_BORDER_1X_WALL )*/
+	{
+		if ( my->ticks % 80 == 0 && ((local_rng.rand() % 4 == 0) || (((my->ticks % (80 * 8)) / 80) == (my->getUID() % 8))) )
+		{
+			int x = my->x / 16.0;
+			int y = my->y / 16.0;
+			bool doParticle = false;
+			if ( x >= 0 && x < map.width && y >= 0 && y < map.height )
+			{
+				for ( int i = 0; i < MAXPLAYERS; ++i )
+				{
+					if ( !client_disconnected[i] && players[i]->isLocalPlayer() && cameras[i].vismap[y + x * map.height] )
+					{
+						doParticle = true;
+						break;
+					}
+				}
+			}
+
+			if ( doParticle )
+			{
+				int sprite = 160;
+				if ( my->sawtrapType == Entity::SAWTRAP_FIRE_WALL
+					|| my->sawtrapType == Entity::SAWTRAP_BORDER_WALL
+					|| my->sawtrapType == Entity::SAWTRAP_EXIT_WALL
+					|| my->sawtrapType == Entity::SAWTRAP_BORDER_1X_WALL )
+				{
+					sprite = my->sawtrapType == Entity::SAWTRAP_EXIT_WALL ? 288 : 233;
+				}
+
+				if ( Entity* fx = createParticleAestheticOrbit(my, sprite, 25, PARTICLE_EFFECT_IGNITE_ORBIT) )
+				{
+					fx->x = my->x;
+					fx->y = my->y;
+					if ( my->behavior == &actSawTrapStart && my->sprite != 2680 )
+					{
+						fx->x -= 6.0 * cos(my->yaw);
+						fx->y -= 6.0 * sin(my->yaw);
+					}
+					else if ( my->behavior == &actSawTrapEnd )
+					{
+						fx->x -= 6.0 * cos(my->yaw);
+						fx->y -= 6.0 * sin(my->yaw);
+					}
+
+					fx->z = 7.5;
+					fx->fskill[0] = fx->x;
+					fx->fskill[1] = fx->y;
+					fx->flags[SPRITE] = true;
+					int dir = ((my->ticks % (80 * 4)) % 4) * 2;
+					fx->fskill[2] = (dir / 8.0) * 2 * PI + PI / 8;
+					fx->fskill[3] += (local_rng.rand() % 10) * PI / 10.0;
+					fx->vel_z = 0.5 * (-0.1 + (local_rng.rand() % 10) * -.025);
+					fx->scalex = 0.5;
+					fx->scaley = fx->scalex;
+					fx->scalez = fx->scalex;
+					fx->actmagicOrbitDist = 0;
+					fx->actmagicNoLight = 1;
+				}
+			}
+		}
+	}
+}
+
+#ifndef NDEBUG
+#define DEBUG_SAW_TRAP_MAP 1
+#endif
+void actSawTrapStart(Entity* my)
+{
+	if ( !my ) { return; }
+
+#ifdef DEBUG_SAW_TRAP_MAP
+	my->setEntityShowOnMap(Entity::EntityShowMapSource::SHOW_MAP_DETECT_MONSTER_NOBLINK, 30 * TICKS_PER_SECOND);
+#endif
+
+	if ( my->actTrapSabotaged == 0 )
+	{
+#ifdef USE_FMOD
+		if ( my->sawtrapAmbience == 0 )
+		{
+			my->sawtrapAmbience--;
+			my->stopEntitySound();
+			my->entity_sound = playSoundEntityLocal(my, 149, 64);
+		}
+		if ( my->entity_sound )
+		{
+			bool playing = false;
+			my->entity_sound->isPlaying(&playing);
+			if ( !playing )
+			{
+				my->entity_sound = nullptr;
+			}
+		}
+#else
+		my->sawtrapAmbience--;
+		if ( my->sawtrapAmbience <= 0 )
+		{
+			my->sawtrapAmbience = TICKS_PER_SECOND * 30;
+			playSoundEntityLocal(my, 149, 64);
+		}
+#endif
+	}
+	else
+	{
+		if ( my->actTrapSabotaged != 0 )
+		{
+			sawTrapOnDestroy(my);
+		}
+
+#ifdef USE_FMOD
+		my->stopEntitySound();
+#endif
+		return;
+	}
+
+	sawTrapAmbientEffects(my);
+
+	if ( multiplayer == CLIENT )
+	{
+		return;
+	}
+
+	if ( my->ticks == 1 && my->sawtrapMapGen == 0 )
+	{
+		std::vector<Entity*> list;
+		list.push_back(my);
+		int ox = my->x / 16;
+		int oy = my->y / 16;
+		int x = ox;
+		int y = oy;
+		while ( x > 0 && x < map.width - 1 && y > 0 && y < map.height - 1 )
+		{
+			if ( my->sawtrapDir == 0 ) { ++x; }
+			if ( my->sawtrapDir == 2 ) { --x; }
+			if ( my->sawtrapDir == 1 ) { ++y; }
+			if ( my->sawtrapDir == 3 ) { --y; }
+
+			bool found = false;
+			bool end = false;
+			auto entLists = TileEntityList.getEntitiesWithinRadius(x, y, 0);
+			for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
+			{
+				list_t* currentList = *it;
+				for ( node_t* node = currentList->first; node != nullptr; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( static_cast<int>(entity->x / 16) == x
+							&& static_cast<int>(entity->y / 16) == y )
+						{
+							if ( entity->behavior == &actSawTrapMid )
+							{
+								found = true;
+								list.push_back(entity);
+							}
+							else if ( entity->behavior == &actSawTrapEnd )
+							{
+								found = true;
+								end = true;
+								list.push_back(entity);
+							}
+						}
+					}
+				}
+			}
+
+			if ( end )
+			{
+				break;
+			}
+
+			if ( !found )
+			{
+				list.clear();
+				break;
+			}
+		}
+
+		if ( my->sawtrapType == Entity::SAWTRAP_RAND )
+		{
+			my->sawtrapType = Entity::SAWTRAP_BLADE + (my->entity_rng ? (my->entity_rng)->rand() : local_rng.rand()) % 3;
+		}
+
+		if ( !list.size() )
+		{
+			my->sprite = 2680; // set as mid slot
+			list.push_back(my);
+		}
+
+		if ( list.size() )
+		{
+			Entity* prev = nullptr;
+			int index = 0;
+			for ( auto field : list )
+			{
+				++index;
+				field->sawtrapSignalDelay = 0 + index;
+				field->sawtrapType = my->sawtrapType;
+				serverUpdateEntitySkill(field, 10);
+				if ( field->sawtrapType == Entity::SawTrapType::SAWTRAP_FIRE_WALL )
+				{
+					field->sawtrapSignalDelay = 0 + index * 10;
+				}
+				field->sawtrapFirst = list.front()->getUID();
+				field->sawtrapLast = list.back()->getUID();
+				if ( prev )
+				{
+					prev->sawtrapLinkNext = field->getUID();
+					field->sawtrapLinkPrev = prev->getUID();
+				}
+				prev = field;
+			}
+		}
+	}
+
+	if ( my->sawtrapType == Entity::SawTrapType::SAWTRAP_EXIT_WALL )
+	{
+		if ( my->ticks == 1 )
+		{
+			for ( auto node = map.entities->first; node; node = node->next )
+			{
+				if ( Entity* entity = (Entity*)node->element )
+				{
+					if ( entity->behavior == &actColliderDecoration )
+					{
+						auto find = EditorEntityData_t::colliderData.find(entity->colliderDamageTypes);
+						if ( find != EditorEntityData_t::colliderData.end() )
+						{
+							if ( find->second.name == "keep_shrine" )
+							{
+								if ( entity->colliderCreatedParent == 0 )
+								{
+									entity->colliderCreatedParent = my->getUID();
+									my->parent = entity->getUID();
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		//if ( my->parent != 0 )
+		{
+			if ( my->parent == 0 || !uidToEntity(my->parent) )
+			{
+				my->actTrapSabotaged = 1;
+				serverUpdateEntitySkill(my, 30);
+
+				Entity* next = uidToEntity(my->sawtrapLinkNext);
+				while ( next && next != my )
+				{
+					next->actTrapSabotaged = 1;
+					serverUpdateEntitySkill(next, 30);
+					next = uidToEntity(next->sawtrapLinkNext);
+				}
+				my->parent = 0;
+			}
+		}
+	}
+
+	if ( my->sawtrapResetDelay > 0 )
+	{
+		--my->sawtrapResetDelay;
+	}
+	else
+	{
+		if ( my->skill[28] == 1 )
+		{
+			my->sawtrapInit = 0;
+		}
+		else if ( my->skill[28] == 2 )
+		{
+			if ( my->sawtrapInit == 0 )
+			{
+				my->sawtrapInit = 1;
+				my->sawtrapActiveTime = my->sawtrapSignalDelay;
+				if ( my->sawtrapType == Entity::SAWTRAP_FIRE_WALL
+					|| my->sawtrapType == Entity::SAWTRAP_BORDER_WALL
+					|| my->sawtrapType == Entity::SAWTRAP_EXIT_WALL
+					|| my->sawtrapType == Entity::SAWTRAP_BORDER_1X_WALL )
+				{
+					Uint32 delay = 5 * TICKS_PER_SECOND;
+					if ( my->sawtrapType == Entity::SAWTRAP_BORDER_1X_WALL
+						|| my->sawtrapType == Entity::SAWTRAP_BORDER_WALL )
+					{
+						delay = 8 * TICKS_PER_SECOND;
+					}
+					my->sawtrapResetDelay = delay;
+
+					Entity* next = uidToEntity(my->sawtrapLinkNext);
+					while ( next )
+					{
+						next->sawtrapResetDelay = delay;
+						next->sawtrapActiveTime = next->sawtrapSignalDelay;
+
+						if ( next->sawtrapLinkNext != 0 )
+						{
+							next = uidToEntity(next->sawtrapLinkNext);
+						}
+						else
+						{
+							break;
+						}
+					}
+
+					CastSpellProps_t props;
+					props.target_x = my->x;
+					props.target_y = my->y;
+					props.wallDir = my->sawtrapDir;
+					props.powerBonusPercent = getSawTrapBonusSpellPower(my, SPELL_FIRE_WALL);
+					castSpell(my->getUID(), getSpellFromID(SPELL_FIRE_WALL), false, true, false, &props);
+				}
+				else if ( my->sawtrapType == Entity::SAWTRAP_BLADE_INVERTED
+					|| my->sawtrapType == Entity::SAWTRAP_BLADE
+					|| my->sawtrapType == Entity::SAWTRAP_BORDER_1X_BLADE )
+				{
+					Uint32 delay = 2 * TICKS_PER_SECOND;
+					my->sawtrapResetDelay = delay;
+
+					Entity* parent = my;
+					Entity* target = uidToEntity(my->sawtrapLast);
+					if ( my->sawtrapType == Entity::SAWTRAP_BLADE_INVERTED )
+					{
+						parent = uidToEntity(my->sawtrapLast);
+						if ( parent )
+						{
+							target = my;
+						}
+					}
+
+					if ( parent && target )
+					{
+						Entity* entity = newEntity(1851, 1, map.entities, nullptr);
+						entity->parent = my->getUID();
+						entity->skill[0] = target->getUID();
+
+						real_t dir = parent->yaw;
+						dir = normaliseAngle2PI(dir);
+						entity->x = parent->x - 4.0 * cos(dir);
+						entity->y = parent->y - 4.0 * sin(dir);
+						entity->z = 7.5;
+						entity->yaw = dir;
+
+						int facingDir = 0;
+						if ( dir < 0.1 * PI || (dir >= 0.9 * PI && dir <= 1.1 * PI) )
+						{
+							if ( (dir >= 0.9 * PI && dir <= 1.1 * PI) )
+							{
+								facingDir = 2;
+							}
+							entity->sizex = 8;
+							entity->sizey = 4;
+						}
+						else
+						{
+							facingDir = 3;
+							if ( (dir >= 0.4 * PI && dir <= 0.6 * PI) )
+							{
+								facingDir = 1;
+							}
+							entity->sizex = 4;
+							entity->sizey = 8;
+						}
+
+						auto& ox = entity->fskill[0];
+						auto& oy = entity->fskill[1];
+						auto& oz = entity->fskill[2];
+						auto& odist = entity->fskill[3];
+						ox = parent->x;
+						oy = parent->y;
+						oz = 0.0;
+						real_t dist = entityDist(parent, target);
+						odist = dist;
+
+						entity->behavior = &actSawTrapBlade;
+						entity->flags[PASSABLE] = true;
+						entity->flags[UNCLICKABLE] = true;
+						entity->flags[NOUPDATE] = true;
+						if ( multiplayer == CLIENT )
+						{
+							entity->setUID(-3);
+						}
+						TileEntityList.addEntity(*entity);
+
+						serverSpawnMiscParticles(parent, PARTICLE_EFFECT_SAWBLADE, 1851, target->getUID(), 0, facingDir);
+
+						if ( my->sawtrapType == Entity::SAWTRAP_BLADE )
+						{
+							my->sawtrapType = Entity::SAWTRAP_BLADE_INVERTED;
+						}
+						else if ( my->sawtrapType == Entity::SAWTRAP_BLADE_INVERTED )
+						{
+							my->sawtrapType = Entity::SAWTRAP_BLADE;
+						}
+					}
+				}
+			}
+		}
+	}
+
+}
+
+void actSawTrapBlade(Entity* my)
+{
+	if ( !my ) { return; }
+
+	if ( my->ticks == 1 )
+	{
+#ifdef USE_FMOD
+		my->entity_sound = playSoundEntityLocal(my, 892, 128);
+#else
+		playSoundEntity(my, 892, 128);
+#endif
+	}
+
+#ifdef USE_FMOD
+	if ( my->entity_sound )
+	{
+		bool isPlaying = false;
+		my->entity_sound->isPlaying(&isPlaying);
+		if ( isPlaying )
+		{
+			FMOD_VECTOR position;
+			position.x = (float)(my->x / (real_t)16.0);
+			position.y = (float)(0.0);
+			position.z = (float)(my->y / (real_t)16.0);
+			my->entity_sound->set3DAttributes(&position, nullptr);
+		}
+	}
+#endif
+
+	Uint32 startTick = 25;
+	Uint32 endTick = startTick + TICKS_PER_SECOND;
+	real_t t = std::min(1.0, my->ticks / 15.0);
+	real_t anim = t * t * (3.0f - 2.0f * t); // bezier from 0 to width as t (0-1)
+
+	auto& ox = my->fskill[0];
+	auto& oy = my->fskill[1];
+	auto& oz = my->fskill[2];
+	auto& odist = my->fskill[3];
+
+	my->focalx = 0.0;
+	my->focaly = 0.0;
+	my->focalz = 0.5;
+
+	my->pitch += 0.2;
+	my->z = 12.0 - 4 * anim;
+
+	bool damageFrames = true;
+	if ( my->ticks >= endTick )
+	{
+		my->z += oz;
+		oz += 0.25;
+
+		if ( my->z >= 15.0 )
+		{
+			list_RemoveNode(my->mynode);
+			return;
+		}
+	}
+	else if ( my->ticks >= startTick )
+	{
+		damageFrames = true;
+		real_t moveAnim = std::min(1.0, (my->ticks - startTick) / (real_t)(endTick - startTick));
+		my->z -= 0.5 * sin(moveAnim * PI);
+		my->x = ox + (odist + 4.0) * cos(my->yaw) * moveAnim;
+		my->y = oy + (odist + 4.0) * sin(my->yaw) * moveAnim;
+	}
+
+	if ( !damageFrames || multiplayer == CLIENT )
+	{
+		return;
+	}
+
+	Entity* parent = uidToEntity(my->parent);
+	if ( !parent )
+	{
+		list_RemoveNode(my->mynode);
+		return;
+	}
+
+	parent->sawtrapResetDelay = std::max(parent->sawtrapResetDelay, 25);
+
+	std::vector<list_t*> entLists = TileEntityList.getEntitiesWithinRadiusAroundEntity(my, 1);
+	for ( auto it = entLists.begin(); it != entLists.end(); ++it )
+	{
+		list_t* currentList = *it;
+		for ( node_t* node = currentList->first; node != nullptr; node = node->next )
+		{
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actPlayer || entity->behavior == &actMonster )
+				{
+					if ( entity->monsterIsTargetable(true) && entityInsideEntity(my, entity) )
+					{
+						if ( auto props = getParticleEmitterHitProps(my->getUID(), entity) )
+						{
+							if ( props->tick > ticks )
+							{
+								continue;
+							}
+							if ( props->hits > 0 && (ticks - props->tick) < 10 )
+							{
+								continue;
+							}
+							if ( props->hits > 5 )
+							{
+								continue;
+							}
+
+							if ( Stat* stats = entity->getStats() )
+							{
+								int damage = getSpellDamageFromID(SPELL_SAW_TRAP_BLADE, my, nullptr, my, getSawTrapBonusSpellPower(my, SPELL_SAW_TRAP_BLADE) / 100.0);
+
+								if ( entity->onEntityTrapHitSacredPath(my) )
+								{
+									if ( entity->behavior == &actPlayer )
+									{
+										messagePlayerColor(entity->skill[2], MESSAGE_COMBAT, makeColorRGB(0, 255, 0),
+											Language::get(7454));
+									}
+									playSoundEntity(entity, 166, 128);
+									props->hits = 6;
+									props->tick = ticks + 50;
+								}
+								else if ( applyGenericMagicDamage(my, entity, *my, SPELL_SAW_TRAP_BLADE, damage, false) )
+								{
+									stats->killer = KilledBy::SAW_BLADE;
+									entity->setObituary(Language::get(7448));
+
+									if ( props->hits == 0 )
+									{
+										messagePlayerColor(entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(7446));
+									}
+
+									if ( !stats->getEffectActive(EFF_BLEEDING) )
+									{
+										int duration = getSpellEffectDurationFromID(SPELL_SAW_TRAP_BLADE, my, nullptr, my);
+										if ( entity->setEffect(EFF_BLEEDING, true, duration, false) )
+										{
+											int duration2 = getSpellEffectDurationSecondaryFromID(SPELL_SAW_TRAP_BLADE, my, nullptr, my);
+											if ( (local_rng.rand() % 5 == 0) && entity->setEffect(EFF_RUPTURE, true, duration2, false) )
+											{
+												if ( Entity* gib = spawnGib(entity) )
+												{
+													if ( gib->sprite >= 0 )
+													{
+														if ( Entity* fx = createParticleAestheticOrbit(entity, gib->sprite, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_RUPTURE) )
+														{
+															fx->flags[INVISIBLE] = true;
+														}
+														serverSpawnMiscParticles(entity, PARTICLE_EFFECT_RUPTURE, gib->sprite, 0, 2 * TICKS_PER_SECOND);
+													}
+												}
+												messagePlayerColor(entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(2451));
+											}
+											else
+											{
+												messagePlayerColor(entity->isEntityPlayer(), MESSAGE_STATUS, makeColorRGB(255, 0, 0), Language::get(701));
+											}
+											if ( parent )
+											{
+												stats->bleedInflictedBy = 0;
+											}
+										}
+									}
+									for ( int i = 0; i < 1; ++i )
+									{
+										Entity* gib = spawnGib(entity);
+										serverSpawnGibForClient(gib);
+									}
+
+									if ( entity->setEffect(EFF_KNOCKBACK, true, 30, false) )
+									{
+										real_t pushbackMultiplier = 0.5;
+										real_t tangent = my->yaw;// atan2(entity->y - my->y, entity->x - my->x);
+										if ( entity->behavior == &actPlayer )
+										{
+											if ( !players[entity->skill[2]]->isLocalPlayer() )
+											{
+												entity->monsterKnockbackVelocity = pushbackMultiplier;
+												entity->monsterKnockbackTangentDir = tangent;
+												serverUpdateEntityFSkill(entity, 11);
+												serverUpdateEntityFSkill(entity, 9);
+											}
+											else
+											{
+												entity->monsterKnockbackVelocity = pushbackMultiplier;
+												entity->monsterKnockbackTangentDir = tangent;
+											}
+										}
+										else if ( entity->behavior == &actMonster )
+										{
+											entity->vel_x = cos(tangent) * pushbackMultiplier;
+											entity->vel_y = sin(tangent) * pushbackMultiplier;
+											entity->monsterKnockbackVelocity = 0.01;
+											entity->monsterKnockbackUID = parent ? parent->getUID() : 0;
+											entity->monsterKnockbackTangentDir = tangent;
+										}
+									}
+									props->hits++;
+									props->tick = ticks;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void actSawTrapMid(Entity* my)
+{
+	if ( !my ) { return; }
+
+#ifdef DEBUG_SAW_TRAP_MAP
+	my->setEntityShowOnMap(Entity::EntityShowMapSource::SHOW_MAP_DETECT_MONSTER_NOBLINK, 30 * TICKS_PER_SECOND);
+#endif
+
+	if ( my->actTrapSabotaged == 0 )
+	{
+#ifdef USE_FMOD
+		if ( my->sawtrapAmbience == 0 )
+		{
+			my->sawtrapAmbience--;
+			my->stopEntitySound();
+			my->entity_sound = playSoundEntityLocal(my, 149, 64);
+		}
+		if ( my->entity_sound )
+		{
+			bool playing = false;
+			my->entity_sound->isPlaying(&playing);
+			if ( !playing )
+			{
+				my->entity_sound = nullptr;
+			}
+		}
+#else
+		my->sawtrapAmbience--;
+		if ( my->sawtrapAmbience <= 0 )
+		{
+			my->sawtrapAmbience = TICKS_PER_SECOND * 30;
+			playSoundEntityLocal(my, 149, 64);
+		}
+#endif
+	}
+	else
+	{
+		if ( my->actTrapSabotaged != 0 )
+		{
+			sawTrapOnDestroy(my);
+		}
+
+#ifdef USE_FMOD
+		my->stopEntitySound();
+#endif
+		return;
+	}
+
+	sawTrapAmbientEffects(my);
+
+	if ( multiplayer == CLIENT )
+	{
+		return;
+	}
+
+	// just some code to not optimise into sawTrapEnd
+	if ( !my->flags[PASSABLE] )
+	{
+		my->flags[PASSABLE] = true;
+	}
+
+	if ( my->sawtrapActiveTime > 0 )
+	{
+		--my->sawtrapActiveTime;
+		if ( my->sawtrapActiveTime == 0 )
+		{
+			CastSpellProps_t props;
+			props.target_x = my->x;
+			props.target_y = my->y;
+			props.wallDir = my->sawtrapDir;
+			props.powerBonusPercent = getSawTrapBonusSpellPower(my, SPELL_FIRE_WALL);
+			castSpell(my->getUID(), getSpellFromID(SPELL_FIRE_WALL), false, true, false, &props);
+		}
+	}
+}
+
+void actSawTrapEnd(Entity* my)
+{
+	if ( !my ) { return; }
+
+#ifdef DEBUG_SAW_TRAP_MAP
+	my->setEntityShowOnMap(Entity::EntityShowMapSource::SHOW_MAP_DETECT_MONSTER_NOBLINK, 30 * TICKS_PER_SECOND);
+#endif
+
+	if ( my->actTrapSabotaged == 0 )
+	{
+#ifdef USE_FMOD
+		if ( my->sawtrapAmbience == 0 )
+		{
+			my->sawtrapAmbience--;
+			my->stopEntitySound();
+			my->entity_sound = playSoundEntityLocal(my, 149, 64);
+		}
+		if ( my->entity_sound )
+		{
+			bool playing = false;
+			my->entity_sound->isPlaying(&playing);
+			if ( !playing )
+			{
+				my->entity_sound = nullptr;
+			}
+		}
+#else
+		my->sawtrapAmbience--;
+		if ( my->sawtrapAmbience <= 0 )
+		{
+			my->sawtrapAmbience = TICKS_PER_SECOND * 30;
+			playSoundEntityLocal(my, 149, 64);
+		}
+#endif
+	}
+	else
+	{
+		if ( my->actTrapSabotaged != 0 )
+		{
+			sawTrapOnDestroy(my);
+		}
+
+#ifdef USE_FMOD
+		my->stopEntitySound();
+#endif
+		return;
+	}
+
+	sawTrapAmbientEffects(my);
+
+	if ( multiplayer == CLIENT )
+	{
+		return;
+	}
+
+	if ( my->sawtrapActiveTime > 0 )
+	{
+		--my->sawtrapActiveTime;
+		if ( my->sawtrapActiveTime == 0 )
+		{
+			CastSpellProps_t props;
+			props.target_x = my->x;
+			props.target_y = my->y;
+			props.wallDir = my->sawtrapDir;
+			props.powerBonusPercent = getSawTrapBonusSpellPower(my, SPELL_FIRE_WALL);
+			castSpell(my->getUID(), getSpellFromID(SPELL_FIRE_WALL), false, true, false, &props);
+		}
+	}
+}
