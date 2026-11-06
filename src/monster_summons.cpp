@@ -377,6 +377,11 @@ void initFlameElemental(Entity* my, Stat* myStats)
 				myStats->INT = myStats->LVL; // 5-20
 				myStats->CON = 3 + myStats->LVL / 4; // 3-8
 				myStats->PER = 10 + myStats->LVL / 4; // 10-15
+
+				if ( Entity* leader = my->monsterAllyGetPlayerLeader() )
+				{
+					serverUpdateAllyStat(leader->skill[2], my->getUID(), myStats->LVL, myStats->HP, myStats->MAXHP, myStats->type);
+				}
 			}
 		}
 	}

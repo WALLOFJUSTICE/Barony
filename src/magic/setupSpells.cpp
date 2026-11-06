@@ -4270,6 +4270,17 @@ void setupSpells()   ///TODO: Verify this function.
 		1, // duration
 		"spell_deconstruct");
 
+	spell = createSimpleSpell(
+		SPELL_SAW_TRAP_BLADE,
+		100, // difficulty
+		1, // mana
+		1, // base mana
+		1, // overload
+		0, // damage
+		1, // duration
+		"spell_saw_trap_blade");
+	spell->hide_from_ui = true;
+
 	std::vector<node_t*> subElementsToCopy;
 	std::map<int, int> spellSchoolCounters;
 	for ( int i = 0; i < NUM_SPELLS; ++i )

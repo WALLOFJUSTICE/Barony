@@ -7452,7 +7452,7 @@ has been unlocked!#
 7167 You feel watched.#
 7168 You feel judged.#
 7169 INDECIPHERABLE#
-7170 Scroll of liturgy text effect.#
+7170 The favor of the Eternals descends upon you!#
 7171 Scroll of liturgy negative text effect.#
 7172 Scroll of minstrels text effect.#
 7173 The scroll invigorates your %s!#
@@ -7724,5 +7724,64 @@ to accept invitation.#
 7431 Your ward cures your ailment!#
 7432 You tread forward in high spirits!#
 7433 Your spirited steps return to mundane trudging.#
+
+7434 "Be ye blessed,"
+ "Not as the Eternals prepared the world for thee,"
+ "But as thou shape thyself to their holy ways."#
+7435 "In thy strength,"
+ "Abandon ye thy pride for its providence,"
+ "For the Eternals lend grace,"
+ "Even unto the rodents of the fields."#
+7436 "Wherever thou findest justice,"
+ "Courage, love, duty, wisdom, truth, and mercy,"
+ "Thou findest the Eternals also."#
+7437 "Those among ye,"
+ "Who art discouraged, weak, hungry, and poor,"
+ "Seek ye the path of the Eternals,"
+ "And peace thou shalt find."#
+7438 "Among ye who pursue only the favor of men,"
+ "And store up wealth to thine own honor,"
+ "Demons dwell within thee already."#
+7439 "The wise man,"
+ "Knoweth his fortune persists by grace."
+ "The fool,"
+ "Believeth in his own value as fortune's source."#
+7440 "Take ye the greatest duty thou might bear,"
+ "For the Eternals rise up to bear it with thee,"
+ "But they abandon those who bear none."#
+7441 "Seek ye not vengeance,"
+ "For Eternity lies not with grudges which die with time."
+ "Seek instead justice,"
+ "And meter it as thou wouldst upon thyself."#
+7442 "Before thou knewest the Eternals,"
+ "They were known to thee,"
+ "In thy mothers' compassion,"
+ "Thy fathers' duty, thy brothers' vigilance,"
+ "And thy neighbors' generosity."#
+7443 "With survival as thy mask,"
+ "Thou tradest grace for greed, and bore it as a virtue."
+ "Thou demons,"
+ "Thy vile ways bringest chaos and death as its reward."#
+7444 "Eagerly thou dost carry earthen treasures,"
+ "Rejecting what thy spirit requireth."
+ "Repent! Offer thy burdens to the Eternals,"
+ "And thy shackles shall surely unbind."#
+7445 "A man who lives each day,"
+ "To his own glory shall surely die,"
+ "And his deeds shall be forgotten."
+ "He who lives for the glory of Eternity",
+ "Shall dwell there forever."#
+7446 The saw blade cuts through you!#
+7447 shrine#
+7448 cuts their life into pieces with a saw blade.#
+7449 couldn't hack through the fire wall.#
+7450 Saw Blade#
+7451 Fire Wall#
+7452 You stumble into a fire wall!#
+7453 Your protection saves you from the flames!#
+7454 Your protection saves you from the blade!#
+7455 You feel watched...#
+7456 floor trap#
+7457 You see a floor trap.#
 
 7999 END#

@@ -264,23 +264,45 @@ bool rangefinderTargetEnemyType(int caster, spell_t& spell, Entity& entity)
 	{
 		if ( entity.behavior == &actArrowTrap )
 		{
-			return true;
+			if ( entity.actTrapSabotaged == 0 )
+			{
+				return true;
+			}
 		}
 		else if ( entity.behavior == &actBoulderTrapHole )
 		{
-			return true;
+			if ( entity.actTrapSabotaged == 0 )
+			{
+				return true;
+			}
 		}
 		else if ( entity.behavior == &actMagicTrapCeiling )
 		{
-			return true;
+			if ( entity.actTrapSabotaged == 0 )
+			{
+				return true;
+			}
 		}
 		else if ( entity.behavior == &actMagicTrap )
 		{
-			return true;
+			if ( entity.actTrapSabotaged == 0 )
+			{
+				return true;
+			}
 		}
 		else if ( entity.behavior == &actSpearTrap )
 		{
-			return true;
+			if ( entity.actTrapSabotaged == 0 )
+			{
+				return true;
+			}
+		}
+		else if ( entity.behavior == &actSawTrapStart || entity.behavior == &actSawTrapEnd )
+		{
+			if ( entity.actTrapSabotaged == 0 )
+			{
+				return true;
+			}
 		}
 		else if ( entity.behavior == &actMonster )
 		{

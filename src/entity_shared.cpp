@@ -781,6 +781,12 @@ int checkSpriteType(Sint32 sprite)
 	case 302: // mailbox
 	case 303:
 		return 43;
+	case 322: // sawtrap start
+		return 44;
+	case 323: // sawtrap mid
+		return 45;
+	case 324: // sawtrap end
+		return 46;
 	default:
 		return 0;
 		break;
@@ -2173,6 +2179,9 @@ std::vector<std::pair<const char*, const char*>> spriteEditorNameStrings =
 	{ "NOT USED",						"" },
 	{ "NOT USED",						"" },
 	{ "NOT USED",						"" },
+	{ "SAWTRAP START",                  "mech" },
+	{ "SAWTRAP MID",                    "mech" },
+	{ "SAWTRAP END",                    "mech" },
 };
 
 char monsterEditorNameStrings[NUMMONSTERS][32] =
@@ -3636,6 +3645,27 @@ void setSpriteAttributes(Entity* entityNew, Entity* entityToCopy, Entity* entity
 			entityNew->actFloorBuilderTile = 0;
 			entityNew->actFloorBuilderActivationDelay = 0;
 		}
+	}
+	// sawtrap
+	else if ( spriteType == 44
+		|| spriteType == 45
+		|| spriteType == 46 )
+		{
+			if ( entityToCopy != nullptr )
+			{
+				// copy old entity attributes to newly created.
+				entityNew->sawtrapDir = entityToCopy->sawtrapDir;
+				if ( spriteType == 44 )
+				{
+					entityNew->sawtrapType = entityToCopy->sawtrapType;
+				}
+			}
+			else
+			{
+				// set default new entity attributes.
+				entityNew->sawtrapDir = 0;
+				entityNew->sawtrapType = 0;
+			}
 	}
 
 	if ( entityToCopy != nullptr )

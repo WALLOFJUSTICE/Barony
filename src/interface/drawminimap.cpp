@@ -211,7 +211,8 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 				entityPointsOfInterest.push_back(entity);
 			}
 			else if ( entity->behavior == &actWorkbench || entity->behavior == &actCauldron
-				|| entity->behavior == &actMailbox || entity->behavior == &actEternalShrine )
+				|| entity->behavior == &actMailbox || entity->behavior == &actEternalShrine 
+				|| (entity->behavior == &actColliderDecoration && entity->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["keep_shrine"]) /*keep shrine*/ )
 			{
 				entityPointsOfInterest.push_back(entity);
 			}
@@ -627,7 +628,7 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 			}
 			if ( (entity->behavior == &actMonster && entity->monsterAllyIndex < 0 && !entity->entityHasString("scriptNPC") 
 				&& !(entity->getMonsterTypeFromSprite() == DUCK_SMALL) )
-				|| (entity->isDamageableCollider() && entity->colliderHideMonster != 0) )
+				|| (entity->isDamageableCollider() && entity->colliderHideMonster != 0 && entity->colliderDamageTypes != EditorEntityData_t::colliderNameIndexes["keep_shrine"]) )
 			{
 				bool warningEffect = false;
 				bool blink = false;
@@ -850,7 +851,8 @@ void drawMinimap(const int player, SDL_Rect rect, bool drawingSharedMap)
 				}
 			}
 			else if ( entity->behavior == &actWorkbench || entity->behavior == &actCauldron
-				|| entity->behavior == &actMailbox || entity->behavior == &actEternalShrine )
+				|| entity->behavior == &actMailbox || entity->behavior == &actEternalShrine 
+				|| (entity->behavior == &actColliderDecoration && entity->colliderDamageTypes == EditorEntityData_t::colliderNameIndexes["keep_shrine"]) /*keep shrine*/ )
 			{
 				int x = std::min<int>(std::max<int>(0, entity->x / 16), map.width - 1);
 				int y = std::min<int>(std::max<int>(0, entity->y / 16), map.height - 1);

@@ -482,6 +482,7 @@ typedef struct map_t
 	static const Uint32 TILE_ATTRIBUTE_TREASURE_ROOM = 1 << 4;
 	static const Uint32 TILE_ATTRIBUTE_EXIT_ROOM = 1 << 5;
 	static const Uint32 TILE_ATTRIBUTE_WATER = 1 << 6;
+	static const Uint32 TILE_ATTRIBUTE_START_ROOM = 1 << 7;
 	bool tileHasAttribute(int x, int y, int layer, Uint32 attribute);
 	void setMapHDRSettings();
 	char filename[256];

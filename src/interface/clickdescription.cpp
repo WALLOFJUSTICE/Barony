@@ -187,6 +187,12 @@ void clickDescription(int player, Entity* entity)
 				{
 					messagePlayer(player, MESSAGE_INSPECTION, Language::get(268));
 				}
+				else if ( entity->behavior == &actSawTrapEnd
+					|| entity->behavior == &actSawTrapMid
+					|| entity->behavior == &actSawTrapStart )
+				{
+					messagePlayer(player, MESSAGE_INSPECTION, Language::get(7457));
+				}
 				else if ( entity->behavior == &actSwitch)
 				{
 					messagePlayer(player, MESSAGE_INSPECTION, Language::get(269));

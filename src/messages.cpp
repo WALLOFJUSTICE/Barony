@@ -144,6 +144,10 @@ void Player::MessageZone_t::startMessages()
 	}
 }
 
+//Time in seconds before the message starts fading.
+static ConsoleVariable<int> MESSAGE_PREFADE_TIME("/messages_time", 3600);
+
+
 void Player::MessageZone_t::updateMessages()
 {
 	int time_passed = 0;
@@ -165,16 +169,16 @@ void Player::MessageZone_t::updateMessages()
 
 		// Start fading all messages beyond index immediately
 		c++;
-		if ( currentline >= MESSAGE_MAX_ENTRIES - 2 && msg->time_displayed < MESSAGE_PREFADE_TIME)
+		if ( currentline >= MESSAGE_MAX_ENTRIES - 2 && msg->time_displayed < *MESSAGE_PREFADE_TIME)
 		{
-			msg->time_displayed = MESSAGE_PREFADE_TIME;
+			msg->time_displayed = *MESSAGE_PREFADE_TIME;
 		}
 
 		// Increase timer for message to start fading
 		msg->time_displayed += time_passed;
 
 		// Fade it if appropriate
-		if (msg->time_displayed >= MESSAGE_PREFADE_TIME)
+		if (msg->time_displayed >= *MESSAGE_PREFADE_TIME)
 		{
 			msg->alpha -= MESSAGE_FADE_RATE;
 		}

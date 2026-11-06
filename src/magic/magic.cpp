@@ -4601,12 +4601,19 @@ bool applyGenericMagicDamage(Entity* caster, Entity* hitentity, Entity& damageSo
 		resistance = 0;
 		trapResist = 0;
 	}
+	//else if ( damageSourceProjectile.behavior == &actSawTrapBlade )
+	//{
+	//	// pure dmg
+	//	dmgGib = DMG_STRONGEST;
+	//	damageMultiplier = 1.0;
+	//	resistance = 0;
+	//}
 	else if ( spellID == SPELL_EARTH_ELEMENTAL && caster && caster->behavior == &actMonster
 		&& caster->getMonsterTypeFromSprite() == EARTH_ELEMENTAL )
 	{
 		// pure dmg
 		dmgGib = DMG_STRONGEST;
-		damageMultiplier = 1.0;
+		damageMultiplier = std::max(damageMultiplier, 1.0);
 		resistance = 0;
 		trapResist = 0;
 	}

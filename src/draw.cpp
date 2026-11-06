@@ -2268,17 +2268,23 @@ void drawEntities3D(view_t* camera, int mode)
 				}
             }
 			end:
-			if ( entity->ditheringOverride >= 0 )
+			/*if ( entity->ditheringOverride >= 0 )
 			{
 				dither.value = std::max(0, std::min(entity->ditheringOverride, Entity::Dither::MAX));
 			}
-            else if (entity->ditheringDisabled) {
+            else */
+			if (entity->ditheringDisabled) {
                 dither.value = decrease ? 0 : Entity::Dither::MAX;
             } else {
                 if (ditheringDisabled) {
                     dither.value = decrease ? 0 : Entity::Dither::MAX;
                 } else {
-					if ( (entity->flags[INVISIBLE] && entity->flags[INVISIBLE_DITHER]) || entity->flags[STASIS_DITHER] )
+					if ( entity->ditheringOverride >= 0 )
+					{
+						dither.value = decrease ? std::max(0, dither.value - 2) :
+							std::min(entity->ditheringOverride, dither.value + 1);
+					}
+					else if ( (entity->flags[INVISIBLE] && entity->flags[INVISIBLE_DITHER]) || entity->flags[STASIS_DITHER] )
 					{
 #ifndef EDITOR
 						static ConsoleVariable<int> cvar_dither_invisibility("/dither_invisibility", 5);
@@ -2677,7 +2683,10 @@ void drawEntities2D(long camx, long camy, map_t& destmap)
 	// editor only
 #ifndef EDITOR
 #else
-
+	if ( !viewsprites )
+	{
+		return;
+	}
 	node_t* node;
 	Entity* entity;
 	SDL_Rect pos, box;
@@ -2788,6 +2797,30 @@ void drawEntities2D(long camx, long camy, map_t& destmap)
 					pos.y += sprites[entity->sprite]->h / 2;
 					pos.x += sprites[entity->sprite]->w / 2;
 					switch ( entity->signalInputDirection )
+					{
+					case 0:
+						pos.x -= pos.w;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, 0.f, 255);
+						break;
+					case 1:
+						pos.y -= pos.h;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, PI / 2, 255);
+						break;
+					case 2:
+						pos.x += pos.w;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, PI, 255);
+						break;
+					case 3:
+						pos.y += pos.h;
+						drawImageRotatedAlpha(sprites[entity->sprite], nullptr, &pos, 3 * PI / 2, 255);
+						break;
+					}
+				}
+				else if ( entity->sprite == 322 || entity->sprite == 323 || entity->sprite == 324 )
+				{
+					pos.y += sprites[entity->sprite]->h / 2;
+					pos.x += sprites[entity->sprite]->w / 2;
+					switch ( entity->sawtrapDir )
 					{
 					case 0:
 						pos.x -= pos.w;

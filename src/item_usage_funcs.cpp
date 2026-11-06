@@ -4447,14 +4447,29 @@ void item_ScrollLiturgy(Item*& item, int player)
 		players[player]->mechanics.divineFavorModPips(blessing);
 		playSoundEntity(players[player]->entity, 908, 128);
 		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(7171));
-		createParticleFociLight(players[player]->entity, SPELL_NONE, true);
+		createParticleFociDark(players[player]->entity, SPELL_NONE, true);
 	}
 	else
 	{
 		players[player]->mechanics.divineFavorModPips(std::min(2, blessing) + 1);
-		playSoundEntity(players[player]->entity, 906, 128);
-		messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(7170));
-		createParticleFociLight(players[player]->entity, SPELL_NONE, true);
+
+		if ( players[player]->entity )
+		{
+			players[player]->mechanics.createLiturgySequence();
+
+			if ( players[player]->mechanics.liturgyTextSequence.size() )
+			{
+				Uint32 duration = players[player]->mechanics.liturgyTextSequence.back().first - ticks;
+
+				players[player]->entity->setEffect(EFF_STASIS, (Uint8)2, duration, true, true, true); // aesthetic stasis
+				playSoundEntity(players[player]->entity, 166, 128);
+			}
+		}
+
+
+		//messagePlayerColor(player, MESSAGE_HINT, makeColorRGB(255, 255, 0), Language::get(7170));
+		//playSoundEntity(players[player]->entity, 906, 128);
+		createParticleFociDark(players[player]->entity, SPELL_NONE, true);
 	}
 
 	if ( players[player]->isLocalPlayer() && item )
@@ -5204,7 +5219,8 @@ void item_ToolTowel(Item*& item, int player)
 		if ( stats[player]->getEffectActive(EFF_GREASY)
 			|| stats[player]->getEffectActive(EFF_MAGIC_GREASE)
 			|| stats[player]->getEffectActive(EFF_MESSY)
-			|| stats[player]->getEffectActive(EFF_BLEEDING) )
+			|| stats[player]->getEffectActive(EFF_BLEEDING)
+			|| stats[player]->getEffectActive(EFF_RUPTURE) )
 		{
 			steamAchievementClient(player, "BARONY_ACH_BRING_A_TOWEL");
 			if ( stats[player]->getEffectActive(EFF_GREASY) || stats[player]->getEffectActive(EFF_MAGIC_GREASE) )
@@ -5215,7 +5231,8 @@ void item_ToolTowel(Item*& item, int player)
 			{
 				Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_TOWEL_MESSY, item->type, 1);
 			}
-			else if ( stats[player]->getEffectActive(EFF_BLEEDING) )
+			else if ( stats[player]->getEffectActive(EFF_BLEEDING)
+				|| stats[player]->getEffectActive(EFF_RUPTURE) )
 			{
 				Compendium_t::Events_t::eventUpdate(player, Compendium_t::CPDM_TOWEL_BLEEDING, item->type, 1);
 			}
@@ -5227,7 +5244,8 @@ void item_ToolTowel(Item*& item, int player)
 	}
 
 	// stop bleeding
-	if ( stats[player]->getEffectActive(EFF_BLEEDING) )
+	if ( stats[player]->getEffectActive(EFF_BLEEDING)
+		|| stats[player]->getEffectActive(EFF_RUPTURE) )
 	{
 		if ( players[player]->isLocalPlayer() )
 		{
@@ -5238,6 +5256,8 @@ void item_ToolTowel(Item*& item, int player)
 		{
 			stats[player]->clearEffect(EFF_BLEEDING);
 			stats[player]->EFFECTS_TIMERS[EFF_BLEEDING] = 0;
+			stats[player]->clearEffect(EFF_RUPTURE);
+			stats[player]->EFFECTS_TIMERS[EFF_RUPTURE] = 0;
 		}
 		consumeItem(item, player);
 	}

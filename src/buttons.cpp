@@ -2918,6 +2918,39 @@ void buttonSpriteProperties(button_t* my)
 				suby2 = yres / 2 + 60;
 				strcpy(subtext, "Station Properties:");
 				break;
+			case 44: // sawtrap
+			case 45: // sawtrap
+			case 46: // sawtrap
+			{
+				snprintf(spriteProperties[0], 4, "%d", static_cast<int>(selectedEntity[0]->sawtrapDir));
+				newwindow = 46;
+				if ( spriteType == 44 )
+				{
+					newwindow = 47;
+					snprintf(spriteProperties[1], 4, "%d", static_cast<int>(selectedEntity[0]->sawtrapType));
+				}
+				inputstr = spriteProperties[0];
+				cursorflash = ticks;
+				menuVisible = 0;
+				subwindow = 1;
+				subx1 = xres / 2 - 170;
+				subx2 = xres / 2 + 170;
+				suby1 = yres / 2 - 60;
+				suby2 = yres / 2 + 60;
+				if ( spriteType == 44 )
+				{
+					strcpy(subtext, "Sawtrap Start Properties:");
+				}
+				else if ( spriteType == 45 )
+				{
+					strcpy(subtext, "Sawtrap Middle Properties:");
+				}
+				else if ( spriteType == 46 )
+				{
+					strcpy(subtext, "Sawtrap End Properties:");
+				}
+				break;
+			}
 			default:
 				strcpy(message, "No properties available for current sprite.");
 				messagetime = 60;
@@ -4134,6 +4167,15 @@ void buttonSpritePropertiesConfirm(button_t* my)
 			case 42: // workbench
 			case 43: // mailbox
 				selectedEntity[0]->workStationDir = (Sint32)atoi(spriteProperties[0]);
+				break;
+			case 44: // sawtrap
+			case 45: // sawtrap
+			case 46: // sawtrap
+				selectedEntity[0]->sawtrapDir = (Sint32)atoi(spriteProperties[0]);
+				if ( spriteType == 44 )
+				{
+					selectedEntity[0]->sawtrapType = (Sint32)atoi(spriteProperties[1]);
+				}
 				break;
 			default:
 				break;

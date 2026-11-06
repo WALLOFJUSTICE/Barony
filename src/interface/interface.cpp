@@ -29422,6 +29422,11 @@ std::string CalloutRadialMenu::setCalloutText(Field* field, const char* iconName
 			{
 				trapName = Language::get(4350);
 			}
+			else if ( entity->behavior == &actSawTrapEnd
+				|| entity->behavior == &actSawTrapStart )
+			{
+				trapName = Language::get(7456);
+			}
 		}
 		auto& textMap = text_map[key];
 		auto highlights = textMap.bannerHighlights;

@@ -312,6 +312,7 @@ static const int SPELL_PHASE_OTHER = 289;
 static const int SPELL_LIFESAVING_PARTICLE = 290;
 static const int SPELL_SUMMON_SKULL = 291;
 static const int SPELL_DECONSTRUCT = 292;
+static const int SPELL_SAW_TRAP_BLADE = 293;
 
 static const int NUM_SPELLS = 350;
 
@@ -493,6 +494,8 @@ static const int PARTICLE_EFFECT_SUMMON_SKULL_HEAD = 132;
 static const int PARTICLE_EFFECT_SUMMON_SKULL_DEATH = 133;
 static const int PARTICLE_EFFECT_DECONSTRUCT_MP = 134;
 static const int PARTICLE_EFFECT_DECONSTRUCT_SPLINTER = 135;
+static const int PARTICLE_EFFECT_FIREWALL_FADE = 136;
+static const int PARTICLE_EFFECT_SAWBLADE = 137;
 
 // actmagicIsVertical constants
 static const int MAGIC_ISVERTICAL_NONE = 0;
@@ -566,6 +569,8 @@ static const int PARTICLE_TIMER_ACTION_PHASE_OTHER = 63;
 static const int PARTICLE_TIMER_ACTION_PHASE_OTHER_RELEASE = 64;
 static const int PARTICLE_TIMER_ACTION_SUMMON_SKULL_HEAD = 65;
 static const int PARTICLE_TIMER_ACTION_DECONSTRUCT_SHATTER = 66;
+static const int PARTICLE_TIMER_ACTION_FIREWALL_FADE = 67;
+static const int PARTICLE_TIMER_ACTION_KEEP_EXIT_WALL = 68;
 
 struct ParticleEmitterHit_t
 {
@@ -601,6 +606,9 @@ struct ParticleTimerEffect_t
 		EFFECT_FLAME_PUDDLE,
 		EFFECT_ICE_BLOCK,
 		EFFECT_ROOTS_SELF_SUSTAIN_EXPAND,
+		EFFECT_FIRE_WAVE_SAWTRAP,
+		EFFECT_GENERIC_WAVE,
+		EFFECT_FIRE_WAVE_SAWTRAP_EXIT,
 	};
 	struct Effect_t
 	{
@@ -1363,9 +1371,9 @@ const char* magicLightColorForSprite(Entity* my, int sprite, bool darker);
 void doParticleEffectForTouchSpell(Entity& my, Entity* focalLimb, Monster monsterType);
 bool magicOnSpellCastEvent(Entity* parent, Entity* projectile, Entity* hitentity, int spellID, Uint32 eventType, int eventValue, bool allowedLevelup = true); // return true on level up
 void freeSpells();
-void createParticleFociLight(Entity* entity, int spellID, bool updateClients);
-void createParticleFociDark(Entity* entity, int spellID, bool updateClients);
-void createParticleFociSorcery(Entity* entity, int spellID, bool updateClients);
+void createParticleFociLight(Entity* entity, int spellID, bool updateClients, bool clientSpawnAtLocation = false);
+void createParticleFociDark(Entity* entity, int spellID, bool updateClients, bool clientSpawnAtLocation = false);
+void createParticleFociSorcery(Entity* entity, int spellID, bool updateClients, bool clientSpawnAtLocation = false);
 bool jewelItemRecruit(Entity* parent, Entity* entity, int itemStatus, const char** msg);
 bool entityWantsJewel(int tier, Entity& entity, Stat& stats, bool checkTypeOnly);
 bool spellIsNaturallyLearnedByRaceOrClass(Entity* caster, Stat& stat, int spellID, int player = -1);

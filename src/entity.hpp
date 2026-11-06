@@ -513,6 +513,7 @@ public:
 	Sint32& colliderTelepathy = skill[24];
 	Sint32& colliderDropVariable = skill[25]; // store germinate drop qtys
 	Sint32& colliderSpawnedMonster = skill[26];
+	Sint32& colliderDamageImmune = skill[27];
 	static void colliderAssignProperties(Entity* entity, bool mapGeneration, map_t* whichMap);
 	static Entity* createBreakableCollider(int colliderDamageType, real_t _x, real_t _y, Entity* parent);
 	void colliderSetServerSkillOnSpawned();
@@ -757,6 +758,33 @@ public:
 
 	//--WORKSTATIONS
 	Sint32& workStationDir = skill[7];
+
+	//--SAWTRAP
+	Sint32& sawtrapDir = skill[0];
+	Sint32& sawtrapInit = skill[1];
+	Sint32& sawtrapLinkPrev = skill[3];
+	Sint32& sawtrapLinkNext = skill[4];
+	Sint32& sawtrapFirst = skill[5];
+	Sint32& sawtrapLast = skill[6];
+	Sint32& sawtrapSignalDelay = skill[7];
+	Sint32& sawtrapActiveTime = skill[8];
+	Sint32& sawtrapResetDelay = skill[9];
+	Sint32& sawtrapType = skill[10];
+	Sint32& sawtrapAmbience = skill[11];
+	Sint32& sawtrapMapGen = skill[12];
+	
+	enum SawTrapType : int
+	{
+		SAWTRAP_RAND,
+		SAWTRAP_BLADE,
+		SAWTRAP_BLADE_INVERTED,
+		SAWTRAP_FIRE_WALL,
+		SAWTRAP_BORDER_1X_WALL,
+		SAWTRAP_BORDER_WALL,
+		SAWTRAP_BORDER_1X_BLADE,
+		SAWTRAP_EXIT_WALL,
+		SAWTRAP_ENUM_END
+	};
 
 	enum PressurePlateTriggerTypes : int
 	{
@@ -1023,6 +1051,7 @@ public:
 	//Door functions.
 	void doorHandleDamageMagic(int damage, Entity &magicProjectile, Entity *caster, bool messages = true, bool doSound = true);
 	void colliderHandleDamageMagic(int damage, Entity &magicProjectile, Entity *caster, bool messages = true, bool doSound = true);
+	bool colliderModHP(int damage);
 
 	bool checkEnemy(Entity* your);
 	bool checkFriend(Entity* your);

@@ -1097,7 +1097,8 @@ void gyroBotAnimate(Entity* my, Stat* myStats, double dist)
 						|| ent->behavior == &actMagicTrap || ent->behavior == &actMagicTrapCeiling
 						|| ent->behavior == &actBoulderTrapEast || ent->behavior == &actBoulderTrapWest
 						|| ent->behavior == &actBoulderTrapNorth || ent->behavior == &actBoulderTrapSouth
-						|| ent->behavior == &actSummonTrap || ent->behavior == &actSpearTrap )
+						|| ent->behavior == &actSummonTrap || ent->behavior == &actSpearTrap
+						|| ent->behavior == &actSawTrapStart )
 					{
 						if ( entityDist(my, ent) < TOUCHRANGE * 5 )
 						{

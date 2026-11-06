@@ -341,18 +341,34 @@ int pathCheckObstacle(int x, int y, Entity* my, Entity* target, GeneratePathType
 		{
 			if ( (int)floor(entity->x / 16) == u && (int)floor(entity->y / 16) == v )
 			{
+				int result = 0;
 				if ( entity->colliderHasCollision != 0 || entity->colliderDiggable != 0 )
 				{
-					return 1;
+					result = 1;
 				}
+
 				auto find = EditorEntityData_t::colliderData.find(entity->colliderDamageTypes);
 				if ( find != EditorEntityData_t::colliderData.end() )
 				{
 					auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[find->second.damageCalculationType];
 					if ( !colliderDmgType.allowNPCPathing )
 					{
-						return 1;
+						result = 1;
 					}
+					if ( result )
+					{
+						if ( (find->second.hasOverride("hp") && find->second.getOverride("hp") > 0) 
+							&& (entity->colliderHasCollision || (find->second.getOverride("collision") > 0)) )
+						{
+							// it's breakable
+							result = 0;
+						}
+					}
+				}
+
+				if ( result )
+				{
+					return 1;
 				}
 			}
 		}
@@ -601,7 +617,7 @@ list_t* generatePath(int x1, int y1, int x2, int y2, Entity* my, Entity* target,
 		Entity* entity = (Entity*)entityNode->element;
 		if ( entity->flags[PASSABLE] )
 		{
-			if ( entity->behavior == &actSpearTrap 
+			if ( entity->behavior == &actSpearTrap
 				&& ((my && my->getRace() == HUMAN) || my->monsterAllyGetPlayerLeader()) )
 			{
 				// humans/followers know better than that!

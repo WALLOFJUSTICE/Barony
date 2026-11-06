@@ -24,6 +24,117 @@
 #include "scores.hpp"
 #include "mod_tools.hpp"
 
+void stareMasterGuardShrines(Entity* my)
+{
+	if ( !my ) { return; }
+
+	Stat* myStats = my->getStats();
+	if ( !myStats ) { return; }
+
+	if ( myStats->getAttributeInt("staremaster_guard_duration") > 0 )
+	{
+		myStats->modifyAttributeInt("staremaster_guard_duration", -1);
+	}
+	else
+	{
+		myStats->attributes.erase("staremaster_pillar1");
+		myStats->attributes.erase("staremaster_pillar2");
+		myStats->attributes.erase("staremaster_pillar3");
+		myStats->attributes.erase("staremaster_pillar4");
+	}
+
+	if ( myStats->getAttributeInt("staremaster_guard_pillars") > 0 )
+	{
+		myStats->modifyAttributeInt("staremaster_guard_pillars", -1);
+	}
+	else if ( myStats->getAttributeInt("staremaster_guard_pillars") == 0 )
+	{
+		my->monsterSpecialState = STAREMASTER_MODE_NORMAL;
+		myStats->setAttribute("staremaster_form_delay", std::to_string(0));
+		myStats->setAttribute("staremaster_atk_cycle", "");
+
+		my->setEffect(EFF_STUNNED, true, 50, false);
+		my->attack(MONSTER_POSE_RANGED_WINDUP1, 0, nullptr);
+
+		myStats->setAttributeInt("staremaster_guard_pillars", 120 * TICKS_PER_SECOND);
+		myStats->setAttributeInt("staremaster_guard_duration", 105 * TICKS_PER_SECOND);
+		createParticleFociSorcery(my, SPELL_FORCE_BOMBARDMENT, true);
+		playSoundEntity(my, 902, 128);
+		for ( auto node = map.entities->first; node; node = node->next )
+		{
+			if ( Entity* entity = (Entity*)node->element )
+			{
+				if ( entity->behavior == &actColliderDecoration
+					&& entity->colliderDamageTypes != 0 )
+				{
+					auto find = EditorEntityData_t::colliderData.find(entity->colliderDamageTypes);
+					if ( find != EditorEntityData_t::colliderData.end() )
+					{
+						if ( find->second.name == "keep_shrine" )
+						{
+							bool found = false;
+							if ( !entity->colliderDamageImmune )
+							{
+								if ( myStats->getAttribute("staremaster_pillar1") == "" )
+								{
+									myStats->setAttribute("staremaster_pillar1", std::to_string(entity->getUID()));
+									found = true;
+								}
+								else if ( myStats->getAttribute("staremaster_pillar2") == "" )
+								{
+									myStats->setAttribute("staremaster_pillar2", std::to_string(entity->getUID()));
+									found = true;
+								}
+								else if ( myStats->getAttribute("staremaster_pillar3") == "" )
+								{
+									myStats->setAttribute("staremaster_pillar3", std::to_string(entity->getUID()));
+									found = true;
+								}
+								else if ( myStats->getAttribute("staremaster_pillar4") == "" )
+								{
+									myStats->setAttribute("staremaster_pillar4", std::to_string(entity->getUID()));
+									found = true;
+								}
+							}
+
+							if ( found )
+							{
+								for ( int i = 0; i < 4; ++i )
+								{
+									real_t yaw = 0 - PI / 2 + i * PI / 2;
+									real_t x = entity->x;
+									real_t y = entity->y;
+									x += 4.0 * cos(0.0 + i * PI / 2);
+									y += 4.0 * sin(0.0 + i * PI / 2);
+									Entity* wave = createParticleWave(ParticleTimerEffect_t::EFFECT_GENERIC_WAVE,
+										1721, x, y, 4.75,
+										yaw, myStats->getAttributeInt("staremaster_guard_duration"), true);
+									real_t scale = 0.5;
+									wave->skill[1] = 12; // frames
+									wave->skill[5] = 4; // frame time
+									wave->ditheringOverride = 6;
+									wave->parent = my->getUID();
+									real_t startScale = 0.1;
+									wave->scalex = startScale;
+									wave->scaley = startScale;
+									wave->scalez = startScale;
+									wave->focaly = 0.0;
+									wave->fskill[0] = scale; // final scale
+									wave->fskill[1] = 0.0; // final grouping
+									wave->skill[6] = 1; // grow to scale
+									wave->flags[UPDATENEEDED] = true;
+								}
+								playSoundEntity(entity, 901, 128);
+								createParticleFociSorcery(entity, SPELL_FORCE_BOMBARDMENT, true, true);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void initStareMaster(Entity* my, Stat* myStats)
 {
 	node_t* node;
@@ -38,6 +149,16 @@ void initStareMaster(Entity* my, Stat* myStats)
 		MONSTER_SPOTVAR = 1;
 		MONSTER_IDLESND = -1;
 		MONSTER_IDLEVAR = 1;
+
+		if ( MONSTER_INIT && myStats )
+		{
+			myStats->attributes.erase("staremaster_pillar1");
+			myStats->attributes.erase("staremaster_pillar2");
+			myStats->attributes.erase("staremaster_pillar3");
+			myStats->attributes.erase("staremaster_pillar4");
+			myStats->attributes.erase("staremaster_guard_pillars");
+			myStats->attributes.erase("staremaster_guard_duration");
+		}
 	}
 
 	if ( multiplayer != CLIENT && !MONSTER_INIT )
@@ -73,6 +194,17 @@ void initStareMaster(Entity* my, Stat* myStats)
 
 			myStats->setEffectActive(EFF_LEVITATING, 1);
 			myStats->EFFECTS_TIMERS[EFF_LEVITATING] = 0;
+
+			for ( int i = 0; i < MAXPLAYERS; ++i )
+			{
+				playSoundPlayer(i, 902, 128);
+				if ( players[i]->entity )
+				{
+					createStareAOE(players[i]->entity, true);
+					playSoundEntity(players[i]->entity, 166, 128);
+					messagePlayerColor(i, MESSAGE_WORLD, makeColorRGB(255, 0, 255), Language::get(7455));
+				}
+			}
 		}
 	}
 
@@ -1012,6 +1144,12 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 			}
 			my->monsterSpecialTimer = 0;
 		}
+
+		if ( myStats->getAttributeInt("STAREMASTER_HUNT") > 0 )
+		{
+			myStats->modifyAttributeInt("STAREMASTER_HUNT", -1);
+		}
+		stareMasterGuardShrines(my);
 	}
 
 	/*static ConsoleVariable<int> cvar_stare_atk("/stare_atk", 0);
@@ -1083,6 +1221,7 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 				if ( my->monsterAttackTime == 0 )
 				{
 					playSoundEntityLocal(my, 170, 32);
+					playSoundEntityLocal(my, 887, 128);
 				}
 
 				if ( my->monsterAttackTime >= 30 && my->monsterAttackTime % 30 == 1 )
@@ -1317,6 +1456,7 @@ void stareMasterAnimate(Entity* my, Stat* myStats, double dist)
 				{
 					createParticleDot(my);
 					playSoundEntityLocal(my, 170, 32);
+					playSoundEntityLocal(my, 898, 128);
 
 					if ( Entity* fx = createParticleAOEIndicator(my, my->x, my->y, 0.0, TICKS_PER_SECOND, 16) )
 					{

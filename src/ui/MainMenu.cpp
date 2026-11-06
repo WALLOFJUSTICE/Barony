@@ -9516,6 +9516,12 @@ bind_failed:
 					case KilledBy::WATER_CHOKING:
 						cause_of_death = Language::get(7191);
 						break;
+					case KilledBy::SAW_BLADE:
+						cause_of_death = Language::get(7450);
+						break;
+					case KilledBy::SAW_FIREWALL:
+						cause_of_death = Language::get(7451);
+						break;
 					default: 
 					{
 						cause_of_death = Language::get(5794 + (int)score->stats->killer);
@@ -27976,6 +27982,12 @@ failed:
 			break;
 		case KilledBy::WATER_CHOKING:
 			cause_of_death = Language::get(7191);
+			break;
+		case KilledBy::SAW_BLADE:
+			cause_of_death = Language::get(7450);
+			break;
+		case KilledBy::SAW_FIREWALL:
+			cause_of_death = Language::get(7451);
 			break;
         default: {
             cause_of_death = Language::get(5794 + (int)stats[player]->killer);

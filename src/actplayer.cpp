@@ -9295,7 +9295,7 @@ void actPlayer(Entity* my)
 		}
 	}
 	
-	static ConsoleVariable<int> cvar_pbaoe("/pbaoe", 22);
+	static ConsoleVariable<int> cvar_pbaoe("/pbaoe", 24);
 	if ( keystatus[SDLK_x] && enableDebugKeys && (svFlags & SV_FLAG_CHEATS) )
 	{
 		//spawnPlayerXP(my->x + 16.0, my->y, 0, 10);
@@ -9410,6 +9410,39 @@ void actPlayer(Entity* my)
 			//	leaf->flags[PASSABLE] = true;
 			//	leaf->flags[UNCLICKABLE] = true;
 			//}
+		}
+		else if ( *cvar_pbaoe == 24 )
+		{
+			for ( int i = 0; i < 4; ++i )
+			{
+				real_t yaw = my->yaw - PI / 2 + i * PI / 2;
+				real_t x = my->x + 40.0 * cos(my->yaw);
+				real_t y = my->y + 40.0 * sin(my->yaw);
+				x += 4.0 * cos(my->yaw + i * PI / 2);
+				y += 4.0 * sin(my->yaw + i * PI / 2);
+				Entity* wave = createParticleWave(ParticleTimerEffect_t::EFFECT_GENERIC_WAVE,
+					1721, x, y, 4.75,
+					yaw, 5 * TICKS_PER_SECOND, true);
+				real_t scale = 0.5;
+				wave->skill[1] = 12; // frames
+				wave->skill[5] = 4; // frame time
+				wave->ditheringOverride = 6;
+				wave->parent = my->getUID();
+				real_t startScale = 0.1;
+				wave->scalex = startScale;
+				wave->scaley = startScale;
+				wave->scalez = startScale;
+				wave->focaly = 0.0;
+				wave->fskill[0] = scale; // final scale
+				wave->fskill[1] = 0.0; // final grouping
+				wave->skill[6] = 1; // grow to scale
+				//if ( spellBookBonusPercent > 0 )
+				//{
+				//	wave->actmagicSpellbookBonus = spellBookBonusPercent;
+				//}
+				//wave->actmagicFromSpellbook = usingSpellbook ? 1 : 0;
+				wave->flags[UPDATENEEDED] = true;
+			}
 		}
 		else if ( *cvar_pbaoe == 23 )
 		{
@@ -11587,6 +11620,34 @@ void actPlayer(Entity* my)
 				else if ( my->playerLevelEntrySpeech > 0 )
 				{
 					my->playerLevelEntrySpeechSecond();
+				}
+			}
+		}
+
+		if ( multiplayer != CLIENT )
+		{
+			if ( players[PLAYER_NUM]->mechanics.liturgyTextSequence.size() )
+			{
+				for ( auto it = players[PLAYER_NUM]->mechanics.liturgyTextSequence.begin(); it != players[PLAYER_NUM]->mechanics.liturgyTextSequence.end(); )
+				{
+					if ( ticks >= it->first )
+					{
+						if ( it->second == Language::get(7170) )
+						{
+							messagePlayerColor(PLAYER_NUM, MESSAGE_WORLD, makeColorRGB(255, 255, 0), it->second.c_str());
+							playSoundEntity(my, 906, 128);
+							createParticleFociLight(my, SPELL_NONE, true);
+						}
+						else
+						{
+							messagePlayerColor(PLAYER_NUM, MESSAGE_WORLD, makeColorRGB(255, 0, 255), it->second.c_str());
+						}
+						it = players[PLAYER_NUM]->mechanics.liturgyTextSequence.erase(it);
+					}
+					else
+					{
+						++it;
+					}
 				}
 			}
 		}

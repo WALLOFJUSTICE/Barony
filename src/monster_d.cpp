@@ -1071,16 +1071,22 @@ void monsterDMoveBodyparts(Entity* my, Stat* myStats, double dist)
 									{
 										if ( floorMagicCreateRoots(my->x, my->y, my, 0, SPELL_ROOTS, 5 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS1, true) )
 										{
-											spawnMagicEffectParticles(my->x, my->y, my->z, 171);
-											playSoundEntity(my, 171, 128);
+											//spawnMagicEffectParticles(my->x, my->y, my->z, 171);
+											//playSoundEntity(my, 171, 128);
+											createParticleFociLight(my, SPELL_NONE, true);
+											playSoundEntity(my, 912, 128);
+											playSoundEntity(my, 911, 128);
 										}
 									}
 									else
 									{
 										if ( floorMagicCreateRoots(my->x, my->y, my, 0, SPELL_ROOTS, 5 * TICKS_PER_SECOND, PARTICLE_TIMER_ACTION_ROOTS_PATH, true) )
 										{
-											spawnMagicEffectParticles(my->x, my->y, my->z, 171);
-											playSoundEntity(my, 171, 128);
+											//spawnMagicEffectParticles(my->x, my->y, my->z, 171);
+											createParticleFociLight(my, SPELL_NONE, true);
+											//playSoundEntity(my, 171, 128);
+											playSoundEntity(my, 912, 128);
+											playSoundEntity(my, 911, 128);
 										}
 									}
 									my->yaw = oldYaw;

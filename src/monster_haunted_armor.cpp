@@ -144,7 +144,7 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 					myStats->weapon = newItem(SILVER_GLAIVE, static_cast<Status>(WORN + rng.rand() % 3), -1 + rng.rand() % 3, 1, rng.rand(), false, nullptr);
 				}
 				else */
-				if ( type == HAUNTED_SILVER )
+				if ( type == HAUNTED_SILVER || type == HAUNTED_SILVER_ARMOR )
 				{
 					switch ( rng.rand() % 5 )
 					{
@@ -167,7 +167,7 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 						break;
 					}
 				}
-				else if ( type == HAUNTED_BLACKIRON )
+				else if ( type == HAUNTED_BLACKIRON || type == HAUNTED_BLACKIRON_ARMOR )
 				{
 					switch ( rng.rand() % 5 )
 					{
@@ -359,7 +359,7 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 	}
 
 	// torso
-	Entity* entity = newEntity(106, 1, map.entities, nullptr); //Limb entity.
+	Entity* entity = newEntity(2469, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -378,7 +378,7 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// right leg
-	entity = newEntity(107, 1, map.entities, nullptr); //Limb entity.
+	entity = newEntity(2475, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -397,7 +397,7 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// left leg
-	entity = newEntity(108, 1, map.entities, nullptr); //Limb entity.
+	entity = newEntity(2474, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -416,7 +416,7 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// right arm
-	entity = newEntity(109, 1, map.entities, nullptr); //Limb entity.
+	entity = newEntity(2472, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -435,7 +435,7 @@ void initHauntedArmor(Entity* my, Stat* myStats)
 	my->bodyparts.push_back(entity);
 
 	// left arm
-	entity = newEntity(110, 1, map.entities, nullptr); //Limb entity.
+	entity = newEntity(2470, 1, map.entities, nullptr); //Limb entity.
 	entity->sizex = 4;
 	entity->sizey = 4;
 	entity->skill[2] = my->getUID();
@@ -879,7 +879,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 				case LIMB_HUMANOID_TORSO:
 					if ( myStats->breastplate )
 					{
-						if ( myStats->breastplate->isDroppable )
+						//if ( myStats->breastplate->isDroppable )
 						{
 							if ( dropItemMonster(myStats->breastplate, my, myStats, myStats->breastplate->count) )
 							{
@@ -895,7 +895,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 						{
 							if ( myStats->shoes )
 							{
-								if ( myStats->shoes->isDroppable )
+								//if ( myStats->shoes->isDroppable )
 								{
 									if ( dropItemMonster(myStats->shoes, my, myStats, myStats->shoes->count) )
 									{
@@ -913,7 +913,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 						{
 							if ( myStats->shoes )
 							{
-								if ( myStats->shoes->isDroppable )
+								//if ( myStats->shoes->isDroppable )
 								{
 									if ( dropItemMonster(myStats->shoes, my, myStats, myStats->shoes->count) )
 									{
@@ -931,7 +931,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 						{
 							if ( myStats->gloves )
 							{
-								if ( myStats->gloves->isDroppable )
+								//if ( myStats->gloves->isDroppable )
 								{
 									if ( dropItemMonster(myStats->gloves, my, myStats, myStats->gloves->count) )
 									{
@@ -949,7 +949,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 						{
 							if ( myStats->gloves )
 							{
-								if ( myStats->gloves->isDroppable )
+								//if ( myStats->gloves->isDroppable )
 								{
 									if ( dropItemMonster(myStats->gloves, my, myStats, myStats->gloves->count) )
 									{
@@ -963,7 +963,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 					case LIMB_HUMANOID_WEAPON:
 						if ( myStats->weapon )
 						{
-							if ( myStats->weapon->isDroppable )
+							//if ( myStats->weapon->isDroppable )
 							{
 								if ( dropItemMonster(myStats->weapon, my, myStats, myStats->weapon->count) )
 								{
@@ -975,7 +975,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 					case LIMB_HUMANOID_SHIELD:
 						if ( myStats->shield )
 						{
-							if ( myStats->shield->isDroppable )
+							//if ( myStats->shield->isDroppable )
 							{
 								if ( dropItemMonster(myStats->shield, my, myStats, myStats->shield->count) )
 								{
@@ -985,11 +985,11 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 						}
 						break;
 					case LIMB_HUMANOID_CLOAK:
-						if ( myStats->mask )
+						if ( myStats->cloak )
 						{
-							if ( myStats->mask->isDroppable )
+							//if ( myStats->cloak->isDroppable )
 							{
-								if ( dropItemMonster(myStats->mask, my, myStats, myStats->mask->count) )
+								if ( dropItemMonster(myStats->cloak, my, myStats, myStats->cloak->count) )
 								{
 									fx = false;
 								}
@@ -997,11 +997,11 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 						}
 						break;
 					case LIMB_HUMANOID_HELMET:
-						if ( myStats->mask )
+						if ( myStats->helmet )
 						{
-							if ( myStats->mask->isDroppable )
+							//if ( myStats->helmet->isDroppable )
 							{
-								if ( dropItemMonster(myStats->mask, my, myStats, myStats->mask->count) )
+								if ( dropItemMonster(myStats->helmet, my, myStats, myStats->helmet->count) )
 								{
 									fx = false;
 								}
@@ -1011,7 +1011,7 @@ void hauntedArmorDegrade(Entity* my, Entity* limb, int bodypart, int prevState, 
 					case LIMB_HUMANOID_MASK:
 						if ( myStats->mask )
 						{
-							if ( myStats->mask->isDroppable )
+							//if ( myStats->mask->isDroppable )
 							{
 								if ( dropItemMonster(myStats->mask, my, myStats, myStats->mask->count) )
 								{
@@ -1654,6 +1654,32 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					}
 				}
 
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 2472 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = 2472;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
+					}
+				}
+
 				node_t* tempNode = list_Node(&my->children, LIMB_HUMANOID_WEAPON);
 				if ( tempNode )
 				{
@@ -1713,7 +1739,7 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 					entity->flags[INVISIBLE] = true;
 					if ( myStats->gloves == nullptr )
 					{
-						entity->sprite = 2474;
+						entity->sprite = 2470;
 					}
 					else
 					{
@@ -1746,6 +1772,32 @@ void hauntedArmorMoveBodyparts(Entity* my, Stat* myStats, double dist)
 								serverUpdateEntityBodypart(my, bodypart);
 							}
 						}
+					}
+				}
+
+				if ( multiplayer == CLIENT )
+				{
+					if ( entity->skill[7] == 0 )
+					{
+						if ( entity->sprite == 2470 )
+						{
+							// these are the default arms.
+							// chances are they may be wrong if sent by the server, 
+						}
+						else
+						{
+							// otherwise we're being sent gloves armor etc so it's probably right.
+							entity->skill[7] = entity->sprite;
+						}
+					}
+					if ( entity->skill[7] == 0 )
+					{
+						// we set this ourselves until proper initialisation.
+						entity->sprite = 2470;
+					}
+					else
+					{
+						entity->sprite = entity->skill[7];
 					}
 				}
 

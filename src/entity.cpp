@@ -7473,7 +7473,14 @@ void Entity::handleEffects(Stat* myStats)
 				}
 				if ( getCON() > 0 )
 				{
-					bleedhurt -= (getCON() / 5);
+					if ( behavior == &actMonster )
+					{
+						bleedhurt -= (getCON() / 5);
+					}
+					else
+					{
+						bleedhurt -= (getCON() / 10);
+					}
 				}
 				if ( myStats->type == LICH_ICE
 					|| myStats->type == LICH_FIRE
@@ -12094,7 +12101,7 @@ void Entity::attack(int pose, int charge, Entity* target)
 		{
 			CastSpellProps_t props;
 			props.powerBonusPercent = 100;
-			castSpell(uid, &spell_fireball, true, false, false, &props);
+			castSpell(uid, getSpellFromID(SPELL_FIREBLAST), true, false, false, &props);
 			return;
 		}
 		if ( myStats->type == LICH && myStats->getAttribute("LICH_SPELL") != "" )
@@ -13814,6 +13821,10 @@ fireagain:
 							axe = 2 * (myStats->getModifiedProficiency(weaponskill) / 20);
 							axe = std::min(axe, 9);
 						}
+						if ( myStats->weapon && myStats->weapon->type == TOOL_PICKAXE && !shapeshifted )
+						{
+							axe += std::max(3, hit.entity->colliderMaxHP / 8);
+						}
 					}
 					else if ( weaponskill == PRO_AXE )
 					{
@@ -13920,7 +13931,14 @@ fireagain:
 					((mimic && hitstats) ? hitstats->HP :
 						hit.entity->furnitureHealth)));
 				int oldHP = entityHP;
-				entityHP -= damage;
+				if ( hit.entity->behavior == &actColliderDecoration )
+				{
+					hit.entity->colliderModHP(damage);
+				}
+				else
+				{
+					entityHP -= damage;
+				}
 
 				if ( whip )
 				{
@@ -18314,6 +18332,10 @@ fireagain:
 							{
 								spawnDamageGib(this, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
+							for ( int i = 0; i < 2; ++i )
+							{
+								spawnDamageGib(hit.entity, 160, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+							}
 							playSoundEntity(this, 881, 64);
 
 							thornsEffect += mod;
@@ -18372,6 +18394,10 @@ fireagain:
 							{
 								spawnDamageGib(attacker, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
+							for ( int i = 0; i < 2; ++i )
+							{
+								spawnDamageGib(defender, 310, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+							}
 							playSoundEntity(this, 881, 64);
 
 							if ( defender->behavior == &actPlayer )
@@ -18417,6 +18443,10 @@ fireagain:
 							for ( int i = 0; i < 5; ++i )
 							{
 								spawnDamageGib(attacker, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
+							}
+							for ( int i = 0; i < 2; ++i )
+							{
+								spawnDamageGib(defender, 311, DamageGib::DMG_STRONGER, DamageGibDisplayType::DMG_GIB_SPRITE, true);
 							}
 							playSoundEntity(this, 881, 64);
 
@@ -31484,6 +31514,13 @@ bool Entity::SetEntityOnFire(Entity* sourceOfFire)
 					this->char_fire = std::min(this->char_fire, TICKS_TO_PROCESS_FIRE * 6);
 				}
 			}
+			else if ( sourceOfFire
+				&& (sourceOfFire->behavior == &actSawTrapStart
+					|| sourceOfFire->behavior == &actSawTrapMid
+					|| sourceOfFire->behavior == &actSawTrapEnd) )
+			{
+				this->char_fire = std::max(this->char_fire, TICKS_TO_PROCESS_FIRE * 10);
+			}
 
 			return true; // The Entity was set on fire, with a reduced duration
 		}
@@ -36130,7 +36167,7 @@ bool Entity::onEntityTrapHitSacredPath(Entity* trap)
 			int duration = myStats->EFFECTS_TIMERS[EFF_SACRED_PATH];
 			if ( strength <= 1 )
 			{
-				if ( myStats->EFFECTS_TIMERS[EFF_SACRED_PATH] > 0 )
+				//if ( myStats->EFFECTS_TIMERS[EFF_SACRED_PATH] == 0 )
 				{
 					myStats->EFFECTS_TIMERS[EFF_SACRED_PATH] = 1;
 				}

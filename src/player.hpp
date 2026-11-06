@@ -1974,8 +1974,6 @@ public:
 
 	class MessageZone_t
 	{
-		//Time in seconds before the message starts fading.
-		static const int MESSAGE_PREFADE_TIME = 3600;
 		//How fast the alpha value de-increments
 		static const int MESSAGE_FADE_RATE = 10;
 		TTF_Font* font = ttf16;
@@ -2570,6 +2568,8 @@ public:
 		void updateBreakableCounterServer();
 		void updateBreakableCounterClient(BreakableEvent eventType);
 		Uint32 ensembleDataUpdate = 0;
+		std::vector<std::pair<Uint32, std::string>> liturgyTextSequence;
+		void createLiturgySequence();
 		std::vector<Stat*> phaseOtherStats;
 		PlayerMechanics_t(Player& p) : player(p)
 		{};

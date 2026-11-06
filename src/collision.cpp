@@ -2957,7 +2957,7 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 			{
 				// for map generation to detect if decorations have obstacles without entities being assigned actions
 				std::vector<list_t*> entLists{ map.entities };
-				bool ceilingTilesAllowed = !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "backrooms", 9);
+				bool ceilingTilesAllowed = !strncmp(map.filename, "fortress", 8) || !strncmp(map.filename, "backrooms", 9) || !strncmp(map.filename, "keep", 4);
 				bool wallDecorationTilesAllowed = !strncmp(map.filename, "keep", 4);
 				for ( std::vector<list_t*>::iterator it = entLists.begin(); it != entLists.end(); ++it )
 				{
@@ -2972,6 +2972,7 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 							|| entity->sprite == 8 // items
 							|| entity->sprite == 9 // gold
 							|| (entity->sprite == 119 && ceilingTilesAllowed) // ceiling tiles
+							|| (entity->sprite == 131 && ceilingTilesAllowed && entity->lightSourceAlwaysOn) // light sources for ambience
 							|| (entity->sprite == 127 && entity->floorDecorationDestroyIfNoWall >= 0 && wallDecorationTilesAllowed)
 							|| entity->behavior == &actDoor )
 						{
@@ -3027,7 +3028,7 @@ int checkObstacle(long x, long y, Entity* my, Entity* target, bool useTileEntity
 							continue;
 						}
 						else if ( isMonster && my->getMonsterTypeFromSprite() == WATER_ELEMENTAL 
-							&& (entity->isColliderBreakableContainer() || entity->behavior == &actFurniture || entity->behavior == &actDoor) )
+							&& ((entity->isColliderBreakableContainer()) || entity->behavior == &actFurniture || entity->behavior == &actDoor) )
 						{
 							continue;
 						}

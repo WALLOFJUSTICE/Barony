@@ -832,7 +832,8 @@ void actArrow(Entity* my)
 
 					int& entityHP = hit.entity->colliderCurrentHP;
 					int oldHP = entityHP;
-					entityHP -= damage;
+					hit.entity->colliderModHP(damage);
+					//entityHP -= damage;
 
 					int sound = 28; //damage.ogg
 					if ( hit.entity->getColliderSfxOnHit() > 0 )

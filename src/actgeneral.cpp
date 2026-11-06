@@ -1308,6 +1308,7 @@ bool Entity::isColliderShownAsWallOnMinimap() const
 bool Entity::isColliderWeakToBoulders() const
 {
 	if ( !isDamageableCollider() ) { return false; }
+	if ( colliderDamageImmune ) { return false; }
 	auto& colliderData = EditorEntityData_t::colliderData[colliderDamageTypes];
 	auto& colliderDmgType = EditorEntityData_t::colliderDmgTypes[colliderData.damageCalculationType];
 	return colliderDmgType.boulderDestroys;
@@ -1453,6 +1454,55 @@ void Entity::colliderOnDestroy()
 				}
 			}
 		}
+		else if ( find->second.name == "keep_shrine" )
+		{
+			createParticleFociSorcery(this, SPELL_NONE, true, true);
+			playSoundEntity(this, 900, 128);
+
+			Entity* textSource = nullptr;
+			int otherShrines = 0;
+			for ( auto node = map.entities->first; node; node = node->next )
+			{
+				if ( Entity* entity = (Entity*)node->element )
+				{
+					if ( entity == this ) { continue; }
+					if ( entity->behavior == &::actTextSource )
+					{
+						int x = static_cast<int>(entity->x / 16);
+						int y = static_cast<int>(entity->y / 16);
+						if ( map.tileHasAttribute(x, y, 0, map_t::TILE_ATTRIBUTE_START_ROOM) )
+						{
+							textSource = entity;
+						}
+					}
+					else if ( entity->behavior == &actColliderDecoration && entity->colliderDamageTypes == this->colliderDamageTypes )
+					{
+						++otherShrines;
+					}
+				}
+			}
+
+			if ( textSource )
+			{
+				if ( textSourceScript.getTriggerType(textSource->textSourceIsScript) == textSourceScript.TRIGGER_POWER )
+				{
+					auto levelData = gameLevels.getCurrentMap(currentlevel, secretleveltype);
+					int chance = 2;
+					if ( levelData.id == "keep1" )
+					{
+						chance = 8;
+					}
+					else if ( levelData.id == "keep3" )
+					{
+						chance = 4;
+					}
+					if ( otherShrines == 0 || (this->getUID() % chance == 0) )
+					{
+						textSourceScript.setTriggerType(textSource->textSourceIsScript, textSourceScript.TRIGGER_ATTACHED_ALWAYS);
+					}
+				}
+			}
+		}
 	}
 
 	if ( colliderHideMonster != 0 )
@@ -1480,6 +1530,17 @@ void Entity::colliderOnDestroy()
 					{
 						strcpy(stats->name, "enslaved ghoul");
 						stats->setAttribute("special_npc", "enslaved ghoul");
+					}
+					if ( stats->type == HAUNTED_ARMOR )
+					{
+						if ( find->second.name.find("silver") != std::string::npos )
+						{
+							stats->setAttribute("haunted_type", "silver armor");
+						}
+						else if ( find->second.name.find("blackiron") != std::string::npos )
+						{
+							stats->setAttribute("haunted_type", "blackiron armor");
+						}
 					}
 					stats->setAttribute("spawn_no_sleep", "1");
 					if ( stats->type == AUTOMATON && strcmp(map.filename, "automat.lmp") )
@@ -2137,6 +2198,10 @@ void actColliderDecoration(Entity* my)
 			{
 				my->light = addLight(my->x / 16, my->y / 16, "mushroom_toxic");
 			}
+			else if ( colliderData.name.find("keep_shrine") != std::string::npos )
+			{
+				my->light = addLight(my->x / 16, my->y / 16, "magic_foci_blue");
+			}
 		}
 	}
 
@@ -2259,7 +2324,7 @@ void actColliderDecoration(Entity* my)
 			{
 				if ( ticks % 30 == 0 )
 				{
-					my->colliderCurrentHP--;
+					my->colliderModHP(1);
 					if ( my->colliderCurrentHP <= 0 )
 					{
 						my->colliderKillerUid = 0;
@@ -2503,6 +2568,17 @@ void actColliderDecoration(Entity* my)
 										strcpy(stats->name, "enslaved ghoul");
 										stats->setAttribute("special_npc", "enslaved ghoul");
 									}
+									if ( stats->type == HAUNTED_ARMOR )
+									{
+										if ( colliderData.name.find("silver") != std::string::npos )
+										{
+											stats->setAttribute("haunted_type", "silver armor");
+										}
+										else if ( colliderData.name.find("blackiron") != std::string::npos )
+										{
+											stats->setAttribute("haunted_type", "blackiron armor");
+										}
+									}
 									stats->setAttribute("spawn_no_sleep", "1");
 									if ( stats->type == AUTOMATON && strcmp(map.filename, "automat.lmp") )
 									{
@@ -2552,6 +2628,51 @@ void actColliderDecoration(Entity* my)
 					}
 				}
 			}
+
+			if ( colliderData.name == "keep_shrine" )
+			{
+				Sint32 prevDamageImmune = my->colliderDamageImmune;
+				my->colliderDamageImmune = 0;
+				static std::vector<std::string> attr_names = {
+					"staremaster_pillar1", "staremaster_pillar2", "staremaster_pillar3", "staremaster_pillar4" };
+				for ( auto node = map.creatures->first; node; node = node->next )
+				{
+					if ( Entity* entity = (Entity*)node->element )
+					{
+						if ( entity->behavior == &actMonster && entity->getRace() == STAREMASTER )
+						{
+							if ( Stat* stats = entity->getStats() )
+							{
+								bool found = false;
+								for ( auto& str : attr_names )
+								{
+									if ( stats->getAttribute(str) != "" )
+									{
+										Uint32 targetUid = std::stoul(stats->getAttribute(str));
+										if ( targetUid == my->getUID() )
+										{
+											my->colliderCurrentHP = std::max(1, my->colliderCurrentHP);
+											my->colliderDamageImmune = 1;
+											found = true;
+											break;
+										}
+									}
+								}
+								if ( found )
+								{
+									break;
+								}
+							}
+						}
+					}
+				}
+
+				if ( prevDamageImmune && !my->colliderDamageImmune )
+				{
+					playSoundEntity(my, 889, 128);
+					createParticleFociSorcery(my, SPELL_FORCE_BOMBARDMENT, true);
+				}
+			}
 			if ( my->colliderCurrentHP <= 0 )
 			{
 				int sprite = colliderData.gib;
@@ -2579,11 +2700,20 @@ void actColliderDecoration(Entity* my)
 	}
 }
 
+bool Entity::colliderModHP(int damage)
+{
+	if ( !isDamageableCollider() ) { return false; }
+	if ( colliderDamageImmune ) { return false; }
+
+	colliderCurrentHP -= damage;
+}
+
 void Entity::colliderHandleDamageMagic(int damage, Entity &magicProjectile, Entity *caster, bool messages, bool doSound)
 {
 	updateEntityOldHPBeforeMagicHit(*this, magicProjectile);
 	auto oldHP = colliderCurrentHP;
-	colliderCurrentHP -= damage; //Decrease object health.
+	colliderModHP(damage);
+	//colliderCurrentHP -= damage; //Decrease object health.
 	if ( caster )
 	{
 		if ( colliderCurrentHP <= 0 )

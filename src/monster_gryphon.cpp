@@ -400,7 +400,7 @@ void gryphonCeilingBust(Entity* my)
 				{
 					ent->doorHealth = 0; // destroy the door
 				}
-				else if ( ent->isDamageableCollider() )
+				else if ( ent->isDamageableCollider() && !ent->colliderDamageImmune )
 				{
 					ent->colliderCurrentHP = 0;
 					ent->colliderKillerUid = 0;

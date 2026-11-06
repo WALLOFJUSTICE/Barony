@@ -3193,6 +3193,27 @@ int loadMap(const char* filename2, map_t* destmap, list_t* entlist, list_t* crea
 						fp->read(&dummy, sizeof(Sint32), 1);
 					}
 					break;
+				case 44: // saw start
+				{
+					fp->read(&entity->sawtrapDir, sizeof(Sint32), 1);
+					fp->read(&entity->sawtrapType, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					break;
+				}
+				case 45: // saw mid
+				case 46: // saw end
+				{
+					fp->read(&entity->sawtrapDir, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					fp->read(&dummy, sizeof(Sint32), 1);
+					break;
+				}
 				default:
 					break;
 			}
@@ -3799,6 +3820,27 @@ int saveMap(const char* filename2)
 				case 43:
 				{
 					fp->write(&entity->workStationDir, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					break;
+				}
+				case 44: // saw start
+				{
+					fp->write(&entity->sawtrapDir, sizeof(Sint32), 1);
+					fp->write(&entity->sawtrapType, sizeof(Sint32), 1);
+					Sint32 dummy = 0; // some extra future data
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					fp->write(&dummy, sizeof(Sint32), 1);
+					break;
+				}
+				case 45: // saw mid
+				case 46: // saw end
+				{
+					fp->write(&entity->sawtrapDir, sizeof(Sint32), 1);
 					Sint32 dummy = 0; // some extra future data
 					fp->write(&dummy, sizeof(Sint32), 1);
 					fp->write(&dummy, sizeof(Sint32), 1);

@@ -11556,6 +11556,10 @@ void Player::HUD_t::updateWorldTooltipPrompts()
 			{
 				interactText += Language::get(4351);
 			}
+			else if ( target->behavior == &actSawTrapStart || target->behavior == &actSawTrapEnd )
+			{
+				interactText += Language::get(7456);
+			}
 			else if ( target->behavior == &actDoorFrame )
 			{
 				interactText += Language::get(6693);

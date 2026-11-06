@@ -3405,6 +3405,7 @@ void Player::cleanUpOnEntityRemoval()
 	mechanics.eternalShrineDonationRevealedOnFloor.clear();
 	mechanics.donationClaimed = false;
 	mechanics.client_hunger_score = 0;
+	mechanics.liturgyTextSequence.clear();
 
 	for ( int i = 0; i <= NUMEFFECTS; ++i )
 	{
@@ -9263,4 +9264,45 @@ int Player::PlayerMechanics_t::getDivinePenaltyModifier()
 	}
 
 	return sum;
+}
+
+void Player::PlayerMechanics_t::createLiturgySequence()
+{
+	int langEntry = local_rng.uniform(7434, 7445);
+	std::string str = Language::get(langEntry);
+	auto& seq = liturgyTextSequence;
+	seq.clear();
+	auto find = str.find_first_of('\n');
+	size_t findPrev = 0;
+	Uint32 tickOffset = ticks + 10;
+	while ( find != std::string::npos )
+	{
+		seq.push_back(std::make_pair(tickOffset, ""));
+		auto& entry = seq.back().second;
+		for ( size_t c = findPrev; c < find && c < str.size(); ++c )
+		{
+			if ( str[c] == '\n' || str[c] == '\r' || str[c] == '\0' )
+			{
+				continue;
+			}
+			entry += str[c];
+		}
+		findPrev = find;
+		find = str.find_first_of('\n', find + 1);
+		tickOffset += 2 * TICKS_PER_SECOND;
+	}
+
+	seq.push_back(std::make_pair(tickOffset, ""));
+	auto& entry = seq.back().second;
+	for ( size_t c = findPrev; c < find && c < str.size(); ++c )
+	{
+		if ( str[c] == '\n' || str[c] == '\r' || str[c] == '\0' )
+		{
+			continue;
+		}
+		entry += str[c];
+	}
+
+	tickOffset += 2 * TICKS_PER_SECOND;
+	seq.push_back(std::make_pair(tickOffset, Language::get(7170)));
 }

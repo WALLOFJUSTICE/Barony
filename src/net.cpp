@@ -4026,6 +4026,57 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 					createStareAOE(entity);
 					break;
 				}
+				case PARTICLE_EFFECT_SAWBLADE:
+				{
+					Uint32 uid = SDLNet_Read32(&net_packet->data[11]);
+					Uint32 facingDir = SDLNet_Read32(&net_packet->data[19]);
+					Entity* parent = entity;
+					if ( Entity* target = uidToEntity(uid) )
+					{
+						Entity* entity = newEntity(1851, 1, map.entities, nullptr);
+						entity->parent = parent->getUID();
+						entity->skill[0] = target->getUID();
+
+						real_t dir = facingDir * PI / 2;
+						//dir = normaliseAngle2PI(dir);
+						entity->x = parent->x - 4.0 * cos(dir);
+						entity->y = parent->y - 4.0 * sin(dir);
+						entity->z = 7.5;
+						entity->yaw = dir;
+
+						if ( dir < 0.1 * PI || (dir >= 0.9 * PI && dir <= 1.1 * PI) )
+						{
+							entity->sizex = 8;
+							entity->sizey = 4;
+						}
+						else
+						{
+							entity->sizex = 4;
+							entity->sizey = 8;
+						}
+
+						auto& ox = entity->fskill[0];
+						auto& oy = entity->fskill[1];
+						auto& oz = entity->fskill[2];
+						auto& odist = entity->fskill[3];
+						ox = parent->x;
+						oy = parent->y;
+						oz = 0.0;
+						real_t dist = entityDist(parent, target);
+						odist = dist;
+
+						entity->behavior = &actSawTrapBlade;
+						entity->flags[PASSABLE] = true;
+						entity->flags[UNCLICKABLE] = true;
+						entity->flags[NOUPDATE] = true;
+						if ( multiplayer != CLIENT )
+						{
+							entity_uids--;
+						}
+						entity->setUID(-3);
+					}
+					break;
+				}
 				default:
 					break;
 			}
@@ -4395,6 +4446,19 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				}
 				break;
 			}
+			case PARTICLE_EFFECT_FIREWALL_FADE:
+			{
+				Entity* spellTimer = createParticleTimer(nullptr, 25, -1);
+				spellTimer->particleTimerCountdownAction = PARTICLE_TIMER_ACTION_FIREWALL_FADE;
+				spellTimer->particleTimerCountdownSprite = sprite;
+				spellTimer->x = particle_x;
+				spellTimer->y = particle_y;
+
+				real_t tangent = particle_z / 256.0;
+				spellTimer->vel_x = 0.5 * cos(tangent);
+				spellTimer->vel_y = 0.5 * sin(tangent);
+				break;
+			}
 			case PARTICLE_EFFECT_IGNITE_NOFOLLOW:
 			{
 				Entity* spellTimer = createParticleTimer(nullptr, 25, -1);
@@ -4465,6 +4529,28 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 				spellTimer->y = particle_y;
 				spellTimer->sizex = 4;
 				spellTimer->sizey = 4;
+				break;
+			}
+			case PARTICLE_EFFECT_FOCI_SORCERY:
+			case PARTICLE_EFFECT_FOCI_DARK:
+			case PARTICLE_EFFECT_FOCI_LIGHT:
+			{
+				for ( int i = 0; i < 4; ++i )
+				{
+					Entity* fx = createParticleAestheticOrbit(nullptr, sprite, 2 * TICKS_PER_SECOND, PARTICLE_EFFECT_FOCI_SORCERY);
+					fx->x = particle_x;
+					fx->y = particle_y;
+					fx->fskill[0] = fx->x;
+					fx->fskill[1] = fx->y;
+					fx->yaw = i * PI / 2 + 3 * PI / 4;
+					fx->fskill[2] = 7.75;
+					fx->fskill[3] = -16.25;
+					fx->fskill[6] = 0.15; // yaw
+					fx->fskill[7] = 0.1;
+					fx->z = 7.75;
+					fx->flags[INVISIBLE] = true;
+					fx->scaley = 1.0;
+				}
 				break;
 			}
 			default:
@@ -7651,7 +7737,7 @@ static std::unordered_map<Uint32, void(*)()> clientPacketHandlers = {
 			}
 			entity->setUID(-3);
 		}
-	} }
+	} },
 };
 
 void clientHandlePacket()

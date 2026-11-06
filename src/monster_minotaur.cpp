@@ -1020,7 +1020,7 @@ void actMinotaurCeilingBuster(Entity* my)
 								list_RemoveNode(entity->mynode);
 								minotaurPaths[my->getUID()].incrementObjectBusted();
 							}
-							else if ( entity->isDamageableCollider() )
+							else if ( entity->isDamageableCollider() && !entity->colliderDamageImmune )
 							{
 								if ( multiplayer != CLIENT )
 								{

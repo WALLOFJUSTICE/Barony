@@ -5653,7 +5653,8 @@ namespace ConsoleCommands {
 					{
 						if ( entity->sprite == 217 || entity->sprite == 218 )
 						{
-							printlog("Map: %s Iron door: Lockpick state: %d, opening: %d", f.c_str(), entity->doorDisableLockpicks, entity->doorDisableOpening);
+							printlog("Map: %s Iron door: Lockpick state: %d, opening: %d, force opened: %d, unlock powered: %d", 
+								f.c_str(), entity->doorDisableLockpicks, entity->doorDisableOpening, entity->doorForceLockedUnlocked, entity->doorUnlockWhenPowered);
 						}
 						else if ( entity->sprite == 208 || entity->sprite == 209
 							|| entity->sprite == 210 || entity->sprite == 211 )
